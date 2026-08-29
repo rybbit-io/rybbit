@@ -82,7 +82,7 @@ export function Chart({
 
     // Previous points are time-shifted onto the current period's x-axis, but
     // keep originalTime so the tooltip can show the real previous date.
-    const { min: prevMin } = getChartTimeBounds(previousTime, bucket, timezone);
+    const prevMin = previousTime ? getChartTimeBounds(previousTime, bucket, timezone).min : undefined;
     const offsetMs = cMin && prevMin ? cMin.getTime() - prevMin.getTime() : 0;
     const previousPoints: PrevPoint[] = [];
     previousData?.forEach(e => {

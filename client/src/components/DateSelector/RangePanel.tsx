@@ -16,22 +16,17 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { timezones } from "@/lib/dateTimeUtils";
 import { getDashboardTimeForRange, type DashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
-import { deriveTimeState, getAbsoluteBounds } from "@/lib/time";
+import { getAbsoluteBounds } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { DateTime } from "luxon";
 import { Check, Globe } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Fragment, useState } from "react";
 import { DateRange } from "react-day-picker";
+import { ComparisonSelect } from "./ComparisonSelect";
 import { PRESET_GROUPS, usePresetLabels } from "./presets";
-import {
-  describeBounds,
-  rangeFieldsForTime,
-  timeFromRangeFields,
-  timeFromSelectedDays,
-  type RangeFields,
-} from "./rangeFields";
-import { Time } from "./types";
+import { rangeFieldsForTime, timeFromRangeFields, timeFromSelectedDays, type RangeFields } from "./rangeFields";
+import { Comparison, Time } from "./types";
 
 /**
  * react-day-picker works in whole calendar days in the browser's zone, so days
@@ -44,6 +39,7 @@ const fromCalendarDate = (date: Date) => DateTime.fromJSDate(date).toISODate() ?
 
 export function RangePanel({
   time,
+  comparison,
   zone,
   timezone,
   setTimezone,
@@ -52,13 +48,14 @@ export function RangePanel({
   onCancel,
 }: {
   time: Time;
+  comparison: Comparison;
   /** The resolved IANA zone — never the "system" sentinel. */
   zone: string;
   /** The stored preference, which may be "system". */
   timezone: string;
   setTimezone: (timezone: string) => void;
   pastMinutesEnabled: boolean;
-  onApply: (time: Time) => void;
+  onApply: (time: Time, comparison: Comparison) => void;
   onCancel: () => void;
 }) {
   const t = useExtracted();
@@ -92,6 +89,10 @@ export function RangePanel({
     pending?: { anchor: string; base: Time };
     invalid?: boolean;
   }>(() => ({ time, fields: rangeFieldsForTime(time, zone) }));
+
+  // The comparison is drafted alongside the period: picking one should no more
+  // refire every query than dragging a range does.
+  const [draftComparison, setDraftComparison] = useState<Comparison>(comparison);
 
   const setDraftTime = (next: Time) => setDraft({ time: next, fields: rangeFieldsForTime(next, zone) });
 
@@ -132,10 +133,8 @@ export function RangePanel({
   const months = isWide === false ? 1 : 2;
   const lastMonth = DateTime.fromISO(todayHere).startOf("month");
 
-  const { previousTime } = deriveTimeState(draft.time, zone);
-  const comparison = describeBounds(getAbsoluteBounds(previousTime, zone));
-
-  const applyPreset = (preset: DashboardDefaultTimeRange) => onApply(getDashboardTimeForRange(preset, zone));
+  const applyPreset = (preset: DashboardDefaultTimeRange) =>
+    onApply(getDashboardTimeForRange(preset, zone), draftComparison);
 
   return (
     <div className="flex flex-col">
@@ -227,18 +226,21 @@ export function RangePanel({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-neutral-150 px-3 py-2 dark:border-neutral-800">
-        <span
-          className={cn(
-            "mr-auto text-xs text-neutral-500 dark:text-neutral-400",
-            draft.invalid && "text-red-500 dark:text-red-400"
-          )}
-        >
-          {draft.invalid
-            ? t("Enter a date range that ends after it starts, on or before today")
-            : comparison
-              ? t("Compares against {range}", { range: comparison })
-              : t("No comparison period")}
-        </span>
+        {draft.invalid ? (
+          <span className="mr-auto text-xs text-red-500 dark:text-red-400">
+            {t("Enter a date range that ends after it starts, on or before today")}
+          </span>
+        ) : (
+          <span className="mr-auto">
+            <ComparisonSelect
+              time={draft.time}
+              comparison={draftComparison}
+              zone={zone}
+              maxDate={todayHere}
+              onChange={setDraftComparison}
+            />
+          </span>
+        )}
 
         <Popover open={timezoneOpen} onOpenChange={setTimezoneOpen}>
           <PopoverTrigger asChild>
@@ -276,7 +278,12 @@ export function RangePanel({
         <Button variant="ghost" size="sm" onClick={onCancel}>
           {t("Cancel")}
         </Button>
-        <Button variant="accent" size="sm" disabled={draft.invalid} onClick={() => onApply(draft.time)}>
+        <Button
+          variant="accent"
+          size="sm"
+          disabled={draft.invalid}
+          onClick={() => onApply(draft.time, draftComparison)}
+        >
           {t("Apply")}
         </Button>
       </div>

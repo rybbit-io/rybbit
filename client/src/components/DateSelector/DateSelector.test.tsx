@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DateSelector } from "./DateSelector";
 import { Time } from "./types";
 
-const mocks = vi.hoisted(() => ({ timezone: "America/New_York", setTimezone: vi.fn() }));
+const mocks = vi.hoisted(() => ({ timezone: "America/New_York", setTimezone: vi.fn(), setComparison: vi.fn() }));
 
 vi.mock("next-intl", () => ({
   useExtracted: () => (message: string, values?: Record<string, string>) =>
@@ -12,7 +12,13 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("@/lib/store", () => ({
-  useStore: () => ({ timezone: mocks.timezone, setTimezone: mocks.setTimezone, bucket: "day" }),
+  useStore: () => ({
+    timezone: mocks.timezone,
+    setTimezone: mocks.setTimezone,
+    bucket: "day",
+    comparison: { mode: "previous" },
+    setComparison: mocks.setComparison,
+  }),
   useTimezone: () => (mocks.timezone === "system" ? "America/New_York" : mocks.timezone),
 }));
 

@@ -2,7 +2,7 @@ import { Filter, FilterParameter, FilterType, TimeBucket } from "@rybbit/shared"
 import { createParser, parseAsBoolean, parseAsInteger, parseAsJson, parseAsString, parseAsStringEnum } from "nuqs";
 import { DASHBOARD_DEFAULT_TIME_RANGES } from "./defaultTimeRange";
 import { StatType } from "./store";
-import { Time } from "@/components/DateSelector/types";
+import { ComparisonMode, Time } from "@/components/DateSelector/types";
 
 // Basic parsers
 export const parseAsOptionalString = parseAsString;
@@ -40,6 +40,11 @@ export const parseAsStatType = parseAsStringEnum<StatType>(statTypeValues);
 const timeModeValues: string[] = ["day", "range", "week", "month", "year", "all-time", "past-minutes"];
 
 export const parseAsTimeMode = parseAsStringEnum(timeModeValues);
+
+// Comparison mode parser — what the dashboard's comparison line is drawn from.
+const comparisonModeValues: ComparisonMode[] = ["previous", "weekday", "year", "custom", "none"];
+
+export const parseAsComparisonMode = parseAsStringEnum<ComparisonMode>(comparisonModeValues);
 
 // Well-known preset parser — the preset list lives in defaultTimeRange.ts.
 export const parseAsWellKnown = parseAsStringEnum<string>([...DASHBOARD_DEFAULT_TIME_RANGES]);
@@ -150,6 +155,11 @@ export const analyticsParsers = {
   year: parseAsIsoDate,
   past_minutes_start: parseAsInteger,
   past_minutes_end: parseAsInteger,
+
+  // Comparison parameters
+  compare: parseAsComparisonMode,
+  compareStart: parseAsIsoDate,
+  compareEnd: parseAsIsoDate,
 
   // Display parameters
   bucket: parseAsTimeBucket,
