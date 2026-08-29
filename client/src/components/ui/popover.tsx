@@ -18,6 +18,10 @@ const PopoverContent = React.forwardRef<
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       ref={ref}
+      // `ui/calendar.tsx` keys its `bg-transparent` override off this slot.
+      // Without it a calendar inside a popover paints its own lighter panel,
+      // which reads as an inset rectangle with broken padding.
+      data-slot="popover-content"
       align={align}
       sideOffset={sideOffset}
       className={cn(

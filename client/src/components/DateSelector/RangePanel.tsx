@@ -2,7 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
 import useMediaQuery from "@/components/ui/hooks/useMediaQuery";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,9 +21,9 @@ import { cn } from "@/lib/utils";
 import { DateTime } from "luxon";
 import { Check, Globe } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { DateRange } from "react-day-picker";
-import { PRESET_GROUPS, usePresetGroupLabels, usePresetLabels } from "./presets";
+import { PRESET_GROUPS, usePresetLabels } from "./presets";
 import {
   describeBounds,
   rangeFieldsForTime,
@@ -55,7 +63,6 @@ export function RangePanel({
 }) {
   const t = useExtracted();
   const presetLabels = usePresetLabels();
-  const groupLabels = usePresetGroupLabels();
   const isWide = useMediaQuery("(min-width: 768px)");
   const [timezoneOpen, setTimezoneOpen] = useState(false);
 
@@ -136,29 +143,45 @@ export function RangePanel({
         <div className="w-full border-b border-neutral-150 md:w-[190px] md:shrink-0 md:border-b-0 md:border-r dark:border-neutral-800">
           <Command defaultValue={draft.time.wellKnown ? presetLabels[draft.time.wellKnown] : undefined}>
             <CommandInput placeholder={t("Search ranges")} />
-            <CommandList className="max-h-[180px] md:max-h-[440px]">
+            {/* Capped so the rail ends level with the calendar column beside it
+                (two months + the bound rows + the pane's padding, less this
+                list's own 36px search row). Left to its natural height the
+                seventeen presets stretched the panel and left a block of dead
+                space under the calendar. */}
+            <CommandList className="max-h-[180px] md:max-h-[384px]">
               <CommandEmpty>{t("No matching range")}</CommandEmpty>
-              {groups.map(group => (
-                <CommandGroup key={group.id} heading={groupLabels[group.id]}>
-                  {group.presets.map(preset => (
-                    <CommandItem
-                      key={preset}
-                      value={presetLabels[preset]}
-                      onSelect={() => applyPreset(preset)}
-                      className={cn(draft.time.wellKnown === preset && "font-medium")}
-                    >
-                      {presetLabels[preset]}
-                      {draft.time.wellKnown === preset && <Check className="ml-auto h-3.5 w-3.5" />}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+              {/* Separators rather than headings: the groups are obvious from
+                  their contents, and cmdk drops the rules automatically while a
+                  search is filtering across them. */}
+              {groups.map((group, index) => (
+                <Fragment key={group.id}>
+                  {index > 0 && <CommandSeparator />}
+                  <CommandGroup>
+                    {group.presets.map(preset => (
+                      <CommandItem
+                        key={preset}
+                        value={presetLabels[preset]}
+                        onSelect={() => applyPreset(preset)}
+                        className={cn(draft.time.wellKnown === preset && "font-medium")}
+                      >
+                        {presetLabels[preset]}
+                        {draft.time.wellKnown === preset && <Check className="ml-auto h-3.5 w-3.5" />}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Fragment>
               ))}
             </CommandList>
           </Command>
         </div>
 
-        <div className="p-3">
+        <div className="flex flex-col p-3">
           <Calendar
+            // `useMediaQuery` resolves in an effect, so `months` flips from 2 to
+            // 1 after mount. `defaultMonth` is only read on mount, which left a
+            // phone opening one month to the left of the selection — remount so
+            // it is read again once the breakpoint is known.
+            key={months}
             mode="range"
             selected={selected}
             onDayClick={(date, modifiers) => {
@@ -174,10 +197,11 @@ export function RangePanel({
             startMonth={lastMonth.minus({ years: 6 }).toJSDate()}
             endMonth={lastMonth.toJSDate()}
             disabled={{ after: maxDate }}
-            className="p-0"
+            // the calendar is `w-fit`; centre it when it is alone in a full-width column
+            className="mx-auto p-0 md:mx-0"
           />
 
-          <div className="mt-3 flex flex-col gap-2 border-t border-neutral-150 pt-3 dark:border-neutral-800">
+          <div className="mt-3 hidden flex-col gap-2 border-t border-neutral-150 pt-3 md:flex dark:border-neutral-800">
             <BoundRow
               label={t("From")}
               date={draft.fields.startDate}

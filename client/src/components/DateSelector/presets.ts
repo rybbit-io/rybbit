@@ -2,10 +2,11 @@ import { useExtracted } from "next-intl";
 import type { DashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
 
 /**
- * The preset list, grouped.
+ * The preset list, grouped. The groups are drawn as separators rather than
+ * named headings — their contents say what they are, and it keeps the rail as
+ * quiet as the dropdown it replaces.
  *
- * It replaces seventeen items in one flat column with no headings and no way to
- * search them. Two of those seventeen were unreachable: `last-week` and
+ * Two of the seventeen presets were previously unreachable: `last-week` and
  * `last-month` had labels but no menu item, so they could only be arrived at
  * from a stored default or a URL param.
  *
@@ -47,15 +48,5 @@ export function usePresetLabels(): Record<DashboardDefaultTimeRange, string> {
     "last-month": t("Last Month"),
     "this-year": t("This Year"),
     "all-time": t("All Time"),
-  };
-}
-
-export function usePresetGroupLabels(): Record<PresetGroupId, string> {
-  const t = useExtracted();
-
-  return {
-    realtime: t("Realtime"),
-    relative: t("Relative"),
-    calendar: t("Calendar"),
   };
 }
