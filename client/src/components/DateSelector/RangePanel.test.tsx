@@ -63,12 +63,11 @@ afterEach(() => {
 });
 
 describe("RangePanel presets", () => {
-  it("groups the presets under headings instead of one flat list", () => {
-    renderPanel(DATE_RANGE);
+  it("rules the preset groups apart instead of running them into one flat list", () => {
+    const { container } = renderPanel(DATE_RANGE);
 
-    expect(screen.getByText("Realtime")).toBeTruthy();
-    expect(screen.getByText("Relative")).toBeTruthy();
-    expect(screen.getByText("Calendar")).toBeTruthy();
+    // realtime | relative | calendar
+    expect(container.querySelectorAll('[data-slot="command-separator"]').length).toBe(2);
   });
 
   it("offers Last Week and Last Month, which had labels but no menu item before", () => {
@@ -98,11 +97,11 @@ describe("RangePanel presets", () => {
   });
 
   it("hides the realtime group when a caller disables past-minutes windows", () => {
-    renderPanel(DATE_RANGE, { pastMinutesEnabled: false });
+    const { container } = renderPanel(DATE_RANGE, { pastMinutesEnabled: false });
 
-    expect(screen.queryByText("Realtime")).toBeNull();
     expect(screen.queryByText("Last 30 Minutes")).toBeNull();
     expect(screen.getByText("Today")).toBeTruthy();
+    expect(container.querySelectorAll('[data-slot="command-separator"]').length).toBe(1);
   });
 });
 
