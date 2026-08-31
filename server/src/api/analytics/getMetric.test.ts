@@ -89,6 +89,7 @@ describe("buildMetricQuery", () => {
   describe("entry_page / exit_page", () => {
     it("orders sessions ascending for entry pages", () => {
       const sql = buildMetricQuery(baseQuery({ parameter: "entry_page" }), SITE_ID);
+      expect(sql).toContain("e.timestamp_ms AS timestamp_ms");
       expect(sql).toContain("timestamp_ms AS timestamp");
       expect(sql).toContain("ORDER BY timestamp_ms ASC) as row_num");
       expect(sql).toContain("WHERE row_num = 1");

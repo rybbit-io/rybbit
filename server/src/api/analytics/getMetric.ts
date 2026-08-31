@@ -204,7 +204,7 @@ export const buildMetricQuery = (
               e.session_id AS session_id,
               e.pathname AS pathname,
               e.hostname AS hostname,
-              e.timestamp AS timestamp,
+              e.timestamp_ms AS timestamp_ms,
               spc.pageviews_in_session
           FROM events e
           ${aliasedSessionJoin}
