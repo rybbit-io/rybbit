@@ -67,20 +67,11 @@ export function PricingSection({
   isAnnual,
   setIsAnnual,
   standalone = false,
-  chrome = "framed",
 }: {
   isAnnual: boolean;
   setIsAnnual: (isAnnual: boolean) => void;
   /** Page-top mode for /pricing: h1 heading plus the marketing pages' plotted-dataline signature. */
   standalone?: boolean;
-  /**
-   * `"framed"` (default) is the production instrument sheet: 1200px bordered
-   * container, corner crosses, signal plate header, dot-grid slider mat, seamed
-   * plan grid. `"bare"` strips all of it and drops the header row entirely, so
-   * a caller can supply its own heading in its own voice — used by the /lp/*
-   * redesign candidates, whose whole premise is that the frame is the problem.
-   */
-  chrome?: "framed" | "bare";
 }) {
   const t = useExtracted();
   const [eventLimitIndex, setEventLimitIndex] = useState(0); // Default to 100k (index 0)
@@ -209,131 +200,6 @@ export function PricingSection({
 
   const headlineClasses = "mt-5 max-w-2xl font-semibold tracking-[-0.035em] text-balance";
 
-  /* Slider instrument, shared by both chrome modes. `mat` draws the dot-grid
-     surround the framed sheet uses; bare mode sits straight on the page. */
-  const sliderInstrument = (
-    <div className="rounded-md border border-neutral-300 bg-white px-5 py-6 dark:border-neutral-700 dark:bg-neutral-950 sm:px-6">
-      <div className="mb-7 flex items-end justify-between gap-5">
-        <div>
-          <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("Monthly pageviews")}</h3>
-          <div className="text-3xl font-semibold tabular-nums tracking-tight md:text-4xl">
-            {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
-          </div>
-        </div>
-        <div className="relative flex flex-col items-end">
-          <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900">
-            <button
-              onClick={() => setIsAnnual(false)}
-              className={cn(
-                "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
-                !isAnnual
-                  ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
-                  : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-              )}
-            >
-              {t("Monthly")}
-            </button>
-            <button
-              onClick={() => setIsAnnual(true)}
-              className={cn(
-                "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
-                isAnnual
-                  ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
-                  : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-              )}
-            >
-              {t("Annual")}
-            </button>
-            <div className="absolute right-0 top-0 -translate-y-4 whitespace-nowrap rounded-sm bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">
-              {t("4 months free")}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Slider
-        defaultValue={[0]}
-        max={EVENT_TIERS.length - 1}
-        min={0}
-        step={1}
-        onValueChange={handleSliderChange}
-        className="mb-3"
-      />
-
-      <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
-        {EVENT_TIERS.map((tier, index) => (
-          <span
-            key={index}
-            className={cn(
-              // 12 tick labels never fit on small screens; the selected value renders large above.
-              index !== 0 && index !== EVENT_TIERS.length - 1 && "hidden sm:inline",
-              eventLimitIndex === index && "font-semibold text-emerald-700 dark:text-emerald-400"
-            )}
-          >
-            {index === EVENT_TIERS.length - 1
-              ? "50M+"
-              : typeof tier === "number" && tier >= 1_000_000
-                ? `${tier / 1_000_000}M`
-                : typeof tier === "number"
-                  ? `${tier / 1_000}K`
-                  : t("Custom")}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-
-  const bare = chrome === "bare";
-  const planCarousel = (
-    <div className="py-6 min-[700px]:hidden">
-      <Carousel setApi={setCarouselApi} opts={{ startIndex: 1 }}>
-        <CarouselContent>
-          <CarouselItem>
-            <PricingCard {...standardProps} framed plain={bare} />
-          </CarouselItem>
-          <CarouselItem>
-            <PricingCard {...proProps} framed plain={bare} />
-          </CarouselItem>
-          <CarouselItem>
-            <PricingCard {...enterpriseProps} framed plain={bare} />
-          </CarouselItem>
-        </CarouselContent>
-      </Carousel>
-      <div className="mt-4 flex justify-center gap-2">
-        {Array.from({ length: slideCount }).map((_, i) => (
-          <button
-            key={i}
-            onClick={() => carouselApi?.scrollTo(i)}
-            aria-label={t("Go to pricing option {number}", { number: String(i + 1) })}
-            className={cn(
-              "size-2 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-              currentSlide === i ? "bg-emerald-500" : "bg-neutral-400 dark:bg-neutral-600"
-            )}
-          />
-        ))}
-      </div>
-    </div>
-  );
-
-  if (chrome === "bare") {
-    return (
-      <section className="relative z-10">
-        {sliderInstrument}
-        {planCarousel}
-        <div className="hidden gap-4 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
-          <PricingCard {...standardProps} framed plain />
-          <PricingCard {...proProps} framed plain />
-          <PricingCard
-            {...enterpriseProps}
-            framed
-            plain
-            className="min-[700px]:col-span-2 min-[1100px]:col-span-1"
-          />
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="relative z-10 border-b border-neutral-200 dark:border-neutral-800">
       <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
@@ -383,11 +249,109 @@ export function PricingSection({
         {/* Quote instrument — a full-bleed row on the same dot-grid mat as the
             hero demo frame and the agent console. */}
         <div className="relative border-b border-neutral-200 bg-neutral-100 p-4 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:14px_14px] dark:border-neutral-800 dark:bg-neutral-900 dark:[background-image:radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] sm:p-8 lg:p-10">
-          {sliderInstrument}
+          <div className="rounded-md border border-neutral-300 bg-white px-5 py-6 dark:border-neutral-700 dark:bg-neutral-950 sm:px-6">
+            <div className="mb-7 flex items-end justify-between gap-5">
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("Monthly pageviews")}</h3>
+                <div className="text-3xl font-semibold tabular-nums tracking-tight md:text-4xl">
+                  {typeof eventLimit === "number" ? eventLimit.toLocaleString() : t("Custom")}
+                </div>
+              </div>
+              <div className="relative flex flex-col items-end">
+                {/* Billing toggle */}
+                <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+                  <button
+                    onClick={() => setIsAnnual(false)}
+                    className={cn(
+                      "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                      !isAnnual
+                        ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
+                        : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    {t("Monthly")}
+                  </button>
+                  <button
+                    onClick={() => setIsAnnual(true)}
+                    className={cn(
+                      "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                      isAnnual
+                        ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
+                        : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    {t("Annual")}
+                  </button>
+                  <div className="absolute right-0 top-0 -translate-y-4 whitespace-nowrap rounded-sm bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">
+                    {t("4 months free")}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Slider */}
+            <Slider
+              defaultValue={[0]}
+              max={EVENT_TIERS.length - 1}
+              min={0}
+              step={1}
+              onValueChange={handleSliderChange}
+              className="mb-3"
+            />
+
+            <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
+              {EVENT_TIERS.map((tier, index) => (
+                <span
+                  key={index}
+                  className={cn(
+                    // 12 tick labels never fit on small screens; the selected value renders large above.
+                    index !== 0 && index !== EVENT_TIERS.length - 1 && "hidden sm:inline",
+                    eventLimitIndex === index && "font-semibold text-emerald-700 dark:text-emerald-400"
+                  )}
+                >
+                  {index === EVENT_TIERS.length - 1
+                    ? "50M+"
+                    : typeof tier === "number" && tier >= 1_000_000
+                      ? `${tier / 1_000_000}M`
+                      : typeof tier === "number"
+                        ? `${tier / 1_000}K`
+                        : t("Custom")}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Plans — carousel below 700px, seamed grid cells above */}
-        <div className="px-4">{planCarousel}</div>
+        <div className="px-4 py-6 min-[700px]:hidden">
+          <Carousel setApi={setCarouselApi} opts={{ startIndex: 1 }}>
+            <CarouselContent>
+              <CarouselItem>
+                <PricingCard {...standardProps} framed />
+              </CarouselItem>
+              <CarouselItem>
+                <PricingCard {...proProps} framed />
+              </CarouselItem>
+              <CarouselItem>
+                <PricingCard {...enterpriseProps} framed />
+              </CarouselItem>
+            </CarouselContent>
+          </Carousel>
+          {/* Dot indicators */}
+          <div className="mt-4 flex justify-center gap-2">
+            {Array.from({ length: slideCount }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => carouselApi?.scrollTo(i)}
+                aria-label={t("Go to pricing option {number}", { number: String(i + 1) })}
+                className={cn(
+                  "size-2 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+                  currentSlide === i ? "bg-emerald-500" : "bg-neutral-400 dark:bg-neutral-600"
+                )}
+              />
+            ))}
+          </div>
+        </div>
 
         <div className="hidden gap-px bg-neutral-200 dark:bg-neutral-800 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
           <PricingCard {...standardProps} />
