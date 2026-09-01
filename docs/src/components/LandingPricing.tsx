@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PricingSection } from "./PricingSection";
 
-export function LandingPricing({ chrome }: { chrome?: "framed" | "bare" }) {
+export function LandingPricing() {
   const [isAnnual, setIsAnnual] = useState(true);
-  return <PricingSection isAnnual={isAnnual} setIsAnnual={setIsAnnual} chrome={chrome} />;
+  return <PricingSection isAnnual={isAnnual} setIsAnnual={setIsAnnual} />;
 }
