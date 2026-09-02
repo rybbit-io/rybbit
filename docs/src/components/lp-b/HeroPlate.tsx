@@ -35,12 +35,12 @@ const LAYERS = [
 /**
  * The hero's product window on its "traffic landscape" plate: the live demo
  * embed, framed as a browser, sitting on layered traffic silhouettes. On
- * large screens the window runs just past the plate's bottom edge (the demo's
- * last table row is clipped); below that the plate simply wraps it.
+ * large screens the window runs just past the plate's bottom edge; below that
+ * the plate simply wraps it.
  */
 export function HeroPlate() {
   return (
-    <div className="relative overflow-hidden rounded-[14px] border border-neutral-200 bg-[#f4f5f8] p-3 dark:border-neutral-800 dark:bg-[#111318] sm:p-6 lg:h-[880px] lg:p-0">
+    <div className="relative overflow-hidden rounded-[14px] border border-neutral-200 bg-[#f4f5f8] p-3 dark:border-neutral-800 dark:bg-[#111318] sm:p-6 lg:h-[720px] lg:p-0">
       <svg
         viewBox={`0 0 ${PLATE_W} ${PLATE_H}`}
         preserveAspectRatio="none"
@@ -94,7 +94,7 @@ export function HeroPlate() {
             shows its full desktop layout at preview size. Keep 1:1 on mobile —
             a scaled viewport would land between the demo's responsive
             breakpoints. The two values must stay reciprocal. */}
-        <div className="h-[500px] min-w-0 max-w-full overflow-hidden md:h-[600px] lg:h-[820px]">
+        <div className="h-[500px] min-w-0 max-w-full overflow-hidden md:h-[600px] lg:h-[650px]">
           <iframe
             src="https://demo.rybbit.com/81/main"
             className="block h-full w-full border-none md:h-[117.6%] md:w-[117.6%] md:origin-top-left md:scale-[0.85]"
