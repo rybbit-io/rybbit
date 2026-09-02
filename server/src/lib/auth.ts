@@ -26,7 +26,6 @@ import {
   sendOtpEmail,
   sendWelcomeEmail,
 } from "./email/email.js";
-import { onboardingTipsService } from "../services/onboardingTips/onboardingTipsService.js";
 import { getTrustedCorsOrigins } from "./cors.js";
 import { createServiceLogger } from "./logger/logger.js";
 
@@ -361,18 +360,12 @@ export const auth = betterAuth({
           }
 
           sendWelcomeEmail(u.email, u.name);
-          // Add contact to marketing audience and schedule onboarding emails
+          // Add contact to marketing audience; lifecycle emails are driven by the
+          // state-machine cron (lifecycleEmailService), nothing is pre-scheduled here
           try {
             await addContactToAudience(u.email, u.name);
-
-            const emailIds = await onboardingTipsService.scheduleOnboardingEmails(u.email, u.name);
-
-            // Store scheduled email IDs for potential cancellation
-            if (emailIds.length > 0) {
-              await db.update(user).set({ scheduledTipEmailIds: emailIds }).where(eq(user.id, u.id));
-            }
           } catch (error) {
-            authLogger.error({ err: error, userId: u.id }, "Error setting up onboarding emails");
+            authLogger.error({ err: error, userId: u.id }, "Error adding contact to marketing audience");
           }
         },
       },

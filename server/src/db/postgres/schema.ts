@@ -42,6 +42,9 @@ export const user = pgTable(
     // deprecated
     monthlyEventCount: integer().default(0),
     sendAutoEmailReports: boolean().default(true),
+    // deprecated - Resend email IDs from the retired pre-scheduled tip sequence; kept so
+    // unsubscribe can still cancel tips already scheduled for users who signed up before
+    // the lifecycle email system replaced it
     scheduledTipEmailIds: jsonb("scheduled_tip_email_ids").$type<string[]>().default([]),
   },
   table => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)]
@@ -100,6 +103,9 @@ export const sites = pgTable(
     apiKey: text("api_key"), // Format: rb_{64_hex_chars} = 67 chars total
     privateLinkKey: text("private_link_key"),
     tags: jsonb("tags").default([]).$type<string[]>(),
+    // Platform fingerprinted from the site's homepage at creation time (e.g. "wordpress",
+    // "next-js"); used to link the right install guide in lifecycle emails
+    detectedPlatform: text("detected_platform"),
   },
   table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
 );
@@ -621,4 +627,21 @@ export const importStatus = pgTable(
       name: "import_status_organization_id_organization_id_fk",
     }),
   ]
+);
+
+// One row per lifecycle email actually sent. The (userId, emailKey) unique index is the
+// idempotency guard for the state-machine cron: per-site emails embed the siteId in the
+// key (e.g. "site_live:42") so each fires at most once.
+export const lifecycleEmailLog = pgTable(
+  "lifecycle_email_log",
+  {
+    id: serial("id").primaryKey().notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    emailKey: text("email_key").notNull(),
+    siteId: integer("site_id"),
+    sentAt: timestamp("sent_at", { mode: "string" }).defaultNow().notNull(),
+  },
+  table => [unique("lifecycle_email_log_user_email_key_unique").on(table.userId, table.emailKey)]
 );
