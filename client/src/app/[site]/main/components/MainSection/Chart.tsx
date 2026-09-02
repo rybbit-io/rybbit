@@ -3,7 +3,7 @@
 import type { Annotation } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { GetOverviewBucketedResponse } from "../../../../../api/analytics/endpoints";
@@ -65,6 +65,13 @@ export function Chart({
   const [hoveredPin, setHoveredPin] = useState<PinTarget | null>(null);
   const [selectedPin, setSelectedPin] = useState<PinTarget | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Annotation | null>(null);
+
+  // The popover anchors to a snapshot of the pin's screen rect; once the
+  // window, bucket, site, or data changes the pin has moved or gone.
+  useEffect(() => {
+    setSelectedPin(null);
+    setHoveredPin(null);
+  }, [time, bucket, site, annotations]);
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;

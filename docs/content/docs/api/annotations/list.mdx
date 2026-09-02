@@ -36,13 +36,19 @@ Anonymous viewers of a public dashboard or a private link only receive annotatio
 <TypeTable
   type={{
     start_date: {
-      description: 'Only annotations that end on or after this date (YYYY-MM-DD, UTC)',
+      description: 'Only annotations that end on or after the start of this day (YYYY-MM-DD). May be sent without end_date.',
       type: 'string',
       required: false,
     },
     end_date: {
-      description: 'Only annotations that start on or before this date (YYYY-MM-DD, UTC)',
+      description: 'Only annotations that start before the end of this day (YYYY-MM-DD). May be sent without start_date; must not precede start_date.',
       type: 'string',
+      required: false,
+    },
+    time_zone: {
+      description: 'IANA timezone the day bounds are read in',
+      type: 'string',
+      default: 'UTC',
       required: false,
     },
   }}

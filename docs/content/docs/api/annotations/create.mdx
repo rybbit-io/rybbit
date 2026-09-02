@@ -34,7 +34,7 @@ Creates an annotation. Any member with access to the site can create site annota
 <TypeTable
   type={{
     title: { description: 'Short title (max 120 characters)', type: 'string', required: true },
-    date: { description: 'ISO 8601 timestamp, or YYYY-MM-DD (read as midnight UTC)', type: 'string', required: true },
+    date: { description: 'ISO 8601 timestamp with Z or offset, or YYYY-MM-DD (read as midnight UTC)', type: 'string', required: true },
     endDate: { description: 'End of a range; must be after date', type: 'string', required: false },
     description: { description: 'Longer note (max 2000 characters)', type: 'string', required: false },
     color: { description: 'Marker color', type: 'string', typeDescription: '"amber" | "rose" | "sky" | "violet" | "lime"', required: false },

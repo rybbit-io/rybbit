@@ -77,8 +77,8 @@ export function AnnotationFormDialog({
           scope: z.enum(["site", "organization"]),
           isPublic: z.boolean(),
         })
-        .refine(values => !values.isRange || (values.endDate !== "" && values.endDate > values.date), {
-          message: t("End date must be after the start date"),
+        .refine(values => !values.isRange || (values.endDate !== "" && values.endDate >= values.date), {
+          message: t("End date must not be before the start date"),
           path: ["endDate"],
         }),
     [t]
@@ -125,16 +125,26 @@ export function AnnotationFormDialog({
 
   const onSubmit = async (values: FormValues) => {
     if (!state) return;
+    const existing = state.mode === "edit" ? state.annotation : undefined;
     const clicked = state.mode === "create" ? state.date : undefined;
     const clickedDay = clicked ? DateTime.fromJSDate(clicked).setZone(timezone).toISODate() : null;
-    // A click on an hour bucket keeps its hour unless the user picked another day.
+    const dayStart = (day: string) => DateTime.fromISO(day, { zone: timezone }).startOf("day").toUTC().toISO() ?? day;
+    const dayEnd = (day: string) => DateTime.fromISO(day, { zone: timezone }).endOf("day").toUTC().toISO() ?? day;
+
+    // Untouched dates keep their stored instant: an hourly or API-created
+    // annotation must not snap to midnight because the title was edited.
+    // A click on an hour bucket likewise keeps its hour unless the day changed.
     const startIso =
-      clicked && clickedDay === values.date
-        ? clicked.toISOString()
-        : (DateTime.fromISO(values.date, { zone: timezone }).startOf("day").toUTC().toISO() ?? values.date);
-    const endIso = values.isRange
-      ? (DateTime.fromISO(values.endDate, { zone: timezone }).endOf("day").toUTC().toISO() ?? null)
-      : null;
+      existing && values.date === defaults.date
+        ? existing.date
+        : clicked && clickedDay === values.date
+          ? clicked.toISOString()
+          : dayStart(values.date);
+    const endIso = !values.isRange
+      ? null
+      : existing?.endDate && values.endDate === defaults.endDate
+        ? existing.endDate
+        : dayEnd(values.endDate);
 
     const body = {
       title: values.title.trim(),

@@ -27,18 +27,22 @@ export function registerAnnotationTools(
             .string()
             .regex(dateRegex, "Use YYYY-MM-DD")
             .optional()
-            .describe("Only annotations on or after this date (YYYY-MM-DD, UTC). Omit for all."),
+            .describe("Only annotations on or after this date (YYYY-MM-DD, in time_zone). Omit for all."),
           end_date: z
             .string()
             .regex(dateRegex, "Use YYYY-MM-DD")
             .optional()
-            .describe("Only annotations on or before this date (YYYY-MM-DD, UTC). Omit for all."),
+            .describe("Only annotations on or before this date (YYYY-MM-DD, in time_zone). Omit for all."),
+          time_zone: z
+            .string()
+            .optional()
+            .describe("IANA timezone the date bounds are read in (default UTC), e.g. America/Los_Angeles."),
         },
         outputSchema: annotationsOutput,
         annotations: readOnly,
       },
-      guard(async ({ site_id, start_date, end_date }) =>
-        ok(await api.call("GET", `/sites/${site_id}/annotations`, { query: { start_date, end_date } }))
+      guard(async ({ site_id, start_date, end_date, time_zone }) =>
+        ok(await api.call("GET", `/sites/${site_id}/annotations`, { query: { start_date, end_date, time_zone } }))
       )
     );
 }

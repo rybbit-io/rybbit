@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAnnotationSchema, updateAnnotationSchema } from "./annotationSchema.js";
+import { createAnnotationSchema, listAnnotationsQuerySchema, updateAnnotationSchema } from "./annotationSchema.js";
 
 describe("createAnnotationSchema", () => {
   it("normalizes a bare date to midnight UTC and applies defaults", () => {
@@ -32,5 +32,24 @@ describe("updateAnnotationSchema", () => {
     expect(updateAnnotationSchema.safeParse({}).success).toBe(false);
     const parsed = updateAnnotationSchema.parse({ endDate: null, description: null, color: null });
     expect(parsed).toEqual({ endDate: null, description: null, color: null });
+  });
+});
+
+describe("date strictness", () => {
+  it("rejects impossible calendar dates and offset-less timestamps", () => {
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-02-30" }).success).toBe(false);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18T14:10:00" }).success).toBe(false);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "08/18/2026" }).success).toBe(false);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18T14:10:00Z" }).success).toBe(true);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18T14:10:00.5+0200" }).success).toBe(true);
+  });
+});
+
+describe("listAnnotationsQuerySchema", () => {
+  it("allows either bound alone and rejects reversed or invalid bounds", () => {
+    expect(listAnnotationsQuerySchema.safeParse({ start_date: "2026-08-01" }).success).toBe(true);
+    expect(listAnnotationsQuerySchema.safeParse({ end_date: "2026-08-31" }).success).toBe(true);
+    expect(listAnnotationsQuerySchema.safeParse({ start_date: "2026-08-31", end_date: "2026-08-01" }).success).toBe(false);
+    expect(listAnnotationsQuerySchema.safeParse({ start_date: "2026-13-01" }).success).toBe(false);
   });
 });

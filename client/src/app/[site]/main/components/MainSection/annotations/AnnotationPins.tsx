@@ -62,6 +62,9 @@ export function AnnotationPins({
         // Sit above the data point; clamp so a pin on the peak stays inside the plot.
         const pinY = Math.max(plotTop + r + 1, cluster.y - r - 9);
         const label = single ? first.title : `${cluster.items.length} annotations`;
+        // The count badge hangs off the top-right of the pin; near the right
+        // edge it would leave the SVG, so it flips to the top-left.
+        const badgeX = cluster.x + r + 6 > plotRight ? cluster.x - r + 2 : cluster.x + r - 2;
         return (
           <g key={cluster.key}>
             {cluster.items
@@ -99,9 +102,9 @@ export function AnnotationPins({
               )}
               {!single && (
                 <g pointerEvents="none">
-                  <circle cx={cluster.x + r - 2} cy={pinY - r + 2} r={7} fill={badgeFill} />
+                  <circle cx={badgeX} cy={pinY - r + 2} r={7} fill={badgeFill} />
                   <text
-                    x={cluster.x + r - 2}
+                    x={badgeX}
                     y={pinY - r + 2}
                     dy="0.35em"
                     textAnchor="middle"

@@ -261,7 +261,11 @@ const authAnalyticsRead = authSiteScoped("analytics", "read");
 const authReplayWrite = authSiteScoped("replay", "write");
 const authOrgRead = authOnlyScoped("org", "read");
 const adminSitesRead = adminSiteScoped("sites", "read");
-const publicAnnotationsRead = publicSiteScoped("annotations", "read");
+// Annotations validate their own optional start/end bounds (either may stand
+// alone), so the shared time validator is left off this chain.
+const publicAnnotationsRead = {
+  preHandler: [resolveSiteId, allowPublicSiteAccess({ resource: "annotations", action: "read" })] as any,
+};
 const authAnnotationsWrite = authSiteScoped("annotations", "write");
 const authDashboardsRead = authSiteScoped("dashboards", "read");
 const authDashboardsWrite = authSiteScoped("dashboards", "write");

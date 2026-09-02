@@ -31,7 +31,7 @@ Partial update: only the fields you send change. Admins and owners can edit any 
 <TypeTable
   type={{
     title: { description: 'Short title (max 120 characters)', type: 'string', required: false },
-    date: { description: 'ISO 8601 timestamp, or YYYY-MM-DD', type: 'string', required: false },
+    date: { description: 'ISO 8601 timestamp with Z or offset, or YYYY-MM-DD', type: 'string', required: false },
     endDate: { description: 'End of a range, or null to turn a range back into a point', type: 'string | null', required: false },
     description: { description: 'Longer note, or null to clear', type: 'string | null', required: false },
     color: { description: 'Marker color, or null for the neutral default', type: 'string | null', required: false },

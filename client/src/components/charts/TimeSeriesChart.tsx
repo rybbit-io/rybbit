@@ -576,7 +576,13 @@ export function TimeSeriesChart<
       setDragRaw(null);
       if (!moved) return;
       // The click event that follows mouseup must not create an annotation.
+      // It fires in the same task, so a macrotask later the flag is stale and
+      // must not swallow an unrelated later click (a drag ending off-plot
+      // produces no click at all).
       suppressClickRef.current = true;
+      setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
       const leftPx = Math.min(startX, currentX);
       const rightPx = Math.max(startX, currentX);
       const startBucket = pxToBucketStart(leftPx);
@@ -613,15 +619,28 @@ export function TimeSeriesChart<
   };
 
   const suppressClickRef = useRef(false);
+  const hasDomain = Boolean(W && chartMin && chartMax);
+  // A single click is deferred past the double-click window so dblclick
+  // (zoom restore) can cancel it; otherwise the first click's action would
+  // swallow the second click.
+  const pendingClickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (pendingClickRef.current) clearTimeout(pendingClickRef.current);
+  }, []);
   const handleClick = (e: React.MouseEvent<SVGRectElement>) => {
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
       return;
     }
-    if (!onPlotClick) return;
+    if (!onPlotClick || !hasDomain) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const px = Math.max(plotLeft, Math.min(plotRight, e.clientX - rect.left + plotLeft));
-    onPlotClick(pxToBucketStart(px).toUTC().toJSDate());
+    const date = pxToBucketStart(px).toUTC().toJSDate();
+    if (pendingClickRef.current) clearTimeout(pendingClickRef.current);
+    pendingClickRef.current = setTimeout(() => {
+      pendingClickRef.current = null;
+      onPlotClick(date);
+    }, 250);
   };
 
   const pointAt = useCallback(
@@ -630,6 +649,10 @@ export function TimeSeriesChart<
   );
 
   const handleDoubleClick = (e: React.MouseEvent<SVGRectElement>) => {
+    if (pendingClickRef.current) {
+      clearTimeout(pendingClickRef.current);
+      pendingClickRef.current = null;
+    }
     const dragZoom = dragZoomRestoreRef.current;
     if (!dragZoom) return;
     if (!isSameTime(time, dragZoom.after) || bucket !== dragZoom.afterBucket) {
@@ -846,7 +869,8 @@ export function TimeSeriesChart<
             />
           )}
 
-          {renderOverlay?.({ xScale, yScale, plotLeft, plotRight, plotTop, plotBottom, pointAt, isDark })}
+          {hasDomain &&
+            renderOverlay?.({ xScale, yScale, plotLeft, plotRight, plotTop, plotBottom, pointAt, isDark })}
         </svg>
       )}
 
