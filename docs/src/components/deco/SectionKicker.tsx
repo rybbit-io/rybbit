@@ -9,13 +9,13 @@ export function SectionKicker({ children, className }: { children: React.ReactNo
   return (
     <p
       className={cn(
-        "flex items-center gap-2.5 text-base font-semibold tracking-tight text-emerald-700 dark:text-emerald-400",
+        "flex items-center gap-2.5 text-base font-semibold tracking-tight text-emerald-700 bare:text-sm bare:font-medium bare:text-neutral-500 dark:text-emerald-400 dark:bare:text-neutral-400",
         className
       )}
     >
       <span
         aria-hidden="true"
-        className="size-2 rounded-[1px] bg-emerald-600 [animation:kicker-pulse_3.2s_ease-in-out_infinite] dark:bg-emerald-400 motion-reduce:animate-none"
+        className="size-2 rounded-[1px] bg-emerald-600 [animation:kicker-pulse_3.2s_ease-in-out_infinite] bare:hidden dark:bg-emerald-400 motion-reduce:animate-none"
       />
       {children}
     </p>

@@ -1,5 +1,4 @@
 import { GridCrosses } from "@/components/GridCrosses";
-import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { SiDiscord, SiGithub, SiX } from "@icons-pack/react-simple-icons";
@@ -22,19 +21,13 @@ interface FooterLink {
   external?: boolean;
 }
 
-interface FooterProps {
-  /**
-   * "sheet" (default) is the marketing pages' instrument sheet: 1200px column
-   * with hairline sides, corner crosses and seams between cells. "bare" is the
-   * homepage redesign register: 1280px column, open columns, one hairline
-   * above the bottom row.
-   */
-  chrome?: "sheet" | "bare";
-}
-
-export function Footer({ chrome = "sheet" }: FooterProps) {
-  const bare = chrome === "bare";
-
+/**
+ * Site footer. Default register is the marketing pages' instrument sheet
+ * (1200px column with hairline sides, corner crosses and seams between
+ * cells); under `data-chrome="bare"` (homepage redesign, see global.css) it
+ * is a 1280px column with open columns and one hairline above the bottom row.
+ */
+export function Footer() {
   const t = useExtracted();
 
   const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
@@ -98,26 +91,10 @@ export function Footer({ chrome = "sheet" }: FooterProps) {
 
   return (
     <footer className="border-t border-neutral-200 dark:border-neutral-800">
-      <div
-        className={cn(
-          "relative mx-auto",
-          bare ? "max-w-[1280px] px-5 sm:px-8" : "max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800"
-        )}
-      >
-        {!bare && <GridCrosses className="hidden sm:block" />}
-        <div
-          className={cn(
-            "grid lg:grid-cols-12",
-            bare ? "gap-10 py-12 lg:gap-8 lg:py-14" : "border-b border-neutral-200 dark:border-neutral-800"
-          )}
-        >
-          <div
-            className={cn(
-              "lg:col-span-3",
-              !bare &&
-                "border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:border-b-0 lg:border-r lg:py-14"
-            )}
-          >
+      <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 bare:max-w-[1280px] bare:border-x-0 bare:px-5 dark:border-neutral-800 bare:sm:px-8">
+        <GridCrosses className="hidden sm:block" />
+        <div className="grid border-b border-neutral-200 bare:gap-10 bare:border-b-0 bare:py-12 dark:border-neutral-800 lg:grid-cols-12 bare:lg:gap-8 bare:lg:py-14">
+          <div className="border-b border-neutral-200 px-5 py-10 bare:border-b-0 bare:px-0 bare:py-0 dark:border-neutral-800 sm:px-8 bare:sm:px-0 lg:col-span-3 lg:border-b-0 lg:border-r lg:py-14 bare:lg:border-r-0 bare:lg:py-0">
             <div className="flex h-full flex-col">
               <div>
                 <Link
@@ -135,20 +112,15 @@ export function Footer({ chrome = "sheet" }: FooterProps) {
                   />
                 </Link>
 
-                {bare && (
-                  <p className="mt-4 max-w-[26ch] text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
-                    {t("Open-source, cookieless web & product analytics.")}
-                  </p>
-                )}
+                <p className="mt-4 hidden max-w-[26ch] text-sm leading-relaxed text-neutral-500 bare:block dark:text-neutral-400">
+                  {t("Open-source, cookieless web & product analytics.")}
+                </p>
 
                 <a
                   href="https://www.producthunt.com/products/rybbit?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_source=badge-rybbit&#0045;2"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={cn(
-                    "inline-flex max-w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
-                    bare ? "mt-6" : "mt-8"
-                  )}
+                  className="mt-8 inline-flex max-w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 bare:mt-6"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -161,7 +133,7 @@ export function Footer({ chrome = "sheet" }: FooterProps) {
                 </a>
               </div>
 
-              <div className={cn("flex items-center", bare ? "mt-6 -ml-2.5" : "mt-8 lg:mt-auto lg:pt-12")}>
+              <div className="mt-8 flex items-center bare:-ml-2.5 bare:mt-6 lg:mt-auto lg:pt-12 bare:lg:mt-6 bare:lg:pt-0">
                 {socialLinks.map(({ label, href, icon: Icon }) => (
                   <a
                     key={label}
@@ -178,20 +150,14 @@ export function Footer({ chrome = "sheet" }: FooterProps) {
             </div>
           </div>
 
-          <nav
-            aria-label="Footer"
-            className={cn("grid grid-cols-2 md:grid-cols-4 lg:col-span-9", bare && "gap-x-6 gap-y-10")}
-          >
+          <nav aria-label="Footer" className="grid grid-cols-2 bare:gap-x-6 bare:gap-y-10 lg:col-span-9 md:grid-cols-4">
             {footerGroups.map(group => (
               <section
                 key={group.title}
-                className={cn(
-                  !bare &&
-                    "border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14"
-                )}
+                className="border-b border-neutral-200 px-5 py-10 last:border-b-0 bare:border-b-0 bare:px-0 bare:py-0 dark:border-neutral-800 sm:px-8 bare:sm:px-0 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14 bare:md:px-0 bare:md:py-0"
               >
                 <h2 className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">{group.title}</h2>
-                <ul className={bare ? "mt-3" : "mt-4"}>
+                <ul className="mt-4 bare:mt-3">
                   {group.links.map(link => (
                     <li key={link.href}>
                       {link.external ? (
@@ -216,23 +182,11 @@ export function Footer({ chrome = "sheet" }: FooterProps) {
           </nav>
         </div>
 
-        <div className={cn("grid lg:grid-cols-12", bare && "border-t border-neutral-200 dark:border-neutral-800")}>
-          <div
-            className={cn(
-              "flex items-center text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-3",
-              bare
-                ? "pt-5 lg:py-5"
-                : "border-b border-neutral-200 px-5 py-5 dark:border-neutral-800 sm:px-8 lg:border-b-0 lg:border-r"
-            )}
-          >
+        <div className="grid bare:border-t bare:border-neutral-200 lg:grid-cols-12 dark:bare:border-neutral-800">
+          <div className="flex items-center border-b border-neutral-200 px-5 py-5 text-sm text-neutral-500 bare:border-b-0 bare:px-0 bare:pb-0 bare:pt-5 dark:border-neutral-800 dark:text-neutral-400 sm:px-8 bare:sm:px-0 lg:col-span-3 lg:border-b-0 lg:border-r bare:lg:border-r-0 bare:lg:py-5">
             {t("© {year} Rybbit. All rights reserved.", { year: String(new Date().getFullYear()) })}
           </div>
-          <div
-            className={cn(
-              "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:col-span-9",
-              bare ? "pb-5 pt-2 lg:py-4" : "px-5 py-4 sm:px-8 lg:px-6"
-            )}
-          >
+          <div className="flex flex-col gap-4 px-5 py-4 bare:px-0 bare:pb-5 bare:pt-2 sm:flex-row sm:items-center sm:justify-between sm:px-8 bare:sm:px-0 lg:col-span-9 lg:px-6 bare:lg:px-0 bare:lg:py-4">
             <div className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
               <span>{t("Made with ❤️ by frogs")}</span>
               <a

@@ -248,14 +248,14 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
             <SectionKicker>{t("Plan details")}</SectionKicker>
             <h2
               id="plan-comparison-title"
-              className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
+              className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance bare:text-[36px] bare:font-medium bare:leading-[1.1] bare:tracking-[-0.03em]"
             >
               {t("Compare Plans")}
             </h2>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto bare:mx-5 bare:mb-8 bare:rounded-xl bare:border bare:border-neutral-200 dark:bare:border-neutral-800 bare:sm:mx-8 bare:lg:mx-10">
           <div className="min-w-[900px]">
             <div className="grid grid-cols-4 border-b border-neutral-200 dark:border-neutral-800">
               <div className="flex items-end border-r border-neutral-200 px-6 py-7 text-sm font-medium text-neutral-500 dark:border-neutral-800 lg:px-10">
@@ -293,7 +293,7 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
                   <AppLink
                     href={plan.href}
                     className={cn(
-                      "mt-5 inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                      "mt-5 inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 bare:rounded-full bare:px-5",
                       plan.featured
                         ? "bg-emerald-600 text-white hover:bg-emerald-500"
                         : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-900"
