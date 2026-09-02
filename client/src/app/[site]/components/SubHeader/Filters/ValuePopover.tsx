@@ -60,10 +60,13 @@ export function ValuePopover({
   filter,
   onUpdate,
   children,
+  modal,
 }: {
   filter: Filter;
   onUpdate: (filter: Filter) => void;
   children: React.ReactNode;
+  /** Set when rendered inside a dialog: the dialog's scroll lock otherwise swallows wheel events in the portaled popover. */
+  modal?: boolean;
 }) {
   const t = useExtracted();
   const [open, setOpen] = useState(false);
@@ -142,6 +145,7 @@ export function ValuePopover({
 
   return (
     <Popover
+      modal={modal}
       open={open}
       onOpenChange={isOpen => {
         if (!isOpen && needsTextInput) commitTextInput();
