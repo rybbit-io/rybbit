@@ -41,7 +41,7 @@ type IconProps = {
   size?: number;
 };
 
-interface Platform {
+export interface Platform {
   name: string;
   icon: ComponentType<IconProps>;
   path: string;
@@ -51,7 +51,7 @@ interface Platform {
 }
 
 // Platform data with their documentation paths, icons, and brand colors
-const platforms: Platform[] = [
+export const platforms: Platform[] = [
   { name: "Angular", icon: SiAngular, path: "/docs/guides/angular", color: "#DD0031" },
   { name: "Astro", icon: SiAstro, path: "/docs/guides/astro", color: "#BC52EE" },
   { name: "BigCommerce", icon: SiBigcommerce, path: "/docs/guides/bigcommerce", color: "#121118", darkColor: "#ffffff" },
