@@ -14,9 +14,8 @@ import {
   SectionTitle,
   SignupButton,
   TextLink,
-  pillNeutral,
-  pillSmall,
 } from "@/components/lp-b/primitives";
+import { PricingB } from "@/components/lp-b/PricingB";
 import { FunnelVisual } from "@/components/lp-b/visuals/FunnelVisual";
 import { JourneyVisual } from "@/components/lp-b/visuals/JourneyVisual";
 import { ReplayVisual } from "@/components/lp-b/visuals/ReplayVisual";
@@ -103,11 +102,6 @@ export function LandingB() {
     },
   ];
 
-  const plans = [
-    { name: t("Standard"), price: "$19", period: t("/ month"), alt: t("$13 billed annually"), blurb: t("Up to 5 websites, 3 team members, 100k events."), recommended: false, contact: false },
-    { name: t("Pro"), price: "$39", period: t("/ month"), alt: t("$26 billed annually"), blurb: t("Unlimited websites and members, session replays."), recommended: true, contact: false },
-    { name: t("Enterprise"), price: t("Custom"), period: "", alt: t("Manual invoicing available"), blurb: t("SSO, dedicated instance, uptime SLA."), recommended: false, contact: true },
-  ];
 
   return (
     <>
@@ -283,7 +277,7 @@ export function LandingB() {
                 </TextLink>
               </div>
             </div>
-            <AgentConsole />
+            <AgentConsole grid={false} />
           </Panel>
         </div>
 
@@ -320,50 +314,7 @@ export function LandingB() {
 
         {/* Pricing */}
         <section className={cn(CONTAINER, "mt-24 md:mt-32")} aria-labelledby="lp-b-pricing">
-          <SectionTitle
-            id="lp-b-pricing"
-            title={t("Simple pricing")}
-            description={t("Prices shown at 100k events per month. Every plan starts with a 7-day free trial.")}
-            aside={<TextLink href="/pricing">{t("See all plans")}</TextLink>}
-          />
-          <div className="grid overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 md:grid-cols-3">
-            {plans.map((plan, index) => (
-              <div
-                key={plan.name}
-                className={cn(
-                  "flex flex-col gap-4 p-7",
-                  index > 0 && "border-t border-neutral-200 dark:border-neutral-800 md:border-l md:border-t-0",
-                  plan.recommended && "bg-neutral-50 dark:bg-[#131313]"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[15px] font-semibold">{plan.name}</span>
-                  {plan.recommended && (
-                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                      {t("Recommended")}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl font-semibold tabular-nums tracking-[-0.04em]">{plan.price}</span>
-                    {plan.period && <span className="text-sm text-neutral-500 dark:text-neutral-400">{plan.period}</span>}
-                  </div>
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{plan.alt}</span>
-                </div>
-                <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{plan.blurb}</p>
-                {plan.contact ? (
-                  <Link href="/contact" className={cn(pillNeutral, pillSmall)}>
-                    {t("Contact us")}
-                  </Link>
-                ) : plan.recommended ? (
-                  <SignupButton location="pricing_b" label={t("Start for $0")} className={pillSmall} />
-                ) : (
-                  <SignupButton location="pricing_b" label={t("Start for $0")} className={cn(pillNeutral, pillSmall)} />
-                )}
-              </div>
-            ))}
-          </div>
+          <PricingB />
         </section>
 
         {/* FAQ */}

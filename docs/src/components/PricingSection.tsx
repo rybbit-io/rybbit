@@ -12,14 +12,14 @@ import { STANDARD_SITE_LIMIT, STANDARD_TEAM_LIMIT } from "../lib/const";
 import { PricingCard, type PricingCardProps } from "./PricingCard";
 
 // Available event tiers for the slider
-const EVENT_TIERS = [100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000, 30_000_000, 40_000_000, 50_000_000, "Custom"];
+export const EVENT_TIERS = [100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000, 30_000_000, 40_000_000, 50_000_000, "Custom"];
 
 export const formatter = Intl.NumberFormat("en", {
   notation: "compact",
 }).format;
 
 // Format price with dollar sign for Basic, Standard, and Pro
-function getFormattedPrice(eventLimit: number | string, planType: "standard" | "pro") {
+export function getFormattedPrice(eventLimit: number | string, planType: "standard" | "pro") {
   // Monthly prices
   let monthlyPrice;
   if (typeof eventLimit === "string") return { custom: true }; // Custom pricing

@@ -74,7 +74,7 @@ export function HeroPlate() {
       </div>
 
       <div className="relative min-w-0 overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-[0_30px_80px_rgba(0,0,0,0.25)] dark:border-neutral-700 dark:bg-neutral-950 dark:shadow-[0_30px_80px_rgba(0,0,0,0.55)] lg:absolute lg:left-[6.25%] lg:top-16 lg:w-[87.5%]">
-        <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
+        <div className="grid h-8 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
           <div className="flex gap-1.5" aria-hidden="true">
             <span className="size-2.5 rounded-full bg-[#ff5f57]" />
             <span className="size-2.5 rounded-full bg-[#febc2e]" />
@@ -84,17 +84,11 @@ export function HeroPlate() {
             href="https://demo.rybbit.com/81"
             target="_blank"
             rel="noopener noreferrer"
-            className="truncate rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 font-mono text-xs text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+            className="truncate rounded border border-neutral-200 bg-neutral-50 px-2 py-px font-mono text-[11px] text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
           >
             demo.rybbit.com
           </a>
-          <div className="flex items-center justify-self-end gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-            <span className="relative flex size-2" aria-hidden="true">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60 motion-reduce:hidden" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-            </span>
-            <span className="hidden sm:inline">Live</span>
-          </div>
+          <div />
         </div>
         {/* md+: render the demo at a 117.6% viewport and scale to 0.85 so it
             shows its full desktop layout at preview size. Keep 1:1 on mobile —
