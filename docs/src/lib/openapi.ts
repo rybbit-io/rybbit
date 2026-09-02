@@ -94,6 +94,7 @@ const commonParameterReferences = [
   "PastMinutesStart",
   "PastMinutesEnd",
   "Filters",
+  "SegmentId",
 ].map(name => ({ $ref: `#/components/parameters/${name}` }));
 
 function pathParameters(path: string): Array<Record<string, unknown>> {
@@ -255,6 +256,13 @@ export function buildOpenApiDocument(): OpenApiDocument {
           in: "query",
           description: "JSON-encoded array of analytics filters.",
           schema: { type: "string" },
+        },
+        SegmentId: {
+          name: "segment_id",
+          in: "query",
+          description:
+            "ID of a saved segment whose filters are applied server-side, ANDed with any `filters` also passed.",
+          schema: { type: "integer", minimum: 1 },
         },
       },
       schemas: {

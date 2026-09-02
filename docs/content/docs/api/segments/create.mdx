@@ -1,0 +1,154 @@
+---
+title: Create Segment
+description: Creates a saved segment. Members create site segments they own; admins and owners can also create organization-wide segments.
+full: true
+method: POST
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/sites/:site/segments
+```
+
+Creates a saved segment. Members create site segments they own; admins and owners can also create organization-wide segments.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    name: {
+      description: 'Segment name (1–80 characters)',
+      type: 'string',
+      required: true,
+    },
+    filters: {
+      description: 'Filters that define the segment (1–20). Validated with the same schema as the `filters` parameter',
+      type: 'Filter[]',
+      typeDescription: 'See Filter Parameters in Getting Started',
+      required: true,
+    },
+    description: {
+      description: 'Optional notes (up to 500 characters)',
+      type: 'string | null',
+      required: false,
+    },
+    scope: {
+      description: 'Where the segment is available. Organization-wide segments require an admin or owner',
+      type: 'string',
+      typeDescription: '"site" | "organization"',
+      default: 'site',
+      required: false,
+    },
+    isPublic: {
+      description: 'Show on the public dashboard and private links',
+      type: 'boolean',
+      default: 'false',
+      required: false,
+    },
+  }}
+/>
+### Response
+
+Returns the created segment with status 201.
+
+<TypeTable
+  type={{
+    segmentId: { description: 'Segment ID', type: 'number' },
+    siteId: { description: 'Site ID, or null for an organization-wide segment', type: 'number | null' },
+    organizationId: { description: 'Owning organization', type: 'string' },
+    userId: { description: 'Creator, or null once that account is deleted', type: 'string | null' },
+    name: { description: 'Segment name', type: 'string' },
+    description: { description: 'Notes', type: 'string | null' },
+    filters: { description: 'The filters that define the segment', type: 'Filter[]' },
+    isPublic: { description: 'Shown on the public dashboard and private links', type: 'boolean' },
+    type: { description: 'Always "segment" today; reserved for cohorts', type: 'string' },
+    canEdit: { description: 'Whether the caller may edit or delete this segment', type: 'boolean' },
+    createdAt: { description: 'ISO 8601 timestamp', type: 'string' },
+    updatedAt: { description: 'ISO 8601 timestamp', type: 'string' },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X POST "https://app.rybbit.io/api/sites/1/segments" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Mobile organic from Germany", "filters": [{"parameter": "device_type", "type": "equals", "value": ["Mobile"]}, {"parameter": "channel", "type": "equals", "value": ["Organic Search"]}, {"parameter": "country", "type": "equals", "value": ["DE"]}]}'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/1/segments',
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({"name": "Mobile organic from Germany", "filters": [{"parameter": "device_type", "type": "equals", "value": ["Mobile"]}, {"parameter": "channel", "type": "equals", "value": ["Organic Search"]}, {"parameter": "country", "type": "equals", "value": ["DE"]}]})
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.post(
+    'https://app.rybbit.io/api/sites/1/segments',
+    json={"name": "Mobile organic from Germany", "filters": [{"parameter": "device_type", "type": "equals", "value": ["Mobile"]}, {"parameter": "channel", "type": "equals", "value": ["Organic Search"]}, {"parameter": "country", "type": "equals", "value": ["DE"]}]},
+    headers={'Authorization': 'Bearer your_api_key_here'}
+)
+
+data = response.json()
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "segmentId": 12,
+  "siteId": 1,
+  "organizationId": "org_abc123",
+  "userId": "user_xyz",
+  "name": "Mobile organic from Germany",
+  "description": null,
+  "filters": [
+    { "parameter": "device_type", "type": "equals", "value": ["Mobile"] },
+    { "parameter": "channel", "type": "equals", "value": ["Organic Search"] },
+    { "parameter": "country", "type": "equals", "value": ["DE"] }
+  ],
+  "isPublic": false,
+  "type": "segment",
+  "canEdit": true,
+  "createdAt": "2026-09-02T10:15:00.000Z",
+  "updatedAt": "2026-09-02T10:15:00.000Z"
+}
+```
+
+</div>
+</div>

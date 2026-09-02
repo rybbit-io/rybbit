@@ -165,6 +165,9 @@ export const analyticsParsers = {
   bucket: parseAsTimeBucket,
   stat: parseAsStatType,
   filters: parseAsFilters,
+  // Saved segment whose filters are already expanded into `filters`; keeps
+  // the chip labelled on shared links.
+  segment: parseAsInteger,
 
   // Feature flags
   embed: parseAsBoolean,

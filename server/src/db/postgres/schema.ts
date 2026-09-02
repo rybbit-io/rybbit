@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { DashboardConfig } from "@rybbit/shared";
+import type { DashboardConfig, Filter, SegmentType } from "@rybbit/shared";
 import {
   boolean,
   check,
@@ -141,6 +141,32 @@ export const dashboards = pgTable("dashboards", {
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
 });
+
+// Saved segments: a named, reusable set of analytics filters. A segment is
+// scoped to one site or, with a null site_id, to every site in its
+// organization. `type` is reserved so cohorts can share the table later.
+export const segments = pgTable(
+  "segments",
+  {
+    segmentId: serial("segment_id").primaryKey().notNull(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    filters: jsonb("filters").notNull().$type<Filter[]>().default([]),
+    isPublic: boolean("is_public").default(false).notNull(),
+    type: text("type").notNull().default("segment").$type<SegmentType>(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+  },
+  table => [
+    index("segments_organization_idx").on(table.organizationId),
+    index("segments_site_idx").on(table.siteId),
+  ]
+);
 
 // Account table (BetterAuth)
 export const account = pgTable("account", {

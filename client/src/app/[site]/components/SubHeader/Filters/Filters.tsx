@@ -1,104 +1,45 @@
 "use client";
 
-import { FilterParameter } from "@rybbit/shared";
-import { X } from "lucide-react";
+import { FilterParameter, Segment } from "@rybbit/shared";
 import { useExtracted } from "next-intl";
-import { Button } from "../../../../../components/ui/button";
-import { ButtonGroup } from "../../../../../components/ui/button-group";
+import { useState } from "react";
+import { useGetSegments } from "../../../../../api/analytics/hooks/useSegments";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
-import { useGetRegionName } from "../../../../../lib/geo";
 import { removeFilter, updateFilter, useStore } from "../../../../../lib/store";
-import { cn } from "../../../../../lib/utils";
-import { isNumericParameter } from "./const";
-import {
-  formatDisplayValue,
-  getParameterIcon,
-  useParameterLabel,
-  operatorNeedsValue,
-  useOperatorLabel,
-} from "./labels";
-import { OperatorPopover } from "./OperatorPopover";
-import { ParameterPopover } from "./ParameterPopover";
-import { ValuePopover } from "./ValuePopover";
+import { FilterChip } from "./FilterChip";
+import { SegmentChip } from "./SegmentChip";
+import { SegmentDialog } from "./SegmentDialog";
+import { partitionFilters } from "./segmentUtils";
 
 export function Filters({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const t = useExtracted();
-  const { filters } = useStore();
-  const { getRegionName } = useGetRegionName();
-  const getParameterLabel = useParameterLabel();
-  const getOperatorLabel = useOperatorLabel();
+  const { filters, segmentId, site } = useStore();
+  const { data: segments } = useGetSegments(site, { enabled: segmentId !== null });
+  const [editing, setEditing] = useState<Segment | null>(null);
+
+  const segment = segmentId === null ? undefined : segments?.find(s => s.segmentId === segmentId);
+  const { adHoc, intact } = partitionFilters(filters, segment);
 
   return (
     <div className="flex gap-2 flex-wrap">
-      {filters.map((filter, i) => {
+      {segment && <SegmentChip segment={segment} intact={intact} onEdit={setEditing} />}
+      {adHoc.map(filter => {
         const disabled = availableFilters && !availableFilters.includes(filter.parameter);
-        const isNumeric = isNumericParameter(filter.parameter);
-        const displayValue = formatDisplayValue(filter, getRegionName);
-        const hasValue = filter.value.length > 0;
-
-        const onUpdate = (next: typeof filter) => updateFilter(next, i);
+        const index = filters.indexOf(filter);
 
         const pill = (
-          <ButtonGroup>
-            <ParameterPopover filter={filter} onUpdate={onUpdate} availableFilters={availableFilters}>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={disabled}
-                className={cn(
-                  "font-normal py-1.5 px-2 gap-1.5",
-                  disabled
-                    ? "text-neutral-400 dark:text-neutral-500"
-                    : "text-neutral-700 dark:text-neutral-100"
-                )}
-              >
-                {getParameterIcon(filter.parameter)}
-                {getParameterLabel(filter.parameter)}
-              </Button>
-            </ParameterPopover>
-            <OperatorPopover filter={filter} onUpdate={onUpdate}>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={disabled}
-                className={cn("font-normal p-1.5 text-neutral-500 dark:text-neutral-400")}
-              >
-                {getOperatorLabel(filter.type, isNumeric)}
-              </Button>
-            </OperatorPopover>
-            {operatorNeedsValue(filter.type) && (
-              <ValuePopover filter={filter} onUpdate={onUpdate}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={disabled}
-                  className={cn(
-                    "max-w-[260px] truncate py-1.5 px-2",
-                    hasValue
-                      ? "text-neutral-900 dark:text-neutral-100 font-medium"
-                      : "text-neutral-500 dark:text-neutral-400 italic font-normal",
-                    disabled && "text-neutral-400 dark:text-neutral-500"
-                  )}
-                >
-                  <span className="truncate">{hasValue ? displayValue : t("pick value")}</span>
-                </Button>
-              </ValuePopover>
-            )}
-            <Button
-              variant="secondary"
-              size="sm"
-              className="text-neutral-500 dark:text-neutral-400 px-1.5"
-              onClick={() => removeFilter(filter)}
-              aria-label={t("Remove filter")}
-            >
-              <X size={14} strokeWidth={2.5} />
-            </Button>
-          </ButtonGroup>
+          <FilterChip
+            filter={filter}
+            availableFilters={availableFilters}
+            disabled={disabled}
+            onUpdate={next => updateFilter(next, index)}
+            onRemove={() => removeFilter(filter)}
+          />
         );
 
         if (disabled) {
           return (
-            <Tooltip key={i}>
+            <Tooltip key={index}>
               <TooltipTrigger asChild>{pill}</TooltipTrigger>
               <TooltipContent>
                 <p>{t("Filter not active for this page")}</p>
@@ -106,8 +47,15 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
             </Tooltip>
           );
         }
-        return <div key={i}>{pill}</div>;
+        return <div key={index}>{pill}</div>;
       })}
+      <SegmentDialog
+        open={editing !== null}
+        onOpenChange={open => !open && setEditing(null)}
+        siteId={site}
+        segment={editing ?? undefined}
+        availableFilters={availableFilters}
+      />
     </div>
   );
 }
