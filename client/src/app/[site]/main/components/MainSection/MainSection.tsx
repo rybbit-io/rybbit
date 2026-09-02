@@ -2,8 +2,12 @@
 import { Card, CardContent, CardLoader } from "@/components/ui/card";
 import { DateTime } from "luxon";
 import { Tilt_Warp } from "next/font/google";
+import { MessageSquarePlus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
+import { useState } from "react";
+import { useGetAnnotations } from "@/api/analytics/hooks/useAnnotations";
+import { Button } from "@/components/ui/button";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { BucketSelection } from "../../../../../components/BucketSelection";
@@ -11,6 +15,8 @@ import { RybbitTextLogo } from "../../../../../components/RybbitLogo";
 import { useWhiteLabel } from "../../../../../hooks/useIsWhiteLabel";
 import { authClient } from "../../../../../lib/auth";
 import { getTimezone, useStore } from "../../../../../lib/store";
+import { AnnotationFormDialog, type AnnotationEditorState } from "./annotations/AnnotationFormDialog";
+import { useAnnotationPermissions } from "./annotations/useAnnotationPermissions";
 import { Chart } from "./Chart";
 import { Overview } from "./Overview";
 
@@ -27,6 +33,10 @@ export function MainSection() {
   const t = useExtracted();
 
   const { selectedStat, time, site, bucket } = useStore();
+
+  const { data: annotations } = useGetAnnotations(site);
+  const { canCreate: canAnnotate } = useAnnotationPermissions();
+  const [annotationEditor, setAnnotationEditor] = useState<AnnotationEditorState | null>(null);
 
   const getSelectedStatLabel = () => {
     switch (selectedStat) {
@@ -110,7 +120,15 @@ export function MainSection() {
               )}
             </div>
             <span className="text-sm text-neutral-700 dark:text-neutral-200">{getSelectedStatLabel()}</span>
-            <BucketSelection />
+            <div className="flex items-center gap-2">
+              {canAnnotate && (
+                <Button variant="outline" size="sm" onClick={() => setAnnotationEditor({ mode: "create" })}>
+                  <MessageSquarePlus />
+                  <span className="hidden sm:inline">{t("Annotate")}</span>
+                </Button>
+              )}
+              <BucketSelection />
+            </div>
           </div>
           <div className="h-[200px] md:h-[290px]">
             <Chart
@@ -118,10 +136,14 @@ export function MainSection() {
               max={maxOfDataAndPreviousData}
               previousData={time.mode === "all-time" ? undefined : previousData}
               chartXMax={chartXMax}
+              annotations={annotations}
+              onCreateAnnotation={canAnnotate ? date => setAnnotationEditor({ mode: "create", date }) : undefined}
+              onEditAnnotation={annotation => setAnnotationEditor({ mode: "edit", annotation })}
             />
           </div>
         </CardContent>
       </Card>
+      <AnnotationFormDialog state={annotationEditor} onClose={() => setAnnotationEditor(null)} />
     </>
   );
 }

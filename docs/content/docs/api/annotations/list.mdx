@@ -1,0 +1,115 @@
+---
+title: Get Annotations
+description: Returns the timeline annotations that apply to a site, including organization-wide ones.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/annotations
+```
+
+Returns the annotations pinned to the site's traffic chart, ordered by date. Organization-wide annotations (those with a `null` `siteId`) are included for every site in the organization.
+
+Anonymous viewers of a public dashboard or a private link only receive annotations with `isPublic: true`.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+<TypeTable
+  type={{
+    start_date: {
+      description: 'Only annotations that end on or after this date (YYYY-MM-DD, UTC)',
+      type: 'string',
+      required: false,
+    },
+    end_date: {
+      description: 'Only annotations that start on or before this date (YYYY-MM-DD, UTC)',
+      type: 'string',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+An array of annotation objects.
+
+<TypeTable
+  type={{
+    annotationId: { description: 'Unique annotation ID', type: 'number' },
+    siteId: { description: 'Site the annotation belongs to, or null for organization-wide annotations', type: 'number | null' },
+    organizationId: { description: 'Owning organization', type: 'string' },
+    userId: { description: 'Creator user ID', type: 'string | null' },
+    userName: { description: 'Creator display name', type: 'string | null' },
+    title: { description: 'Short title shown on the chart', type: 'string' },
+    description: { description: 'Longer note', type: 'string | null' },
+    date: { description: 'ISO 8601 timestamp the annotation is pinned to', type: 'string' },
+    endDate: { description: 'ISO 8601 end timestamp for range annotations', type: 'string | null' },
+    color: { description: 'Marker color', type: 'string | null', typeDescription: '"amber" | "rose" | "sky" | "violet" | "lime" | null' },
+    icon: { description: 'Emoji shown in the marker', type: 'string | null' },
+    isPublic: { description: 'Whether public dashboards and private links show it', type: 'boolean' },
+    createdAt: { description: 'Creation timestamp', type: 'string' },
+    updatedAt: { description: 'Last update timestamp', type: 'string' },
+  }}
+/>
+
+</div>
+<div>
+
+### Example
+
+<Tabs items={['cURL', 'Response']}>
+<Tab value="cURL">
+
+```bash
+curl "https://app.rybbit.io/api/sites/123/annotations?start_date=2026-08-01&end_date=2026-08-31" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+</Tab>
+<Tab value="Response">
+
+```json
+[
+  {
+    "annotationId": 42,
+    "siteId": 123,
+    "organizationId": "org_abc",
+    "userId": "user_xyz",
+    "userName": "Bill",
+    "title": "Product Hunt launch",
+    "description": "Finished #2 Product of the Day.",
+    "date": "2026-08-18T07:00:00.000Z",
+    "endDate": null,
+    "color": "amber",
+    "icon": "🚀",
+    "isPublic": true,
+    "createdAt": "2026-08-18 07:05:12.1",
+    "updatedAt": "2026-08-18 07:05:12.1"
+  }
+]
+```
+
+</Tab>
+</Tabs>
+
+</div>
+</div>

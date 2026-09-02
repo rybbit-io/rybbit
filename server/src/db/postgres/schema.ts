@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { DashboardConfig } from "@rybbit/shared";
+import type { AnnotationColor, DashboardConfig } from "@rybbit/shared";
 import {
   boolean,
   check,
@@ -141,6 +141,34 @@ export const dashboards = pgTable("dashboards", {
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
 });
+
+// Timeline annotations: a note pinned to a date (or range) on the traffic chart.
+// site_id is null for organization-wide annotations, which show on every site
+// in organization_id.
+export const annotations = pgTable(
+  "annotations",
+  {
+    annotationId: serial("annotation_id").primaryKey().notNull(),
+    siteId: integer("site_id").references(() => sites.siteId, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    date: timestamp("date", { mode: "string", withTimezone: true }).notNull(),
+    endDate: timestamp("end_date", { mode: "string", withTimezone: true }),
+    color: text("color").$type<AnnotationColor>(),
+    icon: text("icon"),
+    isPublic: boolean("is_public").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+  },
+  table => [
+    index("annotations_site_date_idx").on(table.siteId, table.date),
+    index("annotations_org_date_idx").on(table.organizationId, table.date),
+  ]
+);
 
 // Account table (BetterAuth)
 export const account = pgTable("account", {

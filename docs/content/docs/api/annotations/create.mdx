@@ -1,0 +1,87 @@
+---
+title: Create Annotation
+description: Pins a note to a date or date range on the site's traffic chart.
+full: true
+method: POST
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/sites/:site/annotations
+```
+
+Creates an annotation. Any member with access to the site can create site annotations; organization-wide annotations (`scope: "organization"`) require an admin or owner role.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    title: { description: 'Short title (max 120 characters)', type: 'string', required: true },
+    date: { description: 'ISO 8601 timestamp, or YYYY-MM-DD (read as midnight UTC)', type: 'string', required: true },
+    endDate: { description: 'End of a range; must be after date', type: 'string', required: false },
+    description: { description: 'Longer note (max 2000 characters)', type: 'string', required: false },
+    color: { description: 'Marker color', type: 'string', typeDescription: '"amber" | "rose" | "sky" | "violet" | "lime"', required: false },
+    icon: { description: 'Emoji shown in the marker (max 16 characters)', type: 'string', required: false },
+    isPublic: { description: 'Show on public dashboards and private links', type: 'boolean', default: 'false', required: false },
+    scope: { description: 'Attach to this site or to every site in the organization', type: 'string', typeDescription: '"site" | "organization"', default: '"site"', required: false },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: { description: 'Always true', type: 'boolean' },
+    annotationId: { description: 'ID of the new annotation', type: 'number' },
+  }}
+/>
+
+</div>
+<div>
+
+### Example
+
+<Tabs items={['cURL', 'Response']}>
+<Tab value="cURL">
+
+```bash
+curl -X POST "https://app.rybbit.io/api/sites/123/annotations" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Deployed v2.3.0",
+    "date": "2026-08-24T14:10:00Z",
+    "color": "sky",
+    "scope": "organization"
+  }'
+```
+
+</Tab>
+<Tab value="Response">
+
+```json
+{ "success": true, "annotationId": 43 }
+```
+
+</Tab>
+</Tabs>
+
+</div>
+</div>

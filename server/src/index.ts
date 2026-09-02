@@ -22,14 +22,17 @@ import {
   updateAdminSubscriptionOverride,
 } from "./api/admin/index.js";
 import {
+  createAnnotation,
   createDashboard,
   createFunnel,
   createGoal,
+  deleteAnnotation,
   deleteDashboard,
   deleteFunnel,
   deleteGoal,
   deleteUser,
   generatePdfReport,
+  getAnnotations,
   getDashboard,
   getDashboards,
   getBotAiSummary,
@@ -80,6 +83,7 @@ import {
   identifyUser,
   runCustomQuery,
   runDashboardCardQuery,
+  updateAnnotation,
   updateDashboard,
   updateGoal,
   updateUserTraits,
@@ -257,6 +261,8 @@ const authAnalyticsRead = authSiteScoped("analytics", "read");
 const authReplayWrite = authSiteScoped("replay", "write");
 const authOrgRead = authOnlyScoped("org", "read");
 const adminSitesRead = adminSiteScoped("sites", "read");
+const publicAnnotationsRead = publicSiteScoped("annotations", "read");
+const authAnnotationsWrite = authSiteScoped("annotations", "write");
 const authDashboardsRead = authSiteScoped("dashboards", "read");
 const authDashboardsWrite = authSiteScoped("dashboards", "write");
 const authFlagsRead = authSiteScoped("flags", "read");
@@ -433,6 +439,12 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/goals", authGoalsWrite, createGoal);
   fastify.delete("/sites/:siteId/goals/:goalId", authGoalsWrite, deleteGoal);
   fastify.put("/sites/:siteId/goals/:goalId", authGoalsWrite, updateGoal);
+  // Timeline annotations. Read is public-guarded so public dashboards and
+  // private links get the annotations marked public; writes need site access.
+  fastify.get("/sites/:siteId/annotations", publicAnnotationsRead, getAnnotations);
+  fastify.post("/sites/:siteId/annotations", authAnnotationsWrite, createAnnotation);
+  fastify.put("/sites/:siteId/annotations/:annotationId", authAnnotationsWrite, updateAnnotation);
+  fastify.delete("/sites/:siteId/annotations/:annotationId", authAnnotationsWrite, deleteAnnotation);
   fastify.get("/sites/:siteId/dashboards", authDashboardsRead, getDashboards);
   fastify.get("/sites/:siteId/dashboards/:dashboardId", authDashboardsRead, getDashboard);
   fastify.post("/sites/:siteId/dashboards", authDashboardsWrite, createDashboard);

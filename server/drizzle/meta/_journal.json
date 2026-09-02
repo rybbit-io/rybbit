@@ -113,6 +113,13 @@
       "when": 1788371100067,
       "tag": "0015_round_trish_tilby",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788378517623,
+      "tag": "0016_condemned_hannibal_king",
+      "breakpoints": true
     }
   ]
 }

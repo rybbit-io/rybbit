@@ -1,0 +1,4 @@
+{
+  "title": "Annotations",
+  "pages": ["list", "create", "update", "delete"]
+}

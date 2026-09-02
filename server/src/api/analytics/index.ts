@@ -72,3 +72,8 @@ export { getUsers } from "./users/getUsers.js";
 export { getUserTraitKeys, getUserTraitValues, getUserTraitValueUsers } from "./users/getUserTraits.js";
 export { identifyUser } from "./users/identifyUser.js";
 export { updateUserTraits } from "./users/updateUserTraits.js";
+
+export { getAnnotations } from "./annotations/getAnnotations.js";
+export { createAnnotation } from "./annotations/createAnnotation.js";
+export { updateAnnotation } from "./annotations/updateAnnotation.js";
+export { deleteAnnotation } from "./annotations/deleteAnnotation.js";

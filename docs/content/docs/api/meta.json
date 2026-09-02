@@ -19,6 +19,7 @@
     "user-traits",
     "events",
     "goals",
+    "annotations",
     "funnels",
     "performance",
     "errors",
