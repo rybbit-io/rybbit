@@ -9,7 +9,7 @@ import { removeFilter, updateFilter, useStore } from "../../../../../lib/store";
 import { FilterChip } from "./FilterChip";
 import { SegmentChip } from "./SegmentChip";
 import { SegmentDialog } from "./SegmentDialog";
-import { partitionFilters } from "./segmentUtils";
+import { filterListKeys, partitionFilters } from "./segmentUtils";
 
 export function Filters({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const t = useExtracted();
@@ -19,13 +19,15 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
 
   const segment = segmentId === null ? undefined : segments?.find(s => s.segmentId === segmentId);
   const { adHoc, intact } = partitionFilters(filters, segment);
+  const keys = filterListKeys(adHoc);
 
   return (
     <div className="flex gap-2 flex-wrap">
       {segment && <SegmentChip segment={segment} intact={intact} onEdit={setEditing} />}
-      {adHoc.map(filter => {
+      {adHoc.map((filter, position) => {
         const disabled = availableFilters && !availableFilters.includes(filter.parameter);
         const index = filters.indexOf(filter);
+        const key = keys[position];
 
         const pill = (
           <FilterChip
@@ -39,7 +41,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
 
         if (disabled) {
           return (
-            <Tooltip key={index}>
+            <Tooltip key={key}>
               <TooltipTrigger asChild>{pill}</TooltipTrigger>
               <TooltipContent>
                 <p>{t("Filter not active for this page")}</p>
@@ -47,7 +49,7 @@ export function Filters({ availableFilters }: { availableFilters?: FilterParamet
             </Tooltip>
           );
         }
-        return <div key={index}>{pill}</div>;
+        return <div key={key}>{pill}</div>;
       })}
       <SegmentDialog
         open={editing !== null}

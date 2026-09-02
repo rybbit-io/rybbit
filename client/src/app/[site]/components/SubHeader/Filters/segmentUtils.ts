@@ -10,6 +10,21 @@ export const SEGMENT_MAX_FILTERS = 20;
 export const filterKey = (filter: Filter) => JSON.stringify([filter.parameter, filter.type, filter.value]);
 
 /**
+ * React keys that follow a filter rather than its position, so removing an
+ * earlier chip does not hand its popover state to the next one. Identical
+ * filters (rare, but allowed) get a suffix to stay unique.
+ */
+export function filterListKeys(filters: Filter[]): string[] {
+  const seen = new Map<string, number>();
+  return filters.map(filter => {
+    const key = filterKey(filter);
+    const n = seen.get(key) ?? 0;
+    seen.set(key, n + 1);
+    return n === 0 ? key : `${key}#${n}`;
+  });
+}
+
+/**
  * Splits the dashboard's filters into the ones an applied segment contributed
  * and the ad-hoc rest. A segment filter that is no longer present means the
  * user edited the segment's part of the row (or followed an edited link), so

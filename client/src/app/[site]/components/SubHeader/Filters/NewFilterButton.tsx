@@ -4,6 +4,8 @@ import { Filter, FilterParameter, Segment } from "@rybbit/shared";
 import { ListFilterPlus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useRef, useState } from "react";
+import { useUserOrganizations } from "../../../../../api/admin/hooks/useOrganizations";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { Button } from "../../../../../components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
 import { authClient } from "../../../../../lib/auth";
@@ -25,6 +27,8 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
   const t = useExtracted();
   const session = authClient.useSession();
   const { site, privateKey, filters } = useStore();
+  const { data: siteInfo } = useGetSite(site, { enabled: !!session.data });
+  const { data: organizations } = useUserOrganizations();
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("filters");
@@ -32,20 +36,39 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
   const pendingRef = useRef<() => Filter | null>(() => null);
   const [dialog, setDialog] = useState<DialogState>(null);
 
-  const canWrite = !!session.data && !privateKey;
+  // A signed-in visitor on someone else's public site is not a member; the
+  // private-link view is read-only by design even for members.
+  const isMember = !!siteInfo?.organizationId && !!organizations?.some(org => org.id === siteInfo.organizationId);
+  const canWrite = !!session.data && !privateKey && isMember;
+
+  const resetPicker = () => {
+    pendingRef.current = () => null;
+    setParameter(null);
+  };
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       const pending = pendingRef.current();
       if (pending) addFilter(pending);
-      pendingRef.current = () => null;
-      setParameter(null);
+      resetPicker();
     }
     setOpen(isOpen);
   };
 
-  const openDialog = (state: NonNullable<DialogState>) => {
+  // Closing from an action that already did its work must not commit a
+  // half-built filter left behind on the Filters tab.
+  const closePopover = () => {
+    resetPicker();
     setOpen(false);
+  };
+
+  const selectTab = (next: Tab) => {
+    if (next !== tab) resetPicker();
+    setTab(next);
+  };
+
+  const openDialog = (state: NonNullable<DialogState>) => {
+    closePopover();
     setDialog(state);
   };
 
@@ -54,7 +77,7 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
       type="button"
       role="tab"
       aria-selected={tab === value}
-      onClick={() => setTab(value)}
+      onClick={() => selectTab(value)}
       className={cn(
         "flex-1 py-2 text-xs font-medium border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400",
         tab === value
@@ -84,7 +107,7 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
             <FilterPicker
               availableFilters={availableFilters}
               onCommit={addFilter}
-              onClose={() => setOpen(false)}
+              onClose={closePopover}
               pendingRef={pendingRef}
               parameter={parameter}
               setParameter={setParameter}
@@ -96,7 +119,7 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
               onNew={() => openDialog({})}
               onSaveCurrent={() => openDialog({ initialFilters: filters })}
               onEdit={segment => openDialog({ segment })}
-              onApplied={() => setOpen(false)}
+              onApplied={closePopover}
             />
           )}
         </PopoverContent>

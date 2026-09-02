@@ -4,6 +4,10 @@ import { validateRegexPattern } from "../utils/getFilterStatement.js";
 import { filterSchema } from "../utils/query-validation.js";
 
 const NO_VALUE_TYPES = new Set(["is_null", "is_not_null"]);
+// A public segment is expanded by anyone who knows its id, so its size is
+// bounded here rather than left to whoever saved it.
+export const SEGMENT_MAX_VALUES_PER_FILTER = 50;
+export const SEGMENT_MAX_VALUE_LENGTH = 500;
 const REGEX_TYPES = new Set(["regex", "not_regex"]);
 const NUMERIC_TYPES = new Set(["greater_than", "less_than", "greater_than_or_equal", "less_than_or_equal"]);
 
@@ -21,6 +25,23 @@ export const segmentFilterSchema = filterSchema.superRefine((filter, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: `Filter on "${filter.parameter}" needs at least one value`,
+      path: ["value"],
+    });
+    return;
+  }
+
+  if (filter.value.length > SEGMENT_MAX_VALUES_PER_FILTER) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `A filter can have at most ${SEGMENT_MAX_VALUES_PER_FILTER} values`,
+      path: ["value"],
+    });
+    return;
+  }
+  if (filter.value.some(value => String(value).length > SEGMENT_MAX_VALUE_LENGTH)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Filter values are limited to ${SEGMENT_MAX_VALUE_LENGTH} characters`,
       path: ["value"],
     });
     return;

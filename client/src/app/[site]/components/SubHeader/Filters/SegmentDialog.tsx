@@ -8,7 +8,12 @@ import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
-import { useCreateSegment, useDeleteSegment, useUpdateSegment } from "../../../../../api/analytics/hooks/useSegments";
+import {
+  useCreateSegment,
+  useDeleteSegment,
+  useGetSegments,
+  useUpdateSegment,
+} from "../../../../../api/analytics/hooks/useSegments";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +48,12 @@ import { cn } from "../../../../../lib/utils";
 import { FilterChip } from "./FilterChip";
 import { FilterPicker } from "./FilterPicker";
 import { formatDisplayValue, operatorNeedsValue, useParameterLabel } from "./labels";
-import { SEGMENT_DESCRIPTION_MAX_LENGTH, SEGMENT_MAX_FILTERS, SEGMENT_NAME_MAX_LENGTH } from "./segmentUtils";
+import {
+  filterListKeys,
+  SEGMENT_DESCRIPTION_MAX_LENGTH,
+  SEGMENT_MAX_FILTERS,
+  SEGMENT_NAME_MAX_LENGTH,
+} from "./segmentUtils";
 
 const filterSchema = z.object({
   parameter: z.string().min(1),
@@ -104,6 +114,10 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
   const { getRegionName } = useGetRegionName();
   const getParameterLabel = useParameterLabel();
   const appliedSegmentId = useStore(state => state.segmentId);
+  const { data: segments } = useGetSegments(siteId);
+  // Applying the new segment must drop the filters the currently applied one
+  // contributed, or they linger in the row as anonymous ad-hoc chips.
+  const appliedSegment = segments?.find(s => s.segmentId === appliedSegmentId);
 
   const { mutateAsync: createSegment, isPending: isCreating } = useCreateSegment();
   const { mutateAsync: updateSegment, isPending: isUpdating } = useUpdateSegment();
@@ -127,6 +141,7 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
   });
 
   const filters = form.watch("filters") as Filter[];
+  const filterKeys = filterListKeys(filters);
   const scope = form.watch("scope");
   const setFilters = (next: Filter[]) => form.setValue("filters", next, { shouldValidate: true, shouldDirty: true });
 
@@ -172,7 +187,7 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
         toast.success(t("Saved segment “{name}”", { name: updated.name }));
       } else {
         const created = await createSegment({ siteId, body });
-        applySegment(created);
+        applySegment(created, appliedSegment?.filters);
         toast.success(t("Saved segment “{name}”", { name: created.name }));
       }
       onOpenChange(false);
@@ -222,7 +237,7 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
               <div className="flex flex-wrap gap-2">
                 {filters.map((filter, index) => (
                   <FilterChip
-                    key={`${filter.parameter}-${index}`}
+                    key={filterKeys[index]}
                     filter={filter}
                     availableFilters={availableFilters}
                     onUpdate={next => setFilters(filters.map((f, i) => (i === index ? next : f)))}

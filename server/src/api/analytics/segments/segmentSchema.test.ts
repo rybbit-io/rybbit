@@ -70,6 +70,17 @@ describe("segmentFiltersSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("bounds the values a single filter may carry", () => {
+    const many = Array.from({ length: 51 }, (_, i) => `v${i}`);
+    expect(segmentFiltersSchema.safeParse([{ parameter: "country", type: "equals", value: many }]).success).toBe(false);
+    expect(
+      segmentFiltersSchema.safeParse([{ parameter: "pathname", type: "contains", value: ["x".repeat(501)] }]).success
+    ).toBe(false);
+    expect(
+      segmentFiltersSchema.safeParse([{ parameter: "country", type: "equals", value: many.slice(0, 50) }]).success
+    ).toBe(true);
+  });
+
   it("requires at least one filter and caps the count", () => {
     expect(segmentFiltersSchema.safeParse([]).success).toBe(false);
     const tooMany = Array.from({ length: 21 }, (_, i) => ({ parameter: "browser", type: "equals", value: [`b${i}`] }));

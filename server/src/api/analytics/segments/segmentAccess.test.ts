@@ -198,6 +198,7 @@ describe("GET /segments", () => {
     expect(reply.statusCode).toBe(200);
     expect(reply.payload.map((s: any) => s.segmentId)).toEqual([7]);
     expect(reply.payload[0].canEdit).toBe(false);
+    expect(reply.payload[0].userId).toBeNull();
   });
 
   it("shows a member every segment and flags only their own as editable", async () => {

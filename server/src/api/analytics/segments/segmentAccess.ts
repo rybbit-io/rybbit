@@ -104,7 +104,8 @@ export function serializeSegment(row: SegmentRow, actor: SegmentActor): Segment 
     segmentId: row.segmentId,
     siteId: row.siteId,
     organizationId: row.organizationId,
-    userId: row.userId,
+    // The creator's account id is only meaningful to members of the site.
+    userId: actor.hasSiteAccess ? row.userId : null,
     name: row.name,
     description: row.description,
     filters: row.filters,
