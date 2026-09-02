@@ -208,7 +208,7 @@ export function PricingSection({
         {/* Header row — on the landing page a signal plate like the other major
             sections; in standalone page-top mode the plotted-dataline signature
             takes the plate's place. */}
-        <div className="relative grid grid-cols-1 border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+        <div className="relative grid grid-cols-1 border-b border-neutral-200 bare:border-b-0 dark:border-neutral-800 lg:grid-cols-12 bare:lg:block">
           {standalone && (
             <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-40 sm:block lg:h-48">
               <HeroDataLine id="pricing" className="h-40 lg:h-48" />
@@ -216,7 +216,7 @@ export function PricingSection({
           )}
           <div
             className={cn(
-              "relative border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10",
+              "relative border-b border-neutral-200 px-5 py-14 bare:border-b-0 bare:pb-5 bare:pt-16 dark:border-neutral-800 sm:px-8 md:py-20 bare:md:pb-5 bare:md:pt-24 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10 bare:lg:border-r-0",
               !standalone && "bg-plate-accent"
             )}
           >
@@ -229,7 +229,7 @@ export function PricingSection({
             <div className="relative">
               <SectionKicker>{t("Pricing")}</SectionKicker>
               {standalone ? (
-                <h1 className={cn(headlineClasses, "text-5xl leading-[0.98] md:text-6xl")}>
+                <h1 className={cn(headlineClasses, "text-5xl leading-[0.98] md:text-6xl bare:font-medium bare:tracking-[-0.035em] bare:md:text-[56px] bare:md:leading-[1.08]")}>
                   {t("Set your traffic. See your price.")}
                 </h1>
               ) : (
@@ -239,7 +239,7 @@ export function PricingSection({
               )}
             </div>
           </div>
-          <div className="relative flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
+          <div className="relative flex items-end px-5 py-10 bare:pb-10 bare:pt-0 sm:px-8 md:py-20 bare:md:pb-12 bare:md:pt-0 lg:col-span-5 lg:px-10">
             <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
               {t("Start your 7-day free trial. No credit card charges until the trial ends.")}
             </p>
@@ -248,8 +248,8 @@ export function PricingSection({
 
         {/* Quote instrument — a full-bleed row on the same dot-grid mat as the
             hero demo frame and the agent console. */}
-        <div className="relative border-b border-neutral-200 bg-neutral-100 p-4 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:14px_14px] dark:border-neutral-800 dark:bg-neutral-900 dark:[background-image:radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] sm:p-8 lg:p-10">
-          <div className="rounded-md border border-neutral-300 bg-white px-5 py-6 dark:border-neutral-700 dark:bg-neutral-950 sm:px-6">
+        <div className="relative border-b border-neutral-200 bg-neutral-100 p-4 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:14px_14px] bare:border-b-0 bare:bg-transparent bare:px-5 bare:py-6 bare:[background-image:none] dark:border-neutral-800 dark:bg-neutral-900 dark:[background-image:radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] dark:bare:bg-transparent dark:bare:[background-image:none] sm:p-8 bare:sm:px-8 bare:sm:py-6 lg:p-10 bare:lg:px-10">
+          <div className="rounded-md border border-neutral-300 bg-white px-5 py-6 bare:rounded-xl bare:border-neutral-200 bare:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-950 dark:bare:border-neutral-800 dark:bare:bg-[#131313] sm:px-6 bare:sm:px-7">
             <div className="mb-7 flex items-end justify-between gap-5">
               <div>
                 <h3 className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("Monthly pageviews")}</h3>
@@ -259,11 +259,11 @@ export function PricingSection({
               </div>
               <div className="relative flex flex-col items-end">
                 {/* Billing toggle */}
-                <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+                <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-100 p-1 text-sm bare:rounded-full bare:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-900 dark:bare:border-neutral-800">
                   <button
                     onClick={() => setIsAnnual(false)}
                     className={cn(
-                      "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                      "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 bare:rounded-full bare:px-4",
                       !isAnnual
                         ? "bg-white text-neutral-950 dark:bg-neutral-800 dark:text-white font-medium"
                         : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
@@ -282,7 +282,7 @@ export function PricingSection({
                   >
                     {t("Annual")}
                   </button>
-                  <div className="absolute right-0 top-0 -translate-y-4 whitespace-nowrap rounded-sm bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">
+                  <div className="absolute right-0 top-0 -translate-y-4 whitespace-nowrap rounded-sm bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white bare:rounded-full">
                     {t("4 months free")}
                   </div>
                 </div>
@@ -353,7 +353,7 @@ export function PricingSection({
           </div>
         </div>
 
-        <div className="hidden gap-px bg-neutral-200 dark:bg-neutral-800 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
+        <div className="hidden gap-px bg-neutral-200 bare:mx-5 bare:mb-8 bare:overflow-hidden bare:rounded-xl bare:border bare:border-neutral-200 dark:bg-neutral-800 dark:bare:border-neutral-800 min-[700px]:grid min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3 bare:sm:mx-8 bare:lg:mx-10">
           <PricingCard {...standardProps} />
           <PricingCard {...proProps} />
           <PricingCard {...enterpriseProps} className="min-[700px]:col-span-2 min-[1100px]:col-span-1" />

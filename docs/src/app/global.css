@@ -6,6 +6,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant bare (&:is([data-chrome="bare"] *));
 
 :root {
   --color-fd-primary: rgb(16 185 129); /* emerald-500 */
@@ -126,6 +127,29 @@ pre {
 }
 .dark .bg-plate-accent {
   background-color: color-mix(in oklab, #0a0a0a 94%, #34d399);
+}
+
+/* ── Bare chrome (homepage redesign register) ────────────────────────────
+   `data-chrome="bare"` on <html> — set before first paint from the homepage
+   experiment cookie (root layout) — or on any ancestor puts the marketing
+   pages in the redesign's register: no instrument sheet. The `bare:` variant
+   carries component-level changes; these rules retire the sheet devices that
+   appear on dozens of pages at once (plates, graph paper, side rails). Inner
+   seams stay, read as hairline rows. */
+[data-chrome="bare"] .bg-graph,
+[data-chrome="bare"] .bg-graph-accent {
+  background-image: none;
+}
+[data-chrome="bare"] .bg-plate-accent {
+  background-color: #fafafa;
+}
+.dark [data-chrome="bare"] .bg-plate-accent,
+.dark[data-chrome="bare"] .bg-plate-accent {
+  background-color: #131313;
+}
+[data-chrome="bare"] .max-w-\[1200px\].border-x {
+  border-left-width: 0;
+  border-right-width: 0;
 }
 
 /* ── Marketing data-line decoration ──────────────────────────────────────

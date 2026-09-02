@@ -50,7 +50,7 @@ export function PricingCard({
   const displayedFeatures = shouldShowToggle && !isExpanded ? features.slice(0, 7) : features;
 
   const buttonClasses = cn(
-    "inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-neutral-950",
+    "inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-colors duration-200 bare:rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-neutral-950",
     isPrimary
       ? "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-emerald-500"
       : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 focus-visible:ring-neutral-500 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-800"

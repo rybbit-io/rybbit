@@ -68,7 +68,7 @@ function FeatureGrid({ title, description, features }: FeatureGridProps) {
   return (
     <section className="border-b border-neutral-200 dark:border-neutral-800">
       <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-        <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+        <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 bare:lg:border-r-0">
           <div className="lg:sticky lg:top-24">
             <h2 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{title}</h2>
             <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">{description}</p>

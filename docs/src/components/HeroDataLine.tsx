@@ -25,6 +25,7 @@ export function HeroDataLine({ id, className }: HeroDataLineProps) {
     <div
       aria-hidden="true"
       className={cn(
+        "bare:hidden",
         "pointer-events-none absolute inset-x-0 bottom-0 [mask-image:linear-gradient(to_right,transparent,black_22%)]",
         className
       )}

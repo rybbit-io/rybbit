@@ -2,6 +2,7 @@ import "@/app/global.css";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import { RybbitScript } from "@/components/RybbitScript";
+import { HOME_VARIANT_COOKIE } from "@/lib/landing-experiment";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
@@ -78,6 +79,11 @@ export default async function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        {/* Homepage experiment, arm B: put the whole site in the redesign's
+            "bare" register before first paint (see global.css). */}
+        <Script id="chrome-variant" strategy="beforeInteractive">
+          {`try{if(/(?:^|; )${HOME_VARIANT_COOKIE}=b(?:;|$)/.test(document.cookie))document.documentElement.setAttribute("data-chrome","bare")}catch(e){}`}
+        </Script>
         <Script id="rewardful-queue" strategy="beforeInteractive">
           {`(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`}
         </Script>
