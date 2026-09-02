@@ -30,12 +30,15 @@ export function FilterChip({
   onRemove,
   availableFilters,
   disabled,
+  modal,
 }: {
   filter: Filter;
   onUpdate: (filter: Filter) => void;
   onRemove: () => void;
   availableFilters?: FilterParameter[];
   disabled?: boolean;
+  /** Set when the chip is rendered inside a dialog so its popovers can scroll. */
+  modal?: boolean;
 }) {
   const t = useExtracted();
   const { getRegionName } = useGetRegionName();
@@ -48,7 +51,7 @@ export function FilterChip({
 
   return (
     <ButtonGroup>
-      <ParameterPopover filter={filter} onUpdate={onUpdate} availableFilters={availableFilters}>
+      <ParameterPopover filter={filter} onUpdate={onUpdate} availableFilters={availableFilters} modal={modal}>
         <Button
           variant="secondary"
           size="sm"
@@ -62,7 +65,7 @@ export function FilterChip({
           {getParameterLabel(filter.parameter)}
         </Button>
       </ParameterPopover>
-      <OperatorPopover filter={filter} onUpdate={onUpdate}>
+      <OperatorPopover filter={filter} onUpdate={onUpdate} modal={modal}>
         <Button
           variant="secondary"
           size="sm"
@@ -73,7 +76,7 @@ export function FilterChip({
         </Button>
       </OperatorPopover>
       {operatorNeedsValue(filter.type) && (
-        <ValuePopover filter={filter} onUpdate={onUpdate}>
+        <ValuePopover filter={filter} onUpdate={onUpdate} modal={modal}>
           <Button
             variant="secondary"
             size="sm"

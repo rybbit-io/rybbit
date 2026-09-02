@@ -240,11 +240,13 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
                     key={filterKeys[index]}
                     filter={filter}
                     availableFilters={availableFilters}
+                    modal
                     onUpdate={next => setFilters(filters.map((f, i) => (i === index ? next : f)))}
                     onRemove={() => setFilters(filters.filter((_, i) => i !== index))}
                   />
                 ))}
-                <Popover open={pickerOpen} onOpenChange={handlePickerOpenChange}>
+                {/* modal: the dialog's scroll lock otherwise swallows wheel events in this portaled popover */}
+                <Popover open={pickerOpen} onOpenChange={handlePickerOpenChange} modal>
                   <PopoverTrigger asChild>
                     <Button type="button" size="sm" variant="outline" className="gap-1.5">
                       <Plus className="h-4 w-4" />
