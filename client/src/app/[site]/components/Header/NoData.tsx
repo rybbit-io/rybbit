@@ -133,21 +133,20 @@ export function NoData() {
   const hiddenCount = PLATFORM_GUIDES.length - VISIBLE_PLATFORM_COUNT;
 
   const isMobileSite = siteMetadata?.type === "mobile";
-  const scriptUrl = `${globalThis.location.origin}/api/script.js`;
+  const scriptUrl = `${globalThis.location.origin}/api/script.js?siteId=${encodeURIComponent(siteId)}`;
 
-  const htmlSnippet = `<script\n    src="${scriptUrl}"\n    data-site-id="${siteId}"\n    defer\n></script>`;
+  const htmlSnippet = `<script\n    src="${scriptUrl}"\n    defer\n></script>`;
 
   const jsSnippet = `<script>
   (function() {
     var el = document.createElement("script");
     el.src = "${scriptUrl}";
     el.defer = true;
-    el.setAttribute("data-site-id", "${siteId}");
     document.head.appendChild(el);
   })();
 </script>`;
 
-  const aiPrompt = `Install Rybbit analytics on this website.\n\nAdd this script tag to the <head> of every page, using the root layout or base template if there is one:\n\n<script src="${scriptUrl}" data-site-id="${siteId}" defer></script>\n`;
+  const aiPrompt = `Install Rybbit analytics on this website.\n\nAdd this script tag to the <head> of every page, using the root layout or base template if there is one:\n\n<script src="${scriptUrl}" defer></script>\n`;
 
   const rnInstallSnippet = "npm install @rybbit/react-native @react-native-async-storage/async-storage";
 

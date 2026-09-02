@@ -269,7 +269,9 @@ describe("parseScriptConfig", () => {
     mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
     const config = await parseScriptConfig(mockScriptTag);
     expect(config).toBeNull();
-    expect(consoleSpy).toHaveBeenCalledWith("Please provide a valid site ID using the data-site-id attribute");
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Please provide a valid site ID using the ?siteId= query parameter or the data-site-id attribute"
+    );
   });
 
   it("should parse non-numeric site ID", async () => {
@@ -400,6 +402,45 @@ describe("parseScriptConfig", () => {
 
     const config = await parseScriptConfig(mockScriptTag);
     expect(config?.skipPatterns).toEqual([]);
+  });
+
+  it("should read the site ID from the script URL", async () => {
+    mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js?siteId=789");
+
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+
+    const config = await parseScriptConfig(mockScriptTag);
+    expect(config?.siteId).toBe("789");
+    expect(config?.analyticsHost).toBe("https://analytics.example.com");
+  });
+
+  it("should prefer the URL site ID over the data attribute", async () => {
+    mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js?siteId=from-url");
+    mockScriptTag.setAttribute("data-site-id", "from-attr");
+
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+
+    const config = await parseScriptConfig(mockScriptTag);
+    expect(config?.siteId).toBe("from-url");
+  });
+
+  it("should read the site ID from a relative proxied script URL", async () => {
+    mockScriptTag.setAttribute("src", "/analytics/script.js?siteId=proxied");
+
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+
+    const config = await parseScriptConfig(mockScriptTag);
+    expect(config?.siteId).toBe("proxied");
+    expect(config?.analyticsHost).toBe("/analytics");
   });
 
   it("should support legacy site-id attribute", async () => {

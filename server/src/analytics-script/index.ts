@@ -16,7 +16,11 @@ declare global {
 }
 
 (async function () {
-  const scriptTag = document.currentScript as HTMLScriptElement;
+  // Script optimizers that re-inject the tag can leave `document.currentScript`
+  // null; fall back to locating our own tag by its URL.
+  const scriptTag =
+    (document.currentScript as HTMLScriptElement | null) ||
+    document.querySelector<HTMLScriptElement>('script[src*="/script.js"]');
   if (!scriptTag) {
     console.error("Could not find current script tag");
     return;

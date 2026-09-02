@@ -141,6 +141,14 @@
       window.clearTimeout(timeout);
     }
   }
+  function getSiteIdFromSrc(src) {
+    try {
+      const url = new URL(src, window.location.href);
+      return url.searchParams.get("siteId") || url.searchParams.get("site-id") || url.searchParams.get("site_id");
+    } catch (e2) {
+      return null;
+    }
+  }
   async function parseScriptConfig(scriptTag) {
     const src = scriptTag.getAttribute("src");
     if (!src) {
@@ -152,9 +160,9 @@
       console.error("Please provide a valid analytics host");
       return null;
     }
-    const siteId = scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
+    const siteId = getSiteIdFromSrc(src) || scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
     if (!siteId) {
-      console.error("Please provide a valid site ID using the data-site-id attribute");
+      console.error("Please provide a valid site ID using the ?siteId= query parameter or the data-site-id attribute");
       return null;
     }
     const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
@@ -1577,7 +1585,7 @@
 
   // index.ts
   (async function() {
-    const scriptTag = document.currentScript;
+    const scriptTag = document.currentScript || document.querySelector('script[src*="/script.js"]');
     if (!scriptTag) {
       console.error("Could not find current script tag");
       return;

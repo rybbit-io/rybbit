@@ -36,9 +36,8 @@ Alternatively, download from [WordPress.org](https://wordpress.org/plugins/inser
 <script>
 (function() {
   var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
+  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
   s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
   document.head.appendChild(s);
 })();
 </script>
@@ -77,9 +76,8 @@ function add_rybbit_analytics() {
     <script>
     (function() {
       var s = document.createElement('script');
-      s.src = 'https://app.rybbit.io/api/script.js';
+      s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
       s.defer = true;
-      s.setAttribute('data-site-id', 'YOUR_SITE_ID');
       document.head.appendChild(s);
     })();
     </script>
@@ -108,9 +106,8 @@ You can directly edit your theme's `header.php` file to add the script.
 <script>
 (function() {
   var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
+  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
   s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
   document.head.appendChild(s);
 })();
 </script>
@@ -143,9 +140,8 @@ function rybbit_add_tracking_script() {
     <script>
     (function() {
       var s = document.createElement('script');
-      s.src = 'https://app.rybbit.io/api/script.js';
+      s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
       s.defer = true;
-      s.setAttribute('data-site-id', 'YOUR_SITE_ID');
       document.head.appendChild(s);
     })();
     </script>
@@ -183,9 +179,10 @@ Many WordPress caching plugins aggressively cache pages. After adding Rybbit:
    - Browser cache (Ctrl+Shift+R or Cmd+Shift+R)
 
 2. **Exclude the script from optimization:**
-   Some optimization plugins try to defer, combine, or minify scripts. If Rybbit isn't working, check these plugins:
+   Some optimization plugins try to defer, delay, combine, or minify scripts. "Delay JavaScript execution" features in particular rebuild the script tag and drop its `data-*` attributes, which is why the snippets on this page pass the site ID in the URL (`?siteId=`) instead of a `data-site-id` attribute. If Rybbit still isn't working, exclude `app.rybbit.io` in these plugins:
    - **Autoptimize**: Add `app.rybbit.io` to the exclusion list
-   - **WP Rocket**: Exclude from JavaScript optimization
+   - **WP Rocket**: Exclude from JavaScript optimization and from "Delay JavaScript execution"
+   - **Perfmatters / FlyingPress**: Add `app.rybbit.io` to the delay-JS exclusions
    - **LiteSpeed Cache**: Add to JS excludes
    - **SG Optimizer**: Exclude from combine/minify
 
@@ -221,9 +218,8 @@ Use `data-skip-patterns` to exclude certain pages (like admin or preview pages) 
 <script>
 (function() {
   var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
+  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
   s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
   s.setAttribute('data-skip-patterns', '["/wp-admin/**", "/preview/**"]');
   document.head.appendChild(s);
 })();
@@ -238,9 +234,8 @@ Use `data-mask-patterns` to track pageviews on sensitive pages without recording
 <script>
 (function() {
   var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
+  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
   s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
   s.setAttribute('data-mask-patterns', '["/my-account/**", "/orders/*/details"]');
   document.head.appendChild(s);
 })();
@@ -255,9 +250,8 @@ If you have session replay enabled, you can mask or block sensitive content from
 <script>
 (function() {
   var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
+  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
   s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
   s.setAttribute('data-replay-block-selector', '.sensitive-content, #payment-form');
   s.setAttribute('data-replay-mask-text-selectors', '[".user-name", "#email"]');
   s.setAttribute('data-replay-mask-all-inputs', 'true');

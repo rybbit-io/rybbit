@@ -99,6 +99,15 @@ async function fetchFeatureFlags(
   }
 }
 
+function getSiteIdFromSrc(src: string): string | null {
+  try {
+    const url = new URL(src, window.location.href);
+    return url.searchParams.get("siteId") || url.searchParams.get("site-id") || url.searchParams.get("site_id");
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * Parse minimal script configuration from the script tag attributes
  * Most configuration will be fetched from the API
@@ -116,9 +125,14 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
     return null;
   }
 
-  const siteId = scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
+  // Prefer the site ID from the script URL (`/script.js?siteId=...`). Script
+  // optimizers such as WP Rocket, Perfmatters, and FlyingPress recreate the
+  // tag from `data-src` and drop every other `data-*` attribute, but they keep
+  // the URL intact. The attributes remain supported for existing installs.
+  const siteId =
+    getSiteIdFromSrc(src) || scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
   if (!siteId) {
-    console.error("Please provide a valid site ID using the data-site-id attribute");
+    console.error("Please provide a valid site ID using the ?siteId= query parameter or the data-site-id attribute");
     return null;
   }
 
