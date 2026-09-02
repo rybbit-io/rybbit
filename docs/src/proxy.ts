@@ -7,6 +7,7 @@ import {
   HOME_VARIANT_B_PATH,
   HOME_VARIANT_COOKIE,
   HOME_VARIANT_MAX_AGE,
+  HOME_VARIANT_PARAM,
   type HomeVariant,
   isCrawler,
   isHomeVariant,
@@ -15,10 +16,13 @@ import {
 const internationalization = createMiddleware(routing);
 
 /**
- * Homepage experiment arm for this request: the remembered one, or a fresh
- * 50/50 draw that the caller persists. Crawlers are never enrolled.
+ * Homepage experiment arm for this request: a `?variant=` override, else the
+ * remembered one, else a fresh 50/50 draw. `assigned` asks the caller to
+ * (re)persist the cookie. Crawlers are never enrolled unless they ask.
  */
 function resolveHomeVariant(request: NextRequest): { variant: HomeVariant; assigned: boolean } | null {
+  const forced = request.nextUrl.searchParams.get(HOME_VARIANT_PARAM);
+  if (isHomeVariant(forced)) return { variant: forced, assigned: true };
   if (isCrawler(request.headers.get("user-agent"))) return null;
   const existing = request.cookies.get(HOME_VARIANT_COOKIE)?.value;
   if (isHomeVariant(existing)) return { variant: existing, assigned: false };

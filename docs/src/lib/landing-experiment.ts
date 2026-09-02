@@ -8,12 +8,16 @@
  * compared in the dashboard with a Tag filter — see /docs/tagging.
  *
  * Crawlers are never enrolled: they always get the control page, untagged.
+ * `/?variant=a` or `/?variant=b` forces an arm for anyone, and re-pins the
+ * cookie so the rest of the visit stays on it.
  */
 export type HomeVariant = "a" | "b";
 
 export const HOME_VARIANT_COOKIE = "rybbit_home_variant";
 export const HOME_VARIANT_MAX_AGE = 60 * 60 * 24 * 90; // 90 days
 export const HOME_VARIANT_B_PATH = "/lp/b";
+/** `/?variant=a|b` forces an arm (and re-pins the cookie), for review. */
+export const HOME_VARIANT_PARAM = "variant";
 
 export const HOME_VARIANT_TAG: Record<HomeVariant, string> = {
   a: "homepage-v2-a",
