@@ -1,6 +1,7 @@
 import "@/app/global.css";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { RybbitScript } from "@/components/RybbitScript";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
@@ -83,7 +84,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
       </head>
       <body className={`flex flex-col min-h-screen ${inter.variable} font-sans`}>
         {children}
-        <Script src="https://demo.rybbit.com/api/script.js" data-site-id="21" />
+        <RybbitScript />
         <Script
           src="https://demo.rybbit.com/api/script.js?ns=demo"
           data-site-id="3b023d1a7895"
