@@ -47,6 +47,17 @@ describe("segmentFiltersSchema", () => {
     expect(result.success ? "" : result.error.issues[0].message).toContain("Invalid regular expression");
   });
 
+  it("holds stored regexes to the query path's limits: non-empty, at most 500 chars, RE2-compatible, one pattern", () => {
+    const regex = (value: unknown[]) => segmentFiltersSchema.safeParse([{ parameter: "pathname", type: "regex", value }]);
+    expect(regex([""]).success).toBe(false);
+    expect(regex(["a".repeat(501)]).success).toBe(false);
+    expect(regex(["^(?!.*test).*$"]).success).toBe(false);
+    expect(regex(["^/docs/(?=guide)"]).success).toBe(false);
+    expect(regex(["(a)\\1"]).success).toBe(false);
+    expect(regex(["^/a", "^/b"]).success).toBe(false);
+    expect(regex(["^/docs/[a-z-]+$"]).success).toBe(true);
+  });
+
   it("rejects non-numeric values on numeric comparisons and coordinates", () => {
     expect(segmentFiltersSchema.safeParse([{ parameter: "lat", type: "equals", value: ["north"] }]).success).toBe(false);
     expect(

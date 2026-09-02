@@ -189,6 +189,7 @@ import {
 import { mapHeaders } from "./lib/auth-utils.js";
 import { registerApiErrorResponses } from "./lib/api-errors.js";
 import type { ScopeAction, ScopeResource } from "./lib/scopes.js";
+import type { ScopeStatements } from "@rybbit/shared";
 import { auth } from "./lib/auth.js";
 import { mcpRoutes } from "./mcp/index.js";
 import { oauthWellKnownRoutes } from "./mcp/wellKnown.js";
@@ -737,5 +738,9 @@ declare module "fastify" {
     user?: any; // Or define a more specific user type
     /** Set by the auth guards when the bearer credential is an org-owned API key. */
     apiKeyOrganizationId?: string;
+    /** True when the request was authenticated with a bearer credential (API key or OAuth token). */
+    bearerAuth?: boolean;
+    /** Scope statements of that credential; null = unrestricted. */
+    bearerStatements?: ScopeStatements | null;
   }
 }

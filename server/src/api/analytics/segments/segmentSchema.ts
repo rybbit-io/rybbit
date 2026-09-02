@@ -1,5 +1,6 @@
 import { SEGMENT_DESCRIPTION_MAX_LENGTH, SEGMENT_MAX_FILTERS, SEGMENT_NAME_MAX_LENGTH } from "@rybbit/shared";
 import { z } from "zod";
+import { validateRegexPattern } from "../utils/getFilterStatement.js";
 import { filterSchema } from "../utils/query-validation.js";
 
 const NO_VALUE_TYPES = new Set(["is_null", "is_not_null"]);
@@ -26,15 +27,15 @@ export const segmentFilterSchema = filterSchema.superRefine((filter, ctx) => {
   }
 
   if (REGEX_TYPES.has(filter.type)) {
+    // The query path only ever runs the first value of a regex filter, so a
+    // stored regex filter carries exactly one pattern.
+    if (filter.value.length !== 1) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "A regex filter takes exactly one pattern", path: ["value"] });
+    }
     for (const value of filter.value) {
-      try {
-        new RegExp(String(value));
-      } catch {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Invalid regular expression: ${String(value)}`,
-          path: ["value"],
-        });
+      const error = validateRegexPattern(String(value));
+      if (error) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: error, path: ["value"] });
       }
     }
   }

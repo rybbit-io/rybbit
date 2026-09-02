@@ -23,8 +23,12 @@ const mobile: Filter = { parameter: "device_type", type: "equals", value: ["Mobi
 const germany: Filter = { parameter: "country", type: "equals", value: ["DE"] };
 const chrome: Filter = { parameter: "browser", type: "equals", value: ["Chrome"] };
 
-function run(query: Record<string, unknown>, params: Record<string, string> = { siteId: "1" }) {
-  const request: any = { query, params, headers: {} };
+function run(
+  query: Record<string, unknown>,
+  params: Record<string, string> = { siteId: "1" },
+  extra: Record<string, unknown> = {}
+) {
+  const request: any = { query, params, headers: {}, ...extra };
   const reply: any = { statusCode: 200 };
   reply.status = vi.fn((code: number) => {
     reply.statusCode = code;
@@ -95,6 +99,19 @@ describe("expandSegmentParam", () => {
     const publicResult = await run({ segment_id: "7" });
     expect(publicResult.reply.status).not.toHaveBeenCalled();
     expect(JSON.parse(publicResult.request.query.filters)).toEqual([mobile, germany]);
+  });
+
+  it("requires segments:read from a scoped bearer credential, even when the route only needs analytics:read", async () => {
+    const scoped = { bearerAuth: true, bearerStatements: { analytics: ["read"] } };
+    const denied = await run({ segment_id: "7" }, { siteId: "1" }, scoped);
+    expect(denied.reply.statusCode).toBe(403);
+    expect(denied.reply.payload).toEqual({ error: "Insufficient scope", required: "segments:read" });
+
+    const allowed = await run({ segment_id: "7" }, { siteId: "1" }, { bearerAuth: true, bearerStatements: { segments: ["read"] } });
+    expect(allowed.reply.status).not.toHaveBeenCalled();
+
+    const legacy = await run({ segment_id: "7" }, { siteId: "1" }, { bearerAuth: true, bearerStatements: null });
+    expect(legacy.reply.status).not.toHaveBeenCalled();
   });
 
   it("rejects caller filters that fail validation instead of silently dropping them", async () => {

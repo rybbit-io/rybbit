@@ -1,7 +1,10 @@
 import type { Filter } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
+import { hasScope, scopeToString } from "../../../lib/scopes.js";
 import { validateFilters } from "../utils/query-validation.js";
 import { canReadSegment, loadSegmentForSite, resolveSegmentActor } from "./segmentAccess.js";
+
+const SEGMENTS_READ = { resource: "segments", action: "read" } as const;
 
 const filterKey = (filter: Filter) => JSON.stringify([filter.parameter, filter.type, filter.value]);
 
@@ -37,6 +40,13 @@ export async function expandSegmentParam(request: FastifyRequest, reply: Fastify
   const siteId = Number(params?.siteId);
   if (!Number.isInteger(siteId) || siteId <= 0) {
     return reply.status(400).send({ error: "Site ID required" });
+  }
+
+  // The route guard only checked the endpoint's own scope. A scoped bearer
+  // credential must also hold segments:read, or it could infer a private
+  // segment's definition through this param that it cannot fetch directly.
+  if (request.bearerAuth && !hasScope(request.bearerStatements ?? null, SEGMENTS_READ)) {
+    return reply.status(403).send({ error: "Insufficient scope", required: scopeToString(SEGMENTS_READ) });
   }
 
   const loaded = await loadSegmentForSite(siteId, segmentId);
