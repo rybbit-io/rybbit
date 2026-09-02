@@ -20,10 +20,13 @@ export function ParameterPopover({
   onUpdate,
   availableFilters,
   children,
+  modal,
 }: {
   filter: Filter;
   onUpdate: (filter: Filter) => void;
   availableFilters?: FilterParameter[];
+  /** Set when rendered inside a dialog: the dialog's scroll lock otherwise swallows wheel events in the portaled popover. */
+  modal?: boolean;
   children: React.ReactNode;
 }) {
   const t = useExtracted();
@@ -62,7 +65,7 @@ export function ParameterPopover({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
         <Command>

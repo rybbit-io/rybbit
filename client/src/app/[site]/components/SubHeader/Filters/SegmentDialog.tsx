@@ -2,12 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Filter, FilterParameter, Segment } from "@rybbit/shared";
-import { Building2, Globe, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import {
   useCreateSegment,
   useDeleteSegment,
@@ -41,10 +40,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "../../../../../componen
 import { toast } from "../../../../../components/ui/sonner";
 import { Switch } from "../../../../../components/ui/switch";
 import { Textarea } from "../../../../../components/ui/textarea";
-import { authClient } from "../../../../../lib/auth";
 import { useGetRegionName } from "../../../../../lib/geo";
 import { applySegment, clearSegment, useStore } from "../../../../../lib/store";
-import { cn } from "../../../../../lib/utils";
 import { FilterChip } from "./FilterChip";
 import { FilterPicker } from "./FilterPicker";
 import { formatDisplayValue, operatorNeedsValue, useParameterLabel } from "./labels";
@@ -65,7 +62,6 @@ const formSchema = z.object({
   name: z.string().trim().min(1, "Give the segment a name").max(SEGMENT_NAME_MAX_LENGTH),
   description: z.string().trim().max(SEGMENT_DESCRIPTION_MAX_LENGTH),
   filters: z.array(filterSchema).min(1, "Add at least one filter").max(SEGMENT_MAX_FILTERS),
-  scope: z.enum(["site", "organization"]),
   isPublic: z.boolean(),
 });
 
@@ -109,8 +105,6 @@ export function SegmentDialog(props: SegmentDialogProps) {
 
 function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableFilters }: SegmentDialogProps) {
   const t = useExtracted();
-  const { data: site } = useGetSite(siteId);
-  const { data: activeOrganization } = authClient.useActiveOrganization();
   const { getRegionName } = useGetRegionName();
   const getParameterLabel = useParameterLabel();
   const appliedSegmentId = useStore(state => state.segmentId);
@@ -135,14 +129,12 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
       name: segment?.name ?? suggestedName,
       description: segment?.description ?? "",
       filters: startingFilters,
-      scope: segment ? (segment.siteId === null ? "organization" : "site") : "site",
       isPublic: segment?.isPublic ?? false,
     },
   });
 
   const filters = form.watch("filters") as Filter[];
   const filterKeys = filterListKeys(filters);
-  const scope = form.watch("scope");
   const setFilters = (next: Filter[]) => form.setValue("filters", next, { shouldValidate: true, shouldDirty: true });
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -164,10 +156,6 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
     setPickerOpen(isOpen);
   };
 
-  // Org-wide scope is an admin decision on the server; only offer it when the
-  // toggle can succeed, or when the segment is already org-wide.
-  const canChooseScope = !!site?.isOwner || segment?.siteId === null;
-  const organizationName = activeOrganization?.name;
   const isSaving = isCreating || isUpdating;
 
   const onSubmit = async (values: FormValues) => {
@@ -176,7 +164,6 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
       description: values.description.length > 0 ? values.description : null,
       filters: values.filters as Filter[],
       isPublic: values.isPublic,
-      scope: values.scope,
     };
     try {
       if (segment) {
@@ -240,11 +227,13 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
                     key={filterKeys[index]}
                     filter={filter}
                     availableFilters={availableFilters}
+                    modal
                     onUpdate={next => setFilters(filters.map((f, i) => (i === index ? next : f)))}
                     onRemove={() => setFilters(filters.filter((_, i) => i !== index))}
                   />
                 ))}
-                <Popover open={pickerOpen} onOpenChange={handlePickerOpenChange}>
+                {/* modal: the dialog's scroll lock otherwise swallows wheel events in this portaled popover */}
+                <Popover open={pickerOpen} onOpenChange={handlePickerOpenChange} modal>
                   <PopoverTrigger asChild>
                     <Button type="button" size="sm" variant="outline" className="gap-1.5">
                       <Plus className="h-4 w-4" />
@@ -270,41 +259,6 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
             </FormItem>
           )}
         />
-
-        {canChooseScope && (
-          <FormField
-            control={form.control}
-            name="scope"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("Available on")}</FormLabel>
-                <div className="inline-flex rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden">
-                  <ScopeOption
-                    selected={field.value === "site"}
-                    onSelect={() => field.onChange("site")}
-                    icon={<Globe className="h-3.5 w-3.5" />}
-                    label={t("This site")}
-                  />
-                  <ScopeOption
-                    selected={field.value === "organization"}
-                    onSelect={() => field.onChange("organization")}
-                    icon={<Building2 className="h-3.5 w-3.5" />}
-                    label={
-                      organizationName
-                        ? t("All sites in {organization}", { organization: organizationName })
-                        : t("All sites in the organization")
-                    }
-                  />
-                </div>
-                {scope === "organization" && (
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {t("Site-specific values such as paths may not mean the same thing on every site.")}
-                  </p>
-                )}
-              </FormItem>
-            )}
-          />
-        )}
 
         <FormField
           control={form.control}
@@ -377,34 +331,5 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
         </DialogFooter>
       </form>
     </Form>
-  );
-}
-
-function ScopeOption({
-  selected,
-  onSelect,
-  icon,
-  label,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={cn(
-        "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border-r last:border-r-0 border-neutral-200 dark:border-neutral-800 transition-colors",
-        selected
-          ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-50 font-medium"
-          : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
-      )}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
