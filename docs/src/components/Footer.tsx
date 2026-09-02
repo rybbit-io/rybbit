@@ -1,4 +1,5 @@
 import { GridCrosses } from "@/components/GridCrosses";
+import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { SiDiscord, SiGithub, SiX } from "@icons-pack/react-simple-icons";
@@ -21,7 +22,19 @@ interface FooterLink {
   external?: boolean;
 }
 
-export function Footer() {
+interface FooterProps {
+  /**
+   * "sheet" (default) is the marketing pages' instrument sheet: 1200px column
+   * with hairline sides, corner crosses and seams between cells. "bare" is the
+   * homepage redesign register: 1280px column, open columns, one hairline
+   * above the bottom row.
+   */
+  chrome?: "sheet" | "bare";
+}
+
+export function Footer({ chrome = "sheet" }: FooterProps) {
+  const bare = chrome === "bare";
+
   const t = useExtracted();
 
   const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
@@ -85,10 +98,26 @@ export function Footer() {
 
   return (
     <footer className="border-t border-neutral-200 dark:border-neutral-800">
-      <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
-        <GridCrosses className="hidden sm:block" />
-        <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:col-span-3 lg:border-b-0 lg:border-r lg:py-14">
+      <div
+        className={cn(
+          "relative mx-auto",
+          bare ? "max-w-[1280px] px-5 sm:px-8" : "max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800"
+        )}
+      >
+        {!bare && <GridCrosses className="hidden sm:block" />}
+        <div
+          className={cn(
+            "grid lg:grid-cols-12",
+            bare ? "gap-10 py-12 lg:gap-8 lg:py-14" : "border-b border-neutral-200 dark:border-neutral-800"
+          )}
+        >
+          <div
+            className={cn(
+              "lg:col-span-3",
+              !bare &&
+                "border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:border-b-0 lg:border-r lg:py-14"
+            )}
+          >
             <div className="flex h-full flex-col">
               <div>
                 <Link
@@ -106,11 +135,20 @@ export function Footer() {
                   />
                 </Link>
 
+                {bare && (
+                  <p className="mt-4 max-w-[26ch] text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+                    {t("Open-source, cookieless web & product analytics.")}
+                  </p>
+                )}
+
                 <a
                   href="https://www.producthunt.com/products/rybbit?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_source=badge-rybbit&#0045;2"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-8 inline-flex max-w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+                  className={cn(
+                    "inline-flex max-w-full rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
+                    bare ? "mt-6" : "mt-8"
+                  )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -123,7 +161,7 @@ export function Footer() {
                 </a>
               </div>
 
-              <div className="mt-8 flex items-center lg:mt-auto lg:pt-12">
+              <div className={cn("flex items-center", bare ? "mt-6 -ml-2.5" : "mt-8 lg:mt-auto lg:pt-12")}>
                 {socialLinks.map(({ label, href, icon: Icon }) => (
                   <a
                     key={label}
@@ -140,14 +178,20 @@ export function Footer() {
             </div>
           </div>
 
-          <nav aria-label="Footer" className="grid grid-cols-2 lg:col-span-9 md:grid-cols-4">
+          <nav
+            aria-label="Footer"
+            className={cn("grid grid-cols-2 md:grid-cols-4 lg:col-span-9", bare && "gap-x-6 gap-y-10")}
+          >
             {footerGroups.map(group => (
               <section
                 key={group.title}
-                className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14"
+                className={cn(
+                  !bare &&
+                    "border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14"
+                )}
               >
                 <h2 className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">{group.title}</h2>
-                <ul className="mt-4">
+                <ul className={bare ? "mt-3" : "mt-4"}>
                   {group.links.map(link => (
                     <li key={link.href}>
                       {link.external ? (
@@ -172,11 +216,23 @@ export function Footer() {
           </nav>
         </div>
 
-        <div className="grid lg:grid-cols-12">
-          <div className="flex items-center border-b border-neutral-200 px-5 py-5 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 sm:px-8 lg:col-span-3 lg:border-b-0 lg:border-r">
+        <div className={cn("grid lg:grid-cols-12", bare && "border-t border-neutral-200 dark:border-neutral-800")}>
+          <div
+            className={cn(
+              "flex items-center text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-3",
+              bare
+                ? "pt-5 lg:py-5"
+                : "border-b border-neutral-200 px-5 py-5 dark:border-neutral-800 sm:px-8 lg:border-b-0 lg:border-r"
+            )}
+          >
             {t("© {year} Rybbit. All rights reserved.", { year: String(new Date().getFullYear()) })}
           </div>
-          <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:col-span-9 lg:px-6">
+          <div
+            className={cn(
+              "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:col-span-9",
+              bare ? "pb-5 pt-2 lg:py-4" : "px-5 py-4 sm:px-8 lg:px-6"
+            )}
+          >
             <div className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
               <span>{t("Made with ❤️ by frogs")}</span>
               <a
