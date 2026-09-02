@@ -4,7 +4,7 @@ import { DateTime } from "luxon";
 import { db } from "../../db/postgres/postgres.js";
 import { user } from "../../db/postgres/schema.js";
 import { cancelScheduledEmail, unsubscribeContact } from "../../lib/email/email.js";
-import { verifySignedPayload } from "../../lib/signedToken.js";
+import { verifyExpiringPayload } from "../../lib/signedToken.js";
 
 // Cancel tip emails pre-scheduled in Resend for users who signed up before the
 // lifecycle email system replaced the fixed drip. Remove once those have aged out.
@@ -61,20 +61,28 @@ export const unsubscribeMarketing = async (request: FastifyRequest, reply: Fasti
 // One-click unsubscribe handler
 // GET: User clicks link in email - show confirmation page
 // POST: Email client's List-Unsubscribe-Post - return 200 OK
+// Unsigned links are honored only until this date: emails sent before link
+// signing existed (2026-09) carry no signature, and unsubscribe links must
+// keep working for a while. After the cutoff every link must carry a valid
+// signed (email, exp) pair, closing the unsubscribe-anyone hole for good.
+const LEGACY_UNSIGNED_CUTOFF = DateTime.fromISO("2026-12-01T00:00:00Z");
+
 export const oneClickUnsubscribeMarketing = async (
-  request: FastifyRequest<{ Querystring: { email?: string; sig?: string } }>,
+  request: FastifyRequest<{ Querystring: { email?: string; exp?: string; sig?: string } }>,
   reply: FastifyReply
 ) => {
   try {
     const email = request.query.email;
-    const sig = request.query.sig;
+    const { exp, sig } = request.query;
     const isGetRequest = request.method === "GET";
 
-    // Links in current emails carry an HMAC signature; reject a bad one.
-    // Links without one (from emails sent before signing existed) are still
-    // honored so old unsubscribe links keep working.
-    if (email && sig && !verifySignedPayload(`unsubscribe:${email}`, sig)) {
-      return reply.status(400).send({ error: "Invalid signature" });
+    if (email) {
+      const validSignature = !!(sig && exp) && verifyExpiringPayload(`unsubscribe:${email}`, exp, sig);
+      const legacyWindowOpen = DateTime.utc() < LEGACY_UNSIGNED_CUTOFF;
+      const acceptableLegacy = !sig && !exp && legacyWindowOpen;
+      if (!validSignature && !acceptableLegacy) {
+        return reply.status(400).send({ error: "Invalid or expired unsubscribe link" });
+      }
     }
 
     if (!email) {

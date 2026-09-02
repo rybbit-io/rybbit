@@ -1,13 +1,13 @@
-import { and, eq, gt, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, like } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { goals, lifecycleEmailLog, member, sites, user } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
-import { isContactUnsubscribed, sendLifecycleEmail } from "../../lib/email/email.js";
+import { cancelScheduledEmail, isContactUnsubscribed, sendLifecycleEmail } from "../../lib/email/email.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
-import { signPayload } from "../../lib/signedToken.js";
+import { signExpiringPayload } from "../../lib/signedToken.js";
 import * as content from "./lifecycleContent.js";
 import { detectPlatform, platformForKey, type PlatformInfo } from "./platformDetect.js";
 
@@ -16,17 +16,25 @@ import { detectPlatform, platformForKey, type PlatformInfo } from "./platformDet
  * transition or a timeout inside a state - never by a timer from signup.
  * The cron re-evaluates real state (Postgres + ClickHouse) at send time, and
  * the unique (userId, emailKey) index on lifecycle_email_log makes each email
- * fire at most once. At most one email per user per tick, with a minimum gap
- * between educational sends.
+ * fire at most once. At most one email per user per run (enforced across both
+ * passes via a per-run set), with a minimum gap between educational sends.
+ *
+ * Concurrency: the cron runs on the cluster primary only, so a single
+ * evaluator holds the "one email per user per run" invariant. If this ever
+ * moves to multiple replicas, the per-run set must become a distributed
+ * claim - the unique key alone only dedupes per emailKey, not per user.
  */
 
 const COHORT_DAYS = 30; // users/sites older than this never enter the onboarding flow
 const MIN_GAP_HOURS = 48; // between non-transition emails to the same user
+const CHECK_INSTALL_TTL_SECONDS = 30 * 24 * 3600;
+const NEGATIVE_CACHE_TTL_MS = 12 * 3600 * 1000; // don't re-run a no-result ClickHouse probe for this long
 
 interface SiteStats {
   firstEvent: DateTime;
   lastEvent: DateTime;
   total: number;
+  pageviews: number;
   customEvents: number;
 }
 
@@ -55,6 +63,12 @@ class LifecycleEmailService {
   private cronTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("lifecycle-emails");
   private running = false;
+  private legacyTipsCancelled = false;
+  private lastWentQuietAt: DateTime | null = null;
+  /** cacheKey -> epoch ms until which a known-negative ClickHouse probe is not repeated */
+  private negativeCache = new Map<string, number>();
+  /** users already sent an email in the current run, shared across both passes */
+  private emailedThisRun = new Set<string>();
 
   // -------------------------------------------------------------------------
   // Data helpers
@@ -64,6 +78,8 @@ class LifecycleEmailService {
     const stats = new Map<number, SiteStats>();
     if (siteIds.length === 0) return stats;
 
+    // Cohort sites are < COHORT_DAYS old, so a bounded time predicate covers
+    // their full history and keeps the scan on the primary-key index.
     const result = await clickhouse.query({
       query: `
         SELECT
@@ -71,9 +87,11 @@ class LifecycleEmailService {
           min(timestamp) AS first_event,
           max(timestamp) AS last_event,
           count() AS total,
+          countIf(type = 'pageview') AS pageviews,
           countIf(type = 'custom_event') AS custom_events
         FROM events
         WHERE site_id IN ({siteIds:Array(Int32)})
+          AND timestamp > now() - INTERVAL ${COHORT_DAYS + 10} DAY
         GROUP BY site_id
       `,
       format: "JSONEachRow",
@@ -85,6 +103,7 @@ class LifecycleEmailService {
       first_event: string;
       last_event: string;
       total: string | number;
+      pageviews: string | number;
       custom_events: string | number;
     }>();
 
@@ -93,6 +112,7 @@ class LifecycleEmailService {
         firstEvent: parseTs(row.first_event),
         lastEvent: parseTs(row.last_event),
         total: Number(row.total),
+        pageviews: Number(row.pageviews),
         customEvents: Number(row.custom_events),
       });
     }
@@ -104,6 +124,7 @@ class LifecycleEmailService {
       query: `
         SELECT country FROM events
         WHERE site_id = {siteId:Int32} AND type = 'pageview'
+          AND timestamp > now() - INTERVAL 7 DAY
         ORDER BY timestamp ASC
         LIMIT 1
       `,
@@ -121,6 +142,7 @@ class LifecycleEmailService {
         SELECT uniq(session_id) AS sessions, countIf(type = 'pageview') AS pageviews
         FROM events
         WHERE site_id = {siteId:Int32}
+          AND timestamp > now() - INTERVAL ${COHORT_DAYS + 10} DAY
       `,
       format: "JSONEachRow",
       query_params: { siteId },
@@ -134,6 +156,7 @@ class LifecycleEmailService {
           SELECT ${expression} AS value, count() AS c
           FROM events
           WHERE site_id = {siteId:Int32} AND type = 'pageview' AND ${condition}
+            AND timestamp > now() - INTERVAL ${COHORT_DAYS + 10} DAY
           GROUP BY value
           ORDER BY c DESC
           LIMIT 1
@@ -154,6 +177,10 @@ class LifecycleEmailService {
   }
 
   private async fetchConvertingPath(siteId: number): Promise<string | null> {
+    const cacheKey = `conv:${siteId}`;
+    const retryAfter = this.negativeCache.get(cacheKey);
+    if (retryAfter && retryAfter > Date.now()) return null;
+
     const result = await clickhouse.query({
       query: `
         SELECT pathname, count() AS c
@@ -170,7 +197,9 @@ class LifecycleEmailService {
       query_params: { siteId },
     });
     const rows = await result.json<{ pathname: string }>();
-    return rows[0]?.pathname || null;
+    const path = rows[0]?.pathname || null;
+    if (!path) this.negativeCache.set(cacheKey, Date.now() + NEGATIVE_CACHE_TTL_MS);
+    return path;
   }
 
   private async resolvePlatform(site: OwnedSite): Promise<PlatformInfo | null> {
@@ -184,15 +213,17 @@ class LifecycleEmailService {
     return detected;
   }
 
-  private checkInstallUrl(domain: string): string {
-    const sig = signPayload(`check-install:${domain}`);
-    return `${process.env.BASE_URL}/api/site/check-install?domain=${encodeURIComponent(domain)}&sig=${sig}`;
+  private checkInstallUrl(siteId: number, domain: string): string {
+    const { exp, sig } = signExpiringPayload(`check-install:${siteId}:${domain}`, CHECK_INSTALL_TTL_SECONDS);
+    return `${process.env.BASE_URL}/api/site/check-install?siteId=${siteId}&domain=${encodeURIComponent(domain)}&exp=${exp}&sig=${sig}`;
   }
 
   /**
    * Record + send. The insert happens first with the unique index as the guard,
-   * so a concurrent or re-entrant run can never double-send; if the send then
-   * fails, the row is removed so the next tick retries.
+   * so a re-entrant run can never double-send; if the send then fails, the row
+   * is removed so the next tick retries. The lifecycle key doubles as the
+   * Resend idempotency key so an "accepted but response lost" retry can't
+   * deliver twice.
    */
   private async sendOnce(
     userId: string,
@@ -214,11 +245,12 @@ class LifecycleEmailService {
         await db.delete(lifecycleEmailLog).where(eq(lifecycleEmailLog.id, inserted.id));
         return false;
       }
-      const sent = await sendLifecycleEmail(email, message.subject, message.text);
+      const sent = await sendLifecycleEmail(email, message.subject, message.text, `lifecycle:${userId}:${emailKey}`);
       if (!sent) {
         await db.delete(lifecycleEmailLog).where(eq(lifecycleEmailLog.id, inserted.id));
         return false;
       }
+      this.emailedThisRun.add(userId);
       this.logger.info({ userId, emailKey, siteId }, "Sent lifecycle email");
       return true;
     } catch (error) {
@@ -229,16 +261,52 @@ class LifecycleEmailService {
   }
 
   // -------------------------------------------------------------------------
+  // Rollout: cancel tips the retired drip already scheduled in Resend
+  // -------------------------------------------------------------------------
+
+  private async cancelLegacyScheduledTips(): Promise<void> {
+    if (this.legacyTipsCancelled) return;
+    this.legacyTipsCancelled = true;
+
+    try {
+      // The old drip scheduled at most 5 days out, so only recent signups can
+      // still have pending sends worth cancelling.
+      const cutoff = DateTime.utc().minus({ days: 10 }).toSQL({ includeOffset: false })!;
+      const users = await db
+        .select({ id: user.id, scheduledTipEmailIds: user.scheduledTipEmailIds })
+        .from(user)
+        .where(gt(user.createdAt, cutoff));
+
+      for (const u of users) {
+        const ids = (u.scheduledTipEmailIds as string[]) || [];
+        if (ids.length === 0) continue;
+        for (const emailId of ids) {
+          await cancelScheduledEmail(emailId);
+        }
+        await db.update(user).set({ scheduledTipEmailIds: [] }).where(eq(user.id, u.id));
+        this.logger.info({ userId: u.id, cancelled: ids.length }, "Cancelled legacy scheduled tip emails");
+      }
+    } catch (error) {
+      this.legacyTipsCancelled = false; // retry next run
+      this.logger.error({ err: error }, "Error cancelling legacy scheduled tips");
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Onboarding pass: users in their first COHORT_DAYS
   // -------------------------------------------------------------------------
 
   private async processOnboarding(now: DateTime): Promise<void> {
     const cohortStart = now.minus({ days: COHORT_DAYS });
 
+    // No emailVerified filter: this app doesn't require (or send) email
+    // verification on password signup, so gating on it would exclude nearly
+    // every normal signup. Bounce protection comes from Resend suppression
+    // (isContactUnsubscribed) checked before every send.
     const users = await db
       .select({ id: user.id, email: user.email, name: user.name, createdAt: user.createdAt })
       .from(user)
-      .where(and(gt(user.createdAt, cohortStart.toSQL({ includeOffset: false })!), eq(user.emailVerified, true)));
+      .where(gt(user.createdAt, cohortStart.toSQL({ includeOffset: false })!));
     if (users.length === 0) return;
 
     const userIds = users.map(u => u.id);
@@ -350,45 +418,58 @@ class LifecycleEmailService {
       if (sent) return;
     }
 
-    const hasAnyData = userSites.some(site => (stats.get(site.siteId)?.total ?? 0) > 0);
-
     // --- State: no site created ---
     if (userSites.length === 0) {
-      if (signupAge >= 72 && sentLog.has("no_site_1") && gapElapsed) {
-        if (await unsubscribed()) return;
-        await this.sendOnce(u.id, u.email, "no_site_2", null, () => content.noSite2(u.name));
-      } else if (signupAge >= 2 && !sentLog.has("no_site_1")) {
+      if (!sentLog.has("no_site_1")) {
+        if (signupAge < 2) return;
         if (await unsubscribed()) return;
         await this.sendOnce(u.id, u.email, "no_site_1", null, () => content.noSite1(u.name));
+      } else if (!sentLog.has("no_site_2") && signupAge >= 72 && gapElapsed) {
+        if (await unsubscribed()) return;
+        await this.sendOnce(u.id, u.email, "no_site_2", null, () => content.noSite2(u.name));
       }
       return;
     }
 
-    // --- State: site created, no data anywhere ---
-    if (!hasAnyData) {
-      const site = [...userSites].sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis())[0];
-      const siteAge = now.diff(site.createdAt, "hours").hours;
+    // --- Install track: evaluated per site, so a working site doesn't
+    // suppress install help for the owner's other new sites ---
+    const noDataSites = userSites
+      .filter(site => !stats.get(site.siteId) && now.diff(site.createdAt, "days").days < COHORT_DAYS)
+      .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
 
-      if (siteAge >= 24 * 5 && sentLog.has(`install_check:${site.siteId}`) && gapElapsed) {
+    for (const site of noDataSites) {
+      const siteAge = now.diff(site.createdAt, "hours").hours;
+      const snippetKey = `install_snippet:${site.siteId}`;
+      const checkKey = `install_check:${site.siteId}`;
+      const finalKey = `install_final:${site.siteId}`;
+      const snippetSentAt = sentLog.get(snippetKey);
+      const checkSentAt = sentLog.get(checkKey);
+
+      if (!sentLog.has(snippetKey)) {
+        // The snippet email is the user's next step right after creating a
+        // site; it is exempt from the educational gap.
+        if (siteAge < 1) continue;
         if (await unsubscribed()) return;
-        await this.sendOnce(u.id, u.email, `install_final:${site.siteId}`, site.siteId, () =>
-          content.installFinal(site.domain, u.name)
-        );
-      } else if (siteAge >= 24 && sentLog.has(`install_snippet:${site.siteId}`)) {
-        if (await unsubscribed()) return;
-        await this.sendOnce(u.id, u.email, `install_check:${site.siteId}`, site.siteId, () =>
-          content.installCheck(site.domain, this.checkInstallUrl(site.domain), u.name)
-        );
-      } else if (siteAge >= 1 && !sentLog.has(`install_snippet:${site.siteId}`)) {
-        // The snippet email is the user's next step right after creating a site;
-        // it is exempt from the educational gap.
-        if (await unsubscribed()) return;
-        await this.sendOnce(u.id, u.email, `install_snippet:${site.siteId}`, site.siteId, async () => {
+        const sent = await this.sendOnce(u.id, u.email, snippetKey, site.siteId, async () => {
           const platform = await this.resolvePlatform(site);
           return content.installSnippet(site.domain, site.siteId, platform, u.name);
         });
+        if (sent) return;
+      } else if (!sentLog.has(checkKey) && snippetSentAt && now.diff(snippetSentAt, "hours").hours >= 24) {
+        // Timed from the snippet email, not site age, so a pre-existing site
+        // picked up at rollout doesn't get two install emails in one hour.
+        if (await unsubscribed()) return;
+        const sent = await this.sendOnce(u.id, u.email, checkKey, site.siteId, () =>
+          content.installCheck(site.domain, this.checkInstallUrl(site.siteId, site.domain), u.name)
+        );
+        if (sent) return;
+      } else if (!sentLog.has(finalKey) && checkSentAt && now.diff(checkSentAt, "hours").hours >= 96 && gapElapsed) {
+        if (await unsubscribed()) return;
+        const sent = await this.sendOnce(u.id, u.email, finalKey, site.siteId, () =>
+          content.installFinal(site.domain, u.name)
+        );
+        if (sent) return;
       }
-      return;
     }
 
     // --- State: data flowing. Value emails keyed to data age, not signup age ---
@@ -399,7 +480,9 @@ class LifecycleEmailService {
       if (!s || s.total === 0) continue;
       const dataAgeDays = now.diff(s.firstEvent, "days").days;
 
-      if (dataAgeDays >= 3 && dataAgeDays < 14 && !sentLog.has(`first_days:${site.siteId}`)) {
+      // Pageview count comes from the batched stats, so a custom-event-only
+      // site is skipped without a per-tick ClickHouse probe.
+      if (dataAgeDays >= 3 && dataAgeDays < 14 && s.pageviews > 0 && !sentLog.has(`first_days:${site.siteId}`)) {
         if (await unsubscribed()) return;
         const sent = await this.sendOnce(u.id, u.email, `first_days:${site.siteId}`, site.siteId, async () => {
           const report = await this.fetchFirstDaysStats(site.siteId);
@@ -435,47 +518,90 @@ class LifecycleEmailService {
   // -------------------------------------------------------------------------
 
   private async processWentQuiet(now: DateTime): Promise<void> {
-    // Sites with a real history whose last event landed 48-60h ago. The 12h
-    // window plus the unique email key means this fires exactly once per outage.
+    // Candidates: sites with events in the last 7 days whose latest event is
+    // older than 48h. The 7-day window (vs a hard 48-60h band) means a cron
+    // outage longer than the band can't silently skip an alert; the per-outage
+    // email key plus the 30-day per-site cooldown below prevent repeats.
     const result = await clickhouse.query({
       query: `
-        SELECT site_id, max(timestamp) AS last_event, count() AS total
+        SELECT site_id, max(timestamp) AS last_event
         FROM events
-        WHERE timestamp > now() - INTERVAL 90 DAY
+        WHERE timestamp > now() - INTERVAL 7 DAY
         GROUP BY site_id
-        HAVING total >= 100
-          AND last_event < now() - INTERVAL 48 HOUR
-          AND last_event > now() - INTERVAL 60 HOUR
+        HAVING last_event < now() - INTERVAL 48 HOUR
       `,
       format: "JSONEachRow",
     });
-    const quietRows = await result.json<{ site_id: number; last_event: string; total: string | number }>();
+    const quietRows = await result.json<{ site_id: number; last_event: string }>();
     if (quietRows.length === 0) return;
 
     const quietSiteIds = quietRows.map(r => Number(r.site_id));
+
+    // "Established" check, bounded: at least 100 events in the 3 weeks before
+    // going quiet - a scratch site with a handful of test hits gets no alert.
+    const volumeResult = await clickhouse.query({
+      query: `
+        SELECT site_id, count() AS total
+        FROM events
+        WHERE site_id IN ({siteIds:Array(Int32)})
+          AND timestamp > now() - INTERVAL 21 DAY
+        GROUP BY site_id
+        HAVING total >= 100
+      `,
+      format: "JSONEachRow",
+      query_params: { siteIds: quietSiteIds },
+    });
+    const establishedIds = new Set((await volumeResult.json<{ site_id: number }>()).map(r => Number(r.site_id)));
+
+    const candidates = quietRows.filter(r => establishedIds.has(Number(r.site_id)));
+    if (candidates.length === 0) return;
+
     const quietSites = await db
       .select({ siteId: sites.siteId, domain: sites.domain, organizationId: sites.organizationId })
       .from(sites)
-      .where(inArray(sites.siteId, quietSiteIds));
+      .where(inArray(sites.siteId, candidates.map(r => Number(r.site_id))));
     if (quietSites.length === 0) return;
 
+    // 30-day per-site cooldown: a recovered-then-quiet-again site alerts at
+    // most monthly even though each outage gets its own email key.
+    const recentQuietLogs = await db
+      .select({ siteId: lifecycleEmailLog.siteId, emailKey: lifecycleEmailLog.emailKey })
+      .from(lifecycleEmailLog)
+      .where(
+        and(
+          like(lifecycleEmailLog.emailKey, "went_quiet:%"),
+          gt(lifecycleEmailLog.sentAt, now.minus({ days: 30 }).toSQL({ includeOffset: false })!)
+        )
+      );
+    const recentlyAlerted = new Set(recentQuietLogs.map(r => r.siteId));
+
     const orgIds = [...new Set(quietSites.map(s => s.organizationId).filter((id): id is string => !!id))];
-    const owners = await db
-      .select({ organizationId: member.organizationId, userId: user.id, email: user.email, name: user.name })
-      .from(member)
-      .innerJoin(user, eq(member.userId, user.id))
-      .where(and(inArray(member.organizationId, orgIds), eq(member.role, "owner"), eq(user.emailVerified, true)));
+    const owners =
+      orgIds.length > 0
+        ? await db
+            .select({ organizationId: member.organizationId, userId: user.id, email: user.email, name: user.name })
+            .from(member)
+            .innerJoin(user, eq(member.userId, user.id))
+            .where(and(inArray(member.organizationId, orgIds), eq(member.role, "owner")))
+        : [];
 
     const ownerByOrg = new Map(owners.map(o => [o.organizationId, o]));
     const lastEventBySite = new Map(quietRows.map(r => [Number(r.site_id), parseTs(r.last_event)]));
 
     for (const site of quietSites) {
+      if (recentlyAlerted.has(site.siteId)) continue;
       const owner = site.organizationId ? ownerByOrg.get(site.organizationId) : null;
       if (!owner) continue;
+      // One email per user per run, across both passes: an owner with five
+      // quiet sites (or one who just got an onboarding email) gets one message.
+      if (this.emailedThisRun.has(owner.userId)) continue;
       try {
         if (await isContactUnsubscribed(owner.email)) continue;
         const lastEvent = lastEventBySite.get(site.siteId);
-        await this.sendOnce(owner.userId, owner.email, `went_quiet:${site.siteId}`, site.siteId, () =>
+        // Per-outage key: the date of the last event identifies the outage, so
+        // a site that recovers and goes quiet again next month can alert again.
+        const outageKey = `went_quiet:${site.siteId}:${lastEvent?.toFormat("yyyy-MM-dd") ?? "unknown"}`;
+        await this.sendOnce(owner.userId, owner.email, outageKey, site.siteId, () =>
           content.wentQuiet(site.domain, site.siteId, lastEvent?.toFormat("MMMM d 'at' HH:mm 'UTC'") ?? "two days ago", owner.name)
         );
       } catch (error) {
@@ -491,10 +617,17 @@ class LifecycleEmailService {
   async processLifecycleEmails(): Promise<void> {
     if (this.running) return;
     this.running = true;
+    this.emailedThisRun = new Set();
     const now = DateTime.utc();
     try {
+      await this.cancelLegacyScheduledTips();
       await this.processOnboarding(now);
-      await this.processWentQuiet(now);
+      // The went-quiet scan covers the whole events table (bounded to 7 days);
+      // hourly is plenty for a 48h-silence alert.
+      if (!this.lastWentQuietAt || now.diff(this.lastWentQuietAt, "minutes").minutes >= 55) {
+        this.lastWentQuietAt = now;
+        await this.processWentQuiet(now);
+      }
     } catch (error) {
       this.logger.error({ err: error }, "Error in lifecycle email run");
     } finally {

@@ -7,7 +7,7 @@ import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
 import { OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
 import { WeeklyReportEmail } from "./templates/WeeklyReportEmail.js";
 import type { SiteReport } from "../../services/weekyReports/weeklyReportTypes.js";
-import { signPayload } from "../signedToken.js";
+import { signExpiringPayload } from "../signedToken.js";
 
 let resend: Resend | undefined;
 let marketingAudienceId: string | null = null;
@@ -252,33 +252,55 @@ export const cancelScheduledEmail = async (emailId: string): Promise<void> => {
   }
 };
 
-/** Signed one-click marketing unsubscribe URL used by all lifecycle emails. */
+/**
+ * Signed one-click marketing unsubscribe URL used by all lifecycle emails.
+ * Unsubscribe links must keep working from old emails, so the TTL is long
+ * (2 years) - the expiry exists so a leaked link is not valid forever.
+ */
 export const marketingUnsubscribeUrl = (email: string): string => {
-  const sig = signPayload(`unsubscribe:${email}`);
-  return `${process.env.BASE_URL}/api/user/unsubscribe-marketing-oneclick?email=${encodeURIComponent(email)}&sig=${sig}`;
+  const { exp, sig } = signExpiringPayload(`unsubscribe:${email}`, 2 * 365 * 24 * 3600);
+  return `${process.env.BASE_URL}/api/user/unsubscribe-marketing-oneclick?email=${encodeURIComponent(email)}&exp=${exp}&sig=${sig}`;
 };
 
 /**
  * Plain-text lifecycle email from Bill with a monitored reply address.
  * All state-machine onboarding/retention emails go through here.
+ *
+ * Returns true only when Resend actually accepted the message: the SDK
+ * resolves with { data: null, error } on HTTP/network failures rather than
+ * throwing, so the response is checked explicitly. The caller passes a
+ * stable idempotencyKey (the lifecycle email key) so a retry after an
+ * "accepted but response lost" failure can't double-send.
  */
-export const sendLifecycleEmail = async (email: string, subject: string, text: string): Promise<boolean> => {
+export const sendLifecycleEmail = async (
+  email: string,
+  subject: string,
+  text: string,
+  idempotencyKey?: string
+): Promise<boolean> => {
   if (!resend) return false;
 
   const unsubscribeUrl = marketingUnsubscribeUrl(email);
 
   try {
-    await resend.emails.send({
-      from: "Bill from Rybbit <bill@email.rybbit.com>",
-      replyTo: "hello@rybbit.com",
-      to: email,
-      subject,
-      text: `${text}\n\n--\nUnsubscribe from these emails: ${unsubscribeUrl}`,
-      headers: {
-        "List-Unsubscribe": `<${unsubscribeUrl}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    const response = await resend.emails.send(
+      {
+        from: "Bill from Rybbit <bill@email.rybbit.com>",
+        replyTo: "hello@rybbit.com",
+        to: email,
+        subject,
+        text: `${text}\n\n--\nUnsubscribe from these emails: ${unsubscribeUrl}`,
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       },
-    });
+      idempotencyKey ? { idempotencyKey } : undefined
+    );
+    if (response.error || !response.data?.id) {
+      console.error("Resend rejected lifecycle email:", response.error);
+      return false;
+    }
     return true;
   } catch (error) {
     console.error("Failed to send lifecycle email:", error);
