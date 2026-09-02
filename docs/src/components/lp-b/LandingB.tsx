@@ -39,7 +39,19 @@ const mcpClients = [
 ];
 
 // Eleven of the 35 integrations; the twelfth tile links to the rest.
-const featuredPlatforms = ["Next.js", "React", "Vue", "Svelte", "Angular", "Nuxt", "WordPress", "Shopify", "Webflow", "GTM", "Laravel"]
+const featuredPlatforms = [
+  "Next.js",
+  "React",
+  "Vue",
+  "Svelte",
+  "Angular",
+  "Nuxt",
+  "WordPress",
+  "Shopify",
+  "Webflow",
+  "GTM",
+  "Laravel",
+]
   .map(name => platforms.find(p => p.name === name))
   .filter((p): p is (typeof platforms)[number] => Boolean(p));
 
@@ -58,14 +70,38 @@ const faqBSchema = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
   mainEntity: [
-    ["Is Rybbit GDPR and CCPA compliant?", "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users."],
-    ["How does Rybbit compare to Google Analytics?", "It's one dashboard instead of 150+ reports, and the script is 18 KB against GA4's 371 KB."],
-    ["Where is my data stored?", "On Rybbit Cloud, hosted in European data centers. Rybbit runs the infrastructure, updates, scaling and backups. You add the script and read the dashboard."],
-    ["How easy is it to set up Rybbit?", "Add one script tag to your site, or install @rybbit/js from npm. Most sites are collecting data in under 5 minutes."],
-    ["What platforms does Rybbit support?", "The script tag works anywhere you can add HTML: WordPress, Shopify, Next.js, React, Vue, and the rest. For apps, install @rybbit/js from npm."],
-    ["Is Rybbit truly open source?", "Yes. Every line of code, including the cloud and enterprise features, is on GitHub under the AGPL 3.0 license."],
-    ["Can I invite my team to my organization?", "Yes, you can invite unlimited team members to your organization. Each member can have different permission levels to view or manage your analytics dashboards."],
-    ["Does Rybbit have an API?", "Yes. The Rybbit API exposes every metric the dashboard shows over HTTP, so you can pull your data into your own apps, dashboards, or workflows."],
+    [
+      "Is Rybbit GDPR and CCPA compliant?",
+      "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.",
+    ],
+    [
+      "How does Rybbit compare to Google Analytics?",
+      "It's one dashboard instead of 150+ reports, and the script is 18 KB against GA4's 371 KB.",
+    ],
+    [
+      "Where is my data stored?",
+      "On Rybbit Cloud, hosted in European data centers. Rybbit runs the infrastructure, updates, scaling and backups. You add the script and read the dashboard.",
+    ],
+    [
+      "How easy is it to set up Rybbit?",
+      "Add one script tag to your site, or install @rybbit/js from npm. Most sites are collecting data in under 5 minutes.",
+    ],
+    [
+      "What platforms does Rybbit support?",
+      "The script tag works anywhere you can add HTML: WordPress, Shopify, Next.js, React, Vue, and the rest. For apps, install @rybbit/js from npm.",
+    ],
+    [
+      "Is Rybbit truly open source?",
+      "Yes. Every line of code, including the cloud and enterprise features, is on GitHub under the AGPL 3.0 license.",
+    ],
+    [
+      "Can I invite my team to my organization?",
+      "Yes, you can invite unlimited team members to your organization. Each member can have different permission levels to view or manage your analytics dashboards.",
+    ],
+    [
+      "Does Rybbit have an API?",
+      "Yes. The Rybbit API exposes every metric the dashboard shows over HTTP, so you can pull your data into your own apps, dashboards, or workflows.",
+    ],
   ].map(([name, text]) => ({ "@type": "Question", name, acceptedAnswer: { "@type": "Answer", text } })),
 };
 
@@ -82,14 +118,18 @@ export function LandingB() {
     {
       icon: Lock,
       title: t("Cookieless, by design"),
-      description: t("No cookies, no fingerprinting, and user IDs salted daily. GDPR and CCPA are covered, with nothing for visitors to consent to."),
+      description: t(
+        "No cookies, no fingerprinting, and user IDs salted daily. GDPR and CCPA are covered, with nothing for visitors to consent to."
+      ),
       href: "/privacy",
       link: t("How privacy works"),
     },
     {
       icon: Globe,
       title: t("Hosted in the EU"),
-      description: t("Rybbit Cloud runs in European data centers. Infrastructure, updates, scaling and backups are handled for you."),
+      description: t(
+        "Rybbit Cloud runs in European data centers. Infrastructure, updates, scaling and backups are handled for you."
+      ),
       href: "/pricing",
       link: t("See the plans"),
     },
@@ -102,7 +142,6 @@ export function LandingB() {
     },
   ];
 
-
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqBSchema) }} />
@@ -110,19 +149,21 @@ export function LandingB() {
       <div className="overflow-clip bg-white text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
         {/* Hero */}
         <section className={cn(CONTAINER, "flex flex-col gap-6 pt-16 md:pt-24")}>
-          <h1 className="max-w-[720px] text-[clamp(2.25rem,4.2vw,3.25rem)] font-medium leading-[1.12] tracking-[-0.035em] text-balance">
-            {t("Rybbit is the open-source, cookieless replacement for Google Analytics.")}
+          <h1 className="max-w-[900px] text-[clamp(2.25rem,4.2vw,3.25rem)] font-medium leading-[1.12] tracking-[-0.035em] text-balance">
+            {t("Rybbit is the cookieless replacement for Google Analytics.")}
           </h1>
-          <p className="max-w-[60ch] text-base leading-relaxed text-neutral-600 dark:text-neutral-400 sm:text-lg text-pretty">
-            {t("Web and product analytics on one dashboard: visitors, sessions, funnels, replays, web vitals and errors. One 18 KB script, no cookie banner, live in minutes.")}
-          </p>
+          {/* <p className="max-w-[60ch] text-base leading-relaxed text-neutral-600 dark:text-neutral-400 sm:text-lg text-pretty">
+            {t(
+              "Web and product analytics on one dashboard: visitors, sessions, funnels, replays, web vitals and errors. One 18 KB script, no cookie banner, live in minutes."
+            )}
+          </p> */}
           <div className="flex flex-col gap-3 sm:flex-row">
-            <SignupButton location="hero_b" label={t("Start for $0")} />
+            <SignupButton location="hero_b" label={t("Start free trial")} />
             <DemoButton location="hero_b" label={t("Live demo")} />
           </div>
-          <p className="-mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+          {/* <p className="-mt-2 text-sm text-neutral-500 dark:text-neutral-400">
             {t("7-day free trial. No credit card charges until the trial ends.")}
-          </p>
+          </p> */}
         </section>
 
         <section className={cn(CONTAINER, "mt-12 md:mt-14")} aria-label={t("Live demo of the Rybbit dashboard")}>
@@ -173,7 +214,9 @@ export function LandingB() {
           <Panel>
             <PanelCopy
               title={t("See the session behind the number.")}
-              description={t("Every chart links to the sessions that made it. Open one and watch the replay, with clicks, scrolls, console errors and rage-clicks on the timeline.")}
+              description={t(
+                "Every chart links to the sessions that made it. Open one and watch the replay, with clicks, scrolls, console errors and rage-clicks on the timeline."
+              )}
               links={[{ href: "/features/session-replay", label: t("Learn about session replay") }]}
             />
             <ReplayVisual />
@@ -182,7 +225,9 @@ export function LandingB() {
           <Panel visualFirst>
             <PanelCopy
               title={t("Measure what converts, and where it drops.")}
-              description={t("Define a funnel in seconds, follow the paths visitors actually take, and set goals on pages or events. Retention shows whether they come back.")}
+              description={t(
+                "Define a funnel in seconds, follow the paths visitors actually take, and set goals on pages or events. Retention shows whether they come back."
+              )}
               links={[
                 { href: "/features/funnels", label: t("Learn about funnels") },
                 { href: "/features/user-journeys", label: t("User journeys") },
@@ -197,7 +242,9 @@ export function LandingB() {
           <Panel>
             <PanelCopy
               title={t("Every session, and the person behind it.")}
-              description={t("Browse each session with its device, browser, location and full event timeline, then filter with a click. Identify a user once and Rybbit links their whole history, from anonymous first visit to latest session.")}
+              description={t(
+                "Browse each session with its device, browser, location and full event timeline, then filter with a click. Identify a user once and Rybbit links their whole history, from anonymous first visit to latest session."
+              )}
               links={[
                 { href: "/features/user-profiles", label: t("Learn about user profiles") },
                 { href: "/features/sessions", label: t("Browse sessions") },
@@ -209,7 +256,9 @@ export function LandingB() {
           <Panel visualFirst>
             <PanelCopy
               title={t("How fast your site is, for real visitors.")}
-              description={t("Core Web Vitals measured from actual sessions, not lab runs. LCP, INP and CLS at every percentile, broken down by page, device and country, so you fix what is actually slow.")}
+              description={t(
+                "Core Web Vitals measured from actual sessions, not lab runs. LCP, INP and CLS at every percentile, broken down by page, device and country, so you fix what is actually slow."
+              )}
               links={[
                 { href: "/features/web-vitals", label: t("Learn about web vitals") },
                 { href: "/features/error-tracking", label: t("Error tracking") },
@@ -221,7 +270,9 @@ export function LandingB() {
           <Panel>
             <PanelCopy
               title={t("In every stack, at every step.")}
-              description={t("One script tag, or the npm package for apps. Most sites are collecting data in under five minutes, with no build step and no cookie banner.")}
+              description={t(
+                "One script tag, or the npm package for apps. Most sites are collecting data in under five minutes, with no build step and no cookie banner."
+              )}
               links={[{ href: "/docs/script", label: t("Read the install docs") }]}
             />
             <div className="flex flex-col gap-5">
@@ -256,7 +307,9 @@ export function LandingB() {
                 {t("Analytics your AI can operate.")}
               </h2>
               <p className="max-w-[44ch] text-base leading-relaxed text-neutral-600 dark:text-neutral-400">
-                {t("A hosted MCP server on top of Rybbit's full REST API. Your agent reads live traffic, debugs errors, and manages goals, with the same permissions as a teammate.")}
+                {t(
+                  "A hosted MCP server on top of Rybbit's full REST API. Your agent reads live traffic, debugs errors, and manages goals, with the same permissions as a teammate."
+                )}
               </p>
               <ul className="flex flex-wrap gap-2">
                 {mcpClients.map(client => (
@@ -283,7 +336,11 @@ export function LandingB() {
 
         {/* Testimonials */}
         <section className={cn(CONTAINER, "mt-24 md:mt-32")} aria-labelledby="lp-b-testimonials">
-          <SectionTitle id="lp-b-testimonials" title={t("The quiet way to know your traffic.")} description={t("Real posts from people who switched.")} />
+          <SectionTitle
+            id="lp-b-testimonials"
+            title={t("The quiet way to know your traffic.")}
+            description={t("Real posts from people who switched.")}
+          />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {tweetIds.map(id => (
               <TweetCard key={id} id={id} />
@@ -304,7 +361,9 @@ export function LandingB() {
                 >
                   <Icon className="size-[22px] text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
                   <h3 className="text-lg font-medium tracking-[-0.02em]">{card.title}</h3>
-                  <p className="flex-1 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{card.description}</p>
+                  <p className="flex-1 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+                    {card.description}
+                  </p>
                   <TextLink href={card.href}>{card.link}</TextLink>
                 </div>
               );
@@ -318,7 +377,10 @@ export function LandingB() {
         </section>
 
         {/* FAQ */}
-        <section className={cn(CONTAINER, "mt-24 grid gap-10 md:mt-32 lg:grid-cols-[1fr_1.6fr] lg:gap-16")} aria-labelledby="lp-b-faq">
+        <section
+          className={cn(CONTAINER, "mt-24 grid gap-10 md:mt-32 lg:grid-cols-[1fr_1.6fr] lg:gap-16")}
+          aria-labelledby="lp-b-faq"
+        >
           <div className="flex flex-col gap-3">
             <h2 id="lp-b-faq" className="text-[30px] font-medium leading-[1.1] tracking-[-0.03em] md:text-[36px]">
               {t("Questions, answered plainly.")}

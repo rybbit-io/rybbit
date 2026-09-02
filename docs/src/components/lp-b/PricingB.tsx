@@ -30,7 +30,12 @@ export function PricingB() {
       name: t("Standard"),
       price: price(standard),
       blurb: t("What a small business needs to get started"),
-      features: [t("Up to 5 websites"), t("Up to 3 team members"), t("Funnels, goals, journeys"), t("3 year data retention")],
+      features: [
+        t("Up to 5 websites"),
+        t("Up to 3 team members"),
+        t("Funnels, goals, journeys"),
+        t("3 year data retention"),
+      ],
       recommended: false,
       contact: standard.custom,
     },
@@ -38,7 +43,12 @@ export function PricingB() {
       name: t("Pro"),
       price: price(pro),
       blurb: t("Advanced features for professional teams"),
-      features: [t("Everything in Standard"), t("Unlimited websites and members"), t("Session replays"), t("5 year data retention")],
+      features: [
+        t("Everything in Standard"),
+        t("Unlimited websites and members"),
+        t("Session replays"),
+        t("5 year data retention"),
+      ],
       recommended: true,
       contact: pro.custom,
     },
@@ -71,10 +81,20 @@ export function PricingB() {
 
       <div className="flex flex-col gap-6 rounded-xl border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-[#131313] sm:p-7 lg:flex-row lg:items-center lg:gap-14">
         <div className="flex shrink-0 items-center rounded-full border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-900">
-          <button type="button" onClick={() => setIsAnnual(false)} aria-pressed={!isAnnual} className={toggleClassName(!isAnnual)}>
+          <button
+            type="button"
+            onClick={() => setIsAnnual(false)}
+            aria-pressed={!isAnnual}
+            className={toggleClassName(!isAnnual)}
+          >
             {t("Monthly")}
           </button>
-          <button type="button" onClick={() => setIsAnnual(true)} aria-pressed={isAnnual} className={cn(toggleClassName(isAnnual), "flex items-center gap-2")}>
+          <button
+            type="button"
+            onClick={() => setIsAnnual(true)}
+            aria-pressed={isAnnual}
+            className={cn(toggleClassName(isAnnual), "flex items-center gap-2")}
+          >
             {t("Annual")}
             <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{t("4 months free")}</span>
           </button>
@@ -138,7 +158,9 @@ export function PricingB() {
             </div>
             <div className="flex min-h-[60px] flex-col gap-1">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-4xl font-semibold tabular-nums tracking-[-0.04em]">{plan.price ?? t("Custom")}</span>
+                <span className="text-4xl font-semibold tabular-nums tracking-[-0.04em]">
+                  {plan.price ?? t("Custom")}
+                </span>
                 {plan.price && <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("/month")}</span>}
               </div>
               {plan.price && (
@@ -155,14 +177,17 @@ export function PricingB() {
             ) : (
               <SignupButton
                 location="pricing_b"
-                label={t("Start for $0")}
+                label={t("Start free trial")}
                 className={cn(pillSmall, !plan.recommended && pillNeutral)}
               />
             )}
             <ul className="flex flex-col gap-2.5 border-t border-neutral-200 pt-4 dark:border-neutral-800">
               {plan.features.map(feature => (
                 <li key={feature} className="flex items-start gap-2.5 text-sm text-neutral-700 dark:text-neutral-300">
-                  <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <Check
+                    className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden="true"
+                  />
                   {feature}
                 </li>
               ))}
