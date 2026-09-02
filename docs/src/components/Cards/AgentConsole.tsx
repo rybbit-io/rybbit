@@ -38,7 +38,12 @@ const DWELL_MS = 7000;
  * view (and only when motion is allowed) it clears, types the first scenario
  * from scratch, and keeps cycling through the rest, tool call by tool call.
  */
-export function AgentConsole() {
+interface AgentConsoleProps {
+  /** Draw the graph-paper texture inside the console. Off for the homepage redesign's flat panels. */
+  grid?: boolean;
+}
+
+export function AgentConsole({ grid = true }: AgentConsoleProps = {}) {
   const t = useExtracted();
 
   const scenarios: Scenario[] = [
@@ -165,10 +170,12 @@ export function AgentConsole() {
           "Example conversation: an AI assistant connected to Rybbit over MCP pulls live analytics, investigates errors and funnels, and creates goals on request."
         )}
       </p>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
-      />
+      {grid && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
+        />
+      )}
 
       <div aria-hidden="true" className="relative flex items-center gap-1.5 border-b border-white/10 px-4 py-2.5 sm:px-5">
         <span className="size-2 rounded-full bg-[#ff5f57]" />
