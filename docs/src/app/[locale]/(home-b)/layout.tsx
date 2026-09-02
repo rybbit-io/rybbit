@@ -3,16 +3,17 @@ import { Footer } from "@/components/Footer";
 import type { ReactNode } from "react";
 
 /**
- * Layout for the homepage redesign (variant B): the same header and footer as
- * the marketing pages, in the redesign's bare register (no instrument sheet,
- * pill buttons). Sibling of `(home)/layout.tsx`.
+ * Layout for the homepage redesign (variant B). Identical to `(home)`'s, but
+ * the wrapper pins the redesign's "bare" register (see global.css) so the
+ * page reads the same whether or not the visitor carries the experiment
+ * cookie — e.g. when reviewing /lp/b directly.
  */
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <>
-      <CustomHeader chrome="bare" />
+    <div data-chrome="bare" className="contents">
+      <CustomHeader />
       <main className="flex-1">{children}</main>
-      <Footer chrome="bare" />
-    </>
+      <Footer />
+    </div>
   );
 }

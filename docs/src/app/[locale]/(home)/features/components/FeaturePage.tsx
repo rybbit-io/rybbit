@@ -86,9 +86,9 @@ export function FeaturePage({
 
       {demoUrl && (
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-label={`${featureName} demo`}>
-          <div className="mx-auto max-w-[1200px] border-x border-neutral-200 bg-neutral-100 p-2 dark:border-neutral-800 dark:bg-neutral-900 sm:p-3">
+          <div className="mx-auto max-w-[1200px] border-x border-neutral-200 bg-neutral-100 p-2 bare:bg-transparent bare:px-5 bare:py-8 dark:border-neutral-800 dark:bg-neutral-900 dark:bare:bg-transparent sm:p-3 bare:sm:px-8 bare:sm:py-8 bare:lg:px-10">
             <div className="overflow-hidden rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
-              <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800 sm:px-4">
+              <div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-neutral-200 px-3 bare:h-8 dark:border-neutral-800 sm:px-4">
                 <div className="flex gap-1.5" aria-hidden="true">
                   <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
                   <span className="size-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
@@ -102,7 +102,7 @@ export function FeaturePage({
                 >
                   demo.rybbit.com
                 </a>
-                <div className="flex items-center justify-self-end gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                <div className="flex items-center justify-self-end gap-1.5 text-xs text-neutral-500 bare:hidden dark:text-neutral-400">
                   <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
                   <span className="hidden sm:inline">{t("Live")}</span>
                 </div>
@@ -128,7 +128,7 @@ export function FeaturePage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 bare:lg:border-r-0">
             <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{badgeText}</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{featureName}</h2>
           </div>
@@ -147,7 +147,7 @@ export function FeaturePage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="capabilities-title">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 bare:lg:border-r-0">
             <div className="lg:sticky lg:top-24">
               <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Capabilities")}</p>
               <h2 id="capabilities-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
@@ -159,7 +159,7 @@ export function FeaturePage({
             {capabilities.map((capability) => (
               <article
                 key={capability.title}
-                className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10"
+                className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 md:odd:border-r md:[&:nth-last-child(-n+2)]:border-b-0 lg:px-10 bare:md:odd:border-r-0"
               >
                 <div className="mb-5 flex size-9 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
                   {capability.icon}
@@ -176,7 +176,7 @@ export function FeaturePage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="how-it-works-title">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 bare:lg:border-r-0">
             <div className="lg:sticky lg:top-24">
               <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Getting Started")}</p>
               <h2 id="how-it-works-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
@@ -207,7 +207,7 @@ export function FeaturePage({
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="who-uses-title">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 bare:lg:border-r-0">
             <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Use Cases")}</p>
             <h2 id="who-uses-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
               {t("Who uses this")}
@@ -217,7 +217,7 @@ export function FeaturePage({
             {whoUses.map((item) => (
               <article
                 key={item.title}
-                className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 md:border-b-0 md:border-r md:last:border-r-0 lg:px-8"
+                className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 md:border-b-0 md:border-r md:last:border-r-0 lg:px-8 bare:md:border-r-0"
               >
                 <div className="mb-5 text-neutral-500 dark:text-neutral-400">{item.icon}</div>
                 <h3 className="font-semibold tracking-tight">{item.title}</h3>
@@ -231,7 +231,7 @@ export function FeaturePage({
       {faqItems.length > 0 && (
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="feature-faq-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 bare:lg:border-r-0">
               <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("FAQ")}</p>
               <h2 id="feature-faq-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Frequently asked questions")}
@@ -252,7 +252,7 @@ export function FeaturePage({
       {relatedFeatures.length > 0 && (
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="related-features-title">
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16 bare:lg:border-r-0">
               <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Explore More")}</p>
               <h2 id="related-features-title" className="mt-4 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {t("Related features")}

@@ -331,7 +331,7 @@ export function LandingB() {
         </section>
 
         <div className="mt-24 md:mt-32">
-          <CTASection chrome="bare" eventLocation="bottom_cta_b" />
+          <CTASection eventLocation="bottom_cta_b" />
         </div>
       </div>
     </>

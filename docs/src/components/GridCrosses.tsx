@@ -24,7 +24,7 @@ export function GridCrosses({ className }: { className?: string }) {
     <div
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute inset-x-0 top-0 z-10 text-neutral-400 dark:text-neutral-600",
+        "pointer-events-none absolute inset-x-0 top-0 z-10 text-neutral-400 bare:hidden dark:text-neutral-600",
         className
       )}
     >
