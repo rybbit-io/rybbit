@@ -10,6 +10,7 @@ export const cloudflareAnalyticsComparisonData: ComparisonSection[] = [
       { name: "Funnels", rybbitValue: true, competitorValue: false },
       { name: "User journeys (Sankey)", rybbitValue: true, competitorValue: false },
       { name: "Conversion goals", rybbitValue: true, competitorValue: false },
+      { name: "Saved segments", rybbitValue: true, competitorValue: false },
       { name: "UTM tracking", rybbitValue: true, competitorValue: false },
       { name: "Public dashboards", rybbitValue: true, competitorValue: false },
     ],

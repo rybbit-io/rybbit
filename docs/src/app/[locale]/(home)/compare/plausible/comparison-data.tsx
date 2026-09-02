@@ -10,6 +10,7 @@ export const plausibleComparisonData: ComparisonSection[] = [
       { name: "Funnels", rybbitValue: "All plans", competitorValue: "Business plan only" },
       { name: "User journeys (Sankey)", rybbitValue: true, competitorValue: false },
       { name: "Conversion goals", rybbitValue: true, competitorValue: true },
+      { name: "Saved segments", rybbitValue: true, competitorValue: true },
       { name: "UTM tracking", rybbitValue: true, competitorValue: true },
       { name: "Public dashboards", rybbitValue: true, competitorValue: true },
     ],

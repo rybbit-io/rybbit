@@ -19,11 +19,13 @@ export const useSyncStateWithUrl = () => {
     bucket,
     selectedStat,
     filters,
+    segmentId,
     comparison,
     setTime,
     setBucket,
     setSelectedStat,
     setFilters,
+    setSegmentId,
     setComparison,
     site,
   } = useStore();
@@ -76,6 +78,7 @@ export const useSyncStateWithUrl = () => {
     }
 
     setFilters(urlParams.filters ?? []);
+    setSegmentId(urlParams.segment ?? null);
 
     setHydratedUrlKey(hydrationKey);
   }, [
@@ -87,6 +90,7 @@ export const useSyncStateWithUrl = () => {
     setBucket,
     setSelectedStat,
     setFilters,
+    setSegmentId,
     setComparison,
     urlParams,
   ]);
@@ -105,6 +109,7 @@ export const useSyncStateWithUrl = () => {
       bucket,
       stat: selectedStat,
       filters: filters.length > 0 ? filters : null,
+      segment: segmentId,
     };
 
     // Note: embed params are automatically preserved by nuqs
@@ -114,6 +119,7 @@ export const useSyncStateWithUrl = () => {
     bucket,
     selectedStat,
     filters,
+    segmentId,
     comparison,
     site,
     setUrlParams,

@@ -10,6 +10,7 @@ export const posthogComparisonData: ComparisonSection[] = [
       { name: "Funnels", rybbitValue: true, competitorValue: true },
       { name: "User journeys (Sankey)", rybbitValue: true, competitorValue: true },
       { name: "Conversion goals", rybbitValue: true, competitorValue: true },
+      { name: "Saved segments", rybbitValue: true, competitorValue: "Cohorts" },
       { name: "UTM tracking", rybbitValue: true, competitorValue: true },
       { name: "Public dashboards", rybbitValue: true, competitorValue: true },
     ],

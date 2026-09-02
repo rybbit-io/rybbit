@@ -325,7 +325,7 @@ describe("mcp endpoint", () => {
     const tools = await listTools(app);
     const names = tools.map(tool => tool.name);
 
-    expect(tools).toHaveLength(39);
+    expect(tools).toHaveLength(41);
     expect(names).toContain("list_sites");
     expect(names).toContain("get_overview");
     expect(names).toContain("get_breakdown");
@@ -363,7 +363,7 @@ describe("mcp endpoint", () => {
 
   it("legacy OAuth grants with only standard scopes stay unrestricted", async () => {
     const tools = await listTools(app, "Bearer oauth_valid_token");
-    expect(tools).toHaveLength(39);
+    expect(tools).toHaveLength(41);
   });
 
   it("partitions tools into reads, writes, and destructive deletes", async () => {

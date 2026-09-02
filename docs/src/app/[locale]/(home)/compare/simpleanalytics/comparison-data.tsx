@@ -10,6 +10,7 @@ export const simpleAnalyticsComparisonData: ComparisonSection[] = [
       { name: "Funnels", rybbitValue: true, competitorValue: false },
       { name: "User journeys (Sankey)", rybbitValue: true, competitorValue: false },
       { name: "Conversion goals", rybbitValue: true, competitorValue: true },
+      { name: "Saved segments", rybbitValue: true, competitorValue: false },
       { name: "UTM tracking", rybbitValue: true, competitorValue: true },
       { name: "Public dashboards", rybbitValue: true, competitorValue: true },
     ],

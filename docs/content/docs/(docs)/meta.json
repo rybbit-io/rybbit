@@ -21,6 +21,7 @@
     "hiding-own-traffic",
     "filter-traffic",
     "bot-detection",
+    "segments",
     "goals",
     "funnels",
     "embeds",
