@@ -3,7 +3,7 @@ import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { createServiceLogger } from "./lib/logger/logger.js";
-import { reengagementService } from "./services/reengagement/reengagementService.js";
+import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmailService.js";
 import { sessionsService } from "./services/sessions/sessionsService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { usageService } from "./services/usageService.js";
@@ -47,7 +47,7 @@ if (workerCount === 0) {
   usageService.startUsageCheckCron();
   if (IS_CLOUD && process.env.NODE_ENV !== "development") {
     weeklyReportService.startWeeklyReportCron();
-    reengagementService.startReengagementCron();
+    lifecycleEmailService.startLifecycleCron();
   }
 
   // Broadcast usage state (sitesOverLimit + sitesWithoutReplay) to workers after each usage update
@@ -119,7 +119,7 @@ if (workerCount === 0) {
     telemetryService.stopTelemetryCron();
     if (IS_CLOUD) {
       weeklyReportService.stopWeeklyReportCron();
-      reengagementService.stopReengagementCron();
+      lifecycleEmailService.stopLifecycleCron();
     }
 
     // Attach exit listeners before sending SIGTERM to avoid a race where

@@ -4,13 +4,10 @@ import { IS_CLOUD } from "../const.js";
 import { ApproachingLimitEmail } from "./templates/ApproachingLimitEmail.js";
 import { InvitationEmail } from "./templates/InvitationEmail.js";
 import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
-import { OnboardingTipEmail } from "./templates/OnboardingTipEmail.js";
 import { OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
-import { ReengagementEmail } from "./templates/ReengagementEmail.js";
 import { WeeklyReportEmail } from "./templates/WeeklyReportEmail.js";
 import type { SiteReport } from "../../services/weekyReports/weeklyReportTypes.js";
-import type { OnboardingTipContent } from "../../services/onboardingTips/onboardingTipsContent.js";
-import type { ReengagementContent } from "../../services/reengagement/reengagementContent.js";
+import { signPayload } from "../signedToken.js";
 
 let resend: Resend | undefined;
 let marketingAudienceId: string | null = null;
@@ -245,47 +242,6 @@ Bill`;
   }
 };
 
-// Scheduled onboarding tip email - returns the email ID for cancellation
-export const scheduleOnboardingTipEmail = async (
-  email: string,
-  userName: string,
-  tipContent: OnboardingTipContent,
-  scheduledAt: string
-): Promise<string | null> => {
-  if (!resend) return null;
-
-  const unsubscribeUrl = `${process.env.BASE_URL}/api/user/unsubscribe-marketing-oneclick?email=${encodeURIComponent(email)}`;
-
-  try {
-    const html = await render(
-      OnboardingTipEmail({
-        userName,
-        body: tipContent.body,
-        linkText: tipContent.linkText,
-        linkUrl: tipContent.linkUrl,
-        unsubscribeUrl,
-      })
-    );
-
-    const response = await resend.emails.send({
-      from: "Rybbit <automail@email.rybbit.com>",
-      to: email,
-      subject: tipContent.subject,
-      html,
-      scheduledAt,
-      headers: {
-        "List-Unsubscribe": `<${unsubscribeUrl}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
-    });
-
-    return response.data?.id ?? null;
-  } catch (error) {
-    console.error("Failed to schedule onboarding tip email:", error);
-    return null;
-  }
-};
-
 // Cancel a scheduled email
 export const cancelScheduledEmail = async (emailId: string): Promise<void> => {
   if (!resend) return;
@@ -296,43 +252,36 @@ export const cancelScheduledEmail = async (emailId: string): Promise<void> => {
   }
 };
 
-// Send re-engagement email
-export const sendReengagementEmail = async (
-  email: string,
-  userName: string,
-  content: ReengagementContent,
-  siteId: number,
-  domain: string
-): Promise<void> => {
-  if (!resend) return;
+/** Signed one-click marketing unsubscribe URL used by all lifecycle emails. */
+export const marketingUnsubscribeUrl = (email: string): string => {
+  const sig = signPayload(`unsubscribe:${email}`);
+  return `${process.env.BASE_URL}/api/user/unsubscribe-marketing-oneclick?email=${encodeURIComponent(email)}&sig=${sig}`;
+};
 
-  const unsubscribeUrl = `${process.env.BASE_URL}/api/user/unsubscribe-marketing-oneclick?email=${encodeURIComponent(email)}`;
+/**
+ * Plain-text lifecycle email from Bill with a monitored reply address.
+ * All state-machine onboarding/retention emails go through here.
+ */
+export const sendLifecycleEmail = async (email: string, subject: string, text: string): Promise<boolean> => {
+  if (!resend) return false;
+
+  const unsubscribeUrl = marketingUnsubscribeUrl(email);
 
   try {
-    const html = await render(
-      ReengagementEmail({
-        userName,
-        day: content.day,
-        title: content.title,
-        message: content.message,
-        ctaText: content.ctaText,
-        siteId,
-        domain,
-        unsubscribeUrl,
-      })
-    );
-
     await resend.emails.send({
-      from: "Rybbit <automail@email.rybbit.com>",
+      from: "Bill from Rybbit <bill@email.rybbit.com>",
+      replyTo: "hello@rybbit.com",
       to: email,
-      subject: content.subject,
-      html,
+      subject,
+      text: `${text}\n\n--\nUnsubscribe from these emails: ${unsubscribeUrl}`,
       headers: {
         "List-Unsubscribe": `<${unsubscribeUrl}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     });
+    return true;
   } catch (error) {
-    console.error("Failed to send re-engagement email:", error);
+    console.error("Failed to send lifecycle email:", error);
+    return false;
   }
 };

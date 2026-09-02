@@ -132,6 +132,7 @@ import {
   getSiteExcludedASNs,
   getSiteExcludedQueryParams,
   getSiteHasData,
+  checkInstall,
   getSiteImports,
   getSiteIsPublic,
   getSiteUsage,
@@ -190,7 +191,7 @@ import { IS_CLOUD } from "./lib/const.js";
 import { logger } from "./lib/logger/logger.js";
 import { registerRequestLogging } from "./lib/logger/requestLogging.js";
 import { identityBackfillQueue } from "./services/tracker/identityBackfillQueue.js";
-import { reengagementService } from "./services/reengagement/reengagementService.js";
+import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmailService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
@@ -496,6 +497,7 @@ async function sitesRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/private-link-config", adminSitesWrite, getSitePrivateLinkConfig);
   fastify.post("/sites/:siteId/private-link-config", adminSitesWrite, updateSitePrivateLinkConfig);
   fastify.get("/site/tracking-config/:siteId", getTrackingConfig); // Public - used by tracking script
+  fastify.get("/site/check-install", checkInstall); // Public (HMAC-signed) - linked from lifecycle emails
   fastify.get("/sites/:siteId/embed-stats", { preHandler: [resolveSiteId] as any }, getEmbedStats); // Public - widget endpoint (handler checks site is public)
   fastify.get("/sites/:siteId/excluded-ips", authSitesRead, getSiteExcludedIPs);
   fastify.get("/sites/:siteId/excluded-countries", authSitesRead, getSiteExcludedCountries);
@@ -637,7 +639,7 @@ const start = async () => {
       usageService.startUsageCheckCron();
       if (IS_CLOUD && process.env.NODE_ENV !== "development") {
         weeklyReportService.startWeeklyReportCron();
-        reengagementService.startReengagementCron();
+        lifecycleEmailService.startLifecycleCron();
       }
     }
 

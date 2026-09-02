@@ -3,8 +3,16 @@ import { eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "../../db/postgres/postgres.js";
 import { user } from "../../db/postgres/schema.js";
-import { unsubscribeContact, cancelScheduledEmail } from "../../lib/email/email.js";
-import { onboardingTipsService } from "../../services/onboardingTips/onboardingTipsService.js";
+import { cancelScheduledEmail, unsubscribeContact } from "../../lib/email/email.js";
+import { verifySignedPayload } from "../../lib/signedToken.js";
+
+// Cancel tip emails pre-scheduled in Resend for users who signed up before the
+// lifecycle email system replaced the fixed drip. Remove once those have aged out.
+const cancelLegacyScheduledTips = async (emailIds: string[]): Promise<void> => {
+  for (const emailId of emailIds) {
+    await cancelScheduledEmail(emailId);
+  }
+};
 
 // Authenticated user unsubscribe
 export const unsubscribeMarketing = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -29,7 +37,7 @@ export const unsubscribeMarketing = async (request: FastifyRequest, reply: Fasti
 
     // Cancel scheduled tip emails
     const emailIds = (userData.scheduledTipEmailIds as string[]) || [];
-    await onboardingTipsService.cancelScheduledEmails(emailIds);
+    await cancelLegacyScheduledTips(emailIds);
 
     // Clear the scheduled email IDs
     await db
@@ -54,12 +62,20 @@ export const unsubscribeMarketing = async (request: FastifyRequest, reply: Fasti
 // GET: User clicks link in email - show confirmation page
 // POST: Email client's List-Unsubscribe-Post - return 200 OK
 export const oneClickUnsubscribeMarketing = async (
-  request: FastifyRequest<{ Querystring: { email?: string } }>,
+  request: FastifyRequest<{ Querystring: { email?: string; sig?: string } }>,
   reply: FastifyReply
 ) => {
   try {
     const email = request.query.email;
+    const sig = request.query.sig;
     const isGetRequest = request.method === "GET";
+
+    // Links in current emails carry an HMAC signature; reject a bad one.
+    // Links without one (from emails sent before signing existed) are still
+    // honored so old unsubscribe links keep working.
+    if (email && sig && !verifySignedPayload(`unsubscribe:${email}`, sig)) {
+      return reply.status(400).send({ error: "Invalid signature" });
+    }
 
     if (!email) {
       if (isGetRequest) {
@@ -87,7 +103,7 @@ export const oneClickUnsubscribeMarketing = async (
     if (userData) {
       // Cancel scheduled tip emails
       const emailIds = (userData.scheduledTipEmailIds as string[]) || [];
-      await onboardingTipsService.cancelScheduledEmails(emailIds);
+      await cancelLegacyScheduledTips(emailIds);
 
       // Clear the scheduled email IDs
       await db
