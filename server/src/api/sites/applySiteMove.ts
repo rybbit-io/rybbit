@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
-import { memberSiteAccess, sites, teamSiteAccess } from "../../db/postgres/schema.js";
+import { memberSiteAccess, segments, sites, teamSiteAccess } from "../../db/postgres/schema.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 /**
@@ -24,6 +24,11 @@ export async function applySiteMove(
       .where(eq(sites.siteId, siteId));
     await tx.delete(memberSiteAccess).where(eq(memberSiteAccess.siteId, siteId));
     await tx.delete(teamSiteAccess).where(eq(teamSiteAccess.siteId, siteId));
+    // Site-specific segments travel with the site; they are looked up by
+    // (organization, site), so leaving the old organization on them would
+    // hide them from the moved site and let the old org's deletion cascade
+    // over them. Org-wide segments (null site_id) stay with their org.
+    await tx.update(segments).set({ organizationId: targetOrganizationId }).where(eq(segments.siteId, siteId));
   });
 
   const orgIds = sourceOrganizationId ? [sourceOrganizationId, targetOrganizationId] : [targetOrganizationId];

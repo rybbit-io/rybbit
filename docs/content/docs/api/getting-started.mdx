@@ -219,6 +219,12 @@ All endpoints require date-based, exact datetime, or relative time parameters:
 
 The `filters` parameter accepts a JSON-encoded array of filter objects to narrow down your data.
 
+You can also pass `segment_id`, the ID of a [saved segment](/docs/segments), instead of or alongside `filters`. The segment's filters are expanded on the server and ANDed with any `filters` you pass. Use the [Segments endpoints](/docs/api/segments/list) to find IDs. Public and private-link callers can only use segments marked as shown on the public dashboard.
+
+```
+?start_date=2024-01-01&end_date=2024-01-31&time_zone=UTC&segment_id=12
+```
+
 #### Filter Object Structure
 
 <TypeTable

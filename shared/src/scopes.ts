@@ -17,6 +17,7 @@ export const SCOPE_MATRIX = {
   funnels: ["read", "write"],
   dashboards: ["read", "write"],
   annotations: ["read", "write"],
+  segments: ["read", "write"],
   flags: ["read", "write"],
   experiments: ["read", "write"],
   sites: ["read", "write"],

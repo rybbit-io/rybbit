@@ -1,0 +1,94 @@
+---
+title: Delete Segment
+description: Deletes a saved segment. Admins and owners can delete any segment; members can delete segments they created. Links that already expanded the segment's filters keep working.
+full: true
+method: DELETE
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+DELETE /api/sites/:site/segments/:segmentId
+```
+
+Deletes a saved segment. Admins and owners can delete any segment; members can delete segments they created. Links that already expanded the segment's filters keep working.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+    segmentId: {
+      description: 'Segment ID',
+      type: 'number',
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: 'Whether the segment was deleted',
+      type: 'boolean',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X DELETE "https://app.rybbit.io/api/sites/1/segments/12" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/1/segments/12',
+  {
+    method: 'DELETE',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.delete(
+    'https://app.rybbit.io/api/sites/1/segments/12',
+    headers={'Authorization': 'Bearer your_api_key_here'}
+)
+
+data = response.json()
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true
+}
+```
+
+</div>
+</div>

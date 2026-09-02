@@ -69,7 +69,7 @@ export const filterParamSchema: z.ZodType<FilterParameter> = z.union([
 /**
  * Schema for filter objects
  */
-const filterSchema = z.object({
+export const filterSchema = z.object({
   parameter: filterParamSchema,
   type: filterTypeSchema,
   value: z.array(z.string().or(z.number())),

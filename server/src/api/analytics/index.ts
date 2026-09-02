@@ -23,6 +23,14 @@ export { getDashboards } from "./dashboards/getDashboards.js";
 export { updateDashboard } from "./dashboards/updateDashboard.js";
 export { runDashboardCardQuery } from "./runDashboardCardQuery.js";
 
+// Segments
+export { createSegment } from "./segments/createSegment.js";
+export { deleteSegment } from "./segments/deleteSegment.js";
+export { getSegment } from "./segments/getSegment.js";
+export { getSegments } from "./segments/getSegments.js";
+export { updateSegment } from "./segments/updateSegment.js";
+export { expandSegmentParam } from "./segments/expandSegmentParam.js";
+
 // Goals
 export { createGoal } from "./goals/createGoal.js";
 export { deleteGoal } from "./goals/deleteGoal.js";

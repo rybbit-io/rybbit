@@ -1,0 +1,62 @@
+---
+title: Segments
+description: Save a set of filters as a named segment and apply it to any report with one click
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+A segment is a named, reusable set of [filters](/docs/feature-guides/main-tab#filters). Instead of rebuilding "mobile visitors from Germany who came from search" every time, save it once and apply it to the main dashboard, pages, sessions, funnels, journeys, retention, and exports with one click.
+
+Segments live inside the **Filter** button. Nothing else changes in the dashboard: applying a segment expands its filters into the same filter bar every report already reads.
+
+## Creating a segment
+
+Open the **Filter** button and switch to the **Segments** tab. There are two ways to create one:
+
+<Steps>
+<Step>
+### From scratch
+Click **New segment**. The dialog has its own filter editor, so you can build the definition without applying anything to the dashboard first.
+</Step>
+<Step>
+### From the current filters
+Once the dashboard has filters applied, the Segments tab offers **Save current filters as segment**. The dialog opens with those filters and a suggested name.
+</Step>
+</Steps>
+
+Every segment has:
+
+- **Name** — what the group means to you, such as "Paid traffic" or "Logged-in users"
+- **Filters** — at least one. Every filter must match; multiple values inside one filter are alternatives
+- **Available on** — this site only, or every site in the organization (organization-wide segments can only be created by admins and owners)
+- **Description** — optional notes for your team
+- **Show on the public dashboard and private links** — off by default
+
+<Callout type="info">
+Filters in a segment are validated against the same schema as the filter bar, so a segment can never save something the dashboard could not query.
+</Callout>
+
+## Applying a segment
+
+In the **Segments** tab, click a segment to apply it. It appears in the filter bar as a single chip named after the segment. Click the chip to see the filters it contains; click the **×** to remove all of them at once.
+
+Ad-hoc filters work alongside an applied segment. Add a filter the usual way and it is ANDed with the segment. If one of the segment's own filters is changed on the dashboard, the chip reads **(edited)** so you know the row no longer matches the saved definition; the segment itself is unchanged.
+
+Segments are part of the URL, so a dashboard link with a segment applied opens the same view for whoever you share it with.
+
+## Editing and deleting
+
+Use the **⋯** menu on a segment in the Segments tab, or **Edit segment** from the applied chip. Changes apply everywhere the segment is used. Deleting a segment removes it for everyone; links that already expanded its filters keep working.
+
+## Permissions
+
+| Role | Read and apply | Create | Edit and delete |
+| --- | --- | --- | --- |
+| Owner or admin | All segments | Site and organization-wide | Any segment |
+| Member | All segments | Site segments | Segments they created |
+| Public dashboard or private-link viewer | Segments marked as shown on the public dashboard | — | — |
+
+## API and MCP
+
+Every analytics endpoint accepts a `segment_id` query parameter that is expanded server-side, ANDed with any `filters` you also pass. Segments themselves are managed through the [Segments endpoints](/docs/api/segments/list). The [MCP server](/docs/mcp) exposes `list_segments` and `apply_segment`.

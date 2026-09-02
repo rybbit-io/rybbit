@@ -327,11 +327,11 @@ describe("mcp endpoint", () => {
     expect(result.instructions).toContain("run_query");
   });
 
-  it("lists all 40 tools with output schemas", async () => {
+  it("lists all 42 tools with output schemas", async () => {
     const tools = await listTools(app);
     const names = tools.map(tool => tool.name);
 
-    expect(tools).toHaveLength(40);
+    expect(tools).toHaveLength(42);
     expect(names).toContain("list_sites");
     expect(names).toContain("get_overview");
     expect(names).toContain("get_breakdown");
@@ -373,7 +373,7 @@ describe("mcp endpoint", () => {
 
   it("legacy OAuth grants with only standard scopes stay unrestricted", async () => {
     const tools = await listTools(app, "Bearer oauth_valid_token");
-    expect(tools).toHaveLength(40);
+    expect(tools).toHaveLength(42);
   });
 
   it("partitions tools into reads, writes, and destructive deletes", async () => {
