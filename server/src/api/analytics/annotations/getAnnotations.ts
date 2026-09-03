@@ -9,6 +9,16 @@ import { isValidTimeZone } from "../utils/timeWindow.js";
 import { annotationsForSite, getSiteOrganizationId, parseSiteId } from "./annotationAccess.js";
 import { listAnnotationsQuerySchema } from "./annotationSchema.js";
 
+// timestamptz columns in string mode come back as Postgres text
+// ("2026-08-18 07:00:00+00"), which ISO parsers reject; hand clients ISO 8601.
+function toIso(value: string | null): string | null {
+  if (!value) return value;
+  const native = new Date(value);
+  if (!Number.isNaN(native.getTime())) return native.toISOString();
+  const parsed = DateTime.fromSQL(value, { zone: "utc" });
+  return parsed.isValid ? parsed.toUTC().toISO() : value;
+}
+
 export async function getAnnotations(
   request: FastifyRequest<{
     Params: { siteId: string };
@@ -81,7 +91,7 @@ export async function getAnnotations(
       .where(and(...conditions))
       .orderBy(asc(annotations.date), asc(annotations.annotationId));
 
-    return reply.send(rows);
+    return reply.send(rows.map(row => ({ ...row, date: toIso(row.date) ?? row.date, endDate: toIso(row.endDate) })));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return reply.status(400).send({ error: "Validation error", details: error.errors });

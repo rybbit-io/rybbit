@@ -32,6 +32,21 @@ const dateInput = z
 const endAfterStart = (data: { date?: string; endDate?: string | null }) =>
   !data.date || !data.endDate || Date.parse(data.endDate) > Date.parse(data.date);
 
+// One visible character (an emoji may be several code points), so a pin never
+// has to render a word.
+// Intl.Segmenter is in Node 16+ but not in this tsconfig's lib, hence the cast.
+type GraphemeSegmenter = { segment(value: string): Iterable<{ segment: string }> };
+const graphemes: GraphemeSegmenter = new (
+  Intl as unknown as { Segmenter: new (locale?: string, options?: { granularity: string }) => GraphemeSegmenter }
+).Segmenter(undefined, { granularity: "grapheme" });
+const iconInput = z
+  .string()
+  .trim()
+  .max(16)
+  .refine(value => value === "" || [...graphemes.segment(value)].length === 1, {
+    message: "icon must be a single emoji or character",
+  });
+
 export const annotationScopeSchema = z.enum(["site", "organization"]);
 
 export const createAnnotationSchema = z
@@ -41,7 +56,7 @@ export const createAnnotationSchema = z
     date: dateInput,
     endDate: dateInput.nullable().optional(),
     color: z.enum(ANNOTATION_COLORS).nullable().optional(),
-    icon: z.string().trim().max(16).nullable().optional(),
+    icon: iconInput.nullable().optional(),
     isPublic: z.boolean().optional().default(false),
     scope: annotationScopeSchema.optional().default("site"),
   })
@@ -54,7 +69,7 @@ export const updateAnnotationSchema = z
     date: dateInput.optional(),
     endDate: dateInput.nullable().optional(),
     color: z.enum(ANNOTATION_COLORS).nullable().optional(),
-    icon: z.string().trim().max(16).nullable().optional(),
+    icon: iconInput.nullable().optional(),
     isPublic: z.boolean().optional(),
     scope: annotationScopeSchema.optional(),
   })

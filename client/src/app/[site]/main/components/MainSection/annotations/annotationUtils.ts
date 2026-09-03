@@ -18,8 +18,27 @@ export function annotationSwatch(color: AnnotationColor | null): string {
   return color ? `hsl(var(--${color}-500))` : "hsl(var(--neutral-400))";
 }
 
-function toZoned(iso: string, timezone: string): DateTime {
-  return DateTime.fromISO(iso, { zone: "utc" }).setZone(timezone);
+/**
+ * Annotation timestamps are ISO 8601 from the API, but a timestamptz read in
+ * string mode can also arrive as Postgres text ("2026-08-18 07:00:00+00").
+ */
+export function parseAnnotationInstant(value: string): DateTime {
+  const iso = DateTime.fromISO(value, { zone: "utc" });
+  return iso.isValid ? iso : DateTime.fromSQL(value, { zone: "utc" });
+}
+
+function toZoned(value: string, timezone: string): DateTime {
+  return parseAnnotationInstant(value).setZone(timezone);
+}
+
+const graphemes = typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
+
+/** The last single visible character typed or pasted, or null if there is none. */
+export function pickIconFromInput(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parts = graphemes ? [...graphemes.segment(trimmed)].map(part => part.segment) : Array.from(trimmed);
+  return parts[parts.length - 1] ?? null;
 }
 
 function isStartOfDay(dt: DateTime): boolean {

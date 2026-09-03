@@ -1,6 +1,13 @@
 import type { Annotation } from "@rybbit/shared";
 import { describe, expect, it } from "vitest";
-import { clusterAnnotations, formatAnnotationDate, toDateInput, type PositionedAnnotation } from "./annotationUtils";
+import {
+  clusterAnnotations,
+  formatAnnotationDate,
+  parseAnnotationInstant,
+  pickIconFromInput,
+  toDateInput,
+  type PositionedAnnotation,
+} from "./annotationUtils";
 
 const base: Annotation = {
   annotationId: 1,
@@ -64,5 +71,23 @@ describe("toDateInput", () => {
   it("gives the calendar date in the user's timezone", () => {
     expect(toDateInput("2026-08-18T07:00:00.000Z", "America/Los_Angeles")).toBe("2026-08-18");
     expect(toDateInput("2026-08-18T03:00:00.000Z", "America/Los_Angeles")).toBe("2026-08-17");
+  });
+});
+
+describe("parseAnnotationInstant", () => {
+  it("reads ISO 8601 and Postgres timestamptz text alike", () => {
+    expect(parseAnnotationInstant("2026-08-18T07:00:00.000Z").toMillis()).toBe(Date.UTC(2026, 7, 18, 7));
+    expect(parseAnnotationInstant("2026-08-18 07:00:00+00").toMillis()).toBe(Date.UTC(2026, 7, 18, 7));
+    expect(parseAnnotationInstant("2026-08-18 09:00:00+02").toMillis()).toBe(Date.UTC(2026, 7, 18, 7));
+    expect(formatAnnotationDate({ ...base, date: "2026-08-18 07:00:00+00" }, "America/Los_Angeles")).toBe("Aug 18, 2026");
+  });
+});
+
+describe("pickIconFromInput", () => {
+  it("keeps one visible character, including multi-code-point emoji", () => {
+    expect(pickIconFromInput("🚀")).toBe("🚀");
+    expect(pickIconFromInput("🚀🔥")).toBe("🔥");
+    expect(pickIconFromInput("👨‍👩‍👧")).toBe("👨‍👩‍👧");
+    expect(pickIconFromInput("  ")).toBeNull();
   });
 });
