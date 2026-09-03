@@ -39,15 +39,14 @@ export async function getEmbedStats(
   if (!config) return res.status(404).send({ error: "Site not found" });
   if (!config.embedEnabled) return res.status(403).send({ error: "Embed widget is not enabled for this site" });
 
-  const cacheKey = `${siteId}:${minutesNum}:${includeChart}:${includeCountries}`;
+  const numericId = config.siteId;
+  const cacheKey = `${numericId}:${minutesNum}:${includeChart}:${includeCountries}`;
   const now = Date.now();
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > now) {
     res.header("Cache-Control", "public, max-age=60");
     return res.send(cached.data);
   }
-
-  const numericId = Number(siteId);
 
   const countResult = await clickhouse.query({
     query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events
