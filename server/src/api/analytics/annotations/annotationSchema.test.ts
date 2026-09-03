@@ -53,3 +53,13 @@ describe("listAnnotationsQuerySchema", () => {
     expect(listAnnotationsQuerySchema.safeParse({ start_date: "2026-13-01" }).success).toBe(false);
   });
 });
+
+describe("icon", () => {
+  it("accepts one emoji (including multi-code-point ones) and rejects words", () => {
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18", icon: "🚀" }).success).toBe(true);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18", icon: "👨‍👩‍👧" }).success).toBe(true);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18", icon: "🏷️" }).success).toBe(true);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18", icon: "ab" }).success).toBe(false);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18", icon: "🚀🔥" }).success).toBe(false);
+  });
+});

@@ -38,7 +38,7 @@ Creates an annotation. Any member with access to the site can create site annota
     endDate: { description: 'End of a range; must be after date', type: 'string', required: false },
     description: { description: 'Longer note (max 2000 characters)', type: 'string', required: false },
     color: { description: 'Marker color', type: 'string', typeDescription: '"amber" | "rose" | "sky" | "violet" | "lime"', required: false },
-    icon: { description: 'Emoji shown in the marker (max 16 characters)', type: 'string', required: false },
+    icon: { description: 'A single emoji (or character) shown in the marker', type: 'string', required: false },
     isPublic: { description: 'Show on public dashboards and private links', type: 'boolean', default: 'false', required: false },
     scope: { description: 'Attach to this site or to every site in the organization', type: 'string', typeDescription: '"site" | "organization"', default: '"site"', required: false },
   }}
