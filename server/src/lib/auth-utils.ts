@@ -445,6 +445,27 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
   return null;
 }
 
+/**
+ * Resolve an organization-owned API key's organization id. Mirrors
+ * getUserIdFromRequest, but for the org-key side of a bearer credential
+ * (org keys have no req.user/session — those only exist for people).
+ */
+export async function getOrganizationIdFromApiKey(req: FastifyRequest): Promise<string | null> {
+  const apiKey = resolveBearerTokenFromRequest(req);
+  if (!apiKey) {
+    return null;
+  }
+
+  const identity =
+    consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
+    (await resolveBearerIdentity(apiKey, bearerResolverDeps));
+  if (identity.status === "valid" && identity.organizationId) {
+    return identity.organizationId;
+  }
+
+  return null;
+}
+
 // for routes that are potentially public
 export async function getUserHasAccessToSitePublic(
   req: FastifyRequest,
