@@ -109,9 +109,12 @@ function isFilter(value: unknown): value is Filter {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as Partial<Filter>;
+  const parameter = candidate.parameter;
+  const knownParameter =
+    typeof parameter === "string" &&
+    (filterParameterSet.has(parameter as FilterParameter) || parameter.startsWith("feature_flag:"));
   return (
-    typeof candidate.parameter === "string" &&
-    filterParameterSet.has(candidate.parameter as FilterParameter) &&
+    knownParameter &&
     typeof candidate.type === "string" &&
     filterTypeSet.has(candidate.type as FilterType) &&
     Array.isArray(candidate.value) &&
@@ -165,6 +168,9 @@ export const analyticsParsers = {
   bucket: parseAsTimeBucket,
   stat: parseAsStatType,
   filters: parseAsFilters,
+  // Saved segment whose filters are already expanded into `filters`; keeps
+  // the chip labelled on shared links.
+  segment: parseAsInteger,
 
   // Feature flags
   embed: parseAsBoolean,

@@ -3,6 +3,8 @@ export * from "./dashboards";
 export * from "./filters";
 export * from "./params";
 export * from "./scopes";
+export * from "./segments";
 export * from "./time";
 export * from "./performance";
 export * from "./aiOperators";
+export * from "./annotations";

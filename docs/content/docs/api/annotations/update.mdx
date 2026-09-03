@@ -1,0 +1,70 @@
+---
+title: Update Annotation
+description: Updates an annotation's fields.
+full: true
+method: PUT
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+PUT /api/sites/:site/annotations/:annotationId
+```
+
+Partial update: only the fields you send change. Admins and owners can edit any annotation on their sites; members can edit only the annotations they created. Changing `scope` requires an admin or owner role.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: { description: 'Site ID or site identifier', type: 'string | number', required: true },
+    annotationId: { description: 'Annotation ID', type: 'number', required: true },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    title: { description: 'Short title (max 120 characters)', type: 'string', required: false },
+    date: { description: 'ISO 8601 timestamp with Z or offset, or YYYY-MM-DD', type: 'string', required: false },
+    endDate: { description: 'End of a range, or null to turn a range back into a point', type: 'string | null', required: false },
+    description: { description: 'Longer note, or null to clear', type: 'string | null', required: false },
+    color: { description: 'Marker color, or null for the neutral default', type: 'string | null', required: false },
+    icon: { description: 'Emoji, or null to clear', type: 'string | null', required: false },
+    isPublic: { description: 'Show on public dashboards and private links', type: 'boolean', required: false },
+    scope: { description: 'Move between site and organization-wide', type: 'string', typeDescription: '"site" | "organization"', required: false },
+  }}
+/>
+
+</div>
+<div>
+
+### Example
+
+<Tabs items={['cURL', 'Response']}>
+<Tab value="cURL">
+
+```bash
+curl -X PUT "https://app.rybbit.io/api/sites/123/annotations/43" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "title": "Deployed v2.3.0 (rolled back)", "color": "rose" }'
+```
+
+</Tab>
+<Tab value="Response">
+
+```json
+{ "success": true }
+```
+
+</Tab>
+</Tabs>
+
+</div>
+</div>

@@ -66,6 +66,36 @@ const filterTypeToOperator = (type: FilterType) => {
 // value remain functional.
 const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, "\\$&");
 
+export const MAX_REGEX_PATTERN_LENGTH = 500;
+
+// RE2 (what ClickHouse's match() runs) has no lookaround or backreferences;
+// JavaScript accepts them, so a JS-only check would let a pattern through
+// that fails at query time.
+const RE2_UNSUPPORTED = /\(\?<?[=!]|\\[1-9]/;
+
+/**
+ * Why a regex filter pattern cannot run, or null when it can. Shared by the
+ * query path and by stored segments so a saved pattern is held to exactly the
+ * constraints it will be executed under.
+ */
+export function validateRegexPattern(pattern: string): string | null {
+  if (!pattern) {
+    return "Regex pattern cannot be empty";
+  }
+  if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+    return `Regex pattern too long (max ${MAX_REGEX_PATTERN_LENGTH} characters)`;
+  }
+  try {
+    new RegExp(pattern);
+  } catch (e) {
+    return `Invalid regex pattern: ${e instanceof Error ? e.message : "Unknown error"}`;
+  }
+  if (RE2_UNSUPPORTED.test(pattern)) {
+    return "Regex pattern uses lookaround or backreferences, which are not supported";
+  }
+  return null;
+}
+
 export const wrapLikeValue = (type: FilterType, value: string | number): string => {
   const v = String(value);
   if (type === "contains" || type === "not_contains") return `%${escapeLikePattern(v)}%`;
@@ -94,18 +124,9 @@ export const buildStringFilterCondition = (
   if (filterType === "regex" || filterType === "not_regex") {
     const pattern = String(values[0] ?? "");
 
-    if (!pattern) {
-      throw new Error("Regex pattern cannot be empty");
-    }
-
-    try {
-      new RegExp(pattern);
-    } catch (e) {
-      throw new Error(`Invalid regex pattern: ${e instanceof Error ? e.message : "Unknown error"}`);
-    }
-
-    if (pattern.length > 500) {
-      throw new Error("Regex pattern too long (max 500 characters)");
+    const regexError = validateRegexPattern(pattern);
+    if (regexError) {
+      throw new Error(regexError);
     }
 
     const matchExpr = `match(${expression}, ${SqlString.escape(pattern)})`;

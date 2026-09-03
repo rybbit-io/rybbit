@@ -60,6 +60,9 @@ type Store = {
   setSelectedStat: (stat: StatType) => void;
   filters: Filter[];
   setFilters: (filters: Filter[]) => void;
+  /** The saved segment whose filters are part of `filters`; null when none is applied. */
+  segmentId: number | null;
+  setSegmentId: (segmentId: number | null) => void;
   timezone: string;
   setTimezone: (timezone: string) => void;
 };
@@ -83,6 +86,7 @@ const getSiteStateForUrl = (state: Store, site: string, privateKey?: string | nu
   const hasBucketInUrl = urlParams?.has("bucket");
   const hasStatInUrl = urlParams?.has("stat");
   const hasFiltersInUrl = urlParams?.has("filters");
+  const hasSegmentInUrl = urlParams?.has("segment");
   const defaultTimeState = getDefaultTimeState();
 
   return {
@@ -94,6 +98,7 @@ const getSiteStateForUrl = (state: Store, site: string, privateKey?: string | nu
     bucket: hasBucketInUrl ? state.bucket : defaultTimeState.bucket,
     selectedStat: hasStatInUrl ? state.selectedStat : "users",
     filters: hasFiltersInUrl ? state.filters : [],
+    segmentId: hasSegmentInUrl ? state.segmentId : null,
   };
 };
 
@@ -128,6 +133,8 @@ export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
       setSelectedStat: stat => set({ selectedStat: stat }),
       filters: [],
       setFilters: filters => set({ filters }),
+      segmentId: null,
+      setSegmentId: segmentId => set({ segmentId }),
       timezone: "system",
       setTimezone: newTimezone => {
         const state = get();
@@ -173,13 +180,15 @@ export const toUserTimezone = (dt: DateTime): DateTime => {
 };
 
 export const resetStore = () => {
-  const { setSite, setPrivateKey, setTime, setSelectedStat, setFilters, setComparison } = useStore.getState();
+  const { setSite, setPrivateKey, setTime, setSelectedStat, setFilters, setSegmentId, setComparison } =
+    useStore.getState();
   setSite("");
   setPrivateKey(null);
   setComparison(DEFAULT_COMPARISON);
   setTime(getDefaultTime());
   setSelectedStat("users");
   setFilters([]);
+  setSegmentId(null);
 };
 
 export const goBack = () => {
@@ -221,6 +230,34 @@ export const removeFilter = (filter: Filter) => {
 export const updateFilter = (filter: Filter, index: number) => {
   const { filters, setFilters } = useStore.getState();
   setFilters(filters.map((f, i) => (i === index ? filter : f)));
+};
+
+const filterKey = (filter: Filter) => JSON.stringify([filter.parameter, filter.type, filter.value]);
+
+/**
+ * Applies a saved segment: its filters go first, ad-hoc filters that are not
+ * already part of it follow, and the filters of the segment being replaced
+ * (if any) are dropped. Every report keeps reading `filters`, so nothing
+ * else in the dashboard learns what a segment is.
+ */
+export const applySegment = (
+  segment: { segmentId: number; filters: Filter[] },
+  replacing: Filter[] = []
+) => {
+  const { filters, setFilters, setSegmentId } = useStore.getState();
+  const dropped = new Set(replacing.map(filterKey));
+  const segmentKeys = new Set(segment.filters.map(filterKey));
+  const adHoc = filters.filter(f => !dropped.has(filterKey(f)) && !segmentKeys.has(filterKey(f)));
+  setFilters([...segment.filters, ...adHoc]);
+  setSegmentId(segment.segmentId);
+};
+
+/** Removes an applied segment and the filters it contributed; ad-hoc filters stay. */
+export const clearSegment = (segmentFilters: Filter[]) => {
+  const { filters, setFilters, setSegmentId } = useStore.getState();
+  const segmentKeys = new Set(segmentFilters.map(filterKey));
+  setFilters(filters.filter(f => !segmentKeys.has(filterKey(f))));
+  setSegmentId(null);
 };
 
 export const getFilteredFilters = (parameters: FilterParameter[]) => {

@@ -113,6 +113,10 @@ const sendRateLimited = (reply: FastifyReply, apiKeyResult: BearerAuthResult) =>
 // resolver (getSitesUserHasAccessTo) maps to the org's full site set.
 const attachApiKeyUser = (request: FastifyRequest, reply: FastifyReply, apiKeyResult: BearerAuthResult) => {
   applyRateLimitHeaders(reply, apiKeyResult);
+  // Later handlers (e.g. expandSegmentParam) may need to check a scope the
+  // route itself does not require, without re-verifying the credential.
+  request.bearerAuth = true;
+  request.bearerStatements = apiKeyResult.statements;
   if (apiKeyResult.userId) {
     request.user = { id: apiKeyResult.userId };
   } else if (apiKeyResult.organizationId) {

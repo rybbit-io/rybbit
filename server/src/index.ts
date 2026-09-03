@@ -22,16 +22,23 @@ import {
   updateAdminSubscriptionOverride,
 } from "./api/admin/index.js";
 import {
+  createAnnotation,
   createDashboard,
+  createSegment,
   createFunnel,
   createGoal,
+  deleteAnnotation,
   deleteDashboard,
+  deleteSegment,
   deleteFunnel,
   deleteGoal,
   deleteUser,
   generatePdfReport,
+  getAnnotations,
   getDashboard,
   getDashboards,
+  getSegment,
+  getSegments,
   getBotAiSummary,
   getBotDimension,
   getBotOverview,
@@ -80,7 +87,10 @@ import {
   identifyUser,
   runCustomQuery,
   runDashboardCardQuery,
+  updateAnnotation,
   updateDashboard,
+  updateSegment,
+  expandSegmentParam,
   updateGoal,
   updateUserTraits,
 } from "./api/analytics/index.js";
@@ -183,6 +193,7 @@ import {
 import { mapHeaders } from "./lib/auth-utils.js";
 import { registerApiErrorResponses } from "./lib/api-errors.js";
 import type { ScopeAction, ScopeResource } from "./lib/scopes.js";
+import type { ScopeStatements } from "@rybbit/shared";
 import { auth } from "./lib/auth.js";
 import { mcpRoutes } from "./mcp/index.js";
 import { oauthWellKnownRoutes } from "./mcp/wellKnown.js";
@@ -221,11 +232,19 @@ const validateTimeParams = async (request: FastifyRequest, reply: FastifyReply) 
 // host a time-taking route: absent params always pass, and the two chains that
 // went without it were how /org-event-count and /admin/service-event-count came
 // to answer a malformed date with all-time data and a 200.
+// expandSegmentParam turns a `segment_id` query param into `filters` after the
+// access guard has run, so every analytics endpoint accepts a saved segment
+// with no per-endpoint change. It is a no-op when the param is absent.
 const publicSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [resolveSiteId, allowPublicSiteAccess({ resource, action }), validateTimeParams] as any,
+  preHandler: [
+    resolveSiteId,
+    allowPublicSiteAccess({ resource, action }),
+    validateTimeParams,
+    expandSegmentParam,
+  ] as any,
 });
 const authSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [resolveSiteId, requireSiteAccess({ resource, action }), validateTimeParams] as any,
+  preHandler: [resolveSiteId, requireSiteAccess({ resource, action }), validateTimeParams, expandSegmentParam] as any,
 });
 const adminSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
   preHandler: [resolveSiteId, requireSiteAdminAccess({ resource, action }), validateTimeParams] as any,
@@ -257,8 +276,16 @@ const authAnalyticsRead = authSiteScoped("analytics", "read");
 const authReplayWrite = authSiteScoped("replay", "write");
 const authOrgRead = authOnlyScoped("org", "read");
 const adminSitesRead = adminSiteScoped("sites", "read");
+// Annotations validate their own optional start/end bounds (either may stand
+// alone), so the shared time validator is left off this chain.
+const publicAnnotationsRead = {
+  preHandler: [resolveSiteId, allowPublicSiteAccess({ resource: "annotations", action: "read" })] as any,
+};
+const authAnnotationsWrite = authSiteScoped("annotations", "write");
 const authDashboardsRead = authSiteScoped("dashboards", "read");
 const authDashboardsWrite = authSiteScoped("dashboards", "write");
+const publicSegmentsRead = publicSiteScoped("segments", "read");
+const authSegmentsWrite = authSiteScoped("segments", "write");
 const authFlagsRead = authSiteScoped("flags", "read");
 const authExperimentsRead = authSiteScoped("experiments", "read");
 const authSitesRead = authSiteScoped("sites", "read");
@@ -433,11 +460,25 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/goals", authGoalsWrite, createGoal);
   fastify.delete("/sites/:siteId/goals/:goalId", authGoalsWrite, deleteGoal);
   fastify.put("/sites/:siteId/goals/:goalId", authGoalsWrite, updateGoal);
+  // Timeline annotations. Read is public-guarded so public dashboards and
+  // private links get the annotations marked public; writes need site access.
+  fastify.get("/sites/:siteId/annotations", publicAnnotationsRead, getAnnotations);
+  fastify.post("/sites/:siteId/annotations", authAnnotationsWrite, createAnnotation);
+  fastify.put("/sites/:siteId/annotations/:annotationId", authAnnotationsWrite, updateAnnotation);
+  fastify.delete("/sites/:siteId/annotations/:annotationId", authAnnotationsWrite, deleteAnnotation);
   fastify.get("/sites/:siteId/dashboards", authDashboardsRead, getDashboards);
   fastify.get("/sites/:siteId/dashboards/:dashboardId", authDashboardsRead, getDashboard);
   fastify.post("/sites/:siteId/dashboards", authDashboardsWrite, createDashboard);
   fastify.put("/sites/:siteId/dashboards/:dashboardId", authDashboardsWrite, updateDashboard);
   fastify.delete("/sites/:siteId/dashboards/:dashboardId", authDashboardsWrite, deleteDashboard);
+
+  // Saved segments. Reads allow public/private-link viewers (they only see
+  // public segments); writes need site access and are further gated per row.
+  fastify.get("/sites/:siteId/segments", publicSegmentsRead, getSegments);
+  fastify.get("/sites/:siteId/segments/:segmentId", publicSegmentsRead, getSegment);
+  fastify.post("/sites/:siteId/segments", authSegmentsWrite, createSegment);
+  fastify.put("/sites/:siteId/segments/:segmentId", authSegmentsWrite, updateSegment);
+  fastify.delete("/sites/:siteId/segments/:segmentId", authSegmentsWrite, deleteSegment);
   fastify.post(
     "/sites/:siteId/dashboards/run-card",
     withRateLimit(authDashboardsRead, customQueryRateLimit),
@@ -713,5 +754,9 @@ declare module "fastify" {
     user?: any; // Or define a more specific user type
     /** Set by the auth guards when the bearer credential is an org-owned API key. */
     apiKeyOrganizationId?: string;
+    /** True when the request was authenticated with a bearer credential (API key or OAuth token). */
+    bearerAuth?: boolean;
+    /** Scope statements of that credential; null = unrestricted. */
+    bearerStatements?: ScopeStatements | null;
   }
 }
