@@ -10,7 +10,7 @@ import type { GetOverviewBucketedResponse } from "../../../../../api/analytics/e
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 import { TimeSeriesChart } from "../../../../../components/charts/TimeSeriesChart";
 import type { TimeSeriesChartPoint } from "../../../../../components/charts/TimeSeriesChart";
-import { getChartTimeBounds } from "../../../../../components/charts/timeSeriesChartUtils";
+import { bucketsBetween, getChartTimeBounds, shiftBuckets } from "../../../../../components/charts/timeSeriesChartUtils";
 import { formatChartDateTime } from "../../../../../lib/dateTimeUtils";
 import { getTimezone, useStore } from "../../../../../lib/store";
 import type { StatType } from "../../../../../lib/store";
@@ -125,14 +125,24 @@ export function Chart({
     const effChartMin = cMin ?? dataMin;
     const effChartMax = boundedChartXMax ?? boundsMax ?? dataMax ?? now.toJSDate();
 
-    // Previous points are time-shifted onto the current period's x-axis, but
-    // keep originalTime so the tooltip can show the real previous date.
+    // Previous points are shifted onto the current period's x-axis by a whole
+    // number of buckets (first bucket onto first bucket), not by the period's
+    // length: a 60-day period is not a whole number of weeks or months, so a
+    // raw offset lands week/month buckets between the current ones. They keep
+    // originalTime so the tooltip can show the real previous date.
     const prevMin = previousTime ? getChartTimeBounds(previousTime, bucket, timezone).min : undefined;
-    const offsetMs = cMin && prevMin ? cMin.getTime() - prevMin.getTime() : 0;
+    const bucketShift =
+      cMin && prevMin
+        ? bucketsBetween(
+            DateTime.fromJSDate(prevMin, { zone: timezone }),
+            DateTime.fromJSDate(cMin, { zone: timezone }),
+            bucket
+          )
+        : 0;
     const previousPoints: PrevPoint[] = [];
     previousData?.forEach(e => {
       const prevTs = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
-      const mappedMs = prevTs.toMillis() + offsetMs;
+      const mappedMs = shiftBuckets(prevTs.setZone(timezone), bucket, bucketShift).toMillis();
       if (lowerBoundMs !== undefined && mappedMs < lowerBoundMs) return;
       if (mappedMs > upperBoundMs) return;
       previousPoints.push({
