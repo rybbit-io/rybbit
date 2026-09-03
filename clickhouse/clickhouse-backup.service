@@ -1,0 +1,20 @@
+[Unit]
+Description=ClickHouse Backup to Hetzner Storage Box
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/rybbit
+ExecStart=/bin/bash /home/rybbit/clickhouse/backup-clickhouse.sh
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits
+CPUQuota=50%
+MemoryLimit=2G
+IOWeight=100
+
+[Install]
+WantedBy=multi-user.target
