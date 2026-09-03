@@ -48,27 +48,40 @@ describe("timeForTypedWindow", () => {
       pastMinutesStart: 90,
       pastMinutesEnd: 0,
     });
-    expect(timeForTypedWindow({ count: 6, unit: "hour" }, zone)).toEqual({
+    expect(timeForTypedWindow({ count: 5, unit: "hour" }, zone)).toEqual({
       mode: "past-minutes",
-      pastMinutesStart: 360,
+      pastMinutesStart: 300,
       pastMinutesEnd: 0,
     });
   });
 
   it("counts days back from today inclusive, the same shape as the day presets", () => {
-    expect(timeForTypedWindow({ count: 14, unit: "day" }, zone)).toEqual({
+    expect(timeForTypedWindow({ count: 20, unit: "day" }, zone)).toEqual({
       mode: "range",
-      startDate: DateTime.now().setZone(zone).minus({ days: 13 }).toISODate(),
+      startDate: DateTime.now().setZone(zone).minus({ days: 19 }).toISODate(),
       endDate: today,
     });
-    expect(timeForTypedWindow({ count: 2, unit: "week" }, zone)).toEqual({
+    expect(timeForTypedWindow({ count: 3, unit: "week" }, zone)).toEqual({
       mode: "range",
-      startDate: DateTime.now().setZone(zone).minus({ days: 13 }).toISODate(),
+      startDate: DateTime.now().setZone(zone).minus({ days: 20 }).toISODate(),
       endDate: today,
     });
   });
 
-  it("keeps a single day in day mode so it buckets hourly", () => {
-    expect(timeForTypedWindow({ count: 1, unit: "day" }, zone)).toEqual({ mode: "day", day: today });
+  it("keeps a preset's identity when the typed window lands on one, so it re-resolves tomorrow", () => {
+    expect(timeForTypedWindow({ count: 14, unit: "day" }, zone)).toMatchObject({
+      mode: "range",
+      wellKnown: "last-14-days",
+    });
+    expect(timeForTypedWindow({ count: 2, unit: "week" }, zone)).toMatchObject({ wellKnown: "last-14-days" });
+    expect(timeForTypedWindow({ count: 1, unit: "week" }, zone)).toMatchObject({ wellKnown: "last-7-days" });
+    expect(timeForTypedWindow({ count: 1, unit: "day" }, zone)).toEqual({
+      mode: "day",
+      day: today,
+      wellKnown: "today",
+    });
+    expect(timeForTypedWindow({ count: 6, unit: "hour" }, zone)).toMatchObject({ wellKnown: "last-6-hours" });
+    expect(timeForTypedWindow({ count: 60, unit: "minute" }, zone)).toMatchObject({ wellKnown: "last-1-hour" });
+    expect(timeForTypedWindow({ count: 24, unit: "hour" }, zone)).toMatchObject({ wellKnown: "last-24-hours" });
   });
 });

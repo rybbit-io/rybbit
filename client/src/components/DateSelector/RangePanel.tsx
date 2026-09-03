@@ -141,11 +141,19 @@ export function RangePanel({
     .filter(group => group.presets.length > 0);
   const typedUnits: TypedUnit[] = pastMinutesEnabled ? ["minute", "hour", "day", "week"] : ["day", "week"];
   const typedLabels: Record<TypedUnit, (count: number) => string> = {
-    minute: count => t("Last {minutes} minutes", { minutes: String(count) }),
-    hour: count => t("Last {hours} hours", { hours: String(count) }),
-    day: count => t("Last {days} days", { days: String(count) }),
-    week: count => t("Last {weeks} weeks", { weeks: String(count) }),
+    minute: count => t("Last {count, plural, one {# minute} other {# minutes}}", { count }),
+    hour: count => t("Last {count, plural, one {# hour} other {# hours}}", { count }),
+    day: count => t("Last {count, plural, one {# day} other {# days}}", { count }),
+    week: count => t("Last {count, plural, one {# week} other {# weeks}}", { count }),
   };
+  // cmdk only selects the first row on its own when it has no default; a stored
+  // default that is no longer in the rail must not leave it with nothing to
+  // Enter on.
+  const currentPreset = draft.time.wellKnown;
+  const defaultValue =
+    currentPreset && groups.some(group => group.presets.includes(currentPreset))
+      ? presetLabels[currentPreset]
+      : undefined;
 
   const bounds = getAbsoluteBounds(draft.time, zone);
   const selected: DateRange | undefined = bounds
@@ -166,10 +174,7 @@ export function RangePanel({
     <div className="flex flex-col">
       <div className="flex flex-col md:flex-row">
         <div className="w-full border-b border-neutral-150 md:w-[190px] md:shrink-0 md:border-b-0 md:border-r dark:border-neutral-800">
-          <Command
-            shouldFilter={false}
-            defaultValue={draft.time.wellKnown ? presetLabels[draft.time.wellKnown] : undefined}
-          >
+          <Command shouldFilter={false} defaultValue={defaultValue}>
             <CommandInput placeholder={t("Search, or type 14d, 6h")} value={query} onValueChange={setQuery} />
             {/* Capped so the rail ends level with the calendar column beside it
                 (two months + the bound rows + the pane's padding, less this

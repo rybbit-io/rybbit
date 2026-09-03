@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { getDashboardTimeForRange, type DashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
 import { Time } from "./types";
 
 export type TypedUnit = "minute" | "hour" | "day" | "week";
@@ -65,19 +66,41 @@ export function parseTypedWindow(text: string): TypedWindow | null {
   return { count, unit };
 }
 
+/**
+ * A typed window that lands exactly on a preset keeps that preset's identity:
+ * the store re-resolves a `wellKnown` window from the URL and the stored
+ * default, so "14d" still means the last 14 days tomorrow, where an anonymous
+ * range would be frozen to the dates it was typed on.
+ */
+const PRESET_BY_MINUTES: Record<number, DashboardDefaultTimeRange> = {
+  30: "last-30-minutes",
+  60: "last-1-hour",
+  360: "last-6-hours",
+  1440: "last-24-hours",
+};
+const PRESET_BY_DAYS: Record<number, DashboardDefaultTimeRange> = {
+  1: "today",
+  3: "last-3-days",
+  7: "last-7-days",
+  14: "last-14-days",
+  30: "last-30-days",
+  60: "last-60-days",
+};
+
 export function timeForTypedWindow(window: TypedWindow & { unit: TypedUnit }, zone: string): Time {
   const { count, unit } = window;
 
   if (unit === "minute" || unit === "hour") {
+    const minutes = unit === "hour" ? count * 60 : count;
+    const preset = PRESET_BY_MINUTES[minutes];
+    if (preset) return getDashboardTimeForRange(preset, zone);
     return { mode: "past-minutes", pastMinutesStart: unit === "hour" ? count * 60 : count, pastMinutesEnd: 0 };
   }
 
   const days = unit === "week" ? count * 7 : count;
+  const preset = PRESET_BY_DAYS[days];
+  if (preset) return getDashboardTimeForRange(preset, zone);
+
   const now = DateTime.now().setZone(zone);
-  const today = now.toISODate() ?? "";
-
-  // A single day stays `mode: "day"` so it buckets hourly, the same as Today.
-  if (days === 1) return { mode: "day", day: today };
-
-  return { mode: "range", startDate: now.minus({ days: days - 1 }).toISODate() ?? "", endDate: today };
+  return { mode: "range", startDate: now.minus({ days: days - 1 }).toISODate() ?? "", endDate: now.toISODate() ?? "" };
 }

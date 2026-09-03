@@ -1764,5 +1764,11 @@
   "QOaR8l": "Submitted form to \"{action}\"",
   "IQ5tZg": "Submitted form",
   "+B+qvw": "Changed {type}input \"{name}\"",
-  "vDpLV2": "Changed {type}input"
+  "vDpLV2": "Changed {type}input",
+  "DDyIYi": "Search, or type 14d, 6h",
+  "q5g+LV": "Last {count} …",
+  "UG2tSi": "Last {count, plural, one {# minute} other {# minutes}}",
+  "hq3XcK": "Last {count, plural, one {# hour} other {# hours}}",
+  "lYB+ft": "Last {count, plural, one {# day} other {# days}}",
+  "QyVOhk": "Last {count, plural, one {# week} other {# weeks}}"
 }

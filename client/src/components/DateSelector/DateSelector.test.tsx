@@ -8,8 +8,14 @@ import { Time } from "./types";
 const mocks = vi.hoisted(() => ({ timezone: "America/New_York", setTimezone: vi.fn(), setComparison: vi.fn() }));
 
 vi.mock("next-intl", () => ({
-  useExtracted: () => (message: string, values?: Record<string, string>) =>
-    values ? message.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? `{${key}}`) : message,
+  useExtracted: () => (message: string, values?: Record<string, string | number>) =>
+    values
+      ? message
+          .replace(/\{(\w+), plural, one \{([^}]*)\} other \{([^}]*)\}\}/g, (_, key, one, other) =>
+            String(values[key] === 1 ? one : other).replace("#", String(values[key]))
+          )
+          .replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? `{${key}}`))
+      : message,
 }));
 
 vi.mock("@/lib/store", () => ({
@@ -131,17 +137,17 @@ describe("DateSelector", () => {
   });
 });
 
-describe("DateSelector typed window label", () => {
-  it("names a run of days ending today by its count", () => {
-    const today = DateTime.now().setZone("America/New_York");
-    render(
-      <DateSelector
-        time={{ mode: "range", startDate: today.minus({ days: 13 }).toISODate()!, endDate: today.toISODate()! }}
-        setTime={setTime}
-      />
-    );
+describe("DateSelector realtime label", () => {
+  it("keeps the minutes of a window that is not a whole number of hours", () => {
+    render(<DateSelector time={{ mode: "past-minutes", pastMinutesStart: 90, pastMinutesEnd: 0 }} setTime={setTime} />);
+    expect(screen.getByRole("button", { name: /Last 90 minutes/ })).toBeTruthy();
+  });
 
-    expect(screen.getByRole("button", { name: /Last 14 days/ })).toBeTruthy();
+  it("names whole hours as hours", () => {
+    render(
+      <DateSelector time={{ mode: "past-minutes", pastMinutesStart: 120, pastMinutesEnd: 0 }} setTime={setTime} />
+    );
+    expect(screen.getByRole("button", { name: /Last 2 hours/ })).toBeTruthy();
   });
 });
 
@@ -190,6 +196,33 @@ describe("DateSelector hotkeys", () => {
 
     fireEvent.keyDown(document.body, { key: "d" });
     expect(setTime.mock.calls[0][0]).toMatchObject({ wellKnown: "today" });
+  });
+
+  it("lets the newest mounted selector keep the keys even after an older one re-renders", () => {
+    const older = vi.fn();
+    const newer = vi.fn();
+    const { rerender } = render(
+      <>
+        <DateSelector time={range} setTime={older} />
+        <DateSelector time={range} setTime={newer} />
+      </>
+    );
+
+    // A fresh callback re-memoises the older selector's handlers; its stack
+    // slot must not move above the newer selector's.
+    const olderAgain = vi.fn();
+    rerender(
+      <>
+        <DateSelector time={range} setTime={olderAgain} />
+        <DateSelector time={range} setTime={newer} />
+      </>
+    );
+
+    fireEvent.keyDown(document.body, { key: "w" });
+
+    expect(newer).toHaveBeenCalledTimes(1);
+    expect(older).not.toHaveBeenCalled();
+    expect(olderAgain).not.toHaveBeenCalled();
   });
 
   it("can be switched off", () => {

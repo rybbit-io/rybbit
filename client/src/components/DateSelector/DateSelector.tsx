@@ -107,12 +107,6 @@ export function DateSelector({
 
       const start = DateTime.fromISO(time.startDate);
       const end = DateTime.fromISO(time.endDate);
-      // A typed "14d" lands here with no preset name of its own; a run of days
-      // ending today reads better as the count it was asked for than as dates.
-      if (time.endDate === now.toISODate() && time.startDate < time.endDate) {
-        const days = Math.round(end.diff(start, "days").days) + 1;
-        return t("Last {days} days", { days: String(days) });
-      }
       const startFormatted = start.toFormat("EEEE, MMM d");
       if (start.toISODate() === end.toISODate()) return startFormatted;
       const endFormatted = end.toFormat("EEEE, MMM d");
@@ -132,9 +126,10 @@ export function DateSelector({
         return `${startFormatted} - ${endFormatted}`;
       }
 
-      if (time.pastMinutesStart >= 60) {
-        const hours = Math.floor(time.pastMinutesStart / 60);
-        return t("Last {hours} hours", { hours: String(hours) });
+      // Whole hours read as hours; a typed 90m keeps its minutes rather than
+      // rounding down to "Last 1 hours".
+      if (time.pastMinutesStart >= 60 && time.pastMinutesStart % 60 === 0) {
+        return t("Last {hours} hours", { hours: String(time.pastMinutesStart / 60) });
       }
       return t("Last {minutes} minutes", { minutes: String(time.pastMinutesStart) });
     }
