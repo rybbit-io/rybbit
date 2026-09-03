@@ -120,6 +120,13 @@
       "when": 1788386038776,
       "tag": "0016_shocking_vance_astro",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788393490335,
+      "tag": "0017_burly_nick_fury",
+      "breakpoints": true
     }
   ]
 }

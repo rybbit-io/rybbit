@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RybbitApiClient } from "../apiClient.js";
 import { registerAnalyticsTools } from "./analytics.js";
+import { registerAnnotationTools } from "./annotations.js";
 import { registerFunnelTools } from "./funnels.js";
 import { registerGoalTools } from "./goals.js";
 import { registerOrganizationTools } from "./organizations.js";
@@ -23,4 +24,5 @@ export function registerTools(server: McpServer, api: RybbitApiClient, config: T
   registerUserTools(server, api, guard, allowed);
   registerOrganizationTools(server, api, guard, allowed);
   registerRawDataTools(server, api, guard, allowed);
+  registerAnnotationTools(server, api, guard, allowed);
 }
