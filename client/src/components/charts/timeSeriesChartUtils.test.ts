@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { describe, expect, it } from "vitest";
 import { Time } from "../DateSelector/types";
-import { getChartTimeBounds } from "./timeSeriesChartUtils";
+import { bucketsBetween, getChartTimeBounds, shiftBuckets } from "./timeSeriesChartUtils";
 
 const ZONE = "America/New_York";
 
@@ -61,6 +61,30 @@ describe("getChartTimeBounds", () => {
     });
   });
 
+  it("range: starts on the bucket holding the start date, for week and month buckets", () => {
+    // Last 60 days from 2026-09-02 starts on a Saturday; the API's first week
+    // bucket is the Sunday before it and the first month bucket is July 1.
+    const last60 = { mode: "range", startDate: "2026-07-05", endDate: "2026-09-02" } as const;
+    expect(boundsIso(last60, "week")).toEqual({
+      min: "2026-07-05T00:00:00.000-04:00",
+      max: "2026-08-31T00:00:00.000-04:00",
+    });
+    expect(boundsIso({ ...last60, startDate: "2026-07-04" }, "week").min).toBe("2026-06-28T00:00:00.000-04:00");
+    expect(boundsIso({ ...last60, startDate: "2026-07-04" }, "month")).toEqual({
+      min: "2026-07-01T00:00:00.000-04:00",
+      max: "2026-09-01T00:00:00.000-04:00",
+    });
+  });
+
+  it("exact range: starts on the hour bucket holding the start time", () => {
+    expect(
+      boundsIso(
+        { mode: "range", startDate: "2026-08-19", endDate: "2026-08-19", startTime: "09:15:00", endTime: "17:45:00" },
+        "hour"
+      ).min
+    ).toBe("2026-08-19T09:00:00.000-04:00");
+  });
+
   it("exact range: ends on the last bucket inside the exclusive end", () => {
     const exact = {
       mode: "range",
@@ -73,5 +97,34 @@ describe("getChartTimeBounds", () => {
     expect(boundsIso({ ...exact, startTime: "10:00:00", endTime: "12:00:00" }, "hour").max).toBe(
       "2026-08-19T11:00:00.000-04:00"
     );
+  });
+});
+
+describe("bucketsBetween / shiftBuckets", () => {
+  const at = (iso: string) => DateTime.fromISO(iso, { zone: ZONE });
+
+  it("counts whole weeks between the two periods' first buckets, whichever weekday convention floored them", () => {
+    // 60-day period starting Sat Jul 4 (first bucket Sun Jun 28) vs its
+    // previous period starting Tue May 5 (first bucket Sun May 3): 8 weeks,
+    // not 60 days.
+    expect(bucketsBetween(at("2026-05-03"), at("2026-06-28"), "week")).toBe(8);
+    expect(bucketsBetween(at("2026-05-04"), at("2026-06-28"), "week")).toBe(8);
+  });
+
+  it("shifts month buckets by calendar months so they land on month starts", () => {
+    expect(bucketsBetween(at("2026-05-01"), at("2026-07-01"), "month")).toBe(2);
+    expect(shiftBuckets(at("2026-05-01"), "month", 2).toISO()).toBe(at("2026-07-01").toISO());
+    expect(shiftBuckets(at("2026-06-01"), "month", 2).toISO()).toBe(at("2026-08-01").toISO());
+    expect(shiftBuckets(at("2026-07-01"), "month", 2).toISO()).toBe(at("2026-09-01").toISO());
+  });
+
+  it("keeps day buckets on midnight across a DST change", () => {
+    expect(shiftBuckets(at("2026-10-25"), "day", 14).toISO()).toBe("2026-11-08T00:00:00.000-05:00");
+    expect(bucketsBetween(at("2026-10-25"), at("2026-11-08"), "day")).toBe(14);
+  });
+
+  it("handles sub-hour buckets", () => {
+    expect(bucketsBetween(at("2026-08-19T09:00"), at("2026-08-19T09:30"), "five_minutes")).toBe(6);
+    expect(shiftBuckets(at("2026-08-19T09:00"), "fifteen_minutes", 2).toFormat("HH:mm")).toBe("09:30");
   });
 });
