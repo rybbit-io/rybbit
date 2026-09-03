@@ -1826,5 +1826,11 @@
   "zwhI6a": "No conversion event code is needed for this goal. Rybbit tracks it automatically based on user behavior.",
   "zxvhnE": "Daily",
   "zyQ3nw": "Add Another Property",
-  "zz0om1": "IP Exclusions"
+  "zz0om1": "IP Exclusions",
+  "DDyIYi": "Search, or type 14d, 6h",
+  "q5g+LV": "Last {count} …",
+  "UG2tSi": "Last {count, plural, one {# minute} other {# minutes}}",
+  "hq3XcK": "Last {count, plural, one {# hour} other {# hours}}",
+  "lYB+ft": "Last {count, plural, one {# day} other {# days}}",
+  "QyVOhk": "Last {count, plural, one {# week} other {# weeks}}"
 }

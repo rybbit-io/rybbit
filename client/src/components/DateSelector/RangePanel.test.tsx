@@ -6,8 +6,14 @@ import { RangePanel } from "./RangePanel";
 import { Comparison, DEFAULT_COMPARISON, Time } from "./types";
 
 vi.mock("next-intl", () => ({
-  useExtracted: () => (message: string, values?: Record<string, string>) =>
-    values ? message.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? `{${key}}`) : message,
+  useExtracted: () => (message: string, values?: Record<string, string | number>) =>
+    values
+      ? message
+          .replace(/\{(\w+), plural, one \{([^}]*)\} other \{([^}]*)\}\}/g, (_, key, one, other) =>
+            String(values[key] === 1 ? one : other).replace("#", String(values[key]))
+          )
+          .replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? `{${key}}`))
+      : message,
 }));
 
 const ZONE = "America/New_York";
@@ -71,11 +77,13 @@ describe("RangePanel presets", () => {
     expect(container.querySelectorAll('[data-slot="command-separator"]').length).toBe(2);
   });
 
-  it("offers Last Week and Last Month, which had labels but no menu item before", () => {
+  it("keeps the list to the ten presets people learn, not the seventeen they scanned", () => {
     renderPanel(DATE_RANGE);
 
-    expect(screen.getByText("Last Week")).toBeTruthy();
-    expect(screen.getByText("Last Month")).toBeTruthy();
+    expect(within(screen.getAllByRole("listbox")[0]).getAllByRole("option").length).toBe(10);
+    expect(screen.getByText("This Week")).toBeTruthy();
+    expect(screen.queryByText("Last 14 Days")).toBeNull();
+    expect(screen.queryByText("Last Week")).toBeNull();
   });
 
   it("applies a preset immediately — the fast path does not wait for Apply", () => {
@@ -90,11 +98,18 @@ describe("RangePanel presets", () => {
   it("filters the list as you search", async () => {
     renderPanel(DATE_RANGE);
 
-    fireEvent.change(screen.getByPlaceholderText("Search ranges"), { target: { value: "week" } });
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: "week" } });
 
     await waitFor(() => expect(screen.queryByText("Last 30 Days")).toBeNull());
     expect(screen.getByText("This Week")).toBeTruthy();
-    expect(screen.getByText("Last Week")).toBeTruthy();
+  });
+
+  it("says so when nothing matches", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: "quarter" } });
+
+    expect(screen.getByText("No matching range")).toBeTruthy();
   });
 
   it("hides the realtime group when a caller disables past-minutes windows", () => {
@@ -103,6 +118,95 @@ describe("RangePanel presets", () => {
     expect(screen.queryByText("Last 30 Minutes")).toBeNull();
     expect(screen.getByText("Today")).toBeTruthy();
     expect(container.querySelectorAll('[data-slot="command-separator"]').length).toBe(1);
+  });
+});
+
+describe("RangePanel typed windows", () => {
+  it("turns 14d into a window instead of a search, and applies it on select", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: "14d" } });
+
+    // The presets step aside: "3d" must not surface Last 30 Days beside the typed row.
+    expect(screen.queryByText("Last 30 Days")).toBeNull();
+    fireEvent.click(screen.getByText("Last 14 days"));
+
+    expect(onApply).toHaveBeenCalledTimes(1);
+    const applied = onApply.mock.calls[0][0];
+    // 14 days is a dropped preset, so the typed window keeps its identity.
+    expect(applied).toMatchObject({ mode: "range", wellKnown: "last-14-days" });
+    expect(DateTime.fromISO(applied.endDate).diff(DateTime.fromISO(applied.startDate), "days").days).toBe(13);
+  });
+
+  it("applies a count no preset covers as a plain range", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: "20d" } });
+    fireEvent.click(screen.getByText("Last 20 days"));
+
+    const applied = onApply.mock.calls[0][0];
+    expect(applied.mode).toBe("range");
+    expect(applied.wellKnown).toBeUndefined();
+    expect(DateTime.fromISO(applied.endDate).diff(DateTime.fromISO(applied.startDate), "days").days).toBe(19);
+  });
+
+  it("serves hours from the realtime path", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: "5h" } });
+    fireEvent.click(screen.getByText("Last 5 hours"));
+
+    expect(onApply.mock.calls[0][0]).toEqual({ mode: "past-minutes", pastMinutesStart: 300, pastMinutesEnd: 0 });
+  });
+
+  it("applies the typed row on Enter", () => {
+    renderPanel(DATE_RANGE);
+
+    const input = screen.getByPlaceholderText(/Search/);
+    fireEvent.change(input, { target: { value: "20d" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][0].wellKnown).toBeUndefined();
+  });
+
+  it("still lets Enter pick the first row when the current preset is no longer in the rail", () => {
+    // A stored default of a dropped preset used to become cmdk's defaultValue
+    // with nothing to match, leaving no row selected and Enter dead.
+    const zone = "America/New_York";
+    const today = DateTime.now().setZone(zone);
+    renderPanel({
+      mode: "range",
+      startDate: today.minus({ days: 13 }).toISODate()!,
+      endDate: today.toISODate()!,
+      wellKnown: "last-14-days",
+    });
+
+    fireEvent.keyDown(screen.getByPlaceholderText(/Search/), { key: "Enter" });
+
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][0]).toMatchObject({ wellKnown: "last-30-minutes" });
+  });
+
+  it("names the unit letters while only the digits are typed", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: "14" } });
+
+    expect(screen.getByText("Last 14 …")).toBeTruthy();
+    expect(within(screen.getAllByRole("listbox")[0]).queryAllByRole("option").length).toBe(0);
+  });
+
+  it("does not offer minutes or hours where realtime windows are disabled", () => {
+    renderPanel(DATE_RANGE, { pastMinutesEnabled: false });
+
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: "6h" } });
+    expect(screen.queryByText("Last 6 hours")).toBeNull();
+    expect(screen.getByText("No matching range")).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search/), { target: { value: "14" } });
+    expect(screen.queryByText("m")).toBeNull();
+    expect(screen.getByText("d")).toBeTruthy();
   });
 });
 

@@ -10,6 +10,7 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command";
 import useMediaQuery from "@/components/ui/hooks/useMediaQuery";
 import { Input } from "@/components/ui/input";
@@ -24,8 +25,9 @@ import { useExtracted } from "next-intl";
 import { Fragment, useState } from "react";
 import { DateRange } from "react-day-picker";
 import { ComparisonSelect } from "./ComparisonSelect";
-import { PRESET_GROUPS, usePresetLabels } from "./presets";
+import { HOTKEY_FOR_PRESET, PRESET_GROUPS, usePresetLabels } from "./presets";
 import { rangeFieldsForTime, timeFromRangeFields, timeFromSelectedDays, type RangeFields } from "./rangeFields";
+import { parseTypedWindow, timeForTypedWindow, type TypedUnit } from "./typedWindow";
 import { Comparison, Time } from "./types";
 
 /**
@@ -62,6 +64,7 @@ export function RangePanel({
   const presetLabels = usePresetLabels();
   const isWide = useMediaQuery("(min-width: 768px)");
   const [timezoneOpen, setTimezoneOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   // "Today" is the dashboard's today, not the browser's — the picker used to
   // disable future days against the machine clock, which is off by one for
@@ -119,7 +122,38 @@ export function RangePanel({
       return { time: next, fields: rangeFieldsForTime(next, zone) };
     });
 
-  const groups = PRESET_GROUPS.filter(group => pastMinutesEnabled || group.id !== "realtime");
+  /**
+   * The search box doubles as a window parser: "14d" or "6h" is a window, not
+   * a search, and it becomes the first row of the rail. Filtering is done here
+   * rather than by cmdk so the typed row is never fuzzy-matched against, and
+   * so "3d" does not surface Last 30 Days beside it.
+   */
+  const typed = parseTypedWindow(query);
+  const typedAllowed = typed && (pastMinutesEnabled || (typed.unit !== "minute" && typed.unit !== "hour"));
+  const needle = query.trim().toLowerCase();
+  const groups = PRESET_GROUPS.filter(group => pastMinutesEnabled || group.id !== "realtime")
+    .map(group => ({
+      ...group,
+      presets: typedAllowed
+        ? []
+        : group.presets.filter(preset => !needle || presetLabels[preset].toLowerCase().includes(needle)),
+    }))
+    .filter(group => group.presets.length > 0);
+  const typedUnits: TypedUnit[] = pastMinutesEnabled ? ["minute", "hour", "day", "week"] : ["day", "week"];
+  const typedLabels: Record<TypedUnit, (count: number) => string> = {
+    minute: count => t("Last {count, plural, one {# minute} other {# minutes}}", { count }),
+    hour: count => t("Last {count, plural, one {# hour} other {# hours}}", { count }),
+    day: count => t("Last {count, plural, one {# day} other {# days}}", { count }),
+    week: count => t("Last {count, plural, one {# week} other {# weeks}}", { count }),
+  };
+  // cmdk only selects the first row on its own when it has no default; a stored
+  // default that is no longer in the rail must not leave it with nothing to
+  // Enter on.
+  const currentPreset = draft.time.wellKnown;
+  const defaultValue =
+    currentPreset && groups.some(group => group.presets.includes(currentPreset))
+      ? presetLabels[currentPreset]
+      : undefined;
 
   const bounds = getAbsoluteBounds(draft.time, zone);
   const selected: DateRange | undefined = bounds
@@ -140,15 +174,43 @@ export function RangePanel({
     <div className="flex flex-col">
       <div className="flex flex-col md:flex-row">
         <div className="w-full border-b border-neutral-150 md:w-[190px] md:shrink-0 md:border-b-0 md:border-r dark:border-neutral-800">
-          <Command defaultValue={draft.time.wellKnown ? presetLabels[draft.time.wellKnown] : undefined}>
-            <CommandInput placeholder={t("Search ranges")} />
+          <Command shouldFilter={false} defaultValue={defaultValue}>
+            <CommandInput placeholder={t("Search, or type 14d, 6h")} value={query} onValueChange={setQuery} />
             {/* Capped so the rail ends level with the calendar column beside it
                 (two months + the bound rows + the pane's padding, less this
                 list's own 36px search row). Left to its natural height the
                 seventeen presets stretched the panel and left a block of dead
                 space under the calendar. */}
             <CommandList className="max-h-[180px] md:max-h-[384px]">
-              <CommandEmpty>{t("No matching range")}</CommandEmpty>
+              {typedAllowed &&
+                (typed.unit ? (
+                  <CommandGroup>
+                    <CommandItem
+                      value={`typed:${typed.count}${typed.unit}`}
+                      onSelect={() =>
+                        onApply(timeForTypedWindow({ count: typed.count, unit: typed.unit! }, zone), draftComparison)
+                      }
+                    >
+                      {typedLabels[typed.unit](typed.count)}
+                      <CommandShortcut className="tracking-normal">↵</CommandShortcut>
+                    </CommandItem>
+                  </CommandGroup>
+                ) : (
+                  // Digits alone: name the letters that would finish the phrase.
+                  <div className="flex items-center px-2 py-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+                    {t("Last {count} …", { count: String(typed.count) })}
+                    <span className="ml-auto flex gap-1">
+                      {typedUnits.map(unit => (
+                        <KeyCap key={unit}>{unit[0]}</KeyCap>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              {!typedAllowed && groups.length === 0 && (
+                <div className="py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+                  {t("No matching range")}
+                </div>
+              )}
               {/* Separators rather than headings: the groups are obvious from
                   their contents, and cmdk drops the rules automatically while a
                   search is filtering across them. */}
@@ -165,6 +227,16 @@ export function RangePanel({
                       >
                         {presetLabels[preset]}
                         {draft.time.wellKnown === preset && <Check className="ml-auto h-3.5 w-3.5" />}
+                        {HOTKEY_FOR_PRESET[preset] && (
+                          <KeyCap
+                            className={cn(
+                              "hidden md:inline-flex",
+                              draft.time.wellKnown === preset ? "ml-1.5" : "ml-auto"
+                            )}
+                          >
+                            {HOTKEY_FOR_PRESET[preset]}
+                          </KeyCap>
+                        )}
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -288,6 +360,19 @@ export function RangePanel({
         </Button>
       </div>
     </div>
+  );
+}
+
+function KeyCap({ className, children }: { className?: string; children: string }) {
+  return (
+    <kbd
+      className={cn(
+        "inline-flex h-4 min-w-4 items-center justify-center rounded-[2.8px] border border-neutral-200 px-1 font-mono text-[10px] uppercase text-neutral-500 dark:border-neutral-750 dark:text-neutral-400",
+        className
+      )}
+    >
+      {children}
+    </kbd>
   );
 }
 

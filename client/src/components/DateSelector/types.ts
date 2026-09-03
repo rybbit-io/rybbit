@@ -54,14 +54,7 @@ export type PastMinutesMode = {
   wellKnown?: "last-30-minutes" | "last-1-hour" | "last-6-hours" | "last-24-hours";
 };
 
-export type Time =
-  | DateMode
-  | DateRangeMode
-  | WeekMode
-  | MonthMode
-  | YearMode
-  | AllTimeMode
-  | PastMinutesMode;
+export type Time = DateMode | DateRangeMode | WeekMode | MonthMode | YearMode | AllTimeMode | PastMinutesMode;
 
 /**
  * What the dashboard's comparison line is drawn against. Everything but
