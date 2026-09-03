@@ -3,15 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { hour12 } from "@/lib/dateTimeUtils";
-import { setStoredDashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
+import { getDashboardTimeForRange, setStoredDashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
 import { useStore, useTimezone } from "@/lib/store";
 import { Calendar } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { RangePanel } from "./RangePanel";
-import { usePresetLabels } from "./presets";
+import { PRESET_GROUPS, usePresetLabels } from "./presets";
 import { Time } from "./types";
+import { useDatePresetHotkeys } from "./useDatePresetHotkeys";
 import { TimeBucket } from "@rybbit/shared";
 
 const stepDateTimeBucket = (dt: DateTime, bucket: TimeBucket, direction: 1 | -1): DateTime => {
@@ -42,10 +43,13 @@ export function DateSelector({
   time,
   setTime: setSelectedTime,
   pastMinutesEnabled = true,
+  hotkeys = true,
 }: {
   time: Time;
   setTime: (time: Time) => void;
   pastMinutesEnabled?: boolean;
+  /** Single-key preset shortcuts (see `PRESET_HOTKEYS`). Off for selectors that live inside another form. */
+  hotkeys?: boolean;
 }) {
   const { timezone, setTimezone, bucket, comparison, setComparison } = useStore();
   const zone = useTimezone();
@@ -60,6 +64,25 @@ export function DateSelector({
 
     setSelectedTime(nextTime);
   };
+
+  useDatePresetHotkeys(
+    useMemo(
+      () =>
+        hotkeys
+          ? {
+              onPreset: preset => {
+                setTime(getDashboardTimeForRange(preset, zone));
+                setOpen(false);
+              },
+              onCustom: () => setOpen(true),
+              enabled: preset =>
+                pastMinutesEnabled || !PRESET_GROUPS.some(g => g.id === "realtime" && g.presets.includes(preset)),
+            }
+          : null,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [hotkeys, zone, pastMinutesEnabled, setSelectedTime]
+    )
+  );
 
   const getLabel = (time: Time) => {
     if (time.wellKnown) {
@@ -84,6 +107,12 @@ export function DateSelector({
 
       const start = DateTime.fromISO(time.startDate);
       const end = DateTime.fromISO(time.endDate);
+      // A typed "14d" lands here with no preset name of its own; a run of days
+      // ending today reads better as the count it was asked for than as dates.
+      if (time.endDate === now.toISODate() && time.startDate < time.endDate) {
+        const days = Math.round(end.diff(start, "days").days) + 1;
+        return t("Last {days} days", { days: String(days) });
+      }
       const startFormatted = start.toFormat("EEEE, MMM d");
       if (start.toISODate() === end.toISODate()) return startFormatted;
       const endFormatted = end.toFormat("EEEE, MMM d");

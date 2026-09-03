@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { DateTime } from "luxon";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DateSelector } from "./DateSelector";
@@ -109,10 +110,10 @@ describe("DateSelector", () => {
     render(<DateSelector time={{ mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" }} setTime={setTime} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Mar 8/ }));
-    expect(screen.getByPlaceholderText("Search ranges")).toBeTruthy();
+    expect(screen.getByPlaceholderText(/Search/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.queryByPlaceholderText("Search ranges")).toBeNull();
+    expect(screen.queryByPlaceholderText(/Search/)).toBeNull();
   });
 
   it("hides the realtime presets when a caller disables them", () => {
@@ -127,5 +128,82 @@ describe("DateSelector", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mar 8/ }));
     expect(screen.queryByText("Last 30 Minutes")).toBeNull();
     expect(screen.getByText("Today")).toBeTruthy();
+  });
+});
+
+describe("DateSelector typed window label", () => {
+  it("names a run of days ending today by its count", () => {
+    const today = DateTime.now().setZone("America/New_York");
+    render(
+      <DateSelector
+        time={{ mode: "range", startDate: today.minus({ days: 13 }).toISODate()!, endDate: today.toISODate()! }}
+        setTime={setTime}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /Last 14 days/ })).toBeTruthy();
+  });
+});
+
+describe("DateSelector hotkeys", () => {
+  const range: Time = { mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" };
+
+  it("applies a preset from a single key", () => {
+    render(<DateSelector time={range} setTime={setTime} />);
+
+    fireEvent.keyDown(document.body, { key: "w" });
+
+    expect(setTime).toHaveBeenCalledTimes(1);
+    expect(setTime.mock.calls[0][0]).toMatchObject({ wellKnown: "last-7-days" });
+    expect(localStorage.getItem("rybbit-default-time-range")).toBe("last-7-days");
+  });
+
+  it("opens the panel on c", () => {
+    render(<DateSelector time={range} setTime={setTime} />);
+
+    fireEvent.keyDown(document.body, { key: "c" });
+
+    expect(screen.getByPlaceholderText(/Search/)).toBeTruthy();
+    expect(setTime).not.toHaveBeenCalled();
+  });
+
+  it("stays out of the way while typing or chording", () => {
+    render(
+      <>
+        <input aria-label="Other field" />
+        <DateSelector time={range} setTime={setTime} />
+      </>
+    );
+
+    fireEvent.keyDown(screen.getByLabelText("Other field"), { key: "w" });
+    fireEvent.keyDown(document.body, { key: "w", metaKey: true });
+    fireEvent.keyDown(document.body, { key: "w", ctrlKey: true });
+
+    expect(setTime).not.toHaveBeenCalled();
+  });
+
+  it("ignores realtime keys when a caller hides those presets", () => {
+    render(<DateSelector time={range} setTime={setTime} pastMinutesEnabled={false} />);
+
+    fireEvent.keyDown(document.body, { key: "r" });
+    expect(setTime).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document.body, { key: "d" });
+    expect(setTime.mock.calls[0][0]).toMatchObject({ wellKnown: "today" });
+  });
+
+  it("can be switched off", () => {
+    render(<DateSelector time={range} setTime={setTime} hotkeys={false} />);
+
+    fireEvent.keyDown(document.body, { key: "w" });
+    expect(setTime).not.toHaveBeenCalled();
+  });
+
+  it("shows the key beside each preset in the rail", () => {
+    render(<DateSelector time={range} setTime={setTime} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Mar 8/ }));
+
+    expect(screen.getByText("Last 7 Days").parentElement?.textContent).toContain("w");
   });
 });

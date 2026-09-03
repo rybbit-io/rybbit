@@ -6,21 +6,21 @@ import type { DashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
  * named headings — their contents say what they are, and it keeps the rail as
  * quiet as the dropdown it replaces.
  *
- * Two of the seventeen presets were previously unreachable: `last-week` and
- * `last-month` had labels but no menu item, so they could only be arrived at
- * from a stored default or a URL param.
+ * Ten presets rather than the seventeen there used to be: a list this short is
+ * one people learn rather than scan, and every window it dropped (1h, 6h, 3d,
+ * 14d, 60d) is a count back from now that the search box now takes typed —
+ * see `parseTypedWindow`. Last week and last month are not counts, so they
+ * stay a click away in the calendar. Every dropped preset keeps its label and
+ * resolver so a stored default or URL param still names itself.
  *
  * `realtime` is dropped when a caller passes `pastMinutesEnabled={false}`.
  */
 export type PresetGroupId = "realtime" | "relative" | "calendar";
 
 export const PRESET_GROUPS: { id: PresetGroupId; presets: DashboardDefaultTimeRange[] }[] = [
-  { id: "realtime", presets: ["last-30-minutes", "last-1-hour", "last-6-hours", "last-24-hours"] },
-  {
-    id: "relative",
-    presets: ["today", "yesterday", "last-3-days", "last-7-days", "last-14-days", "last-30-days", "last-60-days"],
-  },
-  { id: "calendar", presets: ["this-week", "last-week", "this-month", "last-month", "this-year", "all-time"] },
+  { id: "realtime", presets: ["last-30-minutes", "last-24-hours"] },
+  { id: "relative", presets: ["today", "yesterday", "last-7-days", "last-30-days"] },
+  { id: "calendar", presets: ["this-week", "this-month", "this-year", "all-time"] },
 ];
 
 /**
@@ -50,3 +50,29 @@ export function usePresetLabels(): Record<DashboardDefaultTimeRange, string> {
     "all-time": t("All Time"),
   };
 }
+
+/**
+ * Single-key shortcuts. The letters follow Plausible's scheme (D/E/W/T/M/Y/A)
+ * so anyone arriving from there keeps their muscle memory; the two realtime
+ * windows and the custom picker fill the gaps. Only This Week has no key.
+ */
+export const PRESET_HOTKEYS = {
+  d: "today",
+  e: "yesterday",
+  h: "last-24-hours",
+  w: "last-7-days",
+  t: "last-30-days",
+  m: "this-month",
+  y: "this-year",
+  a: "all-time",
+  r: "last-30-minutes",
+} as const satisfies Record<string, DashboardDefaultTimeRange>;
+
+export type PresetHotkey = keyof typeof PRESET_HOTKEYS;
+
+/** Opens the panel for a custom range. */
+export const CUSTOM_RANGE_HOTKEY = "c";
+
+export const HOTKEY_FOR_PRESET: Partial<Record<DashboardDefaultTimeRange, PresetHotkey>> = Object.fromEntries(
+  (Object.entries(PRESET_HOTKEYS) as [PresetHotkey, DashboardDefaultTimeRange][]).map(([key, preset]) => [preset, key])
+);
