@@ -29,6 +29,7 @@ import {
   ANNOTATION_COLOR_OPTIONS,
   ANNOTATION_ICON_OPTIONS,
   annotationSwatch,
+  pickIconFromInput,
   toDateInput,
 } from "./annotationUtils";
 import { useAnnotationPermissions } from "./useAnnotationPermissions";
@@ -335,7 +336,7 @@ export function AnnotationFormDialog({
                   <FormLabel>
                     {t("Icon")} <span className="text-muted-foreground font-normal">({t("optional")})</span>
                   </FormLabel>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     {ANNOTATION_ICON_OPTIONS.map(icon => (
                       <button
                         key={icon}
@@ -352,6 +353,18 @@ export function AnnotationFormDialog({
                         {icon}
                       </button>
                     ))}
+                    {/* Any emoji: type or paste one (the OS emoji picker works here). */}
+                    <Input
+                      aria-label={t("Custom emoji")}
+                      placeholder="＋"
+                      title={t("Type or paste any emoji")}
+                      value={field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value) ? field.value : ""}
+                      onChange={e => field.onChange(pickIconFromInput(e.target.value))}
+                      className={cn(
+                        "w-8 h-8 px-0 text-center text-base rounded-md",
+                        field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value) && "border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800"
+                      )}
+                    />
                   </div>
                 </FormItem>
               )}

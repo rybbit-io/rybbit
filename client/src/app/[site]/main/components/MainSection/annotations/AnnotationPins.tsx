@@ -4,7 +4,13 @@ import type { Annotation } from "@rybbit/shared";
 import { StickyNote } from "lucide-react";
 import { useMemo } from "react";
 import type { TimeSeriesOverlayContext } from "@/components/charts/TimeSeriesChart";
-import { annotationColor, clusterAnnotations, type AnnotationCluster, type PositionedAnnotation } from "./annotationUtils";
+import {
+  annotationColor,
+  clusterAnnotations,
+  parseAnnotationInstant,
+  type AnnotationCluster,
+  type PositionedAnnotation,
+} from "./annotationUtils";
 
 const PIN_RADIUS = 11;
 // Pins closer than this merge into one counted pin.
@@ -29,8 +35,8 @@ export function AnnotationPins({
     const [min, max] = xScale.domain();
     const positioned: PositionedAnnotation[] = [];
     for (const annotation of annotations) {
-      const start = new Date(annotation.date);
-      const end = annotation.endDate ? new Date(annotation.endDate) : null;
+      const start = parseAnnotationInstant(annotation.date).toJSDate();
+      const end = annotation.endDate ? parseAnnotationInstant(annotation.endDate).toJSDate() : null;
       if (start > max || (end ?? start) < min) continue;
       // A range that began before the visible window pins at the left edge.
       const anchor = start < min ? min : start;
