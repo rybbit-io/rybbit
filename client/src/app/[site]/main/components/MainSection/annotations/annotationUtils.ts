@@ -45,8 +45,8 @@ function isStartOfDay(dt: DateTime): boolean {
   return dt.equals(dt.startOf("day"));
 }
 
-// Ranges are stored as [start of day, end of day], so an end that sits on the
-// last millisecond of its day is a whole-day end and prints as a date.
+// A whole-day range ends on the last millisecond of its day, so that end is a
+// date rather than a time; any other end carries a meaningful hour and minute.
 function isEndOfDay(dt: DateTime): boolean {
   return dt.equals(dt.endOf("day"));
 }
@@ -60,9 +60,30 @@ export function formatAnnotationDate(annotation: Annotation, timezone: string): 
   return `${startText} – ${endText}`;
 }
 
-/** Calendar date (YYYY-MM-DD) of an instant in the user's timezone, for date inputs. */
-export function toDateInput(iso: string, timezone: string): string {
-  return toZoned(iso, timezone).toISODate() ?? "";
+/**
+ * A wall clock as a datetime-local input spells it (YYYY-MM-DDTHH:mm).
+ * `toFormat` would honour Luxon's global locale — set from `navigator.language`
+ * in dateTimeUtils — and emit e.g. Arabic-Indic digits, which the input rejects.
+ */
+export function dateTimeInputValue(dt: DateTime): string {
+  if (!dt.isValid) return "";
+  return dt.startOf("minute").toISO({ includeOffset: false, suppressSeconds: true, suppressMilliseconds: true }) ?? "";
+}
+
+/** Local wall clock of a stored instant, for datetime-local inputs. */
+export function toDateTimeInput(iso: string, timezone: string): string {
+  return dateTimeInputValue(toZoned(iso, timezone));
+}
+
+/** The instant a datetime-local value names in the user's timezone. */
+export function parseDateTimeInput(value: string, timezone: string): DateTime {
+  return DateTime.fromISO(value, { zone: timezone });
+}
+
+/** That same instant as UTC ISO, ready for the API. */
+export function fromDateTimeInput(value: string, timezone: string): string {
+  const parsed = parseDateTimeInput(value, timezone);
+  return parsed.isValid ? (parsed.toUTC().toISO() ?? value) : value;
 }
 
 export type PositionedAnnotation = {

@@ -29,9 +29,12 @@ import {
   ANNOTATION_COLOR_OPTIONS,
   ANNOTATION_ICON_OPTIONS,
   annotationSwatch,
-  pickIconFromInput,
-  toDateInput,
+  dateTimeInputValue,
+  fromDateTimeInput,
+  parseDateTimeInput,
+  toDateTimeInput,
 } from "./annotationUtils";
+import { EmojiPicker } from "./EmojiPicker";
 import { useAnnotationPermissions } from "./useAnnotationPermissions";
 
 export type AnnotationEditorState =
@@ -69,7 +72,7 @@ export function AnnotationFormDialog({
       z
         .object({
           title: z.string().trim().min(1, t("Title is required")).max(120, t("Keep the title under 120 characters")),
-          date: z.string().min(1, t("Pick a date")),
+          date: z.string().min(1, t("Pick a date and time")),
           isRange: z.boolean(),
           endDate: z.string(),
           description: z.string().max(2000, t("Keep the note under 2000 characters")),
@@ -78,11 +81,17 @@ export function AnnotationFormDialog({
           scope: z.enum(["site", "organization"]),
           isPublic: z.boolean(),
         })
-        .refine(values => !values.isRange || (values.endDate !== "" && values.endDate >= values.date), {
-          message: t("End date must not be before the start date"),
-          path: ["endDate"],
-        }),
-    [t]
+        // Compared as instants, not as text: on a DST spring-forward day two
+        // wall clocks an hour apart on paper can name the same moment, and the
+        // server rejects an end that is not strictly after the start.
+        .refine(
+          values =>
+            !values.isRange ||
+            (values.endDate !== "" &&
+              parseDateTimeInput(values.endDate, timezone) > parseDateTimeInput(values.date, timezone)),
+          { message: t("The end must be after the start"), path: ["endDate"] }
+        ),
+    [t, timezone]
   );
 
   const defaults = useMemo<FormValues>(() => {
@@ -90,9 +99,9 @@ export function AnnotationFormDialog({
       const a = state.annotation;
       return {
         title: a.title,
-        date: toDateInput(a.date, timezone),
+        date: toDateTimeInput(a.date, timezone),
         isRange: !!a.endDate,
-        endDate: a.endDate ? toDateInput(a.endDate, timezone) : "",
+        endDate: a.endDate ? toDateTimeInput(a.endDate, timezone) : "",
         description: a.description ?? "",
         color: a.color,
         icon: a.icon,
@@ -103,7 +112,7 @@ export function AnnotationFormDialog({
     const clicked = state?.mode === "create" ? state.date : undefined;
     return {
       title: "",
-      date: (clicked ? DateTime.fromJSDate(clicked).setZone(timezone) : DateTime.now().setZone(timezone)).toISODate() ?? "",
+      date: dateTimeInputValue((clicked ? DateTime.fromJSDate(clicked) : DateTime.now()).setZone(timezone)),
       isRange: false,
       endDate: "",
       description: "",
@@ -124,28 +133,44 @@ export function AnnotationFormDialog({
   const isRange = form.watch("isRange");
   const isPending = createAnnotation.isPending || updateAnnotation.isPending;
 
+  // Turning the range on suggests "through the end of the start day", so the end
+  // is never left empty — or, for a start in that last minute, equal to it.
+  const toggleRange = (on: boolean) => {
+    const start = parseDateTimeInput(form.getValues("date"), timezone);
+    if (on && !form.getValues("endDate") && start.isValid) {
+      const dayEnd = dateTimeInputValue(start.endOf("day"));
+      const usable = dayEnd > dateTimeInputValue(start) ? dayEnd : dateTimeInputValue(start.plus({ hours: 1 }));
+      form.setValue("endDate", usable);
+    }
+    form.setValue("isRange", on);
+  };
+
+  // An end left on the last minute of its day means "through the end of that
+  // day", so whole-day ranges stay inclusive and still print as plain dates.
+  // That minute is 23:59 on most days but not all — a DST shift can end a day
+  // at 22:59 — so it is read off the day itself.
+  const toEndInstant = (local: string) => {
+    const parsed = parseDateTimeInput(local, timezone);
+    const wholeDay = parsed.isValid && dateTimeInputValue(parsed.endOf("day")) === local;
+    return wholeDay ? (parsed.endOf("day").toUTC().toISO() ?? local) : fromDateTimeInput(local, timezone);
+  };
+
   const onSubmit = async (values: FormValues) => {
     if (!state) return;
     const existing = state.mode === "edit" ? state.annotation : undefined;
     const clicked = state.mode === "create" ? state.date : undefined;
-    const clickedDay = clicked ? DateTime.fromJSDate(clicked).setZone(timezone).toISODate() : null;
-    const dayStart = (day: string) => DateTime.fromISO(day, { zone: timezone }).startOf("day").toUTC().toISO() ?? day;
-    const dayEnd = (day: string) => DateTime.fromISO(day, { zone: timezone }).endOf("day").toUTC().toISO() ?? day;
 
-    // Untouched dates keep their stored instant: an hourly or API-created
-    // annotation must not snap to midnight because the title was edited.
-    // A click on an hour bucket likewise keeps its hour unless the day changed.
+    // Untouched values keep their stored instant: the inputs only carry minutes,
+    // so re-saving an unedited annotation must not drop its seconds — nor snap a
+    // clicked bucket to the top of its minute.
+    const untouchedStart = existing?.date ?? clicked?.toISOString();
     const startIso =
-      existing && values.date === defaults.date
-        ? existing.date
-        : clicked && clickedDay === values.date
-          ? clicked.toISOString()
-          : dayStart(values.date);
+      untouchedStart && values.date === defaults.date ? untouchedStart : fromDateTimeInput(values.date, timezone);
     const endIso = !values.isRange
       ? null
       : existing?.endDate && values.endDate === defaults.endDate
         ? existing.endDate
-        : dayEnd(values.endDate);
+        : toEndInstant(values.endDate);
 
     const body = {
       title: values.title.trim(),
@@ -174,7 +199,7 @@ export function AnnotationFormDialog({
 
   return (
     <Dialog open={!!state} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-[440px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{state?.mode === "edit" ? t("Edit annotation") : t("New annotation")}</DialogTitle>
           <DialogDescription>{t("A note pinned to the chart, so this moment stays explainable later.")}</DialogDescription>
@@ -201,9 +226,9 @@ export function AnnotationFormDialog({
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{isRange ? t("Start date") : t("Date")}</FormLabel>
+                    <FormLabel>{isRange ? t("Starts") : t("Date and time")}</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="datetime-local" className="min-w-0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -215,9 +240,9 @@ export function AnnotationFormDialog({
                   name="endDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("End date")}</FormLabel>
+                      <FormLabel>{t("Ends")}</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input type="datetime-local" className="min-w-0" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -230,7 +255,7 @@ export function AnnotationFormDialog({
                     name="isRange"
                     render={({ field }) => (
                       <div className="flex items-center gap-2">
-                        <Switch id="annotation-range" checked={field.value} onCheckedChange={field.onChange} />
+                        <Switch id="annotation-range" checked={field.value} onCheckedChange={toggleRange} />
                         <Label htmlFor="annotation-range" className="text-sm font-normal">
                           {t("Date range")}
                         </Label>
@@ -246,7 +271,7 @@ export function AnnotationFormDialog({
                 name="isRange"
                 render={({ field }) => (
                   <div className="flex items-center gap-2 -mt-2">
-                    <Switch id="annotation-range" checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch id="annotation-range" checked={field.value} onCheckedChange={toggleRange} />
                     <Label htmlFor="annotation-range" className="text-sm font-normal">
                       {t("Date range")}
                     </Label>
@@ -353,18 +378,22 @@ export function AnnotationFormDialog({
                         {icon}
                       </button>
                     ))}
-                    {/* Any emoji: type or paste one (the OS emoji picker works here). */}
-                    <Input
-                      aria-label={t("Custom emoji")}
-                      placeholder="＋"
-                      title={t("Type or paste any emoji")}
-                      value={field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value) ? field.value : ""}
-                      onChange={e => field.onChange(pickIconFromInput(e.target.value))}
-                      className={cn(
-                        "w-8 h-8 px-0 text-center text-base rounded-md",
-                        field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value) && "border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800"
-                      )}
-                    />
+                    {/* Everything else: the full set, searchable. */}
+                    <EmojiPicker value={field.value} onChange={field.onChange}>
+                      <button
+                        type="button"
+                        aria-label={t("More emoji")}
+                        title={t("More emoji")}
+                        className={cn(
+                          "w-8 h-8 rounded-md border text-base leading-none transition-colors",
+                          field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value)
+                            ? "border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800"
+                            : "border-dashed border-neutral-200 dark:border-neutral-700 text-muted-foreground hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                        )}
+                      >
+                        {field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value) ? field.value : "＋"}
+                      </button>
+                    </EmojiPicker>
                   </div>
                 </FormItem>
               )}
