@@ -32,9 +32,9 @@ import {
   dateTimeInputValue,
   fromDateTimeInput,
   parseDateTimeInput,
-  pickIconFromInput,
   toDateTimeInput,
 } from "./annotationUtils";
+import { EmojiPicker } from "./EmojiPicker";
 import { useAnnotationPermissions } from "./useAnnotationPermissions";
 
 export type AnnotationEditorState =
@@ -378,18 +378,22 @@ export function AnnotationFormDialog({
                         {icon}
                       </button>
                     ))}
-                    {/* Any emoji: type or paste one (the OS emoji picker works here). */}
-                    <Input
-                      aria-label={t("Custom emoji")}
-                      placeholder="＋"
-                      title={t("Type or paste any emoji")}
-                      value={field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value) ? field.value : ""}
-                      onChange={e => field.onChange(pickIconFromInput(e.target.value))}
-                      className={cn(
-                        "w-8 h-8 px-0 text-center text-base rounded-md",
-                        field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value) && "border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800"
-                      )}
-                    />
+                    {/* Everything else: the full set, searchable. */}
+                    <EmojiPicker value={field.value} onChange={field.onChange}>
+                      <button
+                        type="button"
+                        aria-label={t("More emoji")}
+                        title={t("More emoji")}
+                        className={cn(
+                          "w-8 h-8 rounded-md border text-base leading-none transition-colors",
+                          field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value)
+                            ? "border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800"
+                            : "border-dashed border-neutral-200 dark:border-neutral-700 text-muted-foreground hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                        )}
+                      >
+                        {field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value) ? field.value : "＋"}
+                      </button>
+                    </EmojiPicker>
                   </div>
                 </FormItem>
               )}
