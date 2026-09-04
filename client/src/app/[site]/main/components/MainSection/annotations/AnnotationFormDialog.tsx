@@ -29,8 +29,9 @@ import {
   ANNOTATION_COLOR_OPTIONS,
   ANNOTATION_ICON_OPTIONS,
   annotationSwatch,
+  fromDateTimeInput,
   pickIconFromInput,
-  toDateInput,
+  toDateTimeInput,
 } from "./annotationUtils";
 import { useAnnotationPermissions } from "./useAnnotationPermissions";
 
@@ -69,7 +70,7 @@ export function AnnotationFormDialog({
       z
         .object({
           title: z.string().trim().min(1, t("Title is required")).max(120, t("Keep the title under 120 characters")),
-          date: z.string().min(1, t("Pick a date")),
+          date: z.string().min(1, t("Pick a date and time")),
           isRange: z.boolean(),
           endDate: z.string(),
           description: z.string().max(2000, t("Keep the note under 2000 characters")),
@@ -78,8 +79,8 @@ export function AnnotationFormDialog({
           scope: z.enum(["site", "organization"]),
           isPublic: z.boolean(),
         })
-        .refine(values => !values.isRange || (values.endDate !== "" && values.endDate >= values.date), {
-          message: t("End date must not be before the start date"),
+        .refine(values => !values.isRange || (values.endDate !== "" && values.endDate > values.date), {
+          message: t("The end must be after the start"),
           path: ["endDate"],
         }),
     [t]
@@ -90,9 +91,9 @@ export function AnnotationFormDialog({
       const a = state.annotation;
       return {
         title: a.title,
-        date: toDateInput(a.date, timezone),
+        date: toDateTimeInput(a.date, timezone),
         isRange: !!a.endDate,
-        endDate: a.endDate ? toDateInput(a.endDate, timezone) : "",
+        endDate: a.endDate ? toDateTimeInput(a.endDate, timezone) : "",
         description: a.description ?? "",
         color: a.color,
         icon: a.icon,
@@ -103,7 +104,10 @@ export function AnnotationFormDialog({
     const clicked = state?.mode === "create" ? state.date : undefined;
     return {
       title: "",
-      date: (clicked ? DateTime.fromJSDate(clicked).setZone(timezone) : DateTime.now().setZone(timezone)).toISODate() ?? "",
+      date: (clicked ? DateTime.fromJSDate(clicked) : DateTime.now())
+        .setZone(timezone)
+        .startOf("minute")
+        .toFormat("yyyy-MM-dd'T'HH:mm"),
       isRange: false,
       endDate: "",
       description: "",
@@ -124,28 +128,43 @@ export function AnnotationFormDialog({
   const isRange = form.watch("isRange");
   const isPending = createAnnotation.isPending || updateAnnotation.isPending;
 
+  // Turning the range on suggests "through the end of the start day", so the end
+  // is never left empty — or, for a start late in the evening, before the start.
+  const toggleRange = (on: boolean) => {
+    if (on && !form.getValues("endDate")) {
+      const start = DateTime.fromISO(form.getValues("date"), { zone: timezone });
+      const end = start.endOf("day");
+      if (start.isValid) {
+        form.setValue("endDate", (end > start ? end : start.plus({ hours: 1 })).toFormat("yyyy-MM-dd'T'HH:mm"));
+      }
+    }
+    form.setValue("isRange", on);
+  };
+
+  // An end left on the last minute of a day means "through the end of that day",
+  // so whole-day ranges stay inclusive and still print as plain dates.
+  const toEndInstant = (local: string) => {
+    const parsed = DateTime.fromISO(local, { zone: timezone });
+    const wholeDay = parsed.isValid && parsed.hour === 23 && parsed.minute === 59;
+    return wholeDay ? (parsed.endOf("day").toUTC().toISO() ?? local) : fromDateTimeInput(local, timezone);
+  };
+
   const onSubmit = async (values: FormValues) => {
     if (!state) return;
     const existing = state.mode === "edit" ? state.annotation : undefined;
     const clicked = state.mode === "create" ? state.date : undefined;
-    const clickedDay = clicked ? DateTime.fromJSDate(clicked).setZone(timezone).toISODate() : null;
-    const dayStart = (day: string) => DateTime.fromISO(day, { zone: timezone }).startOf("day").toUTC().toISO() ?? day;
-    const dayEnd = (day: string) => DateTime.fromISO(day, { zone: timezone }).endOf("day").toUTC().toISO() ?? day;
 
-    // Untouched dates keep their stored instant: an hourly or API-created
-    // annotation must not snap to midnight because the title was edited.
-    // A click on an hour bucket likewise keeps its hour unless the day changed.
+    // Untouched values keep their stored instant: the inputs only carry minutes,
+    // so re-saving an unedited annotation must not drop its seconds — nor snap a
+    // clicked bucket to the top of its minute.
+    const untouchedStart = existing?.date ?? clicked?.toISOString();
     const startIso =
-      existing && values.date === defaults.date
-        ? existing.date
-        : clicked && clickedDay === values.date
-          ? clicked.toISOString()
-          : dayStart(values.date);
+      untouchedStart && values.date === defaults.date ? untouchedStart : fromDateTimeInput(values.date, timezone);
     const endIso = !values.isRange
       ? null
       : existing?.endDate && values.endDate === defaults.endDate
         ? existing.endDate
-        : dayEnd(values.endDate);
+        : toEndInstant(values.endDate);
 
     const body = {
       title: values.title.trim(),
@@ -174,7 +193,7 @@ export function AnnotationFormDialog({
 
   return (
     <Dialog open={!!state} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-[440px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{state?.mode === "edit" ? t("Edit annotation") : t("New annotation")}</DialogTitle>
           <DialogDescription>{t("A note pinned to the chart, so this moment stays explainable later.")}</DialogDescription>
@@ -201,9 +220,9 @@ export function AnnotationFormDialog({
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{isRange ? t("Start date") : t("Date")}</FormLabel>
+                    <FormLabel>{isRange ? t("Starts") : t("Date and time")}</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="datetime-local" className="min-w-0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -215,9 +234,9 @@ export function AnnotationFormDialog({
                   name="endDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("End date")}</FormLabel>
+                      <FormLabel>{t("Ends")}</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input type="datetime-local" className="min-w-0" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -230,7 +249,7 @@ export function AnnotationFormDialog({
                     name="isRange"
                     render={({ field }) => (
                       <div className="flex items-center gap-2">
-                        <Switch id="annotation-range" checked={field.value} onCheckedChange={field.onChange} />
+                        <Switch id="annotation-range" checked={field.value} onCheckedChange={toggleRange} />
                         <Label htmlFor="annotation-range" className="text-sm font-normal">
                           {t("Date range")}
                         </Label>
@@ -246,7 +265,7 @@ export function AnnotationFormDialog({
                 name="isRange"
                 render={({ field }) => (
                   <div className="flex items-center gap-2 -mt-2">
-                    <Switch id="annotation-range" checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch id="annotation-range" checked={field.value} onCheckedChange={toggleRange} />
                     <Label htmlFor="annotation-range" className="text-sm font-normal">
                       {t("Date range")}
                     </Label>

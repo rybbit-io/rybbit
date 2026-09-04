@@ -5,7 +5,8 @@ import {
   formatAnnotationDate,
   parseAnnotationInstant,
   pickIconFromInput,
-  toDateInput,
+  fromDateTimeInput,
+  toDateTimeInput,
   type PositionedAnnotation,
 } from "./annotationUtils";
 
@@ -67,10 +68,26 @@ describe("formatAnnotationDate", () => {
   });
 });
 
-describe("toDateInput", () => {
-  it("gives the calendar date in the user's timezone", () => {
-    expect(toDateInput("2026-08-18T07:00:00.000Z", "America/Los_Angeles")).toBe("2026-08-18");
-    expect(toDateInput("2026-08-18T03:00:00.000Z", "America/Los_Angeles")).toBe("2026-08-17");
+describe("toDateTimeInput", () => {
+  it("gives the local wall clock in the user's timezone", () => {
+    expect(toDateTimeInput("2026-08-18T07:00:00.000Z", "America/Los_Angeles")).toBe("2026-08-18T00:00");
+    expect(toDateTimeInput("2026-08-18T03:30:00.000Z", "America/Los_Angeles")).toBe("2026-08-17T20:30");
+  });
+
+  it("drops seconds rather than rounding the minute up", () => {
+    expect(toDateTimeInput("2026-08-14T23:59:59.999Z", "UTC")).toBe("2026-08-14T23:59");
+  });
+});
+
+describe("fromDateTimeInput", () => {
+  it("reads the wall clock as an instant in the user's timezone", () => {
+    expect(fromDateTimeInput("2026-08-18T14:10", "America/Los_Angeles")).toBe("2026-08-18T21:10:00.000Z");
+    expect(fromDateTimeInput("2026-08-18T14:10", "UTC")).toBe("2026-08-18T14:10:00.000Z");
+  });
+
+  it("round-trips with toDateTimeInput", () => {
+    const local = toDateTimeInput("2026-08-18T07:00:00.000Z", "Asia/Tokyo");
+    expect(fromDateTimeInput(local, "Asia/Tokyo")).toBe("2026-08-18T07:00:00.000Z");
   });
 });
 
