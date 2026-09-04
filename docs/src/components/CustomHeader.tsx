@@ -2,6 +2,7 @@
 
 import { AppLink } from "@/components/AppLink";
 import { DesktopNav } from "@/components/header/DesktopNav";
+import { GitHubStarPill } from "@/components/header/GitHubStarPill";
 import { MobileNav } from "@/components/header/MobileNav";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { trackAdEvent } from "@/lib/trackAdEvent";
@@ -15,7 +16,7 @@ import { useState } from "react";
  * Site header. Default register is the marketing pages' instrument sheet
  * (1200px column with hairline sides, square buttons); under `data-chrome=
  * "bare"` (homepage redesign, see global.css) it is a 1280px column with no
- * sides, pill buttons and a Live demo button.
+ * sides, pill buttons and a GitHub star pill.
  */
 export function CustomHeader() {
   const t = useExtracted();
@@ -47,6 +48,7 @@ export function CustomHeader() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeSwitcher />
+          <GitHubStarPill />
           <AppLink
             href="https://app.rybbit.io"
             target="_blank"
@@ -55,15 +57,6 @@ export function CustomHeader() {
             className="inline-flex h-8 items-center justify-center rounded-md px-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 bare:h-9 bare:rounded-full bare:px-3 bare:hover:bg-transparent dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-white dark:bare:hover:bg-transparent"
           >
             {t("Login")}
-          </AppLink>
-          <AppLink
-            href="https://demo.rybbit.com/81"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackAdEvent("demo", { location: "header" })}
-            className="hidden h-9 items-center justify-center rounded-full border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 bare:inline-flex dark:border-neutral-800 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-          >
-            {t("Live demo")}
           </AppLink>
           <AppLink
             href="https://app.rybbit.io/signup"
