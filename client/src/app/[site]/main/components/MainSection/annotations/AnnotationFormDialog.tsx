@@ -29,7 +29,9 @@ import {
   ANNOTATION_COLOR_OPTIONS,
   ANNOTATION_ICON_OPTIONS,
   annotationSwatch,
+  dateTimeInputValue,
   fromDateTimeInput,
+  parseDateTimeInput,
   pickIconFromInput,
   toDateTimeInput,
 } from "./annotationUtils";
@@ -79,11 +81,17 @@ export function AnnotationFormDialog({
           scope: z.enum(["site", "organization"]),
           isPublic: z.boolean(),
         })
-        .refine(values => !values.isRange || (values.endDate !== "" && values.endDate > values.date), {
-          message: t("The end must be after the start"),
-          path: ["endDate"],
-        }),
-    [t]
+        // Compared as instants, not as text: on a DST spring-forward day two
+        // wall clocks an hour apart on paper can name the same moment, and the
+        // server rejects an end that is not strictly after the start.
+        .refine(
+          values =>
+            !values.isRange ||
+            (values.endDate !== "" &&
+              parseDateTimeInput(values.endDate, timezone) > parseDateTimeInput(values.date, timezone)),
+          { message: t("The end must be after the start"), path: ["endDate"] }
+        ),
+    [t, timezone]
   );
 
   const defaults = useMemo<FormValues>(() => {
@@ -104,10 +112,7 @@ export function AnnotationFormDialog({
     const clicked = state?.mode === "create" ? state.date : undefined;
     return {
       title: "",
-      date: (clicked ? DateTime.fromJSDate(clicked) : DateTime.now())
-        .setZone(timezone)
-        .startOf("minute")
-        .toFormat("yyyy-MM-dd'T'HH:mm"),
+      date: dateTimeInputValue((clicked ? DateTime.fromJSDate(clicked) : DateTime.now()).setZone(timezone)),
       isRange: false,
       endDate: "",
       description: "",
@@ -129,23 +134,24 @@ export function AnnotationFormDialog({
   const isPending = createAnnotation.isPending || updateAnnotation.isPending;
 
   // Turning the range on suggests "through the end of the start day", so the end
-  // is never left empty — or, for a start late in the evening, before the start.
+  // is never left empty — or, for a start in that last minute, equal to it.
   const toggleRange = (on: boolean) => {
-    if (on && !form.getValues("endDate")) {
-      const start = DateTime.fromISO(form.getValues("date"), { zone: timezone });
-      const end = start.endOf("day");
-      if (start.isValid) {
-        form.setValue("endDate", (end > start ? end : start.plus({ hours: 1 })).toFormat("yyyy-MM-dd'T'HH:mm"));
-      }
+    const start = parseDateTimeInput(form.getValues("date"), timezone);
+    if (on && !form.getValues("endDate") && start.isValid) {
+      const dayEnd = dateTimeInputValue(start.endOf("day"));
+      const usable = dayEnd > dateTimeInputValue(start) ? dayEnd : dateTimeInputValue(start.plus({ hours: 1 }));
+      form.setValue("endDate", usable);
     }
     form.setValue("isRange", on);
   };
 
-  // An end left on the last minute of a day means "through the end of that day",
-  // so whole-day ranges stay inclusive and still print as plain dates.
+  // An end left on the last minute of its day means "through the end of that
+  // day", so whole-day ranges stay inclusive and still print as plain dates.
+  // That minute is 23:59 on most days but not all — a DST shift can end a day
+  // at 22:59 — so it is read off the day itself.
   const toEndInstant = (local: string) => {
-    const parsed = DateTime.fromISO(local, { zone: timezone });
-    const wholeDay = parsed.isValid && parsed.hour === 23 && parsed.minute === 59;
+    const parsed = parseDateTimeInput(local, timezone);
+    const wholeDay = parsed.isValid && dateTimeInputValue(parsed.endOf("day")) === local;
     return wholeDay ? (parsed.endOf("day").toUTC().toISO() ?? local) : fromDateTimeInput(local, timezone);
   };
 

@@ -1,9 +1,11 @@
 "use client";
 
-import type { Annotation } from "@rybbit/shared";
+import type { Annotation, TimeBucket } from "@rybbit/shared";
 import { StickyNote } from "lucide-react";
+import { DateTime } from "luxon";
 import { useMemo } from "react";
 import type { TimeSeriesOverlayContext } from "@/components/charts/TimeSeriesChart";
+import { shiftBuckets } from "@/components/charts/timeSeriesChartUtils";
 import {
   annotationColor,
   clusterAnnotations,
@@ -19,12 +21,14 @@ const CLUSTER_GAP = 26;
 export function AnnotationPins({
   context,
   annotations,
+  bucket,
   selectedKey,
   onSelect,
   onHover,
 }: {
   context: TimeSeriesOverlayContext;
   annotations: Annotation[];
+  bucket: TimeBucket;
   selectedKey: string | null;
   onSelect: (cluster: AnnotationCluster, anchor: DOMRect) => void;
   onHover: (cluster: AnnotationCluster | null, anchor?: DOMRect) => void;
@@ -33,23 +37,29 @@ export function AnnotationPins({
 
   const clusters = useMemo(() => {
     const [min, max] = xScale.domain();
+    // The domain ends at the *start* of the last bucket, so an annotation later
+    // that same bucket — 2pm on the last day of a daily chart — is still inside
+    // the window the viewer picked.
+    const windowEnd = shiftBuckets(DateTime.fromJSDate(max), bucket, 1).toJSDate();
     const positioned: PositionedAnnotation[] = [];
     for (const annotation of annotations) {
       const start = parseAnnotationInstant(annotation.date).toJSDate();
       const end = annotation.endDate ? parseAnnotationInstant(annotation.endDate).toJSDate() : null;
-      if (start > max || (end ?? start) < min) continue;
+      if (start >= windowEnd || (end ?? start) < min) continue;
       // A range that began before the visible window pins at the left edge.
       const anchor = start < min ? min : start;
       const point = pointAt(anchor);
       positioned.push({
         annotation,
-        x: Math.max(plotLeft, Math.min(plotRight, xScale(anchor))),
+        // Both coordinates come from the bucket the annotation falls in, so a
+        // pin between two points still sits on the line rather than beside it.
+        x: Math.max(plotLeft, Math.min(plotRight, xScale(point?.x ?? anchor))),
         x2: end ? Math.max(plotLeft, Math.min(plotRight, xScale(end))) : null,
         y: point ? yScale(point.y) : plotBottom,
       });
     }
     return clusterAnnotations(positioned, CLUSTER_GAP);
-  }, [annotations, xScale, yScale, pointAt, plotLeft, plotRight, plotBottom]);
+  }, [annotations, bucket, xScale, yScale, pointAt, plotLeft, plotRight, plotBottom]);
 
   if (!clusters.length) return null;
 

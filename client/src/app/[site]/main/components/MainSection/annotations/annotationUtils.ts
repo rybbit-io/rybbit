@@ -60,15 +60,29 @@ export function formatAnnotationDate(annotation: Annotation, timezone: string): 
   return `${startText} – ${endText}`;
 }
 
-/** Local wall clock (YYYY-MM-DDTHH:mm) of an instant, for datetime-local inputs. */
-export function toDateTimeInput(iso: string, timezone: string): string {
-  const zoned = toZoned(iso, timezone);
-  return zoned.isValid ? zoned.toFormat("yyyy-MM-dd'T'HH:mm") : "";
+/**
+ * A wall clock as a datetime-local input spells it (YYYY-MM-DDTHH:mm).
+ * `toFormat` would honour Luxon's global locale — set from `navigator.language`
+ * in dateTimeUtils — and emit e.g. Arabic-Indic digits, which the input rejects.
+ */
+export function dateTimeInputValue(dt: DateTime): string {
+  if (!dt.isValid) return "";
+  return dt.startOf("minute").toISO({ includeOffset: false, suppressSeconds: true, suppressMilliseconds: true }) ?? "";
 }
 
-/** The instant a datetime-local value names in the user's timezone, as UTC ISO. */
+/** Local wall clock of a stored instant, for datetime-local inputs. */
+export function toDateTimeInput(iso: string, timezone: string): string {
+  return dateTimeInputValue(toZoned(iso, timezone));
+}
+
+/** The instant a datetime-local value names in the user's timezone. */
+export function parseDateTimeInput(value: string, timezone: string): DateTime {
+  return DateTime.fromISO(value, { zone: timezone });
+}
+
+/** That same instant as UTC ISO, ready for the API. */
 export function fromDateTimeInput(value: string, timezone: string): string {
-  const parsed = DateTime.fromISO(value, { zone: timezone });
+  const parsed = parseDateTimeInput(value, timezone);
   return parsed.isValid ? (parsed.toUTC().toISO() ?? value) : value;
 }
 

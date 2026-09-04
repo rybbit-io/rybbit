@@ -192,6 +192,7 @@ export function Chart({
           <AnnotationPins
             context={context}
             annotations={annotations}
+            bucket={bucket}
             selectedKey={selectedPin?.cluster.key ?? null}
             onSelect={(cluster, rect) => {
               setHoveredPin(null);

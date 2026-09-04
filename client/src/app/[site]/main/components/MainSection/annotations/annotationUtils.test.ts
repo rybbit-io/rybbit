@@ -1,10 +1,12 @@
 import type { Annotation } from "@rybbit/shared";
+import { DateTime, Settings } from "luxon";
 import { describe, expect, it } from "vitest";
 import {
   clusterAnnotations,
   formatAnnotationDate,
   parseAnnotationInstant,
   pickIconFromInput,
+  dateTimeInputValue,
   fromDateTimeInput,
   toDateTimeInput,
   type PositionedAnnotation,
@@ -77,6 +79,26 @@ describe("toDateTimeInput", () => {
   it("drops seconds rather than rounding the minute up", () => {
     expect(toDateTimeInput("2026-08-14T23:59:59.999Z", "UTC")).toBe("2026-08-14T23:59");
   });
+
+  // dateTimeUtils sets Luxon's global locale from navigator.language, and a
+  // datetime-local input only accepts ASCII digits.
+  it("writes ASCII digits under a locale with its own numerals", () => {
+    const previous = Settings.defaultLocale;
+    Settings.defaultLocale = "ar-EG";
+    try {
+      expect(toDateTimeInput("2026-08-18T14:10:00.000Z", "UTC")).toBe("2026-08-18T14:10");
+      expect(dateTimeInputValue(DateTime.fromISO("2026-08-18T14:10", { zone: "UTC" }))).toBe("2026-08-18T14:10");
+    } finally {
+      Settings.defaultLocale = previous;
+    }
+  });
+
+  // A DST shift can end a day at 22:59, so "the last minute of the day" has to
+  // be read off the day rather than assumed to be 23:59.
+  it("reads the last minute of a short DST day off the day itself", () => {
+    const day = DateTime.fromISO("2026-03-28T12:00", { zone: "America/Nuuk" });
+    expect(dateTimeInputValue(day.endOf("day"))).toBe("2026-03-28T22:59");
+  });
 });
 
 describe("fromDateTimeInput", () => {
@@ -88,6 +110,15 @@ describe("fromDateTimeInput", () => {
   it("round-trips with toDateTimeInput", () => {
     const local = toDateTimeInput("2026-08-18T07:00:00.000Z", "Asia/Tokyo");
     expect(fromDateTimeInput(local, "Asia/Tokyo")).toBe("2026-08-18T07:00:00.000Z");
+  });
+
+  // Luxon moves a wall clock inside a spring-forward gap onto the far side of
+  // it, so a later wall clock can be an earlier instant — 02:30 lands after
+  // 03:00 that morning. The form compares instants for exactly this reason.
+  it("normalizes a wall clock that the spring-forward gap skips", () => {
+    expect(fromDateTimeInput("2026-03-08T02:30", "America/New_York")).toBe("2026-03-08T07:30:00.000Z");
+    expect(fromDateTimeInput("2026-03-08T03:00", "America/New_York")).toBe("2026-03-08T07:00:00.000Z");
+    expect("2026-03-08T03:00" > "2026-03-08T02:30").toBe(true);
   });
 });
 
