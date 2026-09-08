@@ -1,6 +1,14 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
+import {
+  SESSION_CHANNEL_AGG,
+  SESSION_REFERRER_AGG,
+  SESSION_UTM_CAMPAIGN_AGG,
+  SESSION_UTM_CONTENT_AGG,
+  SESSION_UTM_MEDIUM_AGG,
+  SESSION_UTM_SOURCE_AGG,
+  SESSION_UTM_TERM_AGG,
+} from "../utils/sessionAttribution.js";
 import { getSessionFilterStatement } from "../utils/sessionFilters.js";
 import { enrichWithTraits } from "../utils/utils.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
@@ -114,11 +122,11 @@ export const buildSessionsQuery = (query: GetSessionsRequest["Querystring"], sit
           ${SESSION_REFERRER_AGG} AS referrer,
           ${SESSION_CHANNEL_AGG} AS channel,
           argMin(hostname, timestamp) AS hostname,
-          argMin(url_parameters, timestamp)['utm_source'] AS utm_source,
-          argMin(url_parameters, timestamp)['utm_medium'] AS utm_medium,
-          argMin(url_parameters, timestamp)['utm_campaign'] AS utm_campaign,
-          argMin(url_parameters, timestamp)['utm_term'] AS utm_term,
-          argMin(url_parameters, timestamp)['utm_content'] AS utm_content,
+          ${SESSION_UTM_SOURCE_AGG} AS utm_source,
+          ${SESSION_UTM_MEDIUM_AGG} AS utm_medium,
+          ${SESSION_UTM_CAMPAIGN_AGG} AS utm_campaign,
+          ${SESSION_UTM_TERM_AGG} AS utm_term,
+          ${SESSION_UTM_CONTENT_AGG} AS utm_content,
           MAX(timestamp) AS session_end,
           MIN(timestamp) AS session_start,
           dateDiff('second', MIN(timestamp), MAX(timestamp)) AS session_duration,

@@ -11,7 +11,7 @@ describe("buildFilteredSessionsCTE", () => {
   it("projects only the aggregate needed by a UTM filter", () => {
     const sql = build("utm_campaign", "launch");
 
-    expect(sql).toContain("argMin(url_parameters, timestamp)['utm_campaign'] AS utm_campaign");
+    expect(sql).toContain("argMinIf(url_parameters['utm_campaign'], timestamp, url_parameters['utm_campaign'] != '') AS utm_campaign");
     expect(sql).not.toContain("argMax(browser,");
     expect(sql).not.toContain("AS utm_source");
     expect(sql).not.toContain("feature_flags");
