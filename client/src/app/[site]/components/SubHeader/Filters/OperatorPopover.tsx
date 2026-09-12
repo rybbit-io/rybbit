@@ -59,8 +59,8 @@ export function OperatorPopover({
                 type="button"
                 onClick={() => handleSelect(option.value as FilterType)}
                 className={cn(
-                  "text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                  isSelected && "bg-neutral-100 dark:bg-neutral-800"
+                  "text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-750",
+                  isSelected && "bg-neutral-100 dark:bg-neutral-750"
                 )}
               >
                 {getOperatorMenuLabel(option.value as FilterType, isNumeric)}

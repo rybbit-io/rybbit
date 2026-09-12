@@ -116,7 +116,7 @@ export function ComparisonSelect({
                 onClick={() => selectMode(mode)}
                 aria-pressed={selected}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800",
+                  "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-750",
                   selected && "font-medium"
                 )}
               >

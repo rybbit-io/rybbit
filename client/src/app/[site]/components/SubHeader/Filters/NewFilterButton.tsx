@@ -99,7 +99,7 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-0" align="start">
-          <div role="tablist" className="flex border-b border-neutral-200 dark:border-neutral-800">
+          <div role="tablist" className="flex border-b border-neutral-200 dark:border-neutral-700">
             {tabButton("filters", t("Filters"))}
             {tabButton("segments", t("Segments"))}
           </div>

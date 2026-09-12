@@ -58,7 +58,7 @@ export function SegmentChip({
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 p-0">
-          <div className="px-3 pt-3 pb-2 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="px-3 pt-3 pb-2 border-b border-neutral-200 dark:border-neutral-700">
             <div className="flex items-center gap-2 text-sm font-medium">
               <span className="truncate">{segment.name}</span>
               {segment.siteId === null && (
@@ -100,7 +100,7 @@ export function SegmentChip({
               </p>
             )}
           </div>
-          <div className="border-t border-neutral-200 dark:border-neutral-800 p-2 flex items-center justify-between">
+          <div className="border-t border-neutral-200 dark:border-neutral-700 p-2 flex items-center justify-between">
             {segment.canEdit && onEdit ? (
               <Button size="sm" variant="ghost" onClick={() => onEdit(segment)} className="gap-1.5">
                 <Pencil className="h-3.5 w-3.5" />

@@ -27,29 +27,29 @@ function RegexExamples() {
   return (
     <ul className="text-xs space-y-1">
       <li>
-        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"^/blog/"}</code>
+        <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">{"^/blog/"}</code>
         <span className="text-neutral-500 ml-1">— {t("Paths starting with /blog/")}</span>
       </li>
       <li>
-        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"/blog/.*"}</code>
+        <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">{"/blog/.*"}</code>
         <span className="text-neutral-500 ml-1">
           — {t("Paths containing /blog/ followed by anything")}
         </span>
       </li>
       <li>
-        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"\\.(pdf|doc|docx)$"}</code>
+        <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">{"\\.(pdf|doc|docx)$"}</code>
         <span className="text-neutral-500 ml-1">— {t("Paths ending in .pdf, .doc, or .docx")}</span>
       </li>
       <li>
-        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"^/products/[0-9]+$"}</code>
+        <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">{"^/products/[0-9]+$"}</code>
         <span className="text-neutral-500 ml-1">— {t("Product pages with numeric IDs")}</span>
       </li>
       <li>
-        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"(?i)newsletter"}</code>
+        <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">{"(?i)newsletter"}</code>
         <span className="text-neutral-500 ml-1">— {t("Case-insensitive match for 'newsletter'")}</span>
       </li>
       <li>
-        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{"^(?!.*test).*$"}</code>
+        <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">{"^(?!.*test).*$"}</code>
         <span className="text-neutral-500 ml-1">— {t("Paths NOT containing 'test'")}</span>
       </li>
     </ul>
