@@ -420,15 +420,31 @@ export async function checkApiKey(
   return { valid: false, role: null, statements: null };
 }
 
-export async function getUserIdFromRequest(req: FastifyRequest): Promise<string | null> {
+export interface RequestIdentity {
+  userId: string | null;
+  // Set for organization-owned API keys, which authenticate as the org itself
+  // and carry no user id.
+  organizationId: string | null;
+}
+
+const ANONYMOUS_IDENTITY: RequestIdentity = { userId: null, organizationId: null };
+
+/**
+ * Resolve who a request is acting as: a person (dashboard session, personal
+ * API key, OAuth token) or an organization (org-owned API key). Resolves the
+ * bearer credential exactly once — the MCP proxy's bearer handoff is single
+ * use, so a second resolution would fall through to a fresh key verification
+ * and charge the caller again.
+ */
+export async function getRequestIdentity(req: FastifyRequest): Promise<RequestIdentity> {
   if (req.user?.id) {
-    return req.user.id;
+    return { userId: req.user.id, organizationId: null };
   }
 
   // First, check for session-based auth
   const session = await getSessionFromReq(req);
   if (session?.user?.id) {
-    return session.user.id;
+    return { userId: session.user.id, organizationId: null };
   }
 
   // Fall back to bearer auth (API key or OAuth token).
@@ -437,33 +453,16 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
     const identity =
       consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
       (await resolveBearerIdentity(apiKey, bearerResolverDeps));
-    if (identity.status === "valid" && identity.userId) {
-      return identity.userId;
+    if (identity.status === "valid") {
+      return { userId: identity.userId ?? null, organizationId: identity.organizationId ?? null };
     }
   }
 
-  return null;
+  return ANONYMOUS_IDENTITY;
 }
 
-/**
- * Resolve an organization-owned API key's organization id. Mirrors
- * getUserIdFromRequest, but for the org-key side of a bearer credential
- * (org keys have no req.user/session — those only exist for people).
- */
-export async function getOrganizationIdFromApiKey(req: FastifyRequest): Promise<string | null> {
-  const apiKey = resolveBearerTokenFromRequest(req);
-  if (!apiKey) {
-    return null;
-  }
-
-  const identity =
-    consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
-    (await resolveBearerIdentity(apiKey, bearerResolverDeps));
-  if (identity.status === "valid" && identity.organizationId) {
-    return identity.organizationId;
-  }
-
-  return null;
+export async function getUserIdFromRequest(req: FastifyRequest): Promise<string | null> {
+  return (await getRequestIdentity(req)).userId;
 }
 
 // for routes that are potentially public

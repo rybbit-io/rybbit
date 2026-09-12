@@ -51,6 +51,7 @@ import {
   getSitesUserHasAccessTo,
   getUserHasAccessToSite,
   getUserHasAdminAccessToSite,
+  getRequestIdentity,
   getUserIdFromRequest,
   invalidateSitesAccessCache,
 } from "./auth-utils.js";
@@ -598,6 +599,13 @@ describe("checkApiKey — organization-owned keys", () => {
     vi.mocked(auth.api.verifyApiKey).mockResolvedValue(orgKeyVerification("org_a"));
 
     expect(await getUserIdFromRequest(request())).toBeNull();
+  });
+
+  it("resolves to its organization id with a single key verification", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue(orgKeyVerification("org_a"));
+
+    expect(await getRequestIdentity(request())).toEqual({ userId: null, organizationId: "org_a" });
+    expect(auth.api.verifyApiKey).toHaveBeenCalledTimes(1);
   });
 
   it("keys from the default configuration still resolve through user membership", async () => {

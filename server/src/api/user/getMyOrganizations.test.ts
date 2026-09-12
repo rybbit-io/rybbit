@@ -2,17 +2,17 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getSessionFromReq: vi.fn(),
-  getUserIdFromRequest: vi.fn(),
-  getOrganizationIdFromApiKey: vi.fn(),
+  getRequestIdentity: vi.fn(),
   wasRateLimited: vi.fn(),
 }));
 
 // Keep the real db (PGlite below) but stub the auth resolvers so we can drive
 // the session-vs-bearer-vs-org-key branch directly.
+// getRequestIdentity is stubbed as a unit; auth-utils.test.ts covers its
+// single-resolution guarantee.
 vi.mock("../../lib/auth-utils.js", () => ({
   getSessionFromReq: mocks.getSessionFromReq,
-  getUserIdFromRequest: mocks.getUserIdFromRequest,
-  getOrganizationIdFromApiKey: mocks.getOrganizationIdFromApiKey,
+  getRequestIdentity: mocks.getRequestIdentity,
   wasRateLimited: mocks.wasRateLimited,
 }));
 
@@ -66,8 +66,7 @@ beforeEach(async () => {
     INSERT INTO "sites" ("id","name","domain","organization_id","public") VALUES ('hex1','Acme Site','acme.com','org_1',false);
     INSERT INTO "sites" ("id","name","domain","organization_id","public") VALUES ('hex_beta1','Beta Site 1','beta1.com','org_2',false),('hex_beta2','Beta Site 2','beta2.com','org_2',false);
   `);
-  mocks.getUserIdFromRequest.mockResolvedValue("u_caller");
-  mocks.getOrganizationIdFromApiKey.mockResolvedValue(null);
+  mocks.getRequestIdentity.mockResolvedValue({ userId: "u_caller", organizationId: null });
   mocks.wasRateLimited.mockReturnValue(undefined);
 });
 
@@ -100,12 +99,11 @@ describe("getMyOrganizations — member roster exposure", () => {
 
 describe("getMyOrganizations — organization-owned API keys", () => {
   beforeEach(() => {
-    mocks.getUserIdFromRequest.mockResolvedValue(null);
     mocks.getSessionFromReq.mockResolvedValue(null);
   });
 
   it("returns only its own organization, with all its sites and no member PII", async () => {
-    mocks.getOrganizationIdFromApiKey.mockResolvedValue("org_2");
+    mocks.getRequestIdentity.mockResolvedValue({ userId: null, organizationId: "org_2" });
     const reply = replyStub();
 
     await getMyOrganizations({ headers: { authorization: "Bearer rb_org_key" } } as any, reply);
@@ -121,7 +119,7 @@ describe("getMyOrganizations — organization-owned API keys", () => {
   });
 
   it("never returns another organization's data (org A key can't see org B)", async () => {
-    mocks.getOrganizationIdFromApiKey.mockResolvedValue("org_1");
+    mocks.getRequestIdentity.mockResolvedValue({ userId: null, organizationId: "org_1" });
     const reply = replyStub();
 
     await getMyOrganizations({ headers: { authorization: "Bearer rb_org_key" } } as any, reply);
@@ -137,7 +135,7 @@ describe("getMyOrganizations — organization-owned API keys", () => {
   });
 
   it("401s when neither a user id nor an org key resolve", async () => {
-    mocks.getOrganizationIdFromApiKey.mockResolvedValue(null);
+    mocks.getRequestIdentity.mockResolvedValue({ userId: null, organizationId: null });
     const reply = replyStub();
 
     await getMyOrganizations({ headers: {} } as any, reply);
@@ -146,7 +144,7 @@ describe("getMyOrganizations — organization-owned API keys", () => {
   });
 
   it("429s instead of 401 when the credential was only rate-limited", async () => {
-    mocks.getOrganizationIdFromApiKey.mockResolvedValue(null);
+    mocks.getRequestIdentity.mockResolvedValue({ userId: null, organizationId: null });
     mocks.wasRateLimited.mockReturnValue({ retryAfterSeconds: 30, scope: "org" });
     const reply = replyStub();
 

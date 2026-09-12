@@ -2,15 +2,14 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { eq } from "drizzle-orm";
 import { member, organization, sites, user } from "../../db/postgres/schema.js";
-import { getOrganizationIdFromApiKey, getSessionFromReq, getUserIdFromRequest, wasRateLimited } from "../../lib/auth-utils.js";
+import { getRequestIdentity, getSessionFromReq, wasRateLimited } from "../../lib/auth-utils.js";
 import { filterSitesByMemberAccess, getOrgMembership } from "../../lib/access.js";
 
 export const getMyOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const userId = await getUserIdFromRequest(request);
-    // Organization-owned API keys have no user id — resolve their single
-    // organization directly instead of 401ing.
-    const apiKeyOrganizationId = userId ? null : await getOrganizationIdFromApiKey(request);
+    // Organization-owned API keys have no user id — they resolve to their
+    // single organization instead. One resolution covers both cases.
+    const { userId, organizationId: apiKeyOrganizationId } = await getRequestIdentity(request);
     if (!userId && !apiKeyOrganizationId) {
       // This route has no auth pre-handler, so a throttled credential resolves
       // to no user. Reporting that as 401 would tell a caller their key is
