@@ -1,7 +1,13 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
 import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 import { SiteLifecycleError, siteConfigurationLifecycle } from "../../services/sites/siteConfigurationLifecycle.js";
+
+const claimSiteSchema = z.object({
+  privateLinkKey: z.string().regex(/^[a-f0-9]{12}$/i),
+  organizationId: z.string().min(1).max(255),
+});
 
 /**
  * Moves an unclaimed site into one of the caller's organizations. Requires a
@@ -25,10 +31,11 @@ export async function claimSite(
     return reply.status(400).send({ error: "Invalid site ID" });
   }
 
-  const { privateLinkKey, organizationId } = request.body ?? {};
-  if (typeof privateLinkKey !== "string" || typeof organizationId !== "string" || !privateLinkKey || !organizationId) {
+  const parsed = claimSiteSchema.safeParse(request.body);
+  if (!parsed.success) {
     return reply.status(400).send({ error: "privateLinkKey and organizationId are required" });
   }
+  const { privateLinkKey, organizationId } = parsed.data;
 
   const membership = await getOrgMembership(userId, organizationId);
   if (!isOrgAdmin(membership)) {

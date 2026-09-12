@@ -1,7 +1,12 @@
 import { claimExpiryIso } from "../../services/sites/claimExpiry.js";
 import { FastifyReply, FastifyRequest, type RouteShorthandOptions } from "fastify";
+import { z } from "zod";
 import { DISABLE_SIGNUP } from "../../lib/const.js";
 import { SiteLifecycleError, siteConfigurationLifecycle } from "../../services/sites/siteConfigurationLifecycle.js";
+
+const createUnclaimedSiteSchema = z.object({
+  domain: z.string().trim().min(1).max(253),
+});
 
 export const unclaimedSiteRouteOptions = {
   bodyLimit: 1024,
@@ -28,10 +33,11 @@ export async function createUnclaimedSite(
     return reply.status(403).send({ error: "Signup is disabled" });
   }
 
-  const domain = request.body?.domain;
-  if (typeof domain !== "string" || domain.trim().length === 0 || domain.length > 253) {
+  const parsed = createUnclaimedSiteSchema.safeParse(request.body);
+  if (!parsed.success) {
     return reply.status(400).send({ error: "Domain is required" });
   }
+  const { domain } = parsed.data;
 
   try {
     const site = await siteConfigurationLifecycle.createUnclaimed({ domain });

@@ -8,7 +8,7 @@ export type SiteResponse = {
   domain: string;
   createdAt: string;
   updatedAt: string;
-  createdBy: string;
+  createdBy: string | null;
   organizationId: string | null;
   // Set while the site has no organization (created from the landing-page
   // domain input). Cleared on claim.
