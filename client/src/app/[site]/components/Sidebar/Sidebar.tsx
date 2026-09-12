@@ -88,14 +88,12 @@ function SidebarContent() {
           href={getTabPath("globe")}
           icon={<Globe2 className="w-4 h-4" />}
         />
-        {IS_CLOUD && (
-          <SidebarComponents.Item
-            label={t("Pages")}
-            active={isActiveTab("pages")}
-            href={getTabPath("pages")}
-            icon={<File className="w-4 h-4" />}
-          />
-        )}
+        <SidebarComponents.Item
+          label={t("Pages")}
+          active={isActiveTab("pages")}
+          href={getTabPath("pages")}
+          icon={<File className="w-4 h-4" />}
+        />
         {IS_CLOUD && !isMobileSite && (
           <SidebarComponents.Item
             label={t("Performance")}
@@ -104,14 +102,12 @@ function SidebarContent() {
             icon={<Gauge className="w-4 h-4" />}
           />
         )}
-        {IS_CLOUD && (
-          <SidebarComponents.Item
-            label={t("Bots")}
-            active={isActiveTab("bots")}
-            href={getTabPath("bots")}
-            icon={<Bot className="w-4 h-4" />}
-          />
-        )}
+        <SidebarComponents.Item
+          label={t("Bots")}
+          active={isActiveTab("bots")}
+          href={getTabPath("bots")}
+          icon={<Bot className="w-4 h-4" />}
+        />
         <SidebarComponents.Item
           label={t("Goals")}
           active={isActiveTab("goals")}
