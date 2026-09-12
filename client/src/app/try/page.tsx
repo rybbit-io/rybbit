@@ -11,6 +11,8 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { createUnclaimedSite } from "../../api/admin/endpoints";
 import { RybbitTextLogo } from "../../components/RybbitLogo";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
+import { useConfigs } from "../../lib/configs";
+import { IS_CLOUD } from "../../lib/const";
 import { isValidDomain, normalizeDomain } from "../../lib/utils";
 
 /**
@@ -21,6 +23,7 @@ import { isValidDomain, normalizeDomain } from "../../lib/utils";
  */
 function TryPageContent() {
   const t = useExtracted();
+  const { configs, isLoading: isLoadingConfigs, error: configError } = useConfigs();
   useSetPageTitle("Start tracking");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,13 +54,22 @@ function TryPageContent() {
 
   // Arriving from the landing page with a valid domain: go straight through.
   useEffect(() => {
+    if (!configs || configs.disableSignup) return;
     if (autoSubmitted.current || !initialDomain || !isValidDomain(initialDomain)) return;
     autoSubmitted.current = true;
     void submit(initialDomain);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialDomain]);
+  }, [initialDomain, configs]);
 
-  if (isLoading && !error) {
+  if (configs?.disableSignup || configError) {
+    return (
+      <div className="mx-auto max-w-md p-8">
+        <AuthError error={configError?.message ?? t("Signup is disabled")} />
+      </div>
+    );
+  }
+
+  if ((isLoading || isLoadingConfigs) && !error) {
     return (
       <div className="flex h-dvh w-full items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center">
@@ -120,7 +132,9 @@ function TryPageContent() {
           <AuthError error={error} />
 
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            {t("Your dashboard stays open for 24 hours. Claim it with a free 7-day trial to keep it.")}
+            {IS_CLOUD
+              ? t("Your dashboard stays open for 24 hours. Claim it with a free 7-day trial to keep it.")
+              : t("Your dashboard stays open for 24 hours. Create an account to keep it.")}
           </p>
         </form>
       </div>

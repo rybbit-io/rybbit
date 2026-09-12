@@ -20,7 +20,7 @@ export function CTASection({
   title,
   description,
   primaryButtonText,
-  primaryButtonHref = "https://app.rybbit.io/signup",
+  primaryButtonHref,
   secondaryButtonText,
   secondaryButtonHref = "https://demo.rybbit.com/81",
   eventLocation = "bottom_cta",
@@ -29,11 +29,12 @@ export function CTASection({
   const resolvedTitle = title ?? t("Ready for better analytics?");
   const resolvedDescription =
     description ?? t("The full analytics surface on one dashboard: cookieless, open source, and live in minutes.");
+  const resolvedPrimaryButtonHref = primaryButtonHref ?? "https://app.rybbit.io/signup";
   const resolvedPrimaryButtonText = primaryButtonText ?? t("Start for $0");
   const resolvedSecondaryButtonText = secondaryButtonText ?? t("Live demo");
   // Pages that route the primary action somewhere else keep their button; the
   // default signup destination becomes the domain input.
-  const useDomainInput = primaryButtonHref === "https://app.rybbit.io/signup" && primaryButtonText === undefined;
+  const useDomainInput = primaryButtonHref === undefined && primaryButtonText === undefined;
 
   return (
     <section className="group relative overflow-hidden border-b border-emerald-900 bg-emerald-950 text-white">
@@ -59,12 +60,18 @@ export function CTASection({
         <div className="relative z-10 flex flex-col justify-center px-5 py-12 sm:px-8 lg:col-span-4 lg:px-10">
           <p className="max-w-md text-base leading-7 text-emerald-100/80">{resolvedDescription}</p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+          <div
+            className={
+              useDomainInput
+                ? "mt-8 flex flex-col gap-3"
+                : "mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row"
+            }
+          >
             {useDomainInput ? (
               <DomainStartForm location={eventLocation} variant="inverted" className="sm:max-w-none xl:max-w-md" />
             ) : (
               <TrackedButton
-                href={primaryButtonHref}
+                href={resolvedPrimaryButtonHref}
                 eventName="signup"
                 eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
                 className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-medium text-emerald-950 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-950"

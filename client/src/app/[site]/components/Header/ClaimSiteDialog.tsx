@@ -9,11 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check } from "lucide-react";
 import { useExtracted } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
+import type { SiteResponse } from "../../../../api/admin/endpoints/sites";
 import { claimSite } from "../../../../api/admin/endpoints";
 import { USER_ORGANIZATIONS_QUERY_KEY, useUserOrganizations } from "../../../../api/admin/hooks/useOrganizations";
 import { authClient } from "../../../../lib/auth";
+import { useConfigs } from "../../../../lib/configs";
 import { BACKEND_URL, IS_CLOUD } from "../../../../lib/const";
 import { trackAdEvent } from "../../../../lib/trackAdEvent";
 import { userStore } from "../../../../lib/userStore";
@@ -28,6 +31,7 @@ interface ClaimSiteDialogProps {
   siteId: number;
   domain: string;
   privateLinkKey: string;
+  organizationId?: string;
 }
 
 function slugFromDomain(domain: string) {
@@ -44,12 +48,24 @@ function slugFromDomain(domain: string) {
  * domain and claim the site into it, then (cloud) they pick a plan. A visitor
  * who is already signed in only picks which organization keeps the site.
  */
-export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLinkKey }: ClaimSiteDialogProps) {
+export function ClaimSiteDialog({
+  open,
+  onOpenChange,
+  siteId,
+  domain,
+  privateLinkKey,
+  organizationId: resumeOrganizationId,
+}: ClaimSiteDialogProps) {
   const t = useExtracted();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = userStore();
-  const { data: organizations } = useUserOrganizations();
+  const { configs, isLoading: isLoadingConfigs } = useConfigs();
+  const {
+    data: organizations,
+    isPending: isLoadingOrganizations,
+    error: organizationsError,
+  } = useUserOrganizations({ enabled: !!user });
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -65,7 +81,9 @@ export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLin
   const [selectedPlan, setSelectedPlan] = useState<"standard" | "pro">("pro");
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
 
-  const [claimedOrganizationId, setClaimedOrganizationId] = useState<string | null>(null);
+  const [claimedOrganizationId, setClaimedOrganizationId] = useState<string | null>(resumeOrganizationId ?? null);
+  const planOrganizationId = claimedOrganizationId ?? resumeOrganizationId;
+  const returnPath = `/${siteId}/${privateLinkKey}?claim=1`;
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>("");
 
   const adminOrganizations = (organizations ?? []).filter(org => org.role === "owner" || org.role === "admin");
@@ -73,15 +91,34 @@ export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLin
 
   // Step 1 = account (skipped when signed in), step 2 = claim (existing org only), step 3 = plan (cloud only)
   const steps = IS_CLOUD ? [{ label: t("Account") }, { label: t("Pick plan") }] : [{ label: t("Account") }];
-  const currentStepIndex = claimedOrganizationId ? 1 : 0;
+  const currentStepIndex = planOrganizationId ? 1 : 0;
 
-  const claimInto = async (organizationId: string) => {
+  const claimInto = async (organizationId: string, pickPlan = false) => {
+    const active = await authClient.organization.setActive({ organizationId });
+    if (active.error) throw new Error(active.error.message);
     await claimSite(siteId, privateLinkKey, organizationId);
-    await authClient.organization.setActive({ organizationId });
-    queryClient.invalidateQueries({ queryKey: ["get-site", siteId] });
-    queryClient.invalidateQueries({ queryKey: ["get-site", String(siteId)] });
-    queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
     setClaimedOrganizationId(organizationId);
+
+    // Move off the revoked link immediately. The dialog stays mounted in the
+    // site layout, and ?claim=plan can resume the plan step after a reload.
+    router.replace(`/${siteId}/main${pickPlan && IS_CLOUD ? "?claim=plan" : ""}`);
+    await queryClient.cancelQueries({ queryKey: ["get-site"] });
+    for (const id of [siteId, String(siteId)]) {
+      queryClient.setQueryData(["get-site", id], (site: SiteResponse | null | undefined) =>
+        site
+          ? {
+              ...site,
+              organizationId,
+              claimExpiresAt: null,
+              isOwner: true,
+            }
+          : site
+      );
+    }
+    void queryClient.invalidateQueries({ queryKey: ["get-site"] });
+    void queryClient.invalidateQueries({ queryKey: ["get-sites-from-org", organizationId] });
+    void queryClient.invalidateQueries({ queryKey: ["site-is-public"] });
+    void queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
   };
 
   const createOrganizationAndClaim = async () => {
@@ -95,7 +132,7 @@ export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLin
     if (!data?.id) {
       throw new Error(t("No organization ID returned"));
     }
-    await claimInto(data.id);
+    await claimInto(data.id, true);
     return data.id;
   };
 
@@ -185,7 +222,7 @@ export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLin
         body: JSON.stringify({
           priceId: selectedTierPrice.priceId,
           returnUrl,
-          organizationId: claimedOrganizationId,
+          organizationId: planOrganizationId,
           referral: (window as any).Rewardful?.referral || undefined,
         }),
       });
@@ -205,7 +242,7 @@ export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLin
   };
 
   const renderContent = () => {
-    if (claimedOrganizationId && IS_CLOUD) {
+    if (planOrganizationId && IS_CLOUD) {
       return (
         <PlanStep
           eventLimitIndex={eventLimitIndex}
@@ -221,6 +258,8 @@ export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLin
     }
 
     if (user) {
+      if (isLoadingOrganizations) return <p>{t("Loading...")}</p>;
+      if (organizationsError) return <AuthError error={organizationsError.message} />;
       return (
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">{t("Keep {domain}", { domain })}</h2>
@@ -262,6 +301,15 @@ export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLin
       );
     }
 
+    if (isLoadingConfigs) return <p>{t("Loading...")}</p>;
+    if (configs?.disableSignup)
+      return (
+        <div className="space-y-4">
+          <p>{t("Signup is disabled")}</p>
+          <Link href={`/login?returnTo=${encodeURIComponent(returnPath)}`}>{t("Log in")}</Link>
+        </div>
+      );
+
     return (
       <AccountStep
         email={email}
@@ -273,14 +321,22 @@ export function ClaimSiteDialog({ open, onOpenChange, siteId, domain, privateLin
         isLoading={isLoading}
         onSubmit={handleAccountSubmit}
         setError={setError}
-        socialCallbackURL={`/${siteId}/${privateLinkKey}?claim=1`}
+        socialCallbackURL={returnPath}
+        loginHref={`/login?returnTo=${encodeURIComponent(returnPath)}`}
       />
     );
   };
 
   return (
     <>
-      <Dialog open={open && !checkoutClientSecret} onOpenChange={next => !isLoading && onOpenChange(next)}>
+      <Dialog
+        open={open && !checkoutClientSecret}
+        onOpenChange={next => {
+          if (isLoading) return;
+          if (!next && planOrganizationId) finish();
+          else onOpenChange(next);
+        }}
+      >
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[560px]">
           <div className="mb-2">
             <DialogTitle className="text-3xl font-medium">

@@ -20,6 +20,7 @@ interface AccountStepProps {
   setError: (v: string) => void;
   /** Where OAuth returns to. Defaults to the signup page's next step. */
   socialCallbackURL?: string;
+  loginHref?: string;
 }
 
 export function AccountStep({
@@ -33,6 +34,7 @@ export function AccountStep({
   onSubmit,
   setError,
   socialCallbackURL = "/signup?step=2",
+  loginHref = "/login",
 }: AccountStepProps) {
   const t = useExtracted();
 
@@ -81,7 +83,7 @@ export function AccountStep({
         <div className="text-center text-sm">
           {t("Already have an account?")}{" "}
           <Link
-            href="/login"
+            href={loginHref}
             className="underline underline-offset-4 hover:text-emerald-400 transition-colors duration-300"
           >
             {t("Log in")}

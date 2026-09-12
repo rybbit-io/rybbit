@@ -57,8 +57,8 @@ export function DomainStartForm({ location, variant = "hero", buttonText, classN
       <div
         className={
           inverted
-            ? "flex min-h-11 items-stretch overflow-hidden rounded-md border border-white/25 bg-white/10 transition-colors focus-within:border-white/60 focus-within:ring-2 focus-within:ring-white/40"
-            : "flex min-h-11 items-stretch overflow-hidden rounded-md border border-neutral-300 bg-white transition-colors focus-within:border-neutral-400 focus-within:ring-2 focus-within:ring-emerald-500/40 dark:border-neutral-700 dark:bg-neutral-950 dark:focus-within:border-neutral-500"
+            ? "flex min-h-11 flex-col items-stretch overflow-hidden rounded-md border border-white/25 bg-white/10 transition-colors focus-within:border-white/60 focus-within:ring-2 focus-within:ring-white/40"
+            : "flex min-h-11 flex-col items-stretch overflow-hidden rounded-md border border-neutral-300 sm:flex-row bg-white transition-colors focus-within:border-neutral-400 focus-within:ring-2 focus-within:ring-emerald-500/40 dark:border-neutral-700 dark:bg-neutral-950 dark:focus-within:border-neutral-500"
         }
       >
         <input
@@ -78,16 +78,16 @@ export function DomainStartForm({ location, variant = "hero", buttonText, classN
           aria-describedby={invalid ? `${inputId}-error` : undefined}
           className={
             inverted
-              ? "min-w-0 flex-1 bg-transparent px-3.5 text-sm text-white placeholder:text-emerald-100/50 focus:outline-none"
-              : "min-w-0 flex-1 bg-transparent px-3.5 text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none dark:text-white dark:placeholder:text-neutral-500"
+              ? "min-h-11 min-w-0 flex-1 bg-transparent px-3.5 text-sm text-white placeholder:text-emerald-100/50 focus:outline-none"
+              : "min-h-11 min-w-0 flex-1 bg-transparent px-3.5 text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none dark:text-white dark:placeholder:text-neutral-500"
           }
         />
         <button
           type="submit"
           className={
             inverted
-              ? "group inline-flex shrink-0 items-center gap-2 bg-white px-4 text-sm font-medium text-emerald-950 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-inset"
-              : "group inline-flex shrink-0 items-center gap-2 bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-200 hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset"
+              ? "group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-white px-4 text-sm font-medium text-emerald-950 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-inset"
+              : "group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-200 hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset"
           }
         >
           {buttonText ?? t("See my dashboard")}

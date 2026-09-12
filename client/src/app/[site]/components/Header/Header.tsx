@@ -21,7 +21,9 @@ export function Header() {
   // banner and the install instructions.
   const isUnclaimed = !!siteMetadata && siteMetadata.organizationId === null && !!siteMetadata.claimExpiresAt;
 
-  if (pathname.includes("/globe") || (!user && !isUnclaimed)) {
+  const isGlobe = pathname.includes("/globe");
+
+  if (!user && !isUnclaimed) {
     return <div className="flex flex-col" />;
   }
 
@@ -29,7 +31,7 @@ export function Header() {
     <div className="flex flex-col">
       <div className="flex flex-col px-2 md:px-4">
         <ClaimSiteBanner />
-        {user && (
+        {user && !isGlobe && !isUnclaimed && (
           <>
             <DemoSignupBanner />
             <AffiliateBanner />
@@ -37,7 +39,7 @@ export function Header() {
             <UsageBanners />
           </>
         )}
-        <NoData />
+        {!isGlobe && <NoData />}
       </div>
     </div>
   );
