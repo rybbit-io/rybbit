@@ -63,12 +63,21 @@ export function OrganizationPicker({ onOrganizationChange, onOrganizationCreated
   const currentOrgId = selectedOrgId ?? activeOrganization?.id;
   const currentOrg = organizations?.find(org => org.id === currentOrgId);
 
-  const handleSelect = (organizationId: string) => {
+  const handleSelect = async (organizationId: string) => {
     setOpen(false);
     if (organizationId === currentOrgId) return;
+    const previousOrgId = currentOrgId ?? null;
     setSelectedOrgId(organizationId);
-    authClient.organization.setActive({ organizationId });
-    onOrganizationChange?.(organizationId);
+    try {
+      const { error } = await authClient.organization.setActive({ organizationId });
+      if (error) {
+        setSelectedOrgId(previousOrgId);
+        return;
+      }
+      onOrganizationChange?.(organizationId);
+    } catch {
+      setSelectedOrgId(previousOrgId);
+    }
   };
 
   return (
