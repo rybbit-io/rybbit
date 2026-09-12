@@ -36,6 +36,7 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       updatedAt: site.updatedAt,
       createdBy: site.createdBy,
       organizationId: site.organizationId,
+      claimExpiresAt: site.claimExpiresAt,
       saltUserIds: site.saltUserIds,
       public: site.public,
       embedEnabled: site.embedEnabled,

@@ -1,4 +1,5 @@
 import { CtaDataLine } from "@/components/deco/CtaDataLine";
+import { DomainStartForm } from "@/components/DomainStartForm";
 import { WatchfulFrog } from "@/components/deco/WatchfulFrog";
 import { GridCrosses } from "@/components/GridCrosses";
 import { TrackedButton } from "@/components/TrackedButton";
@@ -30,6 +31,9 @@ export function CTASection({
     description ?? t("The full analytics surface on one dashboard: cookieless, open source, and live in minutes.");
   const resolvedPrimaryButtonText = primaryButtonText ?? t("Start for $0");
   const resolvedSecondaryButtonText = secondaryButtonText ?? t("Live demo");
+  // Pages that route the primary action somewhere else keep their button; the
+  // default signup destination becomes the domain input.
+  const useDomainInput = primaryButtonHref === "https://app.rybbit.io/signup" && primaryButtonText === undefined;
 
   return (
     <section className="group relative overflow-hidden border-b border-emerald-900 bg-emerald-950 text-white">
@@ -56,18 +60,22 @@ export function CTASection({
           <p className="max-w-md text-base leading-7 text-emerald-100/80">{resolvedDescription}</p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
-            <TrackedButton
-              href={primaryButtonHref}
-              eventName="signup"
-              eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
-              className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-medium text-emerald-950 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-950"
-            >
-              {resolvedPrimaryButtonText}
-              <ArrowRight
-                className="size-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-                aria-hidden="true"
-              />
-            </TrackedButton>
+            {useDomainInput ? (
+              <DomainStartForm location={eventLocation} variant="inverted" className="sm:max-w-none xl:max-w-md" />
+            ) : (
+              <TrackedButton
+                href={primaryButtonHref}
+                eventName="signup"
+                eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
+                className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-medium text-emerald-950 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-950"
+              >
+                {resolvedPrimaryButtonText}
+                <ArrowRight
+                  className="size-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </TrackedButton>
+            )}
             <TrackedButton
               href={secondaryButtonHref}
               eventName="demo"
@@ -84,7 +92,11 @@ export function CTASection({
             </TrackedButton>
           </div>
 
-          <p className="mt-6 text-sm text-emerald-100/60">{t("7-day free trial. Cancel anytime.")}</p>
+          <p className="mt-6 text-sm text-emerald-100/60">
+            {useDomainInput
+              ? t("No account needed. Claim your site later with a 7-day free trial.")
+              : t("7-day free trial. Cancel anytime.")}
+          </p>
         </div>
       </div>
     </section>

@@ -10,6 +10,9 @@ export type SiteResponse = {
   updatedAt: string;
   createdBy: string;
   organizationId: string | null;
+  // Set while the site has no organization (created from the landing-page
+  // domain input). Cleared on claim.
+  claimExpiresAt?: string | null;
   public: boolean;
   embedEnabled?: boolean;
   saltUserIds: boolean;
@@ -205,4 +208,32 @@ export function fetchSiteHasData(siteId: string) {
 
 export function fetchSiteIsPublic(siteId: string | number) {
   return authedFetch<{ isPublic: boolean }>(`/sites/${siteId}/is-public`);
+}
+
+export type UnclaimedSiteResponse = {
+  id: string | null;
+  siteId: number;
+  domain: string;
+  privateLinkKey: string;
+  claimExpiresAt: string;
+};
+
+/** Creates an owner-less site for a domain. No session required. */
+export function createUnclaimedSite(domain: string) {
+  return authedFetch<UnclaimedSiteResponse>("/sites/unclaimed", undefined, {
+    method: "POST",
+    data: { domain },
+  });
+}
+
+/** Moves an unclaimed site into the caller's organization. Requires a session. */
+export function claimSite(siteId: number | string, privateLinkKey: string, organizationId: string) {
+  return authedFetch<{ id: string | null; siteId: number; domain: string; organizationId: string }>(
+    `/sites/${siteId}/claim`,
+    undefined,
+    {
+      method: "POST",
+      data: { privateLinkKey, organizationId },
+    }
+  );
 }

@@ -107,6 +107,10 @@ export const sites = pgTable(
     // Platform fingerprinted from the site's homepage at creation time (e.g. "wordpress",
     // "next-js"); used to link the right install guide in lifecycle emails
     detectedPlatform: text("detected_platform"),
+    // Set on sites created from the landing-page domain input before the visitor
+    // has an account (organizationId is null). The site is reachable only via its
+    // privateLinkKey until it is claimed; the cleanup cron deletes it after this.
+    claimExpiresAt: timestamp("claim_expires_at", { mode: "string" }),
   },
   table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
 );

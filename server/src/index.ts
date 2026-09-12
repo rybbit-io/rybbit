@@ -129,6 +129,8 @@ import {
 import {
   addSite,
   batchImportEvents,
+  claimSite,
+  createUnclaimedSite,
   createSiteImport,
   deleteSite,
   deleteSiteImport,
@@ -208,6 +210,7 @@ import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
 import { startSiteBaselineRefresh } from "./services/tracker/botBlocking/siteBaseline.js";
 import { usageService } from "./services/usageService.js";
+import { unclaimedSiteCleanupService } from "./services/sites/unclaimedSiteCleanupService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 import { handleAppSumoWebhook, activateAppSumoLicense } from "./api/as/index.js";
 
@@ -567,6 +570,10 @@ async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.get("/organizations", getMyOrganizations);
   fastify.get("/organizations/:organizationId/sites", orgOrgRead, getSitesFromOrg);
   fastify.post("/organizations/:organizationId/sites", orgAdminSitesWrite, addSite);
+  // Landing-page domain input: creates an owner-less site reachable only by
+  // its private link key. Public, so cap creations per IP.
+  fastify.post("/sites/unclaimed", { config: { rateLimit: { max: 10, timeWindow: "1 hour" } } }, createUnclaimedSite);
+  fastify.post("/sites/:siteId/claim", authOnlyScoped("sites", "write"), claimSite);
   fastify.get("/organizations/:organizationId/members", orgOrgRead, listOrganizationMembers);
   fastify.post("/organizations/:organizationId/members", authOrgWrite, addUserToOrganization);
   fastify.post("/organizations/:organizationId/users", authOrgWrite, createUserInOrganization);
@@ -678,6 +685,7 @@ const start = async () => {
     if (!cluster.isWorker) {
       telemetryService.startTelemetryCron();
       usageService.startUsageCheckCron();
+      unclaimedSiteCleanupService.startCleanupCron();
       if (IS_CLOUD && process.env.NODE_ENV !== "development") {
         weeklyReportService.startWeeklyReportCron();
         lifecycleEmailService.startLifecycleCron();

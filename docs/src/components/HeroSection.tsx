@@ -1,9 +1,10 @@
 import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { GridCrosses } from "@/components/GridCrosses";
+import { DomainStartForm } from "@/components/DomainStartForm";
 import { HeroDataLine } from "@/components/HeroDataLine";
 import { WatchfulFrog } from "@/components/deco/WatchfulFrog";
 import { TrackedButton } from "@/components/TrackedButton";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
 
 const EUFlag = () => (
@@ -62,28 +63,17 @@ export function HeroSection({ title, subtitle, showEUFlag = true, showGitHubStar
               </div>
             )}
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <TrackedButton
-                href="https://app.rybbit.io/signup"
-                eventName="signup"
-                eventProps={{ location: "hero", button_text: "get started" }}
-                className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950"
-              >
-                {t("Start for $0")}
-                <ArrowRight
-                  className="size-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-                  aria-hidden="true"
-                />
-              </TrackedButton>
+            <div className="mt-6 flex flex-col gap-3">
+              <DomainStartForm location="hero" />
               <TrackedButton
                 href="https://demo.rybbit.com/81"
                 eventName="demo"
                 target="_blank"
                 rel="noopener noreferrer"
                 eventProps={{ location: "hero", button_text: "Live demo" }}
-                className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-neutral-300 px-5 py-2.5 text-sm font-medium text-neutral-900 transition-colors duration-200 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-900 dark:focus-visible:ring-offset-neutral-950"
+                className="group inline-flex w-fit items-center gap-1.5 text-sm font-medium text-neutral-600 transition-colors duration-200 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 dark:text-neutral-400 dark:hover:text-white dark:focus-visible:ring-offset-neutral-950"
               >
-                {t("Live demo")}
+                {t("Or open the live demo")}
                 <ExternalLink
                   className="size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
                   aria-hidden="true"
@@ -92,7 +82,7 @@ export function HeroSection({ title, subtitle, showEUFlag = true, showGitHubStar
             </div>
 
             <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
-              {t("7-day free trial. Cancel anytime.")}
+              {t("No account needed. Claim your site later with a 7-day free trial.")}
             </p>
           </div>
         </div>

@@ -141,6 +141,13 @@
       "when": 1789184125327,
       "tag": "0019_invitation_created_at",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789189000176,
+      "tag": "0020_unclaimed_sites",
+      "breakpoints": true
     }
   ]
 }

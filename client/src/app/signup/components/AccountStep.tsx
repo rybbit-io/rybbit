@@ -18,6 +18,8 @@ interface AccountStepProps {
   isLoading: boolean;
   onSubmit: () => void;
   setError: (v: string) => void;
+  /** Where OAuth returns to. Defaults to the signup page's next step. */
+  socialCallbackURL?: string;
 }
 
 export function AccountStep({
@@ -30,6 +32,7 @@ export function AccountStep({
   isLoading,
   onSubmit,
   setError,
+  socialCallbackURL = "/signup?step=2",
 }: AccountStepProps) {
   const t = useExtracted();
 
@@ -37,7 +40,7 @@ export function AccountStep({
     <div>
       <h2 className="text-2xl font-semibold mb-4">{t("Signup")}</h2>
       <div className="space-y-4">
-        <SocialButtons onError={setError} callbackURL="/signup?step=2" mode="signup" />
+        <SocialButtons onError={setError} callbackURL={socialCallbackURL} mode="signup" />
         <AuthInput
           id="email"
           label={t("Email")}

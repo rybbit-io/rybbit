@@ -1864,5 +1864,20 @@
   "QOaR8l": "Submitted form to \"{action}\"",
   "IQ5tZg": "Submitted form",
   "+B+qvw": "Changed {type}input \"{name}\"",
-  "vDpLV2": "Changed {type}input"
+  "vDpLV2": "Changed {type}input",
+  "MiQ4id": "Setting up your dashboard for {domain}…",
+  "4QHutO": "See who's on your site",
+  "kL9vD5": "Enter your domain to open a live dashboard. No account needed until you want to keep it.",
+  "wjMsGC": "See my dashboard",
+  "OxNUFK": "Your dashboard stays open for 24 hours. Claim it with a free 7-day trial to keep it.",
+  "G6KGGR": "{domain} has expired and will be deleted shortly.",
+  "Vk8VDq": "{domain} isn't claimed. It will be deleted in {remaining} unless you claim it.",
+  "+r0Iwt": "Claim this site",
+  "+Sy0Cl": "Could not find a matching plan. Please try a different selection.",
+  "0o6QyV": "Failed to create checkout session",
+  "PmX9kv": "Keep {domain}",
+  "cUXDNU": "The site moves into this organization.",
+  "PktqJk": "We'll create an organization named {domain} and move the site into it.",
+  "osCh7/": "Claim site",
+  "bH/RfA": "Claim {domain} to keep its dashboard and everything it has collected."
 }

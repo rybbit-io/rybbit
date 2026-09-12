@@ -80,12 +80,15 @@ export type SiteLifecycleErrorCode =
   | "site_not_found"
   | "invalid_ip_patterns"
   | "empty_update"
-  | "domain_conflict";
+  | "domain_conflict"
+  | "site_already_claimed"
+  | "invalid_claim_key"
+  | "site_expired";
 
 export class SiteLifecycleError extends Error {
   constructor(
     readonly code: SiteLifecycleErrorCode,
-    readonly statusCode: 400 | 403 | 404 | 409,
+    readonly statusCode: 400 | 403 | 404 | 409 | 410,
     message: string,
     readonly details?: unknown
   ) {
@@ -130,6 +133,19 @@ const DIRECT_UPDATE_FIELDS = [
   "trackCopy",
   "trackFormInteractions",
 ] as const satisfies ReadonlyArray<keyof UpdateSiteConfigurationInput>;
+
+/**
+ * How long a site created from the landing-page domain input survives without
+ * an owner. The cleanup cron deletes unclaimed sites past this age.
+ */
+export const UNCLAIMED_SITE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export type ClaimSiteInput = {
+  siteId: number;
+  privateLinkKey: string;
+  organizationId: string;
+  userId: string;
+};
 
 function normalizeSiteType(type: SiteType | null | undefined): SiteType {
   return type === "mobile" ? "mobile" : "web";
@@ -293,6 +309,112 @@ class SiteConfigurationLifecycle {
       }
       throw error;
     }
+  }
+
+  /**
+   * A site with no organization, created from the landing page before the
+   * visitor has an account. It is reachable only through its private link key
+   * and is deleted by the cleanup cron unless claimed within UNCLAIMED_SITE_TTL_MS.
+   */
+  async createUnclaimed(input: { domain: string }): Promise<SiteRow> {
+    const domain = normalizeDomain(input.domain)
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .split(/[/?#]/)[0];
+
+    validateSiteIdentity("web", domain);
+
+    const [createdSite] = await db
+      .insert(sites)
+      .values({
+        id: randomBytes(6).toString("hex"),
+        type: null,
+        domain,
+        name: domain,
+        createdBy: null,
+        organizationId: null,
+        privateLinkKey: randomBytes(6).toString("hex"),
+        claimExpiresAt: new Date(Date.now() + UNCLAIMED_SITE_TTL_MS).toISOString(),
+      })
+      .returning();
+
+    if (!createdSite) {
+      throw new Error("Site insert returned no row");
+    }
+
+    void detectPlatform(domain)
+      .then(platform =>
+        platform
+          ? db.update(sites).set({ detectedPlatform: platform.key }).where(eq(sites.siteId, createdSite.siteId))
+          : undefined
+      )
+      .catch(() => {});
+
+    return createdSite;
+  }
+
+  /**
+   * Re-parent an unclaimed site into an organization. The private link key is
+   * the proof of possession (it is the only way anyone could have reached the
+   * dashboard), and it is cleared on claim so the anonymous URL stops working.
+   */
+  async claim(input: ClaimSiteInput): Promise<SiteRow> {
+    const site = await this.findSite(input.siteId);
+
+    if (site.organizationId !== null || !site.claimExpiresAt) {
+      throw new SiteLifecycleError("site_already_claimed", 409, "This site has already been claimed");
+    }
+
+    if (!site.privateLinkKey || site.privateLinkKey !== input.privateLinkKey) {
+      throw new SiteLifecycleError("invalid_claim_key", 403, "Invalid claim link for this site");
+    }
+
+    if (new Date(site.claimExpiresAt).getTime() < Date.now()) {
+      throw new SiteLifecycleError("site_expired", 410, "This site expired before it was claimed");
+    }
+
+    if (IS_CLOUD) {
+      const subscription = await getSubscriptionInner(input.organizationId);
+
+      if (!subscription) {
+        throw new SiteLifecycleError("organization_not_found", 404, "Organization not found");
+      }
+
+      const siteLimit = subscription.siteLimit ?? null;
+      if (siteLimit !== null) {
+        const existingSites = await db
+          .select({ siteId: sites.siteId })
+          .from(sites)
+          .where(eq(sites.organizationId, input.organizationId));
+
+        if (existingSites.length >= siteLimit) {
+          throw new SiteLifecycleError(
+            "site_limit_reached",
+            403,
+            `You have reached the limit of ${siteLimit} website${siteLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`
+          );
+        }
+      }
+    }
+
+    const [claimedSite] = await db
+      .update(sites)
+      .set({
+        organizationId: input.organizationId,
+        createdBy: input.userId,
+        claimExpiresAt: null,
+        privateLinkKey: null,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(sites.siteId, input.siteId))
+      .returning();
+
+    if (!claimedSite) {
+      throw new Error("Site claim returned no row");
+    }
+
+    siteConfig.invalidate(site);
+    return claimedSite;
   }
 
   async update(siteId: number, input: UpdateSiteConfigurationInput): Promise<SiteConfigData> {

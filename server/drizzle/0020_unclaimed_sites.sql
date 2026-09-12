@@ -1,0 +1,1 @@
+ALTER TABLE "sites" ADD COLUMN "claim_expires_at" timestamp;
