@@ -1,125 +1,66 @@
 ---
 title: Hugo
-description: Integrate Rybbit Analytics with your Hugo static site using partial templates
+description: Add Rybbit analytics to your Hugo site
+category: static
+icon: SiHugo
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Integrating Rybbit Analytics with your Hugo static site involves adding the tracking script to your site's templates. The best way to do this is by creating a partial template for the script and including it in your site's footer.
-
-<Steps>
-<Step>
-### Get Your Tracking Script
-
-First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
-
-```html
-<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
-</Step>
-
-<Step>
-### Create a Partial Template
-
-In your Hugo project, navigate to the `layouts/partials/` directory. If it doesn't exist, create it.
-
-Inside `layouts/partials/`, create a new file named `rybbit-analytics.html` (or a similar name).
-
-Paste your Rybbit tracking script into this new file:
-
-```html
-{{/* layouts/partials/rybbit-analytics.html */}}
-{{ if not hugo.IsServer }} {{/* Only include in production builds */}}
-  <script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-{{ end }}
-```
-
-**Explanation:**
-- `{{ if not hugo.IsServer }}`: This Hugo condition ensures that the tracking script is only included when you build your site for production (`hugo`) and not during local development (`hugo server`). This prevents tracking your own local page views.
-- Replace `https://app.rybbit.io` and `YOUR_SITE_ID` with your actual details.
-</Step>
-
-<Step>
-### Include the Partial in Your Footer
-
-Now, you need to include this partial in your site's main footer template. This is typically located in `layouts/_default/baseof.html` or a theme-specific footer partial (e.g., `layouts/partials/footer.html` or `themes/your-theme/layouts/partials/footer.html`).
-
-Open your main base template or footer partial file. Just before the closing `</body>` tag, add the following line to include your Rybbit Analytics partial:
-
-```html
-{{/* ... other footer content ... */}}
-
-{{ partial "rybbit-analytics.html" . }}
-
-</body>
-</html>
-```
-
-If you named your partial differently, make sure to use that name (e.g., `{{ partial "my-analytics-script.html" . }}`).
-</Step>
-</Steps>
-
-## Configure `config.toml` (Optional but Recommended)
-
-To make your Site ID configurable, you can use Hugo's site parameters.
+Hugo builds every page from templates under `layouts/`, so the cleanest place for the snippet is a partial template that your base template includes on every page.
 
 <Steps>
 <Step>
-### Update `rybbit-analytics.html`
+### Get your tracking snippet
 
-Modify `layouts/partials/rybbit-analytics.html` to use a site parameter:
-
-```html
-{{/* layouts/partials/rybbit-analytics.html */}}
-{{ if and (not hugo.IsServer) .Site.Params.rybbitSiteID }}
-  <script defer src="{{ .Site.Params.rybbitInstanceURL | default "https://app.rybbit.io" }}/api/script.js" data-site-id="{{ .Site.Params.rybbitSiteID }}"></script>
-{{ end }}
-```
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add parameters to `config.toml`
+### Add the snippet to Hugo
 
-Open your Hugo configuration file (e.g., `config.toml`) and add:
+1. Add your site ID under `params` in your Hugo config (`hugo.toml`, or `config.toml` in older Hugo versions). `rybbitInstanceURL` is only needed if you self-host:
 
-```toml
-[params]
-  rybbitInstanceURL = "https://app.rybbit.io" # Your Rybbit instance URL
-  rybbitSiteID = "YOUR_SITE_ID" # Your Rybbit Site ID
-```
+   ```toml title="hugo.toml"
+   [params]
+     rybbitSiteID = "YOUR_SITE_ID"
+     rybbitInstanceURL = "https://app.rybbit.io"
+   ```
 
-This approach keeps your specific IDs out of the templates and makes it easier to manage for different environments if needed.
+2. Create `layouts/partials/rybbit-analytics.html` (create the `layouts/partials/` directory if it does not exist):
+
+   ```html title="layouts/partials/rybbit-analytics.html"
+   {{ if and (not hugo.IsServer) .Site.Params.rybbitSiteID }}
+     <script src="{{ .Site.Params.rybbitInstanceURL | default "https://app.rybbit.io" }}/api/script.js?siteId={{ .Site.Params.rybbitSiteID }}" defer></script>
+   {{ end }}
+   ```
+
+   `not hugo.IsServer` skips the script during `hugo server`, so local development is not tracked. The `rybbitSiteID` check keeps the tag out of builds that have no ID configured.
+
+3. Include the partial from your base template, typically `layouts/_default/baseof.html`, inside `<head>`. If your theme owns `baseof.html`, copy it into your project's `layouts/_default/` first so the theme can be updated without losing the change; a theme footer partial such as `layouts/partials/footer.html` also works.
+
+   ```html title="layouts/_default/baseof.html"
+   <head>
+     ...
+     {{ partial "rybbit-analytics.html" . }}
+   </head>
+   ```
+
+4. Build with `hugo` and deploy the generated `public/` directory.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-## Build and Deploy
+## Troubleshooting
 
-<Steps>
-<Step>
-### Build your Hugo site
+- **Snippet missing from the page source**: `hugo server` never emits it because of the `hugo.IsServer` guard. Check the output of a production `hugo` build instead.
+- **Theme overrides**: a file at `layouts/_default/baseof.html` in your project takes precedence over the theme's copy, so make sure you edited the one Hugo actually renders.
 
-Rebuild your Hugo site:
+## Next steps
 
-```bash
-hugo
-```
-</Step>
-
-<Step>
-### Deploy
-
-Deploy the generated `public/` directory to your web server.
-</Step>
-
-<Step>
-### Verify Integration
-
-- Open your live Hugo website in a browser.
-- Navigate through a few pages.
-- Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
-</Step>
-</Steps>
-
-That's it! Rybbit Analytics is now integrated with your Hugo site and will only track visits on your production deployment.
+<include>../../../partials/guides/next-steps.mdx</include>

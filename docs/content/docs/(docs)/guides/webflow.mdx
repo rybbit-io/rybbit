@@ -1,112 +1,75 @@
 ---
-title: "Webflow"
-description: "Enable analytics, custom events, and more on your Webflow site with Rybbit."
+title: Webflow
+description: Add Rybbit analytics to your Webflow site
+category: builders
+icon: SiWebflow
 ---
 
-import { Step, Steps } from "fumadocs-ui/components/steps";
-import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-Rybbit enables you to collect analytics, capture custom events, and more on your Webflow site.
-
-## How to Add Rybbit to Webflow
+Webflow accepts custom `<head>` code either site-wide in **Site settings → Custom code** or per page in the page settings. Either way the code only reaches the live site when you publish.
 
 <Steps>
 <Step>
-### Retrieve Your Tracking Script
+### Get your tracking snippet
 
-Navigate to your Rybbit dashboard to obtain your code snippet.
-
-```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
-```
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add the Snippet to Your Webflow Project
+### Add the snippet to Webflow
 
-- In your Webflow project, go to **Site settings > Custom code**.
-- Paste your snippet into the **Head code** section.
-- Save and publish your changes.
+<Tabs items={["Site-wide", "Single page"]}>
+<Tab value="Site-wide">
+1. Open your project and go to **Site settings → Custom code**.
+2. Paste the snippet into **Head code**.
+3. Click **Save**, then **Publish** the site.
+</Tab>
+<Tab value="Single page">
+Use this when you only want to track specific pages.
+
+1. In the Designer, open the page's **Settings** (cog icon next to the page name).
+2. Scroll to **Custom code** and paste the snippet into **Inside `<head>` tag**.
+3. Click **Save**, then **Publish** the site.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-<Callout type="info">
-  **Page View Tracking in Webflow**:
-  - **Standard Navigation**: For standard page-to-page navigation in Webflow, Rybbit will track each new page load automatically.
-  - **Interactions & Animations**: If you use Webflow interactions that change content significantly without changing the URL (e.g., showing/hiding sections to simulate tabs or multi-step forms on a single page), Rybbit will only track the initial page load. For these "virtual" page views, you would need to use custom event tracking to mark those interactions.
-  - **Single-Page Sites**: If your Webflow site is a single-page design with sections, only one page view will be tracked unless you implement custom event tracking for section views.
-</Callout>
+## Track custom events
 
-## Custom Event Tracking in Webflow
+Give the element an **ID** in the Designer (**Settings** panel → **General** → **ID**), then attach a listener in **Site settings → Custom code → Footer code** or in an **Embed** element on that page:
 
-You can track custom events in Webflow by adding custom JavaScript code, either in the **Custom Code** section of your site settings (for global scripts) or within an **Embed** element on a specific page.
-
-**Example: Tracking a button click**
-
-1.  **Give your button an ID:**
-    *   Select the button element in the Webflow Designer.
-    *   Go to the **Settings** panel (cog icon).
-    *   Under **General**, set a unique **ID** for the button (e.g., `my-special-button`).
-
-2.  **Add Custom JavaScript:**
-    You can add this script in **Site Settings > Custom Code > Footer Code** to make it available globally, or in an Embed element on the page where the button exists.
-
-    ```html
-    <script type="text/javascript">
-    document.addEventListener('DOMContentLoaded', function() {
-      var specialButton = document.getElementById('my-special-button');
-      if (specialButton) {
-        specialButton.addEventListener('click', function() {
-          if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.event('webflow_button_click', {
-              button_id: 'my-special-button',
-              button_text: specialButton.textContent || specialButton.innerText,
-              page_path: window.location.pathname
-            });
-          }
-        });
-      }
+```html
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var button = document.getElementById("my-special-button");
+    if (!button) return;
+    button.addEventListener("click", function () {
+      window.rybbit?.event("button_click", {
+        button_id: "my-special-button",
+        page_path: window.location.pathname,
+      });
     });
-    </script>
-    ```
+  });
+</script>
+```
 
-**Example: Tracking a form submission**
+The same pattern works for a Form Block's `submit` event. Webflow handles form submission itself, so this fires on the submit attempt, not on confirmed success.
 
-1.  **Give your form an ID:**
-    *   Select the Form Block element.
-    *   Go to the **Settings** panel.
-    *   Set a unique **ID** (e.g., `contact-form`).
+## Troubleshooting
 
-2.  **Add Custom JavaScript (in Footer Code or Embed):**
+- **Changes not showing on the live site**: custom code is staged until you **Publish**. Check the published site, not the Designer preview.
+- **Interactions that show or hide sections** without changing the URL produce a single pageview. Track those states as custom events, or call `window.rybbit.pageview()` from your own script when they appear.
+- **Scripts that read the DOM** belong in **Footer code**, not **Head code**, so the elements exist when they run.
 
-    ```html
-    <script type="text/javascript">
-    document.addEventListener('DOMContentLoaded', function() {
-      var contactForm = document.getElementById('contact-form');
-      if (contactForm) {
-        contactForm.addEventListener('submit', function() {
-          // It's often good to track *after* successful submission if Webflow provides a callback.
-          // For a simple submit click, this is how you'd do it.
-          // For Webflow's native form handling, you might need to hook into its success state if possible,
-          // or track the click on the submit button itself.
-          if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.event('webflow_form_submit', {
-              form_id: 'contact-form',
-              // You can try to get form field values here if needed, but be mindful of PII.
-            });
-          }
-        });
-      }
-    });
-    </script>
-    ```
+## Next steps
 
-<Callout type="warn">
-  When adding custom JavaScript in Webflow, ensure it's placed correctly (usually in the Footer Code for scripts that need the DOM to be ready) and test thoroughly. Webflow's own interactions might sometimes conflict or require specific timing for custom scripts.
-</Callout>
-
-By using these methods, you can enhance Rybbit's tracking on your Webflow site beyond basic page views.
+<include>../../../partials/guides/next-steps.mdx</include>

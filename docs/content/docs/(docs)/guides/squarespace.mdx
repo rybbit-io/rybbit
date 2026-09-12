@@ -1,74 +1,49 @@
 ---
-title: "Squarespace"
-description: "Integrate Rybbit Analytics with your Squarespace website using the Code Injection feature."
+title: Squarespace
+description: Add Rybbit analytics to your Squarespace site
+category: builders
+icon: SiSquarespace
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Integrating Rybbit Analytics with your Squarespace website is straightforward. You'll need to use Squarespace's "Code Injection" feature to add the Rybbit tracking script to your site.
+Squarespace injects custom HTML into every page through its **Code Injection** panel, so no template edits are needed.
+
+<Callout type="warn">
+Code Injection is available on the **Business** and **Commerce** plans. It is not available on the Personal plan.
+</Callout>
 
 <Steps>
 <Step>
-### Get Your Tracking Script
+### Get your tracking snippet
 
-First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Script**. It will look something like this:
-
-```html
-<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Go to Squarespace Settings
+### Add the snippet to Squarespace
 
-Log in to your Squarespace account and go to the website you want to track.
+1. From the Home Menu, open **Settings**.
+2. Open **Website**, then **Code Injection** (listed under **Advanced** or **Developer** depending on your Squarespace version).
+3. Paste the snippet into the **Header** field. The script is deferred, so it does not delay page rendering.
+4. Click **Save** at the top of the panel.
 
-From the main dashboard (Home Menu), navigate to:
-
-- **Settings**
+The **Footer** field also works and loads the script on every page. Leave the **Lock Page** and **Order Confirmation Page** fields alone; they only apply to those single pages.
 </Step>
 
 <Step>
-### Access Code Injection
+### Verify installation
 
-In the Settings panel, find and click on:
-
-- **Website** (under the "GENERAL" section)
-- Then, click on **Code Injection** (under the "ADVANCED" or "DEVELOPER" section, depending on your Squarespace version).
-
-<Callout type="info">
-  The Code Injection feature is available on Squarespace Business and Commerce plans. It may not be available on Personal plans.
-</Callout>
-</Step>
-
-<Step>
-### Paste Your Tracking Script
-
-In the Code Injection settings, you'll see several fields (Header, Footer, Lock Page, Order Confirmation Page).
-
-For sitewide tracking, paste your Rybbit tracking script into the **Footer** text area. This ensures the script loads after your page content, which is generally better for perceived page load performance.
-
-Alternatively, you can place it in the **Header**, which might track users who leave before the page fully loads, but could slightly impact initial page load speed. For most analytics purposes, the Footer is recommended.
-</Step>
-
-<Step>
-### Save Changes
-
-After pasting the script, click the **Save** button at the top of the Code Injection panel.
-</Step>
-
-<Step>
-### Verify Integration
-
-Once you've saved the changes, Rybbit Analytics should start tracking visitors on your Squarespace site.
-
-- Open your Squarespace website in a new browser tab or incognito window.
-- Navigate through a few pages.
-- Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-That's it! Rybbit Analytics is now integrated with your Squarespace website.
+## Troubleshooting
+
+- **Code Injection is missing from Settings**: the site is on the Personal plan. Upgrade to Business or Commerce.
+- **Only the checkout is tracked**: the snippet was pasted into **Order Confirmation Page** instead of **Header** or **Footer**.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

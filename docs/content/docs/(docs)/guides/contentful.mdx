@@ -1,80 +1,61 @@
 ---
 title: Contentful
-description: Integrate Rybbit Analytics with your Contentful-powered website
+description: Add Rybbit analytics to your Contentful site
+category: cms
+icon: SiContentful
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-Contentful is an enterprise headless CMS that delivers content via API. Since Contentful is headless, you'll add Rybbit Analytics to your frontend application rather than to Contentful itself.
+Contentful is a headless CMS: it stores content and delivers it over its APIs, but never renders your pages. The tracking snippet therefore goes into the frontend that consumes Contentful, not into Contentful itself.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Contentful
 
 <Callout type="info">
-Contentful only manages and delivers your content - it doesn't serve your website. The tracking script goes in your frontend framework (Next.js, Gatsby, Nuxt, etc.).
+Contentful has no template or head setting to paste into. Add the snippet to the `<head>` of the frontend application that fetches content from Contentful.
 </Callout>
 
-## How to Add Rybbit with Contentful
+<Tabs items={["Next.js", "Nuxt", "Other frontends"]}>
+<Tab>
+Next.js is the most common Contentful frontend. Add the snippet with `next/script` in your root layout so it loads on every route. Follow the [Next.js guide](/docs/guides/react/next-js).
+</Tab>
+<Tab>
+Add the snippet under `app.head.script` in `nuxt.config.ts`. Follow the [Nuxt guide](/docs/guides/vue/nuxt).
+</Tab>
+<Tab>
+- [Gatsby](/docs/guides/react/gatsby), which pairs with the official `gatsby-source-contentful` plugin
+- [Remix](/docs/guides/react/remix)
+- [Vite + React](/docs/guides/react/vite-cra)
+- [Vite + Vue](/docs/guides/vue/vite)
+- [Astro](/docs/guides/astro)
+- [SvelteKit](/docs/guides/svelte/sveltekit)
+- [Angular](/docs/guides/angular)
+</Tab>
+</Tabs>
+</Step>
 
-Choose the guide that matches your frontend framework:
+<Step>
+### Verify installation
 
-### React-based Frontends
-- **[Next.js](/docs/guides/react/next-js)** - Most common choice with Contentful
-- **[Gatsby](/docs/guides/react/gatsby)** - Has official Contentful plugin
-- **[Remix](/docs/guides/react/remix)**
-- **[Vite + React](/docs/guides/react/vite-cra)**
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
 
-### Vue-based Frontends
-- **[Nuxt](/docs/guides/vue/nuxt)**
-- **[Vite + Vue](/docs/guides/vue/vite)**
+## Troubleshooting
 
-### Other Frontends
-- **[Astro](/docs/guides/astro)**
-- **[SvelteKit](/docs/guides/svelte/sveltekit)**
-- **[Angular](/docs/guides/angular)**
+- **Editor previews count as visits**: Contentful's content preview URLs open a preview or draft build of your frontend. Register that deployment as a separate site in Rybbit, or leave the snippet out of preview builds, so editors' previews are not mixed into your production data.
+- **The Contentful web app is not tracked**: the snippet only runs on your frontend, so time spent editing in Contentful never appears in Rybbit.
 
-## Quick Example: Next.js with Contentful
+## Next steps
 
-If you're using Next.js (the most common Contentful frontend), add the tracking script to your root layout:
-
-```tsx
-// app/layout.tsx
-import Script from 'next/script'
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="en">
-      <head>
-        <Script
-          src="https://app.rybbit.io/api/script.js"
-          data-site-id="YOUR_SITE_ID"
-          strategy="afterInteractive"
-        />
-      </head>
-      <body>{children}</body>
-    </html>
-  )
-}
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
-
-## Quick Example: Gatsby with Contentful
-
-If you're using Gatsby, add to your `gatsby-ssr.js`:
-
-```javascript
-import React from 'react'
-
-export const onRenderBody = ({ setHeadComponents }) => {
-  setHeadComponents([
-    <script
-      key="rybbit"
-      src="https://app.rybbit.io/api/script.js"
-      data-site-id="YOUR_SITE_ID"
-      defer
-    />
-  ])
-}
-```
+<include>../../../partials/guides/next-steps.mdx</include>

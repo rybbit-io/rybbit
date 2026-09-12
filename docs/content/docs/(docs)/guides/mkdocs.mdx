@@ -1,0 +1,83 @@
+---
+title: MkDocs
+description: Add Rybbit analytics to your MkDocs docs
+category: docs
+icon: SiMaterialformkdocs
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+MkDocs has an `extra_javascript` setting in `mkdocs.yml` that adds a script tag to every page, which works with any theme. If you run Material for MkDocs you can instead extend the theme and place the tag in `<head>` yourself.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to MkDocs
+
+<Tabs items={["mkdocs.yml", "Material theme override"]}>
+<Tab value="mkdocs.yml">
+Add the script URL to `extra_javascript`. MkDocs 1.5 and later accept the mapping form with a `defer` key:
+
+```yaml title="mkdocs.yml"
+extra_javascript:
+  - path: https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID
+    defer: true
+```
+
+On MkDocs 1.4 or older, list the plain URL instead:
+
+```yaml title="mkdocs.yml"
+extra_javascript:
+  - https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID
+```
+
+Themes render `extra_javascript` entries at the end of `<body>` rather than in `<head>`; the script still loads on every page.
+</Tab>
+<Tab value="Material theme override">
+1. Point Material at an overrides directory in `mkdocs.yml`:
+
+   ```yaml title="mkdocs.yml"
+   theme:
+     name: material
+     custom_dir: overrides
+   ```
+
+2. Create `overrides/main.html` and fill the `extrahead` block, which Material reserves for custom tags inside `<head>`:
+
+   ```html title="overrides/main.html"
+   {% extends "base.html" %}
+
+   {% block extrahead %}
+     <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+   {% endblock %}
+   ```
+</Tab>
+</Tabs>
+
+Rebuild with `mkdocs build` and deploy the `site/` directory (or `mkdocs gh-deploy`).
+
+If Material's `navigation.instant` feature is on, page changes go through the History API and Rybbit records them as pageviews without extra code.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Config error on `defer`**: the `path` / `defer` mapping needs MkDocs 1.5+. Run `mkdocs --version` and either upgrade or use the plain URL form.
+- **`main.html` has no effect**: the override only applies when `theme.custom_dir` is set and the file sits at `overrides/main.html`, relative to `mkdocs.yml`.
+- **Local previews are tracked**: `mkdocs serve` renders the same config as `mkdocs build`. Use a second Rybbit site for local work if that matters.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

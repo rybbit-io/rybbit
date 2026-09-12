@@ -38,6 +38,10 @@ jobs:
         working-directory: docs
         run: npm ci
 
+      - name: Lint integration guides
+        working-directory: docs
+        run: npm run lint:guides
+
       - name: Run agent-readiness tests
         working-directory: docs
         run: npm run test:agent-readiness

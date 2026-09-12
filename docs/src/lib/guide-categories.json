@@ -1,0 +1,15 @@
+[
+  { "key": "frameworks", "label": "JavaScript frameworks" },
+  { "key": "static", "label": "Static site generators" },
+  { "key": "backend", "label": "Backend frameworks" },
+  { "key": "docs", "label": "Documentation tools" },
+  { "key": "cms", "label": "Content management systems" },
+  { "key": "builders", "label": "Website builders" },
+  { "key": "ai-builders", "label": "AI app builders" },
+  { "key": "ecommerce", "label": "E-commerce" },
+  { "key": "creators", "label": "Courses & communities" },
+  { "key": "landing", "label": "Landing pages & funnels" },
+  { "key": "tag-managers", "label": "Tag managers" },
+  { "key": "apps", "label": "Desktop, mobile & extensions" },
+  { "key": "other", "label": "Other platforms" }
+]

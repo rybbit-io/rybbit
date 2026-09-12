@@ -1,0 +1,78 @@
+---
+title: Capacitor
+description: Add Rybbit analytics to your Capacitor app
+category: apps
+icon: SiCapacitor
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Capacitor wraps a normal web app in a native WebView, so the snippet goes in the `<head>` of that web app's `index.html` and ships to iOS and Android with `npx cap sync`. If the app is built with Ionic Angular, React or Vue, follow the [Angular](/docs/guides/angular), [React](/docs/guides/react/vite-cra) or [Vue](/docs/guides/vue/vite) guide for where the tag lives, then come back here for the WebView origin settings.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Capacitor
+
+1. Paste the snippet into the `<head>` of your web app's `index.html` (the file in the `webDir` folder from `capacitor.config`, after your framework's build):
+
+```html title="index.html"
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+2. Enable `CapacitorHttp`, which routes `window.fetch` through native HTTP. The iOS WebView runs on `capacitor://localhost`, and Rybbit's tracking endpoints answer CORS preflights for `http://` and `https://` origins only, so without this the browser blocks the requests on iOS:
+
+```ts title="capacitor.config.ts"
+import type { CapacitorConfig } from "@capacitor/cli";
+
+const config: CapacitorConfig = {
+  appId: "com.example.app",
+  appName: "My App",
+  webDir: "dist",
+  plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
+  },
+};
+
+export default config;
+```
+
+3. Build the web app, then copy it into the native projects:
+
+```bash
+npm run build
+npx cap sync
+```
+
+Android serves the app from `https://localhost` (`server.androidScheme` defaults to `https`), which is a regular origin, so tracking works there with or without `CapacitorHttp`. In-app route changes are tracked automatically: the tracker wraps `history.pushState` and `history.replaceState` and listens for `popstate` and `hashchange`.
+
+<Callout type="info">
+Use the script tag rather than the `@rybbit/js` npm package on Capacitor. The package sends events with `navigator.sendBeacon`, which `CapacitorHttp` does not patch, so its requests from `capacitor://localhost` are still blocked on iOS.
+</Callout>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Works on Android and in the browser, silent on iOS**: `CapacitorHttp` is not enabled, or the native projects were not re-synced after changing the config. Run `npx cap sync` and rebuild in Xcode.
+- **Changes do not appear on device**: `npx cap sync` copies the built web bundle; edit the source, rebuild the web app, then sync again.
+- **Live reload during development**: with `server.url` pointing at your dev server the WebView loads an `http://` origin, so requests succeed even without `CapacitorHttp`. Do not read a working dev build as proof that the production build is configured.
+- **Every pageview shows `localhost` as hostname**: expected. `server.hostname` defaults to `localhost` on both platforms; filter by site, not hostname.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

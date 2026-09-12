@@ -1,108 +1,78 @@
 ---
 title: TYPO3
-description: Integrate Rybbit Analytics with your TYPO3 sitepackage
+description: Add Rybbit analytics to your TYPO3 site
+category: cms
+icon: SiTypo3
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Integrating Rybbit Analytics with your TYPO3 website is straightforward. You'll
-typically add the Rybbit tracking script to your main sitepackage
-`setup.typoscript` file.
+TYPO3 sitepackages build the page `<head>` from TypoScript rather than an HTML template, so the snippet is added as a `page.includeJS` entry in your sitepackage's `setup.typoscript`.
 
 <Steps>
 <Step>
-### Get Your Tracking script
+### Get your tracking snippet
 
-First, you'll need your Rybbit tracking script. You can find this in your Rybbit
-dashboard under **Site Settings > Tracking Code**. It will look something like this:
-
-```html
-<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-```
-
-For TYPO3 we will need pieces of this, not the full script.
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Locate your main TypoScript config file
+### Add the snippet to TYPO3
 
-In a standard TYPO3 sitepackage you'll have a main TypoScript setup file. This
-file is mostly located at: `<sitepackage>/Configuration/TypoScript/setup.typoscript`.
+1. Open your main TypoScript setup file, usually `<sitepackage>/Configuration/TypoScript/setup.typoscript`. It is the file that already contains `page = PAGE`. The same TypoScript can also live in a TypoScript record in the backend.
+2. Add the script to the `page` object:
 
-In theory this file could be somewhere else or in a TypoScript record in the
-TYPO3 backend.
+   ```
+   page = PAGE
+   page {
+     includeJS {
+       rybbit = https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID
+       rybbit.defer = 1
+     }
+   }
+   ```
+
+   Because the Site ID is part of the URL, no `data-*` attribute is needed, so this works on every supported TYPO3 version. Per-include attributes on `includeJS` only exist in TYPO3 12.1+.
+
+3. To track production only, wrap the include in an `applicationContext` condition:
+
+   ```
+   [applicationContext == "Production"]
+   page.includeJS.rybbit = https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID
+   page.includeJS.rybbit.defer = 1
+   [END]
+   ```
+
+4. Optionally keep the Site ID and instance URL in `constants.typoscript` (or a TypoScript record) so the setup file can be committed without site-specific values:
+
+   ```
+   # constants.typoscript
+   rybbit {
+     host = https://app.rybbit.io
+     siteId = YOUR_SITE_ID
+   }
+
+   # setup.typoscript
+   page.includeJS.rybbit = {$rybbit.host}/api/script.js?siteId={$rybbit.siteId}
+   page.includeJS.rybbit.defer = 1
+   ```
+
+5. Deploy the sitepackage, or set `applicationContext` accordingly, and flush the TYPO3 caches.
 </Step>
 
 <Step>
-### Add the Tracking Script to the `setup.typoscript` file
+### Verify installation
 
-In TYPO3 we normally don't have direct code access to the HTML `<head>`, but
-have to add those entries to the `page` object:
-
-```
-page = PAGE
-page {
-  # ...
-  includeJS {
-      rybbit = https://app.rybbit.io/api/script.js
-      rybbit.defer = 1
-      rybbit.data-site-id = YOUR_SITE_ID
-  }
-  # ...
-}
-```
-
-This creates a new `<script>` tag, loads the rybbit script and adds the Site ID
-data attribute.
-
-Per-include attributes like `data-site-id` require TYPO3 12.1+ (Feature #91499).
-On older TYPO3 versions `includeJS` cannot emit `data-*` attributes, so you'll
-need a different install method (for example, adding the full `<script>` tag via
-`page.headerData`).
-
-Most likely you will already have the line `page = PAGE` somewhere in your
-codebase, this also identifies the file, that is most likely to be your main
-TypoScript setup file.
-
-If you want to load the script only for your production environment, you need
-to add a condition for the `applicationContext`:
-
-```
-[applicationContext == "Production"]
-page {
-  includeJS {
-      rybbit = https://app.rybbit.io/api/script.js
-      rybbit.defer = 1
-      rybbit.data-site-id = YOUR_SITE_ID
-  }
-}
-[END]
-```
-
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
-
-<Step>
-### Configure values as constants
-
-It's best practice to store your Rybbit Site ID and instance URL in your site
-constants. You might have a `constants.typoscript` file in your codebase, which
-you'll use when you want to add the values to the Git repository.
-
-You can also add the values into a TypoScript record in the TYPO3 backend.
-</Step>
-
-<Step>
-### Verify Integration
-
-- Deploy your TYPO3 sitepackage to your production environment or setup
-  `applicationContext` accordingly.
-- Open your live website in a browser.
-- Navigate through a few pages.
-- Check your Rybbit dashboard for incoming data. It might take a few minutes
-  for the first events to appear.
-</Step>
-
 </Steps>
 
-That's it! Rybbit Analytics is now integrated with your TYPO3 sitepackage and
-will only track visits in your production environment.
+## Troubleshooting
+
+- **Script not in the page source**: TYPO3 caches rendered pages. Flush caches from the backend toolbar or with `vendor/bin/typo3 cache:flush` after changing TypoScript.
+- **Wrong TypoScript file**: if several files define `page`, check the resulting `page.includeJS` in the TypoScript object browser in the backend to see which definition wins.
+- **Condition never matches**: the `applicationContext` is set through the `TYPO3_CONTEXT` environment variable. If it is unset, TYPO3 runs as `Production` and the script loads everywhere.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

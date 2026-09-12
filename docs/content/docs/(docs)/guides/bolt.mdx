@@ -1,0 +1,74 @@
+---
+title: Bolt
+description: Add Rybbit analytics to your Bolt app
+category: ai-builders
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Bolt has no settings field for custom head code (its **Analytics** project setting only shows traffic for published sites), so the snippet goes into the app's HTML head as a code change: prompt Bolt to add it, or switch to Code view and paste it into the root HTML or layout file. Publish the project again afterwards.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Bolt
+
+<Tabs items={["Ask Bolt", "Edit the code"]}>
+<Tab>
+Paste this into the chat, with your snippet in place of the placeholder:
+
+```text
+Add this script tag to the <head> of every page and keep all existing head tags:
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+Review the change Bolt makes before you move on: the tag should be in the document head, not inside a component.
+</Tab>
+
+<Tab>
+Click the **Code Preview** icon (`<>`) at the top center to switch to Code view, then open the file that owns the `<head>` for the framework Bolt chose:
+
+- **Vite** projects (React, Vue, Svelte): `index.html` at the project root.
+- **Next.js** projects: `app/layout.tsx`, using the `next/script` component as in the [Next.js guide](/docs/guides/react/next-js).
+- Any other framework: ask Bolt "which file renders the HTML head?" and edit that one.
+
+For a Vite project, paste the snippet before `</head>`:
+
+```html title="index.html"
+<head>
+  <meta charset="UTF-8" />
+  <title>My app</title>
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+```
+
+Click **Save** or press **Ctrl+S**.
+</Tab>
+</Tabs>
+
+Publish the change: open the **Publish** menu and click **Publish** the first time, or **Update** for a site that is already live. In-app navigation is tracked as pageviews automatically.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Published site unchanged**: edits are not applied to the live site until you click **Update** in the **Publish** menu.
+- **Bolt removed the tag**: later prompts can regenerate `index.html` or the layout. Right-click the file in the **Files** list and choose **Lock file** so Bolt leaves it alone, or add a line to the project's **Knowledge** telling it to keep the Rybbit script.
+- **Expo (mobile) projects**: a script tag only runs in the web build. For the native app, use the [JavaScript SDK](/docs/sdks/web) instead.
+- **Numbers differ from Bolt's Analytics**: Bolt's built-in counts include crawlers and bots; Rybbit filters them.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

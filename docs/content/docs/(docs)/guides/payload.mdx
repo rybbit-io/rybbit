@@ -1,0 +1,67 @@
+---
+title: Payload
+description: Add Rybbit analytics to your Payload site
+category: cms
+icon: SiPayloadcms
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Payload is a headless CMS that installs into a Next.js app: the admin panel lives in the `(payload)` route group and your site in the `(frontend)` route group. The tracking snippet goes into the frontend root layout, not into Payload's config or admin panel.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Payload
+
+<Callout type="info">
+Payload has no template or head setting to paste into. Add the snippet to the root layout of the Next.js frontend that renders your site.
+</Callout>
+
+In both the `website` and `blank` templates created by `npx create-payload-app`, the frontend root layout is `src/app/(frontend)/layout.tsx`. Render `next/script` there, exactly as in the [Next.js guide](/docs/guides/react/next-js), so the script loads on every public route and stays out of the admin panel under `src/app/(payload)/`.
+
+```tsx title="src/app/(frontend)/layout.tsx"
+import Script from "next/script";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script
+          src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+The script tracks client-side route changes automatically, so Next.js `<Link>` navigation between Payload pages and posts is counted without extra code.
+
+If your frontend is a separate app (Nuxt, Astro, SvelteKit) that fetches from Payload's REST or GraphQL API, follow that framework's guide instead: [Nuxt](/docs/guides/vue/nuxt), [Astro](/docs/guides/astro), [SvelteKit](/docs/guides/svelte/sveltekit), [Remix](/docs/guides/react/remix).
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Live Preview counts as visits**: the admin panel's Live Preview loads your frontend in an iframe at the URL set in `admin.livePreview.url`. Editors' preview sessions are tracked like any other visitor. Point `livePreview.url` at a separate preview deployment registered as its own site in Rybbit, or skip the tag in preview builds.
+- **Draft preview routes**: if you use the `website` template's `/next/preview` route or Next.js draft mode, those pages are also tracked. Add `data-skip-patterns='["/next/**"]'` to the script tag to exclude them.
+- **Admin panel is not tracked**: `/admin` is rendered by the `(payload)` route group, which has its own layout without the snippet. Put the tag in the `(frontend)` layout only.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

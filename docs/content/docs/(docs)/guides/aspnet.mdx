@@ -1,0 +1,88 @@
+---
+title: ASP.NET Core
+description: Add Rybbit analytics to your ASP.NET Core app
+category: backend
+icon: SiDotnet
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+ASP.NET Core MVC and Razor Pages apps share one layout file, `_Layout.cshtml`, that wraps every view, so the snippet goes into its `<head>`. Keep the site ID in `appsettings.json` and inject `IConfiguration` into the layout so nothing is hard-coded.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to ASP.NET Core
+
+#### Configure the site ID
+
+Add a `Rybbit` section to `appsettings.json`:
+
+```json filename="appsettings.json"
+{
+  "Rybbit": {
+    "InstanceUrl": "https://app.rybbit.io",
+    "SiteId": "YOUR_SITE_ID"
+  }
+}
+```
+
+To keep the ID out of source control or vary it per environment, leave `SiteId` empty in `appsettings.json` and set it in `appsettings.Production.json`, or as the environment variable `Rybbit__SiteId` (double underscore separates configuration sections).
+
+#### Add the tag to your layout
+
+Open the layout file:
+
+- Controllers with views: `Views/Shared/_Layout.cshtml`
+- Razor Pages: `Pages/Shared/_Layout.cshtml`
+
+Inject `IConfiguration` at the top and add the tag inside `<head>`:
+
+```razor filename="Views/Shared/_Layout.cshtml"
+@inject IConfiguration Configuration
+@{
+    var rybbitSiteId = Configuration["Rybbit:SiteId"];
+    var rybbitInstanceUrl = Configuration["Rybbit:InstanceUrl"] ?? "https://app.rybbit.io";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - MyApp</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    @if (!string.IsNullOrEmpty(rybbitSiteId))
+    {
+        <script src="@rybbitInstanceUrl/api/script.js?siteId=@rybbitSiteId" defer></script>
+    }
+</head>
+```
+
+If `Microsoft.Extensions.Configuration` is not already imported in `_ViewImports.cshtml`, add `@using Microsoft.Extensions.Configuration` above the `@inject` line.
+
+The `@if` guard skips the tag when `SiteId` is empty, so development is not tracked unless you set the value there. If your app has more than one layout, add the tag to each, or move it into a partial view and render it with `<partial name="_Rybbit" />` from every layout.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Tag missing**: environment-specific files such as `appsettings.Development.json` override `appsettings.json`, so check which environment you are running (`ASPNETCORE_ENVIRONMENT`) and that the `Rybbit` section exists there or in the base file. Environment variables override both.
+- **Content Security Policy**: if middleware adds a `Content-Security-Policy` header, add your Rybbit host to `script-src` and `connect-src`, or [proxy the script](/docs/proxy-guide) through your own domain.
+- **Response caching or output caching**: the tag is rendered server-side, so a cached response keeps whatever configuration was active when it was cached. Clear the cache after changing the site ID.
+- **Self-hosted instance**: set `Rybbit:InstanceUrl` to your own domain without a trailing slash; the layout appends the script path to it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

@@ -1,0 +1,98 @@
+---
+title: Ecwid
+description: Add Rybbit analytics to your Ecwid store
+category: ecommerce
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+An Ecwid by Lightspeed store runs either on Ecwid's hosted **Instant Site** or embedded in a page on another platform. On Instant Site the snippet goes into the site's header code setting; for an embedded store it goes into the `<head>` of the host site, and the storefront Ecwid renders inside that page is tracked with it.
+
+<Callout type="warn">
+Custom code on Instant Site is available on the **Venture**, **Business** and **Unlimited** plans. The free Starter plan has no custom code fields.
+</Callout>
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Ecwid
+
+<Tabs items={["Instant Site", "Embedded store"]}>
+<Tab>
+1. From your Ecwid admin, go to **Website** (or **Overview → Manage Instant Site**).
+2. Scroll down to **SEO settings** and click **Add Code** under **Header meta tags and site verification**.
+3. Paste the snippet and save.
+4. Reload your Instant Site in the browser; there is no separate publish step for this setting.
+
+The **Custom JavaScript code** field under **Advanced website settings** on the same page also works, but it prints code at the end of `<body>`, so prefer the header field.
+</Tab>
+
+<Tab>
+The store is rendered by Ecwid's embed script inside your own page, so add the snippet to the `<head>` of the host site with that platform's method. See the [integration guides](/docs/guides) for WordPress, Wix, Squarespace, Webflow and others.
+
+One snippet covers the whole store: product pages, cart and checkout all render inside the same host page.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Ecwid's storefront JavaScript API fires `Ecwid.OnOrderPlaced` with the order right after a customer places it. Add this where the `Ecwid` object already exists: on Instant Site, under **Advanced website settings → Custom JavaScript code**; on an embedded store, after the Ecwid embed script on the host page.
+
+```html
+<script>
+Ecwid.OnAPILoaded.add(function () {
+  Ecwid.OnOrderPlaced.add(function (order) {
+    window.rybbit.event('purchase', {
+      transaction_id: order.vendorNumber,
+      value: order.total,
+      tax: order.tax,
+      shipping: order.shipping,
+      items: order.items.map(function (item) {
+        return { item_id: item.sku, item_name: item.name, price: item.price, quantity: item.quantity };
+      })
+    });
+  });
+});
+</script>
+```
+
+`vendorNumber` is the order number customers see in emails; `orderNumber` is Ecwid's internal ID. Event properties are limited to 2048 characters of JSON, so trim `items` to ID, quantity and price, or drop it, for stores with large orders.
+
+Ecwid also has a **Custom tracking code on Order Confirmation page** field under **Settings → General → Tracking & Analytics** (same plans as above). Code there runs on the `/checkout/order-confirmation` page and can use Ecwid's template variables when wrapped in `<#noescape>`:
+
+```html
+<script>
+<#noescape>
+document.addEventListener('DOMContentLoaded', function () {
+  window.rybbit.event('purchase', { transaction_id: "${order.number}", value: ${order.total} });
+});
+</#noescape>
+</script>
+```
+
+Use one method or the other, not both, or every order is counted twice.
+
+## Troubleshooting
+
+- **No Add Code button under SEO settings**: the store is on the Starter plan. Custom code needs Venture or higher.
+- **`Ecwid is not defined`**: the purchase snippet ran before Ecwid's script. Move it below the embed script, or keep it in the Instant Site **Custom JavaScript code** field, which runs at the end of the page.
+- **Embedded store, no pageviews**: the snippet belongs to the host site, not to Ecwid. Check the host page's source for `script.js?siteId=`.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

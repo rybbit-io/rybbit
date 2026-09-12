@@ -1,4 +1,7 @@
 {
   "title": "Svelte",
-  "pages": ["vite", "sveltekit"]
+  "pages": [
+    "sveltekit",
+    "vite"
+  ]
 }
