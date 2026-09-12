@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { getSubscriptionInner } from "../../api/stripe/getSubscription.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
@@ -8,6 +8,9 @@ import { IS_CLOUD } from "../../lib/const.js";
 import { validateIPPattern } from "../../lib/ipUtils.js";
 import { detectPlatform } from "../lifecycleEmails/platformDetect.js";
 import { siteConfig, type SiteConfigData } from "../../lib/siteConfig.js";
+
+import { claimExpiryIso } from "./claimExpiry.js";
+import { withOrganizationSiteLock } from "./withOrganizationSiteLock.js";
 
 type SiteRow = typeof sites.$inferSelect;
 type SiteInsert = typeof sites.$inferInsert;
@@ -218,97 +221,89 @@ class SiteConfigurationLifecycle {
     validateSiteIdentity(siteType, domain);
     validateMobileFeatures(siteType, input);
 
-    if (IS_CLOUD) {
-      const subscription = await getSubscriptionInner(input.organizationId);
+    const createdSite = await withOrganizationSiteLock(input.organizationId, async tx => {
+      if (IS_CLOUD) {
+        const subscription = await getSubscriptionInner(input.organizationId);
 
-      if (!subscription) {
-        throw new SiteLifecycleError("organization_not_found", 404, "Organization not found");
-      }
+        if (!subscription) {
+          throw new SiteLifecycleError("organization_not_found", 404, "Organization not found");
+        }
 
-      if (input.sessionReplay && !subscription.includesReplay) {
-        throw new SiteLifecycleError("replay_not_entitled", 403, "Session replay requires a Pro subscription");
-      }
+        if (input.sessionReplay && !subscription.includesReplay) {
+          throw new SiteLifecycleError("replay_not_entitled", 403, "Session replay requires a Pro subscription");
+        }
 
-      const requestedStandardFeatures = STANDARD_FEATURES.filter(feature => input[feature]);
-      const hasActiveSubscription = subscription.status === "active" || subscription.status === "trialing";
-      if (requestedStandardFeatures.length > 0 && !hasActiveSubscription) {
-        throw new SiteLifecycleError(
-          "standard_features_not_entitled",
-          403,
-          `The following features require an active subscription: ${requestedStandardFeatures.join(", ")}`
-        );
-      }
-
-      const siteLimit = subscription.siteLimit ?? null;
-      if (siteLimit !== null) {
-        const existingSites = await db
-          .select({ siteId: sites.siteId })
-          .from(sites)
-          .where(eq(sites.organizationId, input.organizationId));
-
-        if (existingSites.length >= siteLimit) {
+        const requestedStandardFeatures = STANDARD_FEATURES.filter(feature => input[feature]);
+        const hasActiveSubscription = subscription.status === "active" || subscription.status === "trialing";
+        if (requestedStandardFeatures.length > 0 && !hasActiveSubscription) {
           throw new SiteLifecycleError(
-            "site_limit_reached",
+            "standard_features_not_entitled",
             403,
-            `You have reached the limit of ${siteLimit} website${siteLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`
+            `The following features require an active subscription: ${requestedStandardFeatures.join(", ")}`
           );
         }
-      }
-    }
 
-    try {
-      const [createdSite] = await db
-        .insert(sites)
-        .values({
-          id: randomBytes(6).toString("hex"),
-          type: siteType === "web" ? null : siteType,
-          domain,
-          name: input.name,
-          createdBy: input.createdBy,
-          organizationId: input.organizationId,
-          public: input.public ?? false,
-          saltUserIds: input.saltUserIds ?? false,
-          blockBots: input.blockBots ?? true,
-          ...(input.excludedIPs !== undefined && { excludedIPs: input.excludedIPs }),
-          ...(input.excludedCountries !== undefined && { excludedCountries: input.excludedCountries }),
-          ...(input.sessionReplay !== undefined && { sessionReplay: input.sessionReplay }),
-          ...(input.webVitals !== undefined && { webVitals: input.webVitals }),
-          ...(input.trackErrors !== undefined && { trackErrors: input.trackErrors }),
-          ...(input.trackOutbound !== undefined && { trackOutbound: input.trackOutbound }),
-          ...(input.trackUrlParams !== undefined && { trackUrlParams: input.trackUrlParams }),
-          ...(input.trackInitialPageView !== undefined && { trackInitialPageView: input.trackInitialPageView }),
-          ...(input.trackSpaNavigation !== undefined && { trackSpaNavigation: input.trackSpaNavigation }),
-          ...(input.trackIp !== undefined && { trackIp: input.trackIp }),
-          ...(input.trackButtonClicks !== undefined && { trackButtonClicks: input.trackButtonClicks }),
-          ...(input.trackCopy !== undefined && { trackCopy: input.trackCopy }),
-          ...(input.trackFormInteractions !== undefined && { trackFormInteractions: input.trackFormInteractions }),
-          ...(input.tags !== undefined && { tags: input.tags }),
-        })
-        .returning();
+        const siteLimit = subscription.siteLimit ?? null;
+        if (siteLimit !== null) {
+          const existingSites = await tx
+            .select({ siteId: sites.siteId })
+            .from(sites)
+            .where(eq(sites.organizationId, input.organizationId));
 
-      if (!createdSite) {
-        throw new Error("Site insert returned no row");
+          if (existingSites.length >= siteLimit) {
+            throw new SiteLifecycleError(
+              "site_limit_reached",
+              403,
+              `You have reached the limit of ${siteLimit} website${siteLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`
+            );
+          }
+        }
       }
 
-      // Fingerprint the site's platform in the background so the lifecycle
-      // install email can link the right guide. Best-effort only.
-      if (siteType === "web") {
-        void detectPlatform(domain)
-          .then(platform =>
-            platform
-              ? db.update(sites).set({ detectedPlatform: platform.key }).where(eq(sites.siteId, createdSite.siteId))
-              : undefined
-          )
-          .catch(() => {});
-      }
+      try {
+        const [createdSite] = await tx
+          .insert(sites)
+          .values({
+            id: randomBytes(6).toString("hex"),
+            type: siteType === "web" ? null : siteType,
+            domain,
+            name: input.name,
+            createdBy: input.createdBy,
+            organizationId: input.organizationId,
+            public: input.public ?? false,
+            saltUserIds: input.saltUserIds ?? false,
+            blockBots: input.blockBots ?? true,
+            ...(input.excludedIPs !== undefined && { excludedIPs: input.excludedIPs }),
+            ...(input.excludedCountries !== undefined && { excludedCountries: input.excludedCountries }),
+            ...(input.sessionReplay !== undefined && { sessionReplay: input.sessionReplay }),
+            ...(input.webVitals !== undefined && { webVitals: input.webVitals }),
+            ...(input.trackErrors !== undefined && { trackErrors: input.trackErrors }),
+            ...(input.trackOutbound !== undefined && { trackOutbound: input.trackOutbound }),
+            ...(input.trackUrlParams !== undefined && { trackUrlParams: input.trackUrlParams }),
+            ...(input.trackInitialPageView !== undefined && { trackInitialPageView: input.trackInitialPageView }),
+            ...(input.trackSpaNavigation !== undefined && { trackSpaNavigation: input.trackSpaNavigation }),
+            ...(input.trackIp !== undefined && { trackIp: input.trackIp }),
+            ...(input.trackButtonClicks !== undefined && { trackButtonClicks: input.trackButtonClicks }),
+            ...(input.trackCopy !== undefined && { trackCopy: input.trackCopy }),
+            ...(input.trackFormInteractions !== undefined && { trackFormInteractions: input.trackFormInteractions }),
+            ...(input.tags !== undefined && { tags: input.tags }),
+          })
+          .returning();
 
-      return createdSite;
-    } catch (error) {
-      if (isUniqueConstraintViolation(error)) {
-        throw new SiteLifecycleError("domain_conflict", 409, "Domain already in use");
+        if (!createdSite) {
+          throw new Error("Site insert returned no row");
+        }
+
+        return createdSite;
+      } catch (error) {
+        if (isUniqueConstraintViolation(error)) {
+          throw new SiteLifecycleError("domain_conflict", 409, "Domain already in use");
+        }
+        throw error;
       }
-      throw error;
-    }
+    });
+    if (siteType === "web") this.detectSitePlatform(createdSite);
+    return createdSite;
   }
 
   /**
@@ -317,8 +312,7 @@ class SiteConfigurationLifecycle {
    * and is deleted by the cleanup cron unless claimed within UNCLAIMED_SITE_TTL_MS.
    */
   async createUnclaimed(input: { domain: string }): Promise<SiteRow> {
-    const domain = normalizeDomain(input.domain)
-      .toLowerCase()
+    const domain = normalizeDomain(input.domain.trim().toLowerCase())
       .replace(/^www\./, "")
       .split(/[/?#]/)[0];
 
@@ -342,14 +336,6 @@ class SiteConfigurationLifecycle {
       throw new Error("Site insert returned no row");
     }
 
-    void detectPlatform(domain)
-      .then(platform =>
-        platform
-          ? db.update(sites).set({ detectedPlatform: platform.key }).where(eq(sites.siteId, createdSite.siteId))
-          : undefined
-      )
-      .catch(() => {});
-
     return createdSite;
   }
 
@@ -359,62 +345,90 @@ class SiteConfigurationLifecycle {
    * dashboard), and it is cleared on claim so the anonymous URL stops working.
    */
   async claim(input: ClaimSiteInput): Promise<SiteRow> {
-    const site = await this.findSite(input.siteId);
-
-    if (site.organizationId !== null || !site.claimExpiresAt) {
-      throw new SiteLifecycleError("site_already_claimed", 409, "This site has already been claimed");
-    }
-
-    if (!site.privateLinkKey || site.privateLinkKey !== input.privateLinkKey) {
-      throw new SiteLifecycleError("invalid_claim_key", 403, "Invalid claim link for this site");
-    }
-
-    if (new Date(site.claimExpiresAt).getTime() < Date.now()) {
-      throw new SiteLifecycleError("site_expired", 410, "This site expired before it was claimed");
-    }
-
-    if (IS_CLOUD) {
-      const subscription = await getSubscriptionInner(input.organizationId);
-
-      if (!subscription) {
-        throw new SiteLifecycleError("organization_not_found", 404, "Organization not found");
+    validateSiteId(input.siteId);
+    const claimedSite = await withOrganizationSiteLock(input.organizationId, async tx => {
+      const site = await tx.query.sites.findFirst({ where: eq(sites.siteId, input.siteId) });
+      if (!site) {
+        throw new SiteLifecycleError("site_not_found", 404, "Site not found");
       }
 
-      const siteLimit = subscription.siteLimit ?? null;
-      if (siteLimit !== null) {
-        const existingSites = await db
-          .select({ siteId: sites.siteId })
-          .from(sites)
-          .where(eq(sites.organizationId, input.organizationId));
+      if (site.organizationId !== null || !site.claimExpiresAt) {
+        throw new SiteLifecycleError("site_already_claimed", 409, "This site has already been claimed");
+      }
 
-        if (existingSites.length >= siteLimit) {
-          throw new SiteLifecycleError(
-            "site_limit_reached",
-            403,
-            `You have reached the limit of ${siteLimit} website${siteLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`
-          );
+      if (!site.privateLinkKey || site.privateLinkKey !== input.privateLinkKey) {
+        throw new SiteLifecycleError("invalid_claim_key", 403, "Invalid claim link for this site");
+      }
+
+      if (new Date(claimExpiryIso(site.claimExpiresAt)!).getTime() <= Date.now()) {
+        throw new SiteLifecycleError("site_expired", 410, "This site expired before it was claimed");
+      }
+
+      if (IS_CLOUD) {
+        const subscription = await getSubscriptionInner(input.organizationId);
+
+        if (!subscription) {
+          throw new SiteLifecycleError("organization_not_found", 404, "Organization not found");
+        }
+
+        const siteLimit = subscription.siteLimit ?? null;
+        if (siteLimit !== null) {
+          const existingSites = await tx
+            .select({ siteId: sites.siteId })
+            .from(sites)
+            .where(eq(sites.organizationId, input.organizationId));
+
+          if (existingSites.length >= siteLimit) {
+            throw new SiteLifecycleError(
+              "site_limit_reached",
+              403,
+              `You have reached the limit of ${siteLimit} website${siteLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`
+            );
+          }
         }
       }
-    }
 
-    const [claimedSite] = await db
-      .update(sites)
-      .set({
-        organizationId: input.organizationId,
-        createdBy: input.userId,
-        claimExpiresAt: null,
-        privateLinkKey: null,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(sites.siteId, input.siteId))
-      .returning();
+      const [claimedSite] = await tx
+        .update(sites)
+        .set({
+          organizationId: input.organizationId,
+          createdBy: input.userId,
+          claimExpiresAt: null,
+          privateLinkKey: null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(
+          and(
+            eq(sites.siteId, input.siteId),
+            isNull(sites.organizationId),
+            eq(sites.privateLinkKey, input.privateLinkKey),
+            gt(sites.claimExpiresAt, sql`(clock_timestamp() AT TIME ZONE 'UTC')`)
+          )
+        )
+        .returning();
 
-    if (!claimedSite) {
-      throw new Error("Site claim returned no row");
-    }
+      if (!claimedSite) {
+        throw new SiteLifecycleError("site_already_claimed", 409, "This site is no longer available to claim");
+      }
 
-    siteConfig.invalidate(site);
+      return claimedSite;
+    });
+
+    siteConfig.invalidate(claimedSite);
+    this.detectSitePlatform(claimedSite);
     return claimedSite;
+  }
+
+  private detectSitePlatform(site: SiteRow): void {
+    // Inspect only after authenticated ownership has committed. Public
+    // creation must never fetch a caller-supplied domain.
+    void detectPlatform(site.domain)
+      .then(platform =>
+        platform
+          ? db.update(sites).set({ detectedPlatform: platform.key }).where(eq(sites.siteId, site.siteId))
+          : undefined
+      )
+      .catch(() => {});
   }
 
   async update(siteId: number, input: UpdateSiteConfigurationInput): Promise<SiteConfigData> {
@@ -501,9 +515,23 @@ class SiteConfigurationLifecycle {
     return privateLinkKey;
   }
 
-  async delete(siteId: number): Promise<void> {
-    const site = await this.findSite(siteId);
+  async deleteExpired(siteId: number, before: string): Promise<boolean> {
+    return db.transaction(async tx => {
+      const [site] = await tx
+        .select()
+        .from(sites)
+        .where(and(eq(sites.siteId, siteId), isNull(sites.organizationId), lt(sites.claimExpiresAt, before)))
+        .for("update");
+      if (!site) return false;
 
+      await this.deleteReplayData(siteId);
+      await tx.delete(sites).where(eq(sites.siteId, siteId));
+      siteConfig.invalidate(site);
+      return true;
+    });
+  }
+
+  private async deleteReplayData(siteId: number): Promise<void> {
     await Promise.all([
       clickhouse.command({
         query: "DELETE FROM session_replay_events WHERE site_id = {id:UInt32}",
@@ -514,7 +542,11 @@ class SiteConfigurationLifecycle {
         query_params: { id: siteId },
       }),
     ]);
+  }
 
+  async delete(siteId: number): Promise<void> {
+    const site = await this.findSite(siteId);
+    await this.deleteReplayData(siteId);
     await db.delete(sites).where(eq(sites.siteId, siteId));
     siteConfig.invalidate(site);
   }

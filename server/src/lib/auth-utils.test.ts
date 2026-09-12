@@ -142,7 +142,8 @@ CREATE TABLE "sites" (
   "api_key" text,
   "private_link_key" text,
   "tags" jsonb DEFAULT '[]',
-  "detected_platform" text
+  "detected_platform" text,
+  "claim_expires_at" timestamp
 );
 `;
 
@@ -164,9 +165,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await (sql as any).exec(
-    `TRUNCATE "member", "member_site_access", "team", "teamMember", "team_site_access", "sites"`
-  );
+  await (sql as any).exec(`TRUNCATE "member", "member_site_access", "team", "teamMember", "team_site_access", "sites"`);
 
   // Org with 13 sites:
   //   1-11 gated by team "bbc", 12 gated by team "other", 13 not team-gated
@@ -183,10 +182,12 @@ beforeEach(async () => {
     { id: "team_bbc", name: "BBC", organizationId: ORG, createdAt: NOW },
     { id: "team_other", name: "Other", organizationId: ORG, createdAt: NOW },
   ]);
-  await db.insert(teamSiteAccess).values([
-    ...Array.from({ length: 11 }, (_, i) => ({ teamId: "team_bbc", siteId: i + 1 })),
-    { teamId: "team_other", siteId: 12 },
-  ]);
+  await db
+    .insert(teamSiteAccess)
+    .values([
+      ...Array.from({ length: 11 }, (_, i) => ({ teamId: "team_bbc", siteId: i + 1 })),
+      { teamId: "team_other", siteId: 12 },
+    ]);
 
   // Peer: member role, on team BBC
   await db.insert(member).values({
@@ -674,3 +675,32 @@ describe("getSitesUserHasAccessTo — organization-owned keys", () => {
   });
 });
 
+it("does not expose unclaimed sites through organization membership", async () => {
+  await db.insert(sites).values({
+    id: "unclaimedhex",
+    siteId: 99,
+    name: "Unclaimed",
+    domain: "unclaimed.dev",
+    organizationId: null,
+    privateLinkKey: "aaaaaaaaaaaa",
+    claimExpiresAt: "2100-01-01T00:00:00Z",
+  });
+  expect(await siteIdsFor("user_owner")).not.toContain(99);
+  expect(await siteIdsFor("user_peer")).not.toContain(99);
+  expect(await getOrgMembership("user_owner", null)).toBeNull();
+});
+
+it("refreshes cached session access after another worker claims a site", async () => {
+  invalidateSitesAccessCache("user_owner");
+  await getSitesUserHasAccessTo(reqFor("user_owner"));
+  await getSitesUserHasAccessTo(reqFor("user_owner"), true);
+  await db.insert(sites).values({
+    id: "claimedhex",
+    siteId: 99,
+    name: "Claimed",
+    domain: "claimed.dev",
+    organizationId: ORG,
+  });
+  expect(await getUserHasAccessToSite(reqFor("user_owner"), 99)).toBe(true);
+  expect(await getUserHasAdminAccessToSite(reqFor("user_owner"), 99)).toBe(true);
+});

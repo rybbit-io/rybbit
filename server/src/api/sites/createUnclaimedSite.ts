@@ -1,6 +1,19 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import { claimExpiryIso } from "../../services/sites/claimExpiry.js";
+import { FastifyReply, FastifyRequest, type RouteShorthandOptions } from "fastify";
 import { DISABLE_SIGNUP } from "../../lib/const.js";
 import { SiteLifecycleError, siteConfigurationLifecycle } from "../../services/sites/siteConfigurationLifecycle.js";
+
+export const unclaimedSiteRouteOptions = {
+  bodyLimit: 1024,
+  config: {
+    rateLimit: {
+      max: 10,
+      timeWindow: "1 hour",
+      skipOnError: false,
+      keyGenerator: (request: FastifyRequest) => request.ip,
+    },
+  },
+} satisfies RouteShorthandOptions;
 
 /**
  * Public. Creates a site for a domain before the visitor has an account. The
@@ -28,7 +41,7 @@ export async function createUnclaimedSite(
       siteId: site.siteId,
       domain: site.domain,
       privateLinkKey: site.privateLinkKey,
-      claimExpiresAt: site.claimExpiresAt,
+      claimExpiresAt: claimExpiryIso(site.claimExpiresAt),
     });
   } catch (error) {
     if (error instanceof SiteLifecycleError) {

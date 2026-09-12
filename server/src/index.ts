@@ -180,6 +180,7 @@ import {
 } from "./api/user/index.js";
 import { validateHttpTimeParams } from "./api/analytics/utils/query-validation.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
+import { unclaimedSiteRouteOptions } from "./api/sites/createUnclaimedSite.js";
 import { apiRateLimitRedis } from "./db/redis/redis.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
 import {
@@ -572,8 +573,8 @@ async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.post("/organizations/:organizationId/sites", orgAdminSitesWrite, addSite);
   // Landing-page domain input: creates an owner-less site reachable only by
   // its private link key. Public, so cap creations per IP.
-  fastify.post("/sites/unclaimed", { config: { rateLimit: { max: 10, timeWindow: "1 hour" } } }, createUnclaimedSite);
-  fastify.post("/sites/:siteId/claim", authOnlyScoped("sites", "write"), claimSite);
+  fastify.post("/sites/unclaimed", unclaimedSiteRouteOptions, createUnclaimedSite);
+  fastify.post("/sites/:siteId/claim", { ...authOnlyScoped("sites", "write"), bodyLimit: 1024 }, claimSite);
   fastify.get("/organizations/:organizationId/members", orgOrgRead, listOrganizationMembers);
   fastify.post("/organizations/:organizationId/members", authOrgWrite, addUserToOrganization);
   fastify.post("/organizations/:organizationId/users", authOrgWrite, createUserInOrganization);
@@ -735,6 +736,7 @@ const shutdown = async (signal: string) => {
   }, 10000); // 10 second timeout
 
   try {
+    unclaimedSiteCleanupService.stopCleanupCron();
     // Stop accepting new connections
     await server.close();
     server.log.info("Server closed");

@@ -24,6 +24,10 @@ vi.mock("../../lib/access.js", async importOriginal => {
 
 vi.mock("../../db/postgres/postgres.js", () => ({
   db: {
+    execute: vi.fn(async () => []),
+    async transaction<T>(operation: (tx: unknown) => Promise<T>): Promise<T> {
+      return operation(this);
+    },
     query: {
       sites: { findFirst: vi.fn(async () => state.site) },
       organization: { findFirst: vi.fn(async () => state.targetOrg) },
@@ -53,6 +57,7 @@ vi.mock("../stripe/getSubscription.js", () => ({
 
 vi.mock("./applySiteMove.js", () => ({
   applySiteMove: mocks.applySiteMove,
+  invalidateSiteMoveAccess: vi.fn(async () => {}),
 }));
 
 import { moveSite } from "./moveSite.js";
@@ -105,7 +110,7 @@ describe("moveSite — target-organization authorization (sole gate)", () => {
 
     expect(reply.statusCode).toBe(200);
     expect(reply.body).toEqual({ success: true, organizationId: "org_target" });
-    expect(mocks.applySiteMove).toHaveBeenCalledWith(1, "org_source", "org_target");
+    expect(mocks.applySiteMove).toHaveBeenCalledWith(1, "org_source", "org_target", expect.any(Object));
   });
 
   it("moves the site when the caller is an owner of the target org", async () => {
@@ -195,7 +200,7 @@ describe("moveSite — target-organization site limit (cloud)", () => {
 
     expect(reply.statusCode).toBe(200);
     expect(mocks.getSubscriptionInner).not.toHaveBeenCalled();
-    expect(mocks.applySiteMove).toHaveBeenCalledWith(1, "org_source", "org_target");
+    expect(mocks.applySiteMove).toHaveBeenCalledWith(1, "org_source", "org_target", expect.any(Object));
   });
 });
 

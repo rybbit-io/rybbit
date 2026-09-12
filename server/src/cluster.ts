@@ -117,6 +117,7 @@ if (workerCount === 0) {
 
     // Stop cron jobs
     usageService.stopUsageCheckCron();
+    unclaimedSiteCleanupService.stopCleanupCron();
     void sessionsService.close();
     telemetryService.stopTelemetryCron();
     if (IS_CLOUD) {

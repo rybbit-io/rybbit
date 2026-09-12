@@ -3,12 +3,7 @@ import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { member, sites, user } from "../db/postgres/schema.js";
-import {
-  getOrgMembership,
-  memberCanAccessSite,
-  resolveMemberSiteGrants,
-  restrictedMemberSiteIds,
-} from "./access.js";
+import { getOrgMembership, memberCanAccessSite, resolveMemberSiteGrants, restrictedMemberSiteIds } from "./access.js";
 import type { RateLimitDecision } from "./apiRateLimit.js";
 import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
@@ -219,9 +214,7 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
       }
 
       const memberOrgIds = Array.from(memberRowByOrgId.keys());
-      const restrictedMembers = Array.from(memberRowByOrgId.values()).filter(
-        record => record.hasRestrictedSiteAccess
-      );
+      const restrictedMembers = Array.from(memberRowByOrgId.values()).filter(record => record.hasRestrictedSiteAccess);
       const restrictedOrgIds = restrictedMembers.map(record => record.organizationId);
 
       // A restricted membership reaches a closed set of sites, so its
@@ -471,10 +464,12 @@ export async function getUserHasAccessToSitePublic(
   siteId: string | number,
   requiredScope?: ScopeRequirement
 ) {
-  const [userSites, config] = await Promise.all([getSitesUserHasAccessTo(req), siteConfig.getConfig(siteId)]);
+  const [hasDirectAccess, config] = await Promise.all([
+    getUserHasAccessToSite(req, siteId),
+    siteConfig.getConfig(siteId),
+  ]);
 
   // Check if user has direct access to the site
-  const hasDirectAccess = userSites.some(site => site.siteId === Number(siteId));
   if (hasDirectAccess) {
     return true;
   }
@@ -487,7 +482,8 @@ export async function getUserHasAccessToSitePublic(
   // Check if a valid private key was provided in the header
   const privateKey = req.headers["x-private-key"];
   if (privateKey && typeof privateKey === "string" && config?.privateLinkKey === privateKey) {
-    return true;
+    const fresh = await siteConfig.reload(siteId);
+    return fresh?.privateLinkKey === privateKey;
   }
 
   // Bearer-credential fallback. Scopes apply here too — without this check a
@@ -500,14 +496,24 @@ export async function getUserHasAccessToSitePublic(
   return false;
 }
 
+async function hasSiteAccess(req: FastifyRequest, siteId: string | number, adminOnly: boolean): Promise<boolean> {
+  const matches = (accessible: { siteId: number }[]) => accessible.some(site => site.siteId === Number(siteId));
+  if (matches(await getSitesUserHasAccessTo(req, adminOnly))) return true;
+
+  // A claim may have committed in another worker while this one still holds
+  // the user's pre-claim site list. Never let a cached miss deny a new grant.
+  const userId = req.user?.id ?? (await getSessionFromReq(req))?.user.id;
+  if (!userId) return false;
+  invalidateSitesAccessCache(userId);
+  return matches(await getSitesUserHasAccessTo(req, adminOnly));
+}
+
 export async function getUserHasAccessToSite(req: FastifyRequest, siteId: string | number) {
-  const sites = await getSitesUserHasAccessTo(req);
-  return sites.some(site => site.siteId === Number(siteId));
+  return hasSiteAccess(req, siteId, false);
 }
 
 export async function getUserHasAdminAccessToSite(req: FastifyRequest, siteId: string | number) {
-  const sites = await getSitesUserHasAccessTo(req, true);
-  return sites.some(site => site.siteId === Number(siteId));
+  return hasSiteAccess(req, siteId, true);
 }
 
 export async function getUserIsInOrg(req: FastifyRequest, organizationId: string): Promise<boolean> {

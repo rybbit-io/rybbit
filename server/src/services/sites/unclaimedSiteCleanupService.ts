@@ -27,23 +27,28 @@ class UnclaimedSiteCleanupService {
           this.logger.error({ err: error }, "Error deleting expired unclaimed sites");
         }
       },
-      { timezone: "UTC" }
+      { timezone: "UTC", noOverlap: true }
     );
 
     this.logger.info("Unclaimed site cleanup cron initialized (runs every 10 minutes)");
   }
 
+  public stopCleanupCron() {
+    this.task?.stop();
+    this.task = null;
+  }
+
   public async deleteExpiredSites(): Promise<number> {
+    const before = new Date().toISOString();
     const expired = await db
       .select({ siteId: sites.siteId, domain: sites.domain })
       .from(sites)
-      .where(and(isNull(sites.organizationId), lt(sites.claimExpiresAt, new Date().toISOString())));
+      .where(and(isNull(sites.organizationId), lt(sites.claimExpiresAt, before)));
 
     let deleted = 0;
     for (const site of expired) {
       try {
-        await siteConfigurationLifecycle.delete(site.siteId);
-        deleted++;
+        if (await siteConfigurationLifecycle.deleteExpired(site.siteId, before)) deleted++;
       } catch (error) {
         this.logger.error({ err: error, siteId: site.siteId }, "Failed to delete expired unclaimed site");
       }

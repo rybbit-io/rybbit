@@ -6,7 +6,8 @@ import { organization, sites } from "../../db/postgres/schema.js";
 import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
-import { applySiteMove } from "./applySiteMove.js";
+import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
+import { applySiteMove, invalidateSiteMoveAccess } from "./applySiteMove.js";
 
 const moveSiteSchema = z.object({
   organizationId: z.string().min(1),
@@ -71,27 +72,30 @@ export async function moveSite(
       return reply.status(404).send({ error: "Target organization not found" });
     }
 
-    // Enforce the target organization's site limit on cloud.
-    if (IS_CLOUD) {
-      const subscription = await getSubscriptionInner(targetOrganizationId);
-      const siteLimit = subscription?.siteLimit ?? null;
-      if (siteLimit !== null) {
-        const existingSites = await db
-          .select({ siteId: sites.siteId })
-          .from(sites)
-          .where(eq(sites.organizationId, targetOrganizationId));
-        if (existingSites.length >= siteLimit) {
-          return reply.status(403).send({
-            error: `The target organization has reached its limit of ${siteLimit} website${
+    const capacityError = await withOrganizationSiteLock(targetOrganizationId, async tx => {
+      // Enforce the target organization's site limit on cloud.
+      if (IS_CLOUD) {
+        const subscription = await getSubscriptionInner(targetOrganizationId);
+        const siteLimit = subscription?.siteLimit ?? null;
+        if (siteLimit !== null) {
+          const existingSites = await tx
+            .select({ siteId: sites.siteId })
+            .from(sites)
+            .where(eq(sites.organizationId, targetOrganizationId));
+          if (existingSites.length >= siteLimit) {
+            return `The target organization has reached its limit of ${siteLimit} website${
               siteLimit === 1 ? "" : "s"
-            }. Please upgrade it to add more.`,
-          });
+            }. Please upgrade it to add more.`;
+          }
         }
       }
-    }
 
-    await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId);
+      await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId, tx);
+      return null;
+    });
 
+    if (capacityError) return reply.status(403).send({ error: capacityError });
+    await invalidateSiteMoveAccess(sourceOrganizationId, targetOrganizationId);
     return reply.status(200).send({ success: true, organizationId: targetOrganizationId });
   } catch (error) {
     request.log.error({ err: error }, "Error moving site");
