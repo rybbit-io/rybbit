@@ -507,6 +507,41 @@ describe("mcp endpoint", () => {
     expect(row.entry_page).toBe("/pricing desrever");
   });
 
+  it("get_sessions prunes rows to the requested fields", async () => {
+    const result = await callTool(app, "get_sessions", { site_id: 5, fields: ["user_id", "entry_page", "not_a_column"] });
+
+    expect(result.isError).toBeFalsy();
+    const row = result.structuredContent.data[0];
+    expect(Object.keys(row).sort()).toEqual(["entry_page", "user_id"]);
+    expect(row.ip).toBeUndefined();
+  });
+
+  it("rejects an unrecognized time_zone before hitting the API", async () => {
+    captured.url = undefined;
+    const result = await callTool(app, "get_overview", {
+      site_id: 5,
+      start_date: "2026-08-01",
+      end_date: "2026-08-31",
+      time_zone: "Mars/Olympus_Mons",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("IANA time zone");
+    expect(captured.url).toBeUndefined();
+  });
+
+  it("accepts IANA aliases as time_zone", async () => {
+    const result = await callTool(app, "get_overview", {
+      site_id: 5,
+      start_date: "2026-08-01",
+      end_date: "2026-08-31",
+      time_zone: "Etc/UTC",
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.query?.time_zone).toBe("Etc/UTC");
+  });
+
   it("create_goal maps goal_type onto the REST body", async () => {
     const result = await callTool(app, "create_goal", {
       site_id: 5,

@@ -1,6 +1,7 @@
 import cluster from "node:cluster";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
+import { startGeoIpUpdater, stopGeoIpUpdater } from "./db/geolocation/updater.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { createServiceLogger } from "./lib/logger/logger.js";
 import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmailService.js";
@@ -53,6 +54,19 @@ if (workerCount === 0) {
   // Broadcast usage state (sitesOverLimit + sitesWithoutReplay) to workers after each usage update
   usageService.onUsageUpdated(() => {
     broadcastUsageState();
+  });
+
+  // The primary downloads GeoIP database updates to disk; workers re-read the file on request.
+  startGeoIpUpdater({
+    onUpdated: file => {
+      for (const id in cluster.workers) {
+        const worker = cluster.workers[id];
+        if (worker && !worker.isDead()) {
+          worker.send({ type: "geoip-updated", file });
+        }
+      }
+      logger.info(`Broadcasted ${file} update to workers`);
+    },
   });
 
   // Fork workers
@@ -115,6 +129,7 @@ if (workerCount === 0) {
 
     // Stop cron jobs
     usageService.stopUsageCheckCron();
+    stopGeoIpUpdater();
     void sessionsService.close();
     telemetryService.stopTelemetryCron();
     if (IS_CLOUD) {

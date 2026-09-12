@@ -349,6 +349,8 @@ services:
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+      - GEOIP_AUTO_UPDATE=${GEOIP_AUTO_UPDATE}
+      - GEOIP_MIRROR_URL=${GEOIP_MIRROR_URL}
     depends_on:
       clickhouse:
         condition: service_healthy

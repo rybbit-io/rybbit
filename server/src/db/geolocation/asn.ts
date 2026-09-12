@@ -4,7 +4,8 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { logger } from "../../lib/logger/logger.js";
 
-const dbPath = path.join(process.cwd(), "GeoLite2-ASN.mmdb");
+export const ASN_DB_FILE = "GeoLite2-ASN.mmdb";
+const dbPath = path.join(process.cwd(), ASN_DB_FILE);
 
 interface AsnReader extends Reader {
   asn(ip: string): Asn;
@@ -12,18 +13,27 @@ interface AsnReader extends Reader {
 
 let reader: AsnReader | null = null;
 
-async function loadDatabase() {
+/**
+ * Replace the in-memory ASN reader. Pass a buffer to load a freshly downloaded
+ * database, or nothing to re-read the file on disk (cluster workers do this
+ * after the primary has written an update). A failed reload keeps whatever
+ * reader was already active rather than dropping to `null`.
+ */
+export async function reloadAsnDatabase(buffer?: Buffer): Promise<void> {
   try {
-    const buf = await readFile(dbPath);
+    const buf = buffer ?? (await readFile(dbPath));
     reader = Reader.openBuffer(buf) as AsnReader;
     logger.info("GeoIP ASN database loaded successfully");
   } catch (err) {
+    if (reader) {
+      logger.warn({ err, dbPath }, "GeoIP ASN database reload failed — keeping the previous database");
+      return;
+    }
     logger.warn({ err, dbPath }, "GeoIP ASN database not loaded — ASN-based bot detection disabled");
-    reader = null;
   }
 }
 
-await loadDatabase();
+await reloadAsnDatabase();
 
 export interface AsnInfo {
   asn: number;

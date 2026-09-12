@@ -1,0 +1,82 @@
+name: GeoLite Mirror
+
+# Mirrors the MaxMind GeoLite2 City and ASN databases to a rolling GitHub
+# release so every Rybbit installation can auto-update without a MaxMind
+# account. The server pulls from the release assets; see
+# server/src/db/geolocation/updater.ts.
+#
+# Required repository secrets: MAXMIND_ACCOUNT_ID, MAXMIND_LICENSE_KEY
+
+on:
+  schedule:
+    # Weekly, Wednesday 06:00 UTC (MaxMind publishes on Tuesdays and Fridays)
+    - cron: "0 6 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: geolite
+
+jobs:
+  mirror:
+    name: Publish GeoLite2 databases
+    if: github.repository == 'rybbit-io/rybbit'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download from MaxMind
+        env:
+          MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MAXMIND_ACCOUNT_ID" ] || [ -z "$MAXMIND_LICENSE_KEY" ]; then
+            echo "MAXMIND_ACCOUNT_ID and MAXMIND_LICENSE_KEY secrets are required" >&2
+            exit 1
+          fi
+          for edition in GeoLite2-City GeoLite2-ASN; do
+            curl -fsSL --retry 3 --retry-delay 10 \
+              -u "$MAXMIND_ACCOUNT_ID:$MAXMIND_LICENSE_KEY" \
+              "https://download.maxmind.com/geoip/databases/$edition/download?suffix=tar.gz" \
+              -o "$edition.tar.gz"
+            tar -xzf "$edition.tar.gz" --wildcards --strip-components=1 "*/$edition.mmdb"
+            test -s "$edition.mmdb"
+            ls -l "$edition.mmdb"
+          done
+
+      - name: Write manifest
+        run: |
+          set -euo pipefail
+          sha() { sha256sum "$1" | cut -d' ' -f1; }
+          size() { stat -c %s "$1"; }
+          jq -n \
+            --arg updatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg citySha "$(sha GeoLite2-City.mmdb)" --argjson cityBytes "$(size GeoLite2-City.mmdb)" \
+            --arg asnSha "$(sha GeoLite2-ASN.mmdb)" --argjson asnBytes "$(size GeoLite2-ASN.mmdb)" \
+            '{
+              updatedAt: $updatedAt,
+              files: {
+                "GeoLite2-City.mmdb": { sha256: $citySha, bytes: $cityBytes },
+                "GeoLite2-ASN.mmdb": { sha256: $asnSha, bytes: $asnBytes }
+              }
+            }' > manifest.json
+          cat manifest.json
+
+      - name: Publish to rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$REPO" --prerelease \
+              --title "GeoLite2 database mirror" \
+              --notes "Rolling mirror of the MaxMind GeoLite2 City and ASN databases used by Rybbit's GeoIP auto-update. Not a Rybbit release."
+          fi
+          # Databases first, manifest last: a client that sees the new manifest
+          # can always fetch the files it describes.
+          gh release upload "$RELEASE_TAG" --repo "$REPO" --clobber GeoLite2-City.mmdb GeoLite2-ASN.mmdb
+          gh release upload "$RELEASE_TAG" --repo "$REPO" --clobber manifest.json
+          gh release edit "$RELEASE_TAG" --repo "$REPO" --prerelease \
+            --notes "$(printf 'Rolling mirror of the MaxMind GeoLite2 City and ASN databases used by Rybbit'"'"'s GeoIP auto-update. Not a Rybbit release.\n\nLast updated: %s\n\nThis product includes GeoLite2 Data created by MaxMind, available from https://www.maxmind.com.' "$(date -u +%Y-%m-%d)")"

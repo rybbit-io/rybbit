@@ -84,6 +84,17 @@ ALTER TABLE session_replay_events MODIFY TTL toDateTime(timestamp) + INTERVAL 14
 ALTER TABLE session_replay_metadata MODIFY TTL start_time + INTERVAL 14 DAY;
 ```
 
+## GeoIP Database Updates
+
+Rybbit resolves visitor locations and ASNs with the MaxMind GeoLite2 databases bundled in the backend image. The backend keeps them fresh automatically: once a day it checks a public mirror that Rybbit publishes weekly, downloads only the databases that changed, verifies their checksums, and swaps them in without a restart. You do not need a MaxMind account.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `GEOIP_AUTO_UPDATE` | `true` | Set to `false` to never contact the mirror (for example on air-gapped installs). The bundled databases are used as-is. |
+| `GEOIP_MIRROR_URL` | `https://github.com/rybbit-io/rybbit/releases/download/geolite` | Base URL of a mirror serving `manifest.json`, `GeoLite2-City.mmdb` and `GeoLite2-ASN.mmdb`. Point this at your own host to serve updates internally. |
+
+Updated databases are written next to the bundled copies inside the container, so they survive restarts but not a recreated container. A fresh container simply downloads the latest databases again on its first check.
+
 ## Anonymous Usage Telemetry
 
 To help us improve Rybbit, self-hosted instances automatically send anonymous usage statistics to our cloud service. This includes:
