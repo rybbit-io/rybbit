@@ -1,3 +1,4 @@
+vi.mock("../../services/lifecycleEmails/platformDetect.js", () => ({ detectPlatform: vi.fn(async () => null) }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
@@ -13,6 +14,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../db/postgres/postgres.js", () => ({
   db: {
+    execute: vi.fn(async () => []),
+    async transaction<T>(operation: (tx: unknown) => Promise<T>): Promise<T> {
+      return operation(this);
+    },
     select: vi.fn(() => ({
       from: () => ({
         where: async () => Array.from({ length: state.existingSiteCount }, (_, i) => ({ siteId: i + 1 })),

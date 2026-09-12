@@ -1,85 +1,60 @@
 ---
 title: Strapi
-description: Integrate Rybbit Analytics with your Strapi-powered website
+description: Add Rybbit analytics to your Strapi site
+category: cms
+icon: SiStrapi
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-Strapi is an open-source headless CMS that provides an API for your content. Since Strapi is headless, you'll add Rybbit Analytics to your frontend application rather than to Strapi itself.
+Strapi is a headless CMS: it exposes your content over a REST or GraphQL API and does not render your website. The tracking snippet therefore goes into the frontend that consumes the Strapi API, not into Strapi.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Strapi
 
 <Callout type="info">
-Strapi only serves your content via API - it doesn't render your website. The tracking script goes in your frontend framework (Next.js, Nuxt, Astro, etc.).
+Strapi has no template or head setting to paste into. Add the snippet to the `<head>` of the frontend application that fetches content from Strapi.
 </Callout>
 
-## How to Add Rybbit with Strapi
+<Tabs items={["Next.js", "Nuxt", "Other frontends"]}>
+<Tab>
+Next.js is the most common Strapi frontend. Add the snippet with `next/script` in your root layout so it loads on every route. Follow the [Next.js guide](/docs/guides/react/next-js).
+</Tab>
+<Tab>
+Nuxt is a popular Strapi frontend. Add the snippet under `app.head.script` in `nuxt.config.ts`. Follow the [Nuxt guide](/docs/guides/vue/nuxt).
+</Tab>
+<Tab>
+- [Gatsby](/docs/guides/react/gatsby)
+- [Remix](/docs/guides/react/remix)
+- [Vite + React](/docs/guides/react/vite-cra)
+- [Vite + Vue](/docs/guides/vue/vite)
+- [Astro](/docs/guides/astro)
+- [SvelteKit](/docs/guides/svelte/sveltekit)
+- [Angular](/docs/guides/angular)
+</Tab>
+</Tabs>
+</Step>
 
-Choose the guide that matches your frontend framework:
+<Step>
+### Verify installation
 
-### React-based Frontends
-- **[Next.js](/docs/guides/react/next-js)** - Most common choice with Strapi
-- **[Gatsby](/docs/guides/react/gatsby)**
-- **[Remix](/docs/guides/react/remix)**
-- **[Vite + React](/docs/guides/react/vite-cra)**
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
 
-### Vue-based Frontends
-- **[Nuxt](/docs/guides/vue/nuxt)** - Popular with Strapi
-- **[Vite + Vue](/docs/guides/vue/vite)**
+## Troubleshooting
 
-### Other Frontends
-- **[Astro](/docs/guides/astro)**
-- **[SvelteKit](/docs/guides/svelte/sveltekit)**
-- **[Angular](/docs/guides/angular)**
+- **The admin panel is not tracked**: the Strapi admin at `/admin` is served by the Strapi server, not by your frontend, so it never loads the snippet. Content editors' activity does not appear in Rybbit, which is usually what you want.
 
-## Quick Example: Next.js with Strapi
+## Next steps
 
-If you're using Next.js (a common Strapi frontend), add the tracking script to your root layout:
-
-```tsx
-// app/layout.tsx
-import Script from 'next/script'
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="en">
-      <head>
-        <Script
-          src="https://app.rybbit.io/api/script.js"
-          data-site-id="YOUR_SITE_ID"
-          strategy="afterInteractive"
-        />
-      </head>
-      <body>{children}</body>
-    </html>
-  )
-}
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
-
-## Quick Example: Nuxt with Strapi
-
-If you're using Nuxt, add to your `nuxt.config.ts`:
-
-```typescript
-export default defineNuxtConfig({
-  app: {
-    head: {
-      script: [
-        {
-          src: 'https://app.rybbit.io/api/script.js',
-          'data-site-id': 'YOUR_SITE_ID',
-          defer: true
-        }
-      ]
-    }
-  }
-})
-```
-
-## Strapi Admin Panel
-
-The Strapi admin panel is typically only accessed by content editors and administrators. Most users don't need to track admin panel usage. If you do want to track it, you would need to customize the Strapi admin, which is an advanced configuration.
+<include>../../../partials/guides/next-steps.mdx</include>

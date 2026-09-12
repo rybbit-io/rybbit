@@ -9,7 +9,8 @@
     "test:agent-readiness": "jiti src/lib/agent-readiness.test.ts",
     "test:agent-http": "node scripts/test-agent-http.mjs",
     "postinstall": "fumadocs-mdx",
-    "extract": "node scripts/extract-messages.mjs"
+    "extract": "node scripts/extract-messages.mjs",
+    "lint:guides": "node scripts/check-guides.mjs"
   },
   "dependencies": {
     "@calcom/embed-react": "^1.5.3",

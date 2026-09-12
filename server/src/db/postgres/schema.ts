@@ -14,6 +14,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   pgEnum,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -106,6 +107,10 @@ export const sites = pgTable(
     // Platform fingerprinted from the site's homepage at creation time (e.g. "wordpress",
     // "next-js"); used to link the right install guide in lifecycle emails
     detectedPlatform: text("detected_platform"),
+    // Set on sites created from the landing-page domain input before the visitor
+    // has an account (organizationId is null). The site is reachable only via its
+    // privateLinkKey until it is claimed; the cleanup cron deletes it after this.
+    claimExpiresAt: timestamp("claim_expires_at", { mode: "string" }),
   },
   table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
 );
@@ -296,6 +301,7 @@ export const memberSiteAccess = pgTable(
 
 // Team table (BetterAuth)
 export const team = pgTable("team", {
+  memberCount: integer().notNull().default(0),
   id: text().primaryKey(),
   name: text().notNull(),
   organizationId: text().notNull().references(() => organization.id, { onDelete: "cascade" }),
@@ -305,6 +311,7 @@ export const team = pgTable("team", {
 
 // Team member table (BetterAuth)
 export const teamMember = pgTable("teamMember", {
+  membershipKey: text().unique(),
   id: text().primaryKey(),
   teamId: text().notNull().references(() => team.id, { onDelete: "cascade" }),
   userId: text().notNull().references(() => user.id, { onDelete: "cascade" }),
@@ -381,9 +388,8 @@ export const apiKey = pgTable("apikey", {
   metadata: jsonb(),
 });
 
-// OAuth provider tables for the MCP plugin (better-auth oidc-provider schema).
-// Field names and nullability mirror better-auth's model definitions; tokens
-// are validated by better-auth via auth.api.getMcpSession.
+// Legacy Better Auth 1.6 OAuth records, retained for rollback.
+// Better Auth 1.7 uses the separate tables below; legacy tokens are not accepted.
 export const oauthApplication = pgTable("oauthApplication", {
   id: text().primaryKey().notNull(),
   name: text().notNull(),
@@ -426,6 +432,195 @@ export const oauthConsent = pgTable("oauthConsent", {
   consentGiven: boolean().notNull(),
   createdAt: timestamp({ mode: "string" }).notNull(),
   updatedAt: timestamp({ mode: "string" }).notNull(),
+});
+
+// Better Auth 1.7 OAuth/JWT schema. Kysely stores array fields as JSON,
+// even on PostgreSQL; names retain the existing camelCase convention.
+export const jwks = pgTable("jwks", {
+  id: text("id").primaryKey(),
+  publicKey: text("publicKey").notNull(),
+  privateKey: text("privateKey").notNull(),
+  createdAt: timestamp("createdAt", { mode: "string" }).notNull(),
+  expiresAt: timestamp("expiresAt", { mode: "string" }),
+  alg: text("alg"),
+  crv: text("crv"),
+});
+
+export const oauthClient = pgTable(
+  "oauthClient",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("clientId").notNull().unique(),
+    clientSecret: text("clientSecret"),
+    clientDiscoveryId: text("clientDiscoveryId"),
+    disabled: boolean("disabled").default(false),
+    skipConsent: boolean("skipConsent"),
+    enableEndSession: boolean("enableEndSession"),
+    subjectType: text("subjectType"),
+    scopes: jsonb("scopes").$type<string[]>(),
+    clientCredentialsScopes: jsonb("clientCredentialsScopes").$type<string[]>().default([]),
+    userId: text("userId").references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "string" }),
+    updatedAt: timestamp("updatedAt", { mode: "string" }),
+    name: text("name"),
+    uri: text("uri"),
+    icon: text("icon"),
+    contacts: jsonb("contacts").$type<string[]>(),
+    tos: text("tos"),
+    policy: text("policy"),
+    softwareId: text("softwareId"),
+    softwareVersion: text("softwareVersion"),
+    softwareStatement: text("softwareStatement"),
+    redirectUris: jsonb("redirectUris").$type<string[]>().notNull(),
+    postLogoutRedirectUris: jsonb("postLogoutRedirectUris").$type<string[]>(),
+    backchannelLogoutUri: text("backchannelLogoutUri"),
+    backchannelLogoutSessionRequired: boolean("backchannelLogoutSessionRequired"),
+    tokenEndpointAuthMethod: text("tokenEndpointAuthMethod"),
+    applicationType: text("applicationType"),
+    jwks: text("jwks"),
+    jwksUri: text("jwksUri"),
+    grantTypes: jsonb("grantTypes").$type<string[]>(),
+    responseTypes: jsonb("responseTypes").$type<string[]>(),
+    requirePKCE: boolean("requirePKCE"),
+    dpopBoundAccessTokens: boolean("dpopBoundAccessTokens").default(false),
+    referenceId: text("referenceId"),
+    metadata: jsonb("metadata"),
+  },
+  table => [index("oauthClient_userId_idx").on(table.userId)]
+);
+
+export const oauthResource = pgTable("oauthResource", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull().unique(),
+  name: text("name").notNull(),
+  accessTokenTtl: integer("accessTokenTtl"),
+  refreshTokenTtl: integer("refreshTokenTtl"),
+  signingAlgorithm: text("signingAlgorithm"),
+  signingKeyId: text("signingKeyId"),
+  allowedScopes: jsonb("allowedScopes").$type<string[]>(),
+  customClaims: jsonb("customClaims"),
+  dpopBoundAccessTokensRequired: boolean("dpopBoundAccessTokensRequired").default(false),
+  disabled: boolean("disabled").default(false),
+  createdAt: timestamp("createdAt", { mode: "string" }),
+  updatedAt: timestamp("updatedAt", { mode: "string" }),
+  policyVersion: integer("policyVersion").default(1),
+  metadata: jsonb("metadata"),
+});
+
+export const oauthClientResource = pgTable(
+  "oauthClientResource",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("clientId")
+      .notNull()
+      .references(() => oauthClient.clientId, { onDelete: "cascade" }),
+    resourceId: text("resourceId")
+      .notNull()
+      .references(() => oauthResource.identifier, { onDelete: "cascade" }),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("createdAt", { mode: "string" }),
+  },
+  table => [
+    uniqueIndex("oauthClientResource_clientId_resourceId_uidx").on(table.clientId, table.resourceId),
+    index("oauthClientResource_clientId_idx").on(table.clientId),
+    index("oauthClientResource_resourceId_idx").on(table.resourceId),
+  ]
+);
+
+export const oauthRefreshToken = pgTable(
+  "oauthRefreshToken",
+  {
+    id: text("id").primaryKey(),
+    token: text("token").notNull().unique(),
+    clientId: text("clientId")
+      .notNull()
+      .references(() => oauthClient.clientId, { onDelete: "cascade" }),
+    sessionId: text("sessionId").references(() => session.id, {
+      onDelete: "set null",
+    }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    referenceId: text("referenceId"),
+    authorizationCodeId: text("authorizationCodeId"),
+    resources: jsonb("resources").$type<string[]>(),
+    requestedUserInfoClaims: jsonb("requestedUserInfoClaims").$type<string[]>(),
+    expiresAt: timestamp("expiresAt", { mode: "string" }).notNull(),
+    createdAt: timestamp("createdAt", { mode: "string" }).notNull(),
+    revoked: timestamp("revoked", { mode: "string" }),
+    rotatedAt: timestamp("rotatedAt", { mode: "string" }),
+    rotationReplayResponse: text("rotationReplayResponse"),
+    rotationReplayExpiresAt: timestamp("rotationReplayExpiresAt", { mode: "string" }),
+    authTime: timestamp("authTime", { mode: "string" }),
+    confirmation: jsonb("confirmation"),
+    scopes: jsonb("scopes").$type<string[]>().notNull(),
+  },
+  table => [
+    index("oauthRefreshToken_clientId_idx").on(table.clientId),
+    index("oauthRefreshToken_sessionId_idx").on(table.sessionId),
+    index("oauthRefreshToken_userId_idx").on(table.userId),
+    index("oauthRefreshToken_authorizationCodeId_idx").on(table.authorizationCodeId),
+  ]
+);
+
+export const oauthAccessTokenV2 = pgTable(
+  "oauthAccessTokenV2",
+  {
+    id: text("id").primaryKey(),
+    token: text("token").notNull().unique(),
+    clientId: text("clientId")
+      .notNull()
+      .references(() => oauthClient.clientId, { onDelete: "cascade" }),
+    sessionId: text("sessionId").references(() => session.id, {
+      onDelete: "set null",
+    }),
+    userId: text("userId").references(() => user.id, { onDelete: "cascade" }),
+    referenceId: text("referenceId"),
+    authorizationCodeId: text("authorizationCodeId"),
+    resources: jsonb("resources").$type<string[]>(),
+    requestedUserInfoClaims: jsonb("requestedUserInfoClaims").$type<string[]>(),
+    refreshId: text("refreshId").references(() => oauthRefreshToken.id, {
+      onDelete: "cascade",
+    }),
+    expiresAt: timestamp("expiresAt", { mode: "string" }).notNull(),
+    createdAt: timestamp("createdAt", { mode: "string" }).notNull(),
+    revoked: timestamp("revoked", { mode: "string" }),
+    confirmation: jsonb("confirmation"),
+    scopes: jsonb("scopes").$type<string[]>().notNull(),
+  },
+  table => [
+    index("oauthAccessTokenV2_clientId_idx").on(table.clientId),
+    index("oauthAccessTokenV2_sessionId_idx").on(table.sessionId),
+    index("oauthAccessTokenV2_userId_idx").on(table.userId),
+    index("oauthAccessTokenV2_authorizationCodeId_idx").on(table.authorizationCodeId),
+    index("oauthAccessTokenV2_refreshId_idx").on(table.refreshId),
+  ]
+);
+
+export const oauthConsentV2 = pgTable(
+  "oauthConsentV2",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("clientId")
+      .notNull()
+      .references(() => oauthClient.clientId, { onDelete: "cascade" }),
+    userId: text("userId").references(() => user.id, { onDelete: "cascade" }),
+    referenceId: text("referenceId"),
+    resources: jsonb("resources").$type<string[]>(),
+    requestedUserInfoClaims: jsonb("requestedUserInfoClaims").$type<string[]>(),
+    scopes: jsonb("scopes").$type<string[]>().notNull(),
+    createdAt: timestamp("createdAt", { mode: "string" }).notNull(),
+    updatedAt: timestamp("updatedAt", { mode: "string" }).notNull(),
+  },
+  table => [
+    index("oauthConsentV2_clientId_idx").on(table.clientId),
+    index("oauthConsentV2_userId_idx").on(table.userId),
+  ]
+);
+
+export const oauthClientAssertion = pgTable("oauthClientAssertion", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expiresAt", { mode: "string" }).notNull(),
 });
 
 // Goals table for tracking conversion goals

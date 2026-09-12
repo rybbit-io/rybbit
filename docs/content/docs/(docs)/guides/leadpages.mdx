@@ -1,0 +1,46 @@
+---
+title: Leadpages
+description: Add Rybbit analytics to your Leadpages landing pages
+category: landing
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Every Leadpages page, site and pop-up has an **Analytics** tab in its builder settings with a **Head Section Tracking Code** field, and that is where the snippet goes. In the site builder the setting is site-wide, so one paste covers every page of the site; landing pages built on their own are tracked one page at a time.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Leadpages
+
+1. Open the site or landing page in the builder.
+2. Click the **Settings** gear in the left-hand sidebar, then the **Analytics** tab.
+3. Paste the snippet into **Head Section Tracking Code**.
+4. Click **Save**, then **Update** to push the change to the published page.
+
+Repeat for each standalone landing page you want tracked. For sites, the code applies to every page in the site.
+
+Pop-ups have the same tracking code fields in their settings, but a pop-up shown on a page that already carries the snippet does not need its own copy.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Snippet not in the page source**: the page was saved but not updated. Click **Update** in the builder to republish.
+- **Standalone pages missing**: tracking code on a site does not extend to landing pages published outside that site. Add the snippet to each one.
+- **GA4 Measurement ID field**: the Analytics tab also has a field for a Google Analytics ID. That field is for GA4 only; the Rybbit snippet belongs in Head Section Tracking Code.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

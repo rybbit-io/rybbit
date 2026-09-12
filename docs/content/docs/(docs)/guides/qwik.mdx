@@ -1,0 +1,83 @@
+---
+title: Qwik
+description: Add Rybbit analytics to your Qwik app
+category: frameworks
+icon: SiQwik
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+A Qwik City app renders the whole document from `src/root.tsx`, which owns the `<head>` and `<body>` elements. Add the snippet to that `<head>` and it is on every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Qwik
+
+Open `src/root.tsx` and add the tag inside `<head>`, after `<RouterHead />`:
+
+```tsx title="src/root.tsx"
+import { component$ } from "@builder.io/qwik";
+import { QwikCityProvider, RouterOutlet } from "@builder.io/qwik-city";
+import { RouterHead } from "./components/router-head/router-head";
+
+import "./global.css";
+
+export default component$(() => {
+  return (
+    <QwikCityProvider>
+      <head>
+        <meta charset="utf-8" />
+        <RouterHead />
+        <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+      </head>
+      <body lang="en">
+        <RouterOutlet />
+      </body>
+    </QwikCityProvider>
+  );
+});
+```
+
+`src/components/router-head/router-head.tsx` renders per-route `head` exports (title, meta, links). Keep the Rybbit tag in `root.tsx` so it does not depend on any route's `head` export.
+
+Navigations through Qwik City's `<Link>` component are tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from a `$` event handler. Handlers only run in the browser, so `window` is always defined; guard against a blocked or still-loading script.
+
+```tsx title="src/components/signup-button.tsx"
+import { component$ } from "@builder.io/qwik";
+
+export const SignupButton = component$(() => {
+  return (
+    <button
+      onClick$={() => {
+        if (window.rybbit) {
+          window.rybbit.event("signup_click", { location: "hero" });
+        }
+      }}
+    >
+      Sign up
+    </button>
+  );
+});
+```
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

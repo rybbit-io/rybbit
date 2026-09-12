@@ -2,6 +2,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { team, teamMember, teamSiteAccess, member, sites } from "../../db/postgres/schema.js";
+import { teamMembershipKey } from "../../lib/teamMembership.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 interface CreateTeamBody {
@@ -18,7 +19,8 @@ export async function createTeam(
   reply: FastifyReply
 ) {
   const { organizationId } = request.params;
-  const { name, memberUserIds, siteIds } = request.body;
+  const { name, siteIds } = request.body;
+  const memberUserIds = request.body.memberUserIds === undefined ? undefined : [...new Set(request.body.memberUserIds)];
 
   if (!name || !name.trim()) {
     return reply.status(400).send({ error: "Team name is required" });
@@ -63,6 +65,7 @@ export async function createTeam(
       await tx.insert(team).values({
         id: teamId,
         name: name.trim(),
+        memberCount: memberUserIds?.length ?? 0,
         organizationId,
         createdAt: now,
         updatedAt: now,
@@ -75,6 +78,7 @@ export async function createTeam(
             id: crypto.randomUUID(),
             teamId,
             userId,
+            membershipKey: teamMembershipKey(teamId, userId),
             createdAt: now,
           }))
         );

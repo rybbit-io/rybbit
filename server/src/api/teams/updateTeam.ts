@@ -2,6 +2,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { team, teamMember, teamSiteAccess, member, sites } from "../../db/postgres/schema.js";
+import { teamMembershipKey } from "../../lib/teamMembership.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 interface UpdateTeamBody {
@@ -18,7 +19,8 @@ export async function updateTeam(
   reply: FastifyReply
 ) {
   const { organizationId, teamId } = request.params;
-  const { name, memberUserIds, siteIds } = request.body;
+  const { name, siteIds } = request.body;
+  const memberUserIds = request.body.memberUserIds === undefined ? undefined : [...new Set(request.body.memberUserIds)];
 
   try {
     // Verify team belongs to org
@@ -73,10 +75,11 @@ export async function updateTeam(
 
     await db.transaction(async tx => {
       // Update team name
-      const updates: Record<string, string> = { updatedAt: now };
+      const updates: Record<string, string | number> = { updatedAt: now };
       if (name !== undefined) {
         updates.name = name.trim();
       }
+      if (memberUserIds !== undefined) updates.memberCount = memberUserIds.length;
       await tx.update(team).set(updates).where(eq(team.id, teamId));
 
       // Replace members if provided
@@ -88,6 +91,7 @@ export async function updateTeam(
               id: crypto.randomUUID(),
               teamId,
               userId,
+              membershipKey: teamMembershipKey(teamId, userId),
               createdAt: now,
             }))
           );

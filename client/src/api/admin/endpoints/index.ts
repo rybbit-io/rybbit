@@ -1,6 +1,8 @@
 // Sites endpoints
 export {
   addSite,
+  claimSite,
+  createUnclaimedSite,
   deleteSite,
   moveSite,
   updateSiteConfig,
@@ -10,7 +12,7 @@ export {
   fetchSiteIsPublic,
   fetchSiteUsage,
 } from "./sites";
-export type { SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse } from "./sites";
+export type { SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse, UnclaimedSiteResponse } from "./sites";
 
 // Organizations endpoints
 export {

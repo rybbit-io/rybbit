@@ -102,6 +102,30 @@ export const writeTool = { readOnlyHint: false, destructiveHint: false, idempote
 export const idempotentWrite = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 export const destructiveTool = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false };
 
+/**
+ * Prune each row in `response[key]` to the requested top-level fields. Rows
+ * are wide (sessions and users carry 30+ columns) and every field costs the
+ * client tokens twice, as text and as structuredContent. Unknown field names
+ * are ignored so a stale name never fails the call.
+ */
+export function pickRowFields<T>(response: T, key: string, fields: string[] | undefined): T {
+  if (!fields || !response || typeof response !== "object") {
+    return response;
+  }
+  const rows = (response as Record<string, unknown>)[key];
+  if (!Array.isArray(rows)) {
+    return response;
+  }
+  const wanted = new Set(fields);
+  const pruned = rows.map(row => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      return row;
+    }
+    return Object.fromEntries(Object.entries(row).filter(([name]) => wanted.has(name)));
+  });
+  return { ...response, [key]: pruned };
+}
+
 export function siteQuery(args: TimeArgs & { filters?: FilterArgs }) {
   return { ...toTimeQuery(args), ...toFiltersQuery(args.filters) };
 }

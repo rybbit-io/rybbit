@@ -1,121 +1,85 @@
 ---
 title: Laravel
-description: Integrate Rybbit Analytics with your Laravel application using Blade templates
+description: Add Rybbit analytics to your Laravel app
+category: backend
+icon: SiLaravel
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Integrating Rybbit Analytics with your Laravel application is straightforward. You'll typically add the Rybbit tracking script to your main Blade layout file.
+Laravel renders pages through Blade layouts, so the snippet goes into the layout file that wraps your site. Read the site ID from `config/services.php` and `.env` so it stays out of the template and differs per environment.
 
 <Steps>
 <Step>
-### Get Your Tracking Script
+### Get your tracking snippet
 
-First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Script**. It will look something like this:
-
-```html
-<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Locate Your Main Blade Layout File
+### Add the snippet to Laravel
 
-In a standard Laravel application, you'll have a main layout file that other Blade views extend. This file is often located at:
+#### Configure the site ID
 
-- `resources/views/layouts/app.blade.php` (common for applications using Laravel's authentication scaffolding)
-- Or `resources/views/layouts/main.blade.php` or a similar custom name.
-- If you're using Laravel Jetstream or Breeze, the main layout file might be in a slightly different location within `resources/views/`.
+Add the Rybbit values to `.env`:
 
-Identify the primary layout file that wraps most or all of your site's pages.
-</Step>
-
-<Step>
-### Add the Tracking Script to the Layout
-
-Open your main Blade layout file. Paste the Rybbit tracking script just before the closing `</body>` tag.
-
-```php
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'Laravel') }}</title>
-    {{-- Stylesheets, etc. --}}
-    @vite(['resources/css/app.css', 'resources/js/app.js']) {{-- Example for Vite --}}
-</head>
-<body class="font-sans antialiased">
-    {{-- Your page content, often using @yield or <slot> --}}
-    @yield('content') 
-
-    {{-- Other scripts --}}
-
-    {{-- Rybbit Analytics Script --}}
-    @if(app()->environment('production'))
-        <script defer src="{{ config('services.rybbit.instance_url', 'https://app.rybbit.io') }}/api/script.js" data-site-id="{{ config('services.rybbit.site_id') }}"></script>
-    @endif
-</body>
-</html>
-```
-
-**Explanation:**
-- `@if(app()->environment('production'))`: This Blade directive ensures the script is only included when your Laravel application is running in the `production` environment. This prevents tracking during local development.
-- `{{ config('services.rybbit.instance_url', 'https://app.rybbit.io') }}/api/script.js` and `{{ config('services.rybbit.site_id') }}`: This is a recommended way to manage your Rybbit credentials using Laravel's configuration system. The `config('services.rybbit.instance_url')` should resolve to your Rybbit instance's base URL (e.g., `https://app.rybbit.io` or your self-hosted URL), and `/api/script.js` is appended to it. The fallback shown ensures it defaults to the cloud-hosted Rybbit script. See step 4 for `.env` configuration.
-
-If you prefer not to use the config helper immediately, you can hardcode the values:
-```php
-    {{-- Rybbit Analytics Script --}}
-    @if(app()->environment('production'))
-        <script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-    @endif
-```
-Remember to replace placeholders with your actual script URL and Site ID.
-</Step>
-
-<Step>
-### Configure Environment Variables (Recommended)
-
-It's best practice to store your Rybbit Site ID and instance URL in your `.env` file and access them via Laravel's configuration.
-
-**a. Add to `.env` file:**
-Open your `.env` file and add:
-
-```bash
+```bash filename=".env"
 RYBBIT_INSTANCE_URL=https://app.rybbit.io
 RYBBIT_SITE_ID=YOUR_SITE_ID
 ```
 
-**b. Add to `config/services.php`:**
-Open (or create if it doesn't exist) `config/services.php` and add a configuration for Rybbit:
+Then register them in `config/services.php`:
 
-```php
+```php filename="config/services.php"
 <?php
 
 return [
     // ... other services
 
     'rybbit' => [
-        'instance_url' => env('RYBBIT_INSTANCE_URL'),
+        'instance_url' => env('RYBBIT_INSTANCE_URL', 'https://app.rybbit.io'),
         'site_id' => env('RYBBIT_SITE_ID'),
     ],
 ];
 ```
-Now, the Blade template code from Step 3 using `config('services.rybbit.instance_url')` and `config('services.rybbit.site_id')` will work correctly.
 
-Make sure to run `php artisan config:clear` if you've cached your configuration.
+Run `php artisan config:clear` if your configuration is cached, otherwise the new keys are not picked up.
+
+#### Add the tag to your layout
+
+Open the Blade layout that wraps your pages. In a default install this is `resources/views/layouts/app.blade.php`; Breeze and Jetstream also ship `resources/views/layouts/guest.blade.php`, and Inertia apps use `resources/views/app.blade.php`. Add the tag inside `<head>`:
+
+```php filename="resources/views/layouts/app.blade.php"
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ config('app.name', 'Laravel') }}</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    @production
+        <script src="{{ config('services.rybbit.instance_url') }}/api/script.js?siteId={{ config('services.rybbit.site_id') }}" defer></script>
+    @endproduction
+</head>
+```
+
+`@production` only renders the tag when `APP_ENV=production`, so local development is not tracked. Drop the directive if you also want data from staging.
+
+If you have several layouts (for example `app` and `guest`), add the tag to each one, or move it into a partial such as `resources/views/partials/rybbit.blade.php` and `@include` it from every layout.
 </Step>
 
 <Step>
-### Verify Integration
+### Verify installation
 
-- Deploy your Laravel application to your production environment (or set `APP_ENV=production` locally for testing, but be mindful of tracking local data).
-- Open your live Laravel website in a browser.
-- Navigate through a few pages.
-- Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-That's it! Rybbit Analytics is now integrated with your Laravel application and will only track visits in your production environment.
+## Troubleshooting
+
+- **Tag missing in production**: run `php artisan config:clear` and `php artisan view:clear` after changing `.env` or `config/services.php`; cached config and compiled views keep the old values.
+- **Tag missing locally**: `@production` hides it unless `APP_ENV=production`. Set that temporarily to test, or remove the directive.
+- **Self-hosted instance**: set `RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the template appends the script path to it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

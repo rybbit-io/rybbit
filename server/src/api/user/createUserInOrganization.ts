@@ -86,11 +86,14 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
     }
 
     // Create the user + credential account (mirrors better-auth's admin createUser)
-    const createdUser = await ctx.internalAdapter.createUser({
-      email,
-      name: name || email,
-      emailVerified: false,
-    });
+    const createdUser = await ctx.internalAdapter.createUser(
+      {
+        email,
+        name: name || email,
+        emailVerified: false,
+      },
+      { method: "admin" }
+    );
 
     if (!createdUser) {
       return reply.status(500).send({ error: "Failed to create user" });

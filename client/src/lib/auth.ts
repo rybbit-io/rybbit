@@ -1,6 +1,7 @@
 import { adminClient, organizationClient, emailOTPClient } from "better-auth/client/plugins";
-import { apiKeyClient } from "@better-auth/api-key/client"
+import { apiKeyClient } from "@better-auth/api-key/client";
 import { createAuthClient } from "better-auth/react";
+import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 
 const invitationSiteAccessFields = {
   hasRestrictedSiteAccess: {
@@ -17,16 +18,22 @@ const invitationSiteAccessFields = {
 
 export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
-  plugins: [adminClient(), organizationClient({
-    teams: {
-      enabled: true,
-    },
-    schema: {
-      invitation: {
-        additionalFields: invitationSiteAccessFields,
+  plugins: [
+    adminClient(),
+    organizationClient({
+      teams: {
+        enabled: true,
       },
-    },
-  }), emailOTPClient(), apiKeyClient()],
+      schema: {
+        invitation: {
+          additionalFields: invitationSiteAccessFields,
+        },
+      },
+    }),
+    emailOTPClient(),
+    apiKeyClient(),
+    oauthProviderClient(),
+  ],
   fetchOptions: {
     credentials: "include",
   },

@@ -1,0 +1,62 @@
+---
+title: Odoo
+description: Add Rybbit analytics to your Odoo site
+category: other
+icon: SiOdoo
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+The Odoo Website app has a **Code Injection** setting in the website editor's theme panel with separate `<head>` and `</body>` fields that apply to every page of the website. The snippet goes in the `<head>` field. This works on Odoo Online, Odoo.sh and on-premise installs of Odoo 17 and 18.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Odoo
+
+1. Open your website's frontend and click **Edit** in the top bar.
+2. Switch to the **Theme** tab of the editor panel.
+3. Scroll to the **Advanced** section and, next to **Code Injection**, click **`<head>`**.
+4. Paste the snippet into the editor that opens and click **Save**.
+5. Click **Save** in the website editor to publish the change.
+
+The code is stored per website. If you run several websites from one Odoo database, switch website in the top bar and repeat the steps for each one.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Odoo eCommerce pages render standard HTML, so use `data-rybbit-event` attributes on any element you add in the editor, or call `window.rybbit.event()` from the `</body>` Code Injection field:
+
+```html
+<script>
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("#add_to_cart")) {
+      window.rybbit.event("add_to_cart");
+    }
+  });
+</script>
+```
+
+The confirmation page is served at `/shop/confirmation`; a script that checks `window.location.pathname` there can send a `purchase` event once per order.
+
+## Troubleshooting
+
+- **The `<head>` button is missing**: Code Injection requires the **Website → Editor and Designer** access right. An administrator can grant it under **Settings → Users & Companies → Users**, on the user's **Access Rights** tab.
+- **Change is visible while logged in but not for visitors**: click **Save** in the editor after closing the code window; the code is published with the page.
+- **Multiple websites**: the field applies only to the website currently selected in the editor.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

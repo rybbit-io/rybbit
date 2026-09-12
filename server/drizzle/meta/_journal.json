@@ -127,6 +127,27 @@
       "when": 1788393490335,
       "tag": "0017_burly_nick_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788910036039,
+      "tag": "0018_better_auth_173",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789184125327,
+      "tag": "0019_invitation_created_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789189000176,
+      "tag": "0020_unclaimed_sites",
+      "breakpoints": true
     }
   ]
 }

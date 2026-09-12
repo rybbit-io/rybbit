@@ -1,0 +1,80 @@
+---
+title: Flutter web
+description: Add Rybbit analytics to your Flutter web app
+category: apps
+icon: SiFlutter
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+A Flutter web app is served from the `web/index.html` template in your project, which `flutter build web` copies to `build/web/index.html`. The snippet goes in that file's `<head>`. Flutter draws the UI into a canvas rather than DOM elements, so pageviews and manual events work as usual while anything that inspects the DOM does not.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Flutter web
+
+1. Open `web/index.html` in your Flutter project.
+2. Paste the snippet inside `<head>`, above the `flutter_bootstrap.js` script that Flutter generates:
+
+```html title="web/index.html"
+<head>
+  <meta charset="UTF-8" />
+  <title>My App</title>
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+```
+
+3. Rebuild with `flutter build web` and deploy the `build/web` folder.
+
+Navigation is tracked automatically with either URL strategy. Flutter's default hash strategy writes routes as `/#/settings`, and the tracker listens for `hashchange` and records `#/settings` as the path `/settings`. With `usePathUrlStrategy()` the Navigator uses the History API, and the tracker wraps `history.pushState` and `history.replaceState` and listens for `popstate`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Flutter widgets are not HTML elements, so `data-rybbit-event` attributes have nothing to attach to. Call `window.rybbit.event()` from Dart through `dart:js_interop` instead:
+
+```dart title="lib/analytics.dart"
+import 'dart:js_interop';
+
+@JS('rybbit.event')
+external void _rybbitEvent(String name, [JSAny? properties]);
+
+void trackEvent(String name, [Map<String, Object?>? properties]) {
+  _rybbitEvent(name, properties?.jsify());
+}
+```
+
+```dart
+ElevatedButton(
+  onPressed: () {
+    trackEvent('signup_click', {'plan': 'pro'});
+  },
+  child: const Text('Sign up'),
+)
+```
+
+Guard the call with `kIsWeb` if the same code also compiles for mobile or desktop targets.
+
+## Troubleshooting
+
+- **Clicks, outbound links and session replay show nothing**: the CanvasKit and Skwasm renderers paint into a single `<canvas>`, so DOM-based features (`data-rybbit-event` attributes, outbound-link tracking, button-click autocapture, session replay) have no elements to observe. Use the Dart interop above for events.
+- **Deep links 404 after switching to `usePathUrlStrategy()`**: path URLs need the web server to rewrite every route to `index.html`; the Flutter dev server does this for you, production hosting must be configured.
+- **`rybbit` is undefined in Dart**: the snippet is `defer`red, so it is not ready during `main()`. Send events from user interactions, not from app start-up.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

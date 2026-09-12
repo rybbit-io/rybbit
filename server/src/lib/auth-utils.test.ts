@@ -8,7 +8,7 @@ vi.mock("./auth.js", () => ({
     api: {
       getSession: vi.fn(async () => null),
       verifyApiKey: vi.fn(async () => ({ valid: false })),
-      getMcpSession: vi.fn(async () => null),
+      verifyRybbitOAuthToken: vi.fn(async () => null),
     },
   },
 }));
@@ -51,6 +51,7 @@ import {
   getSitesUserHasAccessTo,
   getUserHasAccessToSite,
   getUserHasAdminAccessToSite,
+  getRequestIdentity,
   getUserIdFromRequest,
   invalidateSitesAccessCache,
 } from "./auth-utils.js";
@@ -85,6 +86,7 @@ CREATE TABLE "member_site_access" (
   "created_by" text
 );
 CREATE TABLE "team" (
+  "memberCount" integer NOT NULL DEFAULT 0,
   "id" text PRIMARY KEY,
   "name" text NOT NULL,
   "organizationId" text NOT NULL,
@@ -92,6 +94,7 @@ CREATE TABLE "team" (
   "updatedAt" timestamp
 );
 CREATE TABLE "teamMember" (
+  "membershipKey" text UNIQUE,
   "id" text PRIMARY KEY,
   "teamId" text NOT NULL,
   "userId" text NOT NULL,
@@ -139,7 +142,8 @@ CREATE TABLE "sites" (
   "api_key" text,
   "private_link_key" text,
   "tags" jsonb DEFAULT '[]',
-  "detected_platform" text
+  "detected_platform" text,
+  "claim_expires_at" timestamp
 );
 `;
 
@@ -161,9 +165,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await (sql as any).exec(
-    `TRUNCATE "member", "member_site_access", "team", "teamMember", "team_site_access", "sites"`
-  );
+  await (sql as any).exec(`TRUNCATE "member", "member_site_access", "team", "teamMember", "team_site_access", "sites"`);
 
   // Org with 13 sites:
   //   1-11 gated by team "bbc", 12 gated by team "other", 13 not team-gated
@@ -180,10 +182,12 @@ beforeEach(async () => {
     { id: "team_bbc", name: "BBC", organizationId: ORG, createdAt: NOW },
     { id: "team_other", name: "Other", organizationId: ORG, createdAt: NOW },
   ]);
-  await db.insert(teamSiteAccess).values([
-    ...Array.from({ length: 11 }, (_, i) => ({ teamId: "team_bbc", siteId: i + 1 })),
-    { teamId: "team_other", siteId: 12 },
-  ]);
+  await db
+    .insert(teamSiteAccess)
+    .values([
+      ...Array.from({ length: 11 }, (_, i) => ({ teamId: "team_bbc", siteId: i + 1 })),
+      { teamId: "team_other", siteId: 12 },
+    ]);
 
   // Peer: member role, on team BBC
   await db.insert(member).values({
@@ -417,9 +421,9 @@ describe("checkApiKey — scope carrying", () => {
 
   beforeEach(async () => {
     vi.mocked(auth.api.verifyApiKey).mockReset();
-    vi.mocked(auth.api.getMcpSession as any).mockReset();
+    vi.mocked(auth.api.verifyRybbitOAuthToken as any).mockReset();
     vi.mocked(auth.api.verifyApiKey).mockResolvedValue({ valid: false } as any);
-    vi.mocked(auth.api.getMcpSession as any).mockResolvedValue(null);
+    vi.mocked(auth.api.verifyRybbitOAuthToken as any).mockResolvedValue(null);
     await db.delete(member).where(eq(member.organizationId, "org_scope"));
     await db
       .insert(member)
@@ -452,7 +456,7 @@ describe("checkApiKey — scope carrying", () => {
   });
 
   it("carries OAuth token scopes as statements via the fallback", async () => {
-    vi.mocked(auth.api.getMcpSession as any).mockResolvedValue({
+    vi.mocked(auth.api.verifyRybbitOAuthToken as any).mockResolvedValue({
       userId: "user_scope",
       scopes: "openid goals:read",
       accessTokenExpiresAt: new Date(Date.now() + 3600_000),
@@ -465,7 +469,7 @@ describe("checkApiKey — scope carrying", () => {
   });
 
   it("OAuth tokens without custom scopes are unrestricted", async () => {
-    vi.mocked(auth.api.getMcpSession as any).mockResolvedValue({
+    vi.mocked(auth.api.verifyRybbitOAuthToken as any).mockResolvedValue({
       userId: "user_scope",
       scopes: "openid",
       accessTokenExpiresAt: new Date(Date.now() + 3600_000),
@@ -531,8 +535,8 @@ describe("checkApiKey — organization-owned keys", () => {
 
   beforeEach(async () => {
     vi.mocked(auth.api.verifyApiKey).mockReset();
-    vi.mocked(auth.api.getMcpSession as any).mockReset();
-    vi.mocked(auth.api.getMcpSession as any).mockResolvedValue(null);
+    vi.mocked(auth.api.verifyRybbitOAuthToken as any).mockReset();
+    vi.mocked(auth.api.verifyRybbitOAuthToken as any).mockResolvedValue(null);
     await db.insert(sites).values([
       { id: "hex_org_a", siteId: 501, name: "org-a-site", domain: "a.example.com", organizationId: "org_a" },
       { id: "hex_org_b", siteId: 502, name: "org-b-site", domain: "b.example.com", organizationId: "org_b" },
@@ -600,6 +604,13 @@ describe("checkApiKey — organization-owned keys", () => {
     expect(await getUserIdFromRequest(request())).toBeNull();
   });
 
+  it("resolves to its organization id with a single key verification", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue(orgKeyVerification("org_a"));
+
+    expect(await getRequestIdentity(request())).toEqual({ userId: null, organizationId: "org_a" });
+    expect(auth.api.verifyApiKey).toHaveBeenCalledTimes(1);
+  });
+
   it("keys from the default configuration still resolve through user membership", async () => {
     await db.delete(member).where(eq(member.organizationId, "org_a"));
     await db
@@ -664,3 +675,32 @@ describe("getSitesUserHasAccessTo — organization-owned keys", () => {
   });
 });
 
+it("does not expose unclaimed sites through organization membership", async () => {
+  await db.insert(sites).values({
+    id: "unclaimedhex",
+    siteId: 99,
+    name: "Unclaimed",
+    domain: "unclaimed.dev",
+    organizationId: null,
+    privateLinkKey: "aaaaaaaaaaaa",
+    claimExpiresAt: "2100-01-01T00:00:00Z",
+  });
+  expect(await siteIdsFor("user_owner")).not.toContain(99);
+  expect(await siteIdsFor("user_peer")).not.toContain(99);
+  expect(await getOrgMembership("user_owner", null)).toBeNull();
+});
+
+it("refreshes cached session access after another worker claims a site", async () => {
+  invalidateSitesAccessCache("user_owner");
+  await getSitesUserHasAccessTo(reqFor("user_owner"));
+  await getSitesUserHasAccessTo(reqFor("user_owner"), true);
+  await db.insert(sites).values({
+    id: "claimedhex",
+    siteId: 99,
+    name: "Claimed",
+    domain: "claimed.dev",
+    organizationId: ORG,
+  });
+  expect(await getUserHasAccessToSite(reqFor("user_owner"), 99)).toBe(true);
+  expect(await getUserHasAdminAccessToSite(reqFor("user_owner"), 99)).toBe(true);
+});

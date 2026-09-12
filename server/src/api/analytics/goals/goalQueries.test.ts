@@ -34,7 +34,7 @@ describe("goal queries with global session filters", () => {
     const sql = buildGoalsConversionsQuery(query, 1, [formGoal] as any);
 
     expect(sql).toContain("FilteredSessions AS");
-    expect(sql).toContain("argMin(url_parameters, timestamp)['utm_campaign'] AS utm_campaign");
+      expect(sql).toContain("argMinIf(url_parameters['utm_campaign'], timestamp, url_parameters['utm_campaign'] != '') AS utm_campaign");
     expect(sql).toContain("WHERE 1 = 1 AND utm_campaign = 'recipe_book_2026'");
     expect(sql).toContain("INNER JOIN FilteredSessions USING (session_id)");
     expect(sql).toContain("type = 'form_submit'");
@@ -56,7 +56,7 @@ describe("goal queries with global session filters", () => {
     expect(sql).toContain("type = 'form_submit'");
   });
 
-  it("applies the campaign filter to the expanded converted-sessions list", () => {
+  it("uses the same campaign-qualified sessions for the expanded converted-sessions list", () => {
     const sql = buildGoalSessionsQuery(
       { ...query, page: 1, limit: 25 },
       1,
@@ -65,6 +65,15 @@ describe("goal queries with global session filters", () => {
 
     expect(sql).toContain("FilteredSessions AS");
     expect(sql).toContain("WHERE 1 = 1 AND utm_campaign = 'recipe_book_2026'");
+    expect(sql).toContain("INNER JOIN FilteredSessions USING (session_id)");
+  });
+
+  it("qualifies sessions by the first non-empty utm_medium value", () => {
+    const mediumFilter = JSON.stringify([{ parameter: "utm_medium", type: "equals", value: ["search"] }]);
+    const sql = buildGoalsConversionsQuery({ ...query, filters: mediumFilter }, 1, [formGoal] as any);
+
+    expect(sql).toContain("argMinIf(url_parameters['utm_medium'], timestamp, url_parameters['utm_medium'] != '') AS utm_medium");
+    expect(sql).toContain("WHERE 1 = 1 AND utm_medium = 'search'");
     expect(sql).toContain("INNER JOIN FilteredSessions USING (session_id)");
   });
 });

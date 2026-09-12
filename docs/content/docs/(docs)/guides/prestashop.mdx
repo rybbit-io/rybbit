@@ -1,130 +1,62 @@
 ---
 title: PrestaShop
-description: Integrate Rybbit Analytics with your PrestaShop store
+description: Add Rybbit analytics to your PrestaShop store
+category: ecommerce
+icon: SiPrestashop
 ---
 
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-PrestaShop is a popular open-source e-commerce platform. Here's how to add Rybbit Analytics to track visitors and conversions on your PrestaShop store.
-
-## How to Add Rybbit to PrestaShop
-
-<Tabs items={['Custom Code Module', 'Theme Files']}>
-<Tab>
-### Using a Custom Code Module
-
-PrestaShop's back office has no native option for injecting custom code into the
-`<head>`. To add the tracking script without editing template files, install a
-custom-code / header-injection module.
+PrestaShop's back office has no built-in setting for custom `<head>` code, so the snippet goes in either through a header-injection module from the Addons marketplace or directly into your theme's `head.tpl`. Either way, clear the cache afterwards.
 
 <Steps>
 <Step>
-### Install a Custom Code Module
+### Get your tracking snippet
 
-1. Log in to your PrestaShop Back Office
-2. Go to **Modules** > **Module Catalog** (or **Module Manager**)
-3. Install a module that injects custom code into the page header — for example
-   a "Custom HTML" or "Header/Head code" module from the
-   [PrestaShop Addons marketplace](https://addons.prestashop.com/)
-
-<Callout type="info">
-PrestaShop does not ship a built-in head-injection UI, so a third-party module is
-required for this method. If you prefer not to install one, use the **Theme Files**
-tab instead.
-</Callout>
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add the Tracking Script
+### Add the snippet to PrestaShop
 
-Open the module's configuration and paste the following into its head / header
-code field:
-
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
-  s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
-  document.head.appendChild(s);
-})();
-</script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID.
-</Step>
-
-<Step>
-### Save Changes
-
-Save the module configuration and clear the cache under **Advanced Parameters** >
-**Performance** to apply the tracking code to your store.
-</Step>
-</Steps>
+<Tabs items={["Custom code module", "Theme files"]}>
+<Tab>
+1. In the back office, go to **Modules > Module Manager** (or **Module Catalog**) and install a module that injects custom HTML into the page header, for example a "Custom HTML" or "Header code" module from the [PrestaShop Addons marketplace](https://addons.prestashop.com/).
+2. Open the module's configuration, paste the snippet into its head / header code field, and save.
+3. Go to **Advanced Parameters > Performance** and click **Clear cache**.
 </Tab>
 
 <Tab>
-### Editing Theme Files
-
-For direct control, you can edit your theme's template files.
-
 <Callout type="warn">
-Create a child theme before editing files to preserve changes during updates.
+Edit a child theme. Changes to the parent theme are lost on theme updates.
 </Callout>
 
-<Steps>
-<Step>
-### Access Theme Files
-
-Navigate to your theme folder via FTP/SFTP or file manager:
-```
-/themes/your-theme-name/templates/_partials/
-```
-</Step>
-
-<Step>
-### Edit the Header Template
-
-Open `head.tpl` and add the following before the closing `</head>` tag (or at the end of the file):
-
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
-  s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
-  document.head.appendChild(s);
-})();
-</script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID.
-</Step>
-
-<Step>
-### Clear Cache
-
-1. Go to **Advanced Parameters** > **Performance**
-2. Click **Clear cache**
-</Step>
-</Steps>
+1. Over FTP/SFTP or a file manager, open `/themes/your-theme-name/templates/_partials/head.tpl`.
+2. Paste the snippet at the end of the file, before the closing `</head>` tag, and save.
+3. Go to **Advanced Parameters > Performance** and click **Clear cache**.
 </Tab>
 </Tabs>
+</Step>
 
-## Tracking E-commerce Events
+<Step>
+### Verify installation
 
-### Track Purchases
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
 
-To track completed purchases, add a script to the order confirmation page. Create a module or add to your theme's `order-confirmation.tpl`:
+## Track custom events
+
+#### Purchase
+
+Add this to your theme's `order-confirmation.tpl`, or output it from a module hooked to the order confirmation page. PrestaShop renders templates with Smarty, so the `$order` variables are filled in with the order data:
 
 ```html
 {if isset($order)}
 <script>
-(function() {
+(function () {
   function waitForRybbit(callback, timeout) {
     var start = Date.now();
     (function check() {
@@ -136,7 +68,7 @@ To track completed purchases, add a script to the order confirmation page. Creat
     })();
   }
 
-  waitForRybbit(function() {
+  waitForRybbit(function () {
     window.rybbit.event('purchase', {
       transaction_id: '{$order.details.reference}',
       value: {$order.totals.total.amount},
@@ -148,24 +80,14 @@ To track completed purchases, add a script to the order confirmation page. Creat
 {/if}
 ```
 
-<Callout type="info">
-PrestaShop uses Smarty templating. The `{$variable}` syntax is processed by PrestaShop to inject order data.
-</Callout>
+`waitForRybbit` polls until the tracking script from `head.tpl` has defined `window.rybbit`, so the event is not lost when the confirmation script runs first.
 
 ## Troubleshooting
 
-### Script not loading
+- **Script not on the page**: clear the cache under **Advanced Parameters > Performance**, and temporarily disable any JavaScript optimisation or combine/minify module.
+- **Theme updates overwrite the snippet**: keep template edits in a child theme; parent-theme changes are lost on update.
+- **Purchase event missing**: the `$order` Smarty variables differ between PrestaShop versions. Compare them with your version's `order-confirmation.tpl` and place a test order to confirm the event arrives.
 
-1. Clear PrestaShop cache: **Advanced Parameters** > **Performance** > **Clear cache**
-2. Disable any JavaScript optimization modules temporarily
-3. Check the page source to verify the script is present
+## Next steps
 
-### Theme updates overwriting changes
-
-Always use a child theme when editing template files. Changes to the parent theme will be lost on updates.
-
-### E-commerce events not tracking
-
-1. Verify the Smarty variables match your PrestaShop version
-2. Check the browser console for JavaScript errors
-3. Test by completing a test order
+<include>../../../partials/guides/next-steps.mdx</include>

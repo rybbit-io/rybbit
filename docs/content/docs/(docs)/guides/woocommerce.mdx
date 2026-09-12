@@ -1,197 +1,76 @@
 ---
 title: WooCommerce
-description: Integrate Rybbit Analytics with your WooCommerce store
+description: Add Rybbit analytics to your WooCommerce store
+category: ecommerce
+icon: SiWoocommerce
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
 
+WooCommerce runs on WordPress, so the snippet goes in the same way as on any WordPress site. What this guide adds is the WooCommerce action hooks that send purchases, add-to-carts, product views and checkouts to Rybbit as custom events.
 
-This guide explains how to integrate Rybbit with your WooCommerce store (running on WordPress) to track e-commerce events like product views, add to carts, and purchases, in addition to standard page view analytics.
+<Steps>
+<Step>
+### Get your tracking snippet
 
-## Prerequisites
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
 
-1.  **Rybbit Installed on WordPress**: Ensure you have already installed the Rybbit tracking script on your WordPress site using one of the methods described in our [WordPress integration guide](/docs/guides/wordpress). This guide focuses on adding e-commerce event tracking.
-2.  **Access to `functions.php` or Custom Plugin**: You'll need to add PHP snippets. The recommended way is via your child theme's `functions.php` file or a custom plugin to avoid changes being overwritten by theme updates.
+<Step>
+### Add the snippet to WooCommerce
 
-## Tracking E-commerce Events
+Follow the [WordPress guide](/docs/guides/wordpress) to add the snippet. If you plan to track the e-commerce events below, use the `functions.php` or mini-plugin method there: the event hooks are PHP and belong in the same file.
 
-WooCommerce provides various action hooks that allow you to trigger JavaScript when specific e-commerce events occur. We'll use these to send data to Rybbit.
+```php
+function rybbit_add_tracking_script() {
+    ?>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+    <?php
+}
+add_action( 'wp_head', 'rybbit_add_tracking_script' );
+```
+</Step>
 
-<Callout type="warning">
-  The following PHP code snippets should be added to your **child theme's `functions.php` file** or a **custom site-specific plugin**. Modifying your parent theme's `functions.php` directly is not recommended as changes will be lost upon theme updates.
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+WooCommerce fires PHP action hooks at each stage of the shopping flow. The snippets below print a small inline script from those hooks. They wait for `DOMContentLoaded` because the tracking script is loaded with `defer`, so `window.rybbit` does not exist while the page is still parsing.
+
+<Callout type="warn">
+Add these to your **child theme's `functions.php`** or a site-specific plugin, never to the parent theme.
 </Callout>
 
-### 1. View Product (`view_item`)
+#### Purchase
 
-Track when a user views a single product page.
-
-```php
-// Add to your child theme's functions.php or a custom plugin
-add_action( 'woocommerce_after_single_product_summary', 'rybbit_track_view_product', 10 );
-function rybbit_track_view_product() {
-    if ( ! is_product() ) { // Ensure it's a single product page
-        return;
-    }
-
-    global $product;
-    if ( ! $product instanceof WC_Product ) {
-        return;
-    }
-
-    $product_data = array(
-        'item_id'    => $product->get_sku() ? $product->get_sku() : $product->get_id(),
-        'item_name'  => $product->get_name(),
-        'price'      => (float) $product->get_price(),
-        'currency'   => get_woocommerce_currency(),
-    );
-    ?>
-    <script type="text/javascript">
-        if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.event('view_item', <?php echo json_encode($product_data); ?>);
-        }
-    </script>
-    <?php
-}
-```
-
-### 2. Add to Cart (`add_to_cart`)
-
-Track when a user adds a product to their cart. This example uses a JavaScript approach triggered after the "Add to Cart" button on single product pages. For AJAX add-to-carts (e.g., on archive pages), a JavaScript event listener on `$(document.body).on('added_to_cart', ...)` might be more robust.
+`woocommerce_thankyou` fires on the order-received page with the order ID.
 
 ```php
-// Add to your child theme's functions.php or a custom plugin
-add_action( 'woocommerce_after_add_to_cart_button', 'rybbit_track_add_to_cart_script' );
-function rybbit_track_add_to_cart_script() {
-    global $product;
-    if ( ! $product instanceof WC_Product ) {
-        return;
-    }
-
-    $product_data = array(
-        'item_id'    => $product->get_sku() ? $product->get_sku() : $product->get_id(),
-        'item_name'  => $product->get_name(),
-        'price'      => (float) $product->get_price(),
-        'currency'   => get_woocommerce_currency(),
-        // Quantity is typically 1 here, but can be dynamic if your theme supports it before this hook
-    );
-    ?>
-    <script type="text/javascript">
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector('form.cart');
-        if (form) {
-            form.addEventListener('submit', function() {
-                // Attempt to get quantity, default to 1
-                let quantity = 1;
-                const quantityInput = form.querySelector('input.qty');
-                if (quantityInput && quantityInput.value) {
-                    quantity = parseInt(quantityInput.value, 10);
-                }
-
-                if (typeof window.rybbit !== 'undefined') {
-                    const eventData = <?php echo json_encode($product_data); ?>;
-                    eventData.quantity = quantity > 0 ? quantity : 1;
-                    window.rybbit.event('add_to_cart', eventData);
-                }
-            });
-        }
-    });
-    </script>
-    <?php
-}
-
-// For AJAX add to cart events (e.g., on shop/category pages)
-add_action( 'wp_footer', 'rybbit_ajax_add_to_cart_tracker' );
-function rybbit_ajax_add_to_cart_tracker() {
-    if ( is_admin() ) return;
-    ?>
-    <script type="text/javascript">
-        jQuery(document.body).on('added_to_cart', function(event, fragments, cart_hash, $button) {
-            if (typeof window.rybbit !== 'undefined' && $button && $button.length) {
-                const productId = $button.data('product_id');
-                const quantity = $button.data('quantity') || 1; // Or $button.closest('.product').find('input.qty').val()
-                // Note: Getting full product details here via AJAX might be needed for price, name, SKU
-                // This example sends basic info. For more details, you might need another AJAX call or pass data via $button.data attributes
-                window.rybbit.event('add_to_cart', {
-                    item_id: productId,
-                    quantity: quantity,
-                    source: 'ajax_add_to_cart'
-                    // Consider adding more product details if readily available or via a separate AJAX call
-                });
-            }
-        });
-    </script>
-    <?php
-}
-```
-
-### 3. Begin Checkout (`begin_checkout`)
-
-Track when a user proceeds to the checkout page.
-
-```php
-// Add to your child theme's functions.php or a custom plugin
-add_action( 'woocommerce_before_checkout_form', 'rybbit_track_begin_checkout', 5 );
-function rybbit_track_begin_checkout() {
-    if ( is_admin() || ! is_checkout() ) return;
-
-    $cart = WC()->cart;
-    if ( ! $cart ) return;
-
-    $items = [];
-    foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
-        $_product = apply_filters( 'woocommerce_cart_item_product', $cart_item['data'], $cart_item, $cart_item_key );
-        $items[] = array(
-            'item_id'    => $_product->get_sku() ? $_product->get_sku() : $_product->get_id(),
-            'item_name'  => $_product->get_name(),
-            'price'      => (float) $_product->get_price(),
-            'quantity'   => (int) $cart_item['quantity'],
-        );
-    }
-
-    $checkout_data = array(
-        'currency'   => get_woocommerce_currency(),
-        'value'      => (float) $cart->get_total( 'edit' ), // Get total without formatting
-        'items'      => $items,
-    );
-    ?>
-    <script type="text/javascript">
-        if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.event('begin_checkout', <?php echo json_encode($checkout_data); ?>);
-        }
-    </script>
-    <?php
-}
-```
-
-### 4. Purchase (`purchase`)
-
-Track when a purchase is completed (on the "Thank You" page).
-
-```php
-// Add to your child theme's functions.php or a custom plugin
 add_action( 'woocommerce_thankyou', 'rybbit_track_purchase', 10, 1 );
 function rybbit_track_purchase( $order_id ) {
-    if ( ! $order_id ) {
-        return;
-    }
     $order = wc_get_order( $order_id );
     if ( ! $order ) {
         return;
     }
 
-    $items = [];
-    foreach ( $order->get_items() as $item_id => $item ) {
+    $items = array();
+    foreach ( $order->get_items() as $item ) {
         $product = $item->get_product();
         $items[] = array(
-            'item_id'    => $product ? ($product->get_sku() ? $product->get_sku() : $product->get_id()) : $item->get_product_id(),
-            'item_name'  => $item->get_name(),
-            'price'      => (float) $order->get_line_subtotal( $item, false, false ), // Price for the line item
-            'quantity'   => (int) $item->get_quantity(),
+            'item_id'   => $product && $product->get_sku() ? $product->get_sku() : $item->get_product_id(),
+            'item_name' => $item->get_name(),
+            'price'     => (float) $order->get_line_subtotal( $item, false, false ),
+            'quantity'  => (int) $item->get_quantity(),
         );
     }
 
-    $purchase_data = array(
+    $purchase = array(
         'transaction_id' => $order->get_order_number(),
         'value'          => (float) $order->get_total(),
         'tax'            => (float) $order->get_total_tax(),
@@ -200,21 +79,87 @@ function rybbit_track_purchase( $order_id ) {
         'items'          => $items,
     );
     ?>
-    <script type="text/javascript">
-        if (typeof window.rybbit !== 'undefined') {
-            window.rybbit.event('purchase', <?php echo json_encode($purchase_data); ?>);
-        }
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        window.rybbit.event('purchase', <?php echo wp_json_encode( $purchase ); ?>);
+    });
     </script>
     <?php
 }
 ```
 
-## Important Considerations
+Event properties are limited to 2048 characters of JSON, so trim `items` to ID, quantity and price, or drop it, for stores with large orders.
 
-*   **Script Loading Order**: Ensure the main Rybbit tracking script (added via the WordPress integration guide) is loaded before these event-specific scripts attempt to call `window.rybbit`. Placing the main script in the `<head>` usually ensures this.
-*   **Data Accuracy**: The product data (SKU, name, price) retrieved in these examples depends on your WooCommerce setup and product configuration. Test thoroughly.
-*   **AJAX Operations**: For themes or plugins that use AJAX heavily (e.g., AJAX add to cart, mini-cart updates), you might need more sophisticated JavaScript event listeners rather than relying solely on PHP action hooks that fire on page load. The AJAX add-to-cart example provides a starting point.
-*   **Performance**: While these snippets are generally lightweight, outputting many inline scripts can have a minor impact. For very high-traffic sites, consider consolidating JavaScript or using more advanced techniques if performance becomes a concern.
-*   **Plugin Conflicts**: Test for conflicts if you are using other analytics or tracking plugins.
+#### Add to cart
 
-By implementing these tracking snippets, you can gain valuable insights into your WooCommerce store's performance using Rybbit.
+Two hooks cover both paths: the product-page form submit, and WooCommerce's `added_to_cart` jQuery event for AJAX buttons on shop and category pages.
+
+```php
+// Single product page: track on form submit
+add_action( 'woocommerce_after_add_to_cart_button', 'rybbit_track_add_to_cart' );
+function rybbit_track_add_to_cart() {
+    global $product;
+    if ( ! $product instanceof WC_Product ) {
+        return;
+    }
+    $data = array(
+        'item_id'   => $product->get_sku() ? $product->get_sku() : $product->get_id(),
+        'item_name' => $product->get_name(),
+        'price'     => (float) $product->get_price(),
+        'currency'  => get_woocommerce_currency(),
+    );
+    ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.querySelector('form.cart');
+        if (!form) return;
+        form.addEventListener('submit', function () {
+            var data = <?php echo wp_json_encode( $data ); ?>;
+            var qty = form.querySelector('input.qty');
+            data.quantity = qty && parseInt(qty.value, 10) > 0 ? parseInt(qty.value, 10) : 1;
+            window.rybbit.event('add_to_cart', data);
+        });
+    });
+    </script>
+    <?php
+}
+
+// AJAX add-to-cart buttons on shop and category pages
+add_action( 'wp_footer', 'rybbit_track_ajax_add_to_cart' );
+function rybbit_track_ajax_add_to_cart() {
+    if ( is_admin() ) {
+        return;
+    }
+    ?>
+    <script>
+    jQuery(document.body).on('added_to_cart', function (event, fragments, cartHash, $button) {
+        if (!$button || !$button.length) return;
+        window.rybbit.event('add_to_cart', {
+            item_id: $button.data('product_id'),
+            quantity: $button.data('quantity') || 1,
+            source: 'ajax_add_to_cart'
+        });
+    });
+    </script>
+    <?php
+}
+```
+
+The AJAX handler only sees the product ID and quantity from the button's `data-*` attributes. Add attributes to the button in your theme if you also want name and price.
+
+#### View product and begin checkout
+
+The same pattern works for the remaining hooks:
+
+- `woocommerce_after_single_product_summary` runs on product pages. Guard with `is_product()`, then send `view_item` with `item_id`, `item_name`, `price` and `currency` from the global `$product`.
+- `woocommerce_before_checkout_form` runs on the checkout page. Build `begin_checkout` from `WC()->cart`: loop over `get_cart()` for the items (each `$cart_item['data']` is the product, `$cart_item['quantity']` the quantity), with `value` from `$cart->get_total( 'edit' )` and `currency` from `get_woocommerce_currency()`.
+
+## Troubleshooting
+
+- **Events fire before the tracker loads**: keep the tracking snippet in `wp_head` and the `DOMContentLoaded` wrapper in place. Deferred scripts run before `DOMContentLoaded`, so `window.rybbit` is ready by then; calling it from a bare inline script drops the event.
+- **AJAX carts and mini-carts**: themes that update the cart without a page load never hit the PHP hooks, so rely on the `added_to_cart` listener for those and test each add-to-cart path.
+- **Other analytics plugins**: plugins that also print e-commerce data layers can conflict. Test with a real order after enabling both.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

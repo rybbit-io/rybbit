@@ -5,6 +5,11 @@ import {
   metaSchema,
 } from 'fumadocs-mdx/config';
 import { z } from 'zod';
+import guideCategories from './src/lib/guide-categories.json';
+
+const guideCategory = z.enum(
+  guideCategories.map(c => c.key) as [string, ...string[]]
+);
 
 export const { docs, meta } = defineDocs({
   dir: 'content/docs',
@@ -12,6 +17,8 @@ export const { docs, meta } = defineDocs({
     // `method` powers the HTTP verb badge shown next to API endpoints in the sidebar
     schema: frontmatterSchema.extend({
       method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).optional(),
+      // `category` groups integration guides on /docs/guides (see src/lib/guide-categories.json)
+      category: guideCategory.optional(),
     }),
     postprocess: {
       includeProcessedMarkdown: true,

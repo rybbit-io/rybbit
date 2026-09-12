@@ -15,6 +15,8 @@ type SiteRow = {
   excludedHostnames: unknown;
   excludedUserAgents: unknown;
   privateLinkKey: string | null;
+  claimExpiresAt?: string | null;
+  organizationId: string | null;
   sessionReplay: boolean | null;
   webVitals: boolean | null;
   trackErrors: boolean | null;
@@ -64,6 +66,7 @@ function createSiteRow(overrides: Partial<SiteRow>): SiteRow {
     excludedHostnames: [],
     excludedUserAgents: [],
     privateLinkKey: null,
+    organizationId: "org_1",
     sessionReplay: false,
     webVitals: false,
     trackErrors: false,
@@ -325,4 +328,25 @@ describe("siteConfig.resolveSiteId", () => {
     expect((await siteConfig.getConfig("abcdef123456"))?.siteId).toBe(123);
     expect(dbMock.queries).toHaveLength(queriesAfterResolve);
   });
+});
+
+describe("unclaimed site expiry", () => {
+  it("stops serving tracking config when an unclaimed site expires", async () => {
+    dbMock.rows = [createSiteRow({ organizationId: null, claimExpiresAt: "2000-01-01 00:00:00" })];
+    expect(await siteConfig.getConfig(123)).toBeUndefined();
+  });
+  it("refreshes an expired cached config in case another worker claimed the site", async () => {
+    const expiry = new Date(Date.now() + 10_000).toISOString();
+    dbMock.rows = [createSiteRow({ organizationId: null, claimExpiresAt: expiry })];
+    await siteConfig.getConfig(123);
+    const cached = getCache().get("number:123")!;
+    (cached.data as { claimExpiresAt: string }).claimExpiresAt = "2000-01-01T00:00:00Z";
+    dbMock.rows = [createSiteRow({ claimExpiresAt: null })];
+    expect(await siteConfig.getConfig(123)).toMatchObject({ siteId: 123, claimExpiresAt: null });
+  });
+});
+
+it("does not expire an owned site transferred through the system-admin move path", async () => {
+  dbMock.rows = [createSiteRow({ organizationId: "org_1", claimExpiresAt: "2000-01-01 00:00:00" })];
+  expect(await siteConfig.getConfig(123)).toMatchObject({ siteId: 123, claimExpiresAt: null });
 });

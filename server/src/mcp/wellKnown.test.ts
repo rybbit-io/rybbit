@@ -4,9 +4,9 @@ import { createOAuthWellKnownRoutes, getResourceMetadataUrl, type OAuthWellKnown
 
 const AS_METADATA = {
   issuer: "https://rybbit.example.com",
-  authorization_endpoint: "https://rybbit.example.com/api/auth/mcp/authorize",
-  token_endpoint: "https://rybbit.example.com/api/auth/mcp/token",
-  registration_endpoint: "https://rybbit.example.com/api/auth/mcp/register",
+  authorization_endpoint: "https://rybbit.example.com/api/auth/oauth2/authorize",
+  token_endpoint: "https://rybbit.example.com/api/auth/oauth2/token",
+  registration_endpoint: "https://rybbit.example.com/api/auth/oauth2/register",
 };
 
 const PR_METADATA = {
@@ -41,8 +41,10 @@ describe("oauth well-known routes", () => {
     for (const url of [
       "/.well-known/oauth-authorization-server",
       "/.well-known/oauth-authorization-server/api/mcp",
+      "/.well-known/oauth-authorization-server/api/auth",
       "/.well-known/openid-configuration",
       "/.well-known/openid-configuration/api/mcp",
+      "/.well-known/openid-configuration/api/auth",
     ]) {
       const response = await app.inject({ method: "GET", url });
 

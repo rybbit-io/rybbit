@@ -1,0 +1,71 @@
+---
+title: htmx
+description: Add Rybbit analytics to your htmx app
+category: frameworks
+icon: SiHtmx
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+htmx pages are plain server-rendered HTML, so the snippet goes in the `<head>` of your base layout next to the htmx script tag, in whichever template your server uses for the full-page response.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to htmx
+
+Open the template that renders the full HTML document (the one that already loads htmx) and paste the snippet inside `<head>`:
+
+```html title="layout.html"
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My htmx App</title>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"></script>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+  </head>
+  <body>
+    <main id="content" hx-boost="true">...</main>
+  </body>
+</html>
+```
+
+Only full-page responses need the tag. Partial responses that htmx swaps into the page must not include it, or the script is re-evaluated on every swap.
+
+Navigations that htmx records in browser history are tracked automatically as pageviews: `hx-push-url` and `hx-boost` call `history.pushState()`, `hx-replace-url` calls `history.replaceState()`, and the back and forward buttons fire `popstate`. All three are hooked by the tracker. A swap without `hx-push-url` leaves the URL unchanged and is not counted as a pageview; send a [custom event](/docs/track-events) for those interactions instead.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Use the `data-rybbit-event` attribute on the element that triggers the request. The tracker listens for clicks on `document`, so it also works on content that htmx swapped in after the page loaded:
+
+```html
+<button
+  hx-post="/subscribe"
+  hx-target="#form"
+  data-rybbit-event="newsletter_subscribe"
+  data-rybbit-prop-plan="free"
+>
+  Subscribe
+</button>
+```
+
+To record an event when the server has actually processed the request, listen for htmx's `htmx:afterRequest` event and call `window.rybbit.event()` from there.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

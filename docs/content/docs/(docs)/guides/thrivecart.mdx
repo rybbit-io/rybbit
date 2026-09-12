@@ -1,77 +1,54 @@
 ---
-title: "ThriveCart"
-description: "Integrate Rybbit Analytics with your ThriveCart checkout pages"
+title: ThriveCart
+description: Add Rybbit analytics to your ThriveCart checkout pages
+category: ecommerce
 ---
 
-import { Step, Steps } from "fumadocs-ui/components/steps";
-import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-# ThriveCart
-
-Rybbit can be integrated with ThriveCart to track cart views, purchases, and other conversion events on your checkout pages.
-
-<Callout type="warn">
-  ThriveCart strips out the standard `data-site-id` attribute from scripts. You must use the alternative installation method below for Rybbit to work correctly.
-</Callout>
-
-## Adding the Tracking Script
-
-The standard Rybbit script won't work in ThriveCart because ThriveCart removes the `data-site-id` attribute. Instead, use this JavaScript snippet that dynamically creates the script element:
+ThriveCart lets you add custom scripts to each checkout page, and its success page is where the purchase event goes. ThriveCart strips `data-*` attributes from script tags, so the site ID must travel in the script URL, as it does in the snippet below.
 
 <Steps>
 <Step>
-### Access ThriveCart Settings
+### Get your tracking snippet
 
-In your ThriveCart dashboard, navigate to the checkout page you want to track. Go to **Settings > Tracking** or the custom scripts section.
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add the Tracking Script
+### Add the snippet to ThriveCart
 
-Paste the following script into the header scripts section:
+1. In your ThriveCart dashboard, open the checkout page you want to track.
+2. Open **Settings > Tracking**, the custom scripts section.
+3. Paste the snippet into the header scripts field and save.
 
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
-  s.async = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
-  document.head.appendChild(s);
-})();
-</script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Rybbit Site ID from your dashboard.
+Repeat for each checkout page. If checkout runs on a subdomain such as `sales.yourdomain.com` and your main site uses the same site ID, both are tracked as one site, so funnels can follow a visitor from your site through to the purchase.
 </Step>
 
 <Step>
-### Save and Test
+### Verify installation
 
-Save your changes and visit your checkout page. Check your Rybbit dashboard to confirm pageviews are being tracked.
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-## Tracking Purchase Events
+## Track custom events
 
-ThriveCart also interferes with how events are fired, so purchase events need special handling to ensure they fire reliably and only once per transaction.
+#### Purchase
 
-Add this script to your ThriveCart **success page** (the page shown after a completed purchase):
+ThriveCart also interferes with how inline events fire, so the success-page script below loads the tracker itself if it is missing, waits for it, and uses `sessionStorage` to send the event once per browser session even if the visitor refreshes or navigates back.
+
+Add it to the checkout's **success page** and fill in the values at the top:
 
 ```html
 <script>
 (function () {
-  // --- CONFIGURE YOUR EVENT ---
   var EVENT_NAME = "purchase";
-  var PAYLOAD = {
-    content_name: "Your Product Name",
-    value: 97.00,
-    currency: "USD"
-  };
+  var PAYLOAD = { content_name: "Your Product Name", value: 97.0, currency: "USD" };
   var SITE_ID = "YOUR_SITE_ID";
-  // -----------------------------
+  var SCRIPT_SRC = "https://app.rybbit.io/api/script.js?siteId=" + SITE_ID;
 
-  // Prevent duplicate events on refresh/back navigation
+  // Send once per session, even on refresh or back navigation
   var SENT_KEY = "rybbit_" + EVENT_NAME + "_sent_v1";
   try {
     if (sessionStorage.getItem(SENT_KEY) === "1") return;
@@ -81,77 +58,41 @@ Add this script to your ThriveCart **success page** (the page shown after a comp
   function isReady() {
     return window.rybbit && typeof window.rybbit.event === "function";
   }
-
   function send() {
     window.rybbit.event(EVENT_NAME, PAYLOAD);
   }
-
   function waitThenSend(timeoutMs) {
     var start = Date.now();
     (function check() {
       if (isReady()) return send();
-      if (Date.now() - start < timeoutMs) return setTimeout(check, 150);
-      // Fail silently if timeout reached
+      if (Date.now() - start < timeoutMs) setTimeout(check, 150);
     })();
   }
 
-  function ensureScriptLoaded() {
-    // Avoid duplicate script loads
-    if (document.querySelector('script[src="https://app.rybbit.io/api/script.js"]')) return;
-
+  if (isReady()) return send();
+  if (!document.querySelector('script[src="' + SCRIPT_SRC + '"]')) {
     var s = document.createElement("script");
-    s.src = "https://app.rybbit.io/api/script.js";
-    s.async = true;
-    s.setAttribute("data-site-id", SITE_ID);
-    s.onload = function () { waitThenSend(3000); };
+    s.src = SCRIPT_SRC;
+    s.defer = true;
     document.head.appendChild(s);
   }
-
-  // If Rybbit is already loaded, send immediately
-  if (isReady()) return send();
-
-  // Otherwise, load the script and wait for it
-  ensureScriptLoaded();
   waitThenSend(8000);
 })();
 </script>
 ```
 
-### Configuration
+- `EVENT_NAME`: the event name, for example `purchase` or `checkout_complete`.
+- `PAYLOAD`: `content_name` (product name), `value` (amount) and `currency` (`USD`, `GBP`, `EUR` and so on).
+- `SITE_ID`: your Rybbit site ID.
 
-Update the configuration variables at the top of the script:
-
-- `EVENT_NAME`: The name of the event (e.g., `"purchase"`, `"checkout_complete"`)
-- `PAYLOAD`: An object containing event data:
-  - `content_name`: The product name
-  - `value`: The purchase amount
-  - `currency`: The currency code (e.g., `"USD"`, `"GBP"`, `"EUR"`)
-- `SITE_ID`: Your Rybbit Site ID
-
-## Tracking Multiple Products
-
-If you have different products, create separate success pages or use ThriveCart's dynamic variables (if available) to populate the payload. Each product page should have its own configured script with the appropriate product name and price.
-
-## Using with Subdomains
-
-If your ThriveCart is hosted on a subdomain (e.g., `sales.yourdomain.com`) while your main site is on `yourdomain.com`, Rybbit will track both as part of the same site as long as you use the same Site ID. This allows you to create funnels that track the user journey from your main site through to the ThriveCart checkout and purchase.
+Selling several products? The payload is fixed per page, so use a separate success page per product, or fill `PAYLOAD` from ThriveCart's dynamic variables where they are available.
 
 ## Troubleshooting
 
-### Events not appearing in Rybbit
+- **Script attributes are stripped**: ThriveCart removes `data-*` attributes, so [script attributes](/docs/script#script-attributes) such as `data-skip-patterns` do not work here. Keep the site ID in the URL.
+- **Duplicate purchase events**: the script is guarded by `sessionStorage`. If you still see duplicates, make sure the event script is on the success page only once, and clear session storage before testing again.
+- **Script blocked**: if `script.js` never loads, try the footer scripts field instead of the header, or ask ThriveCart support to confirm custom scripts are enabled on your account.
 
-1. **Check the script is loading**: Open your browser's Developer Tools (F12), go to the Network tab, and look for `script.js` being loaded from `app.rybbit.io`.
-2. **Check for JavaScript errors**: In the Console tab, look for any red error messages.
-3. **Verify your Site ID**: Make sure you've replaced `YOUR_SITE_ID` with your actual Site ID from the Rybbit dashboard.
+## Next steps
 
-### Duplicate events
-
-The script includes session storage protection to prevent duplicate events on page refresh. If you're still seeing duplicates:
-- Clear your browser's session storage and test again
-- Make sure you only have one instance of the event script on the page
-
-### Script not loading
-
-If the script isn't loading at all, ThriveCart may be blocking it. Try:
-- Adding the script to a different location (footer instead of header)
-- Contacting ThriveCart support to ensure custom scripts are enabled for your account
+<include>../../../partials/guides/next-steps.mdx</include>

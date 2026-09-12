@@ -1,0 +1,83 @@
+---
+title: React Router
+description: Add Rybbit analytics to your React Router app
+category: frameworks
+icon: SiReactrouter
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+In React Router framework mode (v7 and later, the successor to Remix), `app/root.tsx` renders the `<html>` document for every route. Add the snippet to the `<head>` in its `Layout` export. This guide supersedes the [Remix guide](/docs/guides/react/remix); if you use React Router only as a library inside a Vite app, follow the [React (Vite / CRA) guide](/docs/guides/react/vite-cra) instead.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to React Router
+
+Open `app/root.tsx` and add the tag inside `<head>` of the `Layout` component, after `<Meta />` and `<Links />`. `Layout` wraps the app, `HydrateFallback` and `ErrorBoundary`, so the snippet stays in place in every state:
+
+```tsx title="app/root.tsx"
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+
+export function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta />
+        <Links />
+        <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+      </head>
+      <body>
+        {children}
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+export default function App() {
+  return <Outlet />;
+}
+```
+
+If your `root.tsx` has no `Layout` export, add the tag to the `<head>` of the default `App` component instead. Restart the dev server after the change. Client-side navigation through `<Link>` and `useNavigate()` is tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any route or component. Check for `window` first, because route modules also render on the server.
+
+```tsx title="app/routes/pricing.tsx"
+export default function Pricing() {
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.rybbit) {
+      window.rybbit.event("plan_selected", { plan: "pro" });
+    }
+  };
+
+  return <button onClick={handleClick}>Choose Pro</button>;
+}
+```
+
+## Troubleshooting
+
+- **Nonce-based Content Security Policy**: if you pass a `nonce` to `<Scripts />` and `<ScrollRestoration />`, add the same `nonce` attribute to the Rybbit tag, otherwise the browser blocks it.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

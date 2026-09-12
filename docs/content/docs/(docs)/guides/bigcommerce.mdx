@@ -1,130 +1,66 @@
 ---
 title: BigCommerce
-description: Integrate Rybbit Analytics with your BigCommerce store
+description: Add Rybbit analytics to your BigCommerce store
+category: ecommerce
+icon: SiBigcommerce
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-BigCommerce is a leading e-commerce platform for online stores. You can integrate Rybbit Analytics to track visitor behavior and conversions.
-
-## How to Add Rybbit to BigCommerce
-
-<Tabs items={['Script Manager (Recommended)', 'Theme Files']}>
-<Tab>
-### Using Script Manager
-
-The easiest way to add Rybbit to BigCommerce is through the Script Manager.
+BigCommerce's **Script Manager** adds scripts to every storefront page without theme edits, and it is also where the order-confirmation purchase event goes. Editing the theme's `head.html` works too.
 
 <Steps>
 <Step>
-### Access Script Manager
+### Get your tracking snippet
 
-1. Log in to your BigCommerce admin panel
-2. Go to **Storefront** > **Script Manager**
-3. Click **Create a Script**
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Configure the Script
+### Add the snippet to BigCommerce
 
-Fill in the following settings:
-
-- **Name**: Rybbit Analytics
-- **Description**: Rybbit Analytics tracking script
-- **Placement**: Head
-- **Location**: All pages
-- **Script category**: Analytics
-- **Script type**: Script
-
-In the **Script contents** box, paste:
-
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
-  s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
-  document.head.appendChild(s);
-})();
-</script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID.
-</Step>
-
-<Step>
-### Save the Script
-
-Click **Save** to activate the script on your store.
-</Step>
-</Steps>
+<Tabs items={["Script Manager", "Theme files"]}>
+<Tab>
+1. In the control panel, go to **Storefront > Script Manager** and click **Create a Script**.
+2. Fill in the settings:
+   - **Name**: Rybbit Analytics
+   - **Placement**: Head
+   - **Location**: All pages
+   - **Script category**: Analytics
+   - **Script type**: Script
+3. Paste the snippet into **Script contents** and click **Save**.
 </Tab>
 
 <Tab>
-### Editing Theme Files
-
-You can also add the script directly to your theme files for more control.
-
 <Callout type="warn">
-Editing theme files requires some technical knowledge. Make a backup of your theme before making changes.
+Back up your theme before editing files.
 </Callout>
 
-<Steps>
-<Step>
-### Access Theme Files
-
-1. Go to **Storefront** > **Themes**
-2. Click **Advanced** on your current theme
-3. Select **Edit Theme Files**
-</Step>
-
-<Step>
-### Edit the Header Template
-
-1. Navigate to **templates** > **components** > **common**
-2. Open `head.html`
-3. Add the following code before the closing `</head>` or at the end of the file:
-
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js';
-  s.defer = true;
-  s.setAttribute('data-site-id', 'YOUR_SITE_ID');
-  document.head.appendChild(s);
-})();
-</script>
-```
-</Step>
-
-<Step>
-### Save and Apply
-
-Click **Save** to apply the changes to your live store.
-</Step>
-</Steps>
+1. Go to **Storefront > Themes**, click **Advanced** on your current theme, then **Edit Theme Files**.
+2. Open **templates > components > common** and then `head.html`.
+3. Paste the snippet at the end of the file, before the closing `</head>` tag, and click **Save**.
 </Tab>
 </Tabs>
+</Step>
 
-## Tracking E-commerce Events
+<Step>
+### Verify installation
 
-To get the most out of Rybbit with BigCommerce, you can track key e-commerce events like product views and purchases.
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
 
-### Track Purchases
+## Track custom events
 
-To track completed purchases, create another script in Script Manager with these settings:
+#### Purchase
 
-- **Placement**: Footer
-- **Location**: Order Confirmation
-- **Script type**: Script
+Create a second script in Script Manager with **Placement: Footer**, **Location: Order Confirmation** and **Script type: Script**. BigCommerce runs Script Manager contents through Handlebars, so expressions such as `checkout.order.id` are filled in with the order data before the page is served:
 
 ```html
 <script>
-(function() {
+(function () {
   function waitForRybbit(callback, timeout) {
     var start = Date.now();
     (function check() {
@@ -136,8 +72,7 @@ To track completed purchases, create another script in Script Manager with these
     })();
   }
 
-  waitForRybbit(function() {
-    // BigCommerce provides order data via Handlebars
+  waitForRybbit(function () {
     {{#if checkout.order}}
     window.rybbit.event('purchase', {
       transaction_id: '{{checkout.order.id}}',
@@ -150,20 +85,13 @@ To track completed purchases, create another script in Script Manager with these
 </script>
 ```
 
-<Callout type="info">
-BigCommerce uses Handlebars templating. The `{{}}` syntax is processed by BigCommerce to inject order data.
-</Callout>
+`waitForRybbit` polls until the tracking script from the head has defined `window.rybbit`, so the event is not lost if the confirmation page runs the footer script first.
 
 ## Troubleshooting
 
-### Script not loading
+- **Script not on the page**: confirm the script is enabled in Script Manager, then purge the store cache under **Server Settings > Store-level caching > Purge cache**.
+- **Purchase event missing**: the purchase script must use the **Order Confirmation** location, and the `checkout.order`, `checkout.subtotal` and `checkout.currency` Handlebars objects depend on your BigCommerce checkout version. Place a test order to confirm the event arrives.
 
-1. Check Script Manager to ensure the script is enabled
-2. Clear your store's cache: **Server Settings** > **Store-level caching** > **Purge cache**
-3. Check the browser console for any errors
+## Next steps
 
-### E-commerce events not tracking
-
-1. Make sure the purchase tracking script is set to **Order Confirmation** location
-2. Verify the Handlebars variables match your BigCommerce version
-3. Test by completing a test order
+<include>../../../partials/guides/next-steps.mdx</include>

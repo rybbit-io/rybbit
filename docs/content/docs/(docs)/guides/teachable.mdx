@@ -1,0 +1,43 @@
+---
+title: Teachable
+description: Add Rybbit analytics to your Teachable site
+category: creators
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Teachable adds tracking scripts through **Code Snippets** in the school admin, where the **Head Code Snippets** section places code inside the `<head>` of every page of your school. Code Snippets are available on the Builder plan and above.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Teachable
+
+1. In the school admin, go to **Site > Code Snippets**.
+2. Paste the snippet into the **Head Code Snippets** section, which applies to all pages and all users.
+3. Click **Save**.
+
+The **Logged In Snippets** and **Logged Out Snippets** sections restrict code to one audience. Leave them empty for Rybbit so students and prospects are tracked alike; if you only want to measure the public site, use **Logged Out Snippets** instead of the head section.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Code Snippets is missing from the Site menu**: it needs the Builder plan or higher. Schools on lower plans cannot add custom scripts.
+- **Checkout and login pages are not tracked**: head code snippets do not apply to SSO-based login or checkout pages served from `sso.teachable.com`. Pages on your school domain, including the course area, are covered.
+- **Snippet pasted into a lesson's Custom HTML block**: that block only affects one lesson. Use **Code Snippets** for site-wide tracking.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

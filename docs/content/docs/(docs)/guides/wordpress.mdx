@@ -1,265 +1,111 @@
 ---
 title: WordPress
-description: Integrate Rybbit Analytics with your WordPress site
+description: Add Rybbit analytics to your WordPress site
+category: cms
+icon: SiWordpress
 ---
 
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-You can integrate Rybbit into your WordPress site to track user behavior and gather analytics. There are several ways to do this depending on whether you're using a hosted WordPress.com site or a self-hosted WordPress.org installation.
-
-<Callout type="info">
-We recommend using the JavaScript snippet below instead of a plain `<script>` tag. Some WordPress plugins and page builders strip `data-*` attributes from HTML, which can break tracking. The JavaScript approach avoids this issue.
-</Callout>
-
-## Quick Start
-
-The easiest method for most users is the **WPCode plugin** (formerly Insert Headers and Footers). This works on both WordPress.com (Business plan+) and self-hosted WordPress.org sites.
+WordPress has no built-in header-code setting, so the snippet goes in through a plugin such as **WPCode** or through your theme's `functions.php` or `header.php`. Every method below works on self-hosted WordPress.org sites; on WordPress.com you need the Business plan or higher before you can install plugins or add custom JavaScript.
 
 <Steps>
 <Step>
-### Install WPCode Plugin
+### Get your tracking snippet
 
-In your WordPress dashboard, go to **Plugins > Add New** and search for "WPCode". Install and activate the plugin.
-
-Alternatively, download from [WordPress.org](https://wordpress.org/plugins/insert-headers-and-footers/).
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add the Tracking Script
-
-1. Go to **Code Snippets > Header & Footer** (or **Settings > Insert Headers and Footers** in older versions)
-2. Paste this snippet into the **Header** section:
-
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
-  s.defer = true;
-  document.head.appendChild(s);
-})();
-</script>
-```
-
-3. Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard
-4. Click **Save Changes**
-</Step>
-
-<Step>
-### Verify Installation
-
-Visit your site in a new browser tab, then check your Rybbit dashboard to confirm data is being received.
-</Step>
-</Steps>
-
-## Alternative Methods
-
-<Tabs items={['functions.php', 'header.php', 'Manual Plugin']}>
-<Tab>
-### Add via functions.php
-
-For self-hosted WordPress, you can add the script via your theme's `functions.php` file.
+### Add the snippet to WordPress
 
 <Callout type="warn">
-**Use a child theme!** If you modify the parent theme's `functions.php`, your changes will be lost when the theme updates.
+If you edit theme files, edit a **child theme**. Changes to a parent theme's `functions.php` or `header.php` are lost on the next theme update.
 </Callout>
 
-1. Go to **Appearance > Theme File Editor**
-2. Select your child theme's `functions.php`
-3. Add this code at the end of the file:
+<Tabs items={["WPCode", "functions.php", "header.php", "Mini plugin"]}>
+<Tab>
+WPCode (formerly Insert Headers and Footers) is the recommended method: it survives theme updates, works with page builders, and is available on WordPress.com Business plans.
 
-```php
-function add_rybbit_analytics() {
-    ?>
-    <script>
-    (function() {
-      var s = document.createElement('script');
-      s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
-      s.defer = true;
-      document.head.appendChild(s);
-    })();
-    </script>
-    <?php
-}
-add_action('wp_head', 'add_rybbit_analytics');
-```
-
-4. Replace `YOUR_SITE_ID` with your actual Site ID and save
+1. Go to **Plugins > Add New**, search for "WPCode", then install and activate it.
+2. Go to **Code Snippets > Header & Footer** (**Settings > Insert Headers and Footers** in older versions).
+3. Paste the snippet into the **Header** box and click **Save Changes**.
 </Tab>
 
 <Tab>
-### Modify header.php
+1. Go to **Appearance > Theme File Editor** and open your child theme's `functions.php`.
+2. Add this to the end of the file, replacing `YOUR_SITE_ID`:
 
-You can directly edit your theme's `header.php` file to add the script.
+```php
+function rybbit_add_tracking_script() {
+    ?>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+    <?php
+}
+add_action( 'wp_head', 'rybbit_add_tracking_script' );
+```
 
-<Callout type="warn">
-**Use a child theme!** Changes to the parent theme's `header.php` will be lost on theme updates.
-</Callout>
+3. Save the file.
+</Tab>
 
-1. Go to **Appearance > Theme File Editor**
-2. Open `header.php`
-3. Find the closing `</head>` tag and paste this script just before it:
+<Tab>
+1. Go to **Appearance > Theme File Editor** and open your child theme's `header.php`.
+2. Paste the snippet just before the closing `</head>` tag:
 
 ```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
-  s.defer = true;
-  document.head.appendChild(s);
-})();
-</script>
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
 </head>
 ```
 
-4. Replace `YOUR_SITE_ID` with your actual Site ID and save
+3. Save the file.
 </Tab>
 
 <Tab>
-### Create a Simple Plugin
+A one-file plugin keeps the snippet in place through theme changes without touching theme files.
 
-Creating a small plugin ensures your tracking code persists through theme changes.
-
-1. Connect to your site via FTP/SFTP or use a file manager plugin
-2. Navigate to `/wp-content/plugins/`
-3. Create a new folder called `rybbit-analytics`
-4. Inside that folder, create a file called `rybbit-analytics.php` with this content:
+1. Over FTP/SFTP or a file-manager plugin, create the folder `/wp-content/plugins/rybbit-analytics/`.
+2. Inside it, create `rybbit-analytics.php` with this content, replacing `YOUR_SITE_ID`:
 
 ```php
 <?php
 /**
  * Plugin Name: Rybbit Analytics
- * Description: Adds Rybbit Analytics tracking to your WordPress site
+ * Description: Adds the Rybbit tracking script to every page
  * Version: 1.0
  */
 
 function rybbit_add_tracking_script() {
     ?>
-    <script>
-    (function() {
-      var s = document.createElement('script');
-      s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
-      s.defer = true;
-      document.head.appendChild(s);
-    })();
-    </script>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
     <?php
 }
-add_action('wp_head', 'rybbit_add_tracking_script');
+add_action( 'wp_head', 'rybbit_add_tracking_script' );
 ```
 
-5. Replace `YOUR_SITE_ID` with your actual Site ID
-6. Go to **Plugins** in WordPress and activate "Rybbit Analytics"
+3. Go to **Plugins** and activate **Rybbit Analytics**.
 </Tab>
 </Tabs>
 
+Running WooCommerce? Once the snippet is in place, see the [WooCommerce guide](/docs/guides/woocommerce) for purchase and add-to-cart events.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
 ## Troubleshooting
 
-### Script not loading
+- **Caching plugins**: after saving the snippet, purge WP Super Cache, W3 Total Cache, LiteSpeed Cache or whichever cache plugin you run, plus any CDN cache such as Cloudflare, before you check the page source.
+- **Script optimisers**: "Delay JavaScript execution" features in WP Rocket, Perfmatters and FlyingPress rebuild script tags and drop `data-*` attributes, which is why the snippet passes the site ID in the URL (`?siteId=`). If tracking still fails, exclude `app.rybbit.io` from optimisation: Autoptimize's exclusion list, WP Rocket's JavaScript optimisation and delay-JS exclusions, Perfmatters / FlyingPress delay-JS exclusions, LiteSpeed Cache JS excludes, SG Optimizer combine/minify.
+- **Page builders** (Elementor, Divi, WPBakery, Beaver Builder): add the snippet with WPCode rather than a builder's custom HTML block. Builders sanitise HTML and can strip attributes from script tags.
+- **Security plugins**: Wordfence, Sucuri and similar plugins can block external scripts. Add `app.rybbit.io` to the allowlist.
+- **WordPress.com plans**: Free, Personal and Premium plans cannot add custom JavaScript. Upgrade to Business or eCommerce and use the WPCode method.
 
-**Check if the script is in the page source:**
-1. Visit your site
-2. Right-click and select "View Page Source"
-3. Search for `rybbit` - you should see the script tag
+## Next steps
 
-If the script is missing:
-- Make sure you saved your changes
-- Clear any caching plugins (WP Super Cache, W3 Total Cache, LiteSpeed Cache, etc.)
-- Clear your CDN cache if using one (Cloudflare, etc.)
-
-### Caching plugin conflicts
-
-Many WordPress caching plugins aggressively cache pages. After adding Rybbit:
-
-1. **Clear all caches:**
-   - Your caching plugin's cache
-   - Any CDN cache (Cloudflare, etc.)
-   - Browser cache (Ctrl+Shift+R or Cmd+Shift+R)
-
-2. **Exclude the script from optimization:**
-   Some optimization plugins try to defer, delay, combine, or minify scripts. "Delay JavaScript execution" features in particular rebuild the script tag and drop its `data-*` attributes, which is why the snippets on this page pass the site ID in the URL (`?siteId=`) instead of a `data-site-id` attribute. If Rybbit still isn't working, exclude `app.rybbit.io` in these plugins:
-   - **Autoptimize**: Add `app.rybbit.io` to the exclusion list
-   - **WP Rocket**: Exclude from JavaScript optimization and from "Delay JavaScript execution"
-   - **Perfmatters / FlyingPress**: Add `app.rybbit.io` to the delay-JS exclusions
-   - **LiteSpeed Cache**: Add to JS excludes
-   - **SG Optimizer**: Exclude from combine/minify
-
-### Page builder issues
-
-If you're using a page builder like Elementor, Divi, WPBakery, or Beaver Builder, use the **WPCode plugin method** above rather than adding code through the page builder's custom HTML blocks. Page builders often sanitize HTML and may strip attributes from script tags.
-
-### Security plugin blocking the script
-
-Security plugins like Wordfence or Sucuri may block external scripts. Add `app.rybbit.io` to your allowlist if tracking isn't working.
-
-### WordPress.com limitations
-
-- **Free/Personal/Premium plans**: Cannot add custom JavaScript. You'll need to upgrade to a Business or eCommerce plan.
-- **Business/eCommerce plans**: Use the WPCode plugin method above.
-
-### Ad blockers
-
-Some visitors use ad blockers that block analytics scripts. This is expected behavior and will result in those visits not being tracked. If you're testing and see no data, try:
-- Disabling your ad blocker temporarily
-- Testing in an incognito/private window
-- Testing from a different device
-
-## Script Options
-
-You can customize the tracking script with additional `data-*` attributes. When using the JavaScript snippet approach, add them with `s.setAttribute()`. For a full list of options, see the [Tracking Script reference](/docs/script).
-
-### Skip Pages from Tracking
-
-Use `data-skip-patterns` to exclude certain pages (like admin or preview pages) from being tracked. Supports `*` (single segment) and `**` (multiple segments) wildcards.
-
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
-  s.defer = true;
-  s.setAttribute('data-skip-patterns', '["/wp-admin/**", "/preview/**"]');
-  document.head.appendChild(s);
-})();
-</script>
-```
-
-### Mask Sensitive URLs
-
-Use `data-mask-patterns` to track pageviews on sensitive pages without recording the actual URL path. The URL is replaced with the pattern itself in your analytics data.
-
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
-  s.defer = true;
-  s.setAttribute('data-mask-patterns', '["/my-account/**", "/orders/*/details"]');
-  document.head.appendChild(s);
-})();
-</script>
-```
-
-### Session Replay Privacy
-
-If you have session replay enabled, you can mask or block sensitive content from recordings:
-
-```html
-<script>
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
-  s.defer = true;
-  s.setAttribute('data-replay-block-selector', '.sensitive-content, #payment-form');
-  s.setAttribute('data-replay-mask-text-selectors', '[".user-name", "#email"]');
-  s.setAttribute('data-replay-mask-all-inputs', 'true');
-  document.head.appendChild(s);
-})();
-</script>
-```
-
-## Tracking WooCommerce Events
-
-If you're running a WooCommerce store, see our [WooCommerce guide](/docs/guides/woocommerce) for tracking purchases and other e-commerce events.
+<include>../../../partials/guides/next-steps.mdx</include>

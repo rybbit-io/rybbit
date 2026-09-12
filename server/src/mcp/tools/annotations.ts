@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { RybbitApiClient } from "../apiClient.js";
-import { siteIdInput } from "../inputs.js";
+import { siteIdInput, timeZoneInput } from "../inputs.js";
 import { looseRows, ok, readOnly, type ScopeCheck, type ToolGuard } from "./shared.js";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,10 +33,7 @@ export function registerAnnotationTools(
             .regex(dateRegex, "Use YYYY-MM-DD")
             .optional()
             .describe("Only annotations on or before this date (YYYY-MM-DD, in time_zone). Omit for all."),
-          time_zone: z
-            .string()
-            .optional()
-            .describe("IANA timezone the date bounds are read in (default UTC), e.g. America/Los_Angeles."),
+          time_zone: timeZoneInput,
         },
         outputSchema: annotationsOutput,
         annotations: readOnly,
