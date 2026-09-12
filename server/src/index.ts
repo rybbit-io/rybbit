@@ -180,6 +180,9 @@ import { validateHttpTimeParams } from "./api/analytics/utils/query-validation.j
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { apiRateLimitRedis } from "./db/redis/redis.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
+import { reloadAsnDatabase } from "./db/geolocation/asn.js";
+import { reloadCityDatabase } from "./db/geolocation/geolocation.js";
+import { startGeoIpUpdater, type GeoIpDbFile } from "./db/geolocation/updater.js";
 import {
   allowPublicSiteAccess,
   requireAdmin,
@@ -682,6 +685,11 @@ const start = async () => {
         weeklyReportService.startWeeklyReportCron();
         lifecycleEmailService.startLifecycleCron();
       }
+      // Single-process mode: download GeoIP updates and swap them in here.
+      // In cluster mode the primary downloads and workers reload via IPC below.
+      startGeoIpUpdater({
+        apply: { "GeoLite2-City.mmdb": reloadCityDatabase, "GeoLite2-ASN.mmdb": reloadAsnDatabase },
+      });
     }
 
     // Start the server first
@@ -690,13 +698,16 @@ const start = async () => {
 
     // Listen for IPC messages from the cluster primary process
     if (cluster.isWorker) {
-      process.on("message", (message: { type: string; siteIds: number[] }) => {
+      process.on("message", (message: { type: string; siteIds: number[]; file?: GeoIpDbFile }) => {
         if (message?.type === "sites-over-limit") {
           usageService.setSitesOverLimit(new Set(message.siteIds));
           server.log.debug(`Received ${message.siteIds.length} sites-over-limit from primary`);
         } else if (message?.type === "sites-without-replay") {
           usageService.setSitesWithoutReplay(new Set(message.siteIds));
           server.log.debug(`Received ${message.siteIds.length} sites-without-replay from primary`);
+        } else if (message?.type === "geoip-updated") {
+          const reload = message.file === "GeoLite2-City.mmdb" ? reloadCityDatabase : reloadAsnDatabase;
+          reload().catch(err => server.log.warn({ err, file: message.file }, "Failed to reload GeoIP database"));
         }
       });
     }
