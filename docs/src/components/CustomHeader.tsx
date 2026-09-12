@@ -13,18 +13,16 @@ import { useState } from "react";
 
 /**
  * Site header. Default register is the marketing pages' instrument sheet
- * (1200px column with hairline sides, square buttons); under `data-chrome=
- * "bare"` (homepage redesign, see global.css) it is a 1280px column with no
- * sides, pill buttons and a Live demo button.
+ * (1200px column with hairline sides, square buttons).
  */
 export function CustomHeader() {
   const t = useExtracted();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-white/95 backdrop-blur-sm bare:border-b-0 dark:border-neutral-800 dark:bg-neutral-950/95">
+    <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-white/95 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/95">
       <nav
-        className="mx-auto flex h-14 max-w-[1200px] items-center justify-between border-x border-neutral-200 px-5 bare:h-16 bare:max-w-[1280px] bare:border-x-0 dark:border-neutral-800 sm:px-8 lg:px-10 bare:lg:px-8"
+        className="mx-auto flex h-14 max-w-[1200px] items-center justify-between border-x border-neutral-200 px-5 dark:border-neutral-800 sm:px-8 lg:px-10"
         aria-label="Global"
       >
         <Link
@@ -52,7 +50,7 @@ export function CustomHeader() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackAdEvent("login", { location: "header" })}
-            className="inline-flex h-8 items-center justify-center rounded-md px-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 bare:h-9 bare:rounded-full bare:px-3 bare:hover:bg-transparent dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-white dark:bare:hover:bg-transparent"
+            className="inline-flex h-8 items-center justify-center rounded-md px-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-white"
           >
             {t("Login")}
           </AppLink>
@@ -61,7 +59,7 @@ export function CustomHeader() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackAdEvent("demo", { location: "header" })}
-            className="hidden h-9 items-center justify-center rounded-full border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 bare:inline-flex dark:border-neutral-800 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+            className="hidden h-9 items-center justify-center rounded-full border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
           >
             {t("Live demo")}
           </AppLink>
@@ -70,7 +68,7 @@ export function CustomHeader() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackAdEvent("signup", { location: "header" })}
-            className="inline-flex h-8 items-center justify-center rounded-md bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white bare:h-9 bare:rounded-full bare:px-4 dark:focus-visible:ring-offset-neutral-950"
+            className="inline-flex h-8 items-center justify-center rounded-md bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950"
           >
             {t("Sign up")}
           </AppLink>
