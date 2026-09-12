@@ -1,13 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { RybbitApiClient } from "../apiClient.js";
-import { filtersInput, siteIdInput, timeInputs, traitsInput } from "../inputs.js";
+import { fieldsInput, filtersInput, siteIdInput, timeInputs, traitsInput } from "../inputs.js";
 import {
   destructiveTool,
   idempotentWrite,
   looseRow,
   looseRows,
   ok,
+  pickRowFields,
   readOnly,
   siteQuery,
   successOutput,
@@ -45,17 +46,22 @@ export function registerUserTools(server: McpServer, api: RybbitApiClient, guard
         identified_only: z.boolean().default(false).describe("Only users identified via identify()"),
         search: z.string().optional(),
         search_field: z.enum(["username", "name", "email", "user_id"]).optional().describe("Trait/id field the search matches against"),
+        fields: fieldsInput,
         ...timeInputs,
         filters: filtersInput,
       },
       outputSchema: usersOutput,
       annotations: readOnly,
     },
-    guard(async ({ site_id, page, page_size, sort_by, sort_order, identified_only, search, search_field, ...rest }) =>
+    guard(async ({ site_id, page, page_size, sort_by, sort_order, identified_only, search, search_field, fields, ...rest }) =>
       ok(
-        await api.call("GET", `/sites/${site_id}/users`, {
-          query: { page, page_size, sort_by, sort_order, identified_only, search, search_field, ...siteQuery(rest) },
-        })
+        pickRowFields(
+          await api.call("GET", `/sites/${site_id}/users`, {
+            query: { page, page_size, sort_by, sort_order, identified_only, search, search_field, ...siteQuery(rest) },
+          }),
+          "data",
+          fields
+        )
       )
     )
   );

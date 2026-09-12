@@ -69,6 +69,24 @@ export const siteIdInput = z
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
+/** True for any IANA zone the runtime accepts, including aliases like Etc/UTC or US/Pacific. */
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Validated here so a bad zone comes back as a fixable argument error instead
+// of an opaque REST 400 after the round trip.
+export const timeZoneInput = z
+  .string()
+  .refine(isValidTimeZone, { message: "Use a valid IANA time zone such as UTC or America/New_York" })
+  .optional()
+  .describe("IANA time zone used to interpret dates and buckets, e.g. America/New_York. Defaults to UTC.");
+
 export const timeInputs = {
   start_date: z
     .string()
@@ -82,10 +100,7 @@ export const timeInputs = {
     .regex(dateRegex, "Use YYYY-MM-DD")
     .optional()
     .describe("End date (YYYY-MM-DD, inclusive, interpreted in time_zone)."),
-  time_zone: z
-    .string()
-    .optional()
-    .describe("IANA time zone used to interpret dates and buckets, e.g. America/New_York. Defaults to UTC."),
+  time_zone: timeZoneInput,
   past_minutes: z
     .number()
     .int()
@@ -156,6 +171,14 @@ export function toTimeQuery(args: TimeArgs): Record<string, string | number | un
 export function toFiltersQuery(filters: FilterArgs): Record<string, string | undefined> {
   return { filters: filters && filters.length > 0 ? JSON.stringify(filters) : undefined };
 }
+
+export const fieldsInput = z
+  .array(z.string().min(1))
+  .min(1)
+  .optional()
+  .describe(
+    "Only return these row fields (top-level keys), e.g. [\"session_id\",\"entry_page\",\"referrer\"]. Omit for full rows. Use to keep responses small."
+  );
 
 export const organizationIdInput = z.string().min(1).describe("Organization ID from list_sites");
 
