@@ -1,5 +1,6 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
+import { DocsHomeCards } from "@/components/DocsHomeCards";
 import { GuideIndex } from "@/components/GuideIndex";
 import { Mermaid } from "@/components/Mermaid";
 import * as TabsComponents from "fumadocs-ui/components/tabs";
@@ -10,6 +11,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
     ...TabsComponents,
+    DocsHomeCards,
     GuideIndex,
     Mermaid,
     img: props => <ImageZoom {...(props as any)} />,
