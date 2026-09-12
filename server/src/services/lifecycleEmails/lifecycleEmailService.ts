@@ -1,4 +1,3 @@
-import { createHash } from "crypto";
 import { and, eq, gt, inArray, like } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
@@ -246,14 +245,20 @@ class LifecycleEmailService {
    * happen first with the unique index as the guard, so a re-entrant run can
    * never double-send; if the send then fails, the rows are removed so the next
    * tick retries. Keys that already exist are dropped from the bundle and the
-   * email is built from the ones actually claimed. The claimed keys double as
-   * the Resend idempotency key so an "accepted but response lost" retry can't
-   * deliver twice.
+   * email is built from the ones actually claimed.
+   *
+   * A send failure can't be told apart from "accepted but response lost", so
+   * the rollback-and-retry is only safe because the Resend idempotency key is
+   * stable across retries: it must not depend on which sites happen to be in
+   * the bundle (membership can change between ticks) - see bundleKey. Resend
+   * then either returns the original response or rejects the mismatched
+   * payload; it never delivers a second email.
    */
   private async sendBundle(
     userId: string,
     email: string,
     entries: BundleEntry[],
+    idempotencyKey: string,
     build: (claimed: BundleEntry[]) => Promise<content.LifecycleEmail | null> | content.LifecycleEmail | null
   ): Promise<boolean> {
     if (entries.length === 0) return false;
@@ -275,7 +280,7 @@ class LifecycleEmailService {
         await rollback();
         return false;
       }
-      const sent = await sendLifecycleEmail(email, message.subject, message.text, this.idempotencyKey(userId, claimed));
+      const sent = await sendLifecycleEmail(email, message.subject, message.text, idempotencyKey);
       if (!sent) {
         await rollback();
         return false;
@@ -290,13 +295,15 @@ class LifecycleEmailService {
     }
   }
 
-  private idempotencyKey(userId: string, claimed: BundleEntry[]): string {
-    if (claimed.length === 1) return `lifecycle:${userId}:${claimed[0].key}`;
-    const digest = createHash("sha256")
-      .update(claimed.map(e => e.key).sort().join("|"))
-      .digest("hex")
-      .slice(0, 24);
-    return `lifecycle:${userId}:bundle:${digest}`;
+  /**
+   * Idempotency key for a bundled kind. Each kind reaches a user at most once
+   * per cooldown window, so "the window since this kind's last successful
+   * send" identifies the email: a rolled-back send leaves lastSent unchanged
+   * and the retry reuses the key whatever sites are eligible by then, while a
+   * successful send advances lastSent and the next bundle gets a fresh key.
+   */
+  private bundleKey(userId: string, kind: string, lastSent: DateTime | null): string {
+    return `lifecycle:${userId}:${kind}:${lastSent ? lastSent.toMillis() : "first"}`;
   }
 
   private sendOnce(
@@ -306,7 +313,7 @@ class LifecycleEmailService {
     siteId: number | null,
     build: () => Promise<content.LifecycleEmail | null> | content.LifecycleEmail | null
   ): Promise<boolean> {
-    return this.sendBundle(userId, email, [{ key: emailKey, siteId }], build);
+    return this.sendBundle(userId, email, [{ key: emailKey, siteId }], `lifecycle:${userId}:${emailKey}`, build);
   }
 
   // -------------------------------------------------------------------------
@@ -449,10 +456,9 @@ class LifecycleEmailService {
 
     const unsubscribed = () => isContactUnsubscribed(u.email);
 
-    const kindCooldownElapsed = (prefixes: string[]) => {
-      const last = lastSentWithPrefix(sentLog, prefixes);
-      return !last || now.diff(last, "hours").hours >= KIND_COOLDOWN_HOURS;
-    };
+    const lastLiveSent = lastSentWithPrefix(sentLog, ["site_live:"]);
+    const lastInstallSent = lastSentWithPrefix(sentLog, ["install_"]);
+    const cooldownElapsed = (last: DateTime | null) => !last || now.diff(last, "hours").hours >= KIND_COOLDOWN_HOURS;
 
     // --- Transition: a site just received its first data -> "you're live" ---
     // Exempt from the gap; it's a confirmation, not education. Only fires while
@@ -464,12 +470,13 @@ class LifecycleEmailService {
       if (now.diff(s.firstEvent, "hours").hours > 72) return false;
       return !sentLog.has(`site_live:${site.siteId}`);
     });
-    if (liveSites.length > 0 && kindCooldownElapsed(["site_live:"])) {
+    if (liveSites.length > 0 && cooldownElapsed(lastLiveSent)) {
       if (await unsubscribed()) return;
       const sent = await this.sendBundle(
         u.id,
         u.email,
         liveSites.map(site => ({ key: `site_live:${site.siteId}`, siteId: site.siteId })),
+        this.bundleKey(u.id, "site_live", lastLiveSent),
         async claimed => {
           const chosen = liveSites.filter(site => claimed.some(e => e.siteId === site.siteId));
           const first = chosen.length === 1 ? await this.fetchFirstPageview(chosen[0].siteId) : null;
@@ -500,7 +507,9 @@ class LifecycleEmailService {
       .filter(site => !stats.get(site.siteId) && now.diff(site.createdAt, "days").days < COHORT_DAYS)
       .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
 
-    if (noDataSites.length > 0 && kindCooldownElapsed(["install_"])) {
+    if (noDataSites.length > 0 && cooldownElapsed(lastInstallSent)) {
+      // One install email per window, so the three stages share the key.
+      const installKey = this.bundleKey(u.id, "install", lastInstallSent);
       const hoursSince = (key: string) => {
         const at = sentLog.get(key);
         return at ? now.diff(at, "hours").hours : null;
@@ -520,6 +529,7 @@ class LifecycleEmailService {
           u.id,
           u.email,
           snippetDue.map(site => ({ key: snippetKey(site.siteId), siteId: site.siteId })),
+          installKey,
           async claimed => {
             const chosen = snippetDue.filter(site => claimed.some(e => e.siteId === site.siteId));
             const withPlatform: content.SnippetSite[] = [];
@@ -545,6 +555,7 @@ class LifecycleEmailService {
           u.id,
           u.email,
           checkDue.map(site => ({ key: checkKey(site.siteId), siteId: site.siteId })),
+          installKey,
           claimed =>
             content.installCheck(
               checkDue
@@ -569,6 +580,7 @@ class LifecycleEmailService {
           u.id,
           u.email,
           finalDue.map(site => ({ key: finalKey(site.siteId), siteId: site.siteId })),
+          installKey,
           claimed =>
             content.installFinal(
               finalDue.filter(site => claimed.some(e => e.siteId === site.siteId)).map(site => site.domain),
@@ -718,7 +730,7 @@ class LifecycleEmailService {
       // One email per user per run, across both passes: an owner who just got
       // an onboarding email waits for the next tick.
       if (this.emailedThisRun.has(owner.userId)) continue;
-      const lastQuiet = lastQuietEmailByUser.get(owner.userId);
+      const lastQuiet = lastQuietEmailByUser.get(owner.userId) ?? null;
       if (lastQuiet && now.diff(lastQuiet, "hours").hours < KIND_COOLDOWN_HOURS) continue;
       try {
         if (await isContactUnsubscribed(owner.email)) continue;
@@ -728,7 +740,7 @@ class LifecycleEmailService {
           key: `went_quiet:${site.siteId}:${lastEventBySite.get(site.siteId)?.toFormat("yyyy-MM-dd") ?? "unknown"}`,
           siteId: site.siteId,
         }));
-        await this.sendBundle(owner.userId, owner.email, entries, claimed =>
+        await this.sendBundle(owner.userId, owner.email, entries, this.bundleKey(owner.userId, "went_quiet", lastQuiet), claimed =>
           content.wentQuiet(
             ownerSites
               .filter(site => claimed.some(e => e.siteId === site.siteId))

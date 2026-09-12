@@ -326,7 +326,9 @@ describe("transition: first data arrives", () => {
     addOwnedSite("u1", 42, "acme.com", hoursAgo(20));
     state.siteStats.push({ site_id: 42, first_event: hoursAgo(1), last_event: hoursAgo(1), total: 5, pageviews: 5, custom_events: 0 });
     await run();
-    expect(mocks.sendLifecycleEmail.mock.calls[0][3]).toBe("lifecycle:u1:site_live:42");
+    // Bundled kinds key on the cooldown window, not the member sites, so a
+    // retry after a lost response reuses it even if membership changed.
+    expect(mocks.sendLifecycleEmail.mock.calls[0][3]).toBe("lifecycle:u1:site_live:first");
   });
 
   it("does not send it for sites whose first event is old (pre-existing traffic)", async () => {
@@ -566,19 +568,45 @@ describe("multi-site owners", () => {
     expect(sentSubjects()).toEqual(["Rybbit is live on second.com"]);
   });
 
-  it("uses a stable bundle idempotency key that differs from the single-site form", async () => {
+  it("reuses the idempotency key on retry even when bundle membership changed, and rotates it after success", async () => {
     addUser("agency", daysAgo(1));
     for (let i = 1; i <= 2; i++) {
       addOwnedSite("agency", i, `client${i}.com`, hoursAgo(20));
       state.siteStats.push({ site_id: i, first_event: hoursAgo(1), last_event: hoursAgo(0.1), total: 5, pageviews: 5, custom_events: 0 });
     }
+    // Resend may have accepted this bundle even though we saw a failure.
     mocks.sendLifecycleEmail.mockResolvedValueOnce(false);
     await run();
+    expect(state.logs.filter(l => l.emailKey.startsWith("site_live:")).length).toBe(0);
+
+    // A third site goes live before the retry, so the bundle now has 3 members.
+    addOwnedSite("agency", 3, "client3.com", hoursAgo(20));
+    state.siteStats.push({ site_id: 3, first_event: hoursAgo(0.5), last_event: hoursAgo(0.1), total: 5, pageviews: 5, custom_events: 0 });
     await run();
     expect(mocks.sendLifecycleEmail).toHaveBeenCalledTimes(2);
-    const [first, second] = mocks.sendLifecycleEmail.mock.calls.map(c => c[3]);
-    expect(first).toMatch(/^lifecycle:agency:bundle:[0-9a-f]{24}$/);
-    expect(second).toBe(first);
+    const [failed, retried] = mocks.sendLifecycleEmail.mock.calls;
+    expect(retried[1]).toBe("Rybbit is live on client1.com and 2 other sites");
+    // Same key: Resend dedupes against the possibly-accepted first attempt
+    // instead of delivering a second email.
+    expect(retried[3]).toBe(failed[3]);
+    expect(siteIds("site_live:")).toEqual([1, 2, 3]);
+
+    // After a successful send the next window gets a different key.
+    state.logs.length = 0;
+    state.sentKeys.clear();
+    markSent("agency", "site_live:1", hoursAgo(25));
+    state.siteStats.length = 0;
+    state.siteStats.push({ site_id: 2, first_event: hoursAgo(1), last_event: hoursAgo(0.1), total: 5, pageviews: 5, custom_events: 0 });
+    await run();
+    const next = mocks.sendLifecycleEmail.mock.calls[2][3];
+    expect(next).toMatch(/^lifecycle:agency:site_live:\d+$/);
+    expect(next).not.toBe(failed[3]);
+  });
+
+  it("single-key emails keep the per-key idempotency form", async () => {
+    addUser("u1", hoursAgo(4));
+    await run();
+    expect(mocks.sendLifecycleEmail.mock.calls[0][3]).toBe("lifecycle:u1:no_site_1");
   });
 });
 
