@@ -1,0 +1,136 @@
+---
+title: "How Much Does Google Analytics Cost? GA4 vs GA 360 Pricing"
+description: "Google Analytics 4 is free, but Google Analytics 360 is sold by quote. What each tier costs, where the free limits stop, and what paid alternatives charge."
+date: 2026-09-13
+tags: ["google analytics", "pricing", "comparisons"]
+author: Rybbit Team
+---
+
+Google Analytics 4, the standard version, is free. Google's product page says it gives you the tools ["free of charge"](https://marketingplatform.google.com/about/analytics/), and there is no usage fee at any traffic level. Google Analytics 360 is the paid enterprise tier: higher limits, SLAs and multi-property features, sold by quote through Google sales and authorized resellers at a reported starting price of $50,000 per year. The real cost of the free version sits elsewhere: the visitors you lose to consent banners, the retention and sampling limits, the BigQuery bill once you export, and the hours it takes to set up and learn.
+
+One disclosure up front: we build [Rybbit](/features/web-analytics), which appears in the alternatives table at the end. All prices are as of September 2026.
+
+## Is Google Analytics free?
+
+Yes. Standard GA4 has no subscription, no traffic-based fee and no paid upgrade inside the product; the only paid version is Analytics 360, a separate enterprise contract. It is the same product for a hobby blog and a company, and Google doesn't restrict commercial use.
+
+What "free" doesn't mean is unlimited. Standard properties get lower limits on retention, sampling, exports, custom dimensions and API quotas, and those limits are why large companies upgrade.
+
+## What the free version includes and where it stops
+
+Every row below comes from Google's own help pages, checked in September 2026.
+
+| Limit | GA4 standard (free) | Google Analytics 360 |
+| --- | --- | --- |
+| [Event data retention](https://support.google.com/analytics/answer/7667196) (explorations and funnel reports) | 2 or 14 months | 2, 14, 26, 38 or 50 months |
+| [Sampling threshold](https://support.google.com/analytics/answer/13331292) per query | 10 million events | 100 million by default, up to 1 billion with "More detailed results"; [unsampled explorations](https://support.google.com/analytics/answer/10896953) are 360-only |
+| [BigQuery daily export](https://support.google.com/analytics/answer/9823238) | 1 million events per day (streaming export has no limit) | "Billions of events" per day |
+| [Event parameters per event](https://support.google.com/analytics/answer/11202874) | 25 | 100 |
+| [Event-scoped custom dimensions / metrics](https://support.google.com/analytics/answer/11202874) | 50 / 50 | 125 / 125 |
+| [Key events (conversions)](https://support.google.com/analytics/answer/11202874) | 30 | 50 |
+| [Audiences](https://support.google.com/analytics/answer/11202874) | 100 | 400 |
+| [Data API quota](https://developers.google.com/analytics/devguides/reporting/data/v1/quotas) | 200,000 tokens per property per day, 40,000 per hour, 10 concurrent requests | 2,000,000 per day, 400,000 per hour, 50 concurrent requests |
+| [Intraday data freshness](https://support.google.com/analytics/answer/11198161) | 2–6 hours | About 1 hour |
+| [Expanded data sets](https://support.google.com/analytics/answer/12867885) for the "(other)" row | Not available | Expand up to 2 million rows, 100 per property |
+| [Subproperties](https://support.google.com/analytics/answer/11525732) and [roll-up properties](https://support.google.com/analytics/answer/11526039) | Not available | 360 only (roll-up events billed separately) |
+| [Service level agreements](https://marketingplatform.google.com/about/analytics-360/) | None | SLAs "from data collection to attribution", including the BigQuery daily export |
+
+Three of these deserve a closer look.
+
+**Retention.** The setting only controls event-level data used in explorations and funnel reports; Google states it does not affect standard aggregated reports. Standard traffic reports keep working past 14 months, but you can't build an exploration over two years of data on a free property. New properties [default to 2 months](https://support.google.com/analytics/answer/9327811), so change the setting the day you create one.
+
+**Sampling.** Google says sampling "may occur when the number of events used to create a report, exploration, or request exceeds the quota limit", which is 10 million events per query on a standard property. In practice it bites in explorations and API pulls over long date ranges on busy sites.
+
+**What isn't limited.** Web data streams have [no limit on distinctly named events](https://support.google.com/analytics/answer/9267744), and there is no monthly event cap. High-traffic sites can stay on the free tier; they live with sampling, the export cap and the "(other)" row instead.
+
+## Google Analytics 360 pricing
+
+Google does not publish a price list for Analytics 360. The [Analytics 360 page](https://marketingplatform.google.com/about/analytics-360/) has no prices and one call to action: "Talk to sales". It is sold by Google's sales team and by Google Marketing Platform sales partners such as [InfoTrust](https://infotrust.com/products/google-analytics-360-reseller/) and [Cardinal Path](https://www.cardinalpath.com/gmp-full-stack-reseller), which describe themselves as official resellers.
+
+Because there is no price list, the numbers that circulate are reported ones:
+
+- Cardinal Path, a GA 360 reseller, wrote in [August 2022](https://www.cardinalpath.com/blog/ua-360-vs-ga4-360-pricing-model) that Google "suggests for the cost of Google Analytics 4 360 to start at a retail price of USD $50,000/year, which entitles customers to 25 million events per month", with usage-based pricing above that volume.
+- Vision Labs, a Google Cloud partner, publishes a [GA 360 cost calculator](https://visionlabs.com/calculator/ga360/) (undated, checked September 2026) with a base of $4,200 per month for 25 million events plus $17.50 per additional million, and says organizations typically invest "anywhere from $50,000 to over $150,000 annually".
+- Under the older Universal Analytics model, InfoTrust quoted [$150,000 per year for up to 500 million hits per month](https://infotrust.com/articles/10-common-questions-from-companies-considering-google-analytics-360/) (April 2020), plus a suggested $30,000–$50,000 for implementation.
+
+Treat these as reported figures. Your quote depends on event volume, property count and support level, and contracts are typically annual. Two line items come on top: [roll-up property events are billed at half the rate of the source property](https://support.google.com/analytics/answer/11539651), and implementation is usually a separate agency engagement.
+
+What the money buys, per Google's 360 documentation: retention up to 50 months, unsampled explorations, BigQuery exports of billions of events per day, 100 event parameters and 125 custom dimensions, subproperties for access control, roll-ups for multi-brand reporting, intraday data in about an hour, and SLAs from collection to the BigQuery export. For a large company already on the Google Marketing Platform, that list is the product.
+
+## The hidden costs of free GA4
+
+None of this appears on an invoice from Google, which is why it's easy to miss.
+
+### Consent banners and lost data
+
+GA4 sets [first-party cookies](https://support.google.com/analytics/answer/11397207) that last two years to distinguish users and sessions. France's regulator CNIL is blunt about what that means: operators must obtain consent before setting trackers, and ["most large audience measurement offerings do not fall within the scope of the exemption"](https://www.cnil.fr/en/sheet-ndeg16-use-analytics-your-websites-and-applications). Every visitor who ignores or declines the banner is invisible to your reports.
+
+How many? It varies widely by country, industry and banner design. Didomi's consent benchmark, built on hundreds of millions of banner interactions collected throughout 2025, puts [opt-in rates](https://www.didomi.io/blog/benchmark-average-consent-rate-europe) (opt-ins divided by banners displayed) between 55.7% in Western Europe and 67.6% in Eastern Europe. For a Western European audience, roughly four in ten banner impressions never become a tracked visitor. That gap costs you twice: in the campaign you can't attribute, and in the tool you buy to fill it.
+
+### Setup and agency time
+
+GA4 is an event model with a reporting layer on top. Someone has to design the event taxonomy, register custom dimensions within the 50-dimension cap, mark key events, fix the retention setting, link Google Ads and Search Console, and build explorations for whatever the standard reports don't answer. Small teams do this in evenings; larger ones pay an agency. The InfoTrust figure above ($30,000–$50,000 for an enterprise implementation) marks the top end.
+
+### BigQuery storage and query costs
+
+Exporting raw events to BigQuery is the standard fix for sampling and retention limits, and the export is free on the Analytics side. BigQuery is not. The [free tier](https://docs.cloud.google.com/free/docs/free-cloud-features) covers 1 TiB of queries and 10 GiB of storage per month; the [sandbox](https://docs.cloud.google.com/bigquery/docs/sandbox) caps storage at 10 GiB for life, expires every table after 60 days and doesn't support streaming, so the unlimited streaming export needs billing enabled. Google's [export documentation](https://support.google.com/analytics/answer/9823238) says you need a valid form of payment on file and that BigQuery charges for storage and query processing. A busy site keeping years of raw events with dashboards on top will see a monthly Cloud bill, and someone has to write the SQL.
+
+### Training and complexity
+
+The standard reports answer a fixed set of questions. Anything else means learning explorations, segments, the "(other)" row, and which reports are sampled. That curve is paid in hours, and for a marketing team it's often the difference between using the tool and glancing at it.
+
+### Privacy and legal exposure
+
+This is a factual summary, not legal advice. In 2022, three EU data protection authorities found that sending Google Analytics data to the US violated the GDPR's transfer rules: [Austria's DSB on 13 January](https://noyb.eu/en/austrian-dsb-eu-us-data-transfers-google-analytics-illegal), [France's CNIL on 10 February](https://www.wilmerhale.com/en/insights/blogs/wilmerhale-privacy-and-cybersecurity-law/20220216-the-french-data-protection-authority-joins-the-austrian-data-protection-authority-in-ruling-that-the-use-of-google-analytics-violates-the-gdpr), which gave the website operator one month to comply, and [Italy's Garante in June](https://www.insideprivacy.com/data-privacy/italian-garante-bans-use-of-google-analytics/), which gave 90 days. The ground shifted on [10 July 2023](https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/eu-us-data-transfers_en), when the European Commission adopted the EU–US Data Privacy Framework adequacy decision, and again on 3 September 2025, when the [EU General Court dismissed a challenge to it](https://curia.europa.eu/site/upload/docs/application/pdf/2025-09/cp250106en.pdf). Transfers to certified US companies currently rest on that framework; cookie consent is a separate rule and hasn't changed.
+
+The cost is compliance work: a consent management platform, a data processing agreement, a privacy policy that describes the transfer, and legal time whenever the framework is challenged again.
+
+## When free GA4 is enough
+
+Plenty of teams should stay on the free tier:
+
+- **You run on Google Ads.** The Ads integration, audiences and key-event import are the strongest reasons to use GA4, and no alternative replicates them fully.
+- **Your traffic is under the sampling line.** If your explorations rarely touch 10 million events, sampling and the 1-million-event export cap don't affect you.
+- **You have an analyst comfortable in BigQuery.** The export plus SQL turns GA4 into a capable warehouse, and the bill for a mid-size site is often small.
+- **You track a website and a mobile app together.** GA4's shared event model across web and Firebase is hard to match.
+- **You already have consent infrastructure** and have accepted the data loss that comes with it.
+
+If none of those apply, compare the free tier's real price with what paid tools charge.
+
+## What paid alternatives cost
+
+Prices below come from each vendor's pricing page as of September 2026. Rybbit is our product; the other numbers are the vendors' own.
+
+| Tool | Starting price | What it covers | Trial or free tier |
+| --- | --- | --- | --- |
+| [Rybbit](/pricing) | $19/month (Standard) | 100k events/month, 5 sites, 3 team members, 3-year retention; Pro from $39/month adds session replay, unlimited sites and members, 5-year retention; 4 months free on annual billing | 7-day free trial; a card is collected at signup and nothing is charged until the trial ends |
+| [Plausible](https://plausible.io/) | $9/month (Starter) | 10k pageviews/month; Growth $14, Business $19 | 30-day trial, no card |
+| [Fathom](https://usefathom.com/pricing) | $15/month | 100k pageviews/month, rising to $470/month at 25M | 7-day trial; no free plan |
+| [Matomo Cloud](https://matomo.org/pricing/) | €29/month | 50k hits/month | Free trial, no card |
+| [Simple Analytics](https://www.simpleanalytics.com/pricing) | $20/month | Slider from 100k pageviews; 1 user, $20 per extra user | 14-day trial, no card; free plan with 1 user, 5 sites and 1 month of history |
+| [PostHog](https://posthog.com/product-analytics/pricing) | Usage-based | 1M events/month free, then $0.00005/event for 1–2M, falling to $0.000009/event above 250M | Free tier, no card |
+
+Self-hosting is free for [Rybbit](/pricing), Plausible's [Community Edition](https://plausible.io/self-hosted-web-analytics), Matomo's On-Premise edition and PostHog's [open-source build](https://posthog.com/docs/self-host), which PostHog labels officially unsupported.
+
+The entry price of a paid tool is $9–$29 per month, less than an hour of agency time, and what you're paying for is mostly the removal of the hidden costs: a cookieless tool like Rybbit sets no tracking cookies, so the traffic a GA4 banner hides shows up, there is no sampling line, and Standard plans keep three years of data. Our [Google Analytics comparison](/compare/google-analytics) goes feature by feature, and if you're weighing several tools, see the [best Google Analytics alternatives](/blog/best-google-analytics-alternatives) and [best web analytics tools](/blog/best-web-analytics-tools) roundups.
+
+## FAQ
+
+**Is Google Analytics free?**
+Yes. The standard version of Google Analytics 4 is free with no usage fees. The paid version is Google Analytics 360, an enterprise contract sold by quote.
+
+**How much is Google Analytics 360?**
+Google doesn't publish a price. A GA 360 reseller reported a starting retail price of $50,000 per year for 25 million events per month in 2022, and a partner calculator puts typical contracts between $50,000 and more than $150,000 per year.
+
+**Does GA4 have a paid version?**
+Yes. Google Analytics 360 runs on GA4 properties with higher limits (50-month retention, a 1-billion-event sampling threshold, billions of BigQuery events per day, 125 custom dimensions), subproperties, roll-ups, expanded data sets and SLAs.
+
+**Is Google Analytics free for business?**
+Yes. There is no separate business license; companies of any size use the free tier. Businesses pay in other ways: consent-banner data loss, BigQuery costs if they export, setup and training time, and compliance work.
+
+**What are the limits of free Google Analytics?**
+The ones that matter most: 14 months of event data for explorations (2 months by default), sampling above 10 million events per query, a BigQuery export of 1 million events per day, 25 event parameters per event, 50 custom dimensions, 30 key events, 100 audiences and 200,000 Data API tokens per day. Standard reports are not affected by the retention setting.
+
+---
+
+*Want to see what the banner has been hiding? [Start a free Rybbit trial](https://app.rybbit.io/signup) or open the [live demo](https://demo.rybbit.com/81). Setup is one script tag.*
