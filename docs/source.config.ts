@@ -32,6 +32,8 @@ export const blog = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       date: z.string().date().or(z.date()),
+      // Set when a post is substantially revised; drives "Updated", dateModified and the sitemap.
+      updated: z.string().date().or(z.date()).optional(),
       author: z.string().optional(),
       image: z.string().optional(),
       tags: z.array(z.string()).optional(),

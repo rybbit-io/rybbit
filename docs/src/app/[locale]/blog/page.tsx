@@ -1,9 +1,10 @@
 import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { GridCrosses } from "@/components/GridCrosses";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
-import { blogSource } from "@/lib/blog-source";
+import { isGeneratedImage, postImageUrl, readingTimeMinutes, sortedPosts, type BlogPost } from "@/lib/blog";
 
 export const metadata: Metadata = {
   title: "Blog — Web Analytics, Privacy & Open Source",
@@ -29,16 +30,25 @@ function formatDate(date: Date) {
   });
 }
 
+function PostThumbnail({ post, priority = false, sizes }: { post: BlogPost; priority?: boolean; sizes: string }) {
+  const image = postImageUrl(post);
+  return (
+    <Image
+      src={image}
+      alt=""
+      width={1200}
+      height={630}
+      priority={priority}
+      unoptimized={isGeneratedImage(image)}
+      sizes={sizes}
+      className="aspect-[1200/630] w-full rounded-md border border-neutral-200 object-cover dark:border-neutral-800"
+    />
+  );
+}
+
 export default function BlogPage() {
-  const posts = [...blogSource.getPages()];
-
-  const sortedPosts = posts.sort((a, b) => {
-    const dateA = new Date(a.data.date || 0);
-    const dateB = new Date(b.data.date || 0);
-    return dateB.getTime() - dateA.getTime();
-  });
-
-  const [latest, ...rest] = sortedPosts;
+  const posts = sortedPosts();
+  const [latest, ...rest] = posts;
 
   return (
     <div className="overflow-x-clip">
@@ -55,7 +65,7 @@ export default function BlogPage() {
         <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
           <GridCrosses />
 
-          {sortedPosts.length === 0 ? (
+          {posts.length === 0 ? (
             <p className="px-5 py-16 text-neutral-600 dark:text-neutral-400 sm:px-8 lg:px-10">
               No blog posts yet. Check back soon!
             </p>
@@ -72,7 +82,7 @@ export default function BlogPage() {
                       className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
                     />
                     <article className="relative grid gap-6 lg:grid-cols-12 lg:gap-8">
-                      <div className="flex flex-col justify-between gap-4 text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-3">
+                      <div className="flex flex-col justify-between gap-4 text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-2">
                         <p className="flex items-center gap-2.5 font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
                           <span aria-hidden="true" className="size-2 rounded-[1px] bg-emerald-600 dark:bg-emerald-400" />
                           Latest post
@@ -83,10 +93,10 @@ export default function BlogPage() {
                               {formatDate(new Date(latest.data.date))}
                             </time>
                           )}
-                          {latest.data.author && <span>{latest.data.author}</span>}
+                          <span>{readingTimeMinutes(latest)} min read</span>
                         </div>
                       </div>
-                      <div className="lg:col-span-9">
+                      <div className="lg:col-span-6">
                         <h2 className="max-w-3xl text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-neutral-950 text-balance dark:text-neutral-50 md:text-4xl">
                           {latest.data.title}
                         </h2>
@@ -102,6 +112,9 @@ export default function BlogPage() {
                             aria-hidden="true"
                           />
                         </span>
+                      </div>
+                      <div className="lg:col-span-4">
+                        <PostThumbnail post={latest} priority sizes="(max-width: 1024px) 100vw, 380px" />
                       </div>
                     </article>
                   </Link>
@@ -120,18 +133,18 @@ export default function BlogPage() {
                       href={`/blog/${post.slugs.join("/")}`}
                       className="group block px-5 py-8 transition-colors duration-200 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:hover:bg-neutral-900/40 sm:px-8 lg:px-10"
                     >
-                      <article className="grid gap-2 lg:grid-cols-12 lg:gap-8">
-                        <div className="text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-3">
+                      <article className="grid gap-4 lg:grid-cols-12 lg:gap-8">
+                        <div className="text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-2">
                           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 lg:flex-col lg:gap-1.5">
                             {date && (
                               <time dateTime={date.toISOString()} className="tabular-nums">
                                 {formatDate(date)}
                               </time>
                             )}
-                            {post.data.author && <span>{post.data.author}</span>}
+                            <span>{readingTimeMinutes(post)} min read</span>
                           </div>
                         </div>
-                        <div className="lg:col-span-8">
+                        <div className="lg:col-span-7">
                           <h2 className="text-lg font-semibold tracking-tight text-neutral-950 text-balance dark:text-neutral-50">
                             {post.data.title}
                           </h2>
@@ -140,12 +153,16 @@ export default function BlogPage() {
                               {post.data.description}
                             </p>
                           )}
+                          <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                            Read the post
+                            <ArrowRight
+                              className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                              aria-hidden="true"
+                            />
+                          </span>
                         </div>
-                        <div className="hidden items-start justify-end lg:col-span-1 lg:flex">
-                          <ArrowRight
-                            className="mt-1.5 size-4 text-neutral-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none dark:text-neutral-600"
-                            aria-hidden="true"
-                          />
+                        <div className="lg:col-span-3">
+                          <PostThumbnail post={post} sizes="(max-width: 1024px) 100vw, 280px" />
                         </div>
                       </article>
                     </Link>
