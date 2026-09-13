@@ -1,0 +1,150 @@
+---
+title: "Funnel Analysis: How to Find Where Users Drop Off"
+description: "Funnel analysis shows where people abandon a multi-step flow. Learn how to define steps, read drop-off rates, segment by source and device, and fix the leaks."
+date: 2025-11-26
+updated: 2026-09-13
+tags: ["analytics", "funnels", "conversion", "optimization"]
+author: Rybbit Team
+---
+
+Your site gets thousands of visitors a month. How many of them do the thing you built the site for?
+
+Funnel analysis is how you answer that. You define the sequence of steps a user takes to reach a goal, count how many sessions reach each step, and find the step where most of them leave. Traffic numbers tell you how many people arrived. The funnel tells you where you lost them.
+
+This guide covers what a conversion funnel is, the metrics that matter, how to set up and read a funnel, how to segment it by source and device, the patterns that point at specific problems, and how to fix them. Examples use [Rybbit's funnels](/features/funnels), but the method applies to any tool.
+
+## What is a conversion funnel?
+
+A conversion funnel is the path a visitor follows from arriving on your site to completing a goal: a purchase, a signup, a demo request, a download. It is called a funnel because it narrows. Many people enter at the top and a few come out the bottom.
+
+Marketers often describe the same thing as a **sales funnel** with stages such as awareness, consideration, decision, and retention. In web analytics the stages are concrete: pages viewed and events fired, in order.
+
+Some typical funnels:
+
+- **Ecommerce:** product page → add to cart → checkout → payment complete
+- **SaaS:** landing page → signup form → email verified → first key action
+- **Lead generation:** landing page → form submitted → thank-you page
+- **Content:** blog post → CTA click → form → download confirmed
+
+Not everyone who enters completes the funnel, and that is normal. If 1,000 people view a product page, 300 add it to the cart, and 150 pay, the overall conversion rate is 15%. The opportunity is in the steps: lifting checkout completion from 50% to 60% yields 30 more orders from the same 300 carts, without buying a single extra visitor.
+
+## The funnel metrics that matter
+
+For every step you want four numbers:
+
+- **Sessions at the step.** How many sessions reached it. The absolute count tells you how much is at stake at each stage.
+- **Step conversion rate.** The share of sessions from the previous step that reached this one. This is the efficiency of the step.
+- **Drop-off rate.** The inverse: the share that completed the previous step but not this one. The step with the highest drop-off and the most traffic is your first priority.
+- **Overall conversion rate.** The share of sessions that entered the funnel and completed it. This is the number that connects the funnel to revenue.
+
+Two more are worth knowing. **Time to convert** shows whether a step is slow as well as leaky. **Conversion by segment** (source, device, country, new vs returning) shows whether the funnel has one problem or several.
+
+## How to run a funnel analysis
+
+**1. Start from the goal.** Pick the single most important action on the site. If you cannot name one, you are not ready to build a funnel.
+
+**2. Map three to five steps backward from it.** Every extra step adds noise. Start with the steps a user *must* pass through, and add optional pages later if they turn out to matter.
+
+**3. Decide how strict the order is.** A strict funnel counts only sessions that hit the steps in sequence. Looser definitions count any session that eventually reached each step. Strict funnels are easier to act on; loose ones are more forgiving of real user behaviour. Know which one your tool uses.
+
+**4. Pick the time window.** A checkout funnel should complete within a session. A B2B signup-to-activation funnel might take two weeks. If the window is too short you undercount conversions; too long and you blur the signal.
+
+**5. Segment before you conclude.** A 40% drop-off at checkout might be 20% on desktop and 70% on mobile. Split by device, traffic channel, country, and landing page before deciding what is broken.
+
+**6. Compare to a previous period.** The absolute drop-off matters less than whether it got better or worse after the change you shipped.
+
+## Funnel analysis in Rybbit
+
+Rybbit's funnel builder lets you define steps from page paths, custom events, or autocaptured interactions (outbound link clicks, button clicks, form submissions, and copied text), then shows sessions, conversion rate, dropped sessions, and drop-off rate for every step.
+
+![Rybbit's funnels report showing sessions and drop-off at each step](/blog/rybbit_funnels_dashboard.webp)
+
+**Define the steps.** Path steps match pageviews by URL, with `*` wildcards for things like `/products/*`. Event steps match [custom events](/features/custom-events) such as `add_to_cart`. Each step can carry property filters, so "purchase where plan = pro" is one step, not a separate funnel.
+
+**Read the result.** The visualization updates as you edit. For each step you see how many sessions arrived, the percentage of first-step sessions that made it this far, and how many were lost since the previous step. The biggest bar-to-bar drop is where to look first.
+
+**Drill into the sessions.** Every step links to the sessions behind it, so when a number looks wrong you can open [session replay](/features/session-replay) and watch what people did at that step instead of guessing.
+
+**Track single-step conversions as goals.** Not every conversion is multi-step. [Goals](/features/goals) track one action, such as a thank-you page view, a form submission, or a button click, and report conversions, conversion rate, and performance by channel and device.
+
+![Rybbit's goals report showing conversions by source and device](/blog/rybbit_goals_dashboard.webp)
+
+**Find the pages that feed the funnel.** The Pages report shows traffic, bounce rate, and time on page for every URL. Click into a page to see only the sessions that visited it and check whether they convert more or less than average. This is how you learn which product pages produce cart additions and which blog posts produce signups.
+
+![Rybbit's pages report showing per-page traffic and engagement](/blog/rybbit_pages_dashboard.webp)
+
+**Segment by channel and device.** Any filter applies to the funnel. Filter by channel to compare organic search, paid, email, social, and referral; filter by device to compare mobile and desktop.
+
+![Filtering a funnel by traffic channel](/blog/channelfilter.webp)
+
+![Filtering a funnel by device type](/blog/devicefilter.webp)
+
+A common finding: two channels send the same traffic, but one converts twice as well. Another: mobile brings half the sessions and a tenth of the conversions, which makes mobile checkout the highest-value fix on the site.
+
+**Check the paths you did not define.** A funnel assumes a sequence. Real users skip steps, loop back, and leave and return. The [Journeys report](/features/user-journeys) shows the actual paths through the site, so you can work backward from a conversion to see what successful users did, or forward from a landing page to see where people actually go.
+
+![Rybbit's journeys report showing the paths users take before converting](/blog/rybbit_journey_dashboard.webp)
+
+## Reading the patterns
+
+**A steep drop at one step.** Something specific is wrong there: a confusing form, a bug, a slow page, an unexpected cost, a trust gap at payment, or a broken mobile layout. Watch replays of sessions that dropped at that step; the cause is usually visible within ten recordings.
+
+**Gradual erosion at every step.** No single step looks terrible, but 30–40% leaks at each one add up. This usually means the value proposition is unclear or the traffic is poorly matched to the offer. Fix the message and the targeting before the UI.
+
+**Segments that disagree.** Organic converts and paid does not; new visitors convert and returning ones do not; one country lags the rest. Each of these points at a specific audience or campaign rather than the funnel itself.
+
+**A drop that appeared on a date.** Line the funnel up against your deploys and campaigns. A step that lost 20% overnight is a regression, not a design problem.
+
+## Fixing the leaks
+
+- **Reduce friction.** Every field, step, and second of load time costs conversions. Remove fields you do not need, merge steps, and measure page speed at the leaky step.
+- **Build trust where money changes hands.** Security badges, transparent pricing, a clear privacy policy, and recognizable payment options matter most at checkout.
+- **Say what happens next.** Progress indicators and a preview of the following step reduce abandonment from uncertainty.
+- **Fix mobile first if mobile is worse.** It is usually where the largest gap is.
+- **Address the objection at the step where it appears.** High price: show value. Long commitment: offer a trial. Confusing process: add one sentence of explanation.
+- **Change one thing and re-measure.** Compare the funnel before and after, on the same segment, over the same window. If you change three things at once you will not know which one worked.
+
+## Typical funnel conversion rates
+
+Ranges vary enormously by industry and traffic quality, so use them to sanity-check, not to grade yourself:
+
+| Funnel type | Typical path | Typical overall conversion | Usual weak point |
+|---|---|---|---|
+| Ecommerce | product → cart → checkout → payment | 1–5% | payment step, mobile checkout |
+| SaaS signup | landing → form → verify email → first action | 5–30% | form abandonment, email verification |
+| Lead generation | landing → form → thank-you | 10–40% | forms that ask too much |
+| Content download | post → CTA → form → confirmation | 5–20% | unclear value of the download |
+
+For ecommerce specifically, the [ecommerce analytics guide](/blog/ecommerce-analytics) goes deeper on the metrics behind each step.
+
+## Funnel analysis tools
+
+Most analytics products can build a funnel; they differ in how much setup they need and what you can do with a leaky step once you find it.
+
+- **Rybbit** defines steps from paths, events, or autocaptured clicks and forms, filters by any dimension, and links each step to session replays. Open source and self-hostable.
+- **Google Analytics 4** builds funnels in Explorations. Powerful, but every step must be an event you configured in advance, and the interface is the hardest of the group to learn.
+- **PostHog, Mixpanel, and Amplitude** are product-analytics suites with deep funnel tooling, including strict ordering and conversion-time analysis. They assume an instrumented product and event schema.
+- **Matomo** offers funnels as a paid plugin on self-hosted installs and as part of its cloud plans.
+
+If you already track pageviews and a handful of events, you can build your first funnel in any of these in an afternoon. Pick the one whose data you already have.
+
+## Getting started
+
+1. Define the one conversion that matters most.
+2. Map three to five steps backward from it.
+3. Build the funnel and note the overall conversion rate and the biggest drop.
+4. Segment by device and channel to see whether the drop is universal.
+5. Watch a few replays at the leaky step.
+6. Change one thing, wait a week or two, and compare.
+7. Repeat.
+
+Most sites do not need more traffic to grow. They need to convert more of the traffic they already have, and funnel analysis is how you find out where that traffic is going.
+
+---
+
+**Related reading:**
+- [Funnels documentation](/docs/funnels), [Goals](/docs/goals), and [Journeys](/docs/feature-guides/journeys)
+- [Retention Analysis: How to Measure and Improve User Retention](/blog/retention-analysis)
+- [What Is Bounce Rate? How to Calculate and Reduce It](/blog/bounce-rate)
+- [What Is Multivariate Testing?](/blog/multivariate-testing)
+- [Best Marketing Attribution Tools](/blog/marketing-attribution-tools)

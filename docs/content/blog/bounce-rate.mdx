@@ -1,7 +1,8 @@
 ---
-title: How to Calculate Bounce Rate with Rybbit Analytics
-description: Calculating Bounce Rate with Rybbit Analytics
+title: "What Is Bounce Rate? How to Calculate and Reduce It"
+description: "Bounce rate is the share of sessions that view one page and leave. Learn how it's calculated, what a good bounce rate looks like, and how to lower yours."
 date: 2025-11-21
+updated: 2026-09-13
 tags: ['analytics', 'metrics']
 author: Rybbit Team
 ---
@@ -10,7 +11,7 @@ Bounce rate measures the percentage of visitors who leave your site after viewin
 
 ## Understanding Bounce Rate
 
-A bounce happens when someone lands on your site and leaves without clicking anywhere else. That's it. The bounce rate is just the percentage of these single-page sessions compared to total sessions. To understand bounce rate in the broader context of [web analytics](/blog/what-is-web-analytics), it's one of the most fundamental metrics you'll track.
+A bounce happens when someone lands on your site and leaves without clicking anywhere else. That's it. The bounce rate is just the percentage of these single-page sessions compared to total sessions (the [bounce rate calculator](/tools/bounce-rate-calculator) does the division for you). To understand bounce rate in the broader context of [web analytics](/blog/what-is-web-analytics), it's one of the most fundamental metrics you'll track.
 
 High bounce rates aren't always terrible. Someone might read your entire 2,000-word guide, get their answer, and close the tab feeling satisfied. But if users hit your homepage and immediately leave? That signals a real problem.
 
@@ -22,14 +23,14 @@ Once you've added the Rybbit tracking script (takes about five minutes), bounce 
 
 Log into [app.rybbit.io](https://app.rybbit.io) and select your website from the list.
 
-<img src="/blog/rybbit_dashboard.jpeg" alt="Rybbit's dashboard" />
+![Rybbit's dashboard](/blog/rybbit_dashboard.webp)
 
 
 ### Main Metrics View
 
 Your bounce rate sits right on the main dashboard next to:
 - Unique Users
-- [Sessions](/docs/behavior-analytics/sessions) (see our [sessions guide](/docs/behavior-analytics/sessions) for deeper analysis)
+- [Sessions](/docs/feature-guides/sessions) (see our [sessions guide](/docs/feature-guides/sessions) for deeper analysis)
 - Pageviews
 - Pages Per Session
 - Session Duration
@@ -46,7 +47,7 @@ Bounce Rate = (Single-Page Sessions ÷ Total Sessions) × 100
 
 **Real example:** You had 1,000 sessions yesterday. 350 were single-page visits. Your bounce rate: 35%.
 
-For more on session behavior and user engagement patterns, see our [Sessions Tab Guide](/docs/behavior-analytics/sessions), [Churn Rate vs Retention Rate article](/blog/churn-rate-vs-retention-rate), and [Website Traffic Drop Analysis](/blog/website-traffic-drop).
+For more on session behavior and user engagement patterns, see our [Sessions Tab Guide](/docs/feature-guides/sessions), [Churn Rate vs Retention Rate article](/blog/retention-analysis), and [Website Traffic Drop Analysis](/blog/website-traffic-drop).
 
 ## Segmenting Your Data
 
@@ -61,7 +62,7 @@ Click "Referrer" or "UTM Source" to compare channels:
 - **Direct Traffic:** Performance from bookmarks and typed URLs
 - **Paid Campaigns:** Getting ROI from paid traffic?
 
-<img src="/blog/rybbit_dashboard_with_referrer.jpeg" alt="Rybbit's dashboard with Google as Referrer" />
+![Rybbit's dashboard with Google as Referrer](/blog/rybbit_dashboard_with_referrer.webp)
 
 ### Device Breakdown
 
@@ -69,7 +70,7 @@ Mobile users behave differently than desktop users. Filter by device type:
 - Desktop
 - Mobile
 
-<img src="/blog/rybbit_dashboard_with_mobile.jpeg" alt="Rybbit's dashboard with Mobile as Traffic Source" />
+![Rybbit's dashboard with Mobile as Traffic Source](/blog/rybbit_dashboard_with_mobile.webp)
 
 If mobile bounce rates run significantly higher, your mobile experience needs work.
 
@@ -77,7 +78,7 @@ If mobile bounce rates run significantly higher, your mobile experience needs wo
 
 The Location Filter shows bounce rates by country, region, and city. Useful for spotting regional issues or informing localization choices.
 
-<img src="/blog/rybbit_dashboard_with_geography_filter.jpeg" alt="Rybbit's dashboard with Germany as selected country" />
+![Rybbit's dashboard with Germany as selected country](/blog/rybbit_dashboard_with_geography_filter.webp)
 
 ### Advanced Filtering Options
 
@@ -86,11 +87,11 @@ Rybbit offers 15+ dimensions for detailed segmentation:
 - Operating System
 - Screen Resolution
 - Language
-- UTM parameters (Campaign, Medium, Term, Content)
+- [UTM parameters](/tools/utm-builder) (Campaign, Medium, Term, Content)
 
 You can easily select the right filter at the top of the page of your main dashboard
 
-<img src="/blog/rybbit_dashboard_with_filters.jpeg" alt="Rybbit's dashboard with Filters tab" />
+![Rybbit's dashboard with Filters tab](/blog/rybbit_dashboard_with_filters.webp)
 
 ## Real-Time Monitoring
 
@@ -114,7 +115,7 @@ Pick your date range from the top of your dashboard:
 - Last 90 days
 - Custom date range
 
-<img src="/blog/rybbit_dashboard_with_bounce_rate_history.jpeg" alt="Rybbit's dashboard with bounce rate history" />
+![Rybbit's dashboard with bounce rate history](/blog/rybbit_dashboard_with_bounce_rate_history.webp)
 
 ### Pattern Recognition
 
@@ -131,20 +132,20 @@ The bounce rate graph shows you what's happening over time. Watch for:
 3. Map your steps (Landing Page → Product Page → Cart → Checkout)
 4. Analyze drop-off rates
 
-Your first step drop-off equals your bounce rate for that entry point. For a comprehensive guide on using funnels to measure conversions, see our [sales funnel measurement guide](/blog/what-is-sales-funnel-rybbit).
+Your first step drop-off equals your bounce rate for that entry point. For a comprehensive guide on using funnels to measure conversions, see our [sales funnel measurement guide](/blog/funnel-analysis).
 
 ## Core Web Vitals Monitoring
 
-Page performance impacts bounce rate. Rybbit automatically measures Core Web Vitals:
+Page performance impacts bounce rate. Rybbit automatically measures [Core Web Vitals](/features/web-vitals):
 - **LCP (Largest Contentful Paint):** How fast the main content loads
 - **FID (First Input Delay):** How quickly the page responds to interactions
 - **CLS (Cumulative Layout Shift):** Visual stability during loading
 
-<img src="/blog/rybbit_metrics.jpeg" alt="Rybbit's dashboard with metrics" />
+![Rybbit's dashboard with metrics](/blog/rybbit_metrics.webp)
 
 Poor scores here often match high bounce rates.
 
-# Actionable Ways to Reduce Bounce Rate
+## Actionable Ways to Reduce Bounce Rate
 
 Now that you know how to track bounce rate, here's how to improve it:
 
@@ -158,7 +159,7 @@ Review referrer data, do landing pages deliver what traffic sources promise?
 High mobile bounce rates mean your mobile site needs attention now. If you need to understand how different devices are performing, check out our [e-commerce analytics guide](/blog/ecommerce-analytics) which covers device-specific optimization.
 
 ### 4. Clarify Next Steps
-Watch session replays to see if users understand where to go next. Session replays are invaluable for understanding [user behavior patterns](/docs/behavior-analytics/sessions) that metrics alone can't reveal.
+Watch [session replays](/features/session-replay) to see if users understand where to go next. Session replays are invaluable for understanding [user behavior patterns](/docs/feature-guides/sessions) that metrics alone can't reveal.
 
 ### 5. Match Content to Headlines
 Blog posts with high bounces often fail to deliver what titles promise.
@@ -198,7 +199,7 @@ What works:
 4. **Change testing:** Implement improvements and measure results
 5. **Privacy respect:** Get accurate data without invasive tracking
 
-Ready to start? Sign up free at [rybbit.io](https://rybbit.io) or explore the [live demo](https://demo.rybbit.com/81) featuring a real site handling millions of events annually.
+Ready to start? Sign up free at [rybbit.io](/) or explore the [live demo](https://demo.rybbit.com/81) featuring a real site handling millions of events annually.
 
 ---
 
@@ -207,6 +208,6 @@ Ready to start? Sign up free at [rybbit.io](https://rybbit.io) or explore the [l
 - [Self-Hosting Guide](/docs/self-hosting)
 - [Tracking Custom Events](/docs/track-events)
 - [Framework Integration Guides](/docs) (React, Next.js, Vue, plus 20+ frameworks)
-- [E-commerce Analytics Guide](/blog/ecommerce-analytics)
-- [What is Web Analytics](/blog/what-is-web-analytics)
-- [Sales Funnel Measurement](/blog/what-is-sales-funnel-rybbit)
+- [Ecommerce Analytics: The Metrics and Reports That Matter](/blog/ecommerce-analytics)
+- [What Is Web Analytics? A Complete Guide](/blog/what-is-web-analytics)
+- [Funnel Analysis: How to Find Where Users Drop Off](/blog/funnel-analysis)
