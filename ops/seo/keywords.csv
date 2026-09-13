@@ -18,9 +18,9 @@ unique visitors,glossary,informational,600,10,,/blog/unique-visitors,todo,
 what is engagement rate,glossary,informational,500,0,,/blog/what-is-engagement-rate,todo,link /tools/engagement-rate-calculator; don't compete with it
 analytics glossary,glossary,informational,350,4,,/docs/definitions,todo,seed is docs/content/docs/(docs)/definitions.mdx; expand it
 customer journey analytics,product-analytics-education,informational,3200,0,,/blog/customer-journey-analytics,todo,
-funnel analysis,product-analytics-education,informational,1200,14,,/blog/what-is-sales-funnel-rybbit,todo,retarget the existing sales-funnel post (plan: move to /blog/funnel-analysis with a redirect); PR #1196 did this but merged into a stale branch and never reached master
+funnel analysis,product-analytics-education,informational,1200,14,,/blog/funnel-analysis,live,reapplied from #1196 on 2026-09-28; the old sales-funnel and content-marketing-funnel posts 308 here
 cohort analysis,product-analytics-education,informational,2300,27,,/blog/cohort-analysis,todo,"KD 27, harder than the rest of the cluster"
-retention analysis,product-analytics-education,informational,500,13,,/blog/churn-rate-vs-retention-rate,todo,retarget the churn post (plan: /blog/retention-analysis with a redirect); same stranded #1196 change
+retention analysis,product-analytics-education,informational,500,13,,/blog/retention-analysis,live,reapplied from #1196 on 2026-09-28; the old churn-rate-vs-retention-rate post 308s here
 shopify analytics,platform-guides,informational,1500,0,,/blog/shopify-analytics,todo,searchers mean Shopify's native analytics; DR 45-53 blogs rank
 squarespace analytics,platform-guides,informational,450,0,,/blog/squarespace-analytics,todo,
 webflow analytics,platform-guides,informational,300,3,,/blog/webflow-analytics,todo,
@@ -117,15 +117,15 @@ google utm builder,quick-wins,commercial,3100,0,,/tools/utm-builder,live,
 javascript error tracking,quick-wins,commercial,,,,/features/error-tracking,live,"Quick win: GSC pos 24; phrase absent from the page, add to title and H1"
 analytics mcp server,mcp,commercial,,,,/blog/best-analytics-mcp-servers,live,post's primary keyword; the generic term is small per 2026-09-25 research
 github stars,existing-posts,informational,,,,/blog/5k-stars,live,"post's primary keyword; not in the Sep research, no volume data"
-churn rate vs retention rate,existing-posts,informational,,,,/blog/churn-rate-vs-retention-rate,live,"post's primary keyword; not in the Sep research, no volume data"
-content marketing funnel,existing-posts,informational,,,,/blog/content-marketing-funnel,live,"post's primary keyword; not in the Sep research, no volume data"
+churn rate vs retention rate,existing-posts,informational,,,,/blog/retention-analysis,skip,variant covered inside /blog/retention-analysis (post merged 2026-09-28); not a separate target
+content marketing funnel,existing-posts,informational,,,,/blog/funnel-analysis,skip,post removed 2026-09-28 (#1196 reapply) and 308s to /blog/funnel-analysis; not a Rybbit buyer query
 ecommerce analytics,existing-posts,informational,,,,/blog/ecommerce-analytics,live,"post's primary keyword; not in the Sep research, no volume data"
 geographic segmentation,existing-posts,informational,,,,/blog/geographic-segmentation,live,"post's primary keyword; not in the Sep research, no volume data"
 marketing attribution tools,existing-posts,commercial,,,,/blog/marketing-attribution-tools,live,"GSC: 400 impr at pos 56, 0 clicks (2026-08-28..09-26); pruning candidate"
 multivariate testing,existing-posts,informational,,,,/blog/multivariate-testing,live,"post's primary keyword; not in the Sep research, no volume data"
-onyx ai,existing-posts,informational,,,,/blog/onyx-ai-knowledge-platform,live,off-topic for Rybbit's buyers; pruning candidate
+onyx ai,existing-posts,informational,,,,,skip,off-topic post removed 2026-09-28 (#1196 reapply); 308s to /blog
 website traffic drop,existing-posts,informational,,,,/blog/website-traffic-drop,live,"post's primary keyword; not in the Sep research, no volume data"
-sales funnel,existing-posts,informational,,,,/blog/what-is-sales-funnel-rybbit,live,"post's primary keyword; not in the Sep research, no volume data"
+sales funnel,existing-posts,informational,,,,/blog/funnel-analysis,skip,"variant folded into /blog/funnel-analysis (post merged 2026-09-28); that post targets ""funnel analysis"""
 what is web analytics,existing-posts,informational,,,,/blog/what-is-web-analytics,live,"post's primary keyword; not in the Sep research, no volume data"
 utm builder,skip,commercial,13000,75,,,skip,Google's own tool owns it
 website traffic checker,skip,commercial,16000,3,,,skip,SERP is estimator tools needing third-party data

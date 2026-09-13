@@ -103,7 +103,7 @@ Real sentences from existing posts, rewritten to the rules above.
 
 What changed: "actionable insights" became three named questions, each backed by a real feature (channels, [funnels](/features/funnels), [Web Vitals](/features/web-vitals)); "respecting privacy" became the concrete consequence.
 
-**2. Negative parallelism and a benefit tail** (`content-marketing-funnel.mdx:497`)
+**2. Negative parallelism and a benefit tail** (`content-marketing-funnel.mdx:497`, a post removed on 2026-09-28)
 
 > Before: Your content marketing isn't just about traffic. It's about building a machine that turns awareness into customers. Rybbit helps you see how that machine is performing and provides the data you need to improve it at every stage.
 
