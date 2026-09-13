@@ -84,6 +84,11 @@ const config = {
       ['/blog/real-time-reports', '/features/web-analytics'],
       ['/blog/cross-site-tracking', '/features/web-analytics'],
       ['/blog/user-flow-examples-2025', '/features/user-journeys'],
+      // 2026-09 blog cleanup: two posts merged into keyword-targeted guides, two removed.
+      ['/blog/churn-rate-vs-retention-rate', '/blog/retention-analysis'],
+      ['/blog/what-is-sales-funnel-rybbit', '/blog/funnel-analysis'],
+      ['/blog/content-marketing-funnel', '/blog/funnel-analysis'],
+      ['/blog/onyx-ai-knowledge-platform', '/blog'],
     ];
     return [
       ...retiredSlugs.map(slug => ({

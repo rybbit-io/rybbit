@@ -1,0 +1,157 @@
+---
+title: "Retention Analysis: How to Measure and Improve User Retention"
+description: "A practical guide to retention analysis: cohort retention curves, churn rate vs retention rate, the metrics that matter, and how to act on what you find."
+date: 2025-11-22
+updated: 2026-09-13
+tags: ['analytics', 'metrics', 'product', 'retention']
+author: Rybbit Team
+---
+
+Retention analysis answers one question: of the people who showed up, how many came back? It is the most honest measure of whether a product delivers value, because acquisition can be bought and retention cannot.
+
+This guide covers what retention analysis is, how retention rate and churn rate relate, the three ways to measure retention (and when to use each), what a healthy retention curve looks like, and how to run the analysis in [Rybbit](/features/retention).
+
+## What is retention analysis?
+
+Retention analysis groups users by when they first arrived, then tracks what share of each group is still active after a day, a week, a month, and so on. The output is a retention curve: a line that starts at 100% and falls over time.
+
+Two things make it more useful than a single "active users" number:
+
+- **It separates new users from old ones.** A flat total can hide a product that loses most new signups while a loyal base holds the line.
+- **It is comparable.** Users who joined in March can be compared with users who joined in June at the same point in their lifecycle, which is how you find out whether a change actually helped.
+
+## Retention rate vs churn rate
+
+Retention rate and churn rate describe the same thing from opposite sides.
+
+```
+Churn rate     = (customers lost during period / customers at start of period) × 100
+Retention rate = (customers at end of period   / customers at start of period) × 100
+Retention rate = 100 − churn rate
+```
+
+If you start a month with 100 customers and 5 leave, churn is 5% and retention is 95%. Same data, different story:
+
+- **Churn focuses on loss.** Finance teams care about it because it sits in the denominator of lifetime value, payback period, and every growth projection. Moving monthly churn from 5% to 4% makes the business roughly 25% more valuable.
+- **Retention focuses on success.** Product teams care about it because it is the leading indicator of product-market fit. If retention climbs, users are finding value.
+
+The trap is that retention *sounds* better. "90% monthly retention" and "10% monthly churn" are the same number, and both mean about 72% of your customers are gone within a year, because the loss compounds:
+
+- 5% monthly churn ≈ 46% annual churn
+- 3% monthly churn ≈ 31% annual churn
+- 1% monthly churn ≈ 11% annual churn
+
+Track both. Use churn when you are talking about sustainability and use retention when you are talking about product decisions.
+
+## Three ways to measure retention
+
+### 1. Period retention
+
+The simplest version: what share of the customers you had at the start of a period were still there at the end. It is easy to explain to stakeholders and fine for month-over-month reporting, but it mixes brand-new customers with ten-year veterans, so it tells you little about *why* the number moved.
+
+### 2. Cohort retention
+
+The standard for product work. Group users by their first visit or signup date, then measure what percentage of each cohort is still active after 1, 7, 30, and 90 days.
+
+| Cohort   | Day 1 | Day 7 | Day 30 | Day 90 |
+|----------|-------|-------|--------|--------|
+| January  | 95%   | 85%   | 75%    | 60%    |
+| February | 92%   | 82%   | 72%    | 58%    |
+| March    | 94%   | 84%   | 74%    | 62%    |
+| April    | 93%   | 83%   | 73%    | 61%    |
+
+This table says far more than "our retention is 75%". Day-1 retention is stable, so onboarding is not the problem. Day-30 is stable, so the product delivers enough value to keep people a month. Day-90 is creeping up, so the recent changes are working for the long tail.
+
+### 3. Rolling-window retention
+
+For subscription businesses that want a live signal instead of a month-end report: what share of the customers who were active 30 days ago are still active today. If 100 customers were paying 30 days ago and 90 still are, rolling 30-day retention is 90%.
+
+## Decide what "retained" means before you measure
+
+Retention analysis is only as good as its definition of activity. Pick one per product and keep it stable:
+
+- **A return visit** works for content sites and most websites. It is what a web analytics tool measures by default.
+- **A key action** (created a project, sent a message, placed a second order) works better for products where a visit without the action is not really retention.
+- **A renewal** is the right definition for subscriptions, but it lags by a billing cycle, so pair it with an engagement signal that moves faster.
+
+Also decide whether a user counts as retained on Day 30 only if they were active *on* day 30 (bounded) or if they were active at any point *after* day 30 (unbounded). Bounded curves are lower and noisier; unbounded curves are smoother and more common in product analytics tools. Either is fine as long as you compare like with like.
+
+## What a good retention rate looks like
+
+Benchmarks vary widely by business model. Treat these as rough ranges, not targets:
+
+**B2B SaaS.** Monthly churn of 3–5% is acceptable, 1–3% is good, under 1% is great. Most healthy B2B products aim for monthly churn under 2%.
+
+**B2C and free-to-paid.** Monthly churn of 5–10% is acceptable, 2–5% is good, under 2% is great. Consumers try more and cancel more; that is normal.
+
+**Freemium.** The number that matters is whether activated users are being retained, not whether every free signup is. Free users who never reach the core action will always churn at very high rates.
+
+The more useful benchmark is your own history. A retention curve that flattens is the signal to look for: it means some share of each cohort has found a durable reason to stay. A curve that keeps sliding toward zero means the product is being tried, not adopted.
+
+## How to read a retention curve
+
+Three shapes cover most cases:
+
+- **Cliff then flat.** A sharp drop in the first few days followed by a plateau. Onboarding loses people, but the ones who get through stay. Fix time-to-value.
+- **Steady slide.** No plateau; every cohort drifts toward zero. The product is not delivering lasting value, or the wrong users are being acquired. Fix the core loop before spending on acquisition.
+- **Curves that separate by cohort.** Newer cohorts sit above older ones at the same age: your changes are working. Newer cohorts sit below: something regressed, or a marketing push brought in poorer-fit users.
+
+Then segment. Retention by acquisition channel, device, country, and plan almost always reveals one group that is dragging the average down, and that group is the cheapest place to start.
+
+## Running retention analysis in Rybbit
+
+Rybbit builds cohorts automatically from each user's first visit, so there is nothing to configure before you can look at the data.
+
+![Rybbit's retention report showing cohort retention over time](/blog/rybbit_retention_dashboard.webp)
+
+**Read the cohort table.** The [Retention report](/features/retention) lists one row per cohort (grouped by first visit date) and one column per period. Each cell shows the percentage of the cohort that came back, with color coding so the plateau, or the cliff, is visible at a glance.
+
+**Segment the curve.** Every filter in Rybbit applies to retention too. Compare organic search against paid social, mobile against desktop, or one country against another. Save the comparisons you keep coming back to as [segments](/docs/segments) so the whole team looks at the same slices.
+
+**Define retention by action, not just by visit.** Track the moments that matter as [custom events](/features/custom-events): first project created, first report shared, subscription renewed. Then look at which cohorts reach those milestones and how their retention differs from cohorts that did not.
+
+**Find out what retained users did differently.** The [Journeys report](/features/user-journeys) shows the paths users take through your site. Work backward from your key action to see which sequences precede it, and forward from your landing pages to see where new users go instead.
+
+![Rybbit's journeys report showing the paths users take](/blog/rybbit_journey_dashboard.webp)
+
+**Check the onboarding leak.** If day-1 retention is the problem, build the signup-to-first-value flow as a [funnel](/features/funnels) and see which step loses people. The [funnel analysis guide](/blog/funnel-analysis) walks through it.
+
+**Watch individual users when the numbers do not explain themselves.** [User profiles](/features/user-profiles) and [session replay](/features/session-replay) show what a churned user actually did in their last few sessions, which is often faster than another dashboard.
+
+## How to improve retention
+
+Knowing the rate is half the job. These are the changes that move it, roughly in order of payoff:
+
+1. **Shorten time-to-value.** Most churn happens in the first 30 days, and most of that happens before the user reaches the core action. Cut every step between signup and that action, and measure how long it takes.
+2. **Segment at-risk users.** Users whose sessions get shorter and less frequent are telling you something before they leave. Give them a different email, a support check-in, or a walkthrough of the feature they have not found.
+3. **Talk to churned users.** The data says *that* they left. A two-question cancellation survey or five interviews will tell you *why*, and the answer is often a messaging problem that costs nothing to fix.
+4. **Invest in the features retained users rely on.** Compare feature usage between users who stayed and users who churned. Ship more of what the first group uses and less of everything else.
+5. **Answer support faster.** Response time correlates with retention in almost every product. Measure whether users who got help within an hour retain better than users who waited a day.
+6. **Fix pricing that attracts the wrong customers.** Churn by plan tier usually shows one tier bleeding. Either improve fit for that tier or reprice so it attracts more committed buyers.
+7. **Set a target and a cadence.** "Cut monthly churn from 5% to 3% this year" produces different decisions than a dashboard nobody owns. Review the cohort table monthly, change one thing, and check whether the newest cohort moved.
+
+### The retention funnel
+
+Retention has stages, and each fails for a different reason:
+
+1. **Day 1:** did they experience value? (onboarding)
+2. **Day 7:** did they come back? (habit)
+3. **Day 30:** are they using the core features? (product fit)
+4. **Day 90:** are they engaged enough to upgrade or recommend you? (expansion)
+
+If day-1 retention is 50%, fix onboarding. If day-1 is 90% but day-30 is 40%, the product is not delivering lasting value. If day-30 is 80% but day-90 is 60%, you are losing long-term engagement. Measure each stage and fix the biggest leak first.
+
+## The bottom line
+
+Churn rate and retention rate are two views of the same number. Use churn to talk about sustainability and retention to talk about product decisions, and track both by cohort rather than as a single monthly figure. Segment by channel, device, and plan to find the group that is dragging the curve down, change one thing, and check the next cohort.
+
+A business does not scale on acquisition alone. It scales by finding the right users, delivering value quickly, and keeping them. Everything else is pouring water into a leaking bucket.
+
+---
+
+**Related reading:**
+- [Retention report guide](/docs/feature-guides/retention)
+- [Funnel Analysis: How to Find Where Users Drop Off](/blog/funnel-analysis)
+- [What Is Bounce Rate? How to Calculate and Reduce It](/blog/bounce-rate)
+- [Ecommerce Analytics: The Metrics and Reports That Matter](/blog/ecommerce-analytics)
+- [What Is Web Analytics? A Complete Guide](/blog/what-is-web-analytics)
