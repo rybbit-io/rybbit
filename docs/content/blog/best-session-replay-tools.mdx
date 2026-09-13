@@ -1,0 +1,205 @@
+---
+title: "10 Best Session Replay Tools in 2026 (Free & Open Source)"
+description: "Compare 10 session replay tools for 2026: free options like Clarity, open source picks like Rybbit and OpenReplay, plus verified prices and limits."
+date: 2026-09-13
+tags: ["session replay", "comparisons", "tools"]
+author: Rybbit Team
+---
+
+Session replay tools record what a visitor does on your site (clicks, scrolls, page changes, masked typing) and let you watch it back like a video. This guide compares ten of them on price, limits, privacy defaults, and whether you can run them on your own servers.
+
+Disclosure up front: we build [Rybbit](https://rybbit.com), one of the tools on this list. Every claim about the other nine comes from that vendor's own pricing or documentation pages, linked inline and checked in September 2026. Where a vendor doesn't publish a number, we say so rather than guess.
+
+## Quick comparison
+
+| Tool | Best for | Free tier | Starting price (Sept 2026) | Self-host | Open source |
+| --- | --- | --- | --- | --- | --- |
+| [Rybbit](#rybbit) | Replay inside privacy-first analytics | No (7-day trial) | Pro from $39/mo (not on Standard) | Yes, free | Yes, AGPL-3.0 |
+| [Microsoft Clarity](#microsoft-clarity) | Free, unlimited recordings | Yes, unlimited | $0 | No | No |
+| [Hotjar / Contentsquare](#hotjar-contentsquare) | Heatmaps, replay and surveys | Yes, 10k replays/mo | Growth from $49/mo | No | No |
+| [FullStory](#fullstory) | Enterprise experience analytics | Yes, 30k sessions/mo | Quote only | No | No |
+| [LogRocket](#logrocket) | Front-end debugging | No (14-day trial) | From $176/mo (25k sessions) | Enterprise only | No |
+| [PostHog](#posthog) | Product analytics suite | Yes, 5k recordings/mo | $0.005 per recording after | Yes, with caveats | Yes, MIT core |
+| [OpenReplay](#openreplay) | Self-hosted replay for developers | Self-hosted only | Cloud from $199/mo | Yes, free | Yes, AGPL-3.0 core |
+| [Lucky Orange](#lucky-orange) | Small-business CRO bundle | No (7-day trial) | $39/mo (3,500 sessions) | No | No |
+| [Mouseflow](#mouseflow) | Friction and form analytics | Yes, 500 sessions/mo | $25/mo (5,000 sessions) | No | No |
+| [Sentry Session Replay](#sentry-session-replay) | Replay attached to errors | Yes, 50 replays/mo | Team $26/mo plus usage | Yes | Fair Source (FSL) |
+
+## How to choose a session replay tool
+
+**Privacy controls.** What is masked *before* data leaves the browser, and is that the default? Sentry masks all text, inputs and media unless you loosen it. Clarity masks numbers, emails and every input box. PostHog and Rybbit mask input values by default but show page text unless you tag it. LogRocket only guarantees that passwords are never recorded.
+
+**Sampling and limits.** Vendors meter replay per session (Mouseflow, Lucky Orange, LogRocket), per recording (PostHog, Sentry), per event (Rybbit), or with a fixed replay cap separate from the session quota (Contentsquare). Retention runs from 30 days (Clarity, Rybbit cloud, Sentry's free plan) to 12 months (FullStory's free plan, Mouseflow Premium).
+
+**Bundled or standalone.** Replay is most useful next to the data that sent you there: a funnel drop-off, a JavaScript error, a rage-click. Rybbit, PostHog, Sentry and LogRocket bundle replay with analytics or error tracking; Clarity, Hotjar, Mouseflow and Lucky Orange pair it with heatmaps.
+
+**Self-hosting.** If recordings can't leave your infrastructure, the shortlist is Rybbit, OpenReplay, PostHog (with caveats) and Sentry. Everything else here is cloud only.
+
+**Cost at 100k sessions a month.** Starting prices hide the curve. This is what each tool's published pricing works out to at roughly 100,000 sessions or recordings a month, computed from the pages linked in each section:
+
+| Tool | Approximate monthly cost at 100k sessions |
+| --- | --- |
+| Rybbit | $39 to $99 on Pro (billed by events: 100k to 500k) |
+| Microsoft Clarity | $0 |
+| Hotjar / Contentsquare | $409 on Growth, but replays are capped at 20k |
+| FullStory | Quote only (the free plan stops at 30k sessions) |
+| LogRocket | Not published (25k sessions starts at $176) |
+| PostHog | About $272 (5k free, then tiered per recording) |
+| OpenReplay | $199 Dedicated, no recording limits |
+| Lucky Orange | $839 billed annually (Scale, the 300k tier) |
+| Mouseflow | $319 (Premium) |
+| Sentry | About $383 (Team plan plus pay-as-you-go replays) |
+
+## Rybbit
+
+[Rybbit](https://rybbit.com) is open-source, privacy-first web analytics with [session replay](/features/session-replay) built into the same dashboard as funnels, user journeys, error tracking, Web Vitals and user profiles. Replay records DOM mutations rather than video. You filter recordings by minimum duration, browser, device, country, referrer, channel or user ID, then press play; each replay carries a breadcrumb timeline of pages, clicks and custom events.
+
+![Rybbit's session replay view: the recordings list, the player, and the event timeline](/blog/best-session-replay-tools/rybbit-session-replay.webp)
+
+Replay is opt-in per site ([feature guide](/docs/feature-guides/session-replay)), all input values are masked by default, and the [script attributes](/docs/script) let you block elements entirely, ignore interactions on specific fields, or mask text by selector. The analytics side is cookieless, so there is no consent banner to lose visitors behind.
+
+The honest limits: on Rybbit Cloud, replay is a **Pro-plan feature**. Standard (from $19/month) doesn't include it; Pro starts at $39/month for 100k events, or $26/month billed annually, per the [pricing page](/pricing). Plans start with a 7-day trial (a card is collected at signup and not charged until the trial ends). Cloud replays are kept for 30 days. There are no heatmaps, and replay is web only; the [React Native SDK](/docs/sdks/react-native) tracks events but doesn't record screens. If you [self-host](/docs/self-hosting), everything including replay is free under AGPL-3.0 and you set your own retention.
+
+- **Pros:** replay, analytics, errors and funnels in one tool; inputs masked by default; no per-replay caps; free self-hosting with replay included
+- **Cons:** replay needs the Pro plan on cloud; 30-day cloud retention; no heatmaps; no native mobile replay
+- **Pricing (as of September 2026):** Standard from $19/month, Pro (with replay) from $39/month at 100k events; self-hosted free. Source: [rybbit.com/pricing](/pricing)
+
+## Microsoft Clarity
+
+[Clarity](https://clarity.microsoft.com) is what people mean by "free session replay". Microsoft's [FAQ](https://learn.microsoft.com/en-us/clarity/faq) says: "Clarity is a free service forever. You never encounter traffic limits or are compelled to upgrade to a paid version", with no sampling and no credit card. Recordings, heatmaps and ML insights are included, and there are [mobile SDKs](https://learn.microsoft.com/en-us/clarity/mobile-sdk/) for Android, iOS, React Native, Flutter and Cordova/Ionic.
+
+Recordings are kept for 30 days (favorites and a random sample stay up to 9 months). Data lives with Microsoft, with no self-hosted option. And the same FAQ notes that for visitors in the EEA, UK and Switzerland, "valid consent is required" to use recordings, and without it Clarity limits data collection in those regions.
+
+Masking defaults are sensible: [Balanced mode](https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-masking) masks numbers and email addresses, input boxes and drop-downs are masked in every mode, and Strict mode masks everything.
+
+- **Pros:** free with no traffic limits; no sampling; heatmaps and native mobile SDKs included
+- **Cons:** 30-day recording retention; consent required for EEA/UK/Swiss visitors; cloud only, hosted by Microsoft
+- **Pricing (as of September 2026):** $0, no paid tiers. Source: [Clarity FAQ](https://learn.microsoft.com/en-us/clarity/faq)
+
+## Hotjar (Contentsquare)
+
+Hotjar no longer exists as a separate product. [Contentsquare's Hotjar page](https://contentsquare.com/hotjar/) says the two platforms "have merged into a single, more powerful experience intelligence platform", and hotjar.com/pricing now redirects to [contentsquare.com/pricing](https://contentsquare.com/pricing/). New signups get Contentsquare's Free, Growth, Pro and Enterprise plans.
+
+Free gives 200,000 monthly sessions, unlimited heatmaps, basic funnels and error monitoring, on 1 project. The catch is that replay is a separate, fixed allowance of 10,000 captures a month, which the pricing page says "can't be increased". Growth starts at $49/month for 7,000 sessions and 7,000 replays and reaches $409/month at 100,000 sessions, but the replay cap tops out at 20,000 on every Growth tier. Growth keeps session data for 13 months and replays for 2 months; Contentsquare's [free-plan post](https://contentsquare.com/blog/contentsquare-free-plan/) lists 1 month of retention on Free. Annual billing takes 20% off.
+
+Privacy defaults carry over from Hotjar: keystrokes are suppressed by default and replaced with asterisks, and you add `data-hj-allow` to fields you want captured, per the [Hotjar help center](https://help.hotjar.com/hc/en-us/articles/36820034730641-How-to-Show-Elements-and-Keystrokes-in-Data-Collection). Contentsquare describes Experience Analytics as covering "sites and mobile apps". There is no self-hosted edition.
+
+- **Pros:** generous free session quota; heatmaps, surveys and replay together; 15-day Growth trial without a card
+- **Cons:** replay allowance is fixed and small relative to sessions; 2-month replay retention on Growth; cloud only
+- **Pricing (as of September 2026):** Free (200k sessions, 10k replays); Growth from $49/month. Source: [contentsquare.com/pricing](https://contentsquare.com/pricing/)
+
+## FullStory
+
+[FullStory](https://www.fullstory.com) is the enterprise option: replay plus product analytics, funnels and retroactive data history. The paid tiers (Business, Advanced, Enterprise) have no published prices; each reads "Request pricing & demo" on the [pricing page](https://www.fullstory.com/pricing/). Mobile analytics is an add-on on paid plans.
+
+What is published is the free plan: FullstoryFree gives "30,000 sessions per month" with "12 months of data retention" for up to 10 users, no credit card required.
+
+Privacy is chosen at setup from three modes: Full Capture, Form Privacy, and [Private by Default](https://help.fullstory.com/hc/en-us/articles/360044349073), under which "no text is captured or sent outside the user's browser unless it is explicitly allowlisted as safe to capture".
+
+- **Pros:** 30k free sessions with 12-month retention; strong privacy mode; mature enterprise analytics
+- **Cons:** no public pricing above the free plan; cloud only; mobile is an add-on
+- **Pricing (as of September 2026):** Free (30k sessions/month); paid plans by quote. Source: [fullstory.com/pricing](https://www.fullstory.com/pricing/)
+
+## LogRocket
+
+[LogRocket](https://logrocket.com) is replay for engineers. Recordings include console logs, network requests and exceptions, and the [mobile SDKs](https://logrocket.com/products/mobile) cover Android, iOS, React Native, Flutter, Ionic and Expo. Analytics, error and log events are unlimited on every plan; you pay for sessions captured.
+
+The [pricing page](https://logrocket.com/pricing) lists no permanent free plan, only a 14-day trial, and the calculator starts at 25,000 sessions a month for "Starting at $176/mo". A Conditional Recording option captures roughly a quarter of sessions, and Pro features are "included free above 100K sessions/mo". Self-hosting is an Enterprise option for regulated industries.
+
+On privacy, LogRocket's [documentation](https://docs.logrocket.com/docs/privacy) states that password fields are never recorded; masking anything else uses a `data-private` attribute or the SDK's sanitizers, so the safe default is your responsibility.
+
+- **Pros:** deep debugging context per session; broad mobile coverage; unlimited non-session events
+- **Cons:** no free plan; $176/month entry point; masking beyond passwords is opt-in; self-host is Enterprise only
+- **Pricing (as of September 2026):** from $176/month for 25k sessions, 14-day trial. Source: [logrocket.com/pricing](https://logrocket.com/pricing)
+
+## PostHog
+
+[PostHog](https://posthog.com) bundles replay with product analytics, feature flags, experiments and surveys on usage-based pricing. The [replay pricing page](https://posthog.com/docs/session-replay/pricing) gives 5,000 web recordings and 2,500 mobile recordings free every month, no card required, then charges $0.0050 per web recording from 5k to 15k, falling to $0.0015 above 500k. Mobile recordings cost $0.0100 each on the first paid tier.
+
+Retention follows your plan: [up to 30 days](https://posthog.com/docs/session-replay/data-retention) free and up to 90 days on pay-as-you-go. Inputs are [masked by default](https://posthog.com/docs/session-replay/privacy); page text isn't, and you mask it with `maskTextSelector` or `maskTextFn`.
+
+The core is MIT-licensed with a one-command "hobby" Docker Compose deployment, but PostHog's [self-host page](https://posthog.com/docs/self-host) calls self-hosted deployments "officially unsupported" and steers anyone expecting more than roughly 300k events or 1k recordings a month to PostHog Cloud. We compare the two products further in [Rybbit vs PostHog](/compare/posthog).
+
+- **Pros:** real free tier renewed monthly; replay next to funnels, flags and experiments; transparent volume pricing
+- **Cons:** breadth brings complexity; self-hosting is unsupported and not meant for scale; page text unmasked by default
+- **Pricing (as of September 2026):** 5,000 web recordings free per month, then from $0.005 per recording. Source: [posthog.com/docs/session-replay/pricing](https://posthog.com/docs/session-replay/pricing)
+
+## OpenReplay
+
+[OpenReplay](https://openreplay.com) is the self-hosting purist's replay tool. The core is AGPL-3.0 (an `ee/` directory carries a separate license, per the [repository](https://github.com/openreplay/openreplay/blob/main/LICENSE)), and the [pricing page](https://openreplay.com/pricing.html) says "Open-Source is free — you host it on your own infrastructure". It is aimed squarely at developers, with [iOS and Android SDKs](https://docs.openreplay.com/en/ios-sdk/sanitization/).
+
+The cloud option is a single "Dedicated" plan: "Starting from $199/mo", billed hourly at $0.276, a dedicated VM in its own VPC "with no limits on users, recordings, or retention", with a 7-day trial and no card. Enterprise is custom.
+
+Self-hosting asks for at least 2 vCPUs, 8 GB of RAM and 50 GB of storage per the [Docker guide](https://docs.openreplay.com/en/deployment/deploy-docker/). Privacy defaults are good: inputs are obscured by default, emails are obscured in inputs and text, and the [docs](https://docs.openreplay.com/en/sdk/sanitize-data/) note that obscured data "will never leave the user's browser". Numbers in text are not obscured unless you turn that on.
+
+- **Pros:** free open-source self-hosting with no recording limits; developer-grade context; strong default sanitization
+- **Cons:** cloud starts at $199/month; needs an 8 GB server at minimum; no shared cloud tier for small sites
+- **Pricing (as of September 2026):** self-hosted free; Dedicated cloud from $199/month. Source: [openreplay.com/pricing.html](https://openreplay.com/pricing.html)
+
+## Lucky Orange
+
+[Lucky Orange](https://www.luckyorange.com) is a conversion-optimization bundle for small businesses: recordings, heatmaps, funnels, surveys and an AI layer it calls Discovery, with unlimited team members on every plan. [Pricing](https://www.luckyorange.com/pricing) is by monthly sessions: Build is $39/month, or $32/month paid annually, for 3,500 sessions; Grow is $72/month paid annually for 10,000; Expand is $199/month paid annually ($249 monthly) for 50,000; Scale is $839/month paid annually ($1,049 monthly) for 300,000; Enterprise starts at 700,000. Extra sites cost $5 each.
+
+There is no free plan, only a 7-day trial with every feature. Base storage "starts at 60 days" with 90, 180 and 365-day upgrades. It is cloud only, and the pricing page doesn't mention native app recording.
+
+- **Pros:** affordable entry price with everything included; unlimited seats; surveys in the same tool
+- **Cons:** no free plan; 60-day base retention; large jump from the 50k to the 300k tier; cloud only
+- **Pricing (as of September 2026):** from $39/month ($32 billed annually) for 3,500 sessions. Source: [luckyorange.com/pricing](https://www.luckyorange.com/pricing)
+
+## Mouseflow
+
+[Mouseflow](https://mouseflow.com) offers replay and heatmaps, plus friction scoring, form analytics and journey analysis on higher tiers. The [pricing page](https://mouseflow.com/pricing/) is public and simple. Free is $0 for 500 sessions a month, 1 month of retention, 1 website. Essential is $25/month for 5,000 sessions and 3 months of retention. Advanced is $109/month for 25,000 sessions and 6 months. Premium is $319/month for 100,000 sessions and 12 months. Enterprise is custom. The page advertises up to 35% off for annual billing and a 14-day money-back guarantee, and all plans include unlimited users.
+
+Privacy defaults are conservative; Mouseflow's [help center](https://help.mouseflow.com/en/articles/9055379-mouseflow-and-the-privacy-of-the-website-visitors) says it does not record keystrokes by default, and you whitelist individual fields from the UI. It is cloud only, and the pricing page doesn't mention native app SDKs.
+
+- **Pros:** clear public pricing; 12-month retention on Premium; keystrokes excluded by default
+- **Cons:** the 500-session free plan is a demo, not a tier; cloud only; web only
+- **Pricing (as of September 2026):** Free (500 sessions); Essential $25/month for 5,000 sessions. Source: [mouseflow.com/pricing](https://mouseflow.com/pricing/)
+
+## Sentry Session Replay
+
+[Sentry](https://sentry.io) is error monitoring first, and its replay exists to show the seconds before an exception. The default setup in the [JavaScript docs](https://docs.sentry.io/platforms/javascript/session-replay/) records 10% of sessions and 100% of sessions with an error, and replay is [available](https://docs.sentry.io/product/explore/session-replay/) for web plus Android, iOS, React Native and Flutter.
+
+The free Developer plan (one user) and the paid Team ($26/month billed annually) and Business ($80/month billed annually) plans each include 50 replays a month on the [pricing page](https://sentry.io/pricing/). Beyond that you pay as you go; the [pricing docs](https://docs.sentry.io/pricing/) list Team replays at $0.00375 each up to 5k and $0.003563 each from 5k to 100k. Replays are [retained](https://docs.sentry.io/security-legal-pii/security/data-retention-periods/) for 30 days on Developer and 90 days on paid plans.
+
+Defaults are the strictest here: `maskAllText`, `maskAllInputs` and `blockAllMedia` are all `true` out of the box, per the [privacy docs](https://docs.sentry.io/platforms/javascript/session-replay/privacy/). Self-hosting exists under the Functional Source License, needs at least 4 CPU cores and 16 GB of RAM per the [self-hosted docs](https://develop.sentry.dev/self-hosted/), and has included replay since release 23.3.1 according to the project's [issue tracker](https://github.com/getsentry/self-hosted/issues/1873).
+
+- **Pros:** replay linked to the exact error; mask-everything defaults; sampling built in; self-hostable
+- **Cons:** 50 included replays; per-replay costs add up; built for debugging errors rather than UX research
+- **Pricing (as of September 2026):** Developer free (50 replays); Team $26/month billed annually plus $0.00375 per extra replay. Source: [sentry.io/pricing](https://sentry.io/pricing/)
+
+## Which one should you pick
+
+- **You want replay and web analytics in one privacy-first tool, or need to self-host without a giant server:** Rybbit.
+- **You have no budget and can live with 30-day retention and a consent banner in Europe:** Microsoft Clarity.
+- **You're a marketer who wants heatmaps, surveys and replay with a big free session quota:** Hotjar / Contentsquare.
+- **Your engineers want console logs and network calls next to every recording:** LogRocket, or Sentry Session Replay if you already use Sentry and only need replays for errored sessions.
+- **You want the widest product-analytics suite with a real free tier, and cloud hosting is fine:** PostHog.
+- **Recordings must never leave your infrastructure and you have a spare 8 GB box:** OpenReplay.
+- **You need 12 months of replay history at a published price:** Mouseflow Premium, or FullStory's free plan if 30k sessions is enough.
+
+One tool to skip: Smartlook. Its [homepage](https://www.smartlook.com/) now carries a Cisco end-of-life notice, with no new subscriptions since 31 May 2026, no renewals after 31 August 2026, and the platform decommissioned on 30 September 2027. If you already use Amplitude, its [pricing page](https://amplitude.com/pricing) lists 10,000 replay sessions a month on the free plan with 1 month of retention.
+
+For the analytics side of the decision, see our guides to the [best web analytics tools](/blog/best-web-analytics-tools) and the [best Google Analytics alternatives](/blog/best-google-analytics-alternatives).
+
+## FAQ
+
+### Is there a free session replay tool?
+
+Yes, several. Microsoft Clarity is free with no traffic limits. Contentsquare's Free plan includes 10,000 replay captures a month, PostHog gives 5,000 web recordings a month, and FullStory's free plan covers 30,000 sessions with 12-month retention. Rybbit and OpenReplay are free if you self-host; Rybbit Cloud has a 7-day trial rather than a free tier.
+
+### Is session replay software the same as session recording software?
+
+Yes. Vendors use "session recording", "session replay" and "visitor recordings" for the same thing: capturing DOM changes and interactions in the browser and reconstructing them for playback.
+
+### Is session replay GDPR compliant?
+
+It can be, but your configuration makes it so, not the tool. Mask inputs and personal text before data leaves the browser, record only with a lawful basis, honor consent where you rely on it, keep retention short, and sign a processing agreement with the vendor. Self-hosting (Rybbit, OpenReplay, PostHog, Sentry) removes the vendor-transfer question entirely.
+
+### Which session replay tools are open source?
+
+Rybbit (AGPL-3.0), OpenReplay (AGPL-3.0 core with a separately licensed `ee/` directory) and PostHog (MIT core) are open source and self-hostable. Sentry is source-available under the Functional Source License, which is not an OSI-approved open-source license.
+
+### Does session replay slow down a website?
+
+Modern tools record DOM mutations, not screenshots or video, and load their capture script asynchronously, so the effect on page load is small. Bandwidth on long, interaction-heavy sessions is the real cost, which is why tools offer sampling: Sentry defaults to 10% of sessions, and Rybbit's script attributes let you throttle mouse-move and scroll events and slim the recorded DOM.
