@@ -206,6 +206,7 @@ export default function Home() {
             onTagsUpdated={refetchSites}
             selectedTags={selectedTags}
             onTagClick={handleTagClick}
+            siteType={site.type}
           />
         );
       })}

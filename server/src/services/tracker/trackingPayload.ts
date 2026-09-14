@@ -23,6 +23,9 @@ const baseEventFields = {
   // (squareScreen = 2048) came to fail validation and drop the whole event.
   _bs: z.number().int().min(0).max(MAX_CLIENT_BOT_SCORE).optional(),
   _bsm: z.number().int().min(0).max(ALL_CLIENT_BOT_SIGNAL_BITS).optional(),
+  // Sent by native SDKs (rybbit-flutter and friends); browsers never set these.
+  app_version: z.string().max(50).optional(),
+  device_model: z.string().max(200).optional(),
 };
 
 // Default event_name and properties used by pageview and performance

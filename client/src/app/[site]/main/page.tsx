@@ -1,10 +1,12 @@
 "use client";
 import { ReactNode } from "react";
+import { useGetSite } from "../../../api/admin/hooks/useSites";
 import { useGetLiveUserCount } from "../../../api/analytics/hooks/useGetLiveUserCount";
 import { useInView } from "../../../hooks/useInView";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { IS_CLOUD, LITE_DASHBOARD } from "../../../lib/const";
 import { useStore } from "../../../lib/store";
+import { getMainPageFilters } from "../../../lib/filterGroups";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { MainSection } from "./components/MainSection/MainSection";
 import { MainSectionLite } from "./components/MainSection/MainSectionLite";
@@ -19,10 +21,18 @@ import { Referrers } from "./components/sections/Referrers";
 import { SearchConsole } from "./components/sections/SearchConsole";
 import { Weekdays } from "./components/sections/Weekdays";
 
-function LazySection({ children, height = "405px" }: { children: ReactNode; height?: string }) {
+function LazySection({
+  children,
+  height = "405px",
+  className,
+}: {
+  children: ReactNode;
+  height?: string;
+  className?: string;
+}) {
   const { ref, isInView } = useInView({ persistVisibility: true, rootMargin: "100px 0px" });
   return (
-    <div ref={ref} style={{ minHeight: isInView ? undefined : height }}>
+    <div ref={ref} className={className} style={{ minHeight: isInView ? undefined : height }}>
       {isInView ? children : null}
     </div>
   );
@@ -40,13 +50,15 @@ export default function MainPage() {
 
 function MainPageContent() {
   const { data } = useGetLiveUserCount(5);
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
 
   useSetPageTitle(`${data?.count ?? "…"} user${data?.count === 1 ? "" : "s"} online`);
 
   if (LITE_DASHBOARD) {
     return (
       <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
-        <SubHeader />
+        <SubHeader availableFilters={getMainPageFilters(isApp)} />
         <MainSectionLite />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
           <LazySection>
@@ -68,12 +80,14 @@ function MainPageContent() {
 
   return (
     <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
-      <SubHeader />
+      <SubHeader availableFilters={getMainPageFilters(isApp)} />
       <MainSection />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
-        <LazySection>
-          <Referrers />
-        </LazySection>
+        {!isApp && (
+          <LazySection>
+            <Referrers />
+          </LazySection>
+        )}
         <LazySection>
           <Pages />
         </LazySection>
@@ -86,10 +100,10 @@ function MainPageContent() {
         <LazySection height="394px">
           <Events />
         </LazySection>
-        <LazySection>
+        <LazySection className={isApp ? "lg:col-span-2" : undefined}>
           <Weekdays />
         </LazySection>
-        {IS_CLOUD && (
+        {IS_CLOUD && !isApp && (
           <LazySection>
             <SearchConsole />
           </LazySection>

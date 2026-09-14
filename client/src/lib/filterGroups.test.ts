@@ -2,6 +2,7 @@ import { FilterParameter } from "@rybbit/shared";
 import { describe, expect, it } from "vitest";
 import {
   EVENT_FILTERS,
+  getUserPageFilters,
   FUNNEL_PAGE_FILTERS,
   GOALS_PAGE_FILTERS,
   JOURNEY_PAGE_FILTERS,
@@ -38,17 +39,8 @@ describe.each(Object.entries(GROUPS))("%s", (_name, group) => {
 });
 
 describe("uniqueness", () => {
-  it.each(Object.entries(GROUPS).filter(([name]) => name !== "EVENT_FILTERS"))(
-    "%s lists each parameter once",
-    (_name, group) => {
-      expect(new Set(group).size).toBe(group.length);
-    }
-  );
-
-  it("EVENT_FILTERS is the exception — it re-adds page_title, which BASE_FILTERS already has", () => {
-    // Current behaviour, and a bug: the filter picker gets page_title twice.
-    expect(EVENT_FILTERS.filter(parameter => parameter === "page_title")).toHaveLength(2);
-    expect(new Set(EVENT_FILTERS).size).toBe(EVENT_FILTERS.length - 1);
+  it.each(Object.entries(GROUPS))("%s lists each parameter once", (_name, group) => {
+    expect(new Set(group).size).toBe(group.length);
   });
 });
 
@@ -87,5 +79,27 @@ describe("group relationships", () => {
       expect(SESSION_REPLAY_PAGE_FILTERS).not.toContain(pageLevel);
     }
     expect(SESSION_REPLAY_PAGE_FILTERS).toContain("user_id");
+  });
+});
+
+describe("platform filters", () => {
+  it("keeps web acquisition filters on the users page", () => {
+    expect(getUserPageFilters(false)).toEqual(
+      expect.arrayContaining([
+        "querystring",
+        "channel",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "tag",
+        "page_title",
+      ])
+    );
+  });
+
+  it("offers native metadata without web acquisition filters for mobile users", () => {
+    expect(getUserPageFilters(true)).toEqual(expect.arrayContaining(["app_version", "device_model"]));
+    expect(getUserPageFilters(true)).not.toContain("hostname");
+    expect(getUserPageFilters(true)).not.toContain("utm_source");
   });
 });

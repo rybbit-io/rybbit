@@ -6,6 +6,7 @@ import {
   SiContentful,
   SiDocusaurus,
   SiDrupal,
+  SiFlutter,
   SiFramer,
   SiGatsby,
   SiGhost,
@@ -127,6 +128,61 @@ export function NoData() {
 
   if (siteHasData || isLoading || isLoadingSiteMetadata || !siteId) {
     return null;
+  }
+
+  const isApp = siteMetadata?.type === "mobile";
+
+  if (isApp) {
+    const appSiteId = siteMetadata?.id ?? siteMetadata?.siteId;
+    const dartSnippet = `await Rybbit.init(\n  host: '${globalThis.location.origin}',\n  siteId: '${appSiteId}',\n);`;
+    return (
+      <section className="mt-4 rounded-lg border border-neutral-100 bg-white p-4 dark:border-neutral-850 dark:bg-neutral-900">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-start gap-3">
+              <span className="relative mt-1.5 flex h-3 w-3 shrink-0" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 motion-safe:animate-ping"></span>
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+              </span>
+              <h2 className="break-words text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
+                {t("Waiting for analytics from your app...")}
+              </h2>
+            </div>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 md:pl-6">
+              {t("Add the Rybbit SDK to your app:")}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <CodeSnippet language="dart" code={dartSnippet} className="text-xs" />
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <ExternalLink href="https://github.com/nks-hub/rybbit-flutter-sdk">
+                {t("Flutter SDK documentation")}
+              </ExternalLink>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-850">
+            <h3 className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+              {t("Platform Guides")}
+            </h3>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <a
+                href="https://github.com/nks-hub/rybbit-flutter-sdk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`group inline-flex h-7 items-center gap-1.5 rounded-md border border-neutral-150 bg-white px-2.5 text-xs font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-850 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-neutral-50 ${FOCUS_RING}`}
+              >
+                <span className="text-neutral-500 transition-colors group-hover:text-emerald-500 dark:text-neutral-400 dark:group-hover:text-emerald-400">
+                  <SiFlutter className={ICON} />
+                </span>
+                Flutter
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   const visibleGuides = showAllPlatforms ? PLATFORM_GUIDES : PLATFORM_GUIDES.slice(0, VISIBLE_PLATFORM_COUNT);

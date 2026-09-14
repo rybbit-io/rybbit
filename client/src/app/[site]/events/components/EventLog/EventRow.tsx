@@ -16,6 +16,7 @@ import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
 import { buildEventPath, getEventTypeLabel, getMainData, parseEventProperties } from "./eventLogUtils";
 import { DeviceIcon } from "../../../components/shared/icons/Device";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 
 interface EventRowProps {
   event: Event;
@@ -25,6 +26,8 @@ interface EventRowProps {
 
 export function EventRow({ event, site, onClick }: EventRowProps) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const getEventDisplayName = useEventDisplayName();
   const { locale, hour12, formatRelative } = useDateTimeFormat();
   const eventProperties = parseEventProperties(event);
@@ -55,7 +58,7 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <span>{getEventTypeLabel(event.type)}</span>
+            <span>{getEventTypeLabel(event.type, isApp)}</span>
           </TooltipContent>
         </Tooltip>
       </div>
@@ -95,16 +98,18 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
             </TooltipContent>
           </Tooltip>
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <Browser browser={event.browser || "Unknown"} />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{event.browser || t("Unknown browser")}</p>
-          </TooltipContent>
-        </Tooltip>
+        {!isApp && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Browser browser={event.browser || "Unknown"} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{event.browser || t("Unknown browser")}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <div>
@@ -115,29 +120,37 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
             <p>{event.operating_system || t("Unknown OS")}</p>
           </TooltipContent>
         </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <DeviceIcon deviceType={event.device_type || ""} />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{event.device_type || t("Unknown device")}</p>
-          </TooltipContent>
-        </Tooltip>
+        {!isApp && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DeviceIcon deviceType={event.device_type || ""} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{event.device_type || t("Unknown device")}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       <div className="text-neutral-600 dark:text-neutral-300 px-2 py-1 truncate">
-        <Link
-          href={pageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="hover:underline"
-          title={pagePath}
-        >
-          {truncateString(pagePath, 60)}
-        </Link>
+        {isApp ? (
+          <span title={pagePath}>
+            {truncateString(pagePath, 60)}
+          </span>
+        ) : (
+          <Link
+            href={pageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="hover:underline"
+            title={pagePath}
+          >
+            {truncateString(pagePath, 60)}
+          </Link>
+        )}
       </div>
 
       <div className="text-neutral-600 dark:text-neutral-300 px-2 py-1 truncate">

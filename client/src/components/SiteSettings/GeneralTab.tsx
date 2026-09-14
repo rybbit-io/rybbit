@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Smartphone, Trash2, Upload } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useCallback, ReactNode } from "react";
@@ -24,12 +24,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-import { deleteSite, moveSite, updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
-import { adminMoveSite } from "@/api/admin/endpoints/adminSites";
+import {
+  deleteSite,
+  deleteSiteIcon,
+  moveSite,
+  updateSiteConfig,
+  uploadSiteIcon,
+  SiteResponse,
+} from "@/api/admin/endpoints";
 import { useUserOrganizations } from "@/api/admin/hooks/useOrganizations";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
+import { BACKEND_URL } from "@/lib/const";
+import { resizeImageToIcon } from "@/lib/imageUtils";
+import { useSiteIcons } from "@/lib/siteIcons";
+import { isValidDomain, isValidPackageName, normalizeDomain } from "@/lib/utils";
+import { adminMoveSite } from "@/api/admin/endpoints/adminSites";
 import { RemoteOrganizationCombobox } from "@/app/admin/components/shared/RemoteOrganizationCombobox";
-import { normalizeDomain } from "@/lib/utils";
 
 import { SettingRow, SettingsSection, SettingsSections } from "./SettingsSection";
 
@@ -76,6 +86,11 @@ export function GeneralTab({
   const [targetOrgId, setTargetOrgId] = useState("");
   const [targetOrgName, setTargetOrgName] = useState("");
   const [isMoving, setIsMoving] = useState(false);
+  const iconVersion = useSiteIcons(state => state.versions[siteMetadata.siteId] ?? 0);
+  const invalidateIcon = useSiteIcons(state => state.invalidate);
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [isDeletingIcon, setIsDeletingIcon] = useState(false);
+  const isMutatingIcon = isUploadingIcon || isDeletingIcon;
 
   // Organizations the user can move the site into: those they administer,
   // excluding the site's current organization.
@@ -157,6 +172,16 @@ export function GeneralTab({
       return;
     }
 
+    if (isMobileSite) {
+      if (!isValidPackageName(newDomain)) {
+        toast.error(t("Invalid package name format"));
+        return;
+      }
+    } else if (!isValidDomain(newDomain)) {
+      toast.error(t("Invalid domain format"));
+      return;
+    }
+
     try {
       setIsChangingDomain(true);
       const normalizedDomain = isMobileSite ? newDomain.trim() : normalizeDomain(newDomain);
@@ -233,15 +258,19 @@ export function GeneralTab({
       enabledMessage: t("User ID salting enabled"),
       disabledMessage: t("User ID salting disabled"),
     },
-    {
-      id: "blockBots",
-      label: t("Block Bot Traffic"),
-      description: t("Traffic from known bots and crawlers will not be tracked"),
-      value: toggleStates.blockBots,
-      key: "blockBots",
-      enabledMessage: t("Bot blocking enabled"),
-      disabledMessage: t("Bot blocking disabled"),
-    },
+    ...(!isMobileSite
+      ? [
+          {
+            id: "blockBots",
+            label: t("Block Bot Traffic"),
+            description: t("Traffic from known bots and crawlers will not be tracked"),
+            value: toggleStates.blockBots,
+            key: "blockBots",
+            enabledMessage: t("Bot blocking enabled"),
+            disabledMessage: t("Bot blocking disabled"),
+          } as ToggleConfig,
+        ]
+      : []),
     {
       id: "firstPartyProxy",
       label: t("First-Party Proxy"),
@@ -317,6 +346,92 @@ export function GeneralTab({
           </div>
         </div>
       </SettingsSection>
+
+      {isMobileSite && (
+        <SettingsSection title={t("App Icon")}>
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "Displayed as a favicon in the sidebar, site selector, and site cards. Accepts any image format — automatically resized to 128×128 PNG. Max 50 KB."
+            )}
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="shrink-0">
+              <Label className="text-xs text-muted-foreground mb-1 block">{t("Preview")}</Label>
+              <div className="relative w-12 h-12">
+                <img
+                  key={iconVersion}
+                  src={`${BACKEND_URL}/sites/${siteMetadata.siteId}/icon?v=${iconVersion}`}
+                  alt={t("App Icon")}
+                  className="w-12 h-12 rounded-lg border border-border"
+                  onError={e => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                  }}
+                  onLoad={e => {
+                    (e.target as HTMLImageElement).style.display = "";
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.add("hidden");
+                  }}
+                />
+                <div className="hidden w-12 h-12 rounded-lg border border-dashed border-border bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
+                  <Smartphone className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={disabled || isMutatingIcon}
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.onchange = async e => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (!file) return;
+                    setIsUploadingIcon(true);
+                    try {
+                      const base64 = await resizeImageToIcon(file);
+                      await uploadSiteIcon(siteMetadata.siteId, base64);
+                      invalidateIcon(siteMetadata.siteId);
+                      toast.success(t("Icon uploaded"));
+                    } catch {
+                      toast.error(t("Failed to upload icon"));
+                    } finally {
+                      setIsUploadingIcon(false);
+                    }
+                  };
+                  input.click();
+                }}
+              >
+                <Upload className="h-4 w-4" />
+                {isUploadingIcon ? t("Uploading...") : t("Upload Icon")}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                disabled={disabled || isMutatingIcon}
+                onClick={async () => {
+                  setIsDeletingIcon(true);
+                  try {
+                    await deleteSiteIcon(siteMetadata.siteId);
+                    invalidateIcon(siteMetadata.siteId);
+                    toast.success(t("Icon removed"));
+                  } catch {
+                    toast.error(t("Failed to remove icon"));
+                  } finally {
+                    setIsDeletingIcon(false);
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                {t("Remove Icon")}
+              </Button>
+            </div>
+          </div>
+        </SettingsSection>
+      )}
 
       <SettingsSection title={t("Privacy & Security")}>
         {privacyToggles.map(toggle => (

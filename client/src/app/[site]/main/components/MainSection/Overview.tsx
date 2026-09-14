@@ -9,6 +9,7 @@ import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { StatType, useComparisonEnabled, useStore } from "../../../../../lib/store";
 import { SparklinesChart } from "./SparklinesChart";
 
@@ -161,6 +162,8 @@ const Stat = ({
 export function Overview() {
   const { site } = useStore();
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
 
   // Current period - automatically handles both regular time-based and past-minutes queries
   const {
@@ -203,14 +206,14 @@ export function Overview() {
       <Stat title={t("Unique Users")} id="users" value={currentUsers} previous={previousUsers} isLoading={isLoading} />
       <Stat title={t("Sessions")} id="sessions" value={currentSessions} previous={previousSessions} isLoading={isLoading} />
       <Stat
-        title={t("Pageviews")}
+        title={isApp ? t("Screenviews") : t("Pageviews")}
         id="pageviews"
         value={currentPageviews}
         previous={previousPageviews}
         isLoading={isLoading}
       />
       <Stat
-        title={t("Pages per Session")}
+        title={isApp ? t("Screens per Session") : t("Pages per Session")}
         id="pages_per_session"
         value={currentPagesPerSession}
         previous={previousPagesPerSession}

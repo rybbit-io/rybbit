@@ -11,7 +11,8 @@ import { useGetSessions, useGetUserSessionCount } from "../../../../api/analytic
 import { DateSelector } from "../../../../components/DateSelector/DateSelector";
 import { Button } from "../../../../components/ui/button";
 import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../../../lib/store";
-import { USER_DETAIL_PAGE_FILTERS } from "../../../../lib/filterGroups";
+import { getUserDetailPageFilters } from "../../../../lib/filterGroups";
+import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Filters } from "../../components/SubHeader/Filters/Filters";
 import { NewFilterButton } from "../../components/SubHeader/Filters/NewFilterButton";
 import {
@@ -40,6 +41,8 @@ const LIMIT = 25;
 
 export default function UserPage() {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const availableFilters = getUserDetailPageFilters(siteMetadata?.type === "mobile");
 
   const { userId: rawUserId, site } = useParams();
   const { time, setTime } = useStore();
@@ -109,7 +112,7 @@ export default function UserPage() {
       <div className="flex items-center gap-2 mt-2">
         <MobileSidebar />
         <div className="hidden md:block">
-          <NewFilterButton availableFilters={USER_DETAIL_PAGE_FILTERS} />
+          <NewFilterButton availableFilters={availableFilters} />
         </div>
         <div className="ml-auto flex items-center gap-2 shrink-0">
           <DateSelector time={time} setTime={setTime} />
@@ -136,9 +139,9 @@ export default function UserPage() {
         </div>
       </div>
       <div className="md:hidden mt-2">
-        <NewFilterButton availableFilters={USER_DETAIL_PAGE_FILTERS} />
+        <NewFilterButton availableFilters={availableFilters} />
       </div>
-      <Filters availableFilters={USER_DETAIL_PAGE_FILTERS} />
+      <Filters availableFilters={availableFilters} />
 
       <UserHeader userId={userId} displayName={displayName} data={data} isLoading={isLoading} />
 

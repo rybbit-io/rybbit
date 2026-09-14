@@ -13,6 +13,7 @@ import { formatChartDateTime, hour12, userLocale } from "@/lib/dateTimeUtils";
 import { useNivoTheme } from "@/lib/nivo";
 import { getTimezone, useStore } from "@/lib/store";
 import { formatter } from "@/lib/utils";
+import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { CardLoader } from "../../../../components/ui/card";
 
 const EVENT_TYPE_CONFIG = [
@@ -26,6 +27,21 @@ const EVENT_TYPE_CONFIG = [
   { key: "form_submit_count", label: "Form Submits", color: "#c084fc" },
   { key: "input_change_count", label: "Input Changes", color: "#f472b6" },
 ] as const;
+
+// Translated labels keyed by the raw label
+function getTranslatedEventTypeLabels(t: (key: string) => string, isApp: boolean): Record<string, string> {
+  return {
+    Pageviews: isApp ? t("Screenviews") : t("Pageviews"),
+    "Custom Events": t("Custom Events"),
+    Performance: t("Performance"),
+    Outbound: t("Outbound"),
+    Errors: t("Errors"),
+    "Button Clicks": t("Button Clicks"),
+    Copy: t("Copy"),
+    "Form Submits": t("Form Submits"),
+    "Input Changes": t("Input Changes"),
+  };
+}
 
 type EventTypeKey = (typeof EVENT_TYPE_CONFIG)[number]["key"];
 
@@ -43,24 +59,14 @@ type Series = {
 
 export function EventTypesChart() {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const { bucket } = useStore();
   const { data, isLoading } = useGetSiteEventCount();
   const { width } = useWindowSize();
   const nivoTheme = useNivoTheme();
   const timezone = getTimezone();
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
-
-  const translatedLabels: Record<string, string> = {
-    Pageviews: t("Pageviews"),
-    "Custom Events": t("Custom Events"),
-    Performance: t("Performance"),
-    Outbound: t("Outbound"),
-    Errors: t("Errors"),
-    "Button Clicks": t("Button Clicks"),
-    Copy: t("Copy"),
-    "Form Submits": t("Form Submits"),
-    "Input Changes": t("Input Changes"),
-  };
 
   const toggleTypeVisibility = (typeLabel: string) => {
     setHiddenTypes((prev) => {
@@ -73,6 +79,8 @@ export function EventTypesChart() {
       return next;
     });
   };
+
+  const translatedLabels = getTranslatedEventTypeLabels(t, isApp);
 
   const { series, legendItems, maxValue, totalPoints } = useMemo(() => {
     if (!data || data.length === 0) {

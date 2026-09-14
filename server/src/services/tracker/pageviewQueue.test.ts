@@ -96,6 +96,32 @@ describe("pageviewQueue ASN enrichment", () => {
     expect(row.is_datacenter_asn).toBe(0);
   });
 
+  it("stores native SDK metadata and classifies its OS before screen heuristics", async () => {
+    await pageviewQueue.add(
+      makePayload({
+        ua: {
+          ua: "ExampleApp/1.4.2 (com.example.app; Android 14; Pixel 8) RybbitFlutter/0.2.4",
+          browser: {},
+          os: {},
+        } as UAParser.IResult,
+        app_version: "1.4.2",
+        screenWidth: 2400,
+        screenHeight: 1080,
+      })
+    );
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(mocks.insert.mock.calls[0][0].values[0]).toMatchObject({
+      browser: "ExampleApp",
+      browser_version: "1.4.2",
+      operating_system: "Android",
+      operating_system_version: "14",
+      device_type: "Mobile",
+      device_model: "Pixel 8",
+      app_version: "1.4.2",
+    });
+  });
+
   it("preserves the request's millisecond timestamp for event ordering", async () => {
     await pageviewQueue.add(makePayload({ timestamp: "2026-08-28T12:34:56.789Z" }));
     await vi.advanceTimersByTimeAsync(1000);

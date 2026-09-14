@@ -3,6 +3,7 @@
   "pages": [
     "web",
     "react-native",
+    "flutter",
     "node"
   ]
 }

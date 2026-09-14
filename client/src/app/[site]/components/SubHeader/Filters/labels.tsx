@@ -15,6 +15,8 @@ export function useParameterLabel() {
     switch (parameter) {
       case "country": return t("Country");
       case "device_type": return t("Device Type");
+      case "device_model": return t("Device Model");
+      case "app_version": return t("App Version");
       case "operating_system": return t("OS");
       case "browser": return t("Browser");
       case "referrer": return t("Referrer");

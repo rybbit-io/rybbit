@@ -1,4 +1,4 @@
-import { Tag, Settings } from "lucide-react";
+import { Tag, Settings, Smartphone } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useRef } from "react";
@@ -26,6 +26,7 @@ interface SiteCardProps {
   onTagsUpdated?: () => void;
   selectedTags?: string[];
   onTagClick?: (tag: string) => void;
+  siteType?: "web" | "mobile" | null;
 }
 
 export function SiteCard({
@@ -37,6 +38,7 @@ export function SiteCard({
   onTagsUpdated,
   selectedTags = [],
   onTagClick,
+  siteType,
 }: SiteCardProps) {
   const t = useExtracted();
   const { ref, isInView } = useInView({
@@ -98,7 +100,7 @@ export function SiteCard({
         {showSkeleton ? (
           <>
             <div className="flex gap-2 items-center">
-              <Favicon domain={domain} className="w-6 h-6" />
+              <Favicon domain={domain} className="w-6 h-6" siteType={siteType} siteId={siteId} />
               <span className="text-lg font-medium truncate group-hover:underline transition-all">{name}</span>
             </div>
             <div className="flex gap-2 items-center">
@@ -118,8 +120,14 @@ export function SiteCard({
         ) : (
           <>
             <div className="flex gap-2 items-center">
-              <Favicon domain={domain} className="w-6 h-6" />
+              <Favicon domain={domain} className="w-6 h-6" siteType={siteType} siteId={siteId} />
               <span className="text-lg font-medium truncate group-hover:underline transition-all">{name}</span>
+              {siteType && siteType !== "web" && (
+                <Badge variant="outline" className="text-xs gap-1 shrink-0">
+                  <Smartphone className="h-3 w-3" />
+                  {t("App")}
+                </Badge>
+              )}
               <div onClick={e => e.preventDefault()}>
                 <Tooltip>
                   <SiteSettings

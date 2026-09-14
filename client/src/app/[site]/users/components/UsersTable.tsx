@@ -38,6 +38,7 @@ import { Browser } from "../../components/shared/icons/Browser";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../components/shared/icons/OperatingSystem";
 import { DeviceIcon } from "../../components/shared/icons/Device";
+import { useGetSite } from "../../../../api/admin/hooks/useSites";
 
 const columnHelper = createColumnHelper<UsersResponse>();
 const TIME_COLUMN_WIDTH = "10rem";
@@ -72,6 +73,8 @@ const SortHeader = ({ column, children }: any) => {
 
 export function UsersTable() {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const { formatRelative, formatDateTime } = useDateTimeFormat();
 
   const formatRelativeTime = (dateStr: string) => {
@@ -175,52 +178,69 @@ export function UsersTable() {
         );
       },
     }),
-    columnHelper.accessor("referrer", {
-      header: t("Channel"),
-      cell: info => {
-        const channel = info.row.original.channel;
-        const referrer = info.getValue();
-        const domain = extractDomain(referrer);
+    ...(isApp ? [
+      columnHelper.accessor("device_model", {
+        header: t("Device Model"),
+        cell: info => {
+          const model = info.getValue();
+          return (
+            <div
+              className="flex items-center gap-2 whitespace-nowrap cursor-pointer hover:opacity-70"
+              onClick={e => handleFilterClick(e, "device_model", model)}
+            >
+              {model || t("Unknown")}
+            </div>
+          );
+        },
+      }),
+    ] : [
+      columnHelper.accessor("referrer", {
+        header: t("Channel"),
+        cell: info => {
+          const channel = info.row.original.channel;
+          const referrer = info.getValue();
+          const domain = extractDomain(referrer);
 
-        if (domain) {
-          const displayName = getDisplayName(domain);
+          if (domain) {
+            const displayName = getDisplayName(domain);
+            return (
+              <div
+                className="flex items-center gap-2 cursor-pointer hover:opacity-70"
+                onClick={e => handleFilterClick(e, "channel", channel)}
+              >
+                <Favicon domain={domain} className="w-4 h-4" />
+                <span>{displayName}</span>
+              </div>
+            );
+          }
+
           return (
             <div
               className="flex items-center gap-2 cursor-pointer hover:opacity-70"
               onClick={e => handleFilterClick(e, "channel", channel)}
             >
-              <Favicon domain={domain} className="w-4 h-4" />
-              <span>{displayName}</span>
+              <ChannelIcon channel={channel} />
+              <span>{channel}</span>
             </div>
           );
-        }
-
-        return (
-          <div
-            className="flex items-center gap-2 cursor-pointer hover:opacity-70"
-            onClick={e => handleFilterClick(e, "channel", channel)}
-          >
-            <ChannelIcon channel={channel} />
-            <span>{channel}</span>
-          </div>
-        );
-      },
-    }),
-    columnHelper.accessor("browser", {
-      header: t("Browser"),
-      cell: info => {
-        const browser = info.getValue();
-        return (
-          <div
-            className="flex items-center gap-2 whitespace-nowrap cursor-pointer hover:opacity-70"
-            onClick={e => handleFilterClick(e, "browser", browser)}
-          >
-            <Browser browser={browser || "Unknown"} />
-            {browser || t("Unknown")}
-          </div>
-        );
-      },
-    }),
+        },
+      }),
+      columnHelper.accessor("browser", {
+        header: t("Browser"),
+        cell: info => {
+          const browser = info.getValue();
+          return (
+            <div
+              className="flex items-center gap-2 whitespace-nowrap cursor-pointer hover:opacity-70"
+              onClick={e => handleFilterClick(e, "browser", browser)}
+            >
+              <Browser browser={browser || "Unknown"} />
+              {browser || t("Unknown")}
+            </div>
+          );
+        },
+      }),
+    ]),
     columnHelper.accessor("operating_system", {
       header: t("OS"),
       cell: info => {
@@ -236,7 +256,13 @@ export function UsersTable() {
         );
       },
     }),
-    columnHelper.accessor("device_type", {
+    ...(isApp ? [
+      columnHelper.accessor("app_version", {
+        header: t("App Version"),
+        cell: info => <div className="whitespace-nowrap">{info.getValue() || "—"}</div>,
+      }),
+    ] : []),
+    ...(!isApp ? [columnHelper.accessor("device_type", {
       header: t("Device"),
       cell: info => {
         const deviceType = info.getValue();
@@ -250,9 +276,9 @@ export function UsersTable() {
           </div>
         );
       },
-    }),
+    })] : []),
     columnHelper.accessor("pageviews", {
-      header: ({ column }) => <SortHeader column={column}>{t("Pageviews")}</SortHeader>,
+      header: ({ column }) => <SortHeader column={column}>{isApp ? t("Screenviews") : t("Pageviews")}</SortHeader>,
       cell: info => <div className="whitespace-nowrap">{info.getValue().toLocaleString()}</div>,
     }),
     columnHelper.accessor("events", {
