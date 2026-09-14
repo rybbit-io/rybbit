@@ -24,7 +24,7 @@ export async function getDashboards(
 
     return reply.send(siteDashboards);
   } catch (error) {
-    console.error("Error fetching dashboards:", error);
+    request.log.error({ err: error }, "Error fetching dashboards");
     return reply.status(500).send({ error: "Failed to fetch dashboards" });
   }
 }

@@ -103,7 +103,7 @@ export async function createFunnel(
       funnelId: result[0].reportId,
     });
   } catch (error) {
-    console.error("Error creating funnel:", error);
+    request.log.error({ err: error }, "Error creating funnel");
     return reply.status(500).send({ error: "Failed to create funnel" });
   }
 }

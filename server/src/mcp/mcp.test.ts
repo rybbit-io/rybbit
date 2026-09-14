@@ -153,11 +153,20 @@ describe("mcp endpoint", () => {
         fastify.post("/sites/:siteId/funnels/analyze", async request => {
           captured.body = request.body;
           captured.query = request.query as Record<string, unknown>;
-          return { data: [{ step_number: 1, step_name: "Step 1", visitors: 10, conversion_rate: 100, dropoff_rate: 0 }] };
+          // The API returns `sessions` plus the deprecated `visitors` alias.
+          return {
+            data: [{ step_number: 1, step_name: "Step 1", sessions: 10, visitors: 10, conversion_rate: 100, dropoff_rate: 0 }],
+          };
         });
 
         fastify.get("/sites/:siteId/goals", async (_request, reply) => {
           return reply.status(403).send({ error: "You don't have access to this site" });
+        });
+
+        fastify.get("/sites/:siteId/annotations", async request => {
+          captured.url = request.url;
+          captured.query = request.query as Record<string, unknown>;
+          return [{ annotationId: 1, siteId: 5, title: "Launch", date: "2026-08-18T00:00:00.000Z", isPublic: true }];
         });
 
         fastify.post("/sites/:siteId/goals", async request => {
@@ -318,11 +327,11 @@ describe("mcp endpoint", () => {
     expect(result.instructions).toContain("run_query");
   });
 
-  it("lists all 39 tools with output schemas", async () => {
+  it("lists all 42 tools with output schemas", async () => {
     const tools = await listTools(app);
     const names = tools.map(tool => tool.name);
 
-    expect(tools).toHaveLength(39);
+    expect(tools).toHaveLength(42);
     expect(names).toContain("list_sites");
     expect(names).toContain("get_overview");
     expect(names).toContain("get_breakdown");
@@ -333,9 +342,13 @@ describe("mcp endpoint", () => {
     expect(names).toContain("create_goal");
     expect(names).toContain("get_users");
     expect(names).toContain("list_members");
+    expect(names).toContain("get_annotations");
 
     const overview = tools.find(tool => tool.name === "get_overview");
     expect(overview?.outputSchema).toBeTruthy();
+    const annotationsTool = tools.find(tool => tool.name === "get_annotations");
+    expect(annotationsTool?.outputSchema).toBeTruthy();
+    expect(annotationsTool?.annotations?.readOnlyHint).toBe(true);
   });
 
   it("filters tools/list to the API key's scopes, keeping list_sites", async () => {
@@ -360,7 +373,7 @@ describe("mcp endpoint", () => {
 
   it("legacy OAuth grants with only standard scopes stay unrestricted", async () => {
     const tools = await listTools(app, "Bearer oauth_valid_token");
-    expect(tools).toHaveLength(39);
+    expect(tools).toHaveLength(42);
   });
 
   it("partitions tools into reads, writes, and destructive deletes", async () => {
@@ -470,6 +483,17 @@ describe("mcp endpoint", () => {
     expect(captured.url).toBeUndefined();
   });
 
+  it("get_annotations forwards optional date bounds and wraps the array", async () => {
+    const result = await callTool(app, "get_annotations", { site_id: 5, start_date: "2026-08-01", time_zone: "UTC" });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.url).toContain("/api/sites/5/annotations");
+    expect(captured.query).toEqual({ start_date: "2026-08-01", time_zone: "UTC" });
+    expect(result.structuredContent).toEqual({
+      data: [{ annotationId: 1, siteId: 5, title: "Launch", date: "2026-08-18T00:00:00.000Z", isPublic: true }],
+    });
+  });
+
   it("get_sessions passes rows through but strips bidi control characters", async () => {
     const result = await callTool(app, "get_sessions", { site_id: 5 });
 
@@ -481,6 +505,41 @@ describe("mcp endpoint", () => {
     expect(row.ip).toBe("203.0.113.7");
     expect(row.user_id).toBe("device_1");
     expect(row.entry_page).toBe("/pricing desrever");
+  });
+
+  it("get_sessions prunes rows to the requested fields", async () => {
+    const result = await callTool(app, "get_sessions", { site_id: 5, fields: ["user_id", "entry_page", "not_a_column"] });
+
+    expect(result.isError).toBeFalsy();
+    const row = result.structuredContent.data[0];
+    expect(Object.keys(row).sort()).toEqual(["entry_page", "user_id"]);
+    expect(row.ip).toBeUndefined();
+  });
+
+  it("rejects an unrecognized time_zone before hitting the API", async () => {
+    captured.url = undefined;
+    const result = await callTool(app, "get_overview", {
+      site_id: 5,
+      start_date: "2026-08-01",
+      end_date: "2026-08-31",
+      time_zone: "Mars/Olympus_Mons",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("IANA time zone");
+    expect(captured.url).toBeUndefined();
+  });
+
+  it("accepts IANA aliases as time_zone", async () => {
+    const result = await callTool(app, "get_overview", {
+      site_id: 5,
+      start_date: "2026-08-01",
+      end_date: "2026-08-31",
+      time_zone: "Etc/UTC",
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.query?.time_zone).toBe("Etc/UTC");
   });
 
   it("create_goal maps goal_type onto the REST body", async () => {

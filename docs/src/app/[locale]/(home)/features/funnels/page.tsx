@@ -87,16 +87,16 @@ export default function FunnelsPage() {
         subtitle="Build multi-step conversion funnels to visualize your user flow and pinpoint exactly where you're losing conversions."
         badgeText="Funnels"
         demoUrl="https://demo.rybbit.com/81/funnels"
-        demoCaption="Live funnels demo — see real conversion data"
+        demoCaption="Live funnels demo: see real conversion data"
         introParagraphs={[
           <>
-            You&apos;re driving traffic to your site, but <strong className="text-neutral-900 dark:text-white">how many visitors actually complete the journey</strong> from landing page to signup, onboarding to activation, or browse to purchase? Without funnel analysis, you&apos;re flying blind — optimizing pages that might not be the real bottleneck.
+            You&apos;re driving traffic to your site, but <strong className="text-neutral-900 dark:text-white">how many visitors actually complete the journey</strong> from landing page to signup, onboarding to activation, or browse to purchase? Without funnel analysis, you&apos;re flying blind, optimizing pages that might not be the real bottleneck.
           </>,
           <>
-            Rybbit funnels give you a <strong className="text-neutral-900 dark:text-white">step-by-step breakdown of your conversion flow</strong> with precise drop-off percentages at every stage. No sampling, no estimation — every event is counted. Mix page paths and custom events freely to model any conversion flow, from a simple two-step signup to a complex multi-stage onboarding.
+            Rybbit funnels give you a <strong className="text-neutral-900 dark:text-white">step-by-step breakdown of your conversion flow</strong> with precise drop-off percentages at every stage. No sampling, no estimation: every event is counted. Mix page paths and custom events freely to model any conversion flow, from a simple two-step signup to a complex multi-stage onboarding.
           </>,
           <>
-            Combined with <strong className="text-neutral-900 dark:text-white">session replay and user journey mapping</strong>, funnels become even more powerful. Spot the drop-off in your funnel, then watch the sessions where users left to understand <em>why</em>. It&apos;s the difference between knowing you have a problem and knowing how to fix it.
+            Combined with <strong className="text-neutral-900 dark:text-white">session replay and user journey mapping</strong>, funnels do more than flag the problem. Spot the drop-off in your funnel, then watch the sessions where users left to understand <em>why</em>. It&apos;s the difference between knowing you have a problem and knowing how to fix it.
           </>,
         ]}
         capabilities={capabilities}
@@ -105,7 +105,7 @@ export default function FunnelsPage() {
         faqItems={faqItems}
         relatedFeatures={relatedFeatures}
         ctaTitle="Stop guessing where users drop off"
-        ctaDescription="Build conversion funnels in minutes. See real-time drop-off data without sampling."
+        ctaDescription="Build conversion funnels from the events you already track. See real-time drop-off data without sampling."
       />
     </>
   );

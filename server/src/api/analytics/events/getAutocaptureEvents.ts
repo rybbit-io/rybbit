@@ -1,10 +1,10 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { AutocaptureTargetType, isAutocaptureTargetType } from "../utils/eventConditions.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 export type GetAutocaptureEventsResponse = {
   value: string;
@@ -33,21 +33,20 @@ const VALUE_EXPRESSIONS: Record<AutocaptureTargetType, string> = {
     "coalesce(nullIf(JSONExtractString(toString(props), 'formName'), ''), nullIf(JSONExtractString(toString(props), 'formId'), ''), nullIf(JSONExtractString(toString(props), 'formAction'), ''), '')",
 };
 
-// Returns autocapture events of a type (button clicks, form submissions,
-// copies) grouped by their display value, with counts and last occurrence.
-export async function getAutocaptureEvents(req: FastifyRequest<GetAutocaptureEventsRequest>, res: FastifyReply) {
-  const { type, filters } = req.query;
-  const site = req.params.siteId;
+export const buildAutocaptureEventsQuery = (
+  query: GetAutocaptureEventsRequest["Querystring"],
+  siteId: number,
+  type: AutocaptureTargetType
+) => {
+  const { filters } = query;
 
-  if (!type || !isAutocaptureTargetType(type)) {
-    return res.status(400).send({ error: "Invalid autocapture event type" });
-  }
-
-  const timeStatement = getTimeStatement(req.query);
-  const filterStatement = filters ? getFilterStatement(filters, Number(site), timeStatement) : "";
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = filters
+    ? getFilterStatement(filters, siteId, timeStatement, { sessionLevelParams: ["channel"] })
+    : "";
   const valueExpression = VALUE_EXPRESSIONS[type];
 
-  const query = `
+  return `
     SELECT
       ${valueExpression} AS value,
       COUNT(*) AS count,
@@ -63,23 +62,27 @@ export async function getAutocaptureEvents(req: FastifyRequest<GetAutocaptureEve
     ORDER BY count DESC
     LIMIT 1000
   `;
+};
 
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-      },
+// Returns autocapture events of a type (button clicks, form submissions,
+// copies) grouped by their display value, with counts and last occurrence.
+export const getAutocaptureEvents = analyticsRoute<GetAutocaptureEventsRequest>(
+  "autocapture events",
+  async (req: FastifyRequest<GetAutocaptureEventsRequest>, res: FastifyReply) => {
+    const { type } = req.query;
+    const site = req.params.siteId;
+
+    if (!type || !isAutocaptureTargetType(type)) {
+      return res.status(400).send({ error: "Invalid autocapture event type" });
+    }
+
+    const data = await runAnalyticsQuery<GetAutocaptureEventsResponse[number]>({
+      query: buildAutocaptureEventsQuery(req.query, Number(site), type),
+      params: { siteId: Number(site) },
     });
 
-    const data = await processResults<GetAutocaptureEventsResponse[number]>(result);
     // processResults coerces any column that looks numeric into a number; `value`
     // is free-form captured text (e.g. a button labeled "100") and must stay a string.
     return res.send({ data: data.map(row => ({ ...row, value: String(row.value) })) });
-  } catch (error) {
-    console.error("Generated Query:", query);
-    console.error("Error fetching autocapture events:", error);
-    return res.status(500).send({ error: "Failed to fetch autocapture events" });
   }
-}
+);

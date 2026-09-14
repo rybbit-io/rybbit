@@ -1,10 +1,95 @@
-import createMiddleware from 'next-intl/middleware';
-import { routing } from './i18n/routing';
+import createMiddleware from "next-intl/middleware";
+import { type NextRequest, NextResponse } from "next/server";
 
-export default createMiddleware(routing);
+import { routing } from "./i18n/routing";
+import { appendVary, markdownProxyTarget, preferredType } from "./lib/content-negotiation";
+import {
+  HOME_EXPERIMENT,
+  HOME_VARIANT_MAX_AGE,
+  HOME_VARIANT_PARAM,
+  type HomeExperiment,
+  type HomeVariant,
+  RETIRED_COOKIES,
+  homeVariantCookie,
+  isCrawler,
+  isHomeVariant,
+} from "./lib/landing-experiment";
+
+const internationalization = createMiddleware(routing);
+
+/**
+ * Homepage experiment arm for this request: a `?variant=` override, else the
+ * remembered one, else a fresh 50/50 draw. `assigned` asks the caller to
+ * (re)persist the cookie. Crawlers are never enrolled unless they ask.
+ */
+function resolveHomeVariant(
+  request: NextRequest,
+  experiment: HomeExperiment
+): { variant: HomeVariant; assigned: boolean } | null {
+  const forced = request.nextUrl.searchParams.get(HOME_VARIANT_PARAM);
+  if (isHomeVariant(forced)) return { variant: forced, assigned: true };
+  if (isCrawler(request.headers.get("user-agent"))) return null;
+  const existing = request.cookies.get(homeVariantCookie(experiment))?.value;
+  if (isHomeVariant(existing)) return { variant: existing, assigned: false };
+  return { variant: Math.random() < 0.5 ? "a" : "b", assigned: true };
+}
+
+export default function proxy(request: NextRequest) {
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return internationalization(request);
+  }
+
+  const accept = request.headers.get("Accept");
+  const representation = preferredType(accept);
+
+  if (representation === "text/markdown") {
+    const { rewriteUrl, requestHeaders } = markdownProxyTarget(request.url, request.headers);
+
+    const response = NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } });
+    appendVary(response.headers, "Accept", "Accept-Encoding");
+    return response;
+  }
+
+  if (representation === null && accept) {
+    return new Response("Not Acceptable\n\nAvailable representations: text/html, text/markdown\n", {
+      status: 406,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        Vary: "Accept, Accept-Encoding",
+      },
+    });
+  }
+
+  // Homepage experiment (see lib/landing-experiment.ts): B-arm visitors get
+  // the challenger served at `/`. Only the default-locale homepage takes
+  // part; the i18n middleware still handles the rewritten path (→ /en/lp/…)
+  // so the URL never changes.
+  const experiment = HOME_EXPERIMENT;
+  const arm = experiment ? resolveHomeVariant(request, experiment) : null;
+  const servesVariantB = experiment !== null && arm?.variant === "b" && request.nextUrl.pathname === "/";
+  if (servesVariantB) {
+    request.nextUrl.pathname = experiment.variantPath;
+  }
+
+  const response = internationalization(request);
+  appendVary(response.headers, "Accept", "Accept-Encoding");
+  if (experiment && arm?.assigned) {
+    response.cookies.set(homeVariantCookie(experiment), arm.variant, {
+      path: "/",
+      maxAge: HOME_VARIANT_MAX_AGE,
+      sameSite: "lax",
+    });
+  }
+  for (const name of RETIRED_COOKIES) {
+    if (request.cookies.has(name)) response.cookies.delete(name);
+  }
+  if (servesVariantB) {
+    // Don't advertise the internal challenger path as this page's alternates.
+    response.headers.delete("Link");
+  }
+  return response;
+}
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

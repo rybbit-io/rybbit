@@ -289,6 +289,8 @@ Effective Substack URLs are professional, memorable, and related to your newslet
   },
 };
 
-export const usernameGeneratorPlatformList = Object.values(
-  usernameGeneratorPlatformConfigs
+// Retired 2026-07-18 (off-brand / no organic traffic) — pages 301 → /tools via next.config.mjs.
+const RETIRED_PLATFORMS = ["medium"];
+export const usernameGeneratorPlatformList = Object.values(usernameGeneratorPlatformConfigs).filter(
+  p => !RETIRED_PLATFORMS.includes(p.id)
 );

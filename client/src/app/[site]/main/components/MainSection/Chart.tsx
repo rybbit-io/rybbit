@@ -1,18 +1,28 @@
 "use client";
 
+import type { Annotation } from "@rybbit/shared";
 import { DateTime } from "luxon";
-import { useMemo } from "react";
+import { useExtracted } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { GetOverviewBucketedResponse } from "../../../../../api/analytics/endpoints";
-import type { APIResponse } from "../../../../../api/types";
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 import { TimeSeriesChart } from "../../../../../components/charts/TimeSeriesChart";
 import type { TimeSeriesChartPoint } from "../../../../../components/charts/TimeSeriesChart";
-import { getChartTimeBounds } from "../../../../../components/charts/timeSeriesChartUtils";
+import { bucketsBetween, getChartTimeBounds, shiftBuckets } from "../../../../../components/charts/timeSeriesChartUtils";
 import { formatChartDateTime } from "../../../../../lib/dateTimeUtils";
 import { getTimezone, useStore } from "../../../../../lib/store";
 import type { StatType } from "../../../../../lib/store";
 import { formatSecondsAsMinutesAndSeconds } from "../../../../../lib/utils";
+import { useDeleteAnnotation } from "@/api/analytics/hooks/useAnnotations";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { toast } from "@/components/ui/sonner";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { AnnotationHoverCard, AnnotationPopoverContent } from "./annotations/AnnotationDetails";
+import { AnnotationPins } from "./annotations/AnnotationPins";
+import type { AnnotationCluster } from "./annotations/annotationUtils";
+import { useAnnotationPermissions } from "./annotations/useAnnotationPermissions";
 
 type Point = TimeSeriesChartPoint & {
   currentTime: DateTime;
@@ -28,18 +38,52 @@ const formatTooltipValue = (value: number, selectedStat: StatType): string => {
   return value.toLocaleString();
 };
 
+type PinTarget = { cluster: AnnotationCluster; rect: DOMRect };
+
 export function Chart({
   data,
   previousData,
   max,
   chartXMax,
+  annotations = [],
+  onCreateAnnotation,
+  onEditAnnotation,
 }: {
-  data: APIResponse<GetOverviewBucketedResponse> | undefined;
-  previousData: APIResponse<GetOverviewBucketedResponse> | undefined;
+  data: GetOverviewBucketedResponse | undefined;
+  previousData: GetOverviewBucketedResponse | undefined;
   max: number;
   chartXMax: Date | undefined;
+  annotations?: Annotation[];
+  /** Set when the viewer may create; a click on the plot opens the form at that bucket. */
+  onCreateAnnotation?: (date: Date) => void;
+  onEditAnnotation?: (annotation: Annotation) => void;
 }) {
-  const { time, bucket, selectedStat, previousTime } = useStore();
+  const t = useExtracted();
+  const { time, bucket, selectedStat, previousTime, site } = useStore();
+  const { canManage } = useAnnotationPermissions();
+  const deleteAnnotation = useDeleteAnnotation();
+  const [hoveredPin, setHoveredPin] = useState<PinTarget | null>(null);
+  const [selectedPin, setSelectedPin] = useState<PinTarget | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Annotation | null>(null);
+
+  // The popover anchors to a snapshot of the pin's screen rect; once the
+  // window, bucket, site, or data changes the pin has moved or gone.
+  useEffect(() => {
+    setSelectedPin(null);
+    setHoveredPin(null);
+  }, [time, bucket, site, annotations]);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deleteAnnotation.mutateAsync({ siteId: site, annotationId: pendingDelete.annotationId });
+      toast.success(t("Annotation deleted"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("Could not delete the annotation"));
+    }
+    setPendingDelete(null);
+    setSelectedPin(null);
+  };
   const timezone = getTimezone();
   const isExactRange = time.mode === "range" && Boolean(time.startTime && time.endTime);
 
@@ -53,7 +97,7 @@ export function Chart({
     // Filter against strict period bounds so stale transition data does not
     // bleed onto the new x-axis during goBack/goForward.
     const currentPoints: Point[] = [];
-    data?.data?.forEach(e => {
+    data?.forEach(e => {
       const ts = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
       if (ts > now) return;
       const tsMs = ts.toMillis();
@@ -81,14 +125,24 @@ export function Chart({
     const effChartMin = cMin ?? dataMin;
     const effChartMax = boundedChartXMax ?? boundsMax ?? dataMax ?? now.toJSDate();
 
-    // Previous points are time-shifted onto the current period's x-axis, but
-    // keep originalTime so the tooltip can show the real previous date.
-    const { min: prevMin } = getChartTimeBounds(previousTime, bucket, timezone);
-    const offsetMs = cMin && prevMin ? cMin.getTime() - prevMin.getTime() : 0;
+    // Previous points are shifted onto the current period's x-axis by a whole
+    // number of buckets (first bucket onto first bucket), not by the period's
+    // length: a 60-day period is not a whole number of weeks or months, so a
+    // raw offset lands week/month buckets between the current ones. They keep
+    // originalTime so the tooltip can show the real previous date.
+    const prevMin = previousTime ? getChartTimeBounds(previousTime, bucket, timezone).min : undefined;
+    const bucketShift =
+      cMin && prevMin
+        ? bucketsBetween(
+            DateTime.fromJSDate(prevMin, { zone: timezone }),
+            DateTime.fromJSDate(cMin, { zone: timezone }),
+            bucket
+          )
+        : 0;
     const previousPoints: PrevPoint[] = [];
-    previousData?.data?.forEach(e => {
+    previousData?.forEach(e => {
       const prevTs = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
-      const mappedMs = prevTs.toMillis() + offsetMs;
+      const mappedMs = shiftBuckets(prevTs.setZone(timezone), bucket, bucketShift).toMillis();
       if (lowerBoundMs !== undefined && mappedMs < lowerBoundMs) return;
       if (mappedMs > upperBoundMs) return;
       previousPoints.push({
@@ -120,7 +174,11 @@ export function Chart({
     };
   }, [data, previousData, selectedStat, time, previousTime, bucket, timezone, chartXMax, isExactRange]);
 
+  const hoverLeft =
+    hoveredPin && typeof window !== "undefined" ? Math.min(hoveredPin.rect.right + 8, window.innerWidth - 272) : 0;
+
   return (
+    <>
     <TimeSeriesChart
       current={current}
       previous={previous}
@@ -128,6 +186,22 @@ export function Chart({
       chartMin={chartMin}
       chartMax={chartMax}
       displayDashed={displayDashed}
+      onPlotClick={onCreateAnnotation}
+      renderOverlay={context =>
+        annotations.length ? (
+          <AnnotationPins
+            context={context}
+            annotations={annotations}
+            bucket={bucket}
+            selectedKey={selectedPin?.cluster.key ?? null}
+            onSelect={(cluster, rect) => {
+              setHoveredPin(null);
+              setSelectedPin({ cluster, rect });
+            }}
+            onHover={(cluster, rect) => setHoveredPin(cluster && rect ? { cluster, rect } : null)}
+          />
+        ) : null
+      }
       renderTooltip={({ point, previousPoint, bucket }) => {
         const hoverCurrentY = point.y;
         const hoverPreviousY = previousPoint?.y ?? 0;
@@ -170,5 +244,54 @@ export function Chart({
         );
       }}
     />
+
+      {hoveredPin &&
+        !selectedPin &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              left: hoverLeft,
+              top: Math.max(8, hoveredPin.rect.top - 6),
+              pointerEvents: "none",
+              zIndex: 9999,
+            }}
+          >
+            <AnnotationHoverCard cluster={hoveredPin.cluster} />
+          </div>,
+          document.body
+        )}
+
+      {selectedPin && (
+        <Popover open onOpenChange={open => !open && setSelectedPin(null)}>
+          <PopoverAnchor virtualRef={{ current: { getBoundingClientRect: () => selectedPin.rect } }} />
+          <PopoverContent side="top" align="start" className="w-80 p-0">
+            <AnnotationPopoverContent
+              cluster={selectedPin.cluster}
+              canManage={canManage}
+              onEdit={annotation => {
+                setSelectedPin(null);
+                onEditAnnotation?.(annotation);
+              }}
+              onDelete={annotation => setPendingDelete(annotation)}
+            />
+          </PopoverContent>
+        </Popover>
+      )}
+
+      <ConfirmationModal
+        title={t("Delete annotation")}
+        description={
+          pendingDelete
+            ? t("Delete “{title}”? This cannot be undone.", { title: pendingDelete.title })
+            : ""
+        }
+        isOpen={!!pendingDelete}
+        setIsOpen={open => !open && setPendingDelete(null)}
+        onConfirm={confirmDelete}
+        primaryAction={{ variant: "destructive", children: t("Delete") }}
+      />
+    </>
   );
 }

@@ -1,11 +1,13 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { sql, SQL } from "drizzle-orm";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { db } from "../../../db/postgres/postgres.js";
-import { enrichWithTraits, getTimeStatement, processResults } from "../utils/utils.js";
+import { enrichWithTraits } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { effectiveUserId } from "../utils/effectiveUserId.js";
 
 export type GetUsersResponse = {
   user_id: string; // Device fingerprint
@@ -41,79 +43,71 @@ export interface GetUsersRequest {
   }>;
 }
 
-export async function getUsers(req: FastifyRequest<GetUsersRequest>, res: FastifyReply) {
+export const buildUsersQuery = (
+  query: GetUsersRequest["Querystring"],
+  siteId: number,
+  matchingUserIds: string[] | null,
+  isCountQuery: boolean = false
+) => {
   const {
     filters,
-    page = "1",
-    page_size: pageSize = "100",
     sort_by: sortBy = "last_seen",
     sort_order: sortOrder = "desc",
     identified_only: identifiedOnly = "false",
-    search,
-    search_field: searchField = "username",
-  } = req.query;
-  const site = req.params.siteId;
-  let filterIdentified = identifiedOnly === "true";
-
-  // Search for matching user IDs in Postgres when search is provided
-  const MAX_MATCHING_USER_IDS = 10000;
-  let matchingUserIds: string[] | null = null;
-  if (search && search.trim()) {
-    const searchTerm = `%${search.trim()}%`;
-    const siteId = Number(site);
-
-    const fieldConditions: Record<string, SQL> = {
-      username: sql`traits->>'username' ILIKE ${searchTerm}`,
-      name: sql`traits->>'name' ILIKE ${searchTerm}`,
-      email: sql`traits->>'email' ILIKE ${searchTerm}`,
-      user_id: sql`user_id ILIKE ${searchTerm}`,
-    };
-    const condition = fieldConditions[searchField] ?? fieldConditions.username;
-
-    const searchResult = await db.execute<{ user_id: string }>(sql`
-      SELECT user_id FROM user_profiles
-      WHERE site_id = ${siteId} AND ${condition}
-      LIMIT ${MAX_MATCHING_USER_IDS}
-    `);
-
-    matchingUserIds = searchResult.map((r) => r.user_id);
-    if (matchingUserIds.length === 0) {
-      return res.send({
-        data: [],
-        totalCount: 0,
-        page: parseInt(page, 10),
-        pageSize: parseInt(pageSize, 10),
-      });
-    }
-    filterIdentified = true;
-  }
-
-  const pageNum = parseInt(page, 10);
-  const pageSizeNum = parseInt(pageSize, 10);
-  const offset = (pageNum - 1) * pageSizeNum;
+  } = query;
+  // Search results force the identified-only view: matching user IDs come from
+  // Postgres profiles, which only exist for identified users.
+  const filterIdentified = identifiedOnly === "true" || matchingUserIds !== null;
 
   // Validate sort parameters
   const validSortFields = ["first_seen", "last_seen", "pageviews", "sessions", "events"];
   const actualSortBy = validSortFields.includes(sortBy) ? sortBy : "last_seen";
   const actualSortOrder = sortOrder === "asc" ? "ASC" : "DESC";
 
-  // Generate filter statement and time statement
-  const timeStatement = getTimeStatement(req.query);
-  // Applied against raw events (same placement as the count queries): the
-  // aggregate doesn't project every filterable column (pathname, querystring,
-  // utm_*, …), and event-level placement keeps the returned rows consistent
-  // with totalCount.
-  const filterStatement = getFilterStatement(filters, Number(site), timeStatement);
+  // Dimension filters qualify sessions. User aggregates then consume every
+  // event in those sessions, so an acquisition value on the landing event does
+  // not discard later pageviews or custom events from the same session.
+  const timeStatement = getTimeStatement(query);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(filters, siteId, timeStatement);
+  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
+  const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
 
-  // Filters must run in a subquery below the aggregation: the aggregate SELECT
-  // aliases argMax(...) to the same names as the raw columns (country, browser,
-  // …), and ClickHouse resolves unqualified WHERE references at that level to
-  // the aliases, throwing ILLEGAL_AGGREGATION.
-  const query = `
-WITH AggregatedUsers AS (
+  // Query to get total count
+  if (isCountQuery) {
+    return filterIdentified
+      ? `
+${withFilteredSessions}
+SELECT count(*) AS total_count
+FROM (
+    SELECT DISTINCT identified_user_id
+    FROM events
+    ${filteredSessionsJoin}
+    WHERE
+        site_id = {siteId:Int32}
+        AND identified_user_id != ''
+        ${timeStatement}
+        ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
+)
+`
+      : `
+${withFilteredSessions}
+SELECT
+    count(DISTINCT ${effectiveUserId("events")}) AS total_count
+FROM events
+${filteredSessionsJoin}
+WHERE
+    site_id = {siteId:Int32}
+    ${timeStatement}
+    ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
+  `;
+  }
+
+  return `
+WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+AggregatedUsers AS (
     SELECT
         -- Group by effective user: identified_user_id for identified users, user_id (device) for anonymous
-        COALESCE(NULLIF(events.identified_user_id, ''), events.user_id) AS effective_user_id,
+        ${effectiveUserId("events")} AS effective_user_id,
         argMax(user_id, timestamp) AS user_id,
         argMax(identified_user_id, timestamp) AS identified_user_id,
         argMax(country, timestamp) AS country,
@@ -139,10 +133,10 @@ WITH AggregatedUsers AS (
     FROM (
         SELECT *
         FROM events
+        ${filteredSessionsJoin}
         WHERE
             site_id = {siteId:Int32}
             ${timeStatement}
-            ${filterStatement}
             ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
     ) AS events
     GROUP BY
@@ -156,58 +150,70 @@ ${filterIdentified ? "AND identified_user_id != ''" : ""}
 ORDER BY ${actualSortBy} ${actualSortOrder}
 LIMIT {limit:Int32} OFFSET {offset:Int32}
   `;
+};
 
-  // Query to get total count
-  const countQuery = filterIdentified
-    ? `
-SELECT count(*) AS total_count
-FROM (
-    SELECT DISTINCT identified_user_id
-    FROM events
-    WHERE
-        site_id = {siteId:Int32}
-        AND identified_user_id != ''
-        ${timeStatement}
-        ${filterStatement}
-        ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
-)
-`
-    : `
-SELECT
-    count(DISTINCT COALESCE(NULLIF(events.identified_user_id, ''), events.user_id)) AS total_count
-FROM events
-WHERE
-    site_id = {siteId:Int32}
-    ${filterStatement}
-    ${timeStatement}
-    ${matchingUserIds ? "AND events.identified_user_id IN ({matchingUserIds:Array(String)})" : ""}
-  `;
+export const getUsers = analyticsRoute<GetUsersRequest>(
+  "users",
+  async (req: FastifyRequest<GetUsersRequest>, res: FastifyReply) => {
+    const { page = "1", page_size: pageSize = "100", search, search_field: searchField = "username" } = req.query;
+    const site = req.params.siteId;
 
-  try {
+    // Search for matching user IDs in Postgres when search is provided
+    const MAX_MATCHING_USER_IDS = 10000;
+    let matchingUserIds: string[] | null = null;
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      const siteId = Number(site);
+
+      const fieldConditions: Record<string, SQL> = {
+        username: sql`traits->>'username' ILIKE ${searchTerm}`,
+        name: sql`traits->>'name' ILIKE ${searchTerm}`,
+        email: sql`traits->>'email' ILIKE ${searchTerm}`,
+        user_id: sql`user_id ILIKE ${searchTerm}`,
+      };
+      const condition = fieldConditions[searchField] ?? fieldConditions.username;
+
+      const searchResult = await db.execute<{ user_id: string }>(sql`
+        SELECT user_id FROM user_profiles
+        WHERE site_id = ${siteId} AND ${condition}
+        LIMIT ${MAX_MATCHING_USER_IDS}
+      `);
+
+      matchingUserIds = searchResult.map(r => r.user_id);
+      if (matchingUserIds.length === 0) {
+        return res.send({
+          data: [],
+          totalCount: 0,
+          page: parseInt(page, 10),
+          pageSize: parseInt(pageSize, 10),
+        });
+      }
+    }
+
+    const pageNum = parseInt(page, 10);
+    const pageSizeNum = parseInt(pageSize, 10);
+    const offset = (pageNum - 1) * pageSizeNum;
+
     // Execute both queries in parallel
-    const [result, countResult] = await Promise.all([
-      clickhouse.query({
-        query,
-        format: "JSONEachRow",
-        query_params: {
+    const [data, countData] = await Promise.all([
+      runAnalyticsQuery<Omit<GetUsersResponse[number], "traits">>({
+        query: buildUsersQuery(req.query, Number(site), matchingUserIds, false),
+        params: {
           siteId: Number(site),
           limit: pageSizeNum,
           offset,
           ...(matchingUserIds ? { matchingUserIds } : {}),
         },
       }),
-      clickhouse.query({
-        query: countQuery,
-        format: "JSONEachRow",
-        query_params: {
+      runAnalyticsQuery<{ total_count: number }>({
+        query: buildUsersQuery(req.query, Number(site), matchingUserIds, true),
+        params: {
           siteId: Number(site),
           ...(matchingUserIds ? { matchingUserIds } : {}),
         },
       }),
     ]);
 
-    const data = await processResults<Omit<GetUsersResponse[number], "traits">>(result);
-    const countData = await processResults<{ total_count: number }>(countResult);
     const totalCount = countData[0]?.total_count || 0;
 
     // Enrich with traits from Postgres
@@ -219,8 +225,5 @@ WHERE
       page: pageNum,
       pageSize: pageSizeNum,
     });
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    return res.status(500).send({ error: "Failed to fetch users" });
   }
-}
+);

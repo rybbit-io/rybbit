@@ -28,7 +28,7 @@ export default function TeamsLayout({ children }: { children: React.ReactNode })
             </ExternalLink>
           </p>
         </div>
-        {!isMember && (
+        {activeOrg?.id && !isMember && (
           <CreateEditTeamDialog
             trigger={
               <Button size="sm">

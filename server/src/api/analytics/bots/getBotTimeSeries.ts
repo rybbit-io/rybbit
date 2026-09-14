@@ -1,14 +1,22 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import SqlString from "sqlstring";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { TimeBucket } from "../types.js";
-import { getTimeStatement, processResults, TimeBucketToFn } from "../utils/utils.js";
-import { type BotLayerKey, getBotFilterStatement, getBotLayerStatement, getBotTimeStatementFill } from "./utils.js";
+import { resolveTimeWindow } from "../utils/timeWindow.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import {
+  AI_CRAWLER_PURPOSE_SQL_LIST,
+  AI_PURPOSE_SQL_LIST,
+  type BotLayerKey,
+  getBotFilterStatement,
+  getBotLayerStatement,
+  getBotPurposeStatement,
+} from "./utils.js";
 
 type BotTimeSeriesPoint = {
   time: string;
   bot_requests: number;
+  ai_agent_requests: number;
+  ai_crawler_requests: number;
 };
 
 export interface BotTimeSeriesRequest {
@@ -18,49 +26,47 @@ export interface BotTimeSeriesRequest {
   Querystring: FilterParams<{
     bucket: TimeBucket;
     layer?: BotLayerKey;
+    /** A single purpose, or "ai" / "ai_crawler" for the grouped families. */
+    purpose?: string;
   }>;
 }
 
-const getQuery = (params: BotTimeSeriesRequest["Querystring"]) => {
-  const { bucket = "hour", time_zone } = params;
-  const timeStatement = getTimeStatement(params);
-  const filterStatement = getBotFilterStatement(params.filters);
-  const layerStatement = getBotLayerStatement(params.layer);
-  const hasBoundedTime =
-    Boolean(params.start_date && params.end_date) ||
-    Boolean(params.start_datetime && params.end_datetime) ||
-    (params.past_minutes_start !== undefined && params.past_minutes_end !== undefined);
-  const fillClause = hasBoundedTime ? getBotTimeStatementFill(params, bucket) : "";
-  const timezone = SqlString.escape(time_zone || "UTC");
+export const buildBotTimeSeriesQuery = (query: BotTimeSeriesRequest["Querystring"]) => {
+  const { bucket = "hour" } = query;
+  const window = resolveTimeWindow(query);
+  const timeStatement = window.where();
+  const filterStatement = getBotFilterStatement(query.filters);
+  const layerStatement = getBotLayerStatement(query.layer);
+  const purposeStatement = getBotPurposeStatement(query.purpose);
+  const fillClause = window.fill(bucket);
 
   return `
     SELECT
-      toDateTime(${TimeBucketToFn[bucket]}(toTimeZone(timestamp, ${timezone}))) AS time,
-      count() AS bot_requests
+      ${window.bucketed("timestamp", bucket)} AS time,
+      count() AS bot_requests,
+      -- Returned on every bucket so the chart can draw agents against crawlers
+      -- without a second round trip; both read 0 on windows predating identity.
+      countIf(bot_purpose = 'ai_agent') AS ai_agent_requests,
+      countIf(bot_purpose IN (${AI_CRAWLER_PURPOSE_SQL_LIST})) AS ai_crawler_requests
     FROM bot_events
     WHERE site_id = {siteId:Int32}
       ${filterStatement}
       ${layerStatement}
+      ${purposeStatement}
       ${timeStatement}
     GROUP BY time
     ORDER BY time ${fillClause}
   `;
 };
 
-export async function getBotTimeSeries(req: FastifyRequest<BotTimeSeriesRequest>, res: FastifyReply) {
-  try {
-    const result = await clickhouse.query({
-      query: getQuery(req.query),
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(req.params.siteId),
-      },
+export const getBotTimeSeries = analyticsRoute<BotTimeSeriesRequest>(
+  "bot time series",
+  async (req: FastifyRequest<BotTimeSeriesRequest>, res: FastifyReply) => {
+    const data = await runAnalyticsQuery<BotTimeSeriesPoint>({
+      query: buildBotTimeSeriesQuery(req.query),
+      params: { siteId: Number(req.params.siteId) },
     });
 
-    const data = await processResults<BotTimeSeriesPoint>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Error fetching bot time series:", error);
-    return res.status(500).send({ error: "Failed to fetch bot time series" });
   }
-}
+);

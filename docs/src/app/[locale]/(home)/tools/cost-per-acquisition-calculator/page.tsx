@@ -164,7 +164,7 @@ const educationalContent = (
         <strong>Improve quality scores:</strong> Higher ad relevance reduces costs on platforms like Google Ads
       </li>
       <li>
-        <strong>Leverage retargeting:</strong> Re-engage warm audiences who are more likely to convert at lower costs
+        <strong>Use retargeting:</strong> Re-engage warm audiences who are more likely to convert at lower costs
       </li>
     </ol>
   </>

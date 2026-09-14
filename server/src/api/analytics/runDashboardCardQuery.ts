@@ -1,16 +1,28 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { z } from "zod";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { MAX_CUSTOM_QUERY_LENGTH, normalizeCustomQuery, validateScopedQuery } from "./utils/customQueryValidation.js";
-import { bucketIntervalMap, getTimeStatement } from "./utils/utils.js";
+import { clickhouseQuery } from "../../db/clickhouse/clickhouse.js";
+import {
+  MAX_CUSTOM_QUERY_LENGTH,
+  normalizeCustomQuery,
+  sanitizeClickhouseError,
+  validateScopedQuery,
+} from "./utils/customQueryValidation.js";
+import { validateHttpTimeParams } from "./utils/query-validation.js";
+import { bucketIntervalMap, getTimeStatement } from "./utils/timeWindow.js";
 
+// Mirrors the rybbit_query ClickHouse profile (docker-compose clickhouse_user_settings).
 const MAX_EXECUTION_TIME_SECONDS = 10;
 const MAX_RESULT_ROWS = 1000;
 
 const BUCKET_TOKEN = /\{\{\s*bucket\s*\}\}/gi;
 const TZ_TOKEN = /\{\{\s*tz\s*\}\}/gi;
 
+// Only the two fields the time window doesn't own. The bounds are checked by
+// validateHttpTimeParams below rather than re-described here: a second schema
+// that merely looked similar would accept an unpaired, reversed or impossible
+// bound (`25:00:00` matches the format), which the window then drops — silently
+// widening the card to all time.
 const requestBodySchema = z.object({
   query: z.string().trim().min(1).max(MAX_CUSTOM_QUERY_LENGTH),
   startDate: z.string().optional(),
@@ -44,6 +56,23 @@ export async function runDashboardCardQuery(
     return reply.status(400).send({ error: body.error.errors[0]?.message ?? "Invalid request body" });
   }
 
+  // The bounds arrive in the body, so validateTimeParams — a query-param
+  // preHandler — never sees them. Run the same validator the routes run, on the
+  // same param names, so this endpoint rejects exactly what they reject.
+  const timeParams = {
+    start_date: body.data.startDate,
+    end_date: body.data.endDate,
+    time_zone: body.data.timeZone,
+    start_datetime: body.data.startDateTime,
+    end_datetime: body.data.endDateTime,
+    past_minutes_start: body.data.pastMinutesStart,
+    past_minutes_end: body.data.pastMinutesEnd,
+  };
+  const timeError = validateHttpTimeParams(timeParams);
+  if (timeError) {
+    return reply.status(400).send({ error: timeError });
+  }
+
   // Substitute {{bucket}} and {{tz}} BEFORE validation so the validator never
   // sees the template tokens. {{bucket}} comes from an allowlisted enum mapped
   // to a constant interval string; {{tz}} is SqlString-escaped to a quoted
@@ -64,15 +93,7 @@ export async function runDashboardCardQuery(
   // Auto-scope the timestamp to the global time range. getTimeStatement returns
   // an "AND timestamp >= ... AND timestamp < ..." fragment (or "" for all-time),
   // with all values Zod-sanitized and SqlString-escaped internally.
-  const timeStatement = getTimeStatement({
-    start_date: body.data.startDate ?? "",
-    end_date: body.data.endDate ?? "",
-    time_zone: body.data.timeZone ?? "",
-    start_datetime: body.data.startDateTime,
-    end_datetime: body.data.endDateTime,
-    past_minutes_start: body.data.pastMinutesStart,
-    past_minutes_end: body.data.pastMinutesEnd,
-  });
+  const timeStatement = getTimeStatement(timeParams);
 
   const query = `
     WITH scoped_events AS (
@@ -89,19 +110,16 @@ export async function runDashboardCardQuery(
   `;
 
   try {
-    const result = await clickhouse.query({
+    const result = await clickhouseQuery.query({
       query,
       format: "JSONEachRow",
       query_params: {
         siteIds: [siteId],
         limit: MAX_RESULT_ROWS,
       },
-      clickhouse_settings: {
-        max_execution_time: MAX_EXECUTION_TIME_SECONDS,
-        max_result_rows: String(MAX_RESULT_ROWS),
-        result_overflow_mode: "break",
-        readonly: "2",
-      },
+      // Execution limits (readonly, max_execution_time, max_memory_usage,
+      // max_result_rows, …) come from the rybbit_query settings profile and are
+      // pinned there with constraints; sending them here would be rejected.
     });
 
     const data = await result.json<Record<string, unknown>>();
@@ -116,7 +134,6 @@ export async function runDashboardCardQuery(
     });
   } catch (error) {
     request.log.error(error, "Failed to run dashboard card query");
-    const message = error instanceof Error && error.message ? error.message : "Failed to run query";
-    return reply.status(400).send({ error: message });
+    return reply.status(400).send({ error: sanitizeClickhouseError(error) });
   }
 }

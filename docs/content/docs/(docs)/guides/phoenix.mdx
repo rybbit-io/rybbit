@@ -1,0 +1,96 @@
+---
+title: Phoenix
+description: Add Rybbit analytics to your Phoenix app
+category: backend
+icon: SiPhoenixframework
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Phoenix renders every page inside the root layout, `lib/my_app_web/components/layouts/root.html.heex`, which owns the `<html>` and `<head>` tags, so the snippet goes there. Read the site ID from application config set in `config/runtime.exs`, so it comes from an environment variable at boot and stays out of the template.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Phoenix
+
+#### Configure the site ID
+
+`config/runtime.exs` runs when the app boots, including inside a release, so it is the right place to read environment variables. Add a `:rybbit` key for your app (replace `:my_app` with your OTP app name):
+
+```elixir filename="config/runtime.exs"
+config :my_app, :rybbit,
+  instance_url: System.get_env("RYBBIT_INSTANCE_URL", "https://app.rybbit.io"),
+  site_id: System.get_env("RYBBIT_SITE_ID")
+```
+
+Then set the variables where the app runs:
+
+```bash
+export RYBBIT_INSTANCE_URL=https://app.rybbit.io
+export RYBBIT_SITE_ID=YOUR_SITE_ID
+```
+
+#### Expose the config to the layout
+
+Templates in `lib/my_app_web/components/layouts/` are embedded into the `MyAppWeb.Layouts` module, so a function defined there is callable from `root.html.heex`. Add one that returns the config:
+
+```elixir filename="lib/my_app_web/components/layouts.ex"
+defmodule MyAppWeb.Layouts do
+  use MyAppWeb, :html
+
+  embed_templates "layouts/*"
+
+  def rybbit_config, do: Application.get_env(:my_app, :rybbit, [])
+end
+```
+
+#### Add the tag to the root layout
+
+Open `lib/my_app_web/components/layouts/root.html.heex` and add the tag inside `<head>`, after the existing `app.css` and `app.js` tags:
+
+```html filename="lib/my_app_web/components/layouts/root.html.heex"
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="csrf-token" content={get_csrf_token()} />
+  <.live_title suffix=" · Phoenix Framework">{assigns[:page_title] || "MyApp"}</.live_title>
+  <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+  <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
+
+  <script
+    :if={rybbit_config()[:site_id]}
+    src={"#{rybbit_config()[:instance_url]}/api/script.js?siteId=#{rybbit_config()[:site_id]}"}
+    defer
+  ></script>
+</head>
+```
+
+The `:if` attribute skips the tag when `RYBBIT_SITE_ID` is unset, so development and test environments are not tracked unless you set the variable there.
+
+#### LiveView navigation
+
+`<.link navigate>`, `<.link patch>`, `push_navigate/2` and `push_patch/2` change the URL with `history.pushState` (or `replaceState` when `replace: true`) and keep the root layout, including its `<head>`, in place. The Rybbit script hooks `history.pushState` and `history.replaceState` and listens for `popstate` and `hashchange`, so each live navigation is tracked as a pageview while **SPA Navigation** is enabled in your site settings (the default). No `phx:` event listener is needed. A regular `<.link href>` does a full page load, which the script also tracks.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Tag missing**: `config/runtime.exs` is evaluated at boot, so restart the app or release after changing `RYBBIT_SITE_ID`. Check with `Application.get_env(:my_app, :rybbit)` in `iex -S mix`.
+- **Content Security Policy**: if you set a `content-security-policy` header in a plug, add your Rybbit host to `script-src` and `connect-src`, or [proxy the script](/docs/proxy-guide) through your own domain.
+- **Self-hosted instance**: set `RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the layout appends the script path to it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

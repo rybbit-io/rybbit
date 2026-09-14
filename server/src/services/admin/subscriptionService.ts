@@ -8,14 +8,28 @@ import { getAllStripeSubscriptionsByCustomer } from "../../lib/subscriptionUtils
 
 export interface SubscriptionData {
   id: string;
+  source: "custom" | "override" | "stripe" | "appsumo" | "free";
   planName: string;
   status: string;
   currentPeriodStart?: Date;
   currentPeriodEnd?: Date;
   cancelAtPeriodEnd?: boolean;
   eventLimit?: number;
+  memberLimit?: number | null;
+  siteLimit?: number | null;
   interval?: string;
 }
+
+type AdminOrganizationSubscriptionFields = {
+  id: string;
+  stripeCustomerId?: string | null;
+  planOverride?: string | null;
+  customPlan?: {
+    events: number;
+    members: number | null;
+    websites: number | null;
+  } | null;
+};
 
 /**
  * Projects a raw Stripe subscription into the admin SubscriptionData shape. Unlike the app-facing
@@ -36,6 +50,7 @@ function buildAdminSubscriptionData(
 
   const data: SubscriptionData = {
     id: subscription.id,
+    source: "stripe",
     planName: planDetails?.name || "Unknown Plan",
     status: subscription.status,
   };
@@ -153,7 +168,7 @@ async function fetchAppSumoLicensesForOrganizations(
  * @returns Map of organization ID to subscription data with fallback to free plan
  */
 export async function getOrganizationSubscriptions(
-  organizations: Array<{ id: string; stripeCustomerId?: string | null }>,
+  organizations: AdminOrganizationSubscriptionFields[],
   includeFullDetails = false
 ): Promise<
   Map<string, SubscriptionData & { planName: string; status: string; eventLimit: number; currentPeriodEnd: Date }>
@@ -177,14 +192,56 @@ export async function getOrganizationSubscriptions(
   const nextMonthStart = DateTime.now().startOf("month").plus({ months: 1 }).toJSDate();
 
   for (const org of organizations) {
+    if (org.customPlan) {
+      orgSubscriptionMap.set(org.id, {
+        id: "",
+        source: "custom",
+        planName: "custom",
+        status: "active",
+        eventLimit: org.customPlan.events,
+        memberLimit: org.customPlan.members ?? null,
+        siteLimit: org.customPlan.websites ?? null,
+        currentPeriodEnd: nextMonthStart,
+        ...(includeFullDetails
+          ? {
+              currentPeriodStart: DateTime.now().startOf("month").toJSDate(),
+              cancelAtPeriodEnd: false,
+              interval: "lifetime",
+            }
+          : {}),
+      });
+      continue;
+    }
+
+    if (org.planOverride) {
+      const appsumoMatch = org.planOverride.match(/^appsumo-([1-7])$/);
+      const plan = getStripePrices().find(candidate => candidate.name === org.planOverride);
+      if (appsumoMatch || plan) {
+        orgSubscriptionMap.set(org.id, {
+          id: "",
+          source: "override",
+          planName: org.planOverride,
+          status: "active",
+          eventLimit: appsumoMatch
+            ? APPSUMO_TIER_LIMITS[appsumoMatch[1] as keyof typeof APPSUMO_TIER_LIMITS]
+            : plan!.limits.events,
+          currentPeriodEnd: nextMonthStart,
+          ...(includeFullDetails
+            ? {
+                currentPeriodStart: DateTime.now().startOf("month").toJSDate(),
+                cancelAtPeriodEnd: false,
+                interval: plan?.interval ?? "lifetime",
+              }
+            : {}),
+        });
+        continue;
+      }
+    }
+
     const stripeData = org.stripeCustomerId ? stripeSubscriptionMap.get(org.stripeCustomerId) : null;
     const appsumoData = appsumoLicenseMap.get(org.id);
 
-    // Determine which subscription to use (highest event limit wins)
-    const stripeEventLimit = stripeData?.eventLimit ?? 0;
-    const appsumoEventLimit = appsumoData?.eventLimit ?? 0;
-
-    if (stripeData && (!appsumoData || stripeEventLimit >= appsumoEventLimit)) {
+    if (stripeData) {
       // Use Stripe subscription
       orgSubscriptionMap.set(org.id, {
         ...stripeData,
@@ -202,6 +259,7 @@ export async function getOrganizationSubscriptions(
         currentPeriodEnd: Date;
       } = {
         id: "",
+        source: "appsumo",
         planName: `appsumo-${appsumoData.tier}`,
         status: "active",
         eventLimit: appsumoData.eventLimit,
@@ -219,6 +277,7 @@ export async function getOrganizationSubscriptions(
       // Free plan with all required fields
       orgSubscriptionMap.set(org.id, {
         id: "",
+        source: "free",
         planName: "free",
         status: "free",
         eventLimit: DEFAULT_EVENT_LIMIT,

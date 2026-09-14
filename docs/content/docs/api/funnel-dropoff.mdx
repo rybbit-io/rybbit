@@ -61,7 +61,7 @@ async function analyzeFunnel() {
     body: JSON.stringify({ steps: funnelSteps }),
   });
   const { data } = await res.json();
-  return data; // array of { step_number, step_name, visitors, conversion_rate, dropoff_rate }
+  return data; // array of { step_number, step_name, sessions, conversion_rate, dropoff_rate }
 }
 ```
 </Tab>
@@ -101,17 +101,17 @@ A response looks like this — note that `dropoff_rate` is the percentage who le
 ```json
 {
   "data": [
-    { "step_number": 1, "step_name": "Homepage", "visitors": 10000, "conversion_rate": 100,  "dropoff_rate": 0 },
-    { "step_number": 2, "step_name": "Pricing",  "visitors": 4500,  "conversion_rate": 45,   "dropoff_rate": 55 },
-    { "step_number": 3, "step_name": "Signup",   "visitors": 1800,  "conversion_rate": 18,   "dropoff_rate": 60 },
-    { "step_number": 4, "step_name": "Complete", "visitors": 1080,  "conversion_rate": 10.8, "dropoff_rate": 40 }
+    { "step_number": 1, "step_name": "Homepage", "sessions": 10000, "conversion_rate": 100,  "dropoff_rate": 0 },
+    { "step_number": 2, "step_name": "Pricing",  "sessions": 4500,  "conversion_rate": 45,   "dropoff_rate": 55 },
+    { "step_number": 3, "step_name": "Signup",   "sessions": 1800,  "conversion_rate": 18,   "dropoff_rate": 60 },
+    { "step_number": 4, "step_name": "Complete", "sessions": 1080,  "conversion_rate": 10.8, "dropoff_rate": 40 }
   ]
 }
 ```
 
 ## Step 2 — Find the worst step
 
-The leak isn't always the step with the fewest visitors — it's the step with the steepest **drop-off**. Pick the maximum `dropoff_rate`.
+The leak isn't always the step with the fewest sessions — it's the step with the steepest **drop-off**. Pick the maximum `dropoff_rate`.
 
 <Tabs items={['JavaScript', 'Python']}>
 <Tab value="JavaScript">

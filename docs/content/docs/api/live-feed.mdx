@@ -184,7 +184,7 @@ for (const e of events) {
 </Tabs>
 
 <Callout type="warn">
-**Mind the rate limits.** On Rybbit Cloud, API keys are capped per minute by plan (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only)). A 10-second poll is 6 requests/minute — well within the Standard tier. If you add the live-count call, that's 12/minute. Lengthen the interval or drop the count call if you're close to your limit. Self-hosted instances have no limit.
+**Mind the daily quota.** On Rybbit Cloud, a continuous poll is measured against your plan's daily quota (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only)), not just its per-second rate. A 10-second poll running around the clock is 8,640 requests/day — over the Standard quota of 5,000, and 17,280 with the live-count call added. Poll every 20-30 seconds, or only while someone is actually watching the page, and check `X-RateLimit-Daily-Remaining` to see where you stand. Self-hosted instances are not rate limited.
 </Callout>
 
 ## Next steps

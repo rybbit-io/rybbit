@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ RUN rm -rf node_modules/@rybbit/shared \
 RUN npm run build
 
 # Runtime image
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 

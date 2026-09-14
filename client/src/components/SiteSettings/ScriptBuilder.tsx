@@ -88,8 +88,11 @@ export function ScriptBuilder({ siteId, siteType = "web", appIdentifier }: Scrip
 
   // Build the data attributes shared by every snippet variation, so the HTML,
   // JavaScript injection, and AI agent versions all reflect the configured options.
-  const scriptUrl = `${globalThis.location.origin}/api/script.js`;
-  const dataAttributes: [string, string][] = [["data-site-id", siteId]];
+  // The site ID travels in the script URL rather than a data attribute so that
+  // script optimizers which rebuild the tag (WP Rocket, Perfmatters, ...) can't
+  // strip it. Remaining options stay as data attributes.
+  const scriptUrl = `${globalThis.location.origin}/api/script.js?siteId=${encodeURIComponent(siteId)}`;
+  const dataAttributes: [string, string][] = [];
   if (debounceValue !== 500) {
     dataAttributes.push(["data-debounce", String(debounceValue)]);
   }
@@ -103,19 +106,19 @@ export function ScriptBuilder({ siteId, siteType = "web", appIdentifier }: Scrip
   // Generate tracking script dynamically based on options
   const trackingScript = `<script
     src="${scriptUrl}"
-${dataAttributes.map(attr => `    ${formatAttr(attr)}`).join("\n")}
-    defer
+${dataAttributes.map(attr => `    ${formatAttr(attr)}\n`).join("")}    defer
 ></script>`;
 
-  const jsSnippet = `(function () {
-  var el = document.createElement("script");
-  el.src = "${scriptUrl}";
-${dataAttributes.map(([key, value]) => `  el.setAttribute("${key}", ${JSON.stringify(value)});`).join("\n")}
-  el.defer = true;
-  document.head.appendChild(el);
-})();`;
+  const jsSnippet = `<script>
+  (function() {
+    var el = document.createElement("script");
+    el.src = "${scriptUrl}";
+    el.defer = true;
+${dataAttributes.map(([key, value]) => `    el.setAttribute("${key}", ${JSON.stringify(value)});\n`).join("")}    document.head.appendChild(el);
+  })();
+</script>`;
 
-  const inlineScript = `<script src="${scriptUrl}" ${dataAttributes.map(formatAttr).join(" ")} defer></script>`;
+  const inlineScript = `<script src="${scriptUrl}" ${dataAttributes.map(attr => `${formatAttr(attr)} `).join("")}defer></script>`;
 
   const aiPrompt = `Install Rybbit analytics on this website.
 
@@ -174,9 +177,9 @@ await rybbit.event("signup_started", { plan: "pro" });`;
               {showJsFallback && (
                 <div className="mt-2 flex flex-col gap-2">
                   <p className="text-xs text-muted-foreground">
-                    {t("Run this in any JavaScript that loads on every page:")}
+                    {t("Paste this into the {headTag} of your website:", { headTag: "<head>" })}
                   </p>
-                  <CodeSnippet language="javascript" code={jsSnippet} />
+                  <CodeSnippet language="HTML" code={jsSnippet} />
                 </div>
               )}
             </div>

@@ -38,7 +38,7 @@ describe("botDetectionStats aggregation", () => {
 
   it("flushes only the delta since the previous flush", async () => {
     recordBotBlockingRequest(undefined, undefined); // totalRequests=1, cs:missing=1, sig:missingMask=1
-    recordBotDetections(["ua_pattern"]); // totalBotRequests=1, m:ua_pattern=1
+    recordBotDetections(["ua_pattern"], true); // totalBotRequests=1, m:ua_pattern=1
 
     await flushBotDetectionStats();
 
@@ -81,7 +81,7 @@ describe("botDetectionStats aggregation", () => {
   });
 
   it("does not throw when Redis is unavailable", async () => {
-    recordBotDetections(["rate_anomaly"]);
+    recordBotDetections(["rate_anomaly"], true);
     mocks.exec.mockRejectedValue(new Error("redis down"));
 
     await expect(flushBotDetectionStats()).resolves.toBeUndefined();

@@ -9,6 +9,13 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
 Cloudflare Workers provide a serverless way to proxy Rybbit tracking at the edge, close to your users worldwide. This delivers excellent performance with minimal configuration.
 
+<Callout type="warn">
+**Two settings make or break a first-party proxy:**
+
+1. Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**, so the visitor IP your proxy forwards in `X-Forwarded-For` is trusted directly.
+2. Forward **all** of the browser's request headers, not a hand-picked few. Rybbit's bot detection expects the headers every real browser sends (`Accept`, `Accept-Language`, `Accept-Encoding`, `Sec-Fetch-*`) — proxies that forward only `User-Agent` get their events accepted with `200 OK` but classified as bot traffic. Use `X-Forwarded-For` for the visitor IP; `X-Real-IP` does not survive Rybbit Cloud's edge.
+</Callout>
+
 ## Overview
 
 Cloudflare Workers run on Cloudflare's global network, intercepting and proxying requests before they reach your origin server. This makes them perfect for analytics proxying with built-in caching and ultra-low latency.

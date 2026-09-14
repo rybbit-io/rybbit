@@ -7,6 +7,8 @@ services:
     image: clickhouse/clickhouse-server:26.3.17.4
     volumes:
       - clickhouse-data:/var/lib/clickhouse
+      - /var/backups/rybbit/clickhouse:/var/lib/clickhouse/backups
+      - /etc/rybbit-backup/clickhouse-backup-disk.xml:/etc/clickhouse-server/config.d/backup-disk.xml:ro
     environment:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}

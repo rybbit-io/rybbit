@@ -1,7 +1,5 @@
 "use client";
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import Link from "next/link";
 import { useState } from "react";
 
 const industryBenchmarks: Record<string, { low: number; average: number; high: number }> = {
@@ -169,53 +167,6 @@ export function BounceRateForm() {
               Clear
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* FAQ Section */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Frequently Asked Questions</h2>
-        <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1">
-              <AccordionTrigger>What is bounce rate?</AccordionTrigger>
-              <AccordionContent>
-                Bounce rate is the percentage of visitors who leave your website after viewing only one page without any interaction. A high bounce rate might indicate that your landing pages aren't relevant to visitors or your site has usability issues.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-2">
-              <AccordionTrigger>What's a good bounce rate?</AccordionTrigger>
-              <AccordionContent>
-                A "good" bounce rate varies by industry and page type. E-commerce sites typically aim for 20-45%, while blogs may see 65-90% and still be healthy. Landing pages naturally have higher bounce rates (60-90%) since they're designed for a single action.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-3">
-              <AccordionTrigger>How can I reduce my bounce rate?</AccordionTrigger>
-              <AccordionContent>
-                To reduce bounce rate: improve page load speed, ensure mobile responsiveness, create compelling content, add clear calls-to-action, use internal linking, improve content readability, and ensure your pages match visitor intent. Track your improvements with{" "}
-                <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                  Rybbit Analytics
-                </Link>{" "}
-                to see what works.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-4">
-              <AccordionTrigger>Does bounce rate affect SEO?</AccordionTrigger>
-              <AccordionContent>
-                While bounce rate isn't a direct Google ranking factor, it can indirectly impact SEO. A high bounce rate suggests poor user experience or irrelevant content, which can lead to lower engagement signals. Google may interpret this as lower quality, potentially affecting your rankings over time.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-5" className="border-b-0">
-              <AccordionTrigger>Why is bounce rate different in different tools?</AccordionTrigger>
-              <AccordionContent>
-                Different analytics tools may calculate bounce rate differently based on how they track sessions, handle direct traffic, and count interactions. Some tools exclude certain traffic sources or implement different session timeouts. Always use the same tool consistently for accurate comparisons.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
         </div>
       </div>
     </>

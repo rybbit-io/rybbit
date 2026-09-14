@@ -55,7 +55,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <Route className="w-5 h-5" />,
     title: "Page navigation breadcrumbs",
     description:
-      "See the full user journey as a visual breadcrumb trail — every page visited, every click made, every event fired.",
+      "See each session as a visual breadcrumb trail: every page visited, every click made, every event fired.",
   },
 ];
 
@@ -76,7 +76,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 3,
     title: "Sessions are captured automatically",
     description:
-      "Every user interaction — clicks, scrolls, page navigations, form inputs (masked), and custom events — is captured and sent to your Rybbit instance.",
+      "Every user interaction (clicks, scrolls, page navigations, masked form inputs, and custom events) is captured and sent to your Rybbit instance.",
   },
   {
     step: 4,
@@ -139,7 +139,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "How is this different from Hotjar or FullStory?",
     answer:
-      "Rybbit session replay is integrated directly into your analytics platform — no separate tool, no extra billing, and no data silos. It's also privacy-first with automatic input masking, and it's fully open source so you can self-host everything.",
+      "Rybbit session replay is integrated directly into your analytics platform: no separate tool, no extra billing, and no data silos. It's also privacy-first with automatic input masking, and it's fully open source: you can self-host everything.",
   },
   {
     question: "Are form inputs recorded?",

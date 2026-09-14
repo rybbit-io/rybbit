@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { db } from "../../db/postgres/postgres.js";
 import { member } from "../../db/postgres/schema.js";
 import { auth } from "../../lib/auth.js";
+import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
@@ -37,10 +38,7 @@ interface CreateUserInOrganization {
  * better-auth's internal adapter so password hashing and account linking match
  * the admin plugin exactly.
  */
-export async function createUserInOrganization(
-  request: FastifyRequest<CreateUserInOrganization>,
-  reply: FastifyReply
-) {
+export async function createUserInOrganization(request: FastifyRequest<CreateUserInOrganization>, reply: FastifyReply) {
   try {
     const { organizationId } = request.params;
     const { email: rawEmail, name, password, role } = request.body;
@@ -53,10 +51,8 @@ export async function createUserInOrganization(
       if (!userId) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
-      callerMembership = await db.query.member.findFirst({
-        where: and(eq(member.userId, userId), eq(member.organizationId, organizationId)),
-      });
-      if (!callerMembership || (callerMembership.role !== "admin" && callerMembership.role !== "owner")) {
+      callerMembership = await getOrgMembership(userId, organizationId);
+      if (!isOrgAdmin(callerMembership)) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
     }
@@ -90,11 +86,14 @@ export async function createUserInOrganization(
     }
 
     // Create the user + credential account (mirrors better-auth's admin createUser)
-    const createdUser = await ctx.internalAdapter.createUser({
-      email,
-      name: name || email,
-      emailVerified: false,
-    });
+    const createdUser = await ctx.internalAdapter.createUser(
+      {
+        email,
+        name: name || email,
+        emailVerified: false,
+      },
+      { method: "admin" }
+    );
 
     if (!createdUser) {
       return reply.status(500).send({ error: "Failed to create user" });
@@ -121,7 +120,7 @@ export async function createUserInOrganization(
 
     return reply.status(201).send({ message: "User created and added to organization successfully" });
   } catch (error: any) {
-    console.error(String(error));
+    request.log.error({ err: error }, "Error creating user in organization");
     return reply.status(500).send({ error: String(error) });
   }
 }

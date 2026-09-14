@@ -1,5 +1,5 @@
 import { authedFetch } from "../../utils";
-import { CommonApiParams, toQueryParams } from "./types";
+import { CommonApiParams } from "./types";
 
 // Session replay list item type
 export interface SessionReplayListItem {
@@ -81,37 +81,6 @@ export interface SessionReplaysParams extends CommonApiParams {
   limit?: number;
   offset?: number;
   minDuration?: number;
-}
-
-/**
- * Fetch session replays list
- * GET /api/session-replay/list/:site
- */
-export async function fetchSessionReplays(
-  site: string | number,
-  params: SessionReplaysParams
-): Promise<SessionReplayListResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    limit: params.limit,
-    offset: params.offset,
-    minDuration: params.minDuration,
-  };
-
-  const response = await authedFetch<SessionReplayListResponse>(`/sites/${site}/session-replay/list`, queryParams);
-  return response;
-}
-
-/**
- * Fetch session replay events for a specific session
- * GET /api/session-replay/:sessionId/:site
- */
-export async function fetchSessionReplayEvents(
-  site: string | number,
-  sessionId: string
-): Promise<GetSessionReplayEventsResponse> {
-  const response = await authedFetch<GetSessionReplayEventsResponse>(`/sites/${site}/session-replay/${sessionId}`);
-  return response;
 }
 
 /**

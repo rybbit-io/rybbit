@@ -134,7 +134,7 @@ export const endpointCategories: EndpointCategory[] = [
         path: "/organizations",
         name: "Get My Organizations",
         description:
-          "Returns all organizations the authenticated user is a member of, including all members for each organization",
+          "Returns all organizations the authenticated user is a member of. The members array is only populated for session-cookie requests; Bearer/API-key callers receive an empty members array and should use Get Organization Members instead.",
         hasCommonParams: false,
       },
       {
@@ -335,6 +335,38 @@ export const endpointCategories: EndpointCategory[] = [
       },
       {
         method: "GET",
+        path: "/sites/:site/events/autocapture",
+        name: "Get Autocapture Events",
+        description: "Returns autocapture events of a given type grouped by display value with counts",
+        hasCommonParams: true,
+        requiredParams: ["type"],
+        specificParams: ["type"],
+        parameterMetadata: {
+          type: {
+            label: "Type",
+            type: "select",
+            options: ["outbound", "button_click", "form_submit", "copy"],
+          },
+        },
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/events/autocapture-values",
+        name: "Get Autocapture Values",
+        description: "Returns the most common prop values for an autocapture type (goal/funnel suggestions)",
+        hasCommonParams: true,
+        requiredParams: ["type"],
+        specificParams: ["type"],
+        parameterMetadata: {
+          type: {
+            label: "Type",
+            type: "select",
+            options: ["outbound", "button_click", "form_submit", "copy"],
+          },
+        },
+      },
+      {
+        method: "GET",
         path: "/sites/:site/events/outbound",
         name: "Get Outbound Links",
         description: "Returns outbound link clicks with occurrence counts",
@@ -390,7 +422,14 @@ export const endpointCategories: EndpointCategory[] = [
         name: "Get Bot Time Series",
         description: "Returns bot request counts over time",
         hasCommonParams: true,
-        specificParams: ["bucket", "layer"],
+        specificParams: ["bucket", "layer", "purpose"],
+      },
+      {
+        method: "GET",
+        path: "/sites/:site/bots/ai-summary",
+        name: "Get AI Summary",
+        description: "Returns crawls and referrals per AI operator, side by side",
+        hasCommonParams: true,
       },
       {
         method: "GET",
@@ -399,7 +438,7 @@ export const endpointCategories: EndpointCategory[] = [
         description: "Returns bot requests broken down by a dimension",
         hasCommonParams: true,
         requiredParams: ["dimension"],
-        specificParams: ["dimension", "limit", "page", "layer"],
+        specificParams: ["dimension", "limit", "page", "layer", "purpose"],
         parameterMetadata: {
           dimension: {
             label: "Dimension",
@@ -418,7 +457,11 @@ export const endpointCategories: EndpointCategory[] = [
               "pathname",
               "dimensions",
               "asn_org",
+              "asn_provider",
               "bot_category",
+              "bot_name",
+              "bot_operator",
+              "bot_purpose",
               "matched_ua_pattern",
             ],
           },
@@ -649,7 +692,16 @@ export const endpointCategories: EndpointCategory[] = [
         name: "Get Sessions",
         description: "Returns a paginated list of sessions",
         hasCommonParams: true,
-        specificParams: ["page", "limit", "user_id", "identified_only", "min_pageviews", "min_events", "min_duration"],
+        specificParams: [
+          "page",
+          "limit",
+          "user_id",
+          "session_id",
+          "identified_only",
+          "min_pageviews",
+          "min_events",
+          "min_duration",
+        ],
       },
       {
         method: "GET",
@@ -855,6 +907,25 @@ export const parameterMetadata: Record<string, ParameterMetadata> = {
     type: "select",
     options: ["ua_pattern", "header_heuristics", "client_signals", "bot_asn", "rate_anomaly"],
   },
+  purpose: {
+    label: "Purpose",
+    type: "select",
+    // "ai" and "ai_crawler" are groups; the rest are the stored values.
+    options: [
+      "ai",
+      "ai_crawler",
+      "ai_training",
+      "ai_search",
+      "ai_agent",
+      "search",
+      "social_preview",
+      "seo",
+      "monitoring",
+      "security",
+      "scripted",
+      "headless",
+    ],
+  },
   mode: {
     label: "Mode",
     type: "select",
@@ -900,6 +971,7 @@ export const parameterMetadata: Record<string, ParameterMetadata> = {
   errorMessage: { label: "Error Message", type: "text", placeholder: "Error message to filter by" },
   user_id: { label: "User ID", type: "text", placeholder: "User ID" },
   userId: { label: "User ID", type: "text", placeholder: "User ID" },
+  session_id: { label: "Session ID", type: "text", placeholder: "Session ID" },
   key: { label: "Key", type: "text", placeholder: "Trait key" },
   value: { label: "Value", type: "text", placeholder: "Trait value" },
   search: { label: "Search", type: "text", placeholder: "Search users" },

@@ -5,12 +5,12 @@ import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 export const metadata = createMetadata({
   title: "Rybbit - Simple Analytics for Your Business",
   description:
-    "See where your visitors come from, watch what they do, and find exactly where you lose them — in one beautiful dashboard. 5 minutes to set up, no cookie banners, no complexity.",
+    "See where your visitors come from, watch what they do, and find exactly where you lose them, in one beautiful dashboard. 5 minutes to set up, no cookie banners, no complexity.",
   openGraph: {
-    images: [createOGImageUrl("Simple analytics for your business.", "See where your visitors come from, watch what they do, and find exactly where you lose them — in one beautiful dashboard.")],
+    images: [createOGImageUrl("Simple analytics for your business.", "See where your visitors come from, watch what they do, and find exactly where you lose them, in one beautiful dashboard.")],
   },
   twitter: {
-    images: [createOGImageUrl("Simple analytics for your business.", "See where your visitors come from, watch what they do, and find exactly where you lose them — in one beautiful dashboard.")],
+    images: [createOGImageUrl("Simple analytics for your business.", "See where your visitors come from, watch what they do, and find exactly where you lose them, in one beautiful dashboard.")],
   },
 });
 
@@ -22,7 +22,7 @@ export default function LandingPage4() {
           Simple analytics for your <AnimatedWords />
         </>
       }
-      subtitle="See where your visitors come from, watch what they do, and find exactly where you lose them — in one beautiful dashboard. 5 minutes to set up, no cookie banners, no complexity."
+      subtitle="See where your visitors come from, watch what they do, and find exactly where you lose them, in one beautiful dashboard. 5 minutes to set up, no cookie banners, no complexity."
       showEUFlag={false}
     />
   );

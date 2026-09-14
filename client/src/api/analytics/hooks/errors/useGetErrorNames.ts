@@ -1,7 +1,6 @@
-import { useStore } from "@/lib/store";
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { buildApiParams } from "../../../utils";
-import { fetchErrorNames, ErrorNamesPaginatedResponse } from "../../endpoints";
+import { UseQueryResult } from "@tanstack/react-query";
+import { ErrorNamesPaginatedResponse } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 type UseGetErrorNamesOptions = {
   limit?: number;
@@ -14,19 +13,12 @@ export function useGetErrorNamesPaginated({
   limit = 10,
   page = 1,
   useFilters = true,
-}: UseGetErrorNamesOptions): UseQueryResult<{ data: ErrorNamesPaginatedResponse }> {
-  const { time, site, filters, timezone } = useStore();
-
-  return useQuery({
-    queryKey: ["error-names", time, site, filters, limit, page, useFilters, timezone],
-    queryFn: async () => {
-      const data = await fetchErrorNames(site, {
-        ...buildApiParams(time, { filters: useFilters ? filters : undefined }),
-        limit,
-        page,
-      });
-      return { data };
-    },
+}: UseGetErrorNamesOptions): UseQueryResult<ErrorNamesPaginatedResponse> {
+  return useAnalyticsQuery<ErrorNamesPaginatedResponse>({
+    key: "error-names",
+    path: "errors/names",
+    useFilters,
+    params: { limit, page },
     staleTime: Infinity,
   });
 }
@@ -35,18 +27,12 @@ export function useGetErrorNamesPaginated({
 export function useGetErrorNames({
   limit = 10,
   useFilters = true,
-}: Omit<UseGetErrorNamesOptions, "page">): UseQueryResult<{ data: ErrorNamesPaginatedResponse }> {
-  const { time, site, filters, timezone } = useStore();
-
-  return useQuery({
-    queryKey: ["error-names", time, site, filters, limit, timezone],
-    queryFn: async () => {
-      const data = await fetchErrorNames(site, {
-        ...buildApiParams(time, { filters: useFilters ? filters : undefined }),
-        limit,
-      });
-      return { data };
-    },
+}: Omit<UseGetErrorNamesOptions, "page">): UseQueryResult<ErrorNamesPaginatedResponse> {
+  return useAnalyticsQuery<ErrorNamesPaginatedResponse>({
+    key: "error-names",
+    path: "errors/names",
+    useFilters,
+    params: { limit },
     staleTime: Infinity,
   });
 }

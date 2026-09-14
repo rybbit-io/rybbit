@@ -1,0 +1,83 @@
+---
+title: Podia
+description: Add Rybbit analytics to your Podia site
+category: creators
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Podia has a **Third-party code** setting under **Settings > Analytics** that adds the snippet to every public page of your site, including checkout. Podia inserts custom code just before the closing `</body>` tag rather than in `<head>`; the Rybbit script loads with `defer` and works the same from either position.
+
+<Callout type="warn">
+Third-party code is available on Podia's **Mover** and **Shaker** plans. On the free plan the Third-party code option is not shown.
+</Callout>
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Podia
+
+1. From your home feed, click your site name and choose **Admin**.
+2. In the Admin sidebar, open **Settings > Analytics**.
+3. Click **Edit** next to **Third-party code**.
+4. Paste the snippet into the **Website tracking code** field.
+5. Click **Save**. The code is live as soon as it is saved; there is no separate publish step.
+
+The website tracking code runs on every public page of your site and on checkout pages. It does not run inside logged-in areas such as the customer dashboard, product viewer or community spaces.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+#### Purchase
+
+Podia has a second field, **Conversion tracking code**, directly below the website tracking code. Code in that field runs only on the thank-you page after a purchase or membership signup, and Podia exposes the order as a `Podia.Conversion` object on that page (once per order; it is gone after a refresh).
+
+Paste this into **Conversion tracking code** to send a `purchase` event with the order details:
+
+```html
+<script>
+(function () {
+  var c = window.Podia && window.Podia.Conversion;
+  if (!c) return;
+  var payload = {
+    product: c.object.name,
+    order_id: c.object.order_id,
+    value: c.revenue,
+    currency: c.currency
+  };
+  var start = Date.now();
+  (function send() {
+    if (window.rybbit && typeof window.rybbit.event === "function") {
+      return window.rybbit.event("purchase", payload);
+    }
+    if (Date.now() - start < 8000) setTimeout(send, 150);
+  })();
+})();
+</script>
+```
+
+The short polling loop is there because Podia runs the conversion code before the deferred tracking script has finished loading. `revenue` is `0` for free products and free membership plans, so filter on `value` in the dashboard if you only want paid orders.
+
+## Troubleshooting
+
+- **No Third-party code option**: the site is on the free plan. Third-party code requires Mover or Shaker.
+- **No pageviews while you test**: Podia does not output tracking code when you are logged in to your own Podia account. Test in a private window, or log out first.
+- **Logged-in member pages are missing**: expected. Custom code runs only on public pages and checkout, not in the customer dashboard, product viewer or community.
+- **Duplicate purchase events**: `Podia.Conversion` is only present on the first load of the thank-you page, so a refresh does not resend. If you see duplicates, make sure the event script is in Conversion tracking code only and not also in Website tracking code.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

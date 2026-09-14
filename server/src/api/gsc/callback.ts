@@ -5,7 +5,6 @@ import { eq } from "drizzle-orm";
 import { getGSCProperties, verifyGSCState } from "./utils.js";
 import { getSessionFromReq, getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { db } from "../../db/postgres/postgres.js";
-import { logger } from "../../lib/logger/logger.js";
 
 interface TokenResponse {
   access_token: string;
@@ -24,7 +23,7 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
     const { code, state, error } = req.query;
 
     if (error) {
-      logger.info(`OAuth cancelled or failed: ${error}`);
+      req.log.info({ oauthError: error }, "GSC OAuth was cancelled or failed");
       return res.redirect(`${process.env.BASE_URL}`);
     }
 
@@ -83,14 +82,17 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
     });
 
     if (!tokenResponse.ok) {
-      logger.error(`Token exchange failed: ${await tokenResponse.text()}`);
+      req.log.error(
+        { responseBody: await tokenResponse.text(), statusCode: tokenResponse.status },
+        "GSC token exchange failed"
+      );
       return res.redirect(`${process.env.BASE_URL}/error?message=Token exchange failed`);
     }
 
     const tokens: TokenResponse = await tokenResponse.json();
 
     // Get available GSC properties
-    const properties = await getGSCProperties(tokens.access_token);
+    const properties = await getGSCProperties(tokens.access_token, req.log);
 
     if (properties.length === 0) {
       return res.redirect(`${process.env.CLIENT_URL}/error?message=No GSC properties found`);
@@ -130,7 +132,7 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
     const propertiesParam = encodeURIComponent(JSON.stringify(properties));
     return res.redirect(`${process.env.BASE_URL}/${siteId}/gsc/select-property?properties=${propertiesParam}`);
   } catch (error) {
-    logger.error(error, "Error handling GSC callback");
+    req.log.error(error, "Error handling GSC callback");
     return res.redirect(`${process.env.BASE_URL}/error?message=Callback failed`);
   }
 }

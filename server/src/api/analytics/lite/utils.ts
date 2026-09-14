@@ -1,8 +1,7 @@
 import { FilterParams } from "@rybbit/shared";
-import SqlString from "sqlstring";
-import { TimeBucket } from "../types.js";
-import { TimeBucketToFn, bucketIntervalMap } from "../utils/utils.js";
-import { validateFilters, validateTimeStatementParams } from "../utils/query-validation.js";
+import { FilterType, TimeBucket } from "../types.js";
+import { buildStringFilterCondition, wrapLikeValue } from "../utils/getFilterStatement.js";
+import { validateFilters } from "../utils/query-validation.js";
 
 // Lite endpoints back the simplified high-traffic dashboard. They read from
 // hourly materialized views (overview_hourly_mv, sessions_mv, pathname_hourly_mv,
@@ -45,22 +44,20 @@ const LITE_SESSION_FILTER_COLUMNS: Record<string, string> = {
   hostname: "hostname",
 };
 
-const LITE_FILTER_OPERATORS: Record<string, string> = {
-  equals: "=",
-  not_equals: "!=",
-  contains: "LIKE",
-  not_contains: "NOT LIKE",
-  starts_with: "LIKE",
-  ends_with: "LIKE",
-};
+// The session rollup can only serve simple string operators; anything else
+// (regex, numeric comparisons, lat/lon) forces the raw-events fallback.
+const LITE_SUPPORTED_FILTER_TYPES = new Set<FilterType>([
+  "equals",
+  "not_equals",
+  "contains",
+  "not_contains",
+  "starts_with",
+  "ends_with",
+]);
 
-function wrapLiteLikeValue(type: string, value: string | number): string {
-  const v = String(value);
-  if (type === "contains" || type === "not_contains") return `%${v}%`;
-  if (type === "starts_with") return `${v}%`;
-  if (type === "ends_with") return `%${v}`;
-  return v;
-}
+// LIKE-value wrapping is shared with the events surface; re-exported under the
+// historical lite name for existing importers and tests.
+export const wrapLiteLikeValue = wrapLikeValue;
 
 // Build a WHERE-clause fragment (prefixed " AND ") against sessions_mv_target
 // columns. Returns `supported: false` when any filter targets a column or type
@@ -77,86 +74,19 @@ export function getLiteSessionFilter(filters: string | undefined): { supported: 
     const column = LITE_SESSION_FILTER_COLUMNS[filter.parameter];
     if (!column) return { supported: false, sql: "" };
 
-    if (filter.type === "is_null") {
-      conditions.push(`(${column} IS NULL OR ${column} = '')`);
-      continue;
-    }
-    if (filter.type === "is_not_null") {
-      conditions.push(`(${column} IS NOT NULL AND ${column} != '')`);
+    if (filter.type === "is_null" || filter.type === "is_not_null") {
+      conditions.push(buildStringFilterCondition(column, filter.type, filter.value));
       continue;
     }
 
-    const op = LITE_FILTER_OPERATORS[filter.type];
-    if (!op || filter.value.length === 0) return { supported: false, sql: "" };
+    if (!LITE_SUPPORTED_FILTER_TYPES.has(filter.type) || filter.value.length === 0) {
+      return { supported: false, sql: "" };
+    }
 
-    const parts = filter.value.map(
-      value => `${column} ${op} ${SqlString.escape(wrapLiteLikeValue(filter.type, value))}`
-    );
-    // Negative filters must AND-join across values (NOT IN semantics): OR-joining
-    // negations is a tautology — (x != 'a' OR x != 'b') matches every row.
-    const joiner = filter.type === "not_equals" || filter.type === "not_contains" ? " AND " : " OR ";
-    conditions.push(parts.length === 1 ? parts[0] : `(${parts.join(joiner)})`);
+    conditions.push(buildStringFilterCondition(column, filter.type, filter.value));
   }
 
   return { supported: true, sql: conditions.length ? `AND ${conditions.join(" AND ")}` : "" };
-}
-
-export type LiteTimeRange = {
-  startStatement: string;
-  endStatement: string;
-  whereClause: string;
-};
-
-// Build a WHERE-clause fragment that filters an MV's hour-bucket column.
-// The `column` is whichever hour-truncated DateTime column the MV exposes
-// (overview_hourly_mv uses `event_hour`; sessions_mv uses `start_time`).
-export function getLiteTimeStatement(
-  params: Pick<FilterParams, "start_date" | "end_date" | "time_zone" | "past_minutes_start" | "past_minutes_end">,
-  column: string
-): string {
-  const { start_date, end_date, time_zone, past_minutes_start, past_minutes_end } = params;
-
-  const pastMinutesRange =
-    past_minutes_start !== undefined && past_minutes_end !== undefined
-      ? { start: Number(past_minutes_start), end: Number(past_minutes_end) }
-      : undefined;
-
-  // A missing time_zone must not silently discard the requested date range
-  // (that would return all-time data); dates are interpreted as UTC instead.
-  const date = start_date && end_date ? { start_date, end_date, time_zone: time_zone || "UTC" } : undefined;
-
-  const sanitized = validateTimeStatementParams({ date, pastMinutesRange });
-
-  if (sanitized.date) {
-    const { start_date, end_date, time_zone } = sanitized.date;
-    if (!start_date && !end_date) return "";
-
-    return `AND ${column} >= toTimeZone(
-      toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
-      'UTC'
-    )
-    AND ${column} < if(
-      toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-      toTimeZone(now(), 'UTC'),
-      toTimeZone(
-        toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
-        'UTC'
-      )
-    )`;
-  }
-
-  if (sanitized.pastMinutesRange) {
-    const { start, end } = sanitized.pastMinutesRange;
-    const now = new Date();
-    const startTimestamp = new Date(now.getTime() - start * 60 * 1000);
-    const endTimestamp = new Date(now.getTime() - end * 60 * 1000);
-    const startIso = startTimestamp.toISOString().slice(0, 19).replace("T", " ");
-    const endIso = endTimestamp.toISOString().slice(0, 19).replace("T", " ");
-
-    return `AND ${column} > toDateTime(${SqlString.escape(startIso)}) AND ${column} <= toDateTime(${SqlString.escape(endIso)})`;
-  }
-
-  return "";
 }
 
 // MVs are hour-bucketed, so anything below `hour` gets promoted.
@@ -168,40 +98,14 @@ export function liteBucket(bucket: TimeBucket | undefined): TimeBucket {
   return bucket;
 }
 
-export function getLiteFillClause(
-  params: FilterParams,
-  bucket: TimeBucket
-): string {
-  const { start_date, end_date, past_minutes_start, past_minutes_end } = params;
-  const time_zone = params.time_zone || "UTC";
-  const fn = TimeBucketToFn[bucket];
-  const interval = bucketIntervalMap[bucket];
-
-  if (start_date && end_date) {
-    return `WITH FILL FROM toTimeZone(
-      toDateTime(${fn}(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)}))),
-      'UTC'
-    )
-    TO if(
-      toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-      toTimeZone(now(), 'UTC'),
-      toTimeZone(
-        toDateTime(${fn}(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)}))) + INTERVAL 1 DAY,
-        'UTC'
-      )
-    ) STEP INTERVAL ${interval}`;
-  }
-
-  if (past_minutes_start !== undefined && past_minutes_end !== undefined) {
-    const now = new Date();
-    const startTs = new Date(now.getTime() - Number(past_minutes_start) * 60 * 1000);
-    const endTs = new Date(now.getTime() - Number(past_minutes_end) * 60 * 1000);
-    const startIso = startTs.toISOString().slice(0, 19).replace("T", " ");
-    const endIso = endTs.toISOString().slice(0, 19).replace("T", " ");
-    return `WITH FILL FROM ${fn}(toDateTime(${SqlString.escape(startIso)}))
-      TO ${fn}(toDateTime(${SqlString.escape(endIso)})) + INTERVAL ${interval}
-      STEP INTERVAL ${interval}`;
-  }
-
-  return "";
+// The hourly rollups can't answer a sub-hour question: a 10:30 → 14:45 window
+// would have to include the whole of hour 10 and hour 14, over-counting both
+// edges. A datetime range therefore falls back to the raw-events endpoints, the
+// same escape hatch an unsupported filter takes. Before, both the lite time
+// statement and the lite fill simply ignored start_datetime/end_datetime, so the
+// request came back as all-time data with a 200.
+export function hasLiteDatetimeRange(
+  params: Pick<FilterParams, "start_datetime" | "end_datetime">
+): boolean {
+  return Boolean(params.start_datetime && params.end_datetime);
 }

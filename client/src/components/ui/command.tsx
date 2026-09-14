@@ -15,7 +15,7 @@ const Command = React.forwardRef<
     ref={ref}
     data-slot="command"
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-md bg-white text-neutral-950 dark:bg-neutral-900 dark:text-neutral-50",
+      "flex h-full w-full flex-col overflow-hidden rounded-md bg-transparent text-neutral-950 dark:text-neutral-50",
       className
     )}
     {...props}
@@ -57,7 +57,7 @@ const CommandInput = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     data-slot="command-input-wrapper"
-    className="flex h-9 items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-800"
+    className="flex h-9 items-center gap-2 border-b border-neutral-200 px-3 dark:border-neutral-700"
   >
     <SearchIcon className="h-4 w-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
@@ -126,7 +126,7 @@ const CommandSeparator = React.forwardRef<
   <CommandPrimitive.Separator
     ref={ref}
     data-slot="command-separator"
-    className={cn("-mx-1 my-1 h-px bg-neutral-100 dark:bg-neutral-800", className)}
+    className={cn("-mx-1 my-1 h-px bg-neutral-100 dark:bg-neutral-700", className)}
     {...props}
   />
 ));
@@ -140,7 +140,7 @@ const CommandItem = React.forwardRef<
     ref={ref}
     data-slot="command-item"
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-neutral-100 data-[selected=true]:text-neutral-900 data-[disabled=true]:opacity-50 dark:data-[selected=true]:bg-neutral-800 dark:data-[selected=true]:text-neutral-50",
+      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-neutral-100 data-[selected=true]:text-neutral-900 data-[disabled=true]:opacity-50 dark:data-[selected=true]:bg-neutral-750 dark:data-[selected=true]:text-neutral-50",
       className
     )}
     {...props}

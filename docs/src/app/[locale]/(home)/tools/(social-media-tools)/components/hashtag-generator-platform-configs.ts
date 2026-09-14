@@ -234,6 +234,5 @@ Effective Tumblr tag strategies use a mix of broad and specific tags. Include fa
   },
 };
 
-export const hashtagGeneratorPlatformList = Object.values(
-  hashtagGeneratorPlatformConfigs
-);
+// Category retired 2026-07-18 (off-brand, ~0 organic traffic) — pages 301 → /tools via next.config.mjs.
+export const hashtagGeneratorPlatformList = Object.values(hashtagGeneratorPlatformConfigs).filter(() => false);

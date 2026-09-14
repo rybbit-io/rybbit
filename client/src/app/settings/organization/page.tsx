@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui
 import { Input } from "../../../components/ui/input";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { authClient } from "../../../lib/auth";
+import { ApiKeyManager } from "../account/components/ApiKeyManager";
 import { DeleteOrganizationDialog } from "./components/DeleteOrganizationDialog";
 import { Invitations } from "./components/Invitations";
 import { MembersTable } from "./components/MembersTable";
@@ -138,6 +139,8 @@ function Organization({
       />
 
       <Invitations organizationId={org.id} isOwner={isOwner} />
+
+      {isAdmin && <ApiKeyManager organizationId={org.id} />}
     </>
   );
 }

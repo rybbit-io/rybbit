@@ -22,6 +22,8 @@ import { SortableHeader } from "../shared/SortableHeader";
 import { TableShell } from "../shared/Panel";
 import { OrganizationExpandedRow } from "./OrganizationExpandedRow";
 import { useExtracted } from "next-intl";
+import { SiStripe } from "@icons-pack/react-simple-icons";
+import { Favicon } from "@/components/Favicon";
 
 interface OrganizationsTableProps {
   organizations: AdminOrganizationData[];
@@ -47,7 +49,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
   const t = useExtracted();
   const { formatRelative } = useDateTimeFormat();
   const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
-  const [sorting, setSorting] = useState<SortingState>([{ id: "monthlyEventCount", desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 50,
@@ -72,7 +74,25 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
         : subscription.status === "active" || subscription.status === "trialing"
           ? ("default" as const)
           : ("secondary" as const);
-    return <Badge variant={variant}>{subscription.planName}</Badge>;
+    const sourceIndicator =
+      subscription.source === "stripe" ? (
+        <SiStripe title="Stripe" size={16} className="shrink-0 text-[#635BFF]" />
+      ) : subscription.source === "appsumo" ? (
+        <span title="AppSumo" className="inline-flex size-4 shrink-0 items-center justify-center">
+          <Favicon domain="appsumo.com" className="size-4 rounded-sm" />
+        </span>
+      ) : subscription.source === "custom" || subscription.source === "override" ? (
+        <Badge variant="outline" className="font-normal text-muted-foreground">
+          {subscription.source === "custom" ? t("Custom") : t("Override")}
+        </Badge>
+      ) : null;
+
+    return (
+      <div className="flex items-center gap-1.5">
+        <Badge variant={variant}>{subscription.planName}</Badge>
+        {sourceIndicator}
+      </div>
+    );
   };
 
   const columns = useMemo<ColumnDef<AdminOrganizationData>[]>(
@@ -253,8 +273,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
                       <TableCell
                         key={cell.id}
                         className={cn(
-                          (cell.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" &&
-                            "text-right"
+                          (cell.column.columnDef.meta as ColumnAlignMeta | undefined)?.align === "right" && "text-right"
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -263,10 +282,7 @@ export function OrganizationsTable({ organizations, isLoading, searchQuery }: Or
                   </TableRow>
                   {expandedOrgs.has(row.original.id) && (
                     <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                      <TableCell
-                        colSpan={columns.length}
-                        className="bg-neutral-50 px-8 py-4 dark:bg-neutral-950/40"
-                      >
+                      <TableCell colSpan={columns.length} className="bg-neutral-50 px-8 py-4 dark:bg-neutral-950/40">
                         <OrganizationExpandedRow organization={row.original} />
                       </TableCell>
                     </TableRow>

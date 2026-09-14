@@ -14,8 +14,13 @@ Currently, Rybbit supports importing data from:
 
 - Umami
 - Simple Analytics
+- Plausible
 
 Additional platforms may be added in the future based on user demand.
+
+<Callout type="info">
+  Umami and Simple Analytics are imported from a CSV export, while Plausible is imported from its ZIP export. The Import dialog automatically expects the correct file type for the platform you select.
+</Callout>
 
 ## Plan Requirements
 
@@ -26,7 +31,6 @@ Additional platforms may be added in the future based on user demand.
 | Free | ❌ Not available | - | - |
 | Standard | ✅ Available | 36 months (3 years) | Plan limit applies |
 | Pro | ✅ Available | 60 months (5 years) | Plan limit applies |
-| AppSumo | ✅ Available | 24 months | Plan limit applies |
 
 ### Self-Hosted Version
 
@@ -42,7 +46,6 @@ Self-hosted installations have **unlimited** access to data imports with no rest
 The historical data window determines how far back you can import data:
 
 - **Standard plans**: Import data from the past 36 months (3 years)
-- **AppSumo plans**: Import data from the past 24 months
 - **Pro plans**: Import data from the past 60 months (5 years)
 - **Self-hosted**: Unlimited - import data from any date
 
@@ -82,6 +85,11 @@ Self-hosted users have no concurrent import restrictions.
 2. Navigate to Export section
 3. Download your analytics data as CSV
 
+**Plausible:**
+1. Open your site's dashboard
+2. Use the CSV export option to download your data
+3. Keep the exported **ZIP** archive as-is — do not unzip it
+
 </Step>
 
 <Step>
@@ -96,10 +104,10 @@ Self-hosted users have no concurrent import restrictions.
 
 <Step>
 
-### Select Platform and Upload CSV
+### Select Platform and Upload File
 
 1. Select your source platform from the dropdown
-2. Click "Choose File" and select your exported CSV
+2. Click "Choose File" and select your exported file (a **CSV** for Umami and Simple Analytics, or a **ZIP** for Plausible)
 3. Click the **Import** button
 
 <Callout type="warn">
@@ -182,7 +190,7 @@ Each import shows three key metrics:
 **Cause:** Events are older than your plan's historical data window.
 
 **Solution:**
-- Upgrade to Pro plan for 60-month history (vs 36-month on Standard)
+- Upgrade to Pro plan for 60-month history (vs 24-month on Standard)
 - For self-hosted, no action needed - all dates are allowed
 - Filter your CSV export to only include recent data
 

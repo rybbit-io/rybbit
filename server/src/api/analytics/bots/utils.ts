@@ -1,8 +1,9 @@
-import { FilterParams } from "@rybbit/shared";
-import SqlString from "sqlstring";
-import { FilterParameter, FilterType, TimeBucket } from "../types.js";
-import { validateFilters, validateTimeStatementFillParams } from "../utils/query-validation.js";
-import { bucketIntervalMap, normalizeDatetimeForClickhouse, TimeBucketToFn } from "../utils/utils.js";
+import { FilterParameter } from "../types.js";
+import { getFilterStatement, getSqlParam } from "../utils/getFilterStatement.js";
+
+// Condition rendering is shared with the events surface; re-exported here for
+// existing importers and tests.
+export { buildStringFilterCondition } from "../utils/getFilterStatement.js";
 
 export const BOT_LAYER_COLUMNS = {
   ua_pattern: "detected_ua_pattern",
@@ -13,7 +14,15 @@ export const BOT_LAYER_COLUMNS = {
 } as const;
 
 export type BotLayerKey = keyof typeof BOT_LAYER_COLUMNS;
-export type BotDimensionKey = FilterParameter | "asn_org" | "bot_category" | "matched_ua_pattern";
+export type BotDimensionKey =
+  | FilterParameter
+  | "asn_org"
+  | "asn_provider"
+  | "bot_category"
+  | "bot_name"
+  | "bot_operator"
+  | "bot_purpose"
+  | "matched_ua_pattern";
 
 const BOT_FILTER_PARAMETERS = new Set<FilterParameter>([
   "browser",
@@ -48,9 +57,57 @@ export const BOT_DIMENSIONS = new Set<BotDimensionKey>([
   "pathname",
   "dimensions",
   "asn_org",
+  "asn_provider",
   "bot_category",
+  "bot_name",
+  "bot_operator",
+  "bot_purpose",
   "matched_ua_pattern",
 ]);
+
+/**
+ * Purposes that count as AI traffic. Grouped rather than enumerated at every
+ * call site so "AI" means one thing across the overview, the chart and every
+ * breakdown on the page.
+ */
+export const AI_BOT_PURPOSES = ["ai_training", "ai_search", "ai_agent"] as const;
+export const AI_CRAWLER_PURPOSES = ["ai_training", "ai_search"] as const;
+
+const quoteList = (values: readonly string[]) => values.map(value => `'${value}'`).join(", ");
+
+export const AI_PURPOSE_SQL_LIST = quoteList(AI_BOT_PURPOSES);
+export const AI_CRAWLER_PURPOSE_SQL_LIST = quoteList(AI_CRAWLER_PURPOSES);
+
+const BOT_PURPOSES = new Set<string>([
+  ...AI_BOT_PURPOSES,
+  "search",
+  "social_preview",
+  "seo",
+  "monitoring",
+  "security",
+  "scripted",
+  "headless",
+]);
+
+/**
+ * Narrows a bot query to one purpose, or to the whole AI family with `"ai"`.
+ *
+ * Purpose is not a filter parameter — it exists only on the bot tables and has
+ * no equivalent on the events surface — so it takes the same dedicated-clause
+ * route `layer` does rather than going through the filter allowlist.
+ */
+export function getBotPurposeStatement(purpose?: string | null) {
+  if (!purpose) {
+    return "";
+  }
+  if (purpose === "ai") {
+    return `AND bot_purpose IN (${AI_PURPOSE_SQL_LIST})`;
+  }
+  if (purpose === "ai_crawler") {
+    return `AND bot_purpose IN (${AI_CRAWLER_PURPOSE_SQL_LIST})`;
+  }
+  return BOT_PURPOSES.has(purpose) ? `AND bot_purpose = '${purpose}'` : "";
+}
 
 export function getBotLayerStatement(layer?: string | null) {
   if (!layer) {
@@ -61,199 +118,32 @@ export function getBotLayerStatement(layer?: string | null) {
   return column ? `AND ${column}` : "";
 }
 
-const filterTypeToOperator = (type: FilterType) => {
-  switch (type) {
-    case "equals":
-      return "=";
-    case "not_equals":
-      return "!=";
-    case "contains":
-    case "starts_with":
-    case "ends_with":
-      return "LIKE";
-    case "not_contains":
-      return "NOT LIKE";
-    case "greater_than":
-      return ">";
-    case "less_than":
-      return "<";
-    case "greater_than_or_equal":
-      return ">=";
-    case "less_than_or_equal":
-      return "<=";
-    case "regex":
-    case "not_regex":
-    case "is_null":
-    case "is_not_null":
-      return null;
-  }
-};
-
-const wrapLikeValue = (type: FilterType, value: string | number): string => {
-  const v = String(value);
-  if (type === "contains" || type === "not_contains") return `%${v}%`;
-  if (type === "starts_with") return `${v}%`;
-  if (type === "ends_with") return `%${v}`;
-  return v;
-};
+// Dimension keys that only exist on bot_events; everything else shares the
+// events-surface column expressions from getSqlParam.
+const BOT_ONLY_DIMENSIONS = new Set<BotDimensionKey>([
+  "asn_org",
+  "asn_provider",
+  "bot_category",
+  "bot_name",
+  "bot_operator",
+  "bot_purpose",
+  "matched_ua_pattern",
+]);
 
 export const getBotSqlParam = (parameter: BotDimensionKey) => {
-  if (parameter === "referrer") {
-    return "domainWithoutWWW(referrer)";
+  if (BOT_ONLY_DIMENSIONS.has(parameter)) {
+    return parameter;
   }
-  if (parameter === "dimensions") {
-    return "concat(toString(screen_width), 'x', toString(screen_height))";
-  }
-  if (parameter === "city") {
-    return "concat(toString(region), '-', toString(city))";
-  }
-  if (parameter === "browser_version") {
-    return "concat(toString(browser), ' ', toString(browser_version))";
-  }
-  if (parameter === "operating_system_version") {
-    return `CASE
-      WHEN concat(toString(operating_system), ' ', toString(operating_system_version)) = 'Windows 10'
-      THEN 'Windows 10/11'
-      ELSE concat(toString(operating_system), ' ', toString(operating_system_version))
-    END`;
-  }
-  return parameter;
+  return getSqlParam(parameter as FilterParameter);
 };
 
-const buildStringFilterCondition = (expression: string, filterType: FilterType, values: (string | number)[]) => {
-  if (filterType === "is_null") {
-    return `(${expression} IS NULL OR ${expression} = '')`;
-  }
-  if (filterType === "is_not_null") {
-    return `(${expression} IS NOT NULL AND ${expression} != '')`;
-  }
-
-  if (filterType === "regex" || filterType === "not_regex") {
-    const pattern = String(values[0] ?? "");
-    if (!pattern) {
-      throw new Error("Regex pattern cannot be empty");
-    }
-    new RegExp(pattern);
-    if (pattern.length > 500) {
-      throw new Error("Regex pattern too long (max 500 characters)");
-    }
-    const matchExpr = `match(${expression}, ${SqlString.escape(pattern)})`;
-    return filterType === "regex" ? matchExpr : `NOT ${matchExpr}`;
-  }
-
-  const op = filterTypeToOperator(filterType);
-  const joiner = filterType === "not_equals" || filterType === "not_contains" ? " AND " : " OR ";
-  const conditions = values.map(value => `${expression} ${op} ${SqlString.escape(wrapLikeValue(filterType, value))}`);
-  return conditions.length === 1 ? conditions[0] : `(${conditions.join(joiner)})`;
-};
-
+// bot_events is a flat table: no session-level subqueries, no
+// identified_user_id column, and only a subset of the filterable parameters.
 export function getBotFilterStatement(filters?: string) {
-  if (!filters) {
-    return "";
-  }
-
-  const filtersArray = validateFilters(filters).filter(filter => BOT_FILTER_PARAMETERS.has(filter.parameter));
-  if (filtersArray.length === 0) {
-    return "";
-  }
-
-  const conditions = filtersArray.map(filter => {
-    const expression = getBotSqlParam(filter.parameter);
-    if (filter.type === "is_null" || filter.type === "is_not_null") {
-      return buildStringFilterCondition(expression, filter.type, filter.value);
-    }
-
-    if (
-      filter.type === "greater_than" ||
-      filter.type === "less_than" ||
-      filter.type === "greater_than_or_equal" ||
-      filter.type === "less_than_or_equal"
-    ) {
-      const numericValue = Number(filter.value[0]);
-      if (isNaN(numericValue)) {
-        throw new Error(`Invalid numeric value for ${filter.type} filter: ${filter.value[0]}`);
-      }
-      return `${expression} ${filterTypeToOperator(filter.type)} ${numericValue}`;
-    }
-
-    if (filter.parameter === "lat" || filter.parameter === "lon") {
-      const tolerance = 0.001;
-      const rangeConditions = filter.value.map(value => {
-        const targetValue = Number(value);
-        return `(${filter.parameter} >= ${targetValue - tolerance} AND ${filter.parameter} <= ${targetValue + tolerance})`;
-      });
-      const rangeCondition = rangeConditions.length === 1 ? rangeConditions[0] : `(${rangeConditions.join(" OR ")})`;
-      return filter.type === "not_equals" ? `NOT ${rangeCondition}` : rangeCondition;
-    }
-
-    return buildStringFilterCondition(expression, filter.type, filter.value);
+  return getFilterStatement(filters || "", undefined, undefined, {
+    sessionLevelParams: [],
+    parameterAllowlist: BOT_FILTER_PARAMETERS,
+    dualUserIdColumns: false,
   });
-
-  return `AND ${conditions.join(" AND ")}`;
 }
 
-export function getBotTimeStatementFill(params: FilterParams, bucket: TimeBucket) {
-  const { params: validatedParams, bucket: validatedBucket } = validateTimeStatementFillParams(params, bucket);
-
-  if (validatedParams.start_date && validatedParams.end_date && validatedParams.time_zone) {
-    const { start_date, end_date, time_zone } = validatedParams;
-    return `WITH FILL FROM toTimeZone(
-      toDateTime(${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(
-        time_zone
-      )}))),
-      'UTC'
-      )
-      TO if(
-        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        toTimeZone(now(), 'UTC'),
-        toTimeZone(
-          toDateTime(${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(
-            time_zone
-          )}))) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
-  }
-
-  if (validatedParams.start_datetime && validatedParams.end_datetime && validatedParams.time_zone) {
-    const { start_datetime, end_datetime, time_zone } = validatedParams;
-    const normalizedStartDatetime = normalizeDatetimeForClickhouse(start_datetime);
-    const normalizedEndDatetime = normalizeDatetimeForClickhouse(end_datetime);
-    return `WITH FILL FROM toTimeZone(
-      toDateTime(${TimeBucketToFn[validatedBucket]}(toTimeZone(toDateTime(${SqlString.escape(
-        normalizedStartDatetime
-      )}, 'UTC'), ${SqlString.escape(time_zone)}))),
-      'UTC'
-      )
-      TO toTimeZone(
-        toDateTime(${TimeBucketToFn[validatedBucket]}(toTimeZone(toDateTime(${SqlString.escape(
-          normalizedEndDatetime
-        )}, 'UTC'), ${SqlString.escape(time_zone)}))),
-        'UTC'
-      ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
-  }
-
-  if (validatedParams.past_minutes_start !== undefined && validatedParams.past_minutes_end !== undefined) {
-    const { past_minutes_start: start, past_minutes_end: end } = validatedParams;
-    const now = new Date();
-    const startIso = new Date(now.getTime() - start * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
-    const endIso = new Date(now.getTime() - end * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
-
-    return `WITH FILL
-      FROM ${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(startIso)}))
-      TO ${TimeBucketToFn[validatedBucket]}(toDateTime(${SqlString.escape(endIso)})) + INTERVAL 1 ${
-        validatedBucket === "month"
-          ? "MONTH"
-          : validatedBucket === "week"
-            ? "WEEK"
-            : validatedBucket === "day"
-              ? "DAY"
-              : validatedBucket === "hour"
-                ? "HOUR"
-                : "MINUTE"
-      }
-      STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
-  }
-
-  return "";
-}

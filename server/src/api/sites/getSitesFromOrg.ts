@@ -1,13 +1,14 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FastifyRequest, FastifyReply } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
-import { sites, member, organization, team, teamSiteAccess } from "../../db/postgres/schema.js";
-import { IS_CLOUD, DEFAULT_EVENT_LIMIT } from "../../lib/const.js";
+import { sites, organization, team, teamSiteAccess } from "../../db/postgres/schema.js";
+import { DEFAULT_EVENT_LIMIT, IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
-import { filterSitesByMemberAccess } from "../../lib/siteAccess.js";
+import { filterSitesByMemberAccess, getOrgMembership } from "../../lib/access.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
+import { buildSiteSessionCountsQuery } from "./siteSessionCountsQuery.js";
 
 export async function getSitesFromOrg(
   req: FastifyRequest<{
@@ -24,21 +25,14 @@ export async function getSitesFromOrg(
     const userId = req.user?.id ?? (await getUserIdFromRequest(req));
 
     // Run all database queries concurrently
-    const [memberCheck, allSitesData, orgInfo] = await Promise.all([
-      userId
-        ? db
-            .select()
-            .from(member)
-            .where(and(eq(member.organizationId, organizationId), eq(member.userId, userId)))
-            .limit(1)
-        : Promise.resolve([]),
+    const [memberRecord, allSitesData, orgInfo] = await Promise.all([
+      getOrgMembership(userId, organizationId),
       db.select().from(sites).where(eq(sites.organizationId, organizationId)),
       db.select().from(organization).where(eq(organization.id, organizationId)).limit(1),
     ]);
 
     // Filter sites based on member's access restrictions and teams
     let sitesData = allSitesData;
-    const memberRecord = memberCheck[0];
 
     if (memberRecord?.role === "member" && userId) {
       sitesData = await filterSitesByMemberAccess(
@@ -57,15 +51,8 @@ export async function getSitesFromOrg(
       const siteIds = sitesData.map(site => site.siteId);
 
       const sessionCountsResult = await clickhouse.query({
-        query: `
-          SELECT 
-            site_id, 
-            uniqExact(session_id) AS total_sessions 
-          FROM events 
-          WHERE timestamp >= now() - INTERVAL 1 DAY 
-            AND site_id IN (${siteIds.join(",")})
-          GROUP BY site_id
-        `,
+        query: buildSiteSessionCountsQuery(LITE_DASHBOARD),
+        query_params: { siteIds },
         format: "JSONEachRow",
       });
       const sessionCounts = await processResults(sessionCountsResult);
@@ -139,7 +126,7 @@ export async function getSitesFromOrg(
       },
     });
   } catch (err) {
-    console.error("Error in getSitesFromOrg:", err);
+    req.log.error({ err: err }, "Error in getSitesFromOrg");
     return res.status(500).send({ error: String(err) });
   }
 }

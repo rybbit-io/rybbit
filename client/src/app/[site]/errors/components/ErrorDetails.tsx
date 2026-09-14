@@ -198,11 +198,11 @@ export function ErrorDetails({ errorMessage }: ErrorDetailsProps) {
   // Flatten all error events into a single array
   const allErrorEvents = useMemo(() => {
     if (!errorEventsData?.pages) return [];
-    return errorEventsData.pages.flatMap(page => page.data?.data || []);
+    return errorEventsData.pages.flatMap(page => page.data || []);
   }, [errorEventsData?.pages]);
 
   // Get total count from the first page
-  const totalCount = errorEventsData?.pages?.[0]?.data?.totalCount || 0;
+  const totalCount = errorEventsData?.pages?.[0]?.totalCount || 0;
 
   if (isLoading) {
     return (

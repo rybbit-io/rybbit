@@ -20,7 +20,7 @@ An experiment has three moving parts:
 | Part | What it does |
 | --- | --- |
 | **Assignment** | A multivariate feature flag assigns each visitor to one stable variant (for example `control` or `variant_a`) based on its rollout percentages. |
-| **Exposure** | When your code reads the flag with `rybbit.flag()`, Rybbit records an exposure for that variant. Exposures are the denominator for each variant's conversion rate. |
+| **Exposure** | When your code reads the flag with `rybbit.flag()`, Rybbit records an exposure for that variant. The number of distinct sessions exposed to a variant is the denominator for its conversion rate. |
 | **Conversion** | The experiment's primary goal — a page visit or a custom event — counts as a conversion for whichever variant the visitor was assigned. |
 
 Because assignment is sticky for a given visitor, a person sees the same variant on repeat visits, which keeps your results consistent.
@@ -128,7 +128,7 @@ Each experiment shows a results panel comparing every variant. Results respect t
 | --- | --- |
 | **Variant** | The variant key, with the **Control** marked as the baseline. |
 | **Sessions** | Sessions exposed to that variant, alongside the number that converted. |
-| **Conversion rate** | Conversions divided by exposures for that variant. |
+| **Conversion rate** | Conversions divided by the number of exposed sessions (the **Sessions** figure) for that variant. |
 | **Lift** | The percentage change in conversion rate relative to the control. Positive lift is shown in green, negative in red. |
 | **Confidence** | How confident Rybbit is that the variant's difference from the control is real, based on a two-proportion comparison. |
 

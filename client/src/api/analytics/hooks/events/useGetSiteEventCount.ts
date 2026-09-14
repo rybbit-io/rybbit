@@ -1,24 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
 import { EVENT_FILTERS } from "../../../../lib/filterGroups";
 import { getFilteredFilters, useStore } from "../../../../lib/store";
-import { buildApiParams } from "../../../utils";
-import { fetchSiteEventCount } from "../../endpoints";
+import { type SiteEventCountPoint } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetSiteEventCount() {
-  const { site, time, bucket, timezone } = useStore();
-
+  const bucket = useStore(state => state.bucket);
   const filteredFilters = getFilteredFilters(EVENT_FILTERS);
-  const params = buildApiParams(time, {
-    filters: filteredFilters.length > 0 ? filteredFilters : undefined,
-  });
 
-  return useQuery({
-    queryKey: ["site-event-count", site, time, bucket, filteredFilters, timezone],
-    enabled: !!site,
-    queryFn: () =>
-      fetchSiteEventCount(site, {
-        ...params,
-        bucket,
-      }),
+  return useAnalyticsQuery<SiteEventCountPoint[]>({
+    key: "site-event-count",
+    path: "events/count",
+    // Only event-relevant filters go on the wire; when none apply, send no filters.
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    params: { bucket },
   });
 }

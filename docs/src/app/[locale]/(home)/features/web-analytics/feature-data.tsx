@@ -34,7 +34,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <Layers className="w-5 h-5" />,
     title: "Traffic sources",
     description:
-      "See where your visitors come from — direct, referral, organic search, social, or paid campaigns — all in one view.",
+      "See where your visitors come from (direct, referral, organic search, social, or paid campaigns) all in one view.",
   },
   {
     icon: <MapPin className="w-5 h-5" />,
@@ -46,7 +46,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <Smartphone className="w-5 h-5" />,
     title: "Device & browser breakdown",
     description:
-      "Know which devices, browsers, and operating systems your visitors use so you can optimize for what matters.",
+      "Know which devices, browsers, and operating systems your visitors use.",
   },
   {
     icon: <Tag className="w-5 h-5" />,
@@ -58,7 +58,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <Filter className="w-5 h-5" />,
     title: "Advanced filtering",
     description:
-      "Slice your data by any dimension — country, browser, referrer, page, or custom event. Click any value to instantly filter.",
+      "Filter by any dimension: country, browser, referrer, page, or custom event. Click any value to apply it.",
   },
   {
     icon: <Activity className="w-5 h-5" />,
@@ -76,7 +76,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <BarChart3 className="w-5 h-5" />,
     title: "Period comparisons",
     description:
-      "Compare any date range against a previous period. Spot trends, measure growth, and understand seasonality at a glance.",
+      "Compare any date range against a previous period. Spot trends, measure growth, and understand seasonality.",
   },
 ];
 
@@ -85,7 +85,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 1,
     title: "Add one script tag",
     description:
-      "Paste a single line of code into your site or install @rybbit/js from npm. It works with any framework — React, Vue, Next.js, WordPress, Shopify, and more.",
+      "Paste a single line of code into your site or install @rybbit/js from npm. It works with any framework: React, Vue, Next.js, WordPress, Shopify, and more.",
   },
   {
     step: 2,
@@ -118,19 +118,19 @@ export const whoUses: WhoUsesItem[] = [
     icon: <PenTool className="w-6 h-6" />,
     title: "Content creators & bloggers",
     description:
-      "See which posts resonate, where readers come from, and how they navigate your site — without the complexity of enterprise tools.",
+      "See which posts resonate, where readers come from, and how they navigate your site, without the complexity of enterprise tools.",
   },
   {
     icon: <Rocket className="w-6 h-6" />,
     title: "Developers & indie hackers",
     description:
-      "Lightweight, privacy-first analytics that doesn't slow your site down. Get a clear picture of your product's traction in seconds.",
+      "Lightweight, privacy-first analytics that doesn't slow your site down. Get a clear picture of your product's traction.",
   },
   {
     icon: <Palette className="w-6 h-6" />,
     title: "Agencies",
     description:
-      "Manage multiple client sites from one account with organizations. Share beautiful, public dashboards clients can understand instantly.",
+      "Manage multiple client sites from one account with organizations. Share public dashboards clients can understand.",
   },
   {
     icon: <Users className="w-6 h-6" />,
@@ -165,12 +165,12 @@ export const faqItems: FAQItem[] = [
   {
     question: "Can I filter by multiple properties at once?",
     answer:
-      "Yes. You can stack as many filters as you need — country, browser, referrer, page path, custom events, and more. Click any value in your dashboard to instantly apply it as a filter.",
+      "Yes. You can stack as many filters as you need: country, browser, referrer, page path, custom events, and more. Click any value in your dashboard to instantly apply it as a filter.",
   },
   {
     question: "What UTM parameters are supported?",
     answer:
-      "Rybbit automatically captures utm_source, utm_medium, utm_campaign, utm_term, and utm_content from your URLs. No extra setup required — they appear in your traffic sources breakdown.",
+      "Rybbit automatically captures utm_source, utm_medium, utm_campaign, utm_term, and utm_content from your URLs. No extra setup required; they appear in your traffic sources breakdown.",
   },
   {
     question: "Is real-time data actually real-time?",
@@ -206,8 +206,13 @@ export const relatedFeatures: RelatedFeature[] = [
     description: "Set conversion goals and track progress automatically.",
   },
   {
-    title: "Web Vitals",
-    href: "/features/web-vitals",
-    description: "Monitor Core Web Vitals for fast user experiences.",
+    title: "Bot Detection",
+    href: "/features/bot-detection",
+    description: "Five-layer filtering keeps crawlers and AI agents out of your data.",
+  },
+  {
+    title: "Dashboard Sharing",
+    href: "/features/dashboard-sharing",
+    description: "Share your dashboard publicly, via private link, or as an embed.",
   },
 ];

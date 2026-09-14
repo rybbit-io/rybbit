@@ -1,0 +1,52 @@
+---
+title: Circle
+description: Add Rybbit analytics to your Circle community
+category: creators
+icon: SiCircle
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Circle has a **Code snippets** setting that injects custom code into the `<head>` of every page in your community, so the snippet goes there once and covers public pages and logged-in member pages alike.
+
+<Callout type="info">
+Custom CSS/JavaScript snippets are included on all current Circle plans (Professional, Business and Circle Plus).
+</Callout>
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Circle
+
+1. Open your community as an admin and go to **Settings**.
+2. Open **Code snippets**.
+3. Paste the snippet into the **Head code snippets** field.
+4. Click **Save**. Changes apply to the whole community immediately; there is no publish step.
+
+Circle's own help article for this setting is [Custom code snippets](https://help.circle.so/p/administration/site-management/custom-code-snippets).
+
+Circle is a single-page app: after the first load, navigating between spaces, posts and courses changes the URL without a full reload. The script tracks these client-side route changes automatically, so each space and post shows up as its own pageview.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Custom domain**: the same head code is served on `yourcommunity.circle.so` and on your custom domain. If both hostnames are in use, keep them under one site in Rybbit so sessions are not split.
+- **Post embeds**: custom HTML embedded inside a post is scoped to that post. Put the snippet in head code snippets, not in a post.
+- **Nothing tracked while logged in as admin**: Circle applies head code to admins too, so check that your own IP or user is not excluded in Rybbit's site settings before assuming the snippet is missing.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

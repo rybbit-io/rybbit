@@ -1,13 +1,14 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
+import { analyticsRoute, getPaginationStatements, runPaginatedQuery } from "../utils/analyticsQuery.js";
 import {
   BOT_DIMENSIONS,
   type BotDimensionKey,
   type BotLayerKey,
   getBotFilterStatement,
   getBotLayerStatement,
+  getBotPurposeStatement,
   getBotSqlParam,
 } from "./utils.js";
 
@@ -30,29 +31,25 @@ export interface BotDimensionRequest {
   Querystring: FilterParams<{
     dimension: BotDimensionKey;
     layer?: BotLayerKey;
+    /** A single purpose, or "ai" / "ai_crawler" for the grouped families. */
+    purpose?: string;
     limit?: number;
     page?: number;
   }>;
 }
 
-const parsePositiveInt = (value: unknown, fallback: number) => {
-  const parsed = parseInt(String(value), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const getQuery = (request: FastifyRequest<BotDimensionRequest>, isCountQuery = false) => {
-  const { dimension, limit, page } = request.query;
+export const buildBotDimensionQuery = (query: BotDimensionRequest["Querystring"], isCountQuery = false) => {
+  const { dimension } = query;
   if (!BOT_DIMENSIONS.has(dimension)) {
     throw new Error(`Unsupported bot dimension: ${dimension}`);
   }
 
   const expression = getBotSqlParam(dimension);
-  const timeStatement = getTimeStatement(request.query);
-  const filterStatement = getBotFilterStatement(request.query.filters);
-  const layerStatement = getBotLayerStatement(request.query.layer);
-  const validatedLimit = parsePositiveInt(limit, 100);
-  const validatedPage = parsePositiveInt(page, 1);
-  const offset = (validatedPage - 1) * validatedLimit;
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getBotFilterStatement(query.filters);
+  const layerStatement = getBotLayerStatement(query.layer);
+  const purposeStatement = getBotPurposeStatement(query.purpose);
+  const { limitStatement, offsetStatement } = getPaginationStatements(query, 100, isCountQuery);
 
   const groupedQuery = `
     SELECT
@@ -64,6 +61,7 @@ const getQuery = (request: FastifyRequest<BotDimensionRequest>, isCountQuery = f
     WHERE site_id = {siteId:Int32}
       ${filterStatement}
       ${layerStatement}
+      ${purposeStatement}
       ${timeStatement}
     GROUP BY value
   `;
@@ -78,40 +76,21 @@ const getQuery = (request: FastifyRequest<BotDimensionRequest>, isCountQuery = f
   return `
     ${groupedQuery}
     ORDER BY count DESC
-    LIMIT ${validatedLimit}
-    OFFSET ${offset}
+    ${limitStatement}
+    ${offsetStatement}
   `;
 };
 
-export async function getBotDimension(req: FastifyRequest<BotDimensionRequest>, res: FastifyReply) {
-  try {
-    const [dataResult, countResult] = await Promise.all([
-      clickhouse.query({
-        query: getQuery(req),
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(req.params.siteId),
-        },
-      }),
-      clickhouse.query({
-        query: getQuery(req, true),
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(req.params.siteId),
-        },
-      }),
-    ]);
+export const getBotDimension = analyticsRoute<BotDimensionRequest>(
+  "bot dimension",
+  async (req: FastifyRequest<BotDimensionRequest>, res: FastifyReply) => {
+    const params = { siteId: Number(req.params.siteId) };
 
-    const data = await processResults<BotDimensionItem>(dataResult);
-    const countData = await processResults<{ totalCount: number }>(countResult);
-    const response: BotDimensionResponse = {
-      data,
-      totalCount: countData[0]?.totalCount ?? 0,
-    };
+    const response: BotDimensionResponse = await runPaginatedQuery<BotDimensionItem>(
+      { query: buildBotDimensionQuery(req.query), params },
+      { query: buildBotDimensionQuery(req.query, true), params }
+    );
 
     return res.send({ data: response });
-  } catch (error) {
-    console.error("Error fetching bot dimension:", error);
-    return res.status(500).send({ error: "Failed to fetch bot dimension" });
   }
-}
+);

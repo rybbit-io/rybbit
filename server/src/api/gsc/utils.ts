@@ -1,8 +1,8 @@
 import crypto from "crypto";
+import type { FastifyBaseLogger } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { logger } from "../../lib/logger/logger.js";
 import { SECRET } from "../../lib/const.js";
 
 // How long a signed OAuth state remains valid (15 minutes).
@@ -76,7 +76,7 @@ interface GSCTokens {
 /**
  * Refresh the GSC OAuth token if it's expired
  */
-export async function refreshGSCToken(siteId: number): Promise<string | null> {
+export async function refreshGSCToken(siteId: number, requestLogger: FastifyBaseLogger): Promise<string | null> {
   try {
     const [connection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, siteId));
 
@@ -89,10 +89,10 @@ export async function refreshGSCToken(siteId: number): Promise<string | null> {
     const now = new Date();
     const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
-    // if (expiresAt > fiveMinutesFromNow) {
-    //   // Token is still valid
-    //   return connection.accessToken;
-    // }
+    if (expiresAt > fiveMinutesFromNow) {
+      // Token is still valid
+      return connection.accessToken;
+    }
 
     // Token is expired or about to expire, refresh it
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -109,7 +109,10 @@ export async function refreshGSCToken(siteId: number): Promise<string | null> {
     });
 
     if (!tokenResponse.ok) {
-      logger.error(`Failed to refresh GSC token: ${await tokenResponse.text()}`);
+      requestLogger.error(
+        { responseBody: await tokenResponse.text(), statusCode: tokenResponse.status },
+        "Failed to refresh GSC token"
+      );
       return null;
     }
 
@@ -133,7 +136,7 @@ export async function refreshGSCToken(siteId: number): Promise<string | null> {
 
     return tokens.access_token;
   } catch (error) {
-    logger.error(error, "Error refreshing GSC token");
+    requestLogger.error(error, "Error refreshing GSC token");
     return null;
   }
 }
@@ -141,7 +144,7 @@ export async function refreshGSCToken(siteId: number): Promise<string | null> {
 /**
  * Get available GSC properties for a given access token
  */
-export async function getGSCProperties(accessToken: string): Promise<string[]> {
+export async function getGSCProperties(accessToken: string, requestLogger: FastifyBaseLogger): Promise<string[]> {
   try {
     const response = await fetch("https://www.googleapis.com/webmasters/v3/sites", {
       headers: {
@@ -150,14 +153,17 @@ export async function getGSCProperties(accessToken: string): Promise<string[]> {
     });
 
     if (!response.ok) {
-      logger.error(`Failed to fetch GSC properties: ${await response.text()}`);
+      requestLogger.error(
+        { responseBody: await response.text(), statusCode: response.status },
+        "Failed to fetch GSC properties"
+      );
       return [];
     }
 
     const data = await response.json();
     return data.siteEntry?.map((site: { siteUrl: string }) => site.siteUrl) || [];
   } catch (error) {
-    logger.error(error, "Error fetching GSC properties");
+    requestLogger.error(error, "Error fetching GSC properties");
     return [];
   }
 }

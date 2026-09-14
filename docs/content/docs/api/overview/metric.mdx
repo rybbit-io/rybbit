@@ -80,7 +80,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       typeDescription: 'e.g., "/blog", "Chrome", "US"',
     },
     count: {
-      description: 'Number of sessions for this value',
+      description: 'Number of unique sessions for this value. For parameter=event_name, this is the total number of event occurrences instead',
       type: 'number',
     },
     percentage: {
@@ -91,6 +91,12 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     pageviews: {
       description: 'Total pageviews (for page-related parameters)',
       type: 'number',
+      required: false,
+    },
+    pageviews_percentage: {
+      description: 'Share of total pageviews (for page-related parameters)',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
       required: false,
     },
     bounce_rate: {

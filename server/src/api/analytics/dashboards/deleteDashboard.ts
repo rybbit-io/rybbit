@@ -47,7 +47,7 @@ export async function deleteDashboard(
 
     return reply.send({ success: true });
   } catch (error) {
-    console.error("Error deleting dashboard:", error);
+    request.log.error({ err: error }, "Error deleting dashboard");
     return reply.status(500).send({ error: "Failed to delete dashboard" });
   }
 }

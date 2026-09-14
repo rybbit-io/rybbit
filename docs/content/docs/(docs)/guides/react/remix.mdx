@@ -1,51 +1,30 @@
 ---
 title: Remix
-description: Integrate Rybbit with your Remix application for analytics tracking
+description: Add Rybbit analytics to your Remix app
+category: frameworks
+icon: SiRemix
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps'
-import { Callout } from 'fumadocs-ui/components/callout'
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-
-This guide explains how to integrate Rybbit with your Remix application for analytics tracking. Remix is a full-stack web framework that leverages React for building user interfaces.
-
-## How to Add Rybbit to Your Remix App
-
-The recommended way to add a script that should appear on every page in a Remix application is by including it in your root layout file, typically `app/root.tsx` (or `app/root.jsx`).
+Remix renders the whole HTML document from `app/root.tsx`, so the snippet goes in the `<head>` of that file and reaches every route.
 
 <Steps>
 <Step>
-### Retrieve Your Tracking Script
+### Get your tracking snippet
 
-Navigate to your Rybbit dashboard to obtain your code snippet. It will look like this:
-
-```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
-```
-Remember to replace `YOUR_SITE_ID` with your actual Site ID.
+<include>../../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add the Snippet to `app/root.tsx`
+### Add the snippet to Remix
 
-Open your `app/root.tsx` (or `app/root.jsx`) file. This file defines the root HTML structure for your application. Add the Rybbit tracking snippet within the `<head>` section of the returned JSX.
+Open `app/root.tsx` (or `app/root.jsx`) and add the tag inside `<head>`, after `<Meta />` and `<Links />`:
 
-```tsx filename="app/root.tsx"
-import {
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "@remix-run/react";
+```tsx title="app/root.tsx"
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
 
 export default function App() {
-  const rybbitSiteId = "YOUR_SITE_ID"; // Replace with your actual Site ID
-
   return (
     <html lang="en">
       <head>
@@ -53,12 +32,7 @@ export default function App() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
-        {/* Rybbit Tracking Snippet */}
-        <script
-          src="https://app.rybbit.io/api/script.js"
-          data-site-id={rybbitSiteId}
-          defer
-        ></script>
+        <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
       </head>
       <body>
         <Outlet />
@@ -69,42 +43,37 @@ export default function App() {
   );
 }
 ```
-Make sure to replace `YOUR_SITE_ID` with your actual Site ID. You can define it as a constant or directly in the script tag.
+
+Restart the dev server after the change. Client-side navigation after the initial server render is tracked automatically as pageviews.
 </Step>
 
 <Step>
-### Verify Installation
+### Verify installation
 
-After restarting your Remix development server or deploying your application, open your Rybbit dashboard to check if data is being received. You can also inspect your browser's network tab to confirm that `script.js` is loaded.
+<include>../../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-<Callout type="info">
-  **SPA Page View Tracking**: Rybbit's tracking script is designed to automatically detect route changes in most modern SPAs. Remix handles client-side navigation after the initial server render. If you find that page views are not being tracked correctly after client-side navigations (which can sometimes happen depending on the specifics of the script's SPA detection), you might need to manually trigger page views.
+## Track custom events
 
-  One way to do this in Remix is to leverage a component that re-renders on navigation, or potentially by creating a custom `useLocationChange` hook if more granular control is needed, though this is often more complex. A simpler approach if manual tracking is needed might involve a root-level effect that listens to location changes. However, **test the default behavior first**, as manual tracking might not be necessary.
-  If manual tracking is required, you would call `window.rybbit.pageview()` after a route change.
-</Callout>
+Call `window.rybbit.event()` from any route or component. Check for `window` first, because Remix renders components on the server.
 
-## Custom Event Tracking
-
-Once the Rybbit script is installed and loaded, you can track custom events from any of your Remix route components or other React components within your Remix app:
-
-```tsx
-// Example in a Remix route component
-export default function MyFeatureRoute() {
-  const handleButtonClick = () => {
+```tsx title="app/routes/offer.tsx"
+export default function OfferRoute() {
+  const handleClick = () => {
     if (typeof window !== "undefined" && window.rybbit) {
-      window.rybbit.event('remix_feature_click', { feature: 'Special Offer' });
+      window.rybbit.event("offer_claimed", { feature: "Special Offer" });
     }
   };
 
-  return (
-    <div>
-      <h1>My Awesome Feature</h1>
-      <button onClick={handleButtonClick}>Claim Offer</button>
-    </div>
-  );
+  return <button onClick={handleClick}>Claim Offer</button>;
 }
 ```
-Always check `typeof window !== "undefined"` before accessing `window.rybbit` because Remix components can render on the server. Then, ensure `window.rybbit` itself is available.
+
+## Troubleshooting
+
+- **Pageviews missing after client-side navigation**: this is rare. If it happens, call `window.rybbit.pageview()` from a root-level effect that runs on `useLocation()` changes; test the default behaviour first.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

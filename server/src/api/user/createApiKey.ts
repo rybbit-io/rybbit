@@ -1,15 +1,11 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { apiKeyLimitForPlan, createApiKeyWithinLimit } from "../../lib/apiKeyLimits.js";
 import { auth } from "../../lib/auth.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { apiKeyPermissionsSchema } from "../../lib/scopes.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
-import {
-  API_RATE_LIMIT_WINDOW,
-  IS_CLOUD,
-  PRO_API_RATE_LIMIT,
-  STANDARD_API_RATE_LIMIT,
-} from "../../lib/const.js";
+import { IS_CLOUD } from "../../lib/const.js";
 
 const createApiKeyBodySchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -20,9 +16,10 @@ const createApiKeyBodySchema = z.object({
 });
 
 /**
- * Creates an API key with plan-appropriate rate limits and optional scoped
- * permissions. On cloud: blocks free/basic, sets standard or pro limits.
- * On self-hosted: uses standard limits as default.
+ * Creates an API key with optional scoped permissions. On cloud: blocks
+ * free/basic plans. Rate limits are not stamped onto the key — they are
+ * resolved from the owner's current plan on every request (lib/apiRateLimit.ts),
+ * so an upgrade applies to keys that already exist.
  */
 export async function createUserApiKey(
   request: FastifyRequest<{ Body: { name: string; expiresIn?: number; permissions?: Record<string, string[]> } }>,
@@ -39,9 +36,7 @@ export async function createUserApiKey(
   }
   const { name, expiresIn, permissions } = parsed.data;
 
-  let rateLimitEnabled = false;
-  let rateLimitMax: number | undefined;
-  let rateLimitTimeWindow: number | undefined;
+  let planName: string | null = null;
 
   if (IS_CLOUD) {
     const activeOrgId = (session.session as any).activeOrganizationId;
@@ -50,37 +45,49 @@ export async function createUserApiKey(
     }
 
     const subscription = await getSubscriptionInner(activeOrgId);
-    const planName = subscription?.planName || "free";
+    planName = subscription?.planName || "free";
 
     if (planName === "free" || planName.includes("basic")) {
       return reply.status(403).send({
         error: "API keys require a Standard or Pro plan. Please upgrade to create API keys.",
       });
     }
-
-    rateLimitEnabled = true;
-    rateLimitTimeWindow = API_RATE_LIMIT_WINDOW;
-    rateLimitMax =
-      planName.includes("pro") || planName === "custom"
-        ? PRO_API_RATE_LIMIT
-        : STANDARD_API_RATE_LIMIT;
   }
 
-  try {
-    const result = await auth.api.createApiKey({
-      body: {
-        name,
-        expiresIn: expiresIn ?? undefined,
-        rateLimitEnabled,
-        rateLimitTimeWindow,
-        rateLimitMax,
-        userId: session.user.id,
-        ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
-      },
-    });
+  const keyLimit = apiKeyLimitForPlan(planName);
 
-    return reply.send(result);
-  } catch (error: any) {
-    return reply.status(500).send({ error: error.message || "Failed to create API key" });
+  try {
+    const outcome = await createApiKeyWithinLimit(session.user.id, keyLimit, () =>
+      auth.api.createApiKey({
+        body: {
+          name,
+          expiresIn: expiresIn ?? undefined,
+          userId: session.user.id,
+          ...(permissions ? { permissions: permissions as Record<string, string[]> } : {}),
+        },
+      })
+    );
+
+    if (!outcome.allowed) {
+      return reply.status(403).send({
+        error: `You have reached your limit of ${keyLimit} API keys. Delete an unused key or upgrade your plan.`,
+      });
+    }
+
+    return reply.send(outcome.result);
+  } catch (error: unknown) {
+    // Surface better-auth's own 4xx rejections by message; anything else stays
+    // a generic 500 so internal error detail never reaches the client.
+    const err = error as { name?: string; statusCode?: unknown; message?: string };
+    if (
+      err?.name === "APIError" &&
+      typeof err.statusCode === "number" &&
+      err.statusCode >= 400 &&
+      err.statusCode < 500
+    ) {
+      return reply.status(err.statusCode).send({ error: err.message || "Failed to create API key" });
+    }
+    request.log.error({ err: error }, "Error creating API key");
+    return reply.status(500).send({ error: "Failed to create API key" });
   }
 }

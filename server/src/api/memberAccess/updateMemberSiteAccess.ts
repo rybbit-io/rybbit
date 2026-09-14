@@ -1,8 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { db } from "../../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, user } from "../../db/postgres/schema.js";
+import { siteIdsInOrganization } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 interface UpdateMemberSiteAccessParams {
@@ -54,12 +55,7 @@ export async function updateMemberSiteAccess(
 
     // Validate that all siteIds belong to this organization
     if (siteIds && siteIds.length > 0) {
-      const validSites = await db
-        .select({ siteId: sites.siteId })
-        .from(sites)
-        .where(and(eq(sites.organizationId, organizationId), inArray(sites.siteId, siteIds)));
-
-      const validSiteIds = new Set(validSites.map(s => s.siteId));
+      const validSiteIds = new Set(await siteIdsInOrganization(siteIds, organizationId));
       const invalidSiteIds = siteIds.filter(id => !validSiteIds.has(id));
 
       if (invalidSiteIds.length > 0) {
@@ -69,25 +65,20 @@ export async function updateMemberSiteAccess(
       }
     }
 
-    // Update member's hasRestrictedSiteAccess flag
-    await db
-      .update(member)
-      .set({ hasRestrictedSiteAccess })
-      .where(eq(member.id, memberId));
+    await db.transaction(async tx => {
+      await tx.update(member).set({ hasRestrictedSiteAccess }).where(eq(member.id, memberId));
+      await tx.delete(memberSiteAccess).where(eq(memberSiteAccess.memberId, memberId));
 
-    // Delete existing site access entries
-    await db.delete(memberSiteAccess).where(eq(memberSiteAccess.memberId, memberId));
-
-    // Insert new site access entries if restricted and has site IDs
-    if (hasRestrictedSiteAccess && siteIds && siteIds.length > 0) {
-      await db.insert(memberSiteAccess).values(
-        siteIds.map(siteId => ({
-          memberId: memberId,
-          siteId: siteId,
-          createdBy: currentUserId || null,
-        }))
-      );
-    }
+      if (hasRestrictedSiteAccess && siteIds && siteIds.length > 0) {
+        await tx.insert(memberSiteAccess).values(
+          siteIds.map(siteId => ({
+            memberId,
+            siteId,
+            createdBy: currentUserId || null,
+          }))
+        );
+      }
+    });
 
     // Invalidate the cache for this user
     invalidateSitesAccessCache(memberData.userId);
@@ -113,7 +104,7 @@ export async function updateMemberSiteAccess(
       })),
     });
   } catch (error) {
-    console.error("Error updating member site access:", error);
+    request.log.error({ err: error }, "Error updating member site access");
     return reply.status(500).send({ error: "Failed to update member site access" });
   }
 }

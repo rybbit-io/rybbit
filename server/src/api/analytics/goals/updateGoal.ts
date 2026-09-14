@@ -69,7 +69,7 @@ export async function updateGoal(
       goalId: result[0].goalId,
     });
   } catch (error) {
-    console.error("Error updating goal:", error);
+    request.log.error({ err: error }, "Error updating goal");
 
     // Handle validation errors
     if (error instanceof z.ZodError) {

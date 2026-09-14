@@ -46,29 +46,33 @@ If you see the error, the script is not loading properly. Continue reading for c
 
 ### Data Attributes Being Stripped
 
-Some platforms, content management systems, and tag managers automatically remove or sanitize `data-*` attributes (or all non-standard attributes) from script tags. This means the `data-site-id` attribute required by Rybbit gets removed, causing the script to fail silently.
+Some platforms, content management systems, tag managers, and "delay JavaScript" optimizers automatically remove or sanitize `data-*` attributes from script tags, or rebuild the tag from a `data-src` placeholder and drop everything else. If your site ID was in a `data-site-id` attribute, it gets removed and the script logs `Please provide a valid site ID`.
 
 **Platforms known to strip attributes:**
 - Google Tag Manager
+- WordPress optimization plugins with "delay JavaScript" enabled (WP Rocket, Perfmatters, FlyingPress, LiteSpeed Cache)
 - Some WordPress page builders
 - Certain website builders (Webflow, Wix, Squarespace in some configurations)
 - Some CDN or caching plugins
 
-**Solution:** Instead of using the standard script tag, inject the script dynamically using JavaScript:
+**Solution:** Put the site ID in the script URL instead of a data attribute. Optimizers preserve the URL:
+
+```html
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+If your platform also rewrites the `src`, inject the script from JavaScript instead:
 
 ```javascript
 <script>
   (function() {
     var el = document.createElement("script");
-    el.src = "https://app.rybbit.io/api/script.js";
+    el.src = "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID";
     el.defer = true;
-    el.setAttribute("data-site-id", "YOUR_SITE_ID");
     document.head.appendChild(el);
   })();
 </script>
 ```
-
-This approach creates the script element programmatically and sets the `data-site-id` attribute via JavaScript, which bypasses any HTML sanitization.
 
 <Callout type="info">
 For detailed Google Tag Manager setup instructions, see our [Google Tag Manager Guide](/docs/guides/google-tag-manager).
@@ -98,7 +102,7 @@ The Rybbit script should be placed in the `<head>` section of your HTML. If it's
 
 ### Incorrect Site ID
 
-Double-check that your `data-site-id` matches the site ID shown in your Rybbit dashboard.
+Double-check that the `siteId` in your script URL (or your `data-site-id` attribute) matches the site ID shown in your Rybbit dashboard.
 
 1. Go to your Rybbit dashboard
 2. Navigate to your site's settings

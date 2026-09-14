@@ -1,5 +1,7 @@
-import { Download } from "lucide-react";
+import { Check, Download, X } from "lucide-react";
 import { useExtracted } from "next-intl";
+import { GridCrosses } from "@/components/GridCrosses";
+import { InteriorPageHero } from "@/components/InteriorPageHero";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
 export const metadata = createMetadata({
@@ -31,36 +33,32 @@ function LogoCard({ variant, svgLabel, pngLabel }: { variant: Variant; svgLabel:
   const svgPath = `/rybbit/${variant.file}.svg`;
 
   return (
-    <div className="border border-neutral-300/50 dark:border-neutral-700/50 rounded-xl overflow-hidden">
+    <div className="bg-white dark:bg-neutral-950">
       <div
-        className={`flex items-center justify-center p-8 h-48 ${
+        className={`flex h-44 items-center justify-center border-b border-neutral-200 p-8 dark:border-neutral-800 ${
           variant.bg === "dark" ? "bg-neutral-900" : "bg-neutral-100"
         }`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={pngPath}
-          alt={`Rybbit ${variant.name} logo`}
-          className="max-h-full max-w-full object-contain"
-        />
+        <img src={pngPath} alt={`Rybbit ${variant.name} logo`} className="max-h-full max-w-full object-contain" />
       </div>
-      <div className="p-4 bg-neutral-50/50 dark:bg-neutral-800/30">
-        <p className="font-medium text-sm mb-3">{variant.name}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
+        <p className="text-sm font-medium text-neutral-950 dark:text-neutral-50">{variant.name}</p>
         <div className="flex gap-2">
           <a
             href={svgPath}
             download
-            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 transition-colors duration-200 hover:border-neutral-300 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-neutral-800 dark:text-neutral-400 dark:hover:border-neutral-700 dark:hover:text-white"
           >
-            <Download className="w-3 h-3" />
+            <Download className="size-3" aria-hidden="true" />
             {svgLabel}
           </a>
           <a
             href={pngPath}
             download
-            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 transition-colors duration-200 hover:border-neutral-300 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-neutral-800 dark:text-neutral-400 dark:hover:border-neutral-700 dark:hover:text-white"
           >
-            <Download className="w-3 h-3" />
+            <Download className="size-3" aria-hidden="true" />
             {pngLabel}
           </a>
         </div>
@@ -122,48 +120,105 @@ export default function BrandKit() {
     },
   ];
 
-  return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
-      <h1 className="text-3xl md:text-4xl font-bold mb-4">{t("Brand Kit")}</h1>
-      <p className="text-lg text-neutral-600 dark:text-neutral-400 mb-12 max-w-2xl">
-        {t("Download official Rybbit logos and assets. All logos are available in SVG and PNG formats for use in your projects, integrations, and content.")}
-      </p>
+  const doItems = [
+    t("Use the logo in its original proportions"),
+    t('Use the "For Dark BG" variants on dark backgrounds'),
+    t("Maintain clear space around the logo"),
+    t("Use SVG format when possible for best quality"),
+  ];
 
-      {SECTIONS.map((section) => (
-        <section key={section.type} className="mb-16">
-          <h2 className="text-2xl font-semibold mb-6">{section.title}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {section.variants.map((variant) => (
-              <LogoCard key={variant.file} variant={variant} svgLabel={svgLabel} pngLabel={pngLabel} />
-            ))}
+  const dontItems = [
+    t("Stretch or distort the logo"),
+    t("Change the logo colors beyond provided variants"),
+    t("Add effects like shadows or gradients to the logo"),
+    t("Use the logo in a way that implies endorsement"),
+  ];
+
+  return (
+    <div className="overflow-x-clip">
+      <InteriorPageHero
+        title={t("Brand Kit")}
+        description={t(
+          "Download official Rybbit logos and assets. All logos are available in SVG and PNG formats for use in your projects, integrations, and content."
+        )}
+        eventLocation="brand_hero"
+        primaryAction={null}
+        secondaryAction={null}
+        note={null}
+      />
+
+      {SECTIONS.map(section => (
+        <section
+          key={section.type}
+          className="border-b border-neutral-200 dark:border-neutral-800"
+          aria-labelledby={`brand-${section.type}`}
+        >
+          <div className="relative mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+            <GridCrosses />
+            <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-14">
+              <div className="lg:sticky lg:top-24">
+                <h2
+                  id={`brand-${section.type}`}
+                  className="text-2xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50 md:text-3xl"
+                >
+                  {section.title}
+                </h2>
+              </div>
+            </div>
+            <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 sm:grid-cols-2 lg:col-span-8">
+              {section.variants.map(variant => (
+                <LogoCard key={variant.file} variant={variant} svgLabel={svgLabel} pngLabel={pngLabel} />
+              ))}
+              {section.variants.length % 2 === 1 && (
+                <div aria-hidden="true" className="hidden bg-white dark:bg-neutral-950 sm:block" />
+              )}
+            </div>
           </div>
         </section>
       ))}
 
-      <section className="border border-neutral-300/50 dark:border-neutral-700/50 rounded-xl p-6 md:p-8">
-        <h2 className="text-2xl font-semibold mb-4">{t("Usage Guidelines")}</h2>
-        <div className="grid md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="font-medium text-green-600 dark:text-green-400 mb-3">
-              {t("Do")}
-            </h3>
-            <ul className="space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
-              <li>{t("Use the logo in its original proportions")}</li>
-              <li>{t('Use the "For Dark BG" variants on dark backgrounds')}</li>
-              <li>{t("Maintain clear space around the logo")}</li>
-              <li>{t("Use SVG format when possible for best quality")}</li>
-            </ul>
+      <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="brand-guidelines">
+        <div className="relative mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+          <GridCrosses />
+          <div className="border-b border-neutral-200 px-5 py-10 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-14">
+            <div className="lg:sticky lg:top-24">
+              <h2
+                id="brand-guidelines"
+                className="text-2xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50 md:text-3xl"
+              >
+                {t("Usage Guidelines")}
+              </h2>
+            </div>
           </div>
-          <div>
-            <h3 className="font-medium text-red-600 dark:text-red-400 mb-3">
-              {t("Don't")}
-            </h3>
-            <ul className="space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
-              <li>{t("Stretch or distort the logo")}</li>
-              <li>{t("Change the logo colors beyond provided variants")}</li>
-              <li>{t("Add effects like shadows or gradients to the logo")}</li>
-              <li>{t("Use the logo in a way that implies endorsement")}</li>
-            </ul>
+          <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2">
+            <div className="bg-white px-5 py-9 dark:bg-neutral-950 sm:px-8 lg:px-10">
+              <h3 className="flex items-center gap-2 font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
+                <Check className="size-4" aria-hidden="true" />
+                {t("Do")}
+              </h3>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+                {doItems.map(item => (
+                  <li key={item} className="flex gap-2.5">
+                    <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-white px-5 py-9 dark:bg-neutral-950 sm:px-8 lg:px-10">
+              <h3 className="flex items-center gap-2 font-semibold tracking-tight text-neutral-700 dark:text-neutral-300">
+                <X className="size-4" aria-hidden="true" />
+                {t("Don't")}
+              </h3>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+                {dontItems.map(item => (
+                  <li key={item} className="flex gap-2.5">
+                    <X className="mt-0.5 size-4 shrink-0 text-neutral-400 dark:text-neutral-500" aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>

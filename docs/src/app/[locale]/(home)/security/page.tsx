@@ -1,3 +1,4 @@
+import { LegalPageShell } from "@/components/LegalPageShell";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
 export const metadata = createMetadata({
@@ -13,15 +14,10 @@ export const metadata = createMetadata({
 
 export default function Security() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <h1 className="text-3xl md:text-4xl font-bold mb-8">Security</h1>
-
-      <div className="prose prose-invert max-w-none">
-        <p className="text-lg mb-8">
-          Security and privacy are at the core of everything we do at Rybbit. Here's how we protect your data and
-          maintain a secure analytics platform.
-        </p>
-
+    <LegalPageShell
+      title="Security"
+      intro="Security and privacy are at the core of everything we do at Rybbit. Here's how we protect your data and maintain a secure analytics platform."
+    >
         <h2 className="text-2xl font-semibold mt-8 mb-4">Visitor Privacy Protection</h2>
         <p>Your website visitors' privacy is paramount. Here's how we protect it:</p>
         <ul className="list-disc pl-6 space-y-2">
@@ -80,7 +76,7 @@ export default function Security() {
 
         <h3 className="text-xl font-semibold mt-6 mb-3">Data Deletion</h3>
         <p>
-          After cancellation or downgrade to free tier, your analytics data will be permanently deleted within 60 days.
+          After cancellation, your analytics data will be permanently deleted within 60 days.
           We recommend exporting your data before cancellation if you wish to retain it. Once deleted, data cannot be
           recovered.
         </p>
@@ -112,7 +108,7 @@ export default function Security() {
         </ul>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">Compliance</h2>
-        <p>Rybbit is designed to help you comply with privacy regulations:</p>
+        <p>Rybbit helps you comply with privacy regulations:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>GDPR compliant (no personal data collection)</li>
           <li>CCPA compliant</li>
@@ -125,7 +121,7 @@ export default function Security() {
         <ul className="list-disc pl-6 space-y-2">
           <li>
             Email us at{" "}
-            <a href="mailto:hello@rybbit.com" className="text-emerald-400 hover:text-emerald-300">
+            <a href="mailto:hello@rybbit.com">
               hello@rybbit.com
             </a>
           </li>
@@ -142,7 +138,6 @@ export default function Security() {
           </a>
           .
         </p>
-      </div>
-    </div>
+    </LegalPageShell>
   );
 }

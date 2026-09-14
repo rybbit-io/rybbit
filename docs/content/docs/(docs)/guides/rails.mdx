@@ -1,0 +1,87 @@
+---
+title: Ruby on Rails
+description: Add Rybbit analytics to your Ruby on Rails app
+category: backend
+icon: SiRubyonrails
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Rails wraps every page in `app/views/layouts/application.html.erb`, so the snippet goes into that layout's `<head>`. Read the site ID from a custom `config.x` setting fed by an environment variable, so the template stays free of hard-coded IDs and each environment can use its own site.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Ruby on Rails
+
+#### Configure the site ID
+
+Add the Rybbit values to your environment (`.env` if you use dotenv-rails, otherwise your host's environment settings):
+
+```bash filename=".env"
+RYBBIT_INSTANCE_URL=https://app.rybbit.io
+RYBBIT_SITE_ID=YOUR_SITE_ID
+```
+
+Then expose them through the `config.x` namespace in `config/application.rb`:
+
+```ruby filename="config/application.rb"
+module MyApp
+  class Application < Rails::Application
+    # ... existing configuration
+
+    config.x.rybbit.instance_url = ENV.fetch("RYBBIT_INSTANCE_URL", "https://app.rybbit.io")
+    config.x.rybbit.site_id = ENV["RYBBIT_SITE_ID"]
+  end
+end
+```
+
+#### Add the tag to your layout
+
+Open `app/views/layouts/application.html.erb` and add the tag inside `<head>`, after the stylesheet and JavaScript tags:
+
+```erb filename="app/views/layouts/application.html.erb"
+<head>
+  <title><%= content_for(:title) || "MyApp" %></title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+
+  <% if Rails.configuration.x.rybbit.site_id.present? %>
+    <script src="<%= Rails.configuration.x.rybbit.instance_url %>/api/script.js?siteId=<%= Rails.configuration.x.rybbit.site_id %>" defer></script>
+  <% end %>
+</head>
+```
+
+The `if` guard skips the tag wherever `RYBBIT_SITE_ID` is unset, so development and test environments are not tracked unless you set the variable there.
+
+If you have more than one HTML layout (for example `application.html.erb` and `admin.html.erb`), add the tag to each, or move it into a partial such as `app/views/layouts/_rybbit.html.erb` and `<%= render "layouts/rybbit" %>` from every layout. Mailer layouts do not need it.
+
+#### Turbo and Hotwire
+
+Turbo Drive replaces the page `<body>` on each visit, merges the `<head>`, and pushes the new URL with `history.pushState`. The Rybbit script hooks `history.pushState` and `history.replaceState` and listens for `popstate` and `hashchange`, so every Turbo visit is tracked as a pageview while **SPA Navigation** is enabled in your site settings (the default). No `turbo:load` listener is needed. Because the script tag is in `<head>` and identical on every page, Turbo Drive keeps the existing tag instead of loading it again.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Tag missing**: `config/application.rb` is read once at boot, so restart the server after changing `RYBBIT_SITE_ID`. Check `Rails.configuration.x.rybbit.site_id` in `rails console` if the tag does not render.
+- **Content Security Policy**: if you set a policy in `config/initializers/content_security_policy.rb`, add your Rybbit host to `script_src` and `connect_src`, or the browser blocks both the script and the `/api/track` requests. Alternatively [proxy the script](/docs/proxy-guide) through your own domain so no extra origin is needed.
+- **Self-hosted instance**: set `RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the layout appends the script path to it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

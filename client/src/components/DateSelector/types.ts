@@ -54,11 +54,19 @@ export type PastMinutesMode = {
   wellKnown?: "last-30-minutes" | "last-1-hour" | "last-6-hours" | "last-24-hours";
 };
 
-export type Time =
-  | DateMode
-  | DateRangeMode
-  | WeekMode
-  | MonthMode
-  | YearMode
-  | AllTimeMode
-  | PastMinutesMode;
+export type Time = DateMode | DateRangeMode | WeekMode | MonthMode | YearMode | AllTimeMode | PastMinutesMode;
+
+/**
+ * What the dashboard's comparison line is drawn against. Everything but
+ * `custom` is derived from the selected period; `none` turns the comparison
+ * off entirely.
+ */
+export type ComparisonMode = "previous" | "weekday" | "year" | "custom" | "none";
+
+export type Comparison = {
+  mode: ComparisonMode;
+  /** Only read when `mode` is `"custom"`. */
+  customTime?: Time;
+};
+
+export const DEFAULT_COMPARISON: Comparison = { mode: "previous" };

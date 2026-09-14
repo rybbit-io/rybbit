@@ -34,6 +34,28 @@ export interface UpdateExcludedUserAgentsRequest {
   excludedUserAgents: string[];
 }
 
+export interface ExcludedASNsResponse {
+  success: boolean;
+  excludedASNs: string[];
+  error?: string;
+}
+
+export interface ExcludedQueryParamsResponse {
+  success: boolean;
+  excludedQueryParams: string[];
+  error?: string;
+}
+
+export interface UpdateExcludedASNsRequest {
+  siteId: number;
+  excludedASNs: string[];
+}
+
+export interface UpdateExcludedQueryParamsRequest {
+  siteId: number;
+  excludedQueryParams: string[];
+}
+
 // Excluded paths
 export const fetchExcludedPaths = async (siteId: string): Promise<ExcludedPathsResponse> => {
   return await authedFetch<ExcludedPathsResponse>(`/sites/${siteId}/excluded-paths`);
@@ -59,4 +81,22 @@ export const fetchExcludedUserAgents = async (siteId: string): Promise<ExcludedU
 
 export const updateExcludedUserAgents = async (siteId: number, excludedUserAgents: string[]): Promise<void> => {
   await updateSiteConfig(siteId, { excludedUserAgents });
+};
+
+// Excluded ASNs
+export const fetchExcludedASNs = async (siteId: string): Promise<ExcludedASNsResponse> => {
+  return await authedFetch<ExcludedASNsResponse>(`/sites/${siteId}/excluded-asns`);
+};
+
+export const updateExcludedASNs = async (siteId: number, excludedASNs: string[]): Promise<void> => {
+  await updateSiteConfig(siteId, { excludedASNs });
+};
+
+// Excluded query params
+export const fetchExcludedQueryParams = async (siteId: string): Promise<ExcludedQueryParamsResponse> => {
+  return await authedFetch<ExcludedQueryParamsResponse>(`/sites/${siteId}/excluded-query-params`);
+};
+
+export const updateExcludedQueryParams = async (siteId: number, excludedQueryParams: string[]): Promise<void> => {
+  await updateSiteConfig(siteId, { excludedQueryParams });
 };

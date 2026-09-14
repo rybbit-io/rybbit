@@ -1,65 +1,51 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useStore } from "../../../lib/store";
-import {
-  fetchUserTraitKeys,
-  fetchUserTraitValues,
-  fetchUserTraitValueUsers,
-  TraitKeysResponse,
-  TraitValuesResponse,
-  TraitValueUsersResponse,
-} from "../endpoints";
+import { TraitKeysResponse, TraitValuesResponse, TraitValueUsersResponse } from "../endpoints";
+import { useAnalyticsInfiniteQuery, useAnalyticsQuery } from "../useAnalyticsQuery";
+
+const VALUES_LIMIT = 1000;
+const USERS_LIMIT = 250;
+
+// Trait keys and values describe the whole site, not the selected period.
+const TRAIT_CONTEXT = { useTime: false, useFilters: false } as const;
 
 export function useGetUserTraitKeys() {
-  const { site } = useStore();
-
-  return useQuery<TraitKeysResponse>({
-    queryKey: ["user-trait-keys", site],
-    queryFn: () => fetchUserTraitKeys(site),
-    enabled: !!site,
+  return useAnalyticsQuery<TraitKeysResponse>({
+    key: "user-trait-keys",
+    path: "user-traits/keys",
+    unwrap: false,
+    ...TRAIT_CONTEXT,
+    staleTime: 0,
+    placeholder: false,
   });
 }
 
 export function useGetUserTraitValues(key: string | null) {
-  const { site } = useStore();
-  const limit = 1000;
-
-  return useInfiniteQuery<TraitValuesResponse>({
-    queryKey: ["user-trait-values", site, key],
-    queryFn: async ({ pageParam = 0 }) => {
-      return fetchUserTraitValues(site, {
-        key: key!,
-        limit,
-        offset: pageParam as number,
-      });
-    },
+  return useAnalyticsInfiniteQuery<TraitValuesResponse>({
+    key: ["user-trait-values", key],
+    path: "user-traits/values",
+    unwrap: false,
+    ...TRAIT_CONTEXT,
+    params: { key, limit: VALUES_LIMIT },
+    staleTime: 0,
     initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const totalFetched = allPages.reduce((acc, page) => acc + page.values.length, 0);
-      return lastPage.hasMore ? totalFetched : undefined;
-    },
-    enabled: !!site && !!key,
+    pageParams: offset => ({ offset }),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasMore ? allPages.reduce((total, page) => total + page.values.length, 0) : undefined,
+    enabled: !!key,
   });
 }
 
 export function useGetUserTraitValueUsers(key: string | null, value: string | null) {
-  const { site } = useStore();
-  const limit = 250;
-
-  return useInfiniteQuery<TraitValueUsersResponse>({
-    queryKey: ["user-trait-value-users", site, key, value],
-    queryFn: async ({ pageParam = 0 }) => {
-      return fetchUserTraitValueUsers(site, {
-        key: key!,
-        value: value!,
-        limit,
-        offset: pageParam as number,
-      });
-    },
+  return useAnalyticsInfiniteQuery<TraitValueUsersResponse>({
+    key: ["user-trait-value-users", key, value],
+    path: "user-traits/users",
+    unwrap: false,
+    ...TRAIT_CONTEXT,
+    params: { key, value, limit: USERS_LIMIT },
+    staleTime: 0,
     initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const totalFetched = allPages.reduce((acc, page) => acc + page.users.length, 0);
-      return lastPage.hasMore ? totalFetched : undefined;
-    },
-    enabled: !!site && !!key && value !== null,
+    pageParams: offset => ({ offset }),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasMore ? allPages.reduce((total, page) => total + page.users.length, 0) : undefined,
+    enabled: !!key && value !== null,
   });
 }

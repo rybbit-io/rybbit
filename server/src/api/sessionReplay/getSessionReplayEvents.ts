@@ -30,7 +30,7 @@ export async function getSessionReplayEvents(
       metadata: enrichedMetadata,
     });
   } catch (error) {
-    console.error("Error fetching session replay events:", error);
+    request.log.error({ err: error }, "Error fetching session replay events");
     if (error instanceof Error && error.message === "Session replay not found") {
       return reply.status(404).send({ error: "Session replay not found" });
     }

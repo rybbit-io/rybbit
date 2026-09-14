@@ -1,14 +1,12 @@
 import { createHash } from "node:crypto";
-import { asc, eq } from "drizzle-orm";
-import { db } from "../../db/postgres/postgres.js";
 import {
-  featureFlags,
   type FeatureFlagConditionSet,
   type FeatureFlagRule,
   type FeatureFlagRuntime,
   type FeatureFlagType,
   type FeatureFlagVariant,
 } from "../../db/postgres/schema.js";
+import { getFeatureFlagDefinitions, type FeatureFlagDefinition } from "./definitions.js";
 import {
   getCompiledFeatureFlagRegex,
   precompileFeatureFlagConditionSetRegexes,
@@ -42,8 +40,6 @@ export type FeatureFlagAssignment = {
   matched: boolean;
   rolloutPercentage: number;
 };
-
-type FeatureFlagRow = typeof featureFlags.$inferSelect;
 
 function normalizeComparableValue(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -111,7 +107,7 @@ function clampPercentage(value: number | undefined, fallback = 100): number {
   return Math.min(100, Math.max(0, value ?? fallback));
 }
 
-function getConditionSets(flag: FeatureFlagRow): FeatureFlagConditionSet[] {
+function getConditionSets(flag: FeatureFlagDefinition): FeatureFlagConditionSet[] {
   if (Array.isArray(flag.conditionSets) && flag.conditionSets.length > 0) {
     return flag.conditionSets;
   }
@@ -163,11 +159,11 @@ function runtimeMatches(flagRuntime: FeatureFlagRuntime, runtime?: FeatureFlagRu
   return flagRuntime === runtime;
 }
 
-function getPayload(conditionSet: FeatureFlagConditionSet, flag: FeatureFlagRow) {
+function getPayload(conditionSet: FeatureFlagConditionSet, flag: FeatureFlagDefinition) {
   return conditionSet.payload !== undefined ? conditionSet.payload : flag.payload;
 }
 
-export function evaluateFeatureFlag(flag: FeatureFlagRow, context: FeatureFlagContext): FeatureFlagAssignment {
+export function evaluateFeatureFlag(flag: FeatureFlagDefinition, context: FeatureFlagContext): FeatureFlagAssignment {
   const rolloutPercentage = clampPercentage(flag.rolloutPercentage);
   precompileFeatureFlagRuleRegexes(flag.rules);
   precompileFeatureFlagConditionSetRegexes(flag.conditionSets);
@@ -278,12 +274,16 @@ export async function evaluateFeatureFlagsForSite(
   context: FeatureFlagContext,
   options: { runtime?: FeatureFlagRuntime } = {}
 ): Promise<Record<string, FeatureFlagAssignment>> {
-  const rows = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.siteId, siteId))
-    .orderBy(asc(featureFlags.key));
+  const rows = await getFeatureFlagDefinitions(siteId);
 
+  return evaluateFeatureFlagDefinitions(rows, context, options);
+}
+
+export function evaluateFeatureFlagDefinitions(
+  rows: FeatureFlagDefinition[],
+  context: FeatureFlagContext,
+  options: { runtime?: FeatureFlagRuntime } = {}
+): Record<string, FeatureFlagAssignment> {
   const assignments: Record<string, FeatureFlagAssignment> = {};
 
   for (const flag of rows) {

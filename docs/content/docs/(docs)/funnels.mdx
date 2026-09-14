@@ -7,7 +7,7 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 ![Funnels Dashboard](/docs/funnels/1.png)
 
-Funnels let you define a sequence of steps — page visits or custom events — and measure how many users progress through each stage. You can see where users convert, where they drop off, and drill into the sessions at each step to understand why.
+Funnels let you define a sequence of steps — page visits, custom events, or autocaptured interactions — and measure how many users progress through each stage. You can see where users convert, where they drop off, and drill into the sessions at each step to understand why.
 
 ## Creating a Funnel
 
@@ -18,7 +18,7 @@ Funnels let you define a sequence of steps — page visits or custom events — 
 Each funnel has:
 
 - **Name** — A label for the funnel (e.g., "Signup Flow", "Checkout Process")
-- **Steps** — Two or more sequential steps, each tracking a page visit or custom event
+- **Steps** — Two or more sequential steps, each tracking a page visit, custom event, outbound link, button click, form submission, or copy event
 
 </Step>
 <Step>
@@ -26,10 +26,10 @@ Each funnel has:
 
 A funnel always must have at least two steps.
 
-There are two types of steps: **Path Steps** and **Event Steps**.
+There are six types of funnel steps. Path and custom event steps require a value. For the four autocaptured interaction types, the pattern is optional—leave it empty to match every interaction of that type.
 
-<Tabs items={['Path Steps', 'Event Steps']}>
-<Tab value="Path Steps">
+<Tabs items={['Path', 'Custom Event', 'Outbound Link', 'Button Click', 'Form Submit', 'Copy']}>
+<Tab value="Path">
 Path steps match pageview events by URL path.
 
 - Enter a URL path starting with `/`
@@ -38,12 +38,47 @@ Path steps match pageview events by URL path.
   - `**` matches multiple segments — `/docs/**` matches `/docs/api/v2/intro`
 
 </Tab>
-<Tab value="Event Steps">
-Event steps match custom events by name (e.g., `add_to_cart`, `purchase_completed`).
+<Tab value="Custom Event">
+Custom event steps match events by name (e.g., `add_to_cart`, `purchase_completed`).
 
 Events must be tracked using the Rybbit tracking script. See [Track Events](/docs/track-events) for setup instructions.
 </Tab>
+<Tab value="Outbound Link">
+Outbound link steps match clicks on links that lead away from your site.
+
+- Enter a destination URL pattern such as `https://example.com/pricing` or `https://*.example.com/**`
+- Leave the pattern empty to match any outbound click
+
+Outbound link tracking is enabled by default.
+</Tab>
+<Tab value="Button Click">
+Button click steps match clicks on buttons, button/submit inputs, and elements with `role="button"`.
+
+- Enter a visible button-text pattern such as `Sign Up` or `Start * Trial`
+- Leave the pattern empty to match any button click
+
+Buttons that already use `data-rybbit-event` are recorded as custom events instead.
+</Tab>
+<Tab value="Form Submit">
+Form submit steps match submissions of HTML forms.
+
+- Enter a form name or ID pattern such as `signup-form`
+- The pattern can also match the form's action URL
+- Leave the pattern empty to match any form submission
+</Tab>
+<Tab value="Copy">
+Copy steps match text that visitors copy from your site.
+
+- Enter a copied-text pattern such as `PROMO*`
+- Leave the pattern empty to match any copied text
+</Tab>
 </Tabs>
+
+Autocaptured interaction patterns support wildcards: `*` matches one or more characters and `**` also matches an empty value. The form suggests values already observed on your site.
+
+<Callout type="info" title="Enable autocapture first">
+Button click, form interaction, and copy tracking are disabled by default. Enable the event types you want to use in the **Tracking** tab of your site settings. Only interactions collected after tracking is enabled can appear in a funnel. See [Autocapture](/docs/autocapture) for the properties collected with each type.
+</Callout>
 </Step>
 <Step>
 ### Configure Step Options (optional)
@@ -54,7 +89,7 @@ Each step has additional configuration options:
 
 - **Label** (optional) — A friendly display name for the step
 - **Hostname** (optional) — Restrict matching to a specific domain, useful for multi-domain sites
-- **Property Filters** (optional) — Filter by URL parameters (for page steps) or event properties (for event steps). Multiple filters can be added per step, and all must match.
+- **Property Filters** (optional) — Filter by URL parameters (for path steps) or event properties (for all other step types). Multiple filters can be added per step, and all must match.
 
 </Step>
 </Steps>
@@ -87,5 +122,6 @@ Each session shows entry/exit pages, duration, location, device info, referrer, 
 ---
 
 **Related Documentation:**
+- [Autocapture](/docs/autocapture) — Configure automatically captured interactions
 - [Goals](/docs/goals) — Track single-action conversions
 - [Track Events](/docs/track-events) — Set up custom event tracking

@@ -67,6 +67,7 @@
   }
 
   // config.ts
+  var FEATURE_FLAG_REQUEST_TIMEOUT_MS = 2e3;
   function createVisitorId() {
     try {
       if (crypto?.randomUUID) {
@@ -102,6 +103,8 @@
     return url.pathname;
   }
   async function fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS);
     try {
       const url = new URL(window.location.href);
       const response = await fetch(`${analyticsHost}/site/${siteId}/feature-flags/evaluate`, {
@@ -110,6 +113,7 @@
           "Content-Type": "application/json"
         },
         credentials: "omit",
+        signal: controller.signal,
         body: JSON.stringify({
           anonymousId: visitorId,
           identifiedUserId: getIdentifiedUserId(namespace),
@@ -124,12 +128,25 @@
         })
       });
       if (!response.ok) {
-        return {};
+        return { enabled: true, flags: {} };
       }
       const data = await response.json();
-      return data?.flags && typeof data.flags === "object" ? data.flags : {};
+      return {
+        enabled: data?.featureFlagsEnabled !== false,
+        flags: data?.flags && typeof data.flags === "object" ? data.flags : {}
+      };
     } catch (e2) {
-      return {};
+      return { enabled: true, flags: {} };
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+  function getSiteIdFromSrc(src) {
+    try {
+      const url = new URL(src, window.location.href);
+      return url.searchParams.get("siteId") || url.searchParams.get("site-id") || url.searchParams.get("site_id");
+    } catch (e2) {
+      return null;
     }
   }
   async function parseScriptConfig(scriptTag) {
@@ -143,9 +160,9 @@
       console.error("Please provide a valid analytics host");
       return null;
     }
-    const siteId = scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
+    const siteId = getSiteIdFromSrc(src) || scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
     if (!siteId) {
-      console.error("Please provide a valid site ID using the data-site-id attribute");
+      console.error("Please provide a valid site ID using the ?siteId= query parameter or the data-site-id attribute");
       return null;
     }
     const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
@@ -200,6 +217,7 @@
       trackCopy: false,
       trackFormInteractions: false,
       tag,
+      featureFlagsEnabled: false,
       featureFlags: {},
       // rrweb session replay options (undefined means use rrweb defaults)
       sessionReplayBlockClass,
@@ -236,7 +254,8 @@
           enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay,
           trackButtonClicks: apiConfig.trackButtonClicks ?? defaultConfig.trackButtonClicks,
           trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
-          trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions
+          trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions,
+          featureFlagsEnabled: apiConfig.featureFlagsEnabled === true
         };
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
@@ -244,7 +263,11 @@
     } catch (error) {
       console.warn("Error fetching tracking config:", error);
     }
-    resolvedConfig.featureFlags = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+    if (resolvedConfig.featureFlagsEnabled) {
+      const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+      resolvedConfig.featureFlagsEnabled = result.enabled;
+      resolvedConfig.featureFlags = result.flags;
+    }
     return resolvedConfig;
   }
 
@@ -455,10 +478,9 @@
     }
   };
 
-  // botSignals.ts
+  // ../../../shared/src/botSignalContract.ts
   var CLIENT_BOT_SIGNAL_MASKS = {
     automationApi: 1 << 0,
-    webdriver: 1 << 0,
     zeroOuterDimensions: 1 << 1,
     missingChrome: 1 << 2,
     swiftShader: 1 << 3,
@@ -467,34 +489,96 @@
     defaultViewport1024x768: 1 << 6,
     impossibleDimensions: 1 << 7,
     outerDimensionsWeird: 1 << 8,
-    pluginApiAbsence: 1 << 9
+    pluginApiAbsence: 1 << 9,
+    defaultViewport1280x1200: 1 << 10,
+    squareScreen: 1 << 11,
+    missingScreenDimensions: 1 << 12
   };
+  var CLIENT_BOT_SIGNAL_NAMES = Object.keys(CLIENT_BOT_SIGNAL_MASKS);
+  var CLIENT_BOT_SIGNAL_WEIGHTS = {
+    automationApi: 3,
+    zeroOuterDimensions: 2,
+    missingChrome: 1,
+    swiftShader: 1,
+    emptyPlugins: 1,
+    defaultViewport800x600: 3,
+    defaultViewport1024x768: 3,
+    impossibleDimensions: 3,
+    outerDimensionsWeird: 2,
+    pluginApiAbsence: 0,
+    defaultViewport1280x1200: 3,
+    squareScreen: 3,
+    missingScreenDimensions: 1
+  };
+  var ALL_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_NAMES.reduce(
+    (mask, name) => mask | CLIENT_BOT_SIGNAL_MASKS[name],
+    0
+  );
+  var STRONG_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_MASKS.automationApi | CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions | CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600 | CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768 | CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200 | CLIENT_BOT_SIGNAL_MASKS.squareScreen;
+  var MAX_CLIENT_BOT_SCORE = 10;
+  var MIN_PLAUSIBLE_SCREEN_DIMENSION = 200;
+  var MAX_PLAUSIBLE_SCREEN_DIMENSION = 8192;
+  var IMPLAUSIBLE_DESKTOP_VIEWPORTS = [
+    { width: 800, height: 600, signal: "defaultViewport800x600" },
+    { width: 1024, height: 768, signal: "defaultViewport1024x768" },
+    { width: 1280, height: 1200, signal: "defaultViewport1280x1200" }
+  ];
+  function isPlausibleScreenDimensions(width, height) {
+    return Number.isFinite(width) && Number.isFinite(height) && width >= MIN_PLAUSIBLE_SCREEN_DIMENSION && height >= MIN_PLAUSIBLE_SCREEN_DIMENSION && width <= MAX_PLAUSIBLE_SCREEN_DIMENSION && height <= MAX_PLAUSIBLE_SCREEN_DIMENSION;
+  }
+  function isDesktopUserAgent(userAgent) {
+    return /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
+  }
+  function getScreenDimensionSignals(width, height, userAgent) {
+    if (!isPlausibleScreenDimensions(width, height)) {
+      return ["impossibleDimensions"];
+    }
+    const signals = [];
+    if (width === height) {
+      signals.push("squareScreen");
+    }
+    if (isDesktopUserAgent(userAgent)) {
+      for (const viewport of IMPLAUSIBLE_DESKTOP_VIEWPORTS) {
+        if (width === viewport.width && height === viewport.height) {
+          signals.push(viewport.signal);
+        }
+      }
+    }
+    return signals;
+  }
+
+  // botSignals.ts
   var cachedBotSignals = null;
-  var MAX_BOT_SCORE = 10;
   function getBotScore() {
     return getBotSignals().score;
   }
   function getBotSignalMask() {
     return getBotSignals().mask;
   }
+  function isPrerendering() {
+    return document.prerendering === true;
+  }
   function getBotSignals() {
+    if (isPrerendering()) {
+      return calculateBotSignals();
+    }
     cachedBotSignals ?? (cachedBotSignals = calculateBotSignals());
     return cachedBotSignals;
   }
   function calculateBotSignals() {
     let score = 0;
     let mask = 0;
-    function addSignal(signalMask, weight) {
+    function addSignal(name) {
+      const signalMask = CLIENT_BOT_SIGNAL_MASKS[name];
       if ((mask & signalMask) !== 0) {
         return;
       }
       mask |= signalMask;
-      score += weight;
+      score += CLIENT_BOT_SIGNAL_WEIGHTS[name];
     }
     try {
       const userAgent = navigator.userAgent;
       const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
-      const isDesktopUA = /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
       const screenWidth = Number(window.screen?.width);
       const screenHeight = Number(window.screen?.height);
       const outerWidth = Number(window.outerWidth);
@@ -521,26 +605,20 @@
       ];
       const hasAutomationGlobal = automationGlobalNames.some((name) => name in window || name in document);
       if (navigator.webdriver === true || hasAutomationGlobal) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.automationApi, 3);
+        addSignal("automationApi");
       }
-      if (outerHeight === 0 || outerWidth === 0) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.zeroOuterDimensions, 2);
+      if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
+        addSignal("zeroOuterDimensions");
       }
-      if (!Number.isFinite(screenWidth) || !Number.isFinite(screenHeight) || screenWidth <= 0 || screenHeight <= 0 || screenWidth > 1e5 || screenHeight > 1e5) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions, 3);
-      }
-      if (isDesktopUA && screenWidth === 800 && screenHeight === 600) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600, 3);
-      }
-      if (isDesktopUA && screenWidth === 1024 && screenHeight === 768) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768, 3);
+      for (const signal of getScreenDimensionSignals(screenWidth, screenHeight, userAgent)) {
+        addSignal(signal);
       }
       if (Number.isFinite(outerWidth) && Number.isFinite(outerHeight) && Number.isFinite(innerWidth) && Number.isFinite(innerHeight) && outerWidth > 0 && outerHeight > 0 && innerWidth > 0 && innerHeight > 0 && (outerWidth + 8 < innerWidth || outerHeight + 8 < innerHeight)) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.outerDimensionsWeird, 2);
+        addSignal("outerDimensionsWeird");
       }
       let hasPluginOrApiAbsence = false;
       if (!window.chrome && isChromeLike) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.missingChrome, 1);
+        addSignal("missingChrome");
         hasPluginOrApiAbsence = true;
       }
       try {
@@ -564,7 +642,7 @@
             } catch {
             }
             if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
-              addSignal(CLIENT_BOT_SIGNAL_MASKS.swiftShader, 1);
+              addSignal("swiftShader");
             }
           } finally {
             releaseWebGlContext(canvas, gl);
@@ -573,16 +651,16 @@
       } catch {
       }
       if ((!navigator.plugins || navigator.plugins.length === 0) && isChromeLike) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.emptyPlugins, 1);
+        addSignal("emptyPlugins");
         hasPluginOrApiAbsence = true;
       }
       if (hasPluginOrApiAbsence) {
-        addSignal(CLIENT_BOT_SIGNAL_MASKS.pluginApiAbsence, 0);
+        addSignal("pluginApiAbsence");
       }
     } catch (e2) {
     }
     return {
-      score: Math.min(score, MAX_BOT_SCORE),
+      score: Math.min(score, MAX_CLIENT_BOT_SCORE),
       mask
     };
   }
@@ -597,6 +675,7 @@
   }
 
   // tracking.ts
+  var FEATURE_FLAG_REQUEST_TIMEOUT_MS2 = 2e3;
   var Tracker = class {
     constructor(config) {
       this.customUserId = null;
@@ -641,6 +720,9 @@
       };
     }
     async refreshFeatureFlags() {
+      if (!this.config.featureFlagsEnabled) return;
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS2);
       try {
         const response = await fetch(`${this.config.analyticsHost}/site/${this.config.siteId}/feature-flags/evaluate`, {
           method: "POST",
@@ -654,12 +736,18 @@
           }),
           mode: "cors",
           credentials: "omit",
-          keepalive: true
+          keepalive: true,
+          signal: controller.signal
         });
         if (!response.ok) return;
         const data = await response.json();
         this.config.featureFlags = data?.flags && typeof data.flags === "object" ? data.flags : {};
+        if (data?.featureFlagsEnabled === false) {
+          this.config.featureFlagsEnabled = false;
+        }
       } catch (e2) {
+      } finally {
+        window.clearTimeout(timeout);
       }
     }
     loadUserId() {
@@ -1311,8 +1399,10 @@
   };
 
   // clickTracking.ts
+  var CLICK_THROTTLE_MS = 1e3;
   var ClickTrackingManager = class {
     constructor(tracker, config) {
+      this.lastClickAt = /* @__PURE__ */ new WeakMap();
       this.tracker = tracker;
       this.config = config;
     }
@@ -1346,6 +1436,10 @@
       const buttonElement = this.findButton(element);
       if (!buttonElement) return;
       if (buttonElement.hasAttribute("data-rybbit-event")) return;
+      const now = Date.now();
+      const lastAt = this.lastClickAt.get(buttonElement);
+      if (lastAt !== void 0 && now - lastAt < CLICK_THROTTLE_MS) return;
+      this.lastClickAt.set(buttonElement, now);
       const properties = {
         text: this.getElementText(buttonElement),
         ...this.extractDataAttributes(buttonElement)
@@ -1491,7 +1585,7 @@
 
   // index.ts
   (async function() {
-    const scriptTag = document.currentScript;
+    const scriptTag = document.currentScript || document.querySelector('script[src*="/script.js"]');
     if (!scriptTag) {
       console.error("Could not find current script tag");
       return;

@@ -1,116 +1,39 @@
 import { ResultSet } from "@clickhouse/client";
-import { FilterParams } from "@rybbit/shared";
 import { and, eq, inArray } from "drizzle-orm";
-import SqlString from "sqlstring";
 import { db } from "../../../db/postgres/postgres.js";
 import { userProfiles } from "../../../db/postgres/schema.js";
-import { validateTimeStatementParams } from "./query-validation.js";
 
-export const normalizeDatetimeForClickhouse = (value: string) => {
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const withZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(normalized) ? normalized : `${normalized}Z`;
-  return new Date(withZone).toISOString().slice(0, 19).replace("T", " ");
-};
+/**
+ * ClickHouse serialises 64-bit integers (and Decimals) as JSON strings, so
+ * numeric-looking string columns are coerced back to numbers here.
+ *
+ * The coercion is lossless-only: a string becomes a number solely when
+ * `String(Number(v))` reproduces the original text exactly. Anything a double
+ * cannot represent — an 18-digit ad-platform campaign ID like
+ * `120248430174340693`, an identifier with leading zeros — stays text instead of
+ * being silently rounded to the nearest representable value. Counts and
+ * percentages round-trip cleanly and are unaffected.
+ */
+function coerceNumericString(value: unknown): unknown {
+  if (typeof value !== "string") return value;
 
-export function getTimeStatement(
-  params: Pick<
-    FilterParams,
-    | "start_date"
-    | "end_date"
-    | "time_zone"
-    | "start_datetime"
-    | "end_datetime"
-    | "past_minutes_start"
-    | "past_minutes_end"
-  >
-) {
-  const { start_date, end_date, time_zone, start_datetime, end_datetime, past_minutes_start, past_minutes_end } =
-    params;
+  const asNumber = Number(value);
+  // Rejects NaN and Infinity, which would otherwise round-trip through String()
+  // and turn values literally named "NaN" or "Infinity" into numbers.
+  if (!Number.isFinite(asNumber)) return value;
 
-  // Construct the legacy format for validation
-  const pastMinutesRange =
-    past_minutes_start !== undefined && past_minutes_end !== undefined
-      ? { start: Number(past_minutes_start), end: Number(past_minutes_end) }
-      : undefined;
-
-  // A missing time_zone must not silently discard the requested date range
-  // (that would return all-time data); dates are interpreted as UTC instead.
-  const date = start_date && end_date ? { start_date, end_date, time_zone: time_zone || "UTC" } : undefined;
-  const dateTimeRange = start_datetime && end_datetime ? { start_datetime, end_datetime } : undefined;
-
-  // Sanitize inputs with Zod
-  const sanitized = validateTimeStatementParams({
-    date,
-    dateTimeRange,
-    pastMinutesRange,
-  });
-
-  if (sanitized.date) {
-    const { start_date, end_date, time_zone } = sanitized.date;
-    if (!start_date && !end_date) {
-      return "";
-    }
-
-    // Use SqlString.escape for date and timeZone values
-    return `AND timestamp >= toTimeZone(
-      toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
-      'UTC'
-      )
-      AND timestamp < if(
-        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        toTimeZone(now(), 'UTC'),
-        toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      )`;
-  }
-
-  if (sanitized.dateTimeRange) {
-    const { start_datetime, end_datetime } = sanitized.dateTimeRange;
-    return `AND timestamp >= toDateTime(${SqlString.escape(normalizeDatetimeForClickhouse(start_datetime))}, 'UTC')
-      AND timestamp < toDateTime(${SqlString.escape(normalizeDatetimeForClickhouse(end_datetime))}, 'UTC')`;
-  }
-
-  // Handle specific range of past minutes - convert to exact timestamps for better performance
-  if (sanitized.pastMinutesRange) {
-    const { start, end } = sanitized.pastMinutesRange;
-
-    // Calculate exact timestamps in JavaScript to avoid runtime ClickHouse calculations
-    const now = new Date();
-    const startTimestamp = new Date(now.getTime() - start * 60 * 1000);
-    const endTimestamp = new Date(now.getTime() - end * 60 * 1000);
-
-    // Format as YYYY-MM-DD HH:MM:SS without milliseconds for ClickHouse
-    const startIso = startTimestamp.toISOString().slice(0, 19).replace("T", " ");
-    const endIso = endTimestamp.toISOString().slice(0, 19).replace("T", " ");
-
-    return `AND timestamp > toDateTime(${SqlString.escape(startIso)}) AND timestamp <= toDateTime(${SqlString.escape(endIso)})`;
-  }
-
-  // If no valid time parameters were provided, return empty string
-  return "";
+  return String(asNumber) === value ? asNumber : value;
 }
 
 export async function processResults<T>(results: ResultSet<"JSONEachRow">): Promise<T[]> {
   const data: T[] = await results.json();
   for (const row of data) {
     for (const key in row) {
-      // Only convert to number if the value is not null/undefined and is a valid number
-      if (
-        key !== "session_id" &&
-        key !== "user_id" &&
-        key !== "identified_user_id" &&
-        key !== "effective_user_id" &&
-        row[key] !== null &&
-        row[key] !== undefined &&
-        row[key] !== "" &&
-        row[key] !== true &&
-        row[key] !== false &&
-        !isNaN(Number(row[key]))
-      ) {
-        row[key] = Number(row[key]) as any;
+      // Identifiers are opaque text even when they look numeric.
+      if (key === "session_id" || key === "user_id" || key === "identified_user_id" || key === "effective_user_id") {
+        continue;
       }
+      row[key] = coerceNumericString(row[key]) as any;
     }
   }
   return data;
@@ -139,31 +62,6 @@ export function patternToRegex(pattern: string): string {
   // Anchor the regex to start/end of string for exact matches
   return `^${finalRegex}$`;
 }
-
-// Time bucket mapping constants
-export const TimeBucketToFn = {
-  minute: "toStartOfMinute",
-  five_minutes: "toStartOfFiveMinutes",
-  ten_minutes: "toStartOfTenMinutes",
-  fifteen_minutes: "toStartOfFifteenMinutes",
-  hour: "toStartOfHour",
-  day: "toStartOfDay",
-  week: "toStartOfWeek",
-  month: "toStartOfMonth",
-  year: "toStartOfYear",
-} as const;
-
-export const bucketIntervalMap = {
-  minute: "1 MINUTE",
-  five_minutes: "5 MINUTES",
-  ten_minutes: "10 MINUTES",
-  fifteen_minutes: "15 MINUTES",
-  hour: "1 HOUR",
-  day: "1 DAY",
-  week: "7 DAY",
-  month: "1 MONTH",
-  year: "1 YEAR",
-} as const;
 
 /**
  * Enriches data with user traits from Postgres for identified users.

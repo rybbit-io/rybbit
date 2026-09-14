@@ -1,0 +1,86 @@
+---
+title: Flask
+description: Add Rybbit analytics to your Flask app
+category: backend
+icon: SiFlask
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Flask renders Jinja templates, and most apps extend a shared base layout, so the snippet goes into that layout's `<head>`. Flask exposes `app.config` to every template as `config`, so store the site ID there and reference it from the template.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Flask
+
+#### Configure the site ID
+
+Flask loads any environment variable prefixed with `FLASK_` into `app.config` when you call `from_prefixed_env()`. Set the values in your environment (`flask run` also reads a `.env` file when python-dotenv is installed):
+
+```bash filename=".env"
+FLASK_RYBBIT_INSTANCE_URL=https://app.rybbit.io
+FLASK_RYBBIT_SITE_ID=YOUR_SITE_ID
+```
+
+Then load them where you create the app:
+
+```python filename="app.py"
+from flask import Flask, render_template
+
+app = Flask(__name__)
+app.config.setdefault("RYBBIT_INSTANCE_URL", "https://app.rybbit.io")
+app.config.from_prefixed_env()
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+```
+
+`from_prefixed_env()` parses values as JSON where it can, so a numeric site ID arrives as an `int`. It renders the same in the template.
+
+If you keep configuration in a Python file or class instead, add `RYBBIT_INSTANCE_URL` and `RYBBIT_SITE_ID` there and load it with `app.config.from_object()`.
+
+#### Add the tag to your base layout
+
+Open the template that your pages extend, usually `templates/base.html` (or `templates/layout.html`), and add the tag inside `<head>`:
+
+```jinja filename="templates/base.html"
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}My App{% endblock %}</title>
+
+    {% if config.RYBBIT_SITE_ID %}
+    <script src="{{ config.RYBBIT_INSTANCE_URL }}/api/script.js?siteId={{ config.RYBBIT_SITE_ID }}" defer></script>
+    {% endif %}
+</head>
+```
+
+`config` is part of Flask's standard template context, so no context processor is needed. The `{% if %}` guard skips the tag when `RYBBIT_SITE_ID` is unset, so local development is not tracked unless you set the variable.
+
+Templates that do not extend the base layout need the same tag in their own `<head>`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Tag missing**: `from_prefixed_env()` reads the environment when the app is created, so restart the server after changing `FLASK_RYBBIT_SITE_ID`. Check `app.config["RYBBIT_SITE_ID"]` in `flask shell`.
+- **Macros imported into other templates**: `config` is added to the render context, not to imported templates. A macro that outputs the tag must be imported `with context`.
+- **Content Security Policy**: if you set one with Flask-Talisman or similar, add your Rybbit host to `script-src` and `connect-src`, or [proxy the script](/docs/proxy-guide) through your own domain.
+- **Self-hosted instance**: set `FLASK_RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the template appends the script path to it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

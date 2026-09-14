@@ -134,11 +134,25 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
         domain: z.string().optional(),
         type: z.enum(["web", "mobile"]).optional(),
         embedEnabled: z.boolean().optional().describe("Allow embedding the stats widget"),
+        firstPartyProxy: z
+          .boolean()
+          .optional()
+          .describe(
+            "Site is fronted by a first-party proxy (Cloudflare Worker, CloudFront, nginx); visitor IPs are read from forwarded headers"
+          ),
         excludedIPs: z.array(z.string()).optional().describe("Replaces the exclusion list wholesale"),
         excludedCountries: z.array(z.string()).optional(),
         excludedPaths: z.array(z.string()).optional(),
         excludedHostnames: z.array(z.string()).optional(),
         excludedUserAgents: z.array(z.string()).optional(),
+        excludedASNs: z
+          .array(z.string())
+          .optional()
+          .describe("Autonomous system numbers to exclude, with or without AS prefix (e.g., AS13335)"),
+        excludedQueryParams: z
+          .array(z.string())
+          .optional()
+          .describe('Query param exclusions: "name" (param present) or "name=value" (value supports * glob)'),
         tags: z.array(z.string()).optional(),
         ...siteFeatureInputs,
       },

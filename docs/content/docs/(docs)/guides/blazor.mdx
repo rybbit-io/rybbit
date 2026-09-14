@@ -1,0 +1,126 @@
+---
+title: Blazor
+description: Add Rybbit analytics to your Blazor app
+category: backend
+icon: SiBlazor
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Where the snippet goes depends on the Blazor hosting model: a Blazor Web App keeps its `<head>` in `Components/App.razor`, a standalone Blazor WebAssembly app in `wwwroot/index.html`, and a Blazor Server app (.NET 7 and earlier) in `Pages/_Host.cshtml`. In each case the tag is added once and stays on the page while Blazor handles navigation client-side.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Blazor
+
+<Tabs items={["Blazor Web App", "Blazor WebAssembly (standalone)", "Blazor Server (.NET 7 and earlier)"]}>
+<Tab>
+`App.razor` is rendered on the server, so it can read the site ID from `appsettings.json`. Add a `Rybbit` section:
+
+```json filename="appsettings.json"
+{
+  "Rybbit": {
+    "InstanceUrl": "https://app.rybbit.io",
+    "SiteId": "YOUR_SITE_ID"
+  }
+}
+```
+
+Then inject `IConfiguration` in `Components/App.razor` and add the tag inside `<head>`:
+
+```razor filename="Components/App.razor"
+@inject IConfiguration Configuration
+@{
+    var rybbitSiteId = Configuration["Rybbit:SiteId"];
+    var rybbitInstanceUrl = Configuration["Rybbit:InstanceUrl"] ?? "https://app.rybbit.io";
+}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <HeadOutlet />
+
+    @if (!string.IsNullOrEmpty(rybbitSiteId))
+    {
+        <script src="@rybbitInstanceUrl/api/script.js?siteId=@rybbitSiteId" defer></script>
+    }
+</head>
+```
+
+Override the value per environment with `appsettings.Production.json` or the environment variable `Rybbit__SiteId`.
+</Tab>
+
+<Tab>
+A standalone WebAssembly app ships `wwwroot/index.html` as a static file, so add the tag directly inside `<head>`:
+
+```html filename="wwwroot/index.html"
+<head>
+    <base href="/" />
+    <link rel="stylesheet" href="css/app.css" />
+
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+```
+
+The site ID is public on every platform (it is in the page source), so a static value here is fine; `wwwroot/appsettings.json` is equally visible to the browser and offers no advantage for this value.
+</Tab>
+
+<Tab>
+Add the `Rybbit` section to `appsettings.json` as in the Blazor Web App tab, then open `Pages/_Host.cshtml` (or `Pages/_Layout.cshtml` in .NET 6 projects, where the `<head>` lives) and add the tag:
+
+```razor filename="Pages/_Host.cshtml"
+@page "/"
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@{
+    var rybbitSiteId = Configuration["Rybbit:SiteId"];
+    var rybbitInstanceUrl = Configuration["Rybbit:InstanceUrl"] ?? "https://app.rybbit.io";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="~/" />
+    <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+
+    @if (!string.IsNullOrEmpty(rybbitSiteId))
+    {
+        <script src="@rybbitInstanceUrl/api/script.js?siteId=@rybbitSiteId" defer></script>
+    }
+</head>
+```
+</Tab>
+</Tabs>
+
+#### Navigation
+
+Blazor's router, `NavigationManager.NavigateTo` and enhanced navigation in Blazor Web Apps all update the URL through `history.pushState` (or `replaceState` when `replace: true`) rather than reloading the page. The Rybbit script hooks `history.pushState` and `history.replaceState` and listens for `popstate` and `hashchange`, so each navigation is tracked as a pageview while **SPA Navigation** is enabled in your site settings (the default). Enhanced navigation patches the DOM without re-running scripts already in `<head>`, which is what you want: the tracker loads once and keeps running. `NavigateTo(url, forceLoad: true)` and links with `data-enhance-nav="false"` do a full page load, which the script tracks as a new pageview.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Tag missing in a Blazor Web App**: `App.razor` reads server-side configuration, so check the `appsettings` file for the active `ASPNETCORE_ENVIRONMENT`; environment variables override the files.
+- **Blazor WebAssembly PWA**: `index.html` is cached by the service worker. Users receive the new tag only after the app is republished and the service worker updates.
+- **Content Security Policy**: if you set one, add your Rybbit host to `script-src` and `connect-src`, or [proxy the script](/docs/proxy-guide) through your own domain.
+- **Self-hosted instance**: set `Rybbit:InstanceUrl` (or the static URL in `index.html`) to your own domain without a trailing slash.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

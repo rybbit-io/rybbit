@@ -11,14 +11,14 @@ import {
   GetSitesFromOrgResponse,
 } from "../endpoints";
 
-export function useGetSitesFromOrg(organizationId?: string) {
+export function useGetSitesFromOrg(organizationId?: string, options?: { enabled?: boolean }) {
   return useQuery<GetSitesFromOrgResponse>({
     queryKey: ["get-sites-from-org", organizationId],
     queryFn: () => {
       return fetchSitesFromOrg(organizationId!);
     },
     staleTime: 60000, // 1 minute
-    enabled: !!organizationId,
+    enabled: !!organizationId && options?.enabled !== false,
   });
 }
 
@@ -31,12 +31,21 @@ export function useSiteHasData(siteId: string) {
       }
       return fetchSiteHasData(siteId).then(data => data.hasData);
     },
-    refetchInterval: 5000,
+    // Poll only until the site reports data. Once it flips true it can never
+    // flip back, so continuing to poll re-asks a settled question every 5 s for
+    // as long as the tab stays open — which is where the bulk of this
+    // endpoint's call volume came from.
+    //
+    // A site that genuinely has no data yet never stops polling, so that case
+    // sets the floor: 30 s is still well inside the "paste the script, watch it
+    // light up" loop this powers, at a sixth of the requests.
+    refetchInterval: query => (query.state.data === true ? false : 30_000),
     staleTime: Infinity,
+    enabled: !!siteId,
   });
 }
 
-export function useGetSite(siteId?: string | number) {
+export function useGetSite(siteId?: string | number, options?: { enabled?: boolean }) {
   const { site: storeSelectedSite } = useStore();
 
   const siteIdToUse = siteId ?? storeSelectedSite;
@@ -52,7 +61,7 @@ export function useGetSite(siteId?: string | number) {
       return data;
     },
     staleTime: 60000,
-    enabled: !!siteIdToUse,
+    enabled: !!siteIdToUse && options?.enabled !== false,
   });
 }
 

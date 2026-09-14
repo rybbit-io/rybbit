@@ -84,7 +84,7 @@ export function SiteCard({
     hasLoadedData.current = true;
   }
 
-  const hasData = (overviewData?.data?.sessions || 0) > 0;
+  const hasData = (overviewData?.sessions || 0) > 0;
 
   // Show skeleton when loading or not yet in view, but not if we've already loaded data previously
   const showSkeleton = (isLoading || isOverviewLoading || !isInView) && !hasLoadedData.current;
@@ -176,7 +176,7 @@ export function SiteCard({
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center justify-between">
               <div className="relative rounded-md w-40 h-12.5">
-                <SiteSessionChart data={data?.data ?? []} />
+                <SiteSessionChart data={data ?? []} />
                 {!hasData && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm">
                     <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("No data available")}</span>
@@ -188,11 +188,11 @@ export function SiteCard({
                 <div className="flex flex-col items-start gap-1 rounded-md p-2 transition-colors">
                   <div className="text-xs text-neutral-500 dark:text-neutral-400">{t("Sessions")}</div>
                   <div className="font-semibold text-xl flex gap-2">
-                    {formatter(overviewData?.data?.sessions ?? 0)}{" "}
-                    {overviewData?.data?.sessions && overviewDataPrevious?.data?.sessions ? (
+                    {formatter(overviewData?.sessions ?? 0)}{" "}
+                    {overviewData?.sessions && overviewDataPrevious?.sessions ? (
                       <ChangePercentage
-                        current={overviewData?.data?.sessions}
-                        previous={overviewDataPrevious?.data?.sessions}
+                        current={overviewData?.sessions}
+                        previous={overviewDataPrevious?.sessions}
                       />
                     ) : null}
                   </div>
@@ -201,11 +201,11 @@ export function SiteCard({
                 <div className="flex flex-col items-start gap-1 rounded-md p-2 transition-colors">
                   <div className="text-xs text-neutral-500 dark:text-neutral-400">{t("Users")}</div>
                   <div className="font-semibold text-xl flex gap-2">
-                    {formatter(overviewData?.data?.users ?? 0)}{" "}
-                    {overviewData?.data?.users && overviewDataPrevious?.data?.users ? (
+                    {formatter(overviewData?.users ?? 0)}{" "}
+                    {overviewData?.users && overviewDataPrevious?.users ? (
                       <ChangePercentage
-                        current={overviewData?.data?.users}
-                        previous={overviewDataPrevious?.data?.users}
+                        current={overviewData?.users}
+                        previous={overviewDataPrevious?.users}
                       />
                     ) : null}
                   </div>

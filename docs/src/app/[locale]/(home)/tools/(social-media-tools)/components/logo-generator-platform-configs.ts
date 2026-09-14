@@ -416,6 +416,5 @@ Effective WhatsApp Business logos are typically professional and trustworthy. Th
   },
 };
 
-export const logoGeneratorPlatformList = Object.values(
-  logoGeneratorPlatformConfigs
-);
+// Category retired 2026-07-18 (off-brand, ~0 organic traffic) — pages 301 → /tools via next.config.mjs.
+export const logoGeneratorPlatformList = Object.values(logoGeneratorPlatformConfigs).filter(() => false);

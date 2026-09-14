@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ConnectGSCRequest } from "./types.js";
 import { getSessionFromReq, getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
-import { logger } from "../../lib/logger/logger.js";
 import { signGSCState } from "./utils.js";
 
 /**
@@ -54,7 +53,7 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
 
     return res.send({ authUrl: authUrl.toString() });
   } catch (error) {
-    logger.error(error, "Error initiating GSC OAuth");
+    req.log.error(error, "Error initiating GSC OAuth");
     return res.status(500).send({ error: "Failed to initiate OAuth" });
   }
 }

@@ -1,10 +1,11 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { FilterParameter } from "./types.js";
-import { getTimeStatement, processResults } from "./utils/utils.js";
-import { getFilterStatement, getSqlParam } from "./utils/getFilterStatement.js";
+import { getTimeStatement } from "./utils/timeWindow.js";
+import { getSqlParam } from "./utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG } from "./utils/sessionAttribution.js";
 import { FilterParams } from "@rybbit/shared";
+import { analyticsRoute, getPaginationStatements, runPaginatedQuery } from "./utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments } from "./utils/sessionFilters.js";
 
 interface GetMetricRequest {
   Params: {
@@ -53,58 +54,58 @@ type GetMetricPaginatedResponse = {
   totalCount: number;
 };
 
-const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boolean = false) => {
-  const { filters, parameter, limit, page } = request.query;
-  const site = request.params.siteId;
+export const buildMetricQuery = (
+  query: GetMetricRequest["Querystring"],
+  siteId: number,
+  isCountQuery: boolean = false
+) => {
+  const { filters, parameter } = query;
 
-  const timeStatement = getTimeStatement(request.query);
+  const timeStatement = getTimeStatement(query);
 
-  const filterStatement = getFilterStatement(filters, Number(site), timeStatement);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    filters,
+    siteId,
+    timeStatement,
+    parameter === "event_name" ? ["event_name"] : []
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
+  const aliasedSessionJoin = filteredSessionsCTE
+    ? "INNER JOIN FilteredSessions fs ON e.session_id = fs.session_id"
+    : "";
+  const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
 
-  let validatedLimit: number | null = null;
-  if (!isCountQuery && limit !== undefined) {
-    const parsedLimit = parseInt(String(limit), 10);
-    if (!isNaN(parsedLimit) && parsedLimit > 0) {
-      validatedLimit = parsedLimit;
-    }
-  }
-  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 100";
-
-  let validatedOffset: number | null = null;
-  if (!isCountQuery && page !== undefined) {
-    const parsedPage = parseInt(String(page), 10);
-    if (!isNaN(parsedPage) && parsedPage >= 1) {
-      const pageOffset = (parsedPage - 1) * (validatedLimit || 100);
-      validatedOffset = pageOffset;
-    }
-  }
-  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const { limitStatement, offsetStatement } = getPaginationStatements(query, 100, isCountQuery);
 
   if (parameter === "event_name") {
     if (isCountQuery) {
       return `
+      ${withFilteredSessions}
       SELECT COUNT(DISTINCT event_name) as totalCount
       FROM events
+      ${sessionJoin}
       WHERE
         site_id = {siteId:Int32}
         AND event_name IS NOT NULL 
         AND event_name <> ''
-        ${filterStatement}
+        ${rowFilterStatement}
         ${timeStatement}
         AND type = 'custom_event';
       `;
     }
     return `
+    ${withFilteredSessions}
     SELECT
       event_name as value,
       COUNT(*) as count,
       ROUND(COUNT(distinct(session_id)) * 100.0 / SUM(COUNT(distinct(session_id))) OVER (), 2) as percentage
     FROM events
+    ${sessionJoin}
     WHERE
       site_id = {siteId:Int32}
       AND event_name IS NOT NULL 
       AND event_name <> ''
-      ${filterStatement}
+      ${rowFilterStatement}
       ${timeStatement}
       AND type = 'custom_event'
     GROUP BY event_name ORDER BY count desc, event_name asc
@@ -120,22 +121,22 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           argMax(pathname, timestamp) as pathname,
           COUNT(DISTINCT session_id) as unique_sessions
       FROM events
+      ${sessionJoin}
       WHERE
           site_id = {siteId:Int32}
           AND page_title IS NOT NULL
           AND page_title <> ''
-          -- AND type = 'pageview'
-          ${filterStatement}
+          AND type = 'pageview'
           ${timeStatement}
       GROUP BY page_title
     `;
 
     if (isCountQuery) {
-      return `SELECT COUNT(*) as totalCount FROM (${corePageTitleLogic});`;
+      return `${withFilteredSessions} SELECT COUNT(*) as totalCount FROM (${corePageTitleLogic});`;
     }
 
     return `
-      WITH SessionPageCounts AS (
+      WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} SessionPageCounts AS (
           SELECT
               session_id,
               COUNT() as pageviews_in_session
@@ -150,15 +151,16 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
           SELECT
               e.page_title as value,
               e.pathname as pathname,
-              e.session_id,
+              e.session_id AS session_id,
               spc.pageviews_in_session
           FROM events e
+          ${aliasedSessionJoin}
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
               e.site_id = {siteId:Int32}
               AND e.page_title IS NOT NULL
               AND e.page_title <> ''
-              ${filterStatement}
+              AND e.type = 'pageview'
               ${timeStatement}
       )
       SELECT
@@ -199,14 +201,17 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
       ),
       RelevantEvents AS (
           SELECT
-              e.*,
+              e.session_id AS session_id,
+              e.pathname AS pathname,
+              e.hostname AS hostname,
+              e.timestamp_ms AS timestamp_ms,
               spc.pageviews_in_session
           FROM events e
+          ${aliasedSessionJoin}
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
               e.site_id = {siteId:Int32}
-              -- AND type = 'pageview'
-              ${filterStatement}
+              AND e.type = 'pageview'
               ${timeStatement}
       ),
       EventTimes AS (
@@ -214,10 +219,10 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
               session_id,
               pathname,
               hostname,
-              timestamp,
+              timestamp_ms AS timestamp,
               pageviews_in_session,
-              leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp,
-              row_number() OVER (PARTITION BY session_id ORDER BY timestamp ${orderDirection}) as row_num
+              leadInFrame(timestamp_ms) OVER (PARTITION BY session_id ORDER BY timestamp_ms ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp,
+              row_number() OVER (PARTITION BY session_id ORDER BY timestamp_ms ${orderDirection}) as row_num
           FROM RelevantEvents
       ),
       PageDurations AS (
@@ -253,13 +258,13 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
 
     if (isCountQuery) {
       return `
-      WITH ${baseCteQuery}
+      WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
       SELECT COUNT(DISTINCT pathname) as totalCount FROM PathStats;
       `;
     }
 
     return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT
         pathname as value,
         top_hostname as hostname,
@@ -290,18 +295,18 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
       ),
       EventTimes AS (
           SELECT
-              e.session_id,
+              e.session_id AS session_id,
               e.pathname,
               e.hostname,
               e.timestamp,
               spc.pageviews_in_session,
               leadInFrame(e.timestamp) OVER (PARTITION BY e.session_id ORDER BY e.timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) as next_timestamp
           FROM events e
+          ${aliasedSessionJoin}
           LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
           WHERE
             e.site_id = {siteId:Int32}
-            -- AND type = 'pageview'
-            ${filterStatement}
+            AND e.type = 'pageview'
             ${timeStatement}
       ),
       PageDurations AS (
@@ -329,12 +334,12 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
     `;
     if (isCountQuery) {
       return `
-      WITH ${baseCteQuery}
+      WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
       SELECT COUNT(DISTINCT pathname) as totalCount FROM PathStats;
       `;
     }
     return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT
         pathname as value,
         top_hostname as hostname,
@@ -360,16 +365,17 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
 
   if (isCountQuery) {
     return `
+    ${withFilteredSessions}
     SELECT COUNT(DISTINCT value) as totalCount
     FROM (
         SELECT
             ${valueExpression} as value
         FROM events e
+        ${aliasedSessionJoin}
         WHERE
             e.site_id = {siteId:Int32}
             AND ${sqlParam} IS NOT NULL
             AND ${sqlParam} <> ''
-            ${filterStatement}
             ${timeStatement}
         GROUP BY e.session_id
     );
@@ -377,7 +383,7 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
   }
 
   return `
-    WITH SessionPageCounts AS (
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} SessionPageCounts AS (
         SELECT
             session_id,
             COUNT() as pageviews_in_session
@@ -391,15 +397,15 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
     SessionData AS (
         SELECT
             ${valueExpression} as value,
-            e.session_id,
+            e.session_id AS session_id,
             any(spc.pageviews_in_session) as pageviews_in_session
         FROM events e
+        ${aliasedSessionJoin}
         LEFT JOIN SessionPageCounts spc ON e.session_id = spc.session_id
         WHERE
             e.site_id = {siteId:Int32}
             AND ${sqlParam} IS NOT NULL
             AND ${sqlParam} <> ''
-            ${filterStatement}
             ${timeStatement}
         GROUP BY e.session_id
     )
@@ -418,45 +424,17 @@ const getQuery = (request: FastifyRequest<GetMetricRequest>, isCountQuery: boole
   `;
 };
 
-export async function getMetric(req: FastifyRequest<GetMetricRequest>, res: FastifyReply) {
-  const { parameter, page } = req.query;
-  const site = req.params.siteId;
+export const getMetric = analyticsRoute<GetMetricRequest>(
+  req => req.query.parameter,
+  async (req: FastifyRequest<GetMetricRequest>, res: FastifyReply) => {
+    const siteId = Number(req.params.siteId);
+    const params = { siteId };
 
-  const isPaginatedRequest = page !== undefined;
+    const result = await runPaginatedQuery<MetricItem>(
+      { query: buildMetricQuery(req.query, siteId, false), params },
+      { query: buildMetricQuery(req.query, siteId, true), params }
+    );
 
-  const dataQuery = getQuery(req, false);
-  const countQuery = getQuery(req, true);
-
-  try {
-    // Run both queries in parallel
-    const [dataResult, countResult] = await Promise.all([
-      clickhouse.query({
-        query: dataQuery,
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(site),
-        },
-      }),
-      clickhouse.query({
-        query: countQuery,
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(site),
-        },
-      }),
-    ]);
-
-    const items = await processResults<MetricItem>(dataResult);
-    const countData = await processResults<{ totalCount: number }>(countResult);
-    const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
-
-    return res.send({ data: { data: items, totalCount } });
-  } catch (error) {
-    console.error(`Error fetching ${parameter}:`, error);
-    console.error("Failed dataQuery:", dataQuery);
-    if (isPaginatedRequest) {
-      console.error("Failed countQuery:", countQuery);
-    }
-    return res.status(500).send({ error: `Failed to fetch ${parameter}` });
+    return res.send({ data: result });
   }
-}
+);

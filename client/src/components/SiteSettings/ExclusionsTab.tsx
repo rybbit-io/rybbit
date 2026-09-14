@@ -1,7 +1,10 @@
 "use client";
 
+import { AlertCircle } from "lucide-react";
 import { useExtracted } from "next-intl";
 
+import { useGetSite } from "@/api/admin/hooks/useSites";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   useGetExcludedPaths,
   useUpdateExcludedPaths,
@@ -9,6 +12,10 @@ import {
   useUpdateExcludedHostnames,
   useGetExcludedUserAgents,
   useUpdateExcludedUserAgents,
+  useGetExcludedASNs,
+  useUpdateExcludedASNs,
+  useGetExcludedQueryParams,
+  useUpdateExcludedQueryParams,
 } from "@/api/admin/hooks/useExclusions";
 import { IPExclusionManager } from "./IPExclusionManager";
 import { CountryExclusionManager } from "./CountryExclusionManager";
@@ -29,6 +36,12 @@ export function ExclusionsTab({ siteId, disabled = false }: ExclusionsTabProps) 
   const updateHostnames = useUpdateExcludedHostnames();
   const userAgents = useGetExcludedUserAgents(siteId);
   const updateUserAgents = useUpdateExcludedUserAgents();
+  const asns = useGetExcludedASNs(siteId);
+  const updateASNs = useUpdateExcludedASNs();
+  const queryParams = useGetExcludedQueryParams(siteId);
+  const updateQueryParams = useUpdateExcludedQueryParams();
+  const site = useGetSite(siteId);
+  const urlParamsTrackingOff = site.data?.trackUrlParams === false;
 
   return (
     <SettingsSections>
@@ -51,6 +64,25 @@ export function ExclusionsTab({ siteId, disabled = false }: ExclusionsTabProps) 
       </SettingsSection>
 
       <SettingsSection
+        title={t("ASN Exclusions")}
+        description={t(
+          "Exclude traffic from specific networks by autonomous system number, such as a corporate VPN or hosting provider. Enter the number with or without the AS prefix (e.g., AS13335 or 13335)."
+        )}
+      >
+        <PatternExclusionManager
+          placeholder="e.g., AS13335"
+          addLabel={t("Add ASN")}
+          loadingLabel={t("Loading ASN exclusions...")}
+          maxLabel={t("Maximum 100 ASN exclusions allowed")}
+          values={asns.data?.excludedASNs}
+          isLoading={asns.isLoading}
+          isSaving={updateASNs.isPending}
+          onSave={excludedASNs => updateASNs.mutateAsync({ siteId, excludedASNs })}
+          disabled={disabled}
+        />
+      </SettingsSection>
+
+      <SettingsSection
         title={t("Path Exclusions")}
         description={t(
           "Exclude traffic to specific pages. Use * as a wildcard (e.g., /admin/* or /preview). Matching is case-insensitive."
@@ -65,6 +97,35 @@ export function ExclusionsTab({ siteId, disabled = false }: ExclusionsTabProps) 
           isLoading={paths.isLoading}
           isSaving={updatePaths.isPending}
           onSave={excludedPaths => updatePaths.mutateAsync({ siteId, excludedPaths })}
+          disabled={disabled}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title={t("Query Param Exclusions")}
+        description={t(
+          "Exclude traffic to URLs containing specific query parameters. Use a param name alone (e.g., preview) to match whenever it is present, or name=value to match a specific value. Values support * as a wildcard and matching is case-insensitive."
+        )}
+      >
+        {urlParamsTrackingOff && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {t(
+                "URL Parameters tracking is disabled for this site, so events are sent without their query string and these exclusions will not match. Enable URL Parameters in the Tracking tab to use them."
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        <PatternExclusionManager
+          placeholder="e.g., preview or utm_source=internal"
+          addLabel={t("Add Query Param")}
+          loadingLabel={t("Loading query param exclusions...")}
+          maxLabel={t("Maximum 100 query param exclusions allowed")}
+          values={queryParams.data?.excludedQueryParams}
+          isLoading={queryParams.isLoading}
+          isSaving={updateQueryParams.isPending}
+          onSave={excludedQueryParams => updateQueryParams.mutateAsync({ siteId, excludedQueryParams })}
           disabled={disabled}
         />
       </SettingsSection>

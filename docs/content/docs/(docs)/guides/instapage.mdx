@@ -1,0 +1,61 @@
+---
+title: Instapage
+description: Add Rybbit analytics to your Instapage landing pages
+category: landing
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Instapage takes custom scripts at two levels: **Workspace scripts** (under **Assets > Scripts**) apply to every page in a workspace, and each page also has its own **JavaScript** and **HTML/CSS** settings with a **Head** section. Custom HTML, CSS and JavaScript are included on all Instapage plans; Workspace scripts are limited to some subscriptions and show an upgrade prompt otherwise.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Instapage
+
+<Tabs items={["Workspace scripts", "Single page"]}>
+<Tab>
+1. In the left menu, open **Assets**, then **Scripts**.
+2. Paste the snippet into the **Head** section.
+3. Above the editor, choose how it applies: option **A** adds it to every past and future page in the workspace; **B** leaves it off until you switch it on per page under **Scripts & Privacy**; **B + C** turns it on for all pages but lets you disable it per page.
+4. Click **Apply**.
+
+Workspace scripts load on the live URL before any page-level script, so the snippet is in place before other code on the page runs.
+</Tab>
+
+<Tab>
+1. Open the page in the builder and click **Settings** in the right sidebar.
+2. Open the **HTML/CSS** tab and paste the snippet into **Head**. (The **JavaScript** tab has the same three sections and wraps your code in `<script>` tags automatically; the snippet already has its own tag, so HTML/CSS is the simpler choice.)
+3. **Publish** the page. Custom code runs only on the live, published page, not in the editor or preview.
+</Tab>
+</Tabs>
+
+<Callout type="info">
+If you use Instapage's privacy compliance banner, put the snippet in the page's **Scripts & Privacy** section instead so it fires only after the visitor accepts.
+</Callout>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Snippet not in the page source**: the page was saved but not republished. Custom code only reaches the live URL on publish.
+- **Assets > Scripts shows an upgrade prompt**: Workspace scripts are not on your subscription. Add the snippet per page instead.
+- **Duplicate pageviews**: the snippet is both a workspace script and a page-level script. Keep one copy.
+- **Old version still served**: clear your browser cache after publishing; Instapage notes cached copies can outlive an update.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

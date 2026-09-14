@@ -110,8 +110,8 @@ const educationalContent = (
       300 clicks, your CTR would be 3%.
     </p>
     <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
-      Unlike vanity metrics that only measure visibility, CTR shows actual engagement—it tells you not just how many
-      people saw your content, but how many were interested enough to take action.
+      Impressions only measure visibility. CTR shows engagement: how many of the people who saw your content were
+      interested enough to click.
     </p>
 
     <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4 mt-8">Why Does CTR Matter?</h2>
@@ -133,7 +133,7 @@ const educationalContent = (
       </li>
       <li>
         <strong>Channel Performance Comparison:</strong> CTR allows you to compare performance across different
-        marketing channels—email, PPC, organic search, social media—on a level playing field. This helps you identify
+        marketing channels (email, PPC, organic search, social media) on a level playing field. This helps you identify
         which channels are most effective for your audience.
       </li>
     </ul>
@@ -224,7 +224,7 @@ const educationalContent = (
 
     <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-6">Ad Extensions (Google Ads)</h3>
     <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
-      <li>Add sitelink extensions to showcase multiple offers or pages</li>
+      <li>Add sitelink extensions to link to multiple offers or pages</li>
       <li>Use callout extensions to highlight unique benefits</li>
       <li>Include structured snippets for product categories or features</li>
       <li>Add call extensions to encourage phone inquiries</li>
@@ -273,7 +273,7 @@ const faqs = [
   {
     question: "How do I reduce my CTR if it's too high?",
     answer:
-      "If your CTR is high but conversions are low, it may be time to adjust your targeting to attract more qualified users or improve your landing page to convert more of your traffic. A very high CTR can also indicate low quality clicks or click fraud—monitor your campaign closely for suspicious patterns.",
+      "If your CTR is high but conversions are low, it may be time to adjust your targeting to attract more qualified users or improve your landing page to convert more of your traffic. A very high CTR can also indicate low quality clicks or click fraud. Monitor your campaign closely for suspicious patterns.",
   },
 ];
 

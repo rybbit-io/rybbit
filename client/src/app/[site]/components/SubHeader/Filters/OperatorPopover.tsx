@@ -21,10 +21,13 @@ export function OperatorPopover({
   filter,
   onUpdate,
   children,
+  modal,
 }: {
   filter: Filter;
   onUpdate: (filter: Filter) => void;
   children: React.ReactNode;
+  /** Set when rendered inside a dialog: the dialog's scroll lock otherwise swallows wheel events in the portaled popover. */
+  modal?: boolean;
 }) {
   const t = useExtracted();
   const getOperatorMenuLabel = useOperatorMenuLabel();
@@ -43,7 +46,7 @@ export function OperatorPopover({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
         <div className="px-3 pt-3 pb-1 text-sm font-medium">{t("Operator")}</div>
@@ -56,8 +59,8 @@ export function OperatorPopover({
                 type="button"
                 onClick={() => handleSelect(option.value as FilterType)}
                 className={cn(
-                  "text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                  isSelected && "bg-neutral-100 dark:bg-neutral-800"
+                  "text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-750",
+                  isSelected && "bg-neutral-100 dark:bg-neutral-750"
                 )}
               >
                 {getOperatorMenuLabel(option.value as FilterType, isNumeric)}

@@ -22,7 +22,7 @@ import { MultiSelect } from "../../components/ui/multi-select";
 import { Pagination } from "../../components/pagination";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
-import { canGoForward, goBack, goForward, useStore } from "../../lib/store";
+import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../lib/store";
 import { AddSite } from "../components/AddSite";
 import { SiteCard } from "./SiteCard";
 
@@ -143,7 +143,7 @@ export default function Home() {
           variant="secondary"
           size="icon"
           onClick={goBack}
-          disabled={time.mode === "past-minutes"}
+          disabled={!canGoBack(time)}
           className="rounded-r-none h-8 w-8"
         >
           <ChevronLeft />

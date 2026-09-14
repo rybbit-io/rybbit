@@ -1,7 +1,5 @@
 "use client";
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import Link from "next/link";
 import { useState } from "react";
 
 export function TrafficValueForm() {
@@ -222,53 +220,6 @@ export function TrafficValueForm() {
               Clear
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* FAQ Section */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">Frequently Asked Questions</h2>
-        <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1">
-              <AccordionTrigger>Why is knowing visitor value important?</AccordionTrigger>
-              <AccordionContent>
-                Understanding visitor value helps you make informed decisions about marketing spend, SEO investments, and website optimization. If each visitor is worth $2, you can confidently spend up to $2 per visitor on advertising while breaking even, and anything less is profitable.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-2">
-              <AccordionTrigger>How can I increase visitor value?</AccordionTrigger>
-              <AccordionContent>
-                You can increase visitor value by: improving conversion rate (better UX, faster site, clearer CTAs), increasing average order value (upsells, cross-sells, bundles), improving profit margins (better pricing, lower costs), or attracting higher-intent traffic (better targeting, SEO for buyer keywords).
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-3">
-              <AccordionTrigger>Should I include customer lifetime value?</AccordionTrigger>
-              <AccordionContent>
-                This calculator shows immediate value per visitor. For businesses with repeat customers, your actual visitor value is higher when including lifetime value (LTV). Track customer behavior over time with{" "}
-                <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                  Rybbit Analytics
-                </Link>{" "}
-                to understand true LTV.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-4">
-              <AccordionTrigger>How do I calculate traffic value?</AccordionTrigger>
-              <AccordionContent>
-                Traffic value = (Monthly Visitors × Conversion Rate × Average Order Value × Profit Margin). This shows what each visitor is worth in profit. Our calculator does this automatically, but understanding the formula helps you see how each metric impacts your total value.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-5" className="border-b-0">
-              <AccordionTrigger>What profit margin should I use?</AccordionTrigger>
-              <AccordionContent>
-                Use your net profit margin (profit after all costs including COGS, wages, overhead, taxes). If you're not sure, calculate it as: (Total Profit / Total Revenue) × 100. Using an accurate margin ensures your visitor value calculations reflect real profitability, not just revenue.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
         </div>
       </div>
     </>

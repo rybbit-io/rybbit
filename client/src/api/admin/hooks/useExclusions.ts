@@ -7,6 +7,10 @@ import {
   updateExcludedHostnames,
   fetchExcludedUserAgents,
   updateExcludedUserAgents,
+  fetchExcludedASNs,
+  updateExcludedASNs,
+  fetchExcludedQueryParams,
+  updateExcludedQueryParams,
 } from "../endpoints";
 
 // Excluded paths
@@ -77,6 +81,54 @@ export const useUpdateExcludedUserAgents = () => {
     },
     onError: error => {
       toast.error(error.message || "Failed to update excluded user agents");
+    },
+  });
+};
+
+// Excluded ASNs
+export const useGetExcludedASNs = (siteId: number) => {
+  return useQuery({
+    queryKey: ["excludedASNs", siteId],
+    queryFn: () => fetchExcludedASNs(siteId.toString()),
+    enabled: !!siteId,
+  });
+};
+
+export const useUpdateExcludedASNs = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { siteId: number; excludedASNs: string[] }>({
+    mutationFn: ({ siteId, excludedASNs }) => updateExcludedASNs(siteId, excludedASNs),
+    onSuccess: (_, variables) => {
+      toast.success("Excluded ASNs updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["excludedASNs", variables.siteId] });
+    },
+    onError: error => {
+      toast.error(error.message || "Failed to update excluded ASNs");
+    },
+  });
+};
+
+// Excluded query params
+export const useGetExcludedQueryParams = (siteId: number) => {
+  return useQuery({
+    queryKey: ["excludedQueryParams", siteId],
+    queryFn: () => fetchExcludedQueryParams(siteId.toString()),
+    enabled: !!siteId,
+  });
+};
+
+export const useUpdateExcludedQueryParams = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { siteId: number; excludedQueryParams: string[] }>({
+    mutationFn: ({ siteId, excludedQueryParams }) => updateExcludedQueryParams(siteId, excludedQueryParams),
+    onSuccess: (_, variables) => {
+      toast.success("Excluded query params updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["excludedQueryParams", variables.siteId] });
+    },
+    onError: error => {
+      toast.error(error.message || "Failed to update excluded query params");
     },
   });
 };

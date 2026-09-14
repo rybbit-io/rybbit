@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, X, ArrowDown, ArrowUp } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { AppLink } from "@/components/AppLink";
 import { trackAdEvent } from "@/lib/trackAdEvent";
-import { AppLink } from "./AppLink";
+import { cn } from "@/lib/utils";
+import { ArrowDown, ArrowUp, Check, X } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 
@@ -13,16 +13,19 @@ export interface PricingCardProps {
   title: string;
   description: string;
   priceDisplay: React.ReactNode;
-  buttonText?: string;
-  buttonHref?: string;
+  buttonText: string;
+  buttonHref: string;
   buttonVariant?: "default" | "primary";
   features: FeatureItem[];
-  footerText?: React.ReactNode;
-  variant?: "free" | "default";
+  /** Marks the plan as the signal plate: emerald edge, plate tint, graph texture, badge. */
   recommended?: boolean;
-  customButton?: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
+  /**
+   * Standalone bordered card (mobile carousel). Omit when the card is a cell
+   * of the seamed `gap-px` plan grid, where the grid supplies the hairlines.
+   */
+  framed?: boolean;
+  className?: string;
+  featuresClassName?: string;
   eventLocation?: string;
 }
 
@@ -34,136 +37,102 @@ export function PricingCard({
   buttonHref,
   buttonVariant = "primary",
   features,
-  footerText,
-  variant = "default",
   recommended = false,
-  customButton,
-  onClick,
-  disabled,
+  framed = false,
+  className,
+  featuresClassName,
   eventLocation,
 }: PricingCardProps) {
   const t = useExtracted();
   const [isExpanded, setIsExpanded] = useState(false);
-  const isFree = variant === "free";
   const isPrimary = buttonVariant === "primary";
-
   const shouldShowToggle = features.length > 7;
   const displayedFeatures = shouldShowToggle && !isExpanded ? features.slice(0, 7) : features;
 
+  const buttonClasses = cn(
+    "inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-neutral-950",
+    isPrimary
+      ? "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-emerald-500"
+      : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 focus-visible:ring-neutral-500 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-800"
+  );
+
   return (
-    <div className="w-full flex-shrink-0 h-full">
-      <div className="bg-neutral-200/40 dark:bg-neutral-900/40 p-2 rounded-3xl border border-neutral-300 dark:border-neutral-800 h-full">
+    <div
+      className={cn(
+        "relative h-full overflow-hidden",
+        recommended ? "bg-plate-accent" : "bg-white dark:bg-neutral-950",
+        framed
+          ? cn(
+              "rounded-lg border",
+              recommended ? "border-emerald-500" : "border-neutral-200 dark:border-neutral-800"
+            )
+          : // Inside the seamed grid the emerald hairline replaces the 1px seam
+            // around the cell, so the signal plate carries its own edge.
+            recommended && "z-10 outline outline-1 outline-emerald-500",
+        className
+      )}
+    >
+      {recommended && (
         <div
-          className={cn(
-            "rounded-2xl border overflow-hidden backdrop-blur-sm shadow-xl h-full",
-            recommended
-              ? "bg-neutral-100/80 dark:bg-neutral-800 border-emerald-500 border-2"
-              : isFree
-                ? "bg-neutral-100/30 dark:bg-neutral-800/15 border-neutral-300/60 dark:border-neutral-800/60 text-neutral-600 dark:text-neutral-300"
-                : "bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-800"
-          )}
-        >
-          <div className="p-6">
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-xl font-bold">{title}</h3>
-                {recommended && (
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-500/30 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/40 dark:border-emerald-500/30">
-                    {t("Recommended")}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-neutral-600 dark:text-neutral-400 h-10">{description}</p>
-            </div>
-
-            {/* Price display */}
-            <div className="mb-6">{priceDisplay}</div>
-
-            {customButton ? (
-              customButton
-            ) : buttonHref ? (
-              <AppLink href={buttonHref} className="w-full block">
-                <button
-                  onClick={() => {
-                    if (eventLocation) {
-                      trackAdEvent("signup", { location: "pricing" });
-                    }
-                    onClick?.();
-                  }}
-                  disabled={disabled}
-                  data-rybbit-event={eventLocation ? "signup" : undefined}
-                  data-rybbit-prop-location={eventLocation}
-                  className={cn(
-                    "w-full font-medium px-5 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 cursor-pointer",
-                    isPrimary
-                      ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 focus:ring-emerald-200 disabled:opacity-50 disabled:pointer-events-none"
-                      : "bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white"
-                  )}
-                >
-                  {buttonText}
-                </button>
-              </AppLink>
-            ) : (
-              <button
-                onClick={onClick}
-                disabled={disabled}
-                className={cn(
-                  "w-full font-medium px-5 py-3 rounded-lg transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 cursor-pointer",
-                  isPrimary
-                    ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 focus:ring-emerald-500 disabled:opacity-50 disabled:pointer-events-none"
-                    : "bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-900 dark:text-white"
-                )}
-              >
-                {buttonText}
-              </button>
-            )}
-
-            <div className="mt-6 mb-1 space-y-3">
-              {displayedFeatures.map((item, i) => {
-                const isObject = typeof item === "object";
-                const feature = isObject ? item.feature : item;
-                const included = isObject ? item.included !== false : true;
-
-                return (
-                  <div key={i} className="flex items-center">
-                    {included ? (
-                      <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mr-3 shrink-0" />
-                    ) : (
-                      <X className="h-4 w-4 text-neutral-400 dark:text-neutral-500 mr-3 shrink-0" />
-                    )}
-                    <span className={cn("text-sm", !included && "text-neutral-400 dark:text-neutral-500")}>
-                      {feature}
-                    </span>
-                  </div>
-                );
-              })}
-
-              {shouldShowToggle && (
-                <button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center text-sm text-neutral-400 dark:text-neutral-400 hover:text-neutral-200 dark:hover:text-neutral-300 transition-colors cursor-pointer mt-2"
-                >
-                  {isExpanded ? (
-                    <>
-                      <ArrowUp className="h-4 w-4 mr-3" />
-                      {t("Show less")}
-                    </>
-                  ) : (
-                    <>
-                      <ArrowDown className="h-4 w-4 mr-3" />
-                      {t("Show more ({count} more)", { count: String(features.length - 7) })}
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-
-            {footerText && (
-              <p className="text-center text-sm text-neutral-600 dark:text-neutral-400 mt-4 flex items-center justify-center gap-2">
-                {footerText}
-              </p>
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
+        />
+      )}
+      <div className="relative p-6">
+        <div className="mb-5">
+          <div className="mb-2 flex items-center gap-2">
+            <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+            {recommended && (
+              <span className="rounded-sm bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                {t("Recommended")}
+              </span>
             )}
           </div>
+          <p className="min-h-10 text-sm leading-5 text-neutral-600 dark:text-neutral-400">{description}</p>
+        </div>
+
+        <div className="mb-6 min-h-16">{priceDisplay}</div>
+
+        <AppLink
+          href={buttonHref}
+          onClick={() => {
+            if (eventLocation) trackAdEvent("signup", { location: "pricing" });
+          }}
+          data-rybbit-event={eventLocation ? "signup" : undefined}
+          data-rybbit-prop-location={eventLocation}
+          className={buttonClasses}
+        >
+          {buttonText}
+        </AppLink>
+
+        <div className={cn("mb-1 mt-6 space-y-3", featuresClassName)}>
+          {displayedFeatures.map((item, index) => {
+            const isObject = typeof item === "object";
+            const feature = isObject ? item.feature : item;
+            const included = isObject ? item.included !== false : true;
+
+            return (
+              <div key={index} className="flex items-center gap-3">
+                {included ? (
+                  <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                ) : (
+                  <X className="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
+                )}
+                <span className={cn("text-sm", !included && "text-neutral-500")}>{feature}</span>
+              </div>
+            );
+          })}
+
+          {shouldShowToggle && (
+            <button
+              onClick={() => setIsExpanded(expanded => !expanded)}
+              aria-expanded={isExpanded}
+              className="mt-2 flex cursor-pointer items-center gap-3 rounded-sm text-sm text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
+            >
+              {isExpanded ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
+              {isExpanded ? t("Show less") : t("Show more ({count} more)", { count: String(features.length - 7) })}
+            </button>
+          )}
         </div>
       </div>
     </div>

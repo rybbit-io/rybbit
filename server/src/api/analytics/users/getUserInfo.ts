@@ -1,12 +1,13 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { eq, and } from "drizzle-orm";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { db } from "../../../db/postgres/postgres.js";
 import { userProfiles, userAliases } from "../../../db/postgres/schema.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
+import { matchesUser } from "../utils/effectiveUserId.js";
+import { runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 interface UserPageviewData {
   sessions: number;
@@ -84,45 +85,30 @@ export interface UserInfoResponse {
   };
 }
 
-export async function getUserInfo(
-  req: FastifyRequest<{
-    Params: {
-      siteId: string;
-      userId: string;
-    };
-    Querystring: FilterParams;
-  }>,
-  res: FastifyReply
-) {
-  const { userId, siteId } = req.params;
-  const { filters } = req.query;
-
-  const numericSiteId = Number(siteId);
-
+export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
   // Optional time range + dimension filters; both empty when the page is on
   // all-time with no filters, which keeps the original full-history behavior.
-  const timeStatement = getTimeStatement(req.query);
-  const filterStatement = getFilterStatement(filters, numericSiteId, timeStatement);
+  const timeStatement = getTimeStatement(query);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
+  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
+  const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
 
-  // Filters run in a subquery below each aggregation: the aggregate SELECTs
-  // alias argMax(...) to the same names as raw columns (browser_version, …),
-  // and ClickHouse resolves unqualified WHERE references at that level to the
-  // aliases, throwing ILLEGAL_AGGREGATION.
+  // Filters select sessions first. Every panel then reads all events in those
+  // sessions, keeping the summary, vitals, locations, devices, and session list
+  // on the same session-scoped semantics.
   const scopedEvents = `(
-        SELECT *
-        FROM events
+        SELECT source_events.*
+        FROM events AS source_events
+        ${filteredSessionsJoin}
         WHERE
-            (events.identified_user_id = {userId:String} OR events.user_id = {userId:String})
-            AND site_id = {site:Int32}
+            ${matchesUser("{userId:String}", "source_events")}
+            AND source_events.site_id = {site:Int32}
             ${timeStatement}
-            ${filterStatement}
     ) AS events`;
 
-  try {
-    const [queryResult, vitalsResult, locationsResult, devicesResult, profileResult, aliasesResult] = await Promise.all([
-      clickhouse.query({
-        query: `
-    WITH sessions AS (
+  const sessionsQuery = `
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+    sessions AS (
         SELECT
             session_id,
             argMax(user_id, timestamp) AS user_id,
@@ -147,8 +133,8 @@ export async function getUserInfo(
             MAX(timestamp) AS session_end,
             MIN(timestamp) AS session_start,
             dateDiff('second', MIN(timestamp), MAX(timestamp)) AS session_duration,
-            argMinIf(pathname, timestamp, type = 'pageview') AS entry_page,
-            argMaxIf(pathname, timestamp, type = 'pageview') AS exit_page,
+            argMinIf(pathname, timestamp_ms, type = 'pageview') AS entry_page,
+            argMaxIf(pathname, timestamp_ms, type = 'pageview') AS exit_page,
             countIf(type = 'pageview') AS pageviews,
             countIf(type = 'custom_event') AS events,
             argMax(ip, timestamp) AS ip
@@ -190,18 +176,13 @@ export async function getUserInfo(
         argMaxIf(user_timezone, session_end, user_timezone != '') AS timezone
     FROM
         sessions
-      `,
-        query_params: {
-          userId,
-          site: siteId,
-        },
-        format: "JSONEachRow",
-      }),
-      // p75 Web Vitals across every performance event this user produced.
-      // Separate query: the sessions CTE collapses rows per session, which
-      // would turn an event-level quantile into a quantile of session picks.
-      clickhouse.query({
-        query: `
+      `;
+
+  // p75 Web Vitals across every performance event this user produced.
+  // Separate query: the sessions CTE collapses rows per session, which
+  // would turn an event-level quantile into a quantile of session picks.
+  const vitalsQuery = `
+    ${withFilteredSessions}
     SELECT
         quantile(0.75)(lcp) AS lcp_p75,
         quantile(0.75)(cls) AS cls_p75,
@@ -211,17 +192,12 @@ export async function getUserInfo(
         COUNT(*) AS performance_events
     FROM ${scopedEvents}
     WHERE type = 'performance'
-      `,
-        query_params: {
-          userId,
-          site: siteId,
-        },
-        format: "JSONEachRow",
-      }),
-      // Every location this user was seen in, by session share. A session that
-      // moves between cities counts once per city, so shares are approximate.
-      clickhouse.query({
-        query: `
+      `;
+
+  // Every location this user was seen in, by session share. A session that
+  // moves between cities counts once per city, so shares are approximate.
+  const locationsQuery = `
+    ${withFilteredSessions}
     SELECT
         country,
         region,
@@ -235,18 +211,13 @@ export async function getUserInfo(
     ORDER BY
         sessions DESC, last_seen DESC
     LIMIT 20
-      `,
-        query_params: {
-          userId,
-          site: siteId,
-        },
-        format: "JSONEachRow",
-      }),
-      // Every device this user was seen on. Grouped without versions so a
-      // browser update doesn't split one physical device into many rows;
-      // versions and screen are argMax'd to the latest sighting instead.
-      clickhouse.query({
-        query: `
+      `;
+
+  // Every device this user was seen on. Grouped without versions so a
+  // browser update doesn't split one physical device into many rows;
+  // versions and screen are argMax'd to the latest sighting instead.
+  const devicesQuery = `
+    ${withFilteredSessions}
     SELECT
         device_type,
         browser,
@@ -264,18 +235,39 @@ export async function getUserInfo(
     ORDER BY
         sessions DESC, last_seen DESC
     LIMIT 20
-      `,
-        query_params: {
-          userId,
-          site: siteId,
-        },
-        format: "JSONEachRow",
-      }),
+      `;
+
+  return { sessionsQuery, vitalsQuery, locationsQuery, devicesQuery };
+};
+
+export async function getUserInfo(
+  req: FastifyRequest<{
+    Params: {
+      siteId: string;
+      userId: string;
+    };
+    Querystring: FilterParams;
+  }>,
+  res: FastifyReply
+) {
+  const { userId, siteId } = req.params;
+
+  const numericSiteId = Number(siteId);
+
+  const { sessionsQuery, vitalsQuery, locationsQuery, devicesQuery } = buildUserInfoQueries(req.query, numericSiteId);
+
+  const loadUser = (effectiveUserId: string) => {
+    const chParams = { userId: effectiveUserId, site: siteId };
+    return Promise.all([
+      runAnalyticsQuery<UserPageviewData>({ query: sessionsQuery, params: chParams }),
+      runAnalyticsQuery<UserVitalsData>({ query: vitalsQuery, params: chParams }),
+      runAnalyticsQuery<UserLocationBreakdown>({ query: locationsQuery, params: chParams }),
+      runAnalyticsQuery<UserDeviceBreakdown>({ query: devicesQuery, params: chParams }),
       // Get user profile traits from Postgres
       db
         .select()
         .from(userProfiles)
-        .where(and(eq(userProfiles.siteId, numericSiteId), eq(userProfiles.userId, userId)))
+        .where(and(eq(userProfiles.siteId, numericSiteId), eq(userProfiles.userId, effectiveUserId)))
         .limit(1),
       // Get linked devices (all anonymous IDs for this user) from Postgres
       db
@@ -284,13 +276,30 @@ export async function getUserInfo(
           created_at: userAliases.createdAt,
         })
         .from(userAliases)
-        .where(and(eq(userAliases.siteId, numericSiteId), eq(userAliases.userId, userId))),
+        .where(and(eq(userAliases.siteId, numericSiteId), eq(userAliases.userId, effectiveUserId))),
     ]);
+  };
 
-    const data = await processResults<UserPageviewData>(queryResult);
-    const vitalsData = await processResults<UserVitalsData>(vitalsResult);
-    const locations = await processResults<UserLocationBreakdown>(locationsResult);
-    const devices = await processResults<UserDeviceBreakdown>(devicesResult);
+  try {
+    let [data, vitalsData, locations, devices, profileResult, aliasesResult] = await loadUser(userId);
+
+    // A device whose events have all been claimed by an identity — the dashboard's
+    // "Identify User" action backfills the full history — no longer has anonymous
+    // rows, so the anonymous branch of the query matches nothing. Follow the alias
+    // rather than 404ing a route the operator was just looking at. Only on a miss:
+    // while a shared fingerprint still has anonymous activity of its own, that
+    // activity is what this route is about, and resolving early would put someone
+    // else's identity on it.
+    if (data.length === 0) {
+      const alias = await db
+        .select({ userId: userAliases.userId })
+        .from(userAliases)
+        .where(and(eq(userAliases.siteId, numericSiteId), eq(userAliases.anonymousId, userId)))
+        .limit(1);
+      if (alias.length > 0 && alias[0].userId !== userId) {
+        [data, vitalsData, locations, devices, profileResult, aliasesResult] = await loadUser(alias[0].userId);
+      }
+    }
 
     // If no data found for user
     if (data.length === 0) {
@@ -341,7 +350,7 @@ export async function getUserInfo(
       },
     });
   } catch (error) {
-    console.error("Error fetching user info:", error);
+    req.log.error({ err: error }, "Error fetching user info");
     return res.status(500).send({
       error: "Internal server error",
     });

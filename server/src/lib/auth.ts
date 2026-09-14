@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
-import { admin, captcha, emailOTP, mcp, organization } from "better-auth/plugins";
-import { ALL_SCOPE_STRINGS, OIDC_STANDARD_SCOPES } from "./scopes.js";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { admin, captcha, emailOTP, organization } from "better-auth/plugins";
+import { createAccessControl } from "better-auth/plugins/access";
+import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
+import { createOAuthPlugins, getAuthBaseUrl } from "./oauth.js";
 import dotenv from "dotenv";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import pg from "pg";
@@ -11,8 +13,11 @@ import { apiKey } from "@better-auth/api-key"
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
+import { siteIdsInOrganization } from "./access.js";
+import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
-import { API_RATE_LIMIT_WINDOW, DISABLE_SIGNUP, IS_CLOUD, STANDARD_API_RATE_LIMIT } from "./const.js";
+import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
+import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
 import {
   addContactToAudience,
   sendChangeEmailVerification,
@@ -21,7 +26,6 @@ import {
   sendOtpEmail,
   sendWelcomeEmail,
 } from "./email/email.js";
-import { onboardingTipsService } from "../services/onboardingTips/onboardingTipsService.js";
 import { getTrustedCorsOrigins } from "./cors.js";
 import { createServiceLogger } from "./logger/logger.js";
 
@@ -29,47 +33,75 @@ dotenv.config();
 
 const authLogger = createServiceLogger("better-auth");
 
+// The organization plugin's default access control, extended with an `apiKey`
+// resource. The @better-auth/api-key plugin consults it (via hasPermission)
+// for every operation on organization-owned keys: owners and admins manage
+// them, members can't see them.
+const ORG_API_KEY_ACTIONS = ["create", "read", "update", "delete"] as const;
+const orgAccessControl = createAccessControl({
+  ...defaultStatements,
+  apiKey: [...ORG_API_KEY_ACTIONS],
+});
+const orgRoles = {
+  owner: orgAccessControl.newRole({ ...ownerAc.statements, apiKey: [...ORG_API_KEY_ACTIONS] }),
+  admin: orgAccessControl.newRole({ ...adminAc.statements, apiKey: [...ORG_API_KEY_ACTIONS] }),
+  member: orgAccessControl.newRole({ ...memberAc.statements }),
+};
+
+// Rate limiting moved out of the plugin and into lib/apiRateLimit.ts, which
+// enforces a burst tier and a daily quota per credential *owner* rather than a
+// fixed window per key — the plugin's limiter is keyed on the key row, so an
+// org could multiply its budget by minting more keys.
+//
+// Disabling it drops the read-modify-write on `requestCount`, but not every
+// write: the plugin still stamps `lastRequest` on each verification (it takes
+// the "skip" branch with a fresh timestamp), which is also what makes key
+// last-used times work.
+const apiKeyRateLimit = { enabled: false };
+
 const pluginList = [
   admin(),
-  // OAuth provider for MCP clients (RFC 8414/9728 discovery, dynamic client
-  // registration, authorization-code + PKCE). The root /.well-known routes are
-  // registered in index.ts; token validation happens via auth.api.getMcpSession.
-  mcp({
-    loginPage: "/login",
-    ...(process.env.BASE_URL ? { resource: `${process.env.BASE_URL.replace(/\/$/, "")}/api/mcp` } : {}),
-    oidcConfig: {
-      loginPage: "/login",
-      // Registers the custom resource:action scopes so /mcp/authorize's
-      // invalid_scope check accepts them (merged after the standard scopes).
-      scopes: [...ALL_SCOPE_STRINGS],
-      // Advertised metadata is NOT derived from `scopes`. This feeds the
-      // RFC 9728 protected-resource document; the RFC 8414 authorization-server
-      // document is augmented in mcp/wellKnown.ts (better-auth builds it from a
-      // top-level option the mcp() plugin type doesn't expose).
-      metadata: {
-        scopes_supported: [...OIDC_STANDARD_SCOPES, ...ALL_SCOPE_STRINGS],
-      },
+  ...createOAuthPlugins(getAuthBaseUrl()),
+  apiKey([
+    {
+      // User-owned keys. Pre-existing rows (NULL configId) resolve here.
+      configId: "default",
+      rateLimit: apiKeyRateLimit,
     },
-  }),
-  apiKey({
-    ...(IS_CLOUD
-      ? {
-          rateLimit: {
-            enabled: true,
-            timeWindow: API_RATE_LIMIT_WINDOW,
-            maxRequests: STANDARD_API_RATE_LIMIT,
-          },
-        }
-      : { rateLimit: { maxRequests: 10000, timeWindow: 86400000 } }),
-  }),
+    {
+      // Organization-owned keys: referenceId is an organization id and the
+      // key authenticates as the org itself (bearerAuth.ts branches on this
+      // configId). Management is authorized through orgRoles' apiKey resource.
+      configId: ORG_API_KEY_CONFIG_ID,
+      references: "organization",
+      defaultPrefix: "rb_org_",
+      // Org keys store { createdBy } so actions stay attributable to the
+      // admin who minted the key.
+      enableMetadata: true,
+      rateLimit: apiKeyRateLimit,
+    },
+  ]),
   dash(),
   organization({
     allowUserToCreateOrganization: true,
     creatorRole: "owner",
+    ac: orgAccessControl,
+    roles: orgRoles,
     teams: {
       enabled: true,
     },
     organizationHooks: {
+      beforeDeleteOrganization: async ({ organization: org }) => {
+        // apikey.referenceId has no FK (it holds user OR org ids), so
+        // org-owned keys are purged explicitly. Runs BEFORE the deletion and
+        // lets failures propagate: a failed purge aborts the deletion instead
+        // of leaving live credentials for a dead organization. If the purge
+        // succeeds but the deletion then fails, keys are gone while the org
+        // survives — the safe direction (admins can mint new ones).
+        await db
+          .delete(schema.apiKey)
+          .where(and(eq(schema.apiKey.referenceId, org.id), eq(schema.apiKey.configId, ORG_API_KEY_CONFIG_ID)));
+      },
       beforeCreateInvitation: async ({ invitation: newInvitation }) => {
         const invite = newInvitation as typeof newInvitation & {
           hasRestrictedSiteAccess?: boolean;
@@ -99,11 +131,7 @@ const pluginList = [
           });
         }
 
-        const validSites = await db
-          .select({ siteId: sites.siteId })
-          .from(sites)
-          .where(and(eq(sites.organizationId, invite.organizationId), inArray(sites.siteId, uniqueSiteIds)));
-        const validSiteIds = new Set(validSites.map(site => site.siteId));
+        const validSiteIds = new Set(await siteIdsInOrganization(uniqueSiteIds, invite.organizationId));
         const invalidSiteIds = uniqueSiteIds.filter(siteId => !validSiteIds.has(siteId));
 
         if (invalidSiteIds.length > 0) {
@@ -127,7 +155,7 @@ const pluginList = [
             .delete(invitation)
             .where(and(eq(invitation.email, removedUser.email), eq(invitation.organizationId, org.id)));
         } catch (error) {
-          console.error("Error deleting invitations for removed member:", error);
+          authLogger.error({ err: error, organizationId: org.id }, "Error deleting invitations for removed member");
         }
         invalidateSitesAccessCache(removedMember.userId);
       },
@@ -181,6 +209,11 @@ const pluginList = [
           customPlan: {
             type: "string",
             required: false,
+            // Column is snake_case (jsonb "custom_plan" in schema.ts). Without
+            // this, Better Auth 1.7's startup schema check looks for a
+            // "customPlan" column, reports SCHEMA_MISMATCH, and every
+            // /api/auth/* request 500s.
+            fieldName: "custom_plan",
           },
         },
       },
@@ -204,6 +237,7 @@ const pluginList = [
 
 export const auth = betterAuth({
   basePath: "/api/auth",
+  baseURL: getAuthBaseUrl(),
   appName: "Rybbit",
   logger: {
     log: (level, message, ...args) => {
@@ -263,6 +297,17 @@ export const auth = betterAuth({
     },
     deleteUser: {
       enabled: true,
+      // apikey.referenceId no longer has a cascading FK to user.id (it holds
+      // user OR org ids), so the user's keys are purged explicitly. Keys of a
+      // user removed through other paths are unusable anyway — bearer auth
+      // requires a live org membership — this is hygiene, not security.
+      afterDelete: async deletedUser => {
+        try {
+          await db.delete(schema.apiKey).where(eq(schema.apiKey.referenceId, deletedUser.id));
+        } catch (error) {
+          authLogger.error({ err: error, userId: deletedUser.id }, "Error deleting API keys for removed user");
+        }
+      },
     },
     changeEmail: {
       enabled: true,
@@ -293,7 +338,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async u => {
-          console.log(u);
+          authLogger.info({ userId: u.id }, "User created");
           const users = await db.select().from(schema.user).orderBy(asc(user.createdAt));
 
           // If this is the first user, make them an admin
@@ -302,18 +347,12 @@ export const auth = betterAuth({
           }
 
           sendWelcomeEmail(u.email, u.name);
-          // Add contact to marketing audience and schedule onboarding emails
+          // Add contact to marketing audience; lifecycle emails are driven by the
+          // state-machine cron (lifecycleEmailService), nothing is pre-scheduled here
           try {
             await addContactToAudience(u.email, u.name);
-
-            const emailIds = await onboardingTipsService.scheduleOnboardingEmails(u.email, u.name);
-
-            // Store scheduled email IDs for potential cancellation
-            if (emailIds.length > 0) {
-              await db.update(user).set({ scheduledTipEmailIds: emailIds }).where(eq(user.id, u.id));
-            }
           } catch (error) {
-            console.error("Error setting up onboarding emails:", error);
+            authLogger.error({ err: error, userId: u.id }, "Error adding contact to marketing audience");
           }
         },
       },
@@ -340,6 +379,75 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      // Gate API key creation on better-auth's own /api-key/create route. This
+      // is the only choke point that covers direct client calls — the Fastify
+      // endpoints (createUserApiKey / createOrgApiKey) do richer plan checks
+      // before calling in server-side (no ctx.request), so they gate there.
+      if (ctx.path === "/api-key/create" && ctx.request) {
+        const body = (ctx.body ?? {}) as { configId?: string; organizationId?: string };
+        const isOrgKey = body.configId === ORG_API_KEY_CONFIG_ID;
+        const session = await getSessionFromCtx(ctx);
+
+        // The key's owner: the org for org keys, the session user otherwise.
+        const referenceId = isOrgKey ? body.organizationId : session?.user?.id;
+        if (!referenceId) return; // the api-key plugin rejects these itself
+
+        // Don't reveal an org's plan tier or key quota to non-members: skip
+        // the gate and let the plugin's own membership/permission check
+        // produce its canonical rejection.
+        if (isOrgKey) {
+          const userId = session?.user?.id;
+          if (!userId) return;
+          const membership = await db
+            .select({ id: member.id })
+            .from(member)
+            .where(and(eq(member.userId, userId), eq(member.organizationId, referenceId)))
+            .limit(1);
+          if (membership.length === 0) return;
+
+          // createdBy must identify the session user who minted the key —
+          // never caller-supplied metadata. The Fastify endpoint sets it
+          // server-side; this covers direct /api-key/create calls. In-place
+          // mutation is effective: better-auth hands this same body object to
+          // the endpoint.
+          const orgKeyBody = ctx.body as { metadata?: Record<string, unknown> };
+          orgKeyBody.metadata = { ...orgKeyBody.metadata, createdBy: userId };
+        }
+
+        let planName: string | null = null;
+        if (IS_CLOUD) {
+          // Billing org: the owning org for org keys, the active org for user keys.
+          const billingOrgId = isOrgKey
+            ? body.organizationId
+            : ((session?.session as any)?.activeOrganizationId as string | undefined);
+          if (!billingOrgId) {
+            throw new APIError("BAD_REQUEST", { message: "No active organization" });
+          }
+          const { getSubscriptionInner } = await import("../api/stripe/getSubscription.js");
+          const subscription = await getSubscriptionInner(billingOrgId);
+          planName = subscription?.planName || "free";
+          if (planName === "free" || planName.includes("basic")) {
+            throw new APIError("FORBIDDEN", {
+              message: "API keys require a Standard or Pro plan. Please upgrade to create API keys.",
+            });
+          }
+        }
+
+        // Best-effort pre-check: the insert happens inside the plugin after
+        // this hook returns, so no lock can span check-and-create here.
+        // Concurrent direct calls can overshoot the cap slightly — it's an
+        // advisory quota on the caller's own plan, not a security boundary.
+        // The Fastify endpoints (the documented path) enforce it atomically
+        // via createApiKeyWithinLimit.
+        const limit = apiKeyLimitForPlan(planName);
+        const existing = await countApiKeysForReference(referenceId);
+        if (existing >= limit) {
+          throw new APIError("FORBIDDEN", {
+            message: `You have reached the limit of ${limit} API keys. Delete an unused key or upgrade your plan.`,
+          });
+        }
+      }
+
       if (IS_CLOUD && ctx.path === "/organization/invite-member") {
         const body = ctx.body as { organizationId?: string } | undefined;
         const organizationId = body?.organizationId;
@@ -407,10 +515,28 @@ export const auth = betterAuth({
           // org access) on any failure.
           await db.update(member).set({ hasRestrictedSiteAccess: true }).where(eq(member.id, memberId));
 
-          const siteIdArray = (siteIds || []) as number[];
-          if (siteIdArray.length > 0) {
+          // The ids were validated when the invitation was written, but a site
+          // can move organizations or be deleted while the invite sits pending
+          // (applySiteMove clears live grants for a moved site; it cannot reach
+          // into unaccepted invitations). Re-check against the organization as
+          // it stands now, so acceptance can only grant sites it still owns.
+          const invitedSiteIds = (siteIds || []) as number[];
+          const grantableSiteIds = await siteIdsInOrganization(invitedSiteIds, organizationId);
+
+          if (grantableSiteIds.length !== invitedSiteIds.length) {
+            authLogger.warn(
+              {
+                organizationId,
+                memberId,
+                droppedSiteIds: invitedSiteIds.filter(siteId => !grantableSiteIds.includes(siteId)),
+              },
+              "Invitation named sites the organization no longer owns; those grants were dropped"
+            );
+          }
+
+          if (grantableSiteIds.length > 0) {
             await db.insert(memberSiteAccess).values(
-              siteIdArray.map(siteId => ({
+              grantableSiteIds.map(siteId => ({
                 memberId,
                 siteId,
               }))
@@ -419,7 +545,7 @@ export const auth = betterAuth({
 
           invalidateSitesAccessCache(userRecord[0].id);
         } catch (error) {
-          console.error("Error applying invitation site restrictions:", error);
+          authLogger.error({ err: error }, "Error applying invitation Site restrictions");
         }
       }
 
@@ -443,7 +569,7 @@ export const auth = betterAuth({
             invalidateSitesAccessCache(userId);
           }
         } catch (error) {
-          console.error("Error cleaning up after organization leave:", error);
+          authLogger.error({ err: error }, "Error cleaning up after organization leave");
         }
       }
     }),

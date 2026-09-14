@@ -220,7 +220,7 @@ export function PageviewItem({
         </div>
       </div>
 
-      <div className="flex flex-col ml-3 flex-1">
+      <div className="flex flex-col ml-3 flex-1 min-w-0">
         <div className="flex items-center flex-1 py-1">
           <div className="shrink-0 mr-3">
             <EventTypeIcon type={item.type} />
@@ -236,9 +236,6 @@ export function PageviewItem({
                 <div
                   className="text-sm truncate hover:underline "
                   title={item.pathname}
-                  style={{
-                    maxWidth: "calc(min(100vw, 1150px) - 250px)",
-                  }}
                 >
                   {showHostname && item.hostname}
                   {item.pathname}
@@ -258,9 +255,6 @@ export function PageviewItem({
                 <div
                   className="text-sm truncate hover:underline"
                   title={String(item.props.url)}
-                  style={{
-                    maxWidth: "calc(min(100vw, 1150px) - 250px)",
-                  }}
                 >
                   {String(item.props.url)}
                 </div>

@@ -1,38 +1,36 @@
 import { TimeBucket } from "@rybbit/shared";
-import { UseQueryOptions, UseQueryResult, useQuery } from "@tanstack/react-query";
+import { UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
 import { useBotsStore } from "../../../../app/[site]/bots/botsStore";
 import { useStore } from "../../../../lib/store";
-import { APIResponse } from "../../../types";
-import { buildApiParams } from "../../../utils";
-import { fetchBotTimeSeries, GetBotTimeSeriesResponse } from "../../endpoints";
+import { GetBotTimeSeriesResponse } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 import { BOT_AVAILABLE_FILTERS } from "./constants";
 
 export function useGetBotTimeSeries({
   site,
   bucket,
+  purpose,
   props,
 }: {
   site: number | string;
   bucket?: TimeBucket;
-  props?: Partial<UseQueryOptions<APIResponse<GetBotTimeSeriesResponse>>>;
-}): UseQueryResult<APIResponse<GetBotTimeSeriesResponse>> {
-  const { time, filters, bucket: storeBucket, timezone } = useStore();
+  /** A single purpose, or "ai" / "ai_crawler" for the grouped families. */
+  purpose?: string;
+  props?: Partial<UseQueryOptions<GetBotTimeSeriesResponse, Error>>;
+}): UseQueryResult<GetBotTimeSeriesResponse> {
+  const filters = useStore(state => state.filters);
+  const storeBucket = useStore(state => state.bucket);
   const { selectedLayer } = useBotsStore();
-  const bucketToUse = bucket || storeBucket;
   const botFilters = filters.filter(filter => BOT_AVAILABLE_FILTERS.includes(filter.parameter));
-  const params = buildApiParams(time, { filters: botFilters });
 
-  return useQuery({
-    queryKey: ["bot-time-series", time, bucketToUse, site, botFilters, selectedLayer, timezone],
-    queryFn: () =>
-      fetchBotTimeSeries(site, { ...params, bucket: bucketToUse, layer: selectedLayer }).then(data => ({ data })),
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const [, , , prevSite] = query.queryKey as [string, any, TimeBucket, string | number];
-      return prevSite === site ? query.state.data : undefined;
-    },
-    staleTime: 60_000,
-    enabled: !!site,
-    ...props,
+  return useAnalyticsQuery<GetBotTimeSeriesResponse>({
+    key: "bot-time-series",
+    path: "bots/time-series",
+    site,
+    // Only bot-relevant filters go on the wire; when none apply, send no filters.
+    useFilters: botFilters.length > 0,
+    customFilters: botFilters,
+    params: { bucket: bucket || storeBucket, purpose, layer: selectedLayer || undefined },
+    props,
   });
 }

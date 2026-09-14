@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Free Bounce Rate Calculator | Website Bounce Rate Analysis Tool",
     description:
-      "Calculate and analyze your website's bounce rate compared to industry benchmarks. Get actionable insights to improve visitor engagement.",
+      "Calculate and analyze your website's bounce rate compared to industry benchmarks. See what to change to improve visitor engagement.",
     type: "website",
     url: "https://rybbit.com/tools/bounce-rate-calculator",
     siteName: "Rybbit Documentation",
@@ -181,7 +181,7 @@ const educationalContent = (
     <ol className="space-y-4 text-neutral-700 dark:text-neutral-300">
       <li>
         <strong>Improve Page Load Speed:</strong> Slow-loading pages are one of the top reasons visitors bounce.
-        Optimize images, leverage browser caching, minify CSS/JavaScript, and use a content delivery network (CDN) to
+        Optimize images, enable browser caching, minify CSS/JavaScript, and use a content delivery network (CDN) to
         ensure pages load in under 3 seconds.
       </li>
       <li>

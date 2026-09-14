@@ -1,7 +1,7 @@
 import { eq, type SQL } from "drizzle-orm";
 import { db } from "../db/postgres/postgres.js";
 import { sites } from "../db/postgres/schema.js";
-import { matchesCIDR, matchesRange } from "./ipUtils.js";
+import { claimExpiryIso } from "../services/sites/claimExpiry.js";
 import { logger } from "./logger/logger.js";
 
 // Site configuration interface
@@ -14,12 +14,16 @@ export interface SiteConfigData {
   saltUserIds: boolean;
   domain: string;
   blockBots: boolean;
+  firstPartyProxy: boolean;
   excludedIPs: string[];
   excludedCountries: string[];
   excludedPaths: string[];
   excludedHostnames: string[];
   excludedUserAgents: string[];
+  excludedASNs: string[];
+  excludedQueryParams: string[];
   privateLinkKey?: string | null;
+  claimExpiresAt?: string | null;
   sessionReplay: boolean;
   webVitals: boolean;
   trackErrors: boolean;
@@ -35,6 +39,13 @@ export interface SiteConfigData {
 }
 
 type SiteConfigRow = typeof sites.$inferSelect;
+
+// A Site is reachable under several identifier spellings — its text id, its
+// numeric siteId, and (because a digit-only string falls back to siteId) any
+// zero-padded rendering of that number. The route guards resolve whatever the
+// caller put in the URL, before authentication, so the key space is attacker-
+// controlled and the cache has to be bounded rather than merely expiring.
+const MAX_CACHE_ENTRIES = 10_000;
 
 class SiteConfig {
   private cache = new Map<string, { data: SiteConfigData; expires: number }>();
@@ -75,58 +86,117 @@ class SiteConfig {
   }
 
   /**
+   * Read the row and apply the field defaults. Every read of a tracking-relevant
+   * Site field goes through here, so a caller can never see the raw column where
+   * this would have supplied a default (`blockBots` being the sharp one: the
+   * column is nullable, the configuration is `true`).
+   *
+   * Throws if Postgres does. `getConfig` swallows that into `undefined` because
+   * ingestion must not fail on a database blip; `reload` lets it out so an admin
+   * read answers 500 rather than claiming the Site does not exist.
+   */
+  private async loadSiteConfig(siteIdOrId: string | number): Promise<SiteConfigData | undefined> {
+    const site = await this.findSiteByIdentifier(siteIdOrId);
+
+    if (!site) {
+      return undefined;
+    }
+
+    return {
+      id: site.id,
+      siteId: site.siteId,
+      type: site.type || "web",
+      public: site.public || false,
+      embedEnabled: site.embedEnabled || false,
+      saltUserIds: site.saltUserIds || false,
+      domain: site.domain || "",
+      blockBots: site.blockBots === undefined ? true : site.blockBots,
+      firstPartyProxy: site.firstPartyProxy || false,
+      excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
+      excludedCountries: Array.isArray(site.excludedCountries) ? site.excludedCountries : [],
+      excludedPaths: Array.isArray(site.excludedPaths) ? site.excludedPaths : [],
+      excludedHostnames: Array.isArray(site.excludedHostnames) ? site.excludedHostnames : [],
+      excludedUserAgents: Array.isArray(site.excludedUserAgents) ? site.excludedUserAgents : [],
+      excludedASNs: Array.isArray(site.excludedASNs) ? site.excludedASNs : [],
+      excludedQueryParams: Array.isArray(site.excludedQueryParams) ? site.excludedQueryParams : [],
+      privateLinkKey: site.privateLinkKey,
+      claimExpiresAt: site.organizationId === null ? claimExpiryIso(site.claimExpiresAt ?? null) : null,
+      sessionReplay: site.sessionReplay || false,
+      webVitals: site.webVitals || false,
+      trackErrors: site.trackErrors || false,
+      trackOutbound: site.trackOutbound ?? true,
+      trackUrlParams: site.trackUrlParams ?? true,
+      trackInitialPageView: site.trackInitialPageView ?? true,
+      trackSpaNavigation: site.trackSpaNavigation ?? true,
+      trackIp: site.trackIp || false,
+      trackButtonClicks: site.trackButtonClicks || false,
+      trackCopy: site.trackCopy || false,
+      trackFormInteractions: site.trackFormInteractions || false,
+      tags: Array.isArray(site.tags) ? site.tags : [],
+    };
+  }
+
+  private cacheConfig(siteIdOrId: string | number, configData: SiteConfigData): void {
+    this.cache.set(this.getCacheKey(siteIdOrId), {
+      data: configData,
+      expires: Date.now() + this.cacheTTL,
+    });
+    this.evictIfOverCapacity();
+  }
+
+  private evictIfOverCapacity(): void {
+    if (this.cache.size <= MAX_CACHE_ENTRIES) return;
+
+    const now = Date.now();
+    for (const [key, entry] of this.cache) {
+      if (entry.expires <= now) {
+        this.cache.delete(key);
+      }
+    }
+
+    // Still over after sweeping the expired: shed in insertion order.
+    for (const key of this.cache.keys()) {
+      if (this.cache.size <= MAX_CACHE_ENTRIES) break;
+      this.cache.delete(key);
+    }
+  }
+
+  /**
    * Get site by either siteId or id
    */
   private async getSiteByAnyId(siteIdOrId: string | number): Promise<SiteConfigData | undefined> {
-    const cacheKey = this.getCacheKey(siteIdOrId);
-    const cached = this.cache.get(cacheKey);
+    const cached = this.cache.get(this.getCacheKey(siteIdOrId));
 
     if (cached && cached.expires > Date.now()) {
       return cached.data;
     }
 
+    const configData = await this.loadSiteConfig(siteIdOrId);
+
+    if (configData) {
+      this.cacheConfig(siteIdOrId, configData);
+    }
+
+    return configData;
+  }
+
+  /**
+   * Get the full site configuration, served from the cache when it is warm.
+   *
+   * Never throws: ingestion reads this per event and must degrade to "no
+   * configuration" rather than fail on a Postgres blip.
+   */
+  async getConfig(siteIdOrId?: string | number): Promise<SiteConfigData | undefined> {
+    if (!siteIdOrId) return undefined;
+
     try {
-      const site = await this.findSiteByIdentifier(siteIdOrId);
-
-      if (!site) {
-        return undefined;
+      let config = await this.getSiteByAnyId(siteIdOrId);
+      if (config?.claimExpiresAt && Date.parse(config.claimExpiresAt) <= Date.now()) {
+        // A different worker may have claimed it since this cache was filled.
+        config = await this.reload(siteIdOrId);
+        if (config?.claimExpiresAt && Date.parse(config.claimExpiresAt) <= Date.now()) return undefined;
       }
-
-      const configData: SiteConfigData = {
-        id: site.id,
-        siteId: site.siteId,
-        type: site.type || "web",
-        public: site.public || false,
-        embedEnabled: site.embedEnabled || false,
-        saltUserIds: site.saltUserIds || false,
-        domain: site.domain || "",
-        blockBots: site.blockBots === undefined ? true : site.blockBots,
-        excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
-        excludedCountries: Array.isArray(site.excludedCountries) ? site.excludedCountries : [],
-        excludedPaths: Array.isArray(site.excludedPaths) ? site.excludedPaths : [],
-        excludedHostnames: Array.isArray(site.excludedHostnames) ? site.excludedHostnames : [],
-        excludedUserAgents: Array.isArray(site.excludedUserAgents) ? site.excludedUserAgents : [],
-        privateLinkKey: site.privateLinkKey,
-        sessionReplay: site.sessionReplay || false,
-        webVitals: site.webVitals || false,
-        trackErrors: site.trackErrors || false,
-        trackOutbound: site.trackOutbound ?? true,
-        trackUrlParams: site.trackUrlParams ?? true,
-        trackInitialPageView: site.trackInitialPageView ?? true,
-        trackSpaNavigation: site.trackSpaNavigation ?? true,
-        trackIp: site.trackIp || false,
-        trackButtonClicks: site.trackButtonClicks || false,
-        trackCopy: site.trackCopy || false,
-        trackFormInteractions: site.trackFormInteractions || false,
-        tags: Array.isArray(site.tags) ? site.tags : [],
-      };
-
-      this.cache.set(cacheKey, {
-        data: configData,
-        expires: Date.now() + this.cacheTTL,
-      });
-
-      return configData;
+      return config;
     } catch (error) {
       logger.error(error as Error, `Error fetching site configuration for ${siteIdOrId}`);
       return undefined;
@@ -134,221 +204,72 @@ class SiteConfig {
   }
 
   /**
-   * Get the full site configuration
-   */
-  async getConfig(siteIdOrId?: string | number): Promise<SiteConfigData | undefined> {
-    if (!siteIdOrId) return undefined;
-    return this.getSiteByAnyId(siteIdOrId);
-  }
-
-  async updateConfig(siteIdOrId: number | string, config: Partial<SiteConfigData>): Promise<void> {
-    try {
-      const isNumeric = this.isNumericId(siteIdOrId);
-      await db
-        .update(sites)
-        .set(config)
-        .where(isNumeric ? eq(sites.siteId, Number(siteIdOrId)) : eq(sites.id, String(siteIdOrId)));
-
-      // Invalidate cache after update
-      this.cache.clear();
-    } catch (error) {
-      logger.error(error as Error, `Error updating site configuration for ${siteIdOrId}`);
-    }
-  }
-
-  /**
-   * Add a new site
-   */
-  async addSite(config: Omit<SiteConfigData, "siteId">): Promise<void> {
-    try {
-      await db.insert(sites).values({
-        id: config.id,
-        name: "", // This would need to be provided
-        domain: config.domain,
-        public: config.public,
-        saltUserIds: config.saltUserIds,
-        blockBots: config.blockBots,
-        excludedIPs: config.excludedIPs,
-        createdBy: "", // This would need to be provided
-      });
-    } catch (error) {
-      logger.error(error as Error, `Error adding site`);
-    }
-  }
-
-  /**
-   * Remove a site
-   */
-  async removeSite(siteIdOrId: number | string): Promise<void> {
-    try {
-      const isNumeric = this.isNumericId(siteIdOrId);
-
-      await db.delete(sites).where(isNumeric ? eq(sites.siteId, Number(siteIdOrId)) : eq(sites.id, String(siteIdOrId)));
-
-      // Invalidate cache after deletion
-      this.cache.clear();
-    } catch (error) {
-      logger.error(error as Error, `Error removing site ${siteIdOrId}`);
-    }
-  }
-
-  /**
-   * Check if an IP address matches any of the excluded IPs/ranges
-   */
-  async isIPExcluded(ipAddress: string, siteIdOrId?: string | number): Promise<boolean> {
-    if (!siteIdOrId) return false; // If no site specified, don't exclude any IPs
-    const config = await this.getSiteByAnyId(siteIdOrId);
-    const excludedIPs = config?.excludedIPs || [];
-    if (!excludedIPs || excludedIPs.length === 0) {
-      return false;
-    }
-
-    for (const excludedPattern of excludedIPs) {
-      if (this.matchesIPPattern(ipAddress, excludedPattern)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * Check if a country code is in the excluded countries list
-   * @param countryIso - ISO country code (e.g., "US", "GB", "CN")
-   * @param siteIdOrId - Site identifier
-   * @returns true if country should be excluded
-   */
-  async isCountryExcluded(countryIso: string | undefined, siteIdOrId?: string | number): Promise<boolean> {
-    if (!siteIdOrId || !countryIso) return false;
-    const config = await this.getSiteByAnyId(siteIdOrId);
-    const excludedCountries = config?.excludedCountries || [];
-    if (!excludedCountries || excludedCountries.length === 0) {
-      return false;
-    }
-
-    // Convert to uppercase for case-insensitive comparison
-    const normalizedCountry = countryIso.toUpperCase();
-    return excludedCountries.some(country => country.toUpperCase() === normalizedCountry);
-  }
-
-  /**
-   * Check if a pathname matches any of the excluded path glob patterns.
-   * Patterns support `*` as a wildcard (e.g. "/admin/*", "/preview"). Matching is case-insensitive.
-   */
-  async isPathExcluded(pathname: string | undefined, siteIdOrId?: string | number): Promise<boolean> {
-    if (!siteIdOrId || !pathname) return false;
-    const config = await this.getSiteByAnyId(siteIdOrId);
-    const excludedPaths = config?.excludedPaths || [];
-    return excludedPaths.some(pattern => this.matchesGlob(pathname, pattern));
-  }
-
-  /**
-   * Check if a hostname matches any of the excluded hostname glob patterns.
-   * Patterns support `*` as a wildcard (e.g. "localhost", "*.vercel.app"). Matching is case-insensitive.
-   */
-  async isHostnameExcluded(hostname: string | undefined, siteIdOrId?: string | number): Promise<boolean> {
-    if (!siteIdOrId || !hostname) return false;
-    const config = await this.getSiteByAnyId(siteIdOrId);
-    const excludedHostnames = config?.excludedHostnames || [];
-    return excludedHostnames.some(pattern => this.matchesGlob(hostname, pattern));
-  }
-
-  /**
-   * Check if a user-agent string contains any of the excluded substrings.
-   * Matching is a case-insensitive substring test (e.g. "HeadlessChrome").
-   */
-  async isUserAgentExcluded(userAgent: string | undefined, siteIdOrId?: string | number): Promise<boolean> {
-    if (!siteIdOrId || !userAgent) return false;
-    const config = await this.getSiteByAnyId(siteIdOrId);
-    const excludedUserAgents = config?.excludedUserAgents || [];
-    const normalizedUserAgent = userAgent.toLowerCase();
-    return excludedUserAgents.some(substring => {
-      const trimmed = substring.trim().toLowerCase();
-      return trimmed.length > 0 && normalizedUserAgent.includes(trimmed);
-    });
-  }
-
-  /**
-   * Case-insensitive glob match where `*` matches any sequence of characters
-   * (including the empty string). A pattern with no wildcards must match the
-   * whole value exactly.
+   * Get the full site configuration, always from Postgres.
    *
-   * Implemented as a linear two-pointer scan rather than a compiled RegExp so
-   * that, on the hot ingestion path, we (1) never recompile a pattern per event
-   * and (2) can't trigger catastrophic backtracking — matching is bounded to
-   * O(value.length * pattern.length) regardless of how many wildcards a pattern
-   * contains. Every character other than `*` is treated as a literal.
+   * The cache is invalidated on write, but only in the process that served the
+   * write — under `CLUSTER_WORKERS` a sibling worker can still be holding the
+   * pre-write value for up to the TTL. Settings screens read their own writes
+   * back immediately, so they use this; the ingestion path, which tolerates a
+   * minute of staleness, uses `getConfig`. Either way the read is the module's,
+   * and the fresh row repopulates the cache for everyone behind it.
+   *
+   * Throws when Postgres does, so the caller can tell "no such Site" from "could
+   * not ask".
    */
-  private matchesGlob(value: string, pattern: string): boolean {
-    const glob = pattern.trim().toLowerCase();
-    if (!glob) return false;
+  async reload(siteIdOrId?: string | number): Promise<SiteConfigData | undefined> {
+    if (!siteIdOrId) return undefined;
 
-    const text = value.toLowerCase();
+    const configData = await this.loadSiteConfig(siteIdOrId);
 
-    let textIdx = 0;
-    let globIdx = 0;
-    let lastStarGlobIdx = -1;
-    let textIdxAfterStar = 0;
-
-    while (textIdx < text.length) {
-      if (globIdx < glob.length && glob[globIdx] === text[textIdx]) {
-        // Literal character match — advance both pointers.
-        textIdx++;
-        globIdx++;
-      } else if (globIdx < glob.length && glob[globIdx] === "*") {
-        // Record this star and tentatively let it match nothing.
-        lastStarGlobIdx = globIdx;
-        textIdxAfterStar = textIdx;
-        globIdx++;
-      } else if (lastStarGlobIdx !== -1) {
-        // Mismatch, but the most recent star can absorb one more character.
-        globIdx = lastStarGlobIdx + 1;
-        textIdxAfterStar++;
-        textIdx = textIdxAfterStar;
-      } else {
-        return false;
+    if (!configData) {
+      // The Site is gone (or was never there). Anything we were still holding
+      // for it is stale, and the cached entry is the only record of the other
+      // identifiers it answered to.
+      const cacheKey = this.getCacheKey(siteIdOrId);
+      const stale = this.cache.get(cacheKey);
+      if (stale) {
+        this.invalidate(stale.data);
       }
+      this.cache.delete(cacheKey);
+      return undefined;
     }
 
-    // The value is consumed; the match holds only if the rest of the pattern is
-    // entirely trailing stars.
-    while (globIdx < glob.length && glob[globIdx] === "*") {
-      globIdx++;
+    // Drop every spelling's stale entry, then re-seat the ones this row is
+    // unambiguously the answer for. `String(siteId)` is not among them: a
+    // digit-only string resolves against `sites.id` first, so another Site could
+    // legitimately own that key — it stays evicted and re-resolves on demand.
+    this.invalidate(configData);
+    this.cacheConfig(configData.siteId, configData);
+    if (configData.id !== null) {
+      this.cacheConfig(configData.id, configData);
     }
+    this.cacheConfig(siteIdOrId, configData);
 
-    return globIdx === glob.length;
+    return configData;
   }
 
   /**
-   * Check if an IP address matches a specific pattern
-   * Supports:
-   * - Single IP: 192.168.1.1, 2001:db8::1
-   * - CIDR notation: 192.168.1.0/24, 2001:db8::/32
-   * - Range notation: 192.168.1.1-192.168.1.10 (IPv4 only, IPv6 ranges not supported)
+   * Resolve any Site identifier — text id or legacy numeric siteId — to the
+   * numeric siteId. Shares the configuration cache, so the route guards and the
+   * ingestion path warm each other rather than keeping separate tables.
    */
-  private matchesIPPattern(ipAddress: string, pattern: string): boolean {
-    try {
-      const trimmedPattern = pattern.trim();
+  async resolveSiteId(siteIdOrId?: string | number): Promise<number | null> {
+    const config = await this.getConfig(siteIdOrId);
+    return config?.siteId ?? null;
+  }
 
-      // Single IP match
-      if (!trimmedPattern.includes("/") && !trimmedPattern.includes("-")) {
-        return ipAddress === trimmedPattern;
+  /**
+   * Drop everything cached for one Site.
+   *
+   * Enumerating the identifier spellings would miss the zero-padded ones, so
+   * this matches on the cached row's own identity instead — the cache is
+   * bounded, and writes are rare next to reads.
+   */
+  invalidate(site: Pick<SiteConfigData, "id" | "siteId">): void {
+    for (const [key, entry] of this.cache) {
+      if (entry.data.siteId === site.siteId || (site.id !== null && entry.data.id === site.id)) {
+        this.cache.delete(key);
       }
-
-      // CIDR notation
-      if (trimmedPattern.includes("/")) {
-        return matchesCIDR(ipAddress, trimmedPattern);
-      }
-
-      // Range notation
-      if (trimmedPattern.includes("-")) {
-        return matchesRange(ipAddress, trimmedPattern);
-      }
-
-      return false;
-    } catch (error) {
-      logger.warn(error as Error, `Invalid IP pattern: ${pattern}`);
-      return false;
     }
   }
 }

@@ -56,7 +56,7 @@ export async function updateDashboard(
     if (error instanceof z.ZodError) {
       return reply.status(400).send({ error: "Validation error", details: error.errors });
     }
-    console.error("Error updating dashboard:", error);
+    request.log.error({ err: error }, "Error updating dashboard");
     return reply.status(500).send({ error: "Failed to update dashboard" });
   }
 }

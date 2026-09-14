@@ -1,13 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
-import { useStore } from "../../../lib/store";
-import { fetchLiveUserCount, LiveUserCountResponse } from "../endpoints";
+import { LiveUserCountResponse } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export function useGetLiveUserCount(minutes = 5) {
-  const { site } = useStore();
-  return useQuery<LiveUserCountResponse>({
-    queryKey: ["live-user-count", site, minutes],
+  return useAnalyticsQuery<LiveUserCountResponse>({
+    key: "live-user-count",
+    path: "live-user-count",
+    unwrap: false,
+    useTime: false,
+    useFilters: false,
+    params: { minutes },
     refetchInterval: 10000,
-    queryFn: () => fetchLiveUserCount(site, minutes),
-    enabled: !!site,
+    staleTime: 0,
+    placeholder: false,
   });
 }

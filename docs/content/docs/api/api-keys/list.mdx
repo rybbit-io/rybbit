@@ -116,15 +116,15 @@ Returns all API keys owned by the authenticated user, or by a specific organizat
       type: 'string',
     },
     rateLimitEnabled: {
-      description: 'Whether rate limiting is enabled',
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only))',
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Requests allowed per window',
+      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
       type: 'number | null',
     },
     rateLimitTimeWindow: {
-      description: 'Window length in milliseconds',
+      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
       type: 'number | null',
     },
     requestCount: {
@@ -278,9 +278,9 @@ var data = await response.Content.ReadAsStringAsync();
       "expiresAt": "2026-07-25T12:00:00.000Z",
       "createdAt": "2026-06-25T12:00:00.000Z",
       "updatedAt": "2026-06-25T12:00:00.000Z",
-      "rateLimitEnabled": true,
-      "rateLimitMax": 200,
-      "rateLimitTimeWindow": 60000,
+      "rateLimitEnabled": false,
+      "rateLimitMax": 10,
+      "rateLimitTimeWindow": 86400000,
       "requestCount": 42,
       "remaining": null,
       "lastRequest": "2026-06-25T13:30:00.000Z",

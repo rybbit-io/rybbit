@@ -54,7 +54,7 @@ export async function deleteFunnel(
 
     return reply.status(200).send({ success: true });
   } catch (error) {
-    console.error("Error deleting funnel:", error);
+    request.log.error({ err: error }, "Error deleting funnel");
     return reply.status(500).send({ error: "Failed to delete funnel" });
   }
 }

@@ -17,10 +17,13 @@ import { SESSION_REPLAY_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { EnableSessionReplay } from "./components/EnableSessionReplay";
 import { ReplayList } from "./components/ReplayList";
+import { useAppEnv } from "../../../hooks/useIsProduction";
 
 export default function SessionReplayPage() {
   const t = useExtracted();
   useSetPageTitle("Session Replay");
+  const appEnv = useAppEnv();
+  if (appEnv === "demo") return null;
 
   const { minDuration, sessionId } = useReplayStore(
     useShallow(s => ({ minDuration: s.minDuration, sessionId: s.sessionId }))

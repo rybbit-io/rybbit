@@ -43,7 +43,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     page_size: {
       description: 'Number of results per page',
       type: 'number',
-      default: 20,
+      default: 100,
     },
     sort_by: {
       description: 'Field to sort by',
@@ -191,7 +191,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/1/users23',
+    'https://app.rybbit.io/api/sites/1/users',
     params={
         'page': 1,
         'page_size': 10,

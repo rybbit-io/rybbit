@@ -5,7 +5,7 @@ import Link from "next/link";
 export function FAQAccordion() {
   const t = useExtracted();
   return (
-    <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-800/50 rounded-xl overflow-hidden">
+    <div className="overflow-hidden border-t border-neutral-200 dark:border-neutral-800">
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="item-1">
           <AccordionTrigger className="md:text-lg">{t("Is Rybbit GDPR and CCPA compliant?")}</AccordionTrigger>
@@ -22,14 +22,14 @@ export function FAQAccordion() {
             </p>
             <br />
             <p>
-              {t("You can see for yourself by checking out our")}{" "}
+              {t("See it for yourself on our")}{" "}
               <Link
                 href="https://demo.rybbit.com/81"
                 className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
               >
                 {t("demo site")}
               </Link>
-              {t(". The difference in usability is night and day.")}
+              {t(": one dashboard, not 150+ reports to dig through.")}
             </p>
           </AccordionContent>
         </AccordionItem>
@@ -38,11 +38,11 @@ export function FAQAccordion() {
           <AccordionTrigger className="md:text-lg">{t("Rybbit vs. Plausible/Umami/Fathom")}</AccordionTrigger>
           <AccordionContent>
             <p>
-              {t("Rybbit is similar to these simple and privacy-focused analytics platforms, but we are raising the bar when it comes to UX and the quality and scope of our feature set.")}
+              {t("Rybbit covers the same privacy-first ground as these tools, but with a wider feature set and more attention to how it reads and works.")}
             </p>
             <br />
             <p>
-              {t("We don't want to just be a simple analytics tool, but we carefully craft every feature to be understandable without having to read pages of documentation.")}
+              {t("Every feature, from replay to funnels, is built to be understandable without reading pages of documentation.")}
             </p>
           </AccordionContent>
         </AccordionItem>
@@ -62,7 +62,7 @@ export function FAQAccordion() {
         <AccordionItem value="item-5">
           <AccordionTrigger className="md:text-lg">{t("Can I self-host Rybbit?")}</AccordionTrigger>
           <AccordionContent>
-            {t("Absolutely! Rybbit is available as a self-hosted option. You can install it on your own server and have complete control over your data.")}{" "}
+            {t("Yes. Install Rybbit on your own server with Docker and keep full control of your data.")}{" "}
             <Link
               href="/docs/self-hosting"
               className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
@@ -82,21 +82,21 @@ export function FAQAccordion() {
             >
               {t("Setting up Rybbit")}
             </Link>{" "}
-            {t("is incredibly simple. Just add a small script to your website or install @rybbit/js from npm, and you're good to go. Most users are up and running in less than 5 minutes. We also provide comprehensive documentation and support if you need any help.")}
+            {t("takes one script tag, or install @rybbit/js from npm. Most sites are collecting data in under 5 minutes, and the docs and support are there if you get stuck.")}
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="item-7">
           <AccordionTrigger className="md:text-lg">{t("What platforms does Rybbit support?")}</AccordionTrigger>
           <AccordionContent>
-            {t("Rybbit works with virtually any website platform. Whether you're using WordPress, Shopify, Next.js, React, Vue, or any other framework, our simple tracking snippet integrates seamlessly. You can also use @rybbit/js, our web SDK you can install from npm. Check out our")}{" "}
+            {t("The script tag works anywhere you can add HTML: WordPress, Shopify, Next.js, React, Vue, and the rest. For apps, install @rybbit/js from npm. Our")}{" "}
             <Link
               href="/docs"
               className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
             >
               {t("documentation")}
             </Link>{" "}
-            {t("for setup guides.")}
+            {t("has a setup guide for each.")}
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="item-8">
@@ -130,14 +130,14 @@ export function FAQAccordion() {
         <AccordionItem value="item-11">
           <AccordionTrigger className="md:text-lg">{t("Does Rybbit have an API?")}</AccordionTrigger>
           <AccordionContent>
-            {t("Yes, Rybbit provides a comprehensive")}{" "}
+            {t("Yes. The Rybbit")}{" "}
             <Link
               href="/docs/api/getting-started"
               className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300"
             >
               {t("API")}
             </Link>{" "}
-            {t("that allows you to programmatically access your analytics data. You can integrate Rybbit data into your own applications, dashboards, or workflows.")}
+            {t("exposes every metric the dashboard shows over HTTP, so you can pull your data into your own apps, dashboards, or workflows.")}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

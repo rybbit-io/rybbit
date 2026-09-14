@@ -49,7 +49,7 @@ export async function createGoal(
       goalId: result[0].goalId,
     });
   } catch (error) {
-    console.error("Error creating goal:", error);
+    request.log.error({ err: error }, "Error creating goal");
 
     // Handle validation errors
     if (error instanceof z.ZodError) {

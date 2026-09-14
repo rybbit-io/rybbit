@@ -4,7 +4,6 @@ import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { db } from "../../db/postgres/postgres.js";
-import { logger } from "../../lib/logger/logger.js";
 
 /**
  * Disconnects a site from Google Search Console
@@ -31,7 +30,7 @@ export async function disconnectGSC(req: FastifyRequest<DisconnectGSCRequest>, r
 
     return res.send({ success: true });
   } catch (error) {
-    logger.error(error, "Error disconnecting GSC");
+    req.log.error(error, "Error disconnecting GSC");
     return res.status(500).send({ error: "Failed to disconnect GSC" });
   }
 }

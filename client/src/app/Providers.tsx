@@ -1,5 +1,8 @@
 "use client";
 
+// Side-effect import: teaches authedFetch where to find the private key so the
+// HTTP layer itself doesn't have to know about routing or the store.
+import "@/api/installRequestContext";
 import { useAppEnv } from "@/hooks/useIsProduction";
 import { useStopImpersonation } from "@/hooks/useStopImpersonation";
 import { IS_CLOUD } from "@/lib/const";

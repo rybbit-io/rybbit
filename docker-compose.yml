@@ -30,6 +30,8 @@ services:
         target: /etc/clickhouse-server/config.d/network.xml
       - source: clickhouse_logging
         target: /etc/clickhouse-server/config.d/logging_rules.xml
+      - source: clickhouse_resource_limits
+        target: /etc/clickhouse-server/config.d/resource_limits.xml
       # Profile (user-level) settings are only read from users.d, not config.d
       - source: clickhouse_user_settings
         target: /etc/clickhouse-server/users.d/user_settings.xml
@@ -37,6 +39,9 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      # Lets the backend provision the least-privilege `rybbit_query` user
+      # (custom SQL queries / dashboards) with SQL at startup.
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       interval: 3s
@@ -83,10 +88,10 @@ services:
       retries: 5
       start_period: 5s
     restart: unless-stopped
-    # Backs session tracking and the BullMQ queues. noeviction is required by
-    # BullMQ (evicting job keys corrupts queues); session keys carry a 30-minute
-    # TTL so memory stays bounded by active-user count. AOF (everysec) keeps
-    # queues durable across restarts.
+    # Backs session tracking, sticky identity, and bot-anomaly counters.
+    # noeviction keeps those keys from being dropped under memory pressure;
+    # session keys carry a 30-minute TTL so memory stays bounded by active-user
+    # count. AOF (everysec) keeps that state durable across restarts.
     command:
       - redis-server
       - --requirepass
@@ -112,6 +117,7 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      - CLICKHOUSE_QUERY_PASSWORD=${CLICKHOUSE_QUERY_PASSWORD:-${CLICKHOUSE_PASSWORD:-frog}}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB:-analytics}
@@ -154,6 +160,7 @@ services:
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
         NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+        NEXT_PUBLIC_DEPLOYMENT: ${DEPLOYMENT}
         NEXT_PUBLIC_LITE_DASHBOARD: ${LITE_DASHBOARD}
     ports:
       - "${HOST_CLIENT_PORT:-127.0.0.1:3002:3002}"
@@ -204,18 +211,37 @@ configs:
         <processors_profile_log remove="remove"/>
       </clickhouse>
 
+  clickhouse_resource_limits:
+    content: |
+      <clickhouse>
+        <!-- Leave headroom for the backend, Redis, Caddy, the kernel, and the
+             filesystem cache instead of allowing ClickHouse to exhaust RAM. -->
+        <max_server_memory_usage_to_ram_ratio>0.80</max_server_memory_usage_to_ram_ratio>
+        <!-- Share at most one query-processing thread per CPU core across all
+             concurrent queries. This throttles work rather than rejecting it. -->
+        <concurrent_threads_soft_limit_ratio_to_cores>1</concurrent_threads_soft_limit_ratio_to_cores>
+        <!-- Bound memory used by background merges and mutations separately. -->
+        <merges_mutations_memory_usage_to_ram_ratio>0.25</merges_mutations_memory_usage_to_ram_ratio>
+      </clickhouse>
+
   clickhouse_user_settings:
     content: |
       <clickhouse>
         <profiles>
           <default>
             <enable_json_type>1</enable_json_type>
-            <!-- 26.3+ enables async_insert by default; the backend already
-                 batches app-side, so keep inserts synchronous -->
-            <async_insert>0</async_insert>
+            <!-- Combine concurrent inserts into larger blocks inside ClickHouse.
+                 Wait for the flush so the backend still receives insert errors. -->
+            <async_insert>1</async_insert>
+            <wait_for_async_insert>1</wait_for_async_insert>
             <log_queries>0</log_queries>
             <log_query_threads>0</log_query_threads>
             <log_processors_profiles>0</log_processors_profiles>
+            <!-- Bound individual queries while preserving enough parallelism
+                 for large analytics scans. Query-count limits remain unset so
+                 ingestion is never rejected by admission control. -->
+            <max_memory_usage>32000000000</max_memory_usage>
+            <max_threads>16</max_threads>
           </default>
         </profiles>
       </clickhouse>

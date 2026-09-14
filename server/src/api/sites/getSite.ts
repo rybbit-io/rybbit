@@ -1,3 +1,4 @@
+import { claimExpiryIso } from "../../services/sites/claimExpiry.js";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
@@ -36,10 +37,12 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       updatedAt: site.updatedAt,
       createdBy: site.createdBy,
       organizationId: site.organizationId,
+      claimExpiresAt: claimExpiryIso(site.claimExpiresAt),
       saltUserIds: site.saltUserIds,
       public: site.public,
       embedEnabled: site.embedEnabled,
       blockBots: site.blockBots,
+      firstPartyProxy: site.firstPartyProxy,
       trackIp: site.trackIp,
       isOwner: isOwner,
       // Analytics features
@@ -55,7 +58,7 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       trackFormInteractions: site.trackFormInteractions,
     });
   } catch (error) {
-    console.error("Error retrieving site:", error);
+    request.log.error({ err: error }, "Error retrieving site");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

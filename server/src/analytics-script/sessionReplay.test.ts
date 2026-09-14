@@ -24,6 +24,7 @@ const config: ScriptConfig = {
   trackCopy: false,
   trackFormInteractions: false,
   tag: "",
+  featureFlagsEnabled: false,
   featureFlags: {},
 };
 

@@ -9,6 +9,13 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
 Nginx is a powerful web server and reverse proxy that makes it easy to proxy Rybbit tracking through your own domain. This guide shows how to configure Nginx to forward tracking requests to Rybbit servers while caching static scripts for better performance.
 
+<Callout type="warn">
+**Two settings make or break a first-party proxy:**
+
+1. Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**, so the visitor IP your proxy forwards in `X-Forwarded-For` is trusted directly.
+2. Forward **all** of the browser's request headers, not a hand-picked few. Rybbit's bot detection expects the headers every real browser sends (`Accept`, `Accept-Language`, `Accept-Encoding`, `Sec-Fetch-*`) — proxies that forward only `User-Agent` get their events accepted with `200 OK` but classified as bot traffic. Use `X-Forwarded-For` for the visitor IP; `X-Real-IP` does not survive Rybbit Cloud's edge.
+</Callout>
+
 ## Overview
 
 Nginx's `proxy_pass` directive lets you forward requests from your domain to Rybbit's servers. Combined with caching, this provides excellent performance and reliability for proxying analytics.

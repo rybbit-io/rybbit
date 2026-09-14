@@ -1,0 +1,102 @@
+---
+title: TanStack Start
+description: Add Rybbit analytics to your TanStack Start app
+category: frameworks
+icon: SiTanstack
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+TanStack Start manages the document head through the root route's `head()` option, rendered by `<HeadContent />` in `src/routes/__root.tsx`. Add the snippet to the `scripts` array returned by `head()` and it is on every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to TanStack Start
+
+Open `src/routes/__root.tsx` and add a `scripts` entry to the object returned by `head()`. `<HeadContent />` in the root document renders it as a `<script>` tag inside `<head>`:
+
+```tsx title="src/routes/__root.tsx"
+import type { ReactNode } from "react";
+import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "My App" },
+    ],
+    scripts: [
+      {
+        src: "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID",
+        defer: true,
+      },
+    ],
+  }),
+  component: RootComponent,
+});
+
+function RootComponent() {
+  return (
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
+  );
+}
+
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+```
+
+Use the `scripts` key inside `head()`, not the route-level `scripts` option: that one renders body scripts through `<Scripts />`, which also works but loads later. Client-side navigation through `<Link>` and `useNavigate()` is tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any route component. Check for `window` first, because TanStack Start renders routes on the server by default.
+
+```tsx title="src/routes/pricing.tsx"
+import { createFileRoute } from "@tanstack/react-router";
+
+export const Route = createFileRoute("/pricing")({
+  component: Pricing,
+});
+
+function Pricing() {
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.rybbit) {
+      window.rybbit.event("plan_selected", { plan: "pro" });
+    }
+  };
+
+  return <button onClick={handleClick}>Choose Pro</button>;
+}
+```
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

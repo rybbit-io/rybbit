@@ -3,43 +3,50 @@ import { DateTime } from "luxon";
 
 import type { Time } from "@/components/DateSelector/types";
 
-const bucketEndOffsetMinutes = (bucket: TimeBucket): number => {
+const bucketUnit = (bucket: TimeBucket): { unit: "minutes" | "hours" | "days" | "weeks" | "months" | "years"; size: number } => {
   switch (bucket) {
-    case "hour":
-      return 59;
-    case "fifteen_minutes":
-      return 14;
-    case "ten_minutes":
-      return 9;
+    case "minute":
+      return { unit: "minutes", size: 1 };
     case "five_minutes":
-      return 4;
-    default:
-      return 0;
+      return { unit: "minutes", size: 5 };
+    case "ten_minutes":
+      return { unit: "minutes", size: 10 };
+    case "fifteen_minutes":
+      return { unit: "minutes", size: 15 };
+    case "hour":
+      return { unit: "hours", size: 1 };
+    case "day":
+      return { unit: "days", size: 1 };
+    case "week":
+      return { unit: "weeks", size: 1 };
+    case "month":
+      return { unit: "months", size: 1 };
+    case "year":
+      return { unit: "years", size: 1 };
   }
 };
 
-export const stepBucket = (dt: DateTime, bucket: TimeBucket, direction: 1 | -1): DateTime => {
-  const n = direction;
-  switch (bucket) {
-    case "minute":
-      return dt.plus({ minutes: n });
-    case "five_minutes":
-      return dt.plus({ minutes: 5 * n });
-    case "ten_minutes":
-      return dt.plus({ minutes: 10 * n });
-    case "fifteen_minutes":
-      return dt.plus({ minutes: 15 * n });
-    case "hour":
-      return dt.plus({ hours: n });
-    case "day":
-      return dt.plus({ days: n });
-    case "week":
-      return dt.plus({ weeks: n });
-    case "month":
-      return dt.plus({ months: n });
-    case "year":
-      return dt.plus({ years: n });
-  }
+/**
+ * Moves `dt` by `n` whole buckets in calendar terms, so a month step lands on
+ * the next month's start and a day step survives a DST change — neither of
+ * which a millisecond offset does.
+ */
+export const shiftBuckets = (dt: DateTime, bucket: TimeBucket, n: number): DateTime => {
+  const { unit, size } = bucketUnit(bucket);
+  return dt.plus({ [unit]: n * size });
+};
+
+export const stepBucket = (dt: DateTime, bucket: TimeBucket, direction: 1 | -1): DateTime =>
+  shiftBuckets(dt, bucket, direction);
+
+/**
+ * How many whole buckets separate two bucket-aligned instants. Rounded, so the
+ * two week conventions (see `floorToWeekStart`) disagreeing by a day still
+ * count the same number of weeks.
+ */
+export const bucketsBetween = (from: DateTime, to: DateTime, bucket: TimeBucket): number => {
+  const { unit, size } = bucketUnit(bucket);
+  return Math.round(to.diff(from, unit).get(unit) / size);
 };
 
 export const floorToBucket = (dt: DateTime, bucket: TimeBucket): DateTime => {
@@ -157,10 +164,48 @@ export type ChartTimeBounds = {
   max: Date | undefined;
 };
 
+// Weekly buckets follow two conventions at once: the analytics queries floor
+// with ClickHouse's `toStartOfWeek` (Sunday) and the dashboard cards with
+// `toStartOfInterval(..., INTERVAL 1 WEEK)` (Monday) — verified, they differ by
+// a day. Luxon's `startOf("week")` is Monday. Take the later of the two floors
+// so neither convention's final bucket lands past the max, where consumers drop
+// it and the axis clips it; the cost is at most a day of trailing gutter.
+const floorToWeekStart = (dt: DateTime): DateTime => {
+  const day = dt.startOf("day");
+  const sunday = day.minus({ days: dt.weekday % 7 }); // Luxon weekday: 1 = Monday, 7 = Sunday
+  const monday = day.minus({ days: dt.weekday - 1 });
+  return sunday > monday ? sunday : monday;
+};
+
+const floorToBucketStart = (dt: DateTime, bucket: TimeBucket): DateTime =>
+  bucket === "week" ? floorToWeekStart(dt) : floorToBucket(dt, bucket);
+
+/**
+ * The start of the bucket holding `start` — the left edge of the x domain.
+ * A period rarely starts on a week or month boundary ("last 60 days"), and
+ * the API reports its first bucket at the boundary *before* the period start;
+ * anchoring the domain at the period start instead put that bucket left of
+ * the axis, where every chart drops it. Weeks floor to the Sunday the analytics
+ * queries use (`toStartOfWeek`); the Monday convention's first bucket then sits
+ * a day inside the edge, which is only a day of leading gutter.
+ */
+const firstBucketStart = (start: DateTime, bucket: TimeBucket): DateTime =>
+  bucket === "week" ? start.startOf("day").minus({ days: start.weekday % 7 }) : floorToBucket(start, bucket);
+
+/**
+ * The start of the final bucket in `[start, endExclusive)`. Bounds end there
+ * rather than at the period's last millisecond so the closing tick sits on the
+ * right edge instead of a whole bucket short of it.
+ */
+const lastBucketStart = (start: DateTime, endExclusive: DateTime, bucket: TimeBucket): Date => {
+  const lastInstant = endExclusive.minus({ milliseconds: 1 });
+  const last = floorToBucketStart(lastInstant, bucket);
+  // A period holding a single bucket would otherwise collapse the x domain.
+  return (last > start ? last : lastInstant).toJSDate();
+};
+
 // Returns full-period x-scale bounds so related charts share a congruent scale.
 export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: string): ChartTimeBounds => {
-  const offset = bucketEndOffsetMinutes(bucket);
-
   if (time.mode === "past-minutes") {
     const startUnit = time.pastMinutesStart < 360 ? "minute" : "hour";
     const min = DateTime.now()
@@ -176,18 +221,20 @@ export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: str
   }
 
   if (time.mode === "day") {
-    const day = DateTime.fromISO(time.day, { zone: timezone });
+    const day = DateTime.fromISO(time.day, { zone: timezone }).startOf("day");
+    const min = firstBucketStart(day, bucket);
     return {
-      min: day.startOf("day").toJSDate(),
-      max: day.endOf("day").minus({ minutes: offset }).toJSDate(),
+      min: min.toJSDate(),
+      max: lastBucketStart(min, day.plus({ days: 1 }), bucket),
     };
   }
 
   if (time.mode === "week") {
     const week = DateTime.fromISO(time.week, { zone: timezone }).startOf("week");
+    const min = firstBucketStart(week, bucket);
     return {
-      min: week.toJSDate(),
-      max: week.endOf("week").minus({ minutes: offset }).toJSDate(),
+      min: min.toJSDate(),
+      max: lastBucketStart(min, week.plus({ weeks: 1 }), bucket),
     };
   }
 
@@ -195,17 +242,19 @@ export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: str
     const month = DateTime.fromISO(time.month, {
       zone: timezone,
     }).startOf("month");
+    const min = firstBucketStart(month, bucket);
     return {
-      min: month.toJSDate(),
-      max: month.endOf("month").minus({ minutes: offset }).toJSDate(),
+      min: min.toJSDate(),
+      max: lastBucketStart(min, month.plus({ months: 1 }), bucket),
     };
   }
 
   if (time.mode === "year") {
     const year = DateTime.fromISO(time.year, { zone: timezone }).startOf("year");
+    const min = firstBucketStart(year, bucket);
     return {
-      min: year.toJSDate(),
-      max: year.endOf("year").minus({ minutes: offset }).toJSDate(),
+      min: min.toJSDate(),
+      max: lastBucketStart(min, year.plus({ years: 1 }), bucket),
     };
   }
 
@@ -215,16 +264,19 @@ export const getChartTimeBounds = (time: Time, bucket: TimeBucket, timezone: str
         zone: timezone,
       });
       const endExclusive = DateTime.fromISO(`${time.endDate}T${time.endTime}`, { zone: timezone });
-      const displayEnd = stepBucket(endExclusive, bucket, -1);
+      const min = firstBucketStart(start, bucket);
       return {
-        min: start.toJSDate(),
-        max: (displayEnd > start ? displayEnd : endExclusive).toJSDate(),
+        min: min.toJSDate(),
+        max: lastBucketStart(min, endExclusive, bucket),
       };
     }
 
+    const start = DateTime.fromISO(time.startDate, { zone: timezone }).startOf("day");
+    const endExclusive = DateTime.fromISO(time.endDate, { zone: timezone }).startOf("day").plus({ days: 1 });
+    const min = firstBucketStart(start, bucket);
     return {
-      min: DateTime.fromISO(time.startDate, { zone: timezone }).startOf("day").toJSDate(),
-      max: DateTime.fromISO(time.endDate, { zone: timezone }).endOf("day").minus({ minutes: offset }).toJSDate(),
+      min: min.toJSDate(),
+      max: lastBucketStart(min, endExclusive, bucket),
     };
   }
 

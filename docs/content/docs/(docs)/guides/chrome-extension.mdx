@@ -1,0 +1,94 @@
+---
+title: Chrome extension
+description: Add Rybbit analytics to your Chrome extension
+category: apps
+icon: SiGooglechrome
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Manifest V3 requires every piece of executable code to ship inside the extension package, and the `extension_pages` Content Security Policy is fixed at `script-src 'self' 'wasm-unsafe-eval'; object-src 'self'` with no way to relax it. A remote `<script>` tag can therefore never load in an extension page. Bundle the `@rybbit/js` SDK into your popup, options or side panel page instead, and grant `host_permissions` for the analytics host.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+
+You only need the site ID from the snippet; the script tag itself is not used in an extension.
+</Step>
+
+<Step>
+### Add the snippet to Chrome extension
+
+1. Install the SDK in the extension project:
+
+```bash
+npm install @rybbit/js
+```
+
+2. Initialise it in the entry script of each extension page you want to track (the popup from `action.default_popup`, the options page from `options_ui.page`, the side panel from `side_panel.default_path`). The SDK needs `window` and `document`, so do not import it in the service worker.
+
+```js title="src/popup.js"
+import rybbit from "@rybbit/js";
+
+await rybbit.init({
+  analyticsHost: "https://app.rybbit.io/api",
+  siteId: "YOUR_SITE_ID",
+});
+
+// Extension pages have URLs like chrome-extension://<id>/popup.html.
+// Report a readable path instead:
+rybbit.pageview("/popup");
+```
+
+3. Grant the extension permission to call the analytics host. Requests from extension pages to origins listed in `host_permissions` are not subject to CORS:
+
+```json title="manifest.json"
+{
+  "manifest_version": 3,
+  "host_permissions": ["https://app.rybbit.io/*"]
+}
+```
+
+4. Build the extension with your bundler (Vite, webpack, Rollup) so `@rybbit/js` ends up inside the package, then reload the unpacked extension at `chrome://extensions`.
+
+The default extension CSP does not restrict `connect-src`, so no `content_security_policy` entry is required. If you define your own policy, add `https://app.rybbit.io` to its `connect-src`.
+
+<Callout type="warn">
+Do not initialise the SDK in a content script. Content scripts run inside third-party websites; tracking there records other people's pages under your site ID, and content scripts are subject to the host page's same-origin policy in any case.
+</Callout>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `rybbit.event()` from the page script, or use data attributes on buttons in your popup HTML:
+
+```js title="src/popup.js"
+document.getElementById("save")?.addEventListener("click", () => {
+  rybbit.event("settings_saved", { theme: "dark" });
+});
+```
+
+```html title="popup.html"
+<button data-rybbit-event="upgrade_click" data-rybbit-prop-plan="pro">Upgrade</button>
+```
+
+## Troubleshooting
+
+- **`Refused to load the script` in the popup console**: the fixed `extension_pages` CSP blocked a remote tag. Remove it and use the SDK.
+- **`POST /api/track` blocked by CORS**: `host_permissions` is missing or does not match. The pattern must include the path wildcard: `https://app.rybbit.io/*`.
+- **Self-hosted Rybbit**: replace `https://app.rybbit.io` in both `analyticsHost` and `host_permissions` with your own instance URL.
+- **Every pageview shows the extension ID as hostname**: expected. Extension pages live on `chrome-extension://<id>`; use `rybbit.pageview("/name")` for readable paths.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

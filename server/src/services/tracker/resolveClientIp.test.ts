@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FastifyRequest } from "fastify";
-import { resolveClientIp } from "./resolveClientIp.js";
+import { collectCandidateClientIps, resolveClientIp } from "./resolveClientIp.js";
 
 function requestWithHeaders(headers: Record<string, string | string[]>, ip = "198.51.100.10"): FastifyRequest {
   return { headers, ip } as unknown as FastifyRequest;
@@ -19,7 +19,7 @@ describe("resolveClientIp", () => {
       "x-forwarded-for": "203.0.113.10, 13.224.0.1", // visitor, then edge
     });
 
-    expect(resolveClientIp(request, proxied)).toBe("203.0.113.10");
+    expect(resolveClientIp(request, { proxiedEdge: proxied })).toBe("203.0.113.10");
   });
 
   it("prefers X-Real-IP over X-Forwarded-For on the proxied path", () => {
@@ -29,12 +29,12 @@ describe("resolveClientIp", () => {
       "x-real-ip": "192.0.2.10",
     });
 
-    expect(resolveClientIp(request, proxied)).toBe("192.0.2.10");
+    expect(resolveClientIp(request, { proxiedEdge: proxied })).toBe("192.0.2.10");
   });
 
   it("falls back to the edge IP if a proxy forwarded nothing", () => {
     const request = requestWithHeaders({ "cf-connecting-ip": "13.224.0.1" });
-    expect(resolveClientIp(request, proxied)).toBe("13.224.0.1");
+    expect(resolveClientIp(request, { proxiedEdge: proxied })).toBe("13.224.0.1");
   });
 
   it("trusts the edge IP and ignores spoofable forwarded headers on the direct path", () => {
@@ -46,18 +46,44 @@ describe("resolveClientIp", () => {
       "x-real-ip": "1.1.1.1", // spoofed
     });
 
-    expect(resolveClientIp(request, direct)).toBe("203.0.113.55");
+    expect(resolveClientIp(request, { proxiedEdge: direct })).toBe("203.0.113.55");
   });
 
   it("uses forwarded headers when there is no Cloudflare edge (self-hosted)", () => {
-    expect(resolveClientIp(requestWithHeaders({ "x-real-ip": "192.0.2.10" }), direct)).toBe("192.0.2.10");
-    expect(resolveClientIp(requestWithHeaders({ "x-forwarded-for": "203.0.113.10, 10.0.0.1" }), direct)).toBe(
+    expect(resolveClientIp(requestWithHeaders({ "x-real-ip": "192.0.2.10" }), { proxiedEdge: direct })).toBe("192.0.2.10");
+    expect(resolveClientIp(requestWithHeaders({ "x-forwarded-for": "203.0.113.10, 10.0.0.1" }), { proxiedEdge: direct })).toBe(
       "203.0.113.10"
     );
   });
 
   it("falls back to the socket IP when no usable headers are present", () => {
-    expect(resolveClientIp(requestWithHeaders({}), direct)).toBe("198.51.100.10");
+    expect(resolveClientIp(requestWithHeaders({}), { proxiedEdge: direct })).toBe("198.51.100.10");
+  });
+
+  describe("firstPartyProxy site setting", () => {
+    it("trusts forwarded headers unconditionally, even when the edge looks direct", () => {
+      // The exact regression this setting exists for: a customer's proxy egress
+      // isn't classified as datacenter, so ASN inference would pick the rotating
+      // edge IP. The explicit declaration overrides inference entirely.
+      const request = requestWithHeaders({
+        "cf-connecting-ip": "70.132.5.9", // CloudFront origin-facing, no ASN in GeoLite2
+        "x-forwarded-for": "203.0.113.10, 70.132.5.9",
+      });
+
+      expect(resolveClientIp(request, { firstPartyProxy: true, proxiedEdge: direct })).toBe("203.0.113.10");
+    });
+
+    it("prefers X-Real-IP, then falls back through XFF and the edge IP", () => {
+      expect(
+        resolveClientIp(requestWithHeaders({ "x-real-ip": "192.0.2.10", "cf-connecting-ip": "70.132.5.9" }), {
+          firstPartyProxy: true,
+        })
+      ).toBe("192.0.2.10");
+      expect(resolveClientIp(requestWithHeaders({ "cf-connecting-ip": "70.132.5.9" }), { firstPartyProxy: true })).toBe(
+        "70.132.5.9"
+      );
+      expect(resolveClientIp(requestWithHeaders({}), { firstPartyProxy: true })).toBe("198.51.100.10");
+    });
   });
 
   describe("Cloudflare Worker cross-zone subrequests", () => {
@@ -81,5 +107,26 @@ describe("resolveClientIp", () => {
 
       expect(resolveClientIp(request)).toBe("203.0.113.10");
     });
+  });
+});
+
+describe("collectCandidateClientIps", () => {
+  it("gathers every plausible client IP across headers, socket, and extras, deduplicated", () => {
+    const request = requestWithHeaders({
+      "cf-connecting-ip": "13.224.0.1",
+      "x-forwarded-for": "203.0.113.10, 13.224.0.1",
+      "x-real-ip": "192.0.2.10",
+    });
+
+    expect(collectCandidateClientIps(request, ["203.0.113.10", undefined])).toEqual([
+      "203.0.113.10",
+      "13.224.0.1",
+      "192.0.2.10",
+      "198.51.100.10",
+    ]);
+  });
+
+  it("returns just the socket IP when no headers are present", () => {
+    expect(collectCandidateClientIps(requestWithHeaders({}))).toEqual(["198.51.100.10"]);
   });
 });

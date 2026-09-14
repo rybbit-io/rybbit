@@ -34,13 +34,13 @@ export const capabilities: FeatureCapability[] = [
     icon: <History className="w-5 h-5" />,
     title: "Full activity timeline",
     description:
-      "See every session, pageview, and event for each identified user. Understand their complete journey from first visit to present.",
+      "See every session, pageview, and event for each identified user, from their first visit to their most recent one.",
   },
   {
     icon: <Tag className="w-5 h-5" />,
     title: "Custom traits & properties",
     description:
-      "Attach custom properties to users — plan type, company, role, or any attribute. Browse and filter by traits in the explorer.",
+      "Attach custom properties to users: plan type, company, role, or any attribute. Browse and filter by traits in the explorer.",
   },
   {
     icon: <UserPlus className="w-5 h-5" />,
@@ -52,7 +52,7 @@ export const capabilities: FeatureCapability[] = [
     icon: <Clock className="w-5 h-5" />,
     title: "First seen & last seen",
     description:
-      "See when each user first visited and when they were last active. Understand engagement frequency at a glance.",
+      "See when each user first visited and when they were last active. Understand engagement frequency.",
   },
   {
     icon: <Search className="w-5 h-5" />,
@@ -112,7 +112,7 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Headset className="w-6 h-6" />,
     title: "Support teams",
     description:
-      "Look up a user's complete activity history when they reach out. See their sessions, events, and any errors — without asking them to reproduce the issue.",
+      "Look up a user's complete activity history when they reach out. See their sessions, events, and any errors without asking them to reproduce the issue.",
   },
   {
     icon: <ShoppingCart className="w-6 h-6" />,
@@ -155,7 +155,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "Is user identification GDPR-compliant?",
     answer:
-      "Yes. User identification in Rybbit is opt-in — you control exactly when and what data is attached to a user profile. No fingerprinting or cross-site tracking is used. You choose what personal data (if any) to include.",
+      "Yes. User identification in Rybbit is opt-in: you control exactly when and what data is attached to a user profile. No fingerprinting or cross-site tracking is used. You choose what personal data (if any) to include.",
   },
   {
     question: "How is this different from Google Analytics user tracking?",

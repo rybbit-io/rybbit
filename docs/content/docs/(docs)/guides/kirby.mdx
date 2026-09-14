@@ -1,0 +1,83 @@
+---
+title: Kirby
+description: Add Rybbit analytics to your Kirby site
+category: cms
+icon: SiKirby
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Kirby templates are plain PHP files in `site/templates/`, and shared markup lives in `site/snippets/`. The snippet goes into whichever file owns your `<head>`: the Starterkit's `site/snippets/header.php`, or the template itself in a Plainkit project.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Kirby
+
+<Tabs items={["Starterkit", "Plainkit"]}>
+<Tab>
+The Starterkit renders the document head from a shared snippet that every template includes with `<?php snippet('header') ?>`.
+
+1. Open `site/snippets/header.php`.
+2. Add the tag before `</head>`:
+
+```php title="site/snippets/header.php"
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><?= $site->title() ?> | <?= $page->title() ?></title>
+  <?= css(['assets/css/index.css', '@auto']) ?>
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+```
+
+3. Save. Every template that calls `snippet('header')` now loads the script.
+</Tab>
+
+<Tab>
+The Plainkit's `site/templates/default.php` contains only `<h1><?= $page->title() ?></h1>` and no document structure, so add the tag wherever you build your `<head>`. The usual pattern is a header snippet included by each template:
+
+```php title="site/snippets/header.php"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title><?= $page->title() ?></title>
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+<body>
+```
+
+```php title="site/templates/default.php"
+<?php snippet('header') ?>
+<h1><?= $page->title() ?></h1>
+<?php snippet('footer') ?>
+```
+</Tab>
+</Tabs>
+
+To keep the site ID out of the snippet, add it to `site/config/config.php` and read it with `<?= option('rybbit.siteId') ?>`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Page cache**: if `cache.pages.active` is enabled in `site/config/config.php`, flush `site/cache/` after editing the snippet or cached pages keep the old head.
+- **Multiple header snippets**: templates that include a different header (for example `snippet('header-landing')`) need the tag added there too.
+- **Panel is not tracked**: `/panel` is a separate app that does not render your templates, so editing time never appears in Rybbit.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

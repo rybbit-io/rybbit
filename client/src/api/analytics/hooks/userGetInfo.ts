@@ -1,17 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
 import { USER_DETAIL_PAGE_FILTERS } from "../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../lib/store";
-import { buildApiParams } from "../../utils";
-import { fetchUserInfo, UserInfo } from "../endpoints";
+import { getFilteredFilters } from "../../../lib/store";
+import { UserInfo } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export function useUserInfo(siteId: number, userId: string) {
-  const { time, timezone } = useStore();
   const filteredFilters = getFilteredFilters(USER_DETAIL_PAGE_FILTERS);
-  const params = buildApiParams(time, { filters: filteredFilters });
 
-  return useQuery<UserInfo>({
-    queryKey: ["user-info", userId, siteId, time, filteredFilters, timezone],
-    queryFn: () => fetchUserInfo(siteId, userId, params),
+  return useAnalyticsQuery<UserInfo>({
+    // userId must stay at index 1 — useDeleteUser removes ["user-info", userId].
+    key: ["user-info", userId],
+    path: `users/${encodeURIComponent(userId)}`,
+    site: siteId,
+    // customFilters fall back to the store filters when empty; disable filters
+    // entirely instead so an empty page-filter set stays unfiltered.
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
     enabled: !!siteId && !!userId,
   });
 }

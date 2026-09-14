@@ -1,24 +1,27 @@
 import { authClient } from "@/lib/auth";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
 import { useOrganizationMembers } from "@/api/admin/hooks/useOrganizationMembers";
+import { useOrgApiUsage } from "@/api/admin/hooks/useOrgApiUsage";
 import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscription";
 
 interface UsageCardItem {
   label: string;
   current: number;
   limit: number | null;
+  /** The count could not be read. Shows a placeholder instead of a false zero. */
+  unavailable?: boolean;
 }
 
-function UsageCard({ label, current, limit }: UsageCardItem) {
+function UsageCard({ label, current, limit, unavailable }: UsageCardItem) {
   const percentage =
-    limit === null ? 0 : Math.min((current / limit) * 100, 100);
-  const isExceeded = limit !== null && current >= limit;
+    limit === null || unavailable ? 0 : Math.min((current / limit) * 100, 100);
+  const isExceeded = !unavailable && limit !== null && current >= limit;
 
   return (
     <div className="rounded-lg border p-3 pb-0 overflow-hidden relative">
       <div className="text-sm text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold mb-3">
-        {current.toLocaleString()} /{" "}
+        {unavailable ? "—" : current.toLocaleString()} /{" "}
         {limit === null ? "Unlimited" : limit.toLocaleString()}
       </div>
       <div className="relative h-1.5 -mx-3">
@@ -34,6 +37,13 @@ function UsageCard({ label, current, limit }: UsageCardItem) {
   );
 }
 
+// Tailwind only emits classes it can see as literals, so the column count maps
+// to a fixed class rather than being interpolated.
+const COLUMN_CLASSES: Record<number, string> = {
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+};
+
 export function UsageCards() {
   const { data: subscription } = useStripeSubscription();
   const { data: activeOrg } = authClient.useActiveOrganization();
@@ -41,8 +51,14 @@ export function UsageCards() {
 
   const { data: sitesData } = useGetSitesFromOrg(organizationId);
   const { data: membersData } = useOrganizationMembers(organizationId ?? "");
+  const { data: apiUsage } = useOrgApiUsage(organizationId);
 
   if (!subscription) return null;
+
+  // Mirrors the server's gate in createApiKey: free and basic plans can't hold
+  // API keys, so a quota card would describe a budget they can't spend.
+  const planName = subscription.planName || "free";
+  const hasApiAccess = planName !== "free" && !planName.includes("basic");
 
   const items: UsageCardItem[] = [
     {
@@ -62,10 +78,22 @@ export function UsageCards() {
     },
   ];
 
+  // Organization-owned keys only — personal keys are budgeted per user, so
+  // their usage isn't part of this number.
+  if (hasApiAccess && apiUsage?.metered) {
+    items.push({
+      label: "Org API requests today",
+      current: apiUsage.dailyUsed,
+      limit: apiUsage.dailyLimit,
+      unavailable: !apiUsage.available,
+    });
+  }
+
   return (
     <div
-      className="grid gap-4"
-      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+      className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${
+        COLUMN_CLASSES[items.length] ?? "lg:grid-cols-4"
+      }`}
     >
       {items.map((item) => (
         <UsageCard key={item.label} {...item} />

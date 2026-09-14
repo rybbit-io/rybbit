@@ -25,13 +25,13 @@ export const capabilities: FeatureCapability[] = [
     icon: <Gauge className="w-5 h-5" />,
     title: "Core Web Vitals",
     description:
-      "Monitor LCP (Largest Contentful Paint), FID/INP (Interaction to Next Paint), and CLS (Cumulative Layout Shift) — the metrics Google uses for search ranking.",
+      "Monitor LCP (Largest Contentful Paint), FID/INP (Interaction to Next Paint), and CLS (Cumulative Layout Shift), the metrics Google uses for search ranking.",
   },
   {
     icon: <BarChart3 className="w-5 h-5" />,
     title: "Percentile analysis",
     description:
-      "View performance at the P75, P90, and P99 levels. Understand not just your average, but how your slowest users experience your site.",
+      "View performance at the P75, P90, and P99 levels. Averages hide the slow tail; percentiles show how your slowest users actually experience your site.",
   },
   {
     icon: <Smartphone className="w-5 h-5" />,
@@ -70,7 +70,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 2,
     title: "Real user data is collected",
     description:
-      "As visitors browse your site, their actual LCP, FID/INP, and CLS values are measured and sent to Rybbit. No synthetic tests — real performance from real users.",
+      "As visitors browse your site, their actual LCP, FID/INP, and CLS values are measured and sent to Rybbit. No synthetic tests, just real performance from real users.",
   },
   {
     step: 3,
@@ -134,7 +134,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "How does this differ from Lighthouse or PageSpeed Insights?",
     answer:
-      "Lighthouse and PageSpeed Insights run synthetic tests on a simulated device. Rybbit measures real user performance — actual LCP, FID, and CLS values from your visitors' real devices, browsers, and network conditions. This gives you a much more accurate picture.",
+      "Lighthouse and PageSpeed Insights run synthetic tests on a simulated device. Rybbit measures real user performance: actual LCP, FID, and CLS values from your visitors' real devices, browsers, and network conditions. This gives you a much more accurate picture.",
   },
   {
     question: "Does tracking Web Vitals add overhead to my site?",

@@ -9,6 +9,13 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../lib/auth.js", () => ({ auth: { api: { createApiKey: mocks.createApiKey } } }));
 vi.mock("../../lib/auth-utils.js", () => ({ getSessionFromReq: mocks.getSessionFromReq }));
 vi.mock("../stripe/getSubscription.js", () => ({ getSubscriptionInner: vi.fn(async () => null) }));
+vi.mock("../../lib/apiKeyLimits.js", () => ({
+  apiKeyLimitForPlan: vi.fn(() => 50),
+  createApiKeyWithinLimit: vi.fn(async (_ref: string, _limit: number, create: () => Promise<unknown>) => ({
+    allowed: true,
+    result: await create(),
+  })),
+}));
 vi.mock("../../lib/const.js", () => ({
   IS_CLOUD: false,
   API_RATE_LIMIT_WINDOW: 60_000,

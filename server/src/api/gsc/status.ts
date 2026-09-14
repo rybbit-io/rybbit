@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { gscConnections } from "../../db/postgres/schema.js";
-import { logger } from "../../lib/logger/logger.js";
 import { GetGSCStatusRequest } from "./types.js";
 
 /**
@@ -31,7 +30,7 @@ export async function getGSCStatus(req: FastifyRequest<GetGSCStatusRequest>, res
       gscPropertyUrl: connection.gscPropertyUrl,
     });
   } catch (error) {
-    logger.error(error, "Error checking GSC status");
+    req.log.error(error, "Error checking GSC status");
     return res.status(500).send({ error: "Failed to check GSC status" });
   }
 }

@@ -102,7 +102,7 @@ export async function generatePdfReport(request: FastifyRequest<GeneratePdfRepor
       .header("Content-Disposition", `attachment; filename="${filename}"`)
       .send(pdfBuffer);
   } catch (error) {
-    console.error("Error generating PDF report:", error);
+    request.log.error({ err: error }, "Error generating PDF report");
 
     if (error instanceof Error && error.message.includes("not found")) {
       return reply.status(404).send({ error: error.message });

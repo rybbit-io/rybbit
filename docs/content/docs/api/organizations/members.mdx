@@ -76,6 +76,14 @@ Each member in the `data` array contains:
       description: 'User details',
       type: 'object',
     },
+    siteAccess: {
+      description: "The member's site-access restrictions within the organization",
+      type: 'object',
+    },
+    teams: {
+      description: 'Teams the member belongs to',
+      type: 'array',
+    },
   }}
 />
 
@@ -93,6 +101,38 @@ Each member in the `data` array contains:
     },
     email: {
       description: 'User email address',
+      type: 'string',
+    },
+  }}
+/>
+
+#### Site Access Object
+
+<TypeTable
+  type={{
+    hasRestrictedSiteAccess: {
+      description: 'Whether the member is restricted to specific sites',
+      type: 'boolean',
+    },
+    siteIds: {
+      description: 'IDs of the sites the member can access (empty when access is not restricted)',
+      type: 'array',
+    },
+  }}
+/>
+
+#### Team Object
+
+Each team in the `teams` array contains:
+
+<TypeTable
+  type={{
+    id: {
+      description: 'Team ID',
+      type: 'string',
+    },
+    name: {
+      description: 'Team name',
       type: 'string',
     },
   }}
@@ -234,7 +274,12 @@ var data = await response.Content.ReadAsStringAsync();
         "id": "user_xyz789",
         "name": "John Doe",
         "email": "john@example.com"
-      }
+      },
+      "siteAccess": {
+        "hasRestrictedSiteAccess": false,
+        "siteIds": []
+      },
+      "teams": []
     },
     {
       "id": "member_def456",
@@ -246,7 +291,17 @@ var data = await response.Content.ReadAsStringAsync();
         "id": "user_abc456",
         "name": "Jane Smith",
         "email": "jane@example.com"
-      }
+      },
+      "siteAccess": {
+        "hasRestrictedSiteAccess": true,
+        "siteIds": ["456"]
+      },
+      "teams": [
+        {
+          "id": "team_789",
+          "name": "Marketing"
+        }
+      ]
     }
   ]
 }

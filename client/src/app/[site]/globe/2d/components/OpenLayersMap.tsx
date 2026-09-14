@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { apply } from "ol-mapbox-style";
+import Attribution from "ol/control/Attribution";
+import LayerGroup from "ol/layer/Group";
 import Map from "ol/Map";
 import View from "ol/View";
-import TileLayer from "ol/layer/Tile";
-import XYZ from "ol/source/XYZ";
 import { fromLonLat } from "ol/proj";
 import "ol/ol.css";
 import { useOpenLayersCountriesLayer } from "../hooks/useOpenLayersCountriesLayer";
@@ -31,14 +32,8 @@ export function OpenLayersMap({ mapView, onSessionSelect }: OpenLayersMapProps) 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Create base tile layer with CartoDB Dark Matter (no labels)
-    const baseLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://{a-d}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        attributions:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      }),
-    });
+    const baseLayer = new LayerGroup();
+    void apply(baseLayer, "https://tiles.openfreemap.org/styles/dark");
 
     const map = new Map({
       target: mapRef.current,
@@ -49,7 +44,7 @@ export function OpenLayersMap({ mapView, onSessionSelect }: OpenLayersMapProps) 
         minZoom: 1,
         maxZoom: 18,
       }),
-      controls: [],
+      controls: [new Attribution({ collapsible: false })],
     });
 
     mapInstanceRef.current = map;

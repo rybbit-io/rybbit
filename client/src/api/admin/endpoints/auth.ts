@@ -27,6 +27,23 @@ export function getOrganizationMembers(organizationId: string) {
   return authedFetch<GetOrganizationMembersResponse>(`/organizations/${organizationId}/members`);
 }
 
+export type GetOrgApiUsageResponse = {
+  /** False on self-hosted, where API requests are not metered. */
+  metered: boolean;
+  /** False when the counter could not be read; the quota is still enforced. */
+  available: boolean;
+  dailyUsed: number;
+  dailyLimit: number;
+  dailyRemaining: number;
+  resetsInSeconds: number;
+  burstLimit: number;
+  burstWindowSeconds: number;
+};
+
+export function getOrgApiUsage(organizationId: string) {
+  return authedFetch<GetOrgApiUsageResponse>(`/organizations/${organizationId}/api-usage`);
+}
+
 export function updateMemberSiteAccess(
   organizationId: string,
   memberId: string,

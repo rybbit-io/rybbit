@@ -283,4 +283,6 @@ Effective Dribbble comments are detailed, constructive, and demonstrate design u
   },
 };
 
-export const commentPlatformList = Object.values(commentPlatformConfigs);
+// Retired 2026-07-18 (off-brand / no organic traffic) — pages 301 → /tools via next.config.mjs.
+const RETIRED_PLATFORMS = ["nostr", "lemmy", "warpcast", "dribbble", "mastodon", "vk"];
+export const commentPlatformList = Object.values(commentPlatformConfigs).filter(p => !RETIRED_PLATFORMS.includes(p.id));

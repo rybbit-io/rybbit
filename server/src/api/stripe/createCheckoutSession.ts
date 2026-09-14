@@ -1,8 +1,9 @@
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import Stripe from "stripe";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, user as userSchema, member } from "../../db/postgres/schema.js";
+import { organization, user as userSchema } from "../../db/postgres/schema.js";
+import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import { stripe } from "../../lib/stripe.js";
 
 interface CheckoutRequestBody {
@@ -31,15 +32,9 @@ export async function createCheckoutSession(
 
   try {
     // 1. Verify user has permission to manage billing for this organization
-    const memberResult = await db
-      .select({
-        role: member.role,
-      })
-      .from(member)
-      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-      .limit(1);
+    const membership = await getOrgMembership(userId, organizationId);
 
-    if (!memberResult.length || memberResult[0].role !== "owner") {
+    if (!isOrgOwner(membership)) {
       return reply.status(403).send({
         error: "Only organization owners can manage billing",
       });
@@ -127,7 +122,7 @@ export async function createCheckoutSession(
     // 6. Return the client secret for embedded checkout
     return reply.send({ clientSecret: session.client_secret });
   } catch (error: any) {
-    console.error("Stripe Checkout Session Error:", error);
+    request.log.error({ err: error }, "Stripe Checkout Session Error");
     return reply.status(500).send({
       error: "Failed to create Stripe checkout session",
       details: error.message,

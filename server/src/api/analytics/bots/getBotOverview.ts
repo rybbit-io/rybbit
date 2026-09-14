@@ -1,13 +1,22 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
-import { type BotLayerKey, getBotFilterStatement, getBotLayerStatement } from "./utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import {
+  AI_CRAWLER_PURPOSE_SQL_LIST,
+  AI_PURPOSE_SQL_LIST,
+  type BotLayerKey,
+  getBotFilterStatement,
+  getBotLayerStatement,
+} from "./utils.js";
 
 type BotOverviewResponse = {
   bot_requests: number;
   total_events: number;
   bot_percentage: number;
+  ai_requests: number;
+  ai_agent_requests: number;
+  ai_crawler_requests: number;
   ua_pattern: number;
   header_heuristics: number;
   client_signals: number;
@@ -24,10 +33,10 @@ export interface BotOverviewRequest {
   }>;
 }
 
-const getQuery = (params: BotOverviewRequest["Querystring"]) => {
-  const timeStatement = getTimeStatement(params);
-  const filterStatement = getBotFilterStatement(params.filters);
-  const layerStatement = getBotLayerStatement(params.layer);
+export const buildBotOverviewQuery = (query: BotOverviewRequest["Querystring"]) => {
+  const timeStatement = getTimeStatement(query);
+  const filterStatement = getBotFilterStatement(query.filters);
+  const layerStatement = getBotLayerStatement(query.layer);
 
   return `
     WITH
@@ -38,7 +47,12 @@ const getQuery = (params: BotOverviewRequest["Querystring"]) => {
           countIf(detected_header_heuristics) AS header_heuristics,
           countIf(detected_client_signals) AS client_signals,
           countIf(detected_bot_asn) AS bot_asn,
-          countIf(detected_rate_anomaly) AS rate_anomaly
+          countIf(detected_rate_anomaly) AS rate_anomaly,
+          -- Purpose is only set on rows written since bot identity shipped, so
+          -- these read 0 for older windows rather than being wrong.
+          countIf(bot_purpose IN (${AI_PURPOSE_SQL_LIST})) AS ai_requests,
+          countIf(bot_purpose = 'ai_agent') AS ai_agent_requests,
+          countIf(bot_purpose IN (${AI_CRAWLER_PURPOSE_SQL_LIST})) AS ai_crawler_requests
         FROM bot_events
         WHERE site_id = {siteId:Int32}
           ${filterStatement}
@@ -71,27 +85,24 @@ const getQuery = (params: BotOverviewRequest["Querystring"]) => {
       header_heuristics,
       client_signals,
       bot_asn,
-      rate_anomaly
+      rate_anomaly,
+      ai_requests,
+      ai_agent_requests,
+      ai_crawler_requests
     FROM bot_stats
     CROSS JOIN all_bot_stats
     CROSS JOIN event_stats
   `;
 };
 
-export async function getBotOverview(req: FastifyRequest<BotOverviewRequest>, res: FastifyReply) {
-  try {
-    const result = await clickhouse.query({
-      query: getQuery(req.query),
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(req.params.siteId),
-      },
+export const getBotOverview = analyticsRoute<BotOverviewRequest>(
+  "bot overview",
+  async (req: FastifyRequest<BotOverviewRequest>, res: FastifyReply) => {
+    const data = await runAnalyticsQuery<BotOverviewResponse>({
+      query: buildBotOverviewQuery(req.query),
+      params: { siteId: Number(req.params.siteId) },
     });
 
-    const data = await processResults<BotOverviewResponse>(result);
     return res.send({ data: data[0] });
-  } catch (error) {
-    console.error("Error fetching bot overview:", error);
-    return res.status(500).send({ error: "Failed to fetch bot overview" });
   }
-}
+);

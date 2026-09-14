@@ -1,4 +1,4 @@
-import { FastifyRequest } from "fastify";
+import type { IncomingHttpHeaders } from "http";
 import { BOT_SCORE_THRESHOLD } from "./config.js";
 
 interface BotDetectionResult {
@@ -71,10 +71,9 @@ function claimsModernOS(ua: string): boolean {
  * Supplements the UA-pattern check (uaBots/classifyUA) with analysis of headers
  * that real browsers always send but scripting clients typically miss.
  */
-export function detectBot(request: FastifyRequest, userAgent: string): BotDetectionResult {
+export function detectBot(headers: IncomingHttpHeaders, userAgent: string): BotDetectionResult {
   let score = 0;
   const reasons: string[] = [];
-  const headers = request.headers;
   const lowerUA = userAgent.toLowerCase();
 
   // 1. Known bot framework signatures in UA (instant kill)

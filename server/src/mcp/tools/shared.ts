@@ -66,7 +66,7 @@ export function fail(message: string): ToolResult {
 }
 
 const ERROR_HINTS: Record<number, string> = {
-  401: "The API key is missing or invalid. Create one under Settings > Account > API Keys and send it as 'Authorization: Bearer <key>'.",
+  401: "The API key is missing or invalid. Create one under Settings > Account > Personal API Keys and send it as 'Authorization: Bearer <key>'.",
   403: "The API key's user does not have access to this site or organization, or the tool requires an org admin/owner role for the key's user. Check the site_id with list_sites; its role field shows the key's role per organization. If the message says 'Insufficient scope', the credential was created without the scope this tool needs — use a key or OAuth grant that has it.",
   429: "Rate limited. Wait before retrying, and prefer fewer, more aggregated queries.",
 };
@@ -101,6 +101,30 @@ export const readOnly = { readOnlyHint: true, destructiveHint: false, idempotent
 export const writeTool = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
 export const idempotentWrite = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 export const destructiveTool = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false };
+
+/**
+ * Prune each row in `response[key]` to the requested top-level fields. Rows
+ * are wide (sessions and users carry 30+ columns) and every field costs the
+ * client tokens twice, as text and as structuredContent. Unknown field names
+ * are ignored so a stale name never fails the call.
+ */
+export function pickRowFields<T>(response: T, key: string, fields: string[] | undefined): T {
+  if (!fields || !response || typeof response !== "object") {
+    return response;
+  }
+  const rows = (response as Record<string, unknown>)[key];
+  if (!Array.isArray(rows)) {
+    return response;
+  }
+  const wanted = new Set(fields);
+  const pruned = rows.map(row => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      return row;
+    }
+    return Object.fromEntries(Object.entries(row).filter(([name]) => wanted.has(name)));
+  });
+  return { ...response, [key]: pruned };
+}
 
 export function siteQuery(args: TimeArgs & { filters?: FilterArgs }) {
   return { ...toTimeQuery(args), ...toFiltersQuery(args.filters) };

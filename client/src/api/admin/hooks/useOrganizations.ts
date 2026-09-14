@@ -12,10 +12,11 @@ import {
 
 export { USER_ORGANIZATIONS_QUERY_KEY } from "../endpoints";
 
-export function useUserOrganizations() {
+export function useUserOrganizations(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [USER_ORGANIZATIONS_QUERY_KEY],
     queryFn: getUserOrganizations,
+    enabled: options?.enabled,
   });
 }
 

@@ -1,33 +1,19 @@
-import { useStore } from "@/lib/store";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { buildApiParams } from "../../../utils";
-import { ErrorEventsPaginatedResponse, fetchErrorEvents } from "../../endpoints";
+import { ErrorEventsPaginatedResponse } from "../../endpoints";
+import { useAnalyticsInfiniteQuery } from "../../useAnalyticsQuery";
+
+const PAGE_SIZE = 20;
 
 // Hook for infinite scrolling
 export function useGetErrorEventsInfinite(errorMessage: string, enabled: boolean = true) {
-  const { time, site, filters, timezone } = useStore();
-
-  return useInfiniteQuery({
-    queryKey: ["error-events-infinite", time, site, filters, errorMessage, timezone],
-    queryFn: async ({ pageParam = 1 }) => {
-      const data = await fetchErrorEvents(site, {
-        ...buildApiParams(time, { filters }),
-        errorMessage,
-        limit: 20,
-        page: pageParam,
-      });
-      return { data };
-    },
+  return useAnalyticsInfiniteQuery<ErrorEventsPaginatedResponse>({
+    key: "error-events-infinite",
+    path: "errors/events",
+    params: { errorMessage, limit: PAGE_SIZE },
     initialPageParam: 1,
-    getNextPageParam: (lastPage: { data: ErrorEventsPaginatedResponse }, allPages) => {
-      const currentPage = allPages.length;
-      const totalItems = lastPage?.data?.totalCount || 0;
-      const itemsPerPage = 20;
-      const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-      return currentPage < totalPages ? currentPage + 1 : undefined;
-    },
-    enabled: enabled && !!errorMessage && !!site,
+    pageParams: page => ({ page }),
+    getNextPageParam: (lastPage, allPages) =>
+      allPages.length < Math.ceil((lastPage?.totalCount || 0) / PAGE_SIZE) ? allPages.length + 1 : undefined,
+    enabled: enabled && !!errorMessage,
     staleTime: Infinity,
   });
 }

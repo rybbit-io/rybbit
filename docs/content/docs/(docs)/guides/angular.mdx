@@ -1,48 +1,27 @@
 ---
 title: Angular
-description: Integrate Rybbit Analytics with your Angular application
+description: Add Rybbit analytics to your Angular app
+category: frameworks
+icon: SiAngular
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-
-This guide explains how to integrate Rybbit with your Angular application.
-
-## How to Add Rybbit to Your Angular App
-
-The recommended and most common method is to add the Rybbit tracking script directly to your `src/index.html` file. This ensures the script is loaded early and reliably for your Angular application.
-
-### Adding to `src/index.html`
+An Angular CLI project serves one HTML shell, `src/index.html`, for every route. Paste the snippet into its `<head>` and the script loads once for the whole app.
 
 <Steps>
 <Step>
-### Retrieve Your Tracking Script
+### Get your tracking snippet
 
-Navigate to your Rybbit dashboard to obtain your code snippet. It will look like this:
-
-```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
-```
-Remember to replace `YOUR_SITE_ID` with your actual Site ID.
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Locate Your `index.html` File
+### Add the snippet to Angular
 
-In a standard Angular CLI project, this file is typically located at `src/index.html`.
-</Step>
+Open `src/index.html` and paste the snippet just before `</head>`:
 
-<Step>
-### Add the Snippet to `index.html`
-
-Open `src/index.html` and paste the Rybbit tracking snippet just before the closing `</head>` tag or `</body>` tag. Placing it in the `<head>` is generally preferred for earlier loading.
-
-```html filename="src/index.html"
+```html title="src/index.html"
 <!doctype html>
 <html lang="en">
 <head>
@@ -50,83 +29,57 @@ Open `src/index.html` and paste the Rybbit tracking snippet just before the clos
   <title>MyAngularApp</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <!-- Rybbit Tracking Snippet -->
-  <script
-    src="https://app.rybbit.io/api/script.js"
-    data-site-id="YOUR_SITE_ID"
-    defer
-  ></script>
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
 </head>
 <body>
-  <app-root></app-root> <!-- Your root Angular component -->
-  <!-- If you prefer, you can also place the script here, before </body> -->
+  <app-root></app-root>
 </body>
 </html>
 ```
-Make sure to replace `YOUR_SITE_ID` with your actual Site ID.
+
+Placing it before `</body>` also works; `<head>` lets it start loading sooner. Navigation through the Angular Router is tracked automatically as pageviews.
 </Step>
 
 <Step>
-### Verify Installation
+### Verify installation
 
-After building and deploying your application, open your Rybbit dashboard to check if data is being received. You can also inspect your browser's network tab to confirm that `script.js` is loaded.
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-<Callout type="info">
-  **SPA Page View Tracking**: Rybbit's tracking script is designed to automatically detect route changes in most Angular applications (using Angular Router) and track them as page views. If you find that page views are not being tracked correctly after navigation, you might need to manually trigger page views. You can subscribe to router events:
-  ```typescript
-  // In a relevant component or service
-  import { Router, NavigationEnd } from '@angular/router';
-  import { filter } from 'rxjs/operators';
+## Track custom events
 
-  // ...
-  // constructor(private router: Router) {}
-  // ...
+Declare `rybbit` on `window` once so TypeScript accepts the call, then call `window.rybbit.event()` from any component or service. Guard the call so a blocked script does not throw.
 
-  // this.router.events.pipe(
-  //   filter(event => event instanceof NavigationEnd)
-  // ).subscribe(() => {
-  //   if (window.rybbit) {
-  //     window.rybbit.pageview();
-  //   }
-  // });
-  ```
-  However, test the default behavior first, as manual tracking might not be necessary.
-</Callout>
+```typescript title="src/app/feature/feature.component.ts"
+import { Component } from "@angular/core";
 
-## Custom Event Tracking
-
-Once the Rybbit script is installed and loaded, you can track custom events from any of your Angular components or services:
-
-```typescript
-// Example in an Angular component
-import { Component } from '@angular/core';
-
-// Declare rybbit on window for TypeScript
 declare global {
   interface Window {
     rybbit?: {
       event: (eventName: string, eventData?: Record<string, any>) => void;
       pageview: () => void;
-      // Add other methods if you use them
     };
   }
 }
 
 @Component({
-  selector: 'app-my-feature',
+  selector: "app-feature",
   template: `<button (click)="onFeatureClick()">Use Feature</button>`,
 })
-export class MyFeatureComponent {
+export class FeatureComponent {
   onFeatureClick(): void {
-    if (window.rybbit && typeof window.rybbit.event === 'function') {
-      window.rybbit.event('feature_used', { featureName: 'Amazing Feature' });
-    } else {
-      console.warn('Rybbit tracking not available.');
+    if (window.rybbit) {
+      window.rybbit.event("feature_used", { featureName: "Amazing Feature" });
     }
   }
 }
 ```
-Declaring `window.rybbit` helps with TypeScript type checking. Always ensure `window.rybbit` and its methods are available before calling them.
+
+## Troubleshooting
+
+- **Pageviews missing after navigation**: this is rare. If it happens, subscribe to `Router.events`, filter for `NavigationEnd` and call `window.rybbit.pageview()`; test the default behaviour first.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

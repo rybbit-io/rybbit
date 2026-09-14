@@ -1,3 +1,4 @@
+import { LegalPageShell } from "@/components/LegalPageShell";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
 export const metadata = createMetadata({
@@ -13,14 +14,7 @@ export const metadata = createMetadata({
 
 export default function TermsAndConditions() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <h1 className="text-3xl md:text-4xl font-bold mb-8">Terms and Conditions</h1>
-
-      <div className="prose prose-invert max-w-none">
-        <p className="text-lg">
-          Last updated: November 8, 2025
-        </p>
-
+    <LegalPageShell title="Terms and Conditions" lastUpdated="November 8, 2025">
         <h2 className="text-2xl font-semibold mt-8 mb-4">Acceptance of Terms</h2>
         <p>
           By accessing and using Rybbit, you accept and agree to be bound by the terms and provision of this agreement.
@@ -101,14 +95,14 @@ export default function TermsAndConditions() {
 
         <h3 className="text-xl font-semibold mt-6 mb-3">Downgrading Your Plan</h3>
         <p>
-          You may downgrade to a lower-tier plan or the free tier at any time. Downgrades take effect at the end of your
+          You may downgrade to a lower-tier plan at any time. Downgrades take effect at the end of your
           current billing period. If your usage exceeds the limits of the downgraded plan, you may need to reduce your
           websites or accept data retention limitations.
         </p>
 
         <h3 className="text-xl font-semibold mt-6 mb-3">Data After Cancellation</h3>
         <p>
-          After cancellation or downgrade to free tier, your analytics data will be permanently deleted within 60 days.
+          After cancellation, your analytics data will be permanently deleted within 60 days.
           We recommend exporting your data before cancellation if you wish to retain it. Once deleted, data cannot be
           recovered.
         </p>
@@ -132,7 +126,7 @@ export default function TermsAndConditions() {
           Rybbit does not collect personally identifiable information from your website visitors. Our service is
           designed to be privacy-friendly and compliant with GDPR, CCPA, and other privacy regulations. Our full data
           practices are described in our
-          <a href="/privacy" className="text-emerald-400 hover:text-emerald-300 mx-1">
+          <a href="/privacy" className="mx-1">
             Privacy Policy
           </a>
           .
@@ -215,11 +209,10 @@ export default function TermsAndConditions() {
         <h2 className="text-2xl font-semibold mt-8 mb-4">Contact Information</h2>
         <p>
           If you have any questions about these Terms and Conditions, please contact us at:
-          <a href="https://www.rybbit.com/contact" className="text-emerald-400 hover:text-emerald-300 ml-1">
+          <a href="https://www.rybbit.com/contact" className="ml-1">
             hello@rybbit.com
           </a>
         </p>
-      </div>
-    </div>
+    </LegalPageShell>
   );
 }

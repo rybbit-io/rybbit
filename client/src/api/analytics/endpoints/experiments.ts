@@ -117,15 +117,3 @@ export async function deleteExperiment(site: string | number, experimentId: numb
     method: "DELETE",
   });
 }
-
-export async function fetchExperimentResults(
-  site: string | number,
-  experimentId: number,
-  params: CommonApiParams
-): Promise<ExperimentResults> {
-  const response = await authedFetch<{ data: ExperimentResults }>(
-    `/sites/${site}/experiments/${experimentId}/results`,
-    toQueryParams(params)
-  );
-  return response.data;
-}

@@ -1,7 +1,7 @@
 import { isDatacenterAsn } from "./datacenterAsns.js";
 
-export type BotAsnSource = "ipverse_hosting" | "curated_bot_provider";
-export type CuratedBotProviderCategory = "ai" | "security_scanner" | "internet_measurement";
+export type BotAsnSource = "ipverse_hosting" | "curated_bot_provider" | "curated_hosting";
+export type CuratedBotProviderCategory = "ai" | "security_scanner" | "internet_measurement" | "scraping_infrastructure";
 
 interface CuratedBotProviderAsnEntry {
   asn: number;
@@ -49,7 +49,49 @@ export const CURATED_BOT_PROVIDER_ASNS: readonly CuratedBotProviderAsnEntry[] = 
     category: "internet_measurement",
     note: "internet measurement scanner provider",
   },
+
+  // Crawler infrastructure ipverse does not categorize as hosting. Each was
+  // added from measured traffic shape, not from the organization name: over
+  // three days each reached hundreds of distinct sites while producing at most
+  // a handful of interaction events in total, which no access network does.
+  {
+    asn: 64267,
+    provider: "Sprious",
+    category: "scraping_infrastructure",
+    note: "710 sites / 1203 visitors / 4 interaction events in 3d; desktop Linux Chrome",
+  },
+  {
+    asn: 64286,
+    provider: "LogicWeb",
+    category: "scraping_infrastructure",
+    note: "1001 sites / 774 visitors / 4 interaction events in 3d; desktop Linux Chrome",
+  },
+  {
+    asn: 398464,
+    provider: "Buddy Software",
+    category: "scraping_infrastructure",
+    note: "175 sites / 166 visitors / 0 interaction events in 3d; web vitals on 0.1% of events",
+  },
 ];
+
+/**
+ * Hosting/proxy networks missing from the ipverse `hosting` category. These
+ * carry the same weight as an ipverse hosting match — corroborating only, never
+ * convicting — because unlike the curated list above they are general-purpose
+ * networks a real visitor could plausibly sit behind (corporate VPN, browser
+ * isolation, mobile proxy). Their traffic here is bot-shaped, but the shape is
+ * evidence, not proof of what the ASN is for.
+ */
+export const EXTRA_DATACENTER_ASNS: readonly number[] = [
+  30236, // Cronomagic Canada Inc. — 103 sites / 168 visitors / 0 interactions in 3d
+  50077, // SYN LTD — 141 sites / 691 visitors / 0 interactions in 3d
+  64445, // NetJoin srl — 117 sites / 458 visitors / 0 interactions in 3d
+  134756, // CHINANET Nanjing Jishan IDC network — 295 sites / 204 visitors / 0 interactions in 3d
+  209372, // WS Telecom Inc — 384 sites / 1286 visitors / 1 interaction in 3d
+  213541, // WS Telecom Inc — 166 sites / 311 visitors / 0 interactions in 3d
+];
+
+const EXTRA_DATACENTER_ASN_SET: ReadonlySet<number> = new Set(EXTRA_DATACENTER_ASNS);
 
 export const CURATED_BOT_PROVIDER_ASN_COUNT = CURATED_BOT_PROVIDER_ASNS.length;
 
@@ -77,6 +119,13 @@ export function classifyBotAsn(asn: number | null | undefined): BotAsnMatch {
     return {
       isBotInfrastructure: true,
       source: "ipverse_hosting",
+    };
+  }
+
+  if (EXTRA_DATACENTER_ASN_SET.has(asn)) {
+    return {
+      isBotInfrastructure: true,
+      source: "curated_hosting",
     };
   }
 

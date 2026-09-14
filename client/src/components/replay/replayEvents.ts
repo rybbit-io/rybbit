@@ -68,31 +68,29 @@ interface NodeIndex {
 const INTERACTIVE_TAGS = new Set(["a", "button", "input", "select", "textarea", "label", "summary", "option"]);
 const INTERACTIVE_ROLES = new Set(["button", "link", "tab", "menuitem", "checkbox", "switch", "radio", "option"]);
 
-function buildNodeIndex(events: RawEvent[]): NodeIndex {
-  const byId = new Map<number, SNode>();
-  const parent = new Map<number, number>();
+function createNodeIndex(): NodeIndex {
+  return { byId: new Map(), parent: new Map() };
+}
 
-  const walk = (node: SNode | undefined, parentId: number | null) => {
-    if (!node || typeof node.id !== "number") return;
-    byId.set(node.id, node);
-    if (parentId !== null) parent.set(node.id, parentId);
-    if (Array.isArray(node.childNodes)) {
-      for (const child of node.childNodes) walk(child, node.id);
-    }
-  };
-
-  for (const ev of events) {
-    const type = Number(ev.type);
-    if (type === 2 && ev.data?.node) {
-      walk(ev.data.node, null);
-    } else if (type === 3 && ev.data?.source === 0 && Array.isArray(ev.data?.adds)) {
-      for (const add of ev.data.adds) {
-        walk(add?.node, typeof add?.parentId === "number" ? add.parentId : null);
-      }
-    }
+function indexNode(index: NodeIndex, node: SNode | undefined, parentId: number | null): void {
+  if (!node || typeof node.id !== "number") return;
+  index.byId.set(node.id, node);
+  if (parentId !== null) index.parent.set(node.id, parentId);
+  if (Array.isArray(node.childNodes)) {
+    for (const child of node.childNodes) indexNode(index, child, node.id);
   }
+}
 
-  return { byId, parent };
+function resetNodeIndex(index: NodeIndex, root: SNode): void {
+  index.byId.clear();
+  index.parent.clear();
+  indexNode(index, root, null);
+}
+
+function indexMutationAdds(index: NodeIndex, adds: Array<{ node?: SNode; parentId?: unknown }>): void {
+  for (const add of adds) {
+    indexNode(index, add?.node, typeof add?.parentId === "number" ? add.parentId : null);
+  }
 }
 
 function truncate(value: string, max = 40): string {
@@ -223,7 +221,7 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
   if (!events || events.length === 0) return [];
 
   const first = events[0].timestamp;
-  const index = buildNodeIndex(events);
+  const index = createNodeIndex();
   const out: MeaningfulEvent[] = [];
   let metaSeen = false;
   // Track the current path so repeated Meta events for the same URL (rrweb emits
@@ -240,6 +238,13 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
     const ev = events[i];
     const type = Number(ev.type);
     const offset = ev.timestamp - first;
+
+    // A FullSnapshot is authoritative. Full page loads start a new recorder
+    // whose node ids may overlap the previous page's, so discard the old map.
+    if (type === 2 && ev.data?.node) {
+      resetNodeIndex(index, ev.data.node);
+      continue;
+    }
 
     // Meta (type 4): the first one is the session start, the rest are navigations.
     if (type === 4 && ev.data?.href) {
@@ -298,6 +303,13 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
 
     if (type !== 3) continue;
     const source = ev.data?.source;
+
+    // Keep the index in lockstep with the replay so clicks can resolve nodes
+    // inserted after the active FullSnapshot.
+    if (source === 0 && Array.isArray(ev.data?.adds)) {
+      indexMutationAdds(index, ev.data.adds);
+      continue;
+    }
 
     // Console via incremental Log (source 11).
     if (source === 11) {

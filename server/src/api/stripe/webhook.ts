@@ -13,7 +13,7 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function handleWebhook(request: FastifyRequest, reply: FastifyReply) {
   if (!webhookSecret) {
-    console.error("Stripe webhook secret is not configured.");
+    request.log.error("Stripe webhook secret is not configured");
     return reply.status(500).send({ error: "Webhook secret not configured." });
   }
 
@@ -29,7 +29,7 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
 
     event = (stripe as Stripe).webhooks.constructEvent(rawBody, sig as string, webhookSecret);
   } catch (err: any) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
+    request.log.warn({ err }, "Stripe webhook signature verification failed");
     return reply.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -37,7 +37,7 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
   switch (event.type) {
     case "checkout.session.completed":
       const session = event.data.object as Stripe.Checkout.Session;
-      console.log("Checkout session completed event received:", session.id);
+      request.log.info({ sessionId: session.id }, "Stripe checkout session completed");
 
       // If the checkout session was for a subscription
       if (session.mode === "subscription" && session.customer) {
@@ -59,21 +59,31 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
 
             // If the organization doesn't have the customer ID yet, update it
             if (existingOrg.length === 0) {
-              console.log(`Updating organization ${organizationId} with Stripe customer ID ${stripeCustomerId}`);
+              request.log.info({ organizationId, stripeCustomerId }, "Linking organization to Stripe customer");
               await db
                 .update(organization)
                 .set({ stripeCustomerId: stripeCustomerId })
                 .where(eq(organization.id, organizationId));
             } else {
-              console.log(`Organization ${existingOrg[0].id} already has Stripe customer ID ${stripeCustomerId}`);
+              request.log.info(
+                { organizationId: existingOrg[0].id, stripeCustomerId },
+                "Organization already linked to Stripe customer"
+              );
             }
           } catch (dbError: any) {
-            console.error(`Database error updating organization with Stripe customer ID: ${dbError.message}`);
-            // Decide if you should still return 200 to Stripe or signal an error
+            request.log.error({ err: dbError, stripeCustomerId }, "Failed to link organization to Stripe customer");
+            // Retriable failure: the org is still not linked to its Stripe customer.
+            // Return a 5xx so Stripe retries the webhook; acking here would drop the
+            // event permanently and leave the organization unlinked forever.
+            return reply.status(500).send({ error: "Failed to link organization to Stripe customer." });
           }
         } else {
-          console.error(
-            `Missing required metadata in checkout session ${session.id}. Customer ID: ${stripeCustomerId}, Organization ID: ${organizationId}`
+          // Non-retriable: the checkout session itself lacks organizationId metadata,
+          // so a Stripe retry would deliver the exact same payload. Ack with 200 and
+          // log — retrying can never fix this.
+          request.log.warn(
+            { sessionId: session.id, stripeCustomerId, organizationId },
+            "Stripe checkout session is missing required metadata"
           );
         }
       }
@@ -82,6 +92,8 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
     // Subscription changes made outside updateSubscription (e.g. via the Stripe billing
     // portal) only reach us through these events — drop the cached lookup so the change
     // is reflected on the next read instead of waiting out the full TTL.
+    // Note: invalidateStripeSubscriptionCache is a synchronous in-process Map delete —
+    // it cannot fail, so there is no swallowed-error path here to convert to a 5xx.
     case "customer.subscription.updated":
     case "customer.subscription.deleted":
       const changedSubscription = event.data.object as Stripe.Subscription;
@@ -91,7 +103,7 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
     // ... handle other event types as needed
 
     default:
-      console.log(`Unhandled event type ${event.type}`);
+      request.log.debug({ eventType: event.type }, "Ignoring unhandled Stripe webhook event");
   }
 
   // Return a 200 response to acknowledge receipt of the event

@@ -1,72 +1,62 @@
 ---
 title: Localhost tracking
-description: Track analytics during development using API keys
+description: How Rybbit handles traffic from localhost during development
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-By default, Rybbit validates tracking events come from your registered domain. During development, you can use API keys to track from localhost.
-
-<Callout type="warning">
-  **Important**: Remember to remove the API key before deploying to production!
-</Callout>
-
-## Localhost Tracking
-
-<Steps>
-<Step>
-### Generate API Key
-
-In your site dashboard: Settings → API Key tab → Generate API Key
-</Step>
-
-<Step>
-### Add to Script
+Rybbit does not restrict tracking to your registered domain — the tracking script works from `localhost` (or any other origin) out of the box. As long as your snippet has a valid `data-site-id`, events sent during local development are recorded like any other traffic.
 
 ```html
-<script 
-  defer 
-  src="https://app.rybbit.io/api/script.js" 
-  data-site-id="YOUR_SITE_ID" 
-  data-api-key="rb_your_api_key_here">
-</script>
-```
-</Step>
-
-<Step>
-### Remove for Production
-
-<Callout type="error">
-  Remove the `data-api-key` attribute before deploying!
-</Callout>
-
-```html
-<!-- Production: NO API KEY -->
-<script 
-  defer 
-  src="https://app.rybbit.io/api/script.js" 
+<script
+  defer
+  src="https://app.rybbit.io/api/script.js"
   data-site-id="YOUR_SITE_ID">
 </script>
 ```
-</Step>
-</Steps>
 
-## Best Practice: Environment Variables
+<Callout type="warning">
+  Because localhost traffic is tracked by default, the usual problem is the opposite one: development visits polluting your production analytics. Use one of the approaches below to keep your data clean.
+</Callout>
 
-Use conditional loading to automatically handle development vs production:
+## Keeping development traffic out of production data
+
+### Option 1: Use a separate development site
+
+Create a second site in your Rybbit dashboard (e.g. "My App (dev)") and use its site ID during development. Your production site's data stays untouched, and you can still verify events end-to-end.
 
 ```jsx
 // Next.js example
 export function Analytics() {
-  const isDev = process.env.NODE_ENV === 'development';
-  
+  const siteId =
+    process.env.NODE_ENV === 'development'
+      ? process.env.NEXT_PUBLIC_RYBBIT_DEV_SITE_ID
+      : process.env.NEXT_PUBLIC_RYBBIT_SITE_ID;
+
+  return (
+    <script
+      defer
+      src="https://app.rybbit.io/api/script.js"
+      data-site-id={siteId}
+    />
+  );
+}
+```
+
+### Option 2: Only load the script in production
+
+If you don't need analytics while developing, skip loading the script entirely outside production:
+
+```jsx
+// Next.js example
+export function Analytics() {
+  if (process.env.NODE_ENV !== 'production') return null;
+
   return (
     <script
       defer
       src="https://app.rybbit.io/api/script.js"
       data-site-id={process.env.NEXT_PUBLIC_RYBBIT_SITE_ID}
-      {...(isDev && { 'data-api-key': process.env.NEXT_PUBLIC_RYBBIT_API_KEY })}
     />
   );
 }
@@ -74,32 +64,24 @@ export function Analytics() {
 
 ```javascript
 // Vanilla JS example
-const script = document.createElement('script');
-script.defer = true;
-script.src = 'https://app.rybbit.io/api/script.js';
-script.setAttribute('data-site-id', 'YOUR_SITE_ID');
-
-// Only add API key in development
-if (process.env.NODE_ENV === 'development') {
-  script.setAttribute('data-api-key', process.env.RYBBIT_API_KEY);
+if (process.env.NODE_ENV === 'production') {
+  const script = document.createElement('script');
+  script.defer = true;
+  script.src = 'https://app.rybbit.io/api/script.js';
+  script.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  document.head.appendChild(script);
 }
-
-document.head.appendChild(script);
 ```
+
+### Option 3: Filter the traffic instead
+
+If you want the script loaded everywhere but excluded from your stats, use your site's exclusion settings — see [Filtering Traffic](/docs/filter-traffic) and [Hiding Your Own Traffic](/docs/hiding-own-traffic).
 
 ## Troubleshooting
 
-**Events not tracking?**
-- Verify API key starts with `rb_` and is 35 characters
-- Check browser console for errors
-- Confirm API key hasn't been revoked
+**Events not showing up from localhost?**
 
-**Accidentally deployed with API key?**
-<Steps>
-<Step>
-### Immediate fix
-1. Revoke the API key in dashboard
-2. Deploy without the API key
-3. Generate new key for development
-</Step>
-</Steps>
+- Confirm `data-site-id` matches the site you're looking at in the dashboard
+- Check the browser console for errors and the Network tab for `POST` requests to `/api/track`
+- Disable ad blockers or privacy extensions — they commonly block analytics scripts on any origin, including localhost
+- Make sure the page isn't excluded by your site's IP, path, or user-agent exclusion rules

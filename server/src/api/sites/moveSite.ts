@@ -1,11 +1,13 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
-import { member, organization, sites } from "../../db/postgres/schema.js";
+import { organization, sites } from "../../db/postgres/schema.js";
+import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
-import { applySiteMove } from "./applySiteMove.js";
+import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
+import { applySiteMove, invalidateSiteMoveAccess } from "./applySiteMove.js";
 
 const moveSiteSchema = z.object({
   organizationId: z.string().min(1),
@@ -49,7 +51,20 @@ export async function moveSite(
       return reply.status(400).send({ error: "Site is already in this organization" });
     }
 
-    // Target organization must exist.
+    // Caller must be an admin/owner of the target organization. This runs BEFORE the
+    // org-existence check so a caller without target-org access gets the same 403
+    // whether or not the org exists — no org-ID existence oracle.
+    const targetMembership = await getOrgMembership(userId, targetOrganizationId);
+    if (!targetMembership) {
+      return reply.status(403).send({ error: "You are not a member of the target organization" });
+    }
+    if (!isOrgAdmin(targetMembership)) {
+      return reply.status(403).send({ error: "You must be an admin or owner of the target organization" });
+    }
+
+    // Target organization must exist. Only reachable by target-org admins/owners
+    // (a membership row for a nonexistent org shouldn't exist, but guard against
+    // stale rows) so the 404 can't be used to probe org IDs.
     const targetOrg = await db.query.organization.findFirst({
       where: eq(organization.id, targetOrganizationId),
     });
@@ -57,41 +72,33 @@ export async function moveSite(
       return reply.status(404).send({ error: "Target organization not found" });
     }
 
-    // Caller must be an admin/owner of the target organization.
-    const targetMembership = await db.query.member.findFirst({
-      where: and(eq(member.userId, userId), eq(member.organizationId, targetOrganizationId)),
-    });
-    if (!targetMembership) {
-      return reply.status(403).send({ error: "You are not a member of the target organization" });
-    }
-    if (targetMembership.role !== "admin" && targetMembership.role !== "owner") {
-      return reply.status(403).send({ error: "You must be an admin or owner of the target organization" });
-    }
-
-    // Enforce the target organization's site limit on cloud.
-    if (IS_CLOUD) {
-      const subscription = await getSubscriptionInner(targetOrganizationId);
-      const siteLimit = subscription?.siteLimit ?? null;
-      if (siteLimit !== null) {
-        const existingSites = await db
-          .select({ siteId: sites.siteId })
-          .from(sites)
-          .where(eq(sites.organizationId, targetOrganizationId));
-        if (existingSites.length >= siteLimit) {
-          return reply.status(403).send({
-            error: `The target organization has reached its limit of ${siteLimit} website${
+    const capacityError = await withOrganizationSiteLock(targetOrganizationId, async tx => {
+      // Enforce the target organization's site limit on cloud.
+      if (IS_CLOUD) {
+        const subscription = await getSubscriptionInner(targetOrganizationId);
+        const siteLimit = subscription?.siteLimit ?? null;
+        if (siteLimit !== null) {
+          const existingSites = await tx
+            .select({ siteId: sites.siteId })
+            .from(sites)
+            .where(eq(sites.organizationId, targetOrganizationId));
+          if (existingSites.length >= siteLimit) {
+            return `The target organization has reached its limit of ${siteLimit} website${
               siteLimit === 1 ? "" : "s"
-            }. Please upgrade it to add more.`,
-          });
+            }. Please upgrade it to add more.`;
+          }
         }
       }
-    }
 
-    await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId);
+      await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId, tx);
+      return null;
+    });
 
+    if (capacityError) return reply.status(403).send({ error: capacityError });
+    await invalidateSiteMoveAccess(sourceOrganizationId, targetOrganizationId);
     return reply.status(200).send({ success: true, organizationId: targetOrganizationId });
   } catch (error) {
-    console.error("Error moving site:", error);
+    request.log.error({ err: error }, "Error moving site");
     return reply.status(500).send({ error: "Failed to move site" });
   }
 }

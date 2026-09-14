@@ -18,7 +18,7 @@ Shared context: they open Rybbit to answer a specific question (what's trending,
 
 ## Product Purpose
 
-Rybbit is an open-source, privacy-friendly, cookieless web and product analytics platform: the modern alternative to Google Analytics. It covers the full analytics surface (sessions, users, pageviews, bounce rate, funnels, journeys, retention, goals, custom events, session replay, error tracking, uptime, and 3-level location maps) while staying fast to set up and intuitive to read.
+Rybbit is an open-source, privacy-friendly, cookieless web and product analytics platform: the modern alternative to Google Analytics. It covers the full analytics surface (sessions, users, pageviews, bounce rate, funnels, journeys, retention, goals, custom events, session replay, error tracking, and 3-level location maps) while staying fast to set up and intuitive to read.
 
 Success looks like: a user installs the script in minutes, lands on a dashboard that's immediately legible, and trusts the numbers. Depth is available (advanced filters across 15+ dimensions, custom SQL queries, replays) but never blocks the first answer. Privacy is a feature, not a compromise.
 

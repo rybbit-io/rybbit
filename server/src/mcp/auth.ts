@@ -11,7 +11,10 @@ export { extractBearerToken };
 export type McpAuthenticatorDependencies = BearerResolverDeps;
 
 export interface McpAuthContext {
-  userId: string;
+  /** Set for user API keys and OAuth tokens. */
+  userId?: string;
+  /** Set for organization-owned API keys. Exactly one of the two is set. */
+  organizationId?: string;
   /** null = unrestricted credential (legacy key / full OAuth grant). */
   scopes: ScopeStatements | null;
   /** The resolved identity, so the endpoint can register a proxy handoff. */
@@ -21,7 +24,9 @@ export interface McpAuthContext {
 export class McpAuthenticationError extends Error {
   constructor(
     message: string,
-    public readonly statusCode: 401 | 429 | 503
+    public readonly statusCode: 401 | 429 | 503,
+    /** Seconds to wait before retrying; drives Retry-After on 429/503. */
+    public readonly retryAfterSeconds?: number
   ) {
     super(message);
     this.name = "McpAuthenticationError";
@@ -37,7 +42,16 @@ const defaultDependencies: McpAuthenticatorDependencies = {
   },
   getOAuthSession: async bearerToken => {
     const { auth } = await import("../lib/auth.js");
-    return auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${bearerToken}` }) });
+    return auth.api.verifyRybbitOAuthToken({ body: { token: bearerToken } });
+  },
+  consumeRateLimit: async identity => {
+    const { IS_CLOUD } = await import("../lib/const.js");
+    // Self-hosted is not metered, and the auth path must not depend on Redis.
+    if (!IS_CLOUD) {
+      return null;
+    }
+    const { consumeRateLimitForIdentity } = await import("../lib/apiRateLimitPolicy.js");
+    return consumeRateLimitForIdentity(identity);
   },
 };
 
@@ -54,7 +68,7 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
     const bearerToken = extractBearerToken(request.headers.authorization);
     if (!bearerToken) {
       throw new McpAuthenticationError(
-        "Unauthorized: send a Rybbit API key as 'Authorization: Bearer <key>' (Settings > Account > API Keys), or connect with an OAuth-capable MCP client.",
+        "Unauthorized: send a Rybbit API key as 'Authorization: Bearer <key>' (Settings > Account > Personal API Keys), or connect with an OAuth-capable MCP client.",
         401
       );
     }
@@ -62,9 +76,25 @@ export function createMcpAuthenticator(dependencies: McpAuthenticatorDependencie
     const identity = await resolveBearerIdentity(bearerToken, dependencies);
     switch (identity.status) {
       case "valid":
-        return { userId: identity.userId!, scopes: identity.statements, identity };
-      case "rate_limited":
-        throw new McpAuthenticationError("API key rate limit exceeded", 429);
+        return {
+          userId: identity.userId,
+          organizationId: identity.organizationId,
+          scopes: identity.statements,
+          identity,
+        };
+      case "rate_limited": {
+        const limit = identity.rateLimit;
+        // A daily-quota rejection is not retriable for hours; telling a client
+        // to come back in 60s would just have it hammer a closed door.
+        const detail = limit?.scope
+          ? ` (${limit.scope} limit${limit.scope === "daily" ? ` of ${limit.dailyLimit}/day` : ""})`
+          : "";
+        throw new McpAuthenticationError(
+          `API key rate limit exceeded${detail}`,
+          429,
+          limit?.retryAfterSeconds
+        );
+      }
       case "verify_error":
         throw new McpAuthenticationError("Rybbit could not verify the API key", 503);
       default:

@@ -18,7 +18,7 @@ If your client supports the MCP authorization flow — Claude Code, Codex, Claud
 ### 1. Create an API key
 
 1. Open **Settings → Account** in Rybbit.
-2. Create a key in the **API Keys** section.
+2. Create a key in the **Personal API Keys** section.
 3. Copy it immediately. Rybbit only shows a new key once.
 
 A key created without permissions can do everything its user can do. To hand an agent a narrower credential, create the key with scoped permissions (`POST /api/user/api-keys` with a `permissions` object, e.g. `{"analytics": ["read"], "goals": ["read", "write"]}`): the MCP tool list and every API call are then limited to those `resource:action` scopes. `write` implies `read` on the same resource, and scopes never elevate — org admin/owner requirements still apply. Deleting the key revokes the connection.
@@ -130,6 +130,9 @@ Any other MCP client that supports Streamable HTTP works with the generic config
 | `get_web_vitals`          | Core Web Vitals percentiles (LCP, CLS, INP, FCP, TTFB)                                  |
 | `get_retention`           | User retention cohort table                                                             |
 | `get_journeys`            | Most common page-to-page navigation paths                                               |
+| `get_annotations`         | Notes pinned to dates on the traffic chart (launches, deploys, campaigns, outages)      |
+| `list_segments`           | Saved segments: named, reusable filter sets for a site or the whole organization        |
+| `apply_segment`           | Overview KPIs for visitors matching a saved segment, with its filters for reuse         |
 
 ### Sites
 
@@ -186,7 +189,7 @@ Any other MCP client that supports Streamable HTTP works with the generic config
 | `get_query_schema` | The ClickHouse schema and rules for `run_query`                               |
 | `run_query`        | Read-only ClickHouse SQL against the site-scoped `scoped_events` table        |
 
-Analytics tools accept optional time inputs (`start_date`/`end_date` with an IANA `time_zone`, or `past_minutes`) and the same filters as the dashboard. Omitting time inputs queries all time.
+Analytics tools accept optional time inputs (`start_date`/`end_date` with an IANA `time_zone`, or `past_minutes`) and the same filters as the dashboard. Omitting time inputs queries all time; an unrecognized `time_zone` is rejected before the call is made. `get_sessions`, `get_events`, and `get_users` accept an optional `fields` list to return only the named row columns, which keeps large result sets small.
 
 ## Permissions and roles
 

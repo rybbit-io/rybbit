@@ -1,0 +1,61 @@
+---
+title: Statamic
+description: Add Rybbit analytics to your Statamic site
+category: cms
+icon: SiStatamic
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Statamic wraps every template in a layout, and a fresh install uses `resources/views/layout.antlers.html` by default. The snippet goes in that layout's `<head>`, so it loads on every page without touching individual templates.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Statamic
+
+1. Open `resources/views/layout.antlers.html`.
+2. Add the tag before `</head>`:
+
+```html title="resources/views/layout.antlers.html"
+<!doctype html>
+<html lang="{{ site:short_locale }}">
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }} | {{ site:name }}</title>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+<body>
+    {{ template_content }}
+</body>
+</html>
+```
+
+3. Save. Templates rendered through this layout (`{{ template_content }}`) now include the script.
+
+If an entry or collection sets a different `layout` field, add the tag to that layout file too, or move it into a partial such as `resources/views/partials/rybbit.antlers.html` and `{{ partial:rybbit }}` it from each layout. If your views use Blade (`layout.blade.php`), the same tag goes in the same place.
+
+To keep the site ID out of version control, put it in `.env` as `RYBBIT_SITE_ID` and use `{{ config:services:rybbit:site_id }}` after adding a `rybbit` entry to `config/services.php`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Static caching**: with `half` or `full` static caching enabled in `config/statamic/static_caching.php`, run `php please static:clear` after editing the layout, otherwise cached pages keep the old head.
+- **Live Preview counts as visits**: the control panel's Live Preview renders your entry in an iframe at its real URL with a `token` query parameter. Editors' previews are tracked like any other visit, so check analytics from the live site rather than the control panel.
+- **Control panel is not tracked**: `/cp` uses Statamic's own views, so the snippet never runs there.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

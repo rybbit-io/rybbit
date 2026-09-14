@@ -17,10 +17,11 @@ import { useGetPageTitlesPaginated } from "@/api/analytics/hooks/useGetPageTitle
 import { PageTitleItem } from "@/api/analytics/endpoints";
 import { ErrorState } from "@/components/ErrorState";
 import { Pagination } from "@/components/pagination";
-import { useStore } from "@/lib/store";
+import { useComparisonEnabled, useStore } from "@/lib/store";
 import { formatShortDuration } from "@/lib/dateTimeUtils";
 import { cn, truncateString } from "@/lib/utils";
 import { PageSparklineChart } from "./PageSparklineChart";
+import { getPageItemFilters, getPageItemKey } from "./pageIdentity";
 
 const PAGE_SIZE = 25;
 const MAX_TITLE_LENGTH = 80;
@@ -28,6 +29,9 @@ const MAX_TITLE_LENGTH = 80;
 const columnHelper = createColumnHelper<PageTitleItem>();
 
 function ChangePercentage({ current, previous }: { current: number; previous: number }) {
+  const comparisonEnabled = useComparisonEnabled();
+  if (!comparisonEnabled) return null;
+
   if (previous === 0) {
     if (current === 0) return null;
     return <span className="text-xs text-green-400">+999%</span>;
@@ -47,11 +51,12 @@ function TrendCell({ pageItem }: { pageItem: PageTitleItem }) {
   const { site, bucket, time } = useStore();
   const [isHovering, setIsHovering] = useState(false);
   const isPastMinutesMode = time.mode === "past-minutes";
+  const pageFilters = getPageItemFilters(pageItem);
 
   const { data: regularData, isLoading: isLoadingRegular } = useGetOverviewBucketed({
     site,
     bucket,
-    dynamicFilters: [{ parameter: "page_title", value: [pageItem.value], type: "equals" }],
+    dynamicFilters: pageFilters,
     props: { enabled: !isPastMinutesMode },
   });
 
@@ -74,7 +79,7 @@ function TrendCell({ pageItem }: { pageItem: PageTitleItem }) {
       <PageSparklineChart
         data={data}
         isHovering={isHovering}
-        pageTitle={pageItem.value}
+        pageTitle={pageItem.value || pageItem.pathname}
         isLoading={isLoading}
       />
     </div>
@@ -109,13 +114,13 @@ export function PagesTable() {
     periodTime: "previous",
   });
 
-  const currentItems = currentResp?.data?.data ?? [];
-  const totalCount = currentResp?.data?.totalCount ?? 0;
+  const currentItems = currentResp?.data ?? [];
+  const totalCount = currentResp?.totalCount ?? 0;
 
-  const previousByValue = useMemo(() => {
+  const previousByKey = useMemo(() => {
     const map = new Map<string, PageTitleItem>();
-    for (const item of previousResp?.data?.data ?? []) {
-      map.set(item.value, item);
+    for (const item of previousResp?.data ?? []) {
+      map.set(getPageItemKey(item), item);
     }
     return map;
   }, [previousResp]);
@@ -136,7 +141,7 @@ export function PagesTable() {
             <div className="flex items-center gap-1.5">
               <span
                 className="text-sm font-medium truncate text-foreground"
-                title={title}
+                title={title || pathname}
               >
                 {truncateString(title || pathname, MAX_TITLE_LENGTH)}
               </span>
@@ -175,7 +180,7 @@ export function PagesTable() {
       header: t("Sessions"),
       cell: info => {
         const current = info.getValue() ?? 0;
-        const prev = previousByValue.get(info.row.original.value)?.count ?? 0;
+        const prev = previousByKey.get(getPageItemKey(info.row.original))?.count ?? 0;
         return (
           <div className="whitespace-nowrap flex items-center gap-1.5">
             <span>{current.toLocaleString()}</span>

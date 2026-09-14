@@ -94,7 +94,7 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
               {copied ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  Copied!
+                  Copied
                 </>
               ) : (
                 <>

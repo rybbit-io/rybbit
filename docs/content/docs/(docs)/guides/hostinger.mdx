@@ -1,0 +1,50 @@
+---
+title: Hostinger Website Builder
+description: Add Rybbit analytics to your Hostinger Website Builder site
+category: builders
+icon: SiHostinger
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Hostinger Website Builder has a **Custom code** integration in the website settings that adds code to every page. Script tags are placed at the end of `<body>` by default; a `data-render-head` attribute moves them into `<head>`.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Hostinger Website Builder
+
+1. Open your site in the builder and click **⋯** (More) at the top to open the website settings, then choose **Integrations**.
+2. Select **Custom code**.
+3. Paste the snippet with `data-render-head` added so it loads from `<head>`:
+
+```html
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer data-render-head></script>
+```
+
+4. Save the changes, then click **Update website** to publish. Custom code runs on the live site and in preview, not inside the editor.
+
+Without `data-render-head` the builder moves `<script>` tags to the end of `<body>`. The tracker still works there; the attribute only makes it load earlier.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **No requests to `script.js` in the editor**: expected. Integrations are injected into the published site only, so check the live URL or the preview.
+- **Snippet saved but not in the page source**: the site was not updated after saving. Click **Update website**.
+- **Site breaks after adding several snippets**: paste snippets one after another, never nested inside each other. If the page still fails, remove all custom code, update, and add the snippets back one at a time.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

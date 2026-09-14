@@ -1,19 +1,34 @@
 "use client";
 
+import { DEFAULT_COMPARISON } from "@/components/DateSelector/types";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import React, { useEffect } from "react";
-import { Time } from "../components/DateSelector/types";
-import { getDashboardTimeForRange, getStoredDashboardDefaultTime } from "./defaultTimeRange";
+import { getStoredDashboardDefaultTime } from "./defaultTimeRange";
 import { analyticsParsers } from "./parsers";
 import { getSiteRouteContext, isSyncedAnalyticsRoute } from "./siteRoute";
 import { getTimezone, useStore } from "./store";
+import { comparisonToUrlParams, timeToUrlParams, urlParamsToComparison, urlParamsToTime } from "./time";
 
 // Hook to sync store state with URL
 export const useSyncStateWithUrl = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { time, bucket, selectedStat, filters, setTime, setBucket, setSelectedStat, setFilters, site } = useStore();
+  const {
+    time,
+    bucket,
+    selectedStat,
+    filters,
+    segmentId,
+    comparison,
+    setTime,
+    setBucket,
+    setSelectedStat,
+    setFilters,
+    setSegmentId,
+    setComparison,
+    site,
+  } = useStore();
 
   const routeContext = React.useMemo(() => getSiteRouteContext(pathname), [pathname]);
   const shouldSyncUrl = isSyncedAnalyticsRoute(routeContext.route);
@@ -38,47 +53,12 @@ export const useSyncStateWithUrl = () => {
   useEffect(() => {
     if (!hydrationKey || site !== routeContext.siteId || hydratedUrlKey === hydrationKey) return;
 
-    // Deserialize time from URL
-    let timeFromUrl: Time | null = null;
+    // The comparison is restored before the period so the window it resolves
+    // to is the shared link's, not the default period's.
+    setComparison(urlParamsToComparison(urlParams) ?? DEFAULT_COMPARISON);
 
-    // Try to resolve wellKnown preset first
-    if (urlParams.wellKnown) {
-      timeFromUrl = getDashboardTimeForRange(urlParams.wellKnown, getTimezone());
-    } else if (urlParams.timeMode) {
-      // Fallback to explicit date parameters
-      if (urlParams.timeMode === "day" && urlParams.day) {
-        timeFromUrl = { mode: "day", day: urlParams.day };
-      } else if (urlParams.timeMode === "range" && urlParams.startDate && urlParams.endDate) {
-        timeFromUrl =
-          urlParams.startTime && urlParams.endTime
-            ? {
-                mode: "range",
-                startDate: urlParams.startDate,
-                endDate: urlParams.endDate,
-                startTime: urlParams.startTime,
-                endTime: urlParams.endTime,
-              }
-            : { mode: "range", startDate: urlParams.startDate, endDate: urlParams.endDate };
-      } else if (urlParams.timeMode === "week" && urlParams.week) {
-        timeFromUrl = { mode: "week", week: urlParams.week };
-      } else if (urlParams.timeMode === "month" && urlParams.month) {
-        timeFromUrl = { mode: "month", month: urlParams.month };
-      } else if (urlParams.timeMode === "year" && urlParams.year) {
-        timeFromUrl = { mode: "year", year: urlParams.year };
-      } else if (
-        urlParams.timeMode === "past-minutes" &&
-        urlParams.past_minutes_start !== null &&
-        urlParams.past_minutes_end !== null
-      ) {
-        timeFromUrl = {
-          mode: "past-minutes",
-          pastMinutesStart: urlParams.past_minutes_start,
-          pastMinutesEnd: urlParams.past_minutes_end,
-        };
-      } else if (urlParams.timeMode === "all-time") {
-        timeFromUrl = { mode: "all-time" };
-      }
-    }
+    // Deserialize time from URL
+    const timeFromUrl = urlParamsToTime(urlParams, getTimezone());
 
     if (timeFromUrl) {
       setTime(timeFromUrl, !urlParams.bucket);
@@ -98,6 +78,7 @@ export const useSyncStateWithUrl = () => {
     }
 
     setFilters(urlParams.filters ?? []);
+    setSegmentId(urlParams.segment ?? null);
 
     setHydratedUrlKey(hydrationKey);
   }, [
@@ -109,6 +90,8 @@ export const useSyncStateWithUrl = () => {
     setBucket,
     setSelectedStat,
     setFilters,
+    setSegmentId,
+    setComparison,
     urlParams,
   ]);
 
@@ -118,63 +101,30 @@ export const useSyncStateWithUrl = () => {
 
     // Build params object to update - values, not parsers
     const newParams: Record<string, any> = {
-      timeMode: time.mode,
+      ...timeToUrlParams(time),
+      ...comparisonToUrlParams(comparison),
+      // startDateTime/endDateTime are legacy params no mode writes anymore.
+      startDateTime: null,
+      endDateTime: null,
       bucket,
       stat: selectedStat,
       filters: filters.length > 0 ? filters : null,
+      segment: segmentId,
     };
-
-    // If wellKnown preset, only store that
-    if (time.wellKnown) {
-      newParams.wellKnown = time.wellKnown;
-      // Clear explicit date fields
-      newParams.day = null;
-      newParams.startDate = null;
-      newParams.endDate = null;
-      newParams.startTime = null;
-      newParams.endTime = null;
-      newParams.startDateTime = null;
-      newParams.endDateTime = null;
-      newParams.week = null;
-      newParams.month = null;
-      newParams.year = null;
-      newParams.past_minutes_start = null;
-      newParams.past_minutes_end = null;
-    } else {
-      newParams.wellKnown = null;
-      newParams.day = null;
-      newParams.startDate = null;
-      newParams.endDate = null;
-      newParams.startTime = null;
-      newParams.endTime = null;
-      newParams.startDateTime = null;
-      newParams.endDateTime = null;
-      newParams.week = null;
-      newParams.month = null;
-      newParams.year = null;
-      newParams.past_minutes_start = null;
-      newParams.past_minutes_end = null;
-      // Store explicit date fields based on mode
-      if (time.mode === "day" && "day" in time) {
-        newParams.day = time.day;
-      } else if (time.mode === "range" && "startDate" in time && "endDate" in time) {
-        newParams.startDate = time.startDate;
-        newParams.endDate = time.endDate;
-        newParams.startTime = time.startTime ?? null;
-        newParams.endTime = time.endTime ?? null;
-      } else if (time.mode === "week" && "week" in time) {
-        newParams.week = time.week;
-      } else if (time.mode === "month" && "month" in time) {
-        newParams.month = time.month;
-      } else if (time.mode === "year" && "year" in time) {
-        newParams.year = time.year;
-      } else if (time.mode === "past-minutes" && "pastMinutesStart" in time && "pastMinutesEnd" in time) {
-        newParams.past_minutes_start = time.pastMinutesStart;
-        newParams.past_minutes_end = time.pastMinutesEnd;
-      }
-    }
 
     // Note: embed params are automatically preserved by nuqs
     setUrlParams(newParams);
-  }, [time, bucket, selectedStat, filters, site, setUrlParams, hydrationKey, hydratedUrlKey, routeContext.siteId]);
+  }, [
+    time,
+    bucket,
+    selectedStat,
+    filters,
+    segmentId,
+    comparison,
+    site,
+    setUrlParams,
+    hydrationKey,
+    hydratedUrlKey,
+    routeContext.siteId,
+  ]);
 };

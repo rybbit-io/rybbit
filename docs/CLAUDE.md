@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Build: `npm run build`
 - Production: `npm start`
 - Type Check: `tsc --noEmit`
+- Lint integration guides: `npm run lint:guides` (rules in `content/partials/guides/README.md`; copy `TEMPLATE.mdx` for a new guide)
 ## Project Overview
 
 This is the documentation and marketing website for Rybbit, built with Next.js 16 and Fumadocs. The site includes:

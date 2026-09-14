@@ -1,11 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchSessionReplayEvents } from "../../endpoints";
+import { GetSessionReplayEventsResponse } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetSessionReplayEvents(siteId: number, sessionId: string) {
-  return useQuery({
-    queryKey: ["session-replay-events", siteId, sessionId],
-    queryFn: () => fetchSessionReplayEvents(siteId, sessionId),
-    enabled: !!siteId && !!sessionId,
+  return useAnalyticsQuery<GetSessionReplayEventsResponse>({
+    key: ["session-replay-events", sessionId],
+    path: `session-replay/${sessionId}`,
+    unwrap: false,
+    site: siteId,
+    useTime: false,
+    useFilters: false,
+    enabled: !!sessionId,
+    // Keyed by session: never play the previous replay's events.
+    placeholder: false,
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
 }

@@ -53,7 +53,7 @@ const Stat = ({
   const { data } = useGetOverviewBucketed({ site, bucket, lite: true });
 
   const sparklinesData =
-    data?.data
+    data
       ?.filter(d => {
         if (time.mode === "past-minutes") {
           const timestamp = new Date(d.time);
@@ -129,12 +129,12 @@ export function OverviewLite() {
 
   const { data: overviewData, isLoading } = useGetOverview({ site, lite: true });
 
-  const users = overviewData?.data?.users ?? 0;
-  const sessions = overviewData?.data?.sessions ?? 0;
-  const pageviews = overviewData?.data?.pageviews ?? 0;
-  const pagesPerSession = overviewData?.data?.pages_per_session ?? 0;
-  const bounceRate = overviewData?.data?.bounce_rate ?? 0;
-  const sessionDuration = overviewData?.data?.session_duration ?? 0;
+  const users = overviewData?.users ?? 0;
+  const sessions = overviewData?.sessions ?? 0;
+  const pageviews = overviewData?.pageviews ?? 0;
+  const pagesPerSession = overviewData?.pages_per_session ?? 0;
+  const bounceRate = overviewData?.bounce_rate ?? 0;
+  const sessionDuration = overviewData?.session_duration ?? 0;
   const totalTimeSpent = sessionDuration * sessions;
 
   return (

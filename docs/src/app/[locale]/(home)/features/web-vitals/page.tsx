@@ -87,13 +87,13 @@ export default function WebVitalsPage() {
         subtitle="Monitor Core Web Vitals from real users, not synthetic tests. LCP, FID/INP, and CLS with percentile analysis, device breakdowns, and geographic maps."
         badgeText="Web Vitals"
         demoUrl="https://demo.rybbit.com/81/performance"
-        demoCaption="Live Web Vitals demo — real Core Web Vitals data from actual users"
+        demoCaption="Live Web Vitals demo: real Core Web Vitals data from actual users"
         introParagraphs={[
           <>
-            Lighthouse gives you a score. PageSpeed Insights gives you lab data. But neither tells you how your site <strong className="text-neutral-900 dark:text-white">actually performs for real visitors</strong> on real devices, real networks, and real browsers. Rybbit&apos;s Web Vitals monitoring measures Core Web Vitals from actual user sessions — the same metrics Google uses to determine your search ranking.
+            Lighthouse gives you a score. PageSpeed Insights gives you lab data. But neither tells you how your site <strong className="text-neutral-900 dark:text-white">actually performs for real visitors</strong> on real devices, real networks, and real browsers. Rybbit&apos;s Web Vitals monitoring measures Core Web Vitals from actual user sessions: the same metrics Google uses to determine your search ranking.
           </>,
           <>
-            See your <strong className="text-neutral-900 dark:text-white">LCP, FID/INP, and CLS</strong> at the P75, P90, and P99 levels. Break them down by device type, browser, operating system, and geographic region. Spot that your mobile users in Southeast Asia have a 4-second LCP while desktop users in Europe see 1.2 seconds — then take targeted action.
+            See your <strong className="text-neutral-900 dark:text-white">LCP, FID/INP, and CLS</strong> at the P75, P90, and P99 levels. Break them down by device type, browser, operating system, and geographic region. Spot that your mobile users in Southeast Asia have a 4-second LCP while desktop users in Europe see 1.2 seconds, then fix what's actually slow.
           </>,
           <>
             Track performance <strong className="text-neutral-900 dark:text-white">over time with trend charts</strong> that make regressions instantly visible. Correlate performance changes with deployments. All data comes from real user monitoring with minimal overhead, and because it&apos;s built into Rybbit, there&apos;s no extra tool to manage or separate bill to pay.

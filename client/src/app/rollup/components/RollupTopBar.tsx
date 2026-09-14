@@ -4,7 +4,7 @@ import { Team } from "@/api/admin/endpoints/teams";
 import { DateSelector } from "@/components/DateSelector/DateSelector";
 import { TeamSelector } from "@/components/TeamSelector";
 import { Button } from "@/components/ui/button";
-import { canGoForward, goBack, goForward, useStore } from "@/lib/store";
+import { canGoBack, canGoForward, goBack, goForward, useStore } from "@/lib/store";
 
 export function RollupTopBar({
   teams,
@@ -32,7 +32,7 @@ export function RollupTopBar({
             variant="secondary"
             size="icon"
             onClick={goBack}
-            disabled={time.mode === "past-minutes"}
+            disabled={!canGoBack(time)}
             className="rounded-r-none h-8 w-8"
           >
             <ChevronLeft />

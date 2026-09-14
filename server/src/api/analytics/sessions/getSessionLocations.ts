@@ -1,38 +1,36 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
-export async function getSessionLocations(
-  req: FastifyRequest<{
-    Params: {
-      siteId: string;
-    };
-    Querystring: FilterParams<{}>;
-  }>,
-  res: FastifyReply
-) {
-  const { siteId } = req.params;
+export interface GetSessionLocationsRequest {
+  Params: {
+    siteId: string;
+  };
+  Querystring: FilterParams<{}>;
+}
 
-  const timeStatement = getTimeStatement(req.query);
-  const filterStatement = getFilterStatement(req.query.filters, Number(siteId), timeStatement);
+export const buildSessionLocationsQuery = (query: GetSessionLocationsRequest["Querystring"], siteId: number) => {
+  const timeStatement = getTimeStatement(query);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
+  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
-  const result = await clickhouse.query({
-    query: `
-WITH stuff AS (
+  return `
+WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+stuff AS (
     SELECT
         session_id,
-        any(lat) AS lat,
-        any(lon) AS lon,
-        any(city) AS city,
-        any(country) AS country
+        argMax(lat, timestamp) AS lat,
+        argMax(lon, timestamp) AS lon,
+        argMax(city, timestamp) AS city,
+        argMax(country, timestamp) AS country
     FROM
         events
+    ${filteredSessionsJoin}
     WHERE
         site_id = {site:Int32}
         ${timeStatement}
-        ${filterStatement}
     GROUP BY
         session_id
 )
@@ -48,19 +46,26 @@ GROUP BY
     lat,
     lon,
     city,
-    country`,
-    query_params: {
-      site: siteId,
-    },
-    format: "JSONEachRow",
-  });
+    country`;
+};
 
-  const data = await processResults<{
-    lat: number;
-    lon: number;
-    count: number;
-    city: string;
-  }>(result);
+export const getSessionLocations = analyticsRoute<GetSessionLocationsRequest>(
+  "session locations",
+  async (req: FastifyRequest<GetSessionLocationsRequest>, res: FastifyReply) => {
+    const { siteId } = req.params;
 
-  return res.status(200).send({ data });
-}
+    const data = await runAnalyticsQuery<{
+      lat: number;
+      lon: number;
+      count: number;
+      city: string;
+    }>({
+      query: buildSessionLocationsQuery(req.query, Number(siteId)),
+      params: {
+        site: siteId,
+      },
+    });
+
+    return res.status(200).send({ data });
+  }
+);

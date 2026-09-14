@@ -1,146 +1,88 @@
 ---
 title: Jekyll
-description: Integrate Rybbit Analytics with your Jekyll static site using layout files or includes
+description: Add Rybbit analytics to your Jekyll site
+category: static
+icon: SiJekyll
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-Integrating Rybbit Analytics with your Jekyll static site involves adding the tracking script to your site's main layout file or by creating an include file.
-
-<Steps>
-<Step>
-### Get Your Tracking Script
-
-First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
-
-```html
-<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
-</Step>
-</Steps>
-
-## Option A: Add to Default Layout
-
-The simplest way is to add the script directly to your default layout file.
+Jekyll renders every page through a layout, usually `_layouts/default.html`. Put the snippet in an include file that the layout pulls in, or paste it into the layout directly.
 
 <Steps>
 <Step>
-### Locate your main layout file
+### Get your tracking snippet
 
-In your Jekyll project, find your main layout file. This is often `_layouts/default.html`.
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add the tracking script
+### Add the snippet to Jekyll
 
-Open this file and paste the Rybbit tracking script just before the closing `</body>` tag.
+<Tabs items={["Include file", "Layout file"]}>
+<Tab value="Include file">
+1. Add your site ID to `_config.yml`. `rybbit_instance_url` is only needed if you self-host:
 
-```html
-{{ site.title }}
-{{ content }}
-<!-- Other footer content -->
+   ```yaml title="_config.yml"
+   rybbit_site_id: "YOUR_SITE_ID"
+   rybbit_instance_url: "https://app.rybbit.io"
+   ```
 
-<!-- Rybbit Analytics Script -->
-{% raw %}
-{% if jekyll.environment == "production" %}
-  <script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-{% endif %}
-{% endraw %}
+2. Create `_includes/rybbit-analytics.html` (create the `_includes/` directory if it does not exist):
 
-</body>
-</html>
+   ```html title="_includes/rybbit-analytics.html"
+   {% if jekyll.environment == "production" and site.rybbit_site_id %}
+     <script src="{{ site.rybbit_instance_url | default: 'https://app.rybbit.io' }}/api/script.js?siteId={{ site.rybbit_site_id }}" defer></script>
+   {% endif %}
+   ```
+
+   The `jekyll.environment` check keeps the script out of local `jekyll serve` builds; the `site.rybbit_site_id` check keeps it out of builds with no ID configured.
+
+3. Include it from your layout's `<head>`:
+
+   ```html title="_layouts/default.html"
+   <head>
+     ...
+     {% include rybbit-analytics.html %}
+   </head>
+   ```
+</Tab>
+<Tab value="Layout file">
+Open `_layouts/default.html` and paste the snippet inside `<head>`, wrapped in a production check so local `jekyll serve` builds are not tracked:
+
+```html title="_layouts/default.html"
+<head>
+  ...
+  {% if jekyll.environment == "production" %}
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+  {% endif %}
+</head>
 ```
+</Tab>
+</Tabs>
 
-**Explanation:**
-- `{% raw %}{% if jekyll.environment == "production" %}{% endraw %}`: This Liquid tag condition ensures the script is only included when your site is built for production (e.g., when `JEKYLL_ENV=production jekyll build`). This prevents tracking your local development views.
-- Replace `YOUR_SITE_ID` with your actual Site ID. The script source `https://app.rybbit.io/api/script.js` is for the standard cloud-hosted Rybbit instance.
-</Step>
-</Steps>
-
-## Option B: Create an Include File (Recommended)
-
-A cleaner approach is to create an include file for the script.
-
-<Steps>
-<Step>
-### Create the Include File
-
-- In your Jekyll project, navigate to the `_includes/` directory. If it doesn't exist, create it.
-- Create a new file named `rybbit-analytics.html` (or similar) inside `_includes/`.
-- Paste the following into `_includes/rybbit-analytics.html`:
-
-```html
-{% raw %}
-{% comment %} _includes/rybbit-analytics.html {% endcomment %}
-{% if jekyll.environment == "production" and site.rybbit_site_id %}
-  <script defer src="{{ site.rybbit_instance_url | default: 'https://app.rybbit.io' }}/api/script.js" data-site-id="{{ site.rybbit_site_id }}"></script>
-{% endif %}
-{% endraw %}
-```
-</Step>
-
-<Step>
-### Include in Layout
-
-- Open your main layout file (e.g., `_layouts/default.html`).
-- Just before the closing `</body>` tag, add:
-
-```html
-{{ site.title }}
-{{ content }}
-<!-- Other footer content -->
-
-{% raw %}{% include rybbit-analytics.html %}{% endraw %}
-
-</body>
-</html>
-```
-</Step>
-
-<Step>
-### Configure `_config.yml`
-
-- Open your `_config.yml` file and add your Rybbit details:
-
-```yaml
-# Rybbit Analytics Configuration
-rybbit_instance_url: "https://app.rybbit.io" # Optional, defaults in include
-rybbit_site_id: "YOUR_SITE_ID"
-```
-This method keeps your credentials in the configuration file and makes the script inclusion conditional on `rybbit_site_id` being set.
-</Step>
-</Steps>
-
-## Build and Deploy
-
-<Steps>
-<Step>
-### Build your Jekyll site
-
-Build your Jekyll site. For production, set the `JEKYLL_ENV` environment variable:
+Build for production and deploy the generated `_site/` directory:
 
 ```bash
 JEKYLL_ENV=production jekyll build
 ```
 
-Or, if you use GitHub Pages, it typically sets `jekyll.environment` to `production` automatically during its build process.
+GitHub Pages sets `jekyll.environment` to `production` during its own build, so no extra configuration is needed there.
 </Step>
 
 <Step>
-### Deploy
+### Verify installation
 
-Deploy the generated `_site/` directory to your web server.
-</Step>
-
-<Step>
-### Verify Integration
-
-- Open your live Jekyll website in a browser.
-- Navigate through a few pages.
-- Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-That's it! Rybbit Analytics is now integrated with your Jekyll site and will only track visits on your production deployment.
+## Troubleshooting
+
+- **Snippet missing from the page source**: `jekyll serve` and a plain `jekyll build` run with `jekyll.environment` set to `development`, so the production guard removes the tag. Build with `JEKYLL_ENV=production` and check that output.
+- **Config changes not applied**: Jekyll reads `_config.yml` once at startup, so restart `jekyll serve` after adding `rybbit_site_id`.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

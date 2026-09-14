@@ -218,7 +218,7 @@ const faqs = [
   {
     question: "What is a good CPM?",
     answer:
-      "A good CPM varies significantly by platform and industry. Google Display averages $2.80, Facebook Feed around $11.20, Instagram Stories $6.70, and LinkedIn $33.80. Lower CPMs indicate more efficient reach, but remember that cheaper impressions don't always mean better results—consider engagement and conversion quality too.",
+      "A good CPM varies significantly by platform and industry. Google Display averages $2.80, Facebook Feed around $11.20, Instagram Stories $6.70, and LinkedIn $33.80. Lower CPMs indicate more efficient reach, but remember that cheaper impressions don't always mean better results. Consider engagement and conversion quality too.",
   },
   {
     question: "What's the difference between CPM and CPC?",

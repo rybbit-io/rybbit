@@ -7,8 +7,8 @@ import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { RybbitTextLogo } from "../../components/RybbitLogo";
 import { SpinningGlobe } from "../../components/SpinningGlobe";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
@@ -17,7 +17,10 @@ import { useConfigs } from "../../lib/configs";
 import { IS_CLOUD } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
 
-export default function Page() {
+function LoginPage() {
+  const searchParams = useSearchParams();
+  const requestedReturn = searchParams.get("returnTo") ?? "";
+  const returnTo = /^\/\d+\/[a-f0-9]{12}\?claim=1$/i.test(requestedReturn) ? requestedReturn : "/";
   const { configs, isLoading: isLoadingConfigs } = useConfigs();
   useSetPageTitle("Login");
   const t = useExtracted();
@@ -59,7 +62,7 @@ export default function Page() {
         userStore.setState({
           user: data.user,
         });
-        router.push("/");
+        router.push(returnTo);
       }
 
       if (error) {
@@ -86,7 +89,7 @@ export default function Page() {
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
           <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">{t("Welcome back")}</h1>
           <div className="flex flex-col gap-4">
-            <SocialButtons onError={setError} />
+            <SocialButtons onError={setError} callbackURL={returnTo} />
             <form onSubmit={handleSubmit}>
               <div className="flex flex-col gap-4">
                 <AuthInput
@@ -170,5 +173,13 @@ export default function Page() {
         <SpinningGlobe />
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPage />
+    </Suspense>
   );
 }

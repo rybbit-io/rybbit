@@ -3,14 +3,19 @@ import { eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "../../db/postgres/postgres.js";
 import { user } from "../../db/postgres/schema.js";
-import { unsubscribeContact, cancelScheduledEmail } from "../../lib/email/email.js";
-import { onboardingTipsService } from "../../services/onboardingTips/onboardingTipsService.js";
+import { cancelScheduledEmail, unsubscribeContact } from "../../lib/email/email.js";
+import { verifyExpiringPayload } from "../../lib/signedToken.js";
+
+// Cancel tip emails pre-scheduled in Resend for users who signed up before the
+// lifecycle email system replaced the fixed drip. Remove once those have aged out.
+const cancelLegacyScheduledTips = async (emailIds: string[]): Promise<void> => {
+  for (const emailId of emailIds) {
+    await cancelScheduledEmail(emailId);
+  }
+};
 
 // Authenticated user unsubscribe
-export const unsubscribeMarketing = async (
-  request: FastifyRequest,
-  reply: FastifyReply
-) => {
+export const unsubscribeMarketing = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const userId = request.user?.id;
     if (!userId) {
@@ -32,7 +37,7 @@ export const unsubscribeMarketing = async (
 
     // Cancel scheduled tip emails
     const emailIds = (userData.scheduledTipEmailIds as string[]) || [];
-    await onboardingTipsService.cancelScheduledEmails(emailIds);
+    await cancelLegacyScheduledTips(emailIds);
 
     // Clear the scheduled email IDs
     await db
@@ -48,7 +53,7 @@ export const unsubscribeMarketing = async (
 
     return reply.send({ success: true, message: "Successfully unsubscribed from marketing emails" });
   } catch (error) {
-    console.error("Error unsubscribing from marketing emails:", error);
+    request.log.error({ err: error }, "Error unsubscribing from marketing emails");
     return reply.status(500).send({ error: "Failed to unsubscribe" });
   }
 };
@@ -56,13 +61,29 @@ export const unsubscribeMarketing = async (
 // One-click unsubscribe handler
 // GET: User clicks link in email - show confirmation page
 // POST: Email client's List-Unsubscribe-Post - return 200 OK
+// Unsigned links are honored only until this date: emails sent before link
+// signing existed (2026-09) carry no signature, and unsubscribe links must
+// keep working for a while. After the cutoff every link must carry a valid
+// signed (email, exp) pair, closing the unsubscribe-anyone hole for good.
+const LEGACY_UNSIGNED_CUTOFF = DateTime.fromISO("2026-12-01T00:00:00Z");
+
 export const oneClickUnsubscribeMarketing = async (
-  request: FastifyRequest<{ Querystring: { email?: string } }>,
+  request: FastifyRequest<{ Querystring: { email?: string; exp?: string; sig?: string } }>,
   reply: FastifyReply
 ) => {
   try {
     const email = request.query.email;
+    const { exp, sig } = request.query;
     const isGetRequest = request.method === "GET";
+
+    if (email) {
+      const validSignature = !!(sig && exp) && verifyExpiringPayload(`unsubscribe:${email}`, exp, sig);
+      const legacyWindowOpen = DateTime.utc() < LEGACY_UNSIGNED_CUTOFF;
+      const acceptableLegacy = !sig && !exp && legacyWindowOpen;
+      if (!validSignature && !acceptableLegacy) {
+        return reply.status(400).send({ error: "Invalid or expired unsubscribe link" });
+      }
+    }
 
     if (!email) {
       if (isGetRequest) {
@@ -90,7 +111,7 @@ export const oneClickUnsubscribeMarketing = async (
     if (userData) {
       // Cancel scheduled tip emails
       const emailIds = (userData.scheduledTipEmailIds as string[]) || [];
-      await onboardingTipsService.cancelScheduledEmails(emailIds);
+      await cancelLegacyScheduledTips(emailIds);
 
       // Clear the scheduled email IDs
       await db
@@ -121,7 +142,7 @@ export const oneClickUnsubscribeMarketing = async (
     // For POST requests (email client List-Unsubscribe), return 200 OK as per RFC 8058
     return reply.status(200).send();
   } catch (error) {
-    console.error("Error in one-click unsubscribe:", error);
+    request.log.error({ err: error }, "Error in one-click unsubscribe");
     // Still return 200 to not confuse email clients
     return reply.status(200).send();
   }

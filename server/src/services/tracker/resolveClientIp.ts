@@ -1,5 +1,5 @@
 import { FastifyRequest } from "fastify";
-import { lookupAsn } from "../../db/geolocation/asn.js";
+import { lookupAsn, type AsnLookup } from "../../db/geolocation/asn.js";
 import { getIpAddress } from "../../utils.js";
 import { isDatacenterAsn } from "./botBlocking/datacenterAsns.js";
 
@@ -79,20 +79,37 @@ const CF_WORKER_SUBREQUEST_IP = "2a06:98c0:3600::103";
  * to `true` on a null lookup instead (favouring proxied correctness over
  * direct-path anti-spoofing).
  */
-function isProxiedEdge(ip: string): boolean {
+function isProxiedEdge(ip: string, asnLookup: AsnLookup): boolean {
   if (ip.toLowerCase() === CF_WORKER_SUBREQUEST_IP) return true;
-  const asn = lookupAsn(ip);
-  return isDatacenterAsn(asn?.asn);
+  return isDatacenterAsn(asnLookup(ip)?.asn);
 }
 
-export function resolveClientIp(
-  request: FastifyRequest,
-  // Injectable for tests so branching can be exercised without the MaxMind DB.
-  proxiedEdge: (ip: string) => boolean = isProxiedEdge
-): string {
+export interface ResolveClientIpOptions {
+  /**
+   * Site-level declaration that a first-party proxy fronts this site's traffic.
+   * Skips ASN topology inference entirely: forwarded headers are trusted
+   * unconditionally, exactly like the pre-ASN `getIpAddress` precedence.
+   */
+  firstPartyProxy?: boolean;
+  /**
+   * ASN resolver to infer the topology with. Tracking ingestion passes the
+   * request-scoped one so the edge IP is looked up once for the whole request.
+   */
+  lookupAsn?: AsnLookup;
+  /** Injectable for tests so branching can be exercised without the MaxMind DB. */
+  proxiedEdge?: (ip: string) => boolean;
+}
+
+export function resolveClientIp(request: FastifyRequest, options: ResolveClientIpOptions = {}): string {
+  const asnLookup = options.lookupAsn ?? lookupAsn;
+  const proxiedEdge = options.proxiedEdge ?? (ip => isProxiedEdge(ip, asnLookup));
   const realIp = realIpHeader(request);
   const xffFirst = firstForwardedFor(request);
   const cfIp = cfConnectingIp(request);
+
+  if (options.firstPartyProxy) {
+    return realIp ?? xffFirst ?? cfIp ?? getIpAddress(request);
+  }
 
   if (cfIp) {
     if (proxiedEdge(cfIp)) {
@@ -109,4 +126,36 @@ export function resolveClientIp(
   // corroborate, so defer to plain header precedence (X-Real-IP, then
   // X-Forwarded-For, then the socket IP).
   return getIpAddress(request);
+}
+
+/**
+ * Every IP this request could plausibly belong to, resolved or not: the
+ * Cloudflare edge IP, X-Real-IP, every X-Forwarded-For hop, and the socket.
+ *
+ * For IP *exclusion* only — where over-matching is the desired failure mode
+ * (worst case, a stray event from someone sharing an IP with the site owner is
+ * dropped). Never use this for identity, geo, or anything spoofing-sensitive.
+ */
+export function collectCandidateClientIps(
+  request: FastifyRequest,
+  extra: Array<string | null | undefined> = []
+): string[] {
+  const forwardedFor = request.headers["x-forwarded-for"];
+  const forwardedEntries =
+    forwardedFor && typeof forwardedFor === "string"
+      ? forwardedFor
+          .split(",")
+          .map(ip => ip.trim())
+          .filter(Boolean)
+      : [];
+
+  const candidates = [
+    ...extra,
+    cfConnectingIp(request),
+    realIpHeader(request),
+    ...forwardedEntries,
+    request.ip,
+  ].filter((ip): ip is string => Boolean(ip));
+
+  return [...new Set(candidates)];
 }

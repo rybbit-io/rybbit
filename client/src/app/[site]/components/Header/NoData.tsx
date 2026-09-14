@@ -123,7 +123,9 @@ export function NoData() {
   const { data: siteHasData, isLoading } = useSiteHasData(site);
   const { data: siteMetadata, isLoading: isLoadingSiteMetadata } = useGetSite(site);
 
-  if (siteHasData || isLoading || isLoadingSiteMetadata) {
+  const siteId = siteMetadata?.id ?? siteMetadata?.siteId ?? (site || undefined);
+
+  if (siteHasData || isLoading || isLoadingSiteMetadata || !siteId) {
     return null;
   }
 
@@ -131,14 +133,20 @@ export function NoData() {
   const hiddenCount = PLATFORM_GUIDES.length - VISIBLE_PLATFORM_COUNT;
 
   const isMobileSite = siteMetadata?.type === "mobile";
-  const siteId = siteMetadata?.id ?? siteMetadata?.siteId;
-  const scriptUrl = `${globalThis.location.origin}/api/script.js`;
+  const scriptUrl = `${globalThis.location.origin}/api/script.js?siteId=${encodeURIComponent(siteId)}`;
 
-  const htmlSnippet = `<script\n    src="${scriptUrl}"\n    data-site-id="${siteId}"\n    defer\n></script>`;
+  const htmlSnippet = `<script\n    src="${scriptUrl}"\n    defer\n></script>`;
 
-  const jsSnippet = `(function () {\n  var el = document.createElement("script");\n  el.src = "${scriptUrl}";\n  el.setAttribute("data-site-id", "${siteId}");\n  document.head.appendChild(el);\n})();`;
+  const jsSnippet = `<script>
+  (function() {
+    var el = document.createElement("script");
+    el.src = "${scriptUrl}";
+    el.defer = true;
+    document.head.appendChild(el);
+  })();
+</script>`;
 
-  const aiPrompt = `Install Rybbit analytics on this website.\n\nAdd this script tag to the <head> of every page, using the root layout or base template if there is one:\n\n<script src="${scriptUrl}" data-site-id="${siteId}" defer></script>\n`;
+  const aiPrompt = `Install Rybbit analytics on this website.\n\nAdd this script tag to the <head> of every page, using the root layout or base template if there is one:\n\n<script src="${scriptUrl}" defer></script>\n`;
 
   const rnInstallSnippet = "npm install @rybbit/react-native @react-native-async-storage/async-storage";
 
@@ -218,9 +226,9 @@ await rybbit.init({
                   {showJsFallback && (
                     <div className="mt-2 flex flex-col gap-2">
                       <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                        {t("Run this in any JavaScript that loads on every page:")}
+                        {t("Paste this into the {headTag} of your website:", { headTag: "<head>" })}
                       </p>
-                      <CodeSnippet language="javascript" code={jsSnippet} className="text-xs" />
+                      <CodeSnippet language="HTML" code={jsSnippet} className="text-xs" />
                     </div>
                   )}
                 </div>

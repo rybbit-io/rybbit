@@ -39,7 +39,8 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Time bucket size for grouping data',
       type: 'TimeBucket',
       typeDescription: '"minute" | "five_minutes" | "ten_minutes" | "fifteen_minutes" | "hour" | "day" | "week" | "month" | "year"',
-      required: true,
+      required: false,
+      default: 'hour',
     },
   }}
 />
@@ -62,7 +63,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     time: {
       description: 'Start of the time bucket',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'Datetime string, "YYYY-MM-DD HH:MM:SS"',
     },
     sessions: {
       description: 'Number of sessions in this bucket',
@@ -216,7 +217,7 @@ var data = await response.Content.ReadAsStringAsync();
 {
   "data": [
     {
-      "time": "2024-01-01T00:00:00.000Z",
+      "time": "2024-01-01 00:00:00",
       "sessions": 1250,
       "pageviews": 3890,
       "users": 1100,
@@ -225,7 +226,7 @@ var data = await response.Content.ReadAsStringAsync();
       "session_duration": 165.2
     },
     {
-      "time": "2024-01-02T00:00:00.000Z",
+      "time": "2024-01-02 00:00:00",
       "sessions": 1420,
       "pageviews": 4520,
       "users": 1280,
@@ -234,7 +235,7 @@ var data = await response.Content.ReadAsStringAsync();
       "session_duration": 178.4
     },
     {
-      "time": "2024-01-03T00:00:00.000Z",
+      "time": "2024-01-03 00:00:00",
       "sessions": 1380,
       "pageviews": 4210,
       "users": 1190,

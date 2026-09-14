@@ -1,4 +1,4 @@
 {
   "title": "API Keys",
-  "pages": ["create", "list", "update", "delete"]
+  "pages": ["create", "create-org", "list", "update", "delete"]
 }

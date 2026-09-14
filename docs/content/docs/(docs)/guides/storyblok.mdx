@@ -1,0 +1,64 @@
+---
+title: Storyblok
+description: Add Rybbit analytics to your Storyblok site
+category: cms
+icon: SiStoryblok
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Storyblok is a headless CMS: it stores content and delivers it through its APIs, while your frontend renders the pages. The tracking snippet therefore goes into the frontend's root layout, not into Storyblok.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Storyblok
+
+<Callout type="info">
+Storyblok has no template or head setting to paste into. Add the snippet to the `<head>` of the frontend application that fetches content from Storyblok.
+</Callout>
+
+<Tabs items={["Next.js", "Nuxt", "Other frontends"]}>
+<Tab>
+Add the snippet with `next/script` in your root layout so it loads on every route. Follow the [Next.js guide](/docs/guides/react/next-js).
+</Tab>
+<Tab>
+Add the snippet under `app.head.script` in `nuxt.config.ts`. Follow the [Nuxt guide](/docs/guides/vue/nuxt).
+</Tab>
+<Tab>
+- [Astro](/docs/guides/astro)
+- [SvelteKit](/docs/guides/svelte/sveltekit)
+- [Remix](/docs/guides/react/remix)
+- [Gatsby](/docs/guides/react/gatsby)
+- [Vite + React](/docs/guides/react/vite-cra)
+- [Vite + Vue](/docs/guides/vue/vite)
+- [Angular](/docs/guides/angular)
+</Tab>
+</Tabs>
+
+The script tracks client-side route changes automatically, so navigation between stories in any of these frameworks is counted without extra code.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Visual Editor previews count as visits**: the Visual Editor loads your frontend in an iframe at the **Preview URL** set under **Settings > Visual Editor**, appending `_storyblok` and `_storyblok_tk[...]` query parameters. Editors' preview sessions are tracked like real visitors. Point the Preview URL at a separate preview deployment registered as its own site in Rybbit, or leave the tag out of builds that use the preview token.
+- **Preview parameters in tracked URLs**: if the same deployment serves both the live site and the Visual Editor, the `_storyblok` parameters show up in tracked page URLs. Add `data-track-query="false"` to the script tag to drop query strings.
+- **The Storyblok app is not tracked**: the snippet only runs in your frontend, so time spent in `app.storyblok.com` never appears in Rybbit.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

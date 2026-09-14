@@ -1,5 +1,6 @@
 import cluster from "node:cluster";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { toNodeHandler } from "better-auth/node";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
@@ -8,23 +9,37 @@ import { fileURLToPath } from "url";
 import {
   adminMoveSite,
   collectTelemetry,
+  deleteAdminOrganizationMember,
+  getAdminOrganizationMember,
+  getAdminOrganizationOptions,
   getAdminOrganizations,
+  getAdminSubscriptionPlans,
   getAdminServiceEventCount,
   getAdminSites,
   getClickhouseStats,
   getClickhouseQueryLog,
+  updateAdminOrganizationMember,
+  updateAdminSubscriptionOverride,
 } from "./api/admin/index.js";
 import {
+  createAnnotation,
   createDashboard,
+  createSegment,
   createFunnel,
   createGoal,
+  deleteAnnotation,
   deleteDashboard,
+  deleteSegment,
   deleteFunnel,
   deleteGoal,
   deleteUser,
   generatePdfReport,
+  getAnnotations,
   getDashboard,
   getDashboards,
+  getSegment,
+  getSegments,
+  getBotAiSummary,
   getBotDimension,
   getBotOverview,
   getBotTimeSeries,
@@ -72,7 +87,10 @@ import {
   identifyUser,
   runCustomQuery,
   runDashboardCardQuery,
+  updateAnnotation,
   updateDashboard,
+  updateSegment,
+  expandSegmentParam,
   updateGoal,
   updateUserTraits,
 } from "./api/analytics/index.js";
@@ -111,6 +129,8 @@ import {
 import {
   addSite,
   batchImportEvents,
+  claimSite,
+  createUnclaimedSite,
   createSiteImport,
   deleteSite,
   deleteSiteImport,
@@ -121,7 +141,10 @@ import {
   getSiteExcludedIPs,
   getSiteExcludedPaths,
   getSiteExcludedUserAgents,
+  getSiteExcludedASNs,
+  getSiteExcludedQueryParams,
   getSiteHasData,
+  checkInstall,
   getSiteImports,
   getSiteIsPublic,
   getSiteUsage,
@@ -144,9 +167,11 @@ import {
 } from "./api/stripe/index.js";
 import {
   addUserToOrganization,
+  createOrgApiKey,
   createUserApiKey,
   createUserInOrganization,
   getMyOrganizations,
+  getOrgApiUsage,
   getUserOrganizations,
   listOrganizationMembers,
   oneClickUnsubscribeMarketing,
@@ -155,6 +180,8 @@ import {
 } from "./api/user/index.js";
 import { validateHttpTimeParams } from "./api/analytics/utils/query-validation.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
+import { unclaimedSiteRouteOptions } from "./api/sites/createUnclaimedSite.js";
+import { apiRateLimitRedis } from "./db/redis/redis.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
 import {
   allowPublicSiteAccess,
@@ -167,17 +194,24 @@ import {
   resolveSiteId,
 } from "./lib/auth-middleware.js";
 import { mapHeaders } from "./lib/auth-utils.js";
+import { registerApiErrorResponses } from "./lib/api-errors.js";
 import type { ScopeAction, ScopeResource } from "./lib/scopes.js";
+import type { ScopeStatements } from "@rybbit/shared";
 import { auth } from "./lib/auth.js";
 import { mcpRoutes } from "./mcp/index.js";
 import { oauthWellKnownRoutes } from "./mcp/wellKnown.js";
 import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./lib/cors.js";
 import { IS_CLOUD } from "./lib/const.js";
-import { reengagementService } from "./services/reengagement/reengagementService.js";
+import { logger } from "./lib/logger/logger.js";
+import { registerRequestLogging } from "./lib/logger/requestLogging.js";
+import { identityBackfillQueue } from "./services/tracker/identityBackfillQueue.js";
+import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmailService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
+import { startSiteBaselineRefresh } from "./services/tracker/botBlocking/siteBaseline.js";
 import { usageService } from "./services/usageService.js";
+import { unclaimedSiteCleanupService } from "./services/sites/unclaimedSiteCleanupService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 import { handleAppSumoWebhook, activateAppSumoLicense } from "./api/as/index.js";
 
@@ -197,23 +231,36 @@ const validateTimeParams = async (request: FastifyRequest, reply: FastifyReply) 
 // Each scoped chain names the resource:action a BEARER credential (API key or
 // OAuth token) must be granted; unrestricted legacy credentials and cookie
 // sessions always pass. See lib/scopes.ts for the taxonomy.
+//
+// validateTimeParams is on every chain rather than only the ones that currently
+// host a time-taking route: absent params always pass, and the two chains that
+// went without it were how /org-event-count and /admin/service-event-count came
+// to answer a malformed date with all-time data and a 200.
+// expandSegmentParam turns a `segment_id` query param into `filters` after the
+// access guard has run, so every analytics endpoint accepts a saved segment
+// with no per-endpoint change. It is a no-op when the param is absent.
 const publicSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [resolveSiteId, allowPublicSiteAccess({ resource, action }), validateTimeParams] as any,
+  preHandler: [
+    resolveSiteId,
+    allowPublicSiteAccess({ resource, action }),
+    validateTimeParams,
+    expandSegmentParam,
+  ] as any,
 });
 const authSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [resolveSiteId, requireSiteAccess({ resource, action }), validateTimeParams] as any,
+  preHandler: [resolveSiteId, requireSiteAccess({ resource, action }), validateTimeParams, expandSegmentParam] as any,
 });
 const adminSiteScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [resolveSiteId, requireSiteAdminAccess({ resource, action })] as any,
+  preHandler: [resolveSiteId, requireSiteAdminAccess({ resource, action }), validateTimeParams] as any,
 });
 const orgMemberScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireOrgMember({ resource, action })] as any,
+  preHandler: [requireOrgMember({ resource, action }), validateTimeParams] as any,
 });
 const orgAdminScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireOrgAdminFromParams({ resource, action })] as any,
+  preHandler: [requireOrgAdminFromParams({ resource, action }), validateTimeParams] as any,
 });
 const authOnlyScoped = (resource: ScopeResource, action: ScopeAction) => ({
-  preHandler: [requireAuth({ resource, action })] as any,
+  preHandler: [requireAuth({ resource, action }), validateTimeParams] as any,
 });
 
 // Reused scoped chains
@@ -233,8 +280,16 @@ const authAnalyticsRead = authSiteScoped("analytics", "read");
 const authReplayWrite = authSiteScoped("replay", "write");
 const authOrgRead = authOnlyScoped("org", "read");
 const adminSitesRead = adminSiteScoped("sites", "read");
+// Annotations validate their own optional start/end bounds (either may stand
+// alone), so the shared time validator is left off this chain.
+const publicAnnotationsRead = {
+  preHandler: [resolveSiteId, allowPublicSiteAccess({ resource: "annotations", action: "read" })] as any,
+};
+const authAnnotationsWrite = authSiteScoped("annotations", "write");
 const authDashboardsRead = authSiteScoped("dashboards", "read");
 const authDashboardsWrite = authSiteScoped("dashboards", "write");
+const publicSegmentsRead = publicSiteScoped("segments", "read");
+const authSegmentsWrite = authSiteScoped("segments", "write");
 const authFlagsRead = authSiteScoped("flags", "read");
 const authExperimentsRead = authSiteScoped("experiments", "read");
 const authSitesRead = authSiteScoped("sites", "read");
@@ -245,6 +300,15 @@ const adminSitesWrite = adminSiteScoped("sites", "write");
 const adminGscWrite = adminSiteScoped("gsc", "write");
 const orgAnalyticsRead = orgMemberScoped("analytics", "read");
 const orgSqlRead = orgMemberScoped("sql", "read");
+
+// User-authored SQL fans out real ClickHouse work per call (a dashboard runs
+// one query per card), and /generate spends OpenRouter credit. Cap per user.
+const customQueryRateLimit = { max: 60, timeWindow: "1 minute" };
+const generateQueryRateLimit = { max: 20, timeWindow: "1 minute" };
+const withRateLimit = <T extends { preHandler: unknown }>(opts: T, limit: { max: number; timeWindow: string }) => ({
+  ...opts,
+  config: { rateLimit: limit },
+});
 const orgOrgRead = orgMemberScoped("org", "read");
 const orgAdminSitesWrite = orgAdminScoped("sites", "write");
 const orgAdminOrgWrite = orgAdminScoped("org", "write");
@@ -252,52 +316,49 @@ const authOrgWrite = authOnlyScoped("org", "write");
 
 // Scope-exempt / non-bearer chains. "deny-scoped" rejects scoped credentials
 // on surfaces with no taxonomy resource (account settings, billing).
-const adminOnly = { preHandler: [requireAdmin] as any };
+const adminOnly = { preHandler: [requireAdmin, validateTimeParams] as any };
 const authOnlyNoScopedKeys = { preHandler: [requireAuth("deny-scoped")] as any };
+const orgAdminNoScopedKeys = { preHandler: [requireOrgAdminFromParams("deny-scoped")] as any };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const server = Fastify({
   disableRequestLogging: true,
-  logger: {
-    level: "debug",
-    transport: {
-      target: "pino-pretty",
-      level: process.env.LOG_LEVEL || "debug",
-      options: {
-        colorize: true,
-        singleLine: true,
-        translateTime: "HH:MM:ss",
-        ignore: "pid,hostname,name",
-        destination: 1, // stdout
-      },
-    },
-    serializers: {
-      req(request) {
-        return {
-          method: request.method,
-          url: request.url,
-          path: request.url,
-          parameters: request.params,
-        };
-      },
-      res(reply) {
-        return {
-          statusCode: reply.statusCode,
-        };
-      },
-    },
-  },
+  loggerInstance: logger,
   maxParamLength: 1500,
   trustProxy: true,
   bodyLimit: 10 * 1024 * 1024, // 10MB limit for session replay data
 });
 
+registerRequestLogging(server);
+registerApiErrorResponses(server);
+
 server.register(cors, {
   delegator: createCorsOptionsDelegate(),
 });
 server.addHook("onRequest", createRejectUntrustedOriginHook());
+
+// @fastify/rate-limit types FastifyContextConfig, which makes the homegrown
+// `rawBody` route flag (read by the Stripe webhook body parser) a type error
+// unless it is declared alongside.
+declare module "fastify" {
+  interface FastifyContextConfig {
+    rawBody?: boolean;
+  }
+}
+
+// Opt-in per-route rate limiting (routes declare config.rateLimit). Runs in
+// preHandler so authenticated routes can key on the user instead of the IP.
+server.register(rateLimit, {
+  global: false,
+  hook: "preHandler",
+  keyGenerator: (request: FastifyRequest) => request.user?.id ?? request.ip,
+  // Shared store so the limit holds across cluster workers; fall open if Redis
+  // is unreachable rather than blocking the request.
+  redis: apiRateLimitRedis,
+  skipOnError: true,
+});
 
 // Serve static files
 server.register(fastifyStatic, {
@@ -403,12 +464,30 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/goals", authGoalsWrite, createGoal);
   fastify.delete("/sites/:siteId/goals/:goalId", authGoalsWrite, deleteGoal);
   fastify.put("/sites/:siteId/goals/:goalId", authGoalsWrite, updateGoal);
+  // Timeline annotations. Read is public-guarded so public dashboards and
+  // private links get the annotations marked public; writes need site access.
+  fastify.get("/sites/:siteId/annotations", publicAnnotationsRead, getAnnotations);
+  fastify.post("/sites/:siteId/annotations", authAnnotationsWrite, createAnnotation);
+  fastify.put("/sites/:siteId/annotations/:annotationId", authAnnotationsWrite, updateAnnotation);
+  fastify.delete("/sites/:siteId/annotations/:annotationId", authAnnotationsWrite, deleteAnnotation);
   fastify.get("/sites/:siteId/dashboards", authDashboardsRead, getDashboards);
   fastify.get("/sites/:siteId/dashboards/:dashboardId", authDashboardsRead, getDashboard);
   fastify.post("/sites/:siteId/dashboards", authDashboardsWrite, createDashboard);
   fastify.put("/sites/:siteId/dashboards/:dashboardId", authDashboardsWrite, updateDashboard);
   fastify.delete("/sites/:siteId/dashboards/:dashboardId", authDashboardsWrite, deleteDashboard);
-  fastify.post("/sites/:siteId/dashboards/run-card", authDashboardsRead, runDashboardCardQuery);
+
+  // Saved segments. Reads allow public/private-link viewers (they only see
+  // public segments); writes need site access and are further gated per row.
+  fastify.get("/sites/:siteId/segments", publicSegmentsRead, getSegments);
+  fastify.get("/sites/:siteId/segments/:segmentId", publicSegmentsRead, getSegment);
+  fastify.post("/sites/:siteId/segments", authSegmentsWrite, createSegment);
+  fastify.put("/sites/:siteId/segments/:segmentId", authSegmentsWrite, updateSegment);
+  fastify.delete("/sites/:siteId/segments/:segmentId", authSegmentsWrite, deleteSegment);
+  fastify.post(
+    "/sites/:siteId/dashboards/run-card",
+    withRateLimit(authDashboardsRead, customQueryRateLimit),
+    runDashboardCardQuery
+  );
   fastify.get("/sites/:siteId/feature-flags", authFlagsRead, getFeatureFlags);
   fastify.post("/sites/:siteId/feature-flags", adminFlagsWrite, createFeatureFlag);
   fastify.put("/sites/:siteId/feature-flags/:flagId", adminFlagsWrite, updateFeatureFlag);
@@ -426,14 +505,23 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/events/autocapture-values", publicEventsRead, getAutocaptureValues);
   fastify.get("/sites/:siteId/events/outbound", publicEventsRead, getOutboundLinks);
   fastify.get("/org-event-count/:organizationId", orgAnalyticsRead, getOrgEventCount);
-  fastify.post("/organizations/:organizationId/analytics/query", orgSqlRead, runCustomQuery);
-  fastify.post("/organizations/:organizationId/analytics/query/generate", orgSqlRead, generateCustomQuery);
+  fastify.post(
+    "/organizations/:organizationId/analytics/query",
+    withRateLimit(orgSqlRead, customQueryRateLimit),
+    runCustomQuery
+  );
+  fastify.post(
+    "/organizations/:organizationId/analytics/query/generate",
+    withRateLimit(orgSqlRead, generateQueryRateLimit),
+    generateCustomQuery
+  );
   fastify.get("/sites/:siteId/performance/overview", publicAnalyticsRead, getPerformanceOverview);
   fastify.get("/sites/:siteId/performance/time-series", publicAnalyticsRead, getPerformanceTimeSeries);
   fastify.get("/sites/:siteId/performance/by-dimension", publicAnalyticsRead, getPerformanceByDimension);
   fastify.get("/sites/:siteId/bots/overview", publicAnalyticsRead, getBotOverview);
   fastify.get("/sites/:siteId/bots/time-series", publicAnalyticsRead, getBotTimeSeries);
   fastify.get("/sites/:siteId/bots/by-dimension", publicAnalyticsRead, getBotDimension);
+  fastify.get("/sites/:siteId/bots/ai-summary", publicAnalyticsRead, getBotAiSummary);
   fastify.get("/sites/:siteId/export/pdf", authAnalyticsRead, generatePdfReport);
 }
 
@@ -454,12 +542,15 @@ async function sitesRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/private-link-config", adminSitesWrite, getSitePrivateLinkConfig);
   fastify.post("/sites/:siteId/private-link-config", adminSitesWrite, updateSitePrivateLinkConfig);
   fastify.get("/site/tracking-config/:siteId", getTrackingConfig); // Public - used by tracking script
+  fastify.get("/site/check-install", checkInstall); // Public (HMAC-signed) - linked from lifecycle emails
   fastify.get("/sites/:siteId/embed-stats", { preHandler: [resolveSiteId] as any }, getEmbedStats); // Public - widget endpoint (handler checks site is public)
   fastify.get("/sites/:siteId/excluded-ips", authSitesRead, getSiteExcludedIPs);
   fastify.get("/sites/:siteId/excluded-countries", authSitesRead, getSiteExcludedCountries);
   fastify.get("/sites/:siteId/excluded-paths", authSitesRead, getSiteExcludedPaths);
   fastify.get("/sites/:siteId/excluded-hostnames", authSitesRead, getSiteExcludedHostnames);
   fastify.get("/sites/:siteId/excluded-user-agents", authSitesRead, getSiteExcludedUserAgents);
+  fastify.get("/sites/:siteId/excluded-asns", authSitesRead, getSiteExcludedASNs);
+  fastify.get("/sites/:siteId/excluded-query-params", authSitesRead, getSiteExcludedQueryParams);
 
   // Site Usage
   fastify.get("/sites/:siteId/usage", authSitesRead, getSiteUsage);
@@ -480,6 +571,10 @@ async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.get("/organizations", getMyOrganizations);
   fastify.get("/organizations/:organizationId/sites", orgOrgRead, getSitesFromOrg);
   fastify.post("/organizations/:organizationId/sites", orgAdminSitesWrite, addSite);
+  // Landing-page domain input: creates an owner-less site reachable only by
+  // its private link key. Public, so cap creations per IP.
+  fastify.post("/sites/unclaimed", unclaimedSiteRouteOptions, createUnclaimedSite);
+  fastify.post("/sites/:siteId/claim", { ...authOnlyScoped("sites", "write"), bodyLimit: 1024 }, claimSite);
   fastify.get("/organizations/:organizationId/members", orgOrgRead, listOrganizationMembers);
   fastify.post("/organizations/:organizationId/members", authOrgWrite, addUserToOrganization);
   fastify.post("/organizations/:organizationId/users", authOrgWrite, createUserInOrganization);
@@ -506,6 +601,8 @@ async function userRoutes(fastify: FastifyInstance) {
   fastify.get("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for link clicks
   fastify.post("/user/unsubscribe-marketing-oneclick", oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
   fastify.post("/user/api-keys", authOnlyNoScopedKeys, createUserApiKey);
+  fastify.post("/organizations/:organizationId/api-keys", orgAdminNoScopedKeys, createOrgApiKey);
+  fastify.get("/organizations/:organizationId/api-usage", orgOrgRead, getOrgApiUsage);
 }
 
 async function gscRoutes(fastify: FastifyInstance) {
@@ -525,6 +622,12 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
   fastify.get("/admin/sites", adminOnly, getAdminSites);
   fastify.put("/admin/sites/:siteId/move", adminOnly, adminMoveSite);
   fastify.get("/admin/organizations", adminOnly, getAdminOrganizations);
+  fastify.get("/admin/organization-options", adminOnly, getAdminOrganizationOptions);
+  fastify.get("/admin/subscription-plans", adminOnly, getAdminSubscriptionPlans);
+  fastify.put("/admin/organizations/:organizationId/subscription-override", adminOnly, updateAdminSubscriptionOverride);
+  fastify.get("/admin/organizations/:organizationId/members/:memberId", adminOnly, getAdminOrganizationMember);
+  fastify.patch("/admin/organizations/:organizationId/members/:memberId", adminOnly, updateAdminOrganizationMember);
+  fastify.delete("/admin/organizations/:organizationId/members/:memberId", adminOnly, deleteAdminOrganizationMember);
   fastify.get("/admin/service-event-count", adminOnly, getAdminServiceEventCount);
   fastify.post("/admin/telemetry", collectTelemetry); // Public - telemetry collection
 
@@ -575,13 +678,18 @@ const start = async () => {
       await Promise.all([initializeClickhouse(), initPostgres()]);
     }
 
+    // Every process runs this: the ClickHouse refresh is elected through Redis,
+    // and each worker mirrors the shared result for the site-flood rules.
+    startSiteBaselineRefresh();
+
     // Cron jobs should only run on the primary process (or in single-process mode)
     if (!cluster.isWorker) {
       telemetryService.startTelemetryCron();
       usageService.startUsageCheckCron();
+      unclaimedSiteCleanupService.startCleanupCron();
       if (IS_CLOUD && process.env.NODE_ENV !== "development") {
         weeklyReportService.startWeeklyReportCron();
-        reengagementService.startReengagementCron();
+        lifecycleEmailService.startLifecycleCron();
       }
     }
 
@@ -601,19 +709,6 @@ const start = async () => {
         }
       });
     }
-
-    // if (process.env.NODE_ENV === "production") {
-    //   // Initialize uptime monitoring service in the background (non-blocking)
-    //   uptimeService
-    //     .initialize()
-    //     .then(() => {
-    //       server.log.info("Uptime monitoring service initialized successfully");
-    //     })
-    //     .catch((error) => {
-    //       server.log.error("Failed to initialize uptime service:", error);
-    //       // Continue running without uptime monitoring
-    //     });
-    // }
   } catch (err) {
     server.log.error(err);
     process.exit(1);
@@ -641,13 +736,14 @@ const shutdown = async (signal: string) => {
   }, 10000); // 10 second timeout
 
   try {
+    unclaimedSiteCleanupService.stopCleanupCron();
     // Stop accepting new connections
     await server.close();
     server.log.info("Server closed");
 
-    // Shutdown uptime service
-    // await uptimeService.shutdown();
-    // server.log.info("Uptime service shut down");
+    // Identity backfills are buffered for several minutes to keep mutation
+    // submissions rare; without this, a deploy drops whatever is still pending.
+    await identityBackfillQueue.drainCompletely();
 
     // Clear the timeout since we're done
     clearTimeout(forceExitTimeout);
@@ -666,5 +762,11 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 declare module "fastify" {
   interface FastifyRequest {
     user?: any; // Or define a more specific user type
+    /** Set by the auth guards when the bearer credential is an org-owned API key. */
+    apiKeyOrganizationId?: string;
+    /** True when the request was authenticated with a bearer credential (API key or OAuth token). */
+    bearerAuth?: boolean;
+    /** Scope statements of that credential; null = unrestricted. */
+    bearerStatements?: ScopeStatements | null;
   }
 }

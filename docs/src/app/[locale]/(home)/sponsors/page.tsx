@@ -1,15 +1,8 @@
-import { BackgroundGrid } from "@/components/BackgroundGrid";
-import { TrackedButton } from "@/components/TrackedButton";
+import { InteriorPageHero } from "@/components/InteriorPageHero";
 import { createOGImageUrl } from "@/lib/metadata";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
-import { Tilt_Warp } from "next/font/google";
 import Image from "next/image";
-
-const tilt_wrap = Tilt_Warp({
-  subsets: ["latin"],
-  weight: "400",
-});
 
 export const metadata: Metadata = {
   title: "Sponsors - Rybbit Analytics",
@@ -119,41 +112,33 @@ const sponsors: Sponsor[] = [
 
 export default function SponsorsPage() {
   return (
-    <div className="flex flex-col items-center justify-center overflow-x-hidden pt-16 md:pt-24">
-      <BackgroundGrid />
-      <div className="relative flex flex-col py-8">
-        <h1
-          className={cn(
-            "relative z-10 text-4xl md:text-5xl lg:text-7xl font-medium px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-neutral-900 via-neutral-700 to-neutral-500 dark:from-white dark:via-gray-100 dark:to-gray-400",
-            tilt_wrap.className
-          )}
-        >
-          Our Sponsors
-        </h1>
-        <h2 className="relative z-10 text-base md:text-xl pt-4 md:pt-6 px-4 tracking-tight max-w-4xl text-center text-neutral-600 dark:text-neutral-300 font-light">
-          Thank you to the amazing companies that support Rybbit&apos;s development.
-        </h2>
+    <div className="overflow-x-clip">
+      <InteriorPageHero
+        eyebrow="Open-source supporters"
+        title="Our Sponsors"
+        description="Thank you to the amazing companies that support Rybbit&apos;s development."
+        eventLocation="sponsors_hero"
+        primaryAction={{
+          href: "https://github.com/sponsors/goldflag",
+          label: "Become a Sponsor",
+          eventName: "sponsor_click",
+          external: true,
+        }}
+        secondaryAction={null}
+        note="30,000 visits a month"
+      />
 
-        <div className="relative z-10 flex flex-col items-center my-8 md:my-10">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 text-base md:text-lg px-4">
-            <TrackedButton
-              href="https://github.com/sponsors/goldflag"
-              eventName="sponsor_click"
-              eventProps={{ location: "hero", button_text: "Become a Sponsor" }}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer"
-            >
-              Become a Sponsor
-            </TrackedButton>
+      <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="sponsor-directory-title">
+        <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+          <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+            <div className="lg:sticky lg:top-24">
+              <h2 id="sponsor-directory-title" className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">Backed by the community</h2>
+              <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
+                These teams help fund the continued development of private, open-source analytics.
+              </p>
+            </div>
           </div>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs md:text-sm mt-4">30,000 visits a month</p>
-        </div>
-      </div>
-
-      {/* Sponsors Grid */}
-      <section className="py-12 w-full max-w-5xl mx-auto px-4 z-10">
-        <div className="bg-neutral-200/40 dark:bg-neutral-900/40 p-2 rounded-3xl border border-neutral-300 dark:border-neutral-800">
-          <div className="bg-neutral-50 dark:bg-neutral-900 backdrop-blur-sm rounded-2xl border border-neutral-300 dark:border-neutral-800 p-8">
-            <div className="flex gap-6 flex-wrap justify-start">
+          <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2">
               {sponsors.map(sponsor => {
                 const tier = getTier(sponsor.amount);
                 return (
@@ -162,22 +147,23 @@ export default function SponsorsPage() {
                     href={sponsor.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-4 hover:opacity-80 transition-opacity duration-200"
+                    className="group flex min-h-40 items-center gap-5 bg-white px-5 py-8 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:bg-neutral-950 dark:hover:bg-neutral-900/60 sm:px-8 lg:px-10"
                   >
-                    <div className="relative w-16 h-16 flex-shrink-0">
-                      <Image src={sponsor.logo} alt={sponsor.name} fill className="object-contain rounded-lg" />
+                    <div className="relative size-14 shrink-0">
+                      <Image src={sponsor.logo} alt={sponsor.name} fill sizes="56px" className="object-contain" />
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-lg font-medium text-neutral-900 dark:text-white">{sponsor.name}</span>
+                    <div className="min-w-0">
+                      <span className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-white">{sponsor.name}</span>
                       {sponsor.description && (
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400">{sponsor.description}</p>
+                        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{sponsor.description}</p>
                       )}
-                      {tier && <span className={cn("text-sm font-medium", tier.colorClass)}>{tier.name}</span>}
+                      <span className={cn("mt-2 block text-xs font-medium uppercase tracking-[0.12em]", tier?.colorClass || "text-neutral-400")}>
+                        {tier?.name || "Community"}
+                      </span>
                     </div>
                   </a>
                 );
               })}
-            </div>
           </div>
         </div>
       </section>

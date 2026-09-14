@@ -125,6 +125,41 @@ This layer is designed to catch fast crawlers, floods, and replayed tracking req
 
 </Steps>
 
+## Bot Identity
+
+Every detected bot carries the layers that caught it. Bots matched by one of Rybbit's curated user-agent patterns carry three more fields, which is what the Bots dashboard groups by:
+
+| Field | Example | Meaning |
+| --- | --- | --- |
+| `bot_name` | `GPTBot` | The name the bot publishes in its user agent |
+| `bot_operator` | `OpenAI` | Who runs it |
+| `bot_purpose` | `ai_training` | What the fetch is for |
+
+A bot matched only by a broad pattern (`crawl`, `spider`) is still filtered, but has no published identity — those rows read as **Unnamed**, which is more useful than a guess.
+
+### Purposes
+
+`bot_purpose` answers a different question from `bot_category`. Category groups bots into families; purpose says what the operator does with the page, which is the distinction that matters for AI traffic:
+
+| Purpose | What it means |
+| --- | --- |
+| `ai_training` | Collecting pages to train a model. Sends no readers back. Examples: GPTBot, ClaudeBot, CCBot, Google-Extended, Bytespider |
+| `ai_search` | Indexing pages so an assistant can cite them. Can send readers back. Examples: OAI-SearchBot, Claude-SearchBot, PerplexityBot |
+| `ai_agent` | A person asked an assistant to open the page, and it fetched it there and then. Examples: ChatGPT-User, Claude-User, Perplexity-User, Google-Agent, Claude Code |
+| `search` | Classic search engine indexing |
+| `social_preview` | Link unfurling |
+| `seo` | Backlink, rank, and site-audit crawlers |
+| `monitoring` | Uptime, synthetic, and performance checks |
+| `security` | Scanners |
+| `scripted` | HTTP libraries and CLI clients |
+| `headless` | Browser automation |
+
+Splitting the AI family in three is the point: a training crawler reading 4,000 pages and a person's assistant opening one page are both `category: ai`, but they mean opposite things for your site.
+
+<Callout>
+These fields were added in a later release. Bot events recorded before then have empty identity fields and appear as **Unnamed** / **Unclassified**; nothing is backfilled.
+</Callout>
+
 ## How Decisions Are Made
 
 Rybbit does not stop at the first matching layer. It runs every layer, records all matches, and then makes one final decision.
@@ -141,7 +176,26 @@ Because multiple layers can match the same request, per-layer bot counts can add
 
 ## Server-Side Tracking
 
-Requests sent to `/api/track` with `Authorization: Bearer <api key>` and a valid API key are treated as trusted server-side ingestion and bypass bot blocking. Use this for backend-generated events where the request is coming from your server rather than a visitor's browser.
+Requests sent to `/api/track` with `Authorization: Bearer <api key>` and a valid API key are treated as trusted server-side ingestion. Four of the five layers are skipped: the headers, the client signals, the network address, and the request rate all belong to your server, not to the visitor it is reporting, so scoring them would convict your own backend.
+
+The user-agent layer still runs, on the `user_agent` you send. Nothing changes for ordinary backend events — a request reporting a real browser's user agent is tracked normally.
+
+### Reporting crawlers that never run JavaScript
+
+Rybbit's tracker is JavaScript, so a crawler that fetches your HTML and executes nothing never reaches Rybbit at all. Most AI training crawlers work exactly that way, which is why the Bots dashboard carries a note about its own coverage.
+
+If you want to see them, report them from the edge — middleware, a worker, or a reverse proxy — forwarding the real request's `user_agent`:
+
+```json
+{
+  "site_id": "1",
+  "hostname": "example.com",
+  "pathname": "/pricing",
+  "user_agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot"
+}
+```
+
+A forwarded crawler user agent is classified and lands in your bot events with full identity, rather than in your analytics as a phantom visitor.
 
 <Callout type="warn">
 Do not expose API keys in browser JavaScript. API keys are only for server-side requests.

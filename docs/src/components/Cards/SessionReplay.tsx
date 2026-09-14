@@ -1,53 +1,58 @@
 "use client";
 
-import { Card } from "./Card";
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Volume2, Laptop, Film } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Film, Pause, Play } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { CountryFlag } from "../Country";
+import { useEffect, useState } from "react";
 import { Browser } from "../Browser";
+import { CountryFlag } from "../Country";
 import { OperatingSystem } from "../OperatingSystem";
+import { Card } from "./Card";
+import { DemoFrame } from "./DemoFrame";
+
+// Cursor waypoints in % of the mock page, so the path survives any card
+// width. Steps 2 and 4 fire a click ripple at the cursor position.
+const PATH = [
+  { x: 20, y: 14 },
+  { x: 13, y: 40 },
+  { x: 30, y: 52, click: true },
+  { x: 55, y: 72 },
+  { x: 63, y: 84, click: true },
+  { x: 26, y: 92 },
+];
+
+const STEP_MS = 1600;
+const DURATION_S = 138; // fictional 2:18 recording
+
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 export function SessionReplay() {
   const t = useExtracted();
   const [isPlaying, setIsPlaying] = useState(true);
-  const [cursorPosition, setCursorPosition] = useState({ x: 48, y: 32 });
-  const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
-  const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
+  const [step, setStep] = useState(0);
+  const [ripple, setRipple] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!isPlaying) return;
-
     const interval = setInterval(() => {
-      // Animate cursor movement
-      setCursorPosition(prev => {
-        const paths = [
-          { x: 48, y: 32 },
-          { x: 120, y: 80 },
-          { x: 40, y: 120 },
-          { x: 120, y: 120 },
-          { x: 200, y: 120 },
-          { x: 120, y: 180 },
-        ];
-        const currentIndex = paths.findIndex(p => p.x === prev.x && p.y === prev.y);
-        const nextIndex = (currentIndex + 1) % paths.length;
-
-        // Trigger click effect on product
-        if (nextIndex === 3) {
-          setClickPosition({ x: 120, y: 120 });
-          setHoveredProduct(1);
-          setTimeout(() => {
-            setClickPosition(null);
-            setHoveredProduct(null);
-          }, 600);
+      setStep(prev => {
+        const next = (prev + 1) % PATH.length;
+        const waypoint = PATH[next];
+        if (waypoint.click) {
+          setRipple({ x: waypoint.x, y: waypoint.y });
+          setTimeout(() => setRipple(null), 700);
         }
-
-        return paths[nextIndex];
+        return next;
       });
-    }, 2000);
-
+    }, STEP_MS);
     return () => clearInterval(interval);
   }, [isPlaying]);
+
+  const cursor = PATH[step];
+  const progress = step / (PATH.length - 1);
 
   return (
     <Card
@@ -55,133 +60,111 @@ export function SessionReplay() {
       description={t("Watch real user sessions to understand their behavior and identify pain points.")}
       icon={Film}
     >
-      <div className=" mt-4 transform rotate-2 translate-x-8 translate-y-8 bg-neutral-200 dark:bg-neutral-900 rounded-lg -mb-[30px] rounded-xl transition-transform duration-300 hover:scale-105 hover:rotate-3">
-        {/* Video player container */}
-        <div className="relative">
-          {/* Mock website content */}
-          <div className="relative overflow-hidden">
-            {/* Browser chrome */}
-            <div className="bg-neutral-200 dark:bg-neutral-800 h-7 flex items-center px-2 gap-2 rounded-t-lg">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-              </div>
-              <div className="flex-1 mx-3">
-                <div className="bg-neutral-100 dark:bg-neutral-700 rounded px-2 py-0.5 text-[10px] text-neutral-900 dark:text-neutral-300">
-                  https://example.com/products
-                </div>
+      <DemoFrame
+        label="replay · visitor 4f2a91"
+        right={
+          <>
+            <CountryFlag country="US" />
+            <Browser browser="Chrome" />
+            <OperatingSystem os="macOS" />
+          </>
+        }
+      >
+        {/* The recording: a light mock site regardless of theme, like a video frame */}
+        <div className="relative m-2 overflow-hidden rounded border border-neutral-200 dark:border-neutral-800">
+          <div className="flex h-6 items-center gap-1.5 border-b border-neutral-200 bg-neutral-100 px-2">
+            <span aria-hidden="true" className="size-1.5 rounded-full bg-[#ff5f57]" />
+            <span aria-hidden="true" className="size-1.5 rounded-full bg-[#febc2e]" />
+            <span aria-hidden="true" className="size-1.5 rounded-full bg-[#28c840]" />
+            <span className="ml-1 truncate rounded-sm bg-white px-1.5 font-mono text-xs leading-4 text-neutral-500">
+              acme.com/products
+            </span>
+          </div>
+
+          <div className="bg-white p-3">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="h-3.5 w-16 rounded-sm bg-neutral-800" />
+              <div className="flex gap-2">
+                <div className="h-2.5 w-10 rounded-sm bg-neutral-200" />
+                <div className="h-2.5 w-10 rounded-sm bg-neutral-200" />
+                <div className="h-2.5 w-10 rounded-sm bg-neutral-200" />
               </div>
             </div>
 
-            {/* Mock website content */}
-            <div className="p-3 bg-white">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-20 h-4 bg-neutral-300 rounded"></div>
-                <div className="flex gap-3">
-                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
-                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
-                  <div className="w-12 h-3 bg-neutral-200 rounded"></div>
-                </div>
-              </div>
+            <div className="mb-4">
+              <div className="mb-1.5 h-5 w-40 rounded-sm bg-neutral-800" />
+              <div className="mb-2 h-2.5 w-52 max-w-full rounded-sm bg-neutral-200" />
+              <div className="h-6 w-20 rounded bg-neutral-900" />
+            </div>
 
-              {/* Hero section */}
-              <div className="mb-4">
-                <div className="w-40 h-6 bg-neutral-800 rounded mb-1.5"></div>
-                <div className="w-52 h-3 bg-neutral-200 rounded"></div>
-              </div>
-
-              {/* Product grid */}
-              <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2">
+              {[0, 1, 2].map(product => (
                 <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 0 ? "shadow-lg scale-105" : ""
+                  key={product}
+                  className={`rounded bg-neutral-50 p-1.5 transition-all duration-300 motion-reduce:transition-none ${
+                    ripple && product === 1 ? "ring-1 ring-neutral-400" : ""
                   }`}
                 >
-                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
-                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
-                </div>
-                <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 1 ? "shadow-lg scale-105" : ""
-                  }`}
-                >
-                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5 relative">
-                    <div className="absolute top-0.5 left-0.5 w-6 h-2 bg-red-500 rounded"></div>
+                  <div className="mb-1.5 h-14 rounded-sm bg-neutral-200" />
+                  <div className="mb-1 h-2 rounded-sm bg-neutral-200" />
+                  <div className="flex items-center justify-between">
+                    <div className="h-2 w-8 rounded-sm bg-neutral-300" />
+                    <div className="h-4 w-4 rounded-sm bg-neutral-900" />
                   </div>
-                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
                 </div>
-                <div
-                  className={`bg-neutral-100 rounded p-1.5 transition-all duration-300 ${
-                    hoveredProduct === 2 ? "shadow-lg scale-105" : ""
-                  }`}
-                >
-                  <div className="w-full h-16 bg-neutral-300 rounded mb-1.5"></div>
-                  <div className="w-full h-2 bg-neutral-200 rounded mb-1"></div>
-                  <div className="w-12 h-2 bg-emerald-500 rounded"></div>
-                </div>
-              </div>
+              ))}
             </div>
+          </div>
 
-            {/* Mouse cursor */}
+          {/* Replayed cursor */}
+          <div
+            aria-hidden="true"
+            className="absolute size-4 -rotate-12 transition-all duration-[1200ms] ease-in-out motion-reduce:transition-none"
+            style={{ left: `${cursor.x}%`, top: `${cursor.y}%` }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" className="size-full drop-shadow-sm">
+              <path d="M5.5 3.5L20.5 12L12 14.5L9.5 22L5.5 3.5Z" fill="white" stroke="black" strokeWidth="1" />
+            </svg>
+          </div>
+
+          {ripple && (
             <div
-              className="absolute w-4 h-4 transform -rotate-12 transition-all duration-1000 ease-in-out"
-              style={{
-                left: `${cursorPosition.x}px`,
-                top: `${cursorPosition.y}px`,
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full drop-shadow-sm">
-                <path d="M5.5 3.5L20.5 12L12 14.5L9.5 22L5.5 3.5Z" fill="white" stroke="black" strokeWidth="1" />
-              </svg>
-            </div>
-
-            {/* Click ripple effect */}
-            {clickPosition && (
-              <div
-                className="absolute w-8 h-8 rounded-full border-2 border-blue-500 animate-ping"
-                style={{
-                  left: `${clickPosition.x - 16}px`,
-                  top: `${clickPosition.y - 16}px`,
-                }}
-              ></div>
-            )}
-
-            {/* Scroll indicator */}
-            {isPlaying && cursorPosition.y > 160 && (
-              <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[8px] px-2 py-1 rounded">
-                {t("Scrolling...")}
-              </div>
-            )}
-          </div>
+              aria-hidden="true"
+              className="absolute size-7 -translate-x-1/2 -translate-y-1/2 animate-ping rounded-full border-2 border-blue-500 motion-reduce:animate-none"
+              style={{ left: `${ripple.x}%`, top: `${ripple.y}%` }}
+            />
+          )}
         </div>
 
-        {/* Video controls */}
-        <div className="bg-neutral-100/50 dark:bg-neutral-800/20 backdrop-blur-sm p-2 pb-10">
-          <div className="flex items-center gap-3">
-            {/* Play/Pause button */}
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full p-1.5 transition-colors"
-            >
-              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            </button>
+        {/* Player controls */}
+        <div className="mt-auto flex h-10 shrink-0 items-center gap-3 border-t border-neutral-200 px-3 dark:border-neutral-800">
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            aria-label={isPlaying ? t("Pause replay") : t("Play replay")}
+            className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950"
+          >
+            {isPlaying ? <Pause className="size-3" /> : <Play className="size-3 translate-x-px" />}
+          </button>
 
-            {/* Progress bar */}
-            <div className="flex-1">
-              <div className="relative h-1 bg-neutral-400 dark:bg-neutral-700 rounded-full overflow-hidden">
-                <div className="absolute left-0 top-0 h-full w-1/2 bg-emerald-500 rounded-full"></div>
-              </div>
-            </div>
-
-            {/* Time display */}
-            <div className="text-[10px] text-neutral-600 dark:text-neutral-400 tabular-nums">2:34 / 5:12</div>
+          <div className="relative h-1 flex-1 rounded-full bg-neutral-200 dark:bg-neutral-800">
+            <div
+              className={`absolute inset-y-0 left-0 rounded-full bg-emerald-500 ${
+                step === 0
+                  ? "" // loop restart: snap back instantly, no reverse glide
+                  : "transition-[width] duration-[1600ms] ease-linear motion-reduce:transition-none"
+              }`}
+              style={{ width: `${progress * 100}%` }}
+            />
+            {/* Captured click events on the timeline */}
+            <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500" />
+            <span className="absolute left-[83%] top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500" />
           </div>
+
+          <span className="shrink-0 font-mono text-xs tabular-nums text-neutral-600 dark:text-neutral-400">
+            {formatTime(progress * DURATION_S)} / {formatTime(DURATION_S)}
+          </span>
         </div>
-      </div>
+      </DemoFrame>
     </Card>
   );
 }

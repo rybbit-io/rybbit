@@ -4,9 +4,9 @@ import type { Metadata } from "next";
 import { createOGImageUrl } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: "Rybbit vs Cloudflare Analytics: Full-Featured Alternative",
+  title: "Rybbit: The Full-Featured Cloudflare Analytics Alternative",
   description:
-    "Compare Rybbit and Cloudflare Web Analytics. While Cloudflare is free and basic, Rybbit offers advanced features like session replay, funnels, and custom events.",
+    "Looking for a Cloudflare Web Analytics alternative? Rybbit adds session replay, funnels, custom events, and real referrer data, with a free tier included.",
   openGraph: {
     title: "Rybbit vs Cloudflare Analytics: Basic vs Full-Featured",
     description: "Cloudflare is free but limited. Rybbit offers the full analytics experience. Compare features.",
@@ -102,6 +102,7 @@ export default function CloudflareAnalytics() {
         chooseCompetitor={cloudflareAnalyticsExtendedData.chooseCompetitor}
         rybbitPricing={cloudflareAnalyticsExtendedData.rybbitPricing}
         competitorPricing={cloudflareAnalyticsExtendedData.competitorPricing}
+        deepDive={cloudflareAnalyticsExtendedData.deepDive}
         faqItems={cloudflareAnalyticsExtendedData.faqItems}
         relatedResources={cloudflareAnalyticsExtendedData.relatedResources}
       />

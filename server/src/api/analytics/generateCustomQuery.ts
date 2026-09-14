@@ -7,7 +7,6 @@ import { EVENT_SCHEMA } from "./utils/eventSchema.js";
 
 const OPENROUTER_TEMPERATURE = 0.1;
 const OPENROUTER_MAX_TOKENS = 5000;
-const LOG_PREVIEW_LENGTH = 500;
 
 const generationMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -21,17 +20,11 @@ const requestBodySchema = z.object({
   history: z.array(generationMessageSchema).max(12).optional().default([]),
 });
 
-
 function extractSql(content: string) {
   const trimmed = content.trim();
   const fencedSql = trimmed.match(/```(?:sql)?\s*([\s\S]*?)```/i);
   const sql = fencedSql?.[1] ?? trimmed;
   return normalizeCustomQuery(sql.replace(/^sql\s*:/i, ""));
-}
-
-function truncateForLog(value: string | undefined, maxLength = LOG_PREVIEW_LENGTH) {
-  if (!value) return undefined;
-  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 }
 
 function isAbortError(error: unknown) {
@@ -139,9 +132,7 @@ ${body.data.prompt}
     currentSiteId: body.data.currentSiteId,
     accessibleSiteCount: siteIds.length,
     promptLength: body.data.prompt.length,
-    promptPreview: truncateForLog(body.data.prompt),
     currentQueryLength: currentQuery?.length ?? 0,
-    currentQueryPreview: truncateForLog(currentQuery),
     historyCount: body.data.history.length,
     historyRoles: body.data.history.map(message => message.role),
     historyContentLengths: body.data.history.map(message => message.content.length),
@@ -167,7 +158,6 @@ ${body.data.prompt}
         ...generationContext,
         openRouter,
         generatedLength: generated.length,
-        generatedPreview: truncateForLog(generated),
       },
       "OpenRouter returned custom analytics query candidate"
     );
@@ -181,7 +171,6 @@ ${body.data.prompt}
           openRouter,
           validationError,
           queryLength: query.length,
-          queryPreview: truncateForLog(query),
         },
         "Generated custom query failed validation"
       );
@@ -193,7 +182,6 @@ ${body.data.prompt}
         ...generationContext,
         openRouter,
         queryLength: query.length,
-        queryPreview: truncateForLog(query),
       },
       "Generated custom analytics query passed validation"
     );

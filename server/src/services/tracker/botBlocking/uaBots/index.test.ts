@@ -125,6 +125,76 @@ describe("classifyUA", () => {
     }
   });
 
+  it("names AI bots and splits them by purpose", () => {
+    // `category: "ai"` covers a training crawler, an answer-engine indexer and
+    // a fetch a person asked for a second ago. Only `purpose` tells them apart,
+    // and the difference is the whole reason a site owner looks at this page.
+    const cases: [string, string, string, string][] = [
+      [
+        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot",
+        "GPTBot",
+        "OpenAI",
+        "ai_training",
+      ],
+      ["Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)", "ClaudeBot", "Anthropic", "ai_training"],
+      ["CCBot/2.0 (https://commoncrawl.org/faq/)", "CCBot", "Common Crawl", "ai_training"],
+      ["Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)", "OAI-SearchBot", "OpenAI", "ai_search"],
+      ["Mozilla/5.0 (compatible; PerplexityBot/1.0)", "PerplexityBot", "Perplexity", "ai_search"],
+      ["Mozilla/5.0 (compatible; ChatGPT-User/1.0; +https://openai.com/bot)", "ChatGPT-User", "OpenAI", "ai_agent"],
+      ["Mozilla/5.0 (compatible; Claude-User/1.0)", "Claude-User", "Anthropic", "ai_agent"],
+      ["Mozilla/5.0 (compatible; Perplexity-User/1.0)", "Perplexity-User", "Perplexity", "ai_agent"],
+      ["claude-code/1.0.0", "Claude Code", "Anthropic", "ai_agent"],
+      ["Google-Agent", "Google-Agent", "Google", "ai_agent"],
+    ];
+
+    for (const [ua, name, operator, purpose] of cases) {
+      const cls = classifyUA(ua);
+      expect(cls.isBot, ua).toBe(true);
+      expect(cls.category, ua).toBe("ai");
+      expect(cls.name, ua).toBe(name);
+      expect(cls.operator, ua).toBe(operator);
+      expect(cls.purpose, ua).toBe(purpose);
+    }
+  });
+
+  it("names bots outside the AI family too", () => {
+    expect(classifyUA("Mozilla/5.0 (compatible; AhrefsBot/7.0)")).toMatchObject({
+      name: "AhrefsBot",
+      operator: "Ahrefs",
+      purpose: "seo",
+    });
+    expect(classifyUA("facebookexternalhit/1.1")).toMatchObject({
+      name: "facebookexternalhit",
+      operator: "Meta",
+      purpose: "social_preview",
+    });
+    expect(classifyUA("python-requests/2.31.0")).toMatchObject({
+      name: "python-requests",
+      operator: null,
+      purpose: "scripted",
+    });
+  });
+
+  it("leaves identity null for a bot matched only by a generic upstream pattern", () => {
+    // The vendored isbot list is intentionally un-annotated: a hit on "crawl"
+    // or "spider" is a bot without a name, and inventing one from the regex
+    // would be worse than admitting we do not know.
+    const cls = classifyUA("Mozilla/5.0 (compatible; SomeUnknownCrawler/3.1)");
+    expect(cls.isBot).toBe(true);
+    expect(cls.name).toBeNull();
+    expect(cls.operator).toBeNull();
+    expect(cls.purpose).toBeNull();
+  });
+
+  it("returns null identity for a non-bot", () => {
+    expect(classifyUA("Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120 Safari/537.36")).toMatchObject({
+      isBot: false,
+      name: null,
+      operator: null,
+      purpose: null,
+    });
+  });
+
   it("isBotUA boolean shorthand agrees with classifyUA", () => {
     expect(isBotUA("Googlebot/2.1")).toBe(true);
     expect(isBotUA("Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120 Safari/537.36")).toBe(false);

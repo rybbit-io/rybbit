@@ -26,6 +26,8 @@ services:
     image: clickhouse/clickhouse-server:26.3.17.4
     volumes:
       - clickhouse-data:/var/lib/clickhouse
+      - /etc/rybbit-backup/clickhouse-s3.xml:/etc/clickhouse-server/config.d/backup-s3.xml:ro
+      - /etc/rybbit-backup/clickhouse-backup-user.xml:/etc/clickhouse-server/users.d/backup-user.xml:ro
     configs:
       - source: clickhouse_network
         target: /etc/clickhouse-server/config.d/network.xml
@@ -40,6 +42,9 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      # Lets the backend provision the least-privilege `rybbit_query` user
+      # (custom SQL queries / dashboards) with SQL at startup.
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       interval: 3s
@@ -83,10 +88,10 @@ services:
       retries: 5
       start_period: 5s
     restart: unless-stopped
-    # Backs session tracking and the BullMQ queues. noeviction is required by
-    # BullMQ (evicting job keys corrupts queues); session keys carry a 30-minute
-    # TTL so memory stays bounded by active-user count. AOF (everysec) keeps
-    # queues durable across restarts.
+    # Backs session tracking, sticky identity, and bot-anomaly counters.
+    # noeviction keeps those keys from being dropped under memory pressure;
+    # session keys carry a 30-minute TTL so memory stays bounded by active-user
+    # count. AOF (everysec) keeps that state durable across restarts.
     command:
       - redis-server
       - --requirepass
@@ -109,6 +114,7 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      - CLICKHOUSE_QUERY_PASSWORD=${CLICKHOUSE_QUERY_PASSWORD:-${CLICKHOUSE_PASSWORD:-frog}}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB:-analytics}
@@ -129,10 +135,6 @@ services:
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - RESEND_API_KEY=${RESEND_API_KEY}
-      # Twilio SMS configuration (cloud only)
-      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
-      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
       # R2 storage for session replay (cloud only)
       - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
@@ -245,9 +247,10 @@ configs:
         <profiles>
           <default>
             <enable_json_type>1</enable_json_type>
-            <!-- 26.3+ enables async_insert by default; the backend already
-                 batches app-side, so keep inserts synchronous -->
-            <async_insert>0</async_insert>
+            <!-- Combine concurrent inserts into larger blocks inside ClickHouse.
+                 Wait for the flush so the backend still receives insert errors. -->
+            <async_insert>1</async_insert>
+            <wait_for_async_insert>1</wait_for_async_insert>
             <log_queries>1</log_queries>
             <log_query_threads>0</log_query_threads>
             <log_processors_profiles>0</log_processors_profiles>

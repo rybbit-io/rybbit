@@ -109,6 +109,12 @@ export class UmamiImportMapper {
 
   static readonly umamiEventKeyOnlySchema = deriveKeyOnlySchema(UmamiImportMapper.umamiEventSchema);
 
+  // Match case-insensitively like osMap does — raw umami exports vary in casing.
+  private static deriveOsVersion(rawOs: string): string {
+    const key = rawOs.toLowerCase();
+    return key === "windows 10" ? "10" : key === "windows 7" ? "7" : "";
+  }
+
   static transform(events: UmamiEvent[], site: number, importId: string): RybbitEvent[] {
     return events.reduce<RybbitEvent[]>((acc, event) => {
       const parsed = UmamiImportMapper.umamiEventSchema.safeParse(event);
@@ -138,7 +144,7 @@ export class UmamiImportMapper {
         browser: data.browser,
         browser_version: "",
         operating_system: data.os,
-        operating_system_version: event.os === "Windows 10" ? "10" : event.os === "Windows 7" ? "7" : "",
+        operating_system_version: UmamiImportMapper.deriveOsVersion(event.os),
         language: data.language,
         country: data.country,
         region: data.region,

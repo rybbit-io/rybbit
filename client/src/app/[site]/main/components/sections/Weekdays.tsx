@@ -25,7 +25,7 @@ export function Weekdays() {
 
   // Generate aggregated data for the heatmap
   const heatmapData = useMemo(() => {
-    if (!data?.data) return [];
+    if (!data) return [];
 
     // Initialize a 2D array for days (0-6) and hours (0-23)
     const aggregated: number[][] = Array(7)
@@ -38,7 +38,7 @@ export function Weekdays() {
       .map(() => Array(24).fill(0));
 
     // Process each data point
-    data.data.forEach(item => {
+    data.forEach(item => {
       if (!item || !item.time) return;
 
       // Parse the timestamp in the selected timezone

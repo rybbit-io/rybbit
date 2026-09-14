@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { useStore } from "../../../lib/store";
-import { buildApiParams } from "../../utils";
-import { runDashboardCard } from "../endpoints/dashboards";
+import { RunCustomQueryResponse } from "../endpoints/customQuery";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 /**
  * Executes a dashboard card's SQL against the time-aware run-card endpoint.
@@ -11,20 +10,19 @@ import { runDashboardCard } from "../endpoints/dashboards";
  * changes. Pass the (possibly unsaved) SQL directly so the card editor preview
  * can reuse the same hook.
  */
-export function useDashboardCard(
-  siteId: string | number | undefined,
-  cardId: string,
-  sql: string,
-  enabled = true
-) {
-  const time = useStore(state => state.time);
+export function useDashboardCard(siteId: string | number | undefined, cardId: string, sql: string, enabled = true) {
   const bucket = useStore(state => state.bucket);
-  const apiParams = buildApiParams(time);
 
-  return useQuery({
-    queryKey: ["dashboard-card", siteId, cardId, sql, apiParams, bucket],
-    queryFn: () => runDashboardCard(siteId!, { query: sql, bucket, ...apiParams }),
+  return useAnalyticsQuery<RunCustomQueryResponse>({
+    key: ["dashboard-card", cardId],
+    path: "dashboards/run-card",
+    unwrap: false,
+    site: siteId,
+    useFilters: false,
+    // The window is sent as camelCase JSON in the body (the server schema
+    // matches); filters aren't used by card execution.
+    body: ({ filters: _filters, ...window }) => ({ ...window, query: sql, bucket }),
     enabled: enabled && !!siteId && !!sql.trim(),
-    retry: false,
+    props: { retry: false },
   });
 }

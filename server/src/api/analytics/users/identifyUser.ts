@@ -76,14 +76,17 @@ export async function identifyUser(req: FastifyRequest<IdentifyUserRequest>, res
         set: { userId: user_id },
       });
 
-    // Fire-and-forget: the ClickHouse mutation can take a while on large sites,
-    // so don't hold the response on it. No backfill window — the operator is
-    // explicitly asserting this device's history belongs to this user.
+    // Queued, not immediate: the backfill is batched with every other identity
+    // assigned in the flush interval, so it lands within a few minutes rather
+    // than on this request. It was already fire-and-forget, so nothing in the
+    // response depended on it. No backfill window — the operator is explicitly
+    // asserting this device's history belongs to this user, and an unbounded
+    // mutation is exactly the kind worth batching.
     backfillIdentifiedUserId(siteId, anonymous_id, user_id, null);
 
     return res.send({ success: true });
   } catch (error) {
-    console.error("Error identifying user:", error);
+    req.log.error({ err: error }, "Error identifying user");
     return res.status(500).send({ error: "Failed to identify user" });
   }
 }

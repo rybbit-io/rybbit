@@ -19,7 +19,9 @@ const funnelStepResult = z
   .object({
     step_number: z.number(),
     step_name: z.string(),
-    visitors: z.number(),
+    sessions: z.number(),
+    /** Deprecated alias of `sessions`. */
+    visitors: z.number().optional(),
     conversion_rate: z.number(),
     dropoff_rate: z.number(),
   })
@@ -50,7 +52,7 @@ export function registerFunnelTools(server: McpServer, api: RybbitApiClient, gua
     {
       title: "Analyze funnel",
       description:
-        "Compute a conversion funnel over ordered steps (pages, custom events, or autocaptured interactions). Returns per-step visitors, conversion_rate, and dropoff_rate. Does not save anything; use save_funnel to persist a definition.",
+        "Compute a conversion funnel over ordered steps (pages, custom events, or autocaptured interactions). Returns per-step sessions (funnels are session-scoped), conversion_rate, and dropoff_rate. Does not save anything; use save_funnel to persist a definition.",
       inputSchema: {
         site_id: siteIdInput,
         steps: z.array(funnelStepInput).min(2).max(10).describe("Ordered funnel steps, first to last"),

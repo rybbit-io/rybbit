@@ -1,171 +1,97 @@
 ---
 title: Google Tag Manager
-description: Integrate Rybbit Analytics with your website using Google Tag Manager
+description: Add Rybbit analytics to your Google Tag Manager container
+category: tag-managers
+icon: SiGoogletagmanager
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
 
-
-Google Tag Manager (GTM) allows you to add code snippets or tracking pixels to your website with minimal code changes. This makes it an efficient way to integrate Rybbit without modifying your codebase.
-
-## How to Add Rybbit to Google Tag Manager
+Google Tag Manager loads Rybbit through a **Custom HTML** tag fired on **All Pages**, so nothing in your site's code changes. Events you already push to the `dataLayer` can be forwarded to Rybbit with a second tag.
 
 <Steps>
 <Step>
-### Retrieve Your Tracking Script
+### Get your tracking snippet
 
-Navigate to your Rybbit dashboard to obtain your code snippet.
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
 
-Normally, the script would look like:
+<Step>
+### Add the snippet to Google Tag Manager
+
+1. Open your GTM container and go to **Tags → New**.
+2. Under **Tag Configuration**, choose **Custom HTML** and paste the snippet:
 
 ```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
 ```
 
-However, GTM sanitizes script tags by removing non-standard HTML attributes like `data-site-id`. So you need to use:
+3. Under **Triggering**, choose **All Pages** (the built-in Page View trigger).
+4. Name the tag, for example `Rybbit - Loader`, and click **Save**.
+5. Click **Submit** and publish the container version.
 
-```javascript
-<script>
-  (function() {
-    var el = document.createElement("script");
-    el.src = "https://app.rybbit.io/api/script.js";
-    el.defer = true;
-    el.setAttribute("data-site-id", "YOUR_SITE_ID");
-    document.head.appendChild(el);
-  })();
-</script>
-```
+<Callout type="warn">
+GTM rebuilds Custom HTML tags before injecting them and can drop non-standard attributes. Keep the site ID in the URL (`?siteId=`) as shown; the older `data-*` attribute form is not reliable here.
+</Callout>
+
+Use **Preview** mode to confirm the tag fires on page load before publishing.
 </Step>
 
 <Step>
-### Access Your GTM Dashboard
+### Verify installation
 
-Assuming GTM is already set up, go to your GTM dashboard and select the appropriate account and container linked to your website.
-</Step>
-
-<Step>
-### Create a New Tag
-
-Click on **Add a new tag** to initiate the creation process.
-</Step>
-
-<Step>
-### Configure the Tag
-
-Under **Tag Configuration**, choose **Custom HTML** and paste your Rybbit snippet into the provided field.
-</Step>
-
-<Step>
-### Set Up Triggers
-
-Assign a trigger to determine when the tag should fire. For instance, to load Rybbit on all pages, select the **All Pages** trigger.
-</Step>
-
-<Step>
-### Save and Publish
-
-Save your changes and publish the container to make the tag active on your website.
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-## Custom Event Tracking
+## Track custom events
 
-Once Rybbit is loaded through GTM, you can track custom events using JavaScript. Since GTM already handles the script loading, you can directly call the Rybbit tracking functions.
+Once the loader tag is published, `window.rybbit` is available to your own JavaScript and to other GTM tags.
 
-### Method 1: Direct JavaScript in GTM
+#### Forward dataLayer events
 
-You can create additional Custom HTML tags in GTM to track specific events:
+If your site already pushes events like `dataLayer.push({ event: "signup" })`, one tag can forward them to Rybbit:
+
+1. Create a **Custom Event** trigger. Set the event name to a regex such as `signup|purchase|add_to_cart` (tick **Use regex matching**).
+2. Create a **Custom HTML** tag with that trigger:
 
 ```html
 <script>
-  // Track a custom event when this tag fires
-  if (typeof window.rybbit !== 'undefined') {
-    window.rybbit.event('gtm_custom_event', {
-      event_category: 'engagement',
-      event_label: 'button_click',
-      value: 1
+  if (window.rybbit) {
+    window.rybbit.event("{{Event}}", {
+      page: "{{Page Path}}",
+      referrer: "{{Referrer}}"
     });
   }
 </script>
 ```
 
-### Method 2: Track Events from Your Website Code
+`{{Event}}`, `{{Page Path}}` and `{{Referrer}}` are GTM built-in variables. Add a **Data Layer Variable** for any custom field you push (for example `plan`) and reference it the same way.
 
-Once Rybbit is loaded via GTM, you can track events directly from your website's JavaScript:
+#### Use GTM's click and form triggers
 
-```javascript
-// Example: Track button clicks
-document.addEventListener('DOMContentLoaded', function() {
-  const ctaButton = document.getElementById('cta-button');
-  if (ctaButton) {
-    ctaButton.addEventListener('click', function() {
-      if (typeof window.rybbit !== 'undefined') {
-        window.rybbit.event('cta_clicked', {
-          button_text: ctaButton.textContent,
-          page_path: window.location.pathname,
-          timestamp: new Date().toISOString()
-        });
-      }
-    });
-  }
-});
-```
-
-### Method 3: Using GTM Variables and Triggers
-
-You can leverage GTM's built-in variables and triggers to send custom events to Rybbit:
-
-1. Create a new **Custom HTML** tag
-2. Use GTM variables in your tracking code:
+The same pattern works with built-in **Click** and **Form Submission** triggers:
 
 ```html
 <script>
-  if (typeof window.rybbit !== 'undefined') {
-    window.rybbit.event('{{Event}}', {
-      page: '{{Page URL}}',
-      referrer: '{{Referrer}}',
-      click_text: '{{Click Text}}',
-      click_url: '{{Click URL}}'
+  if (window.rybbit) {
+    window.rybbit.event("cta_clicked", {
+      text: "{{Click Text}}",
+      url: "{{Click URL}}"
     });
   }
 </script>
 ```
 
-3. Set up triggers for specific interactions (e.g., form submissions, scroll depth, video plays)
+Enable the **Click Text** and **Click URL** built-in variables under **Variables → Configure**.
 
-### Common Event Examples
+## Troubleshooting
 
-```javascript
-// Form submission
-window.rybbit.event('form_submitted', {
-  form_id: 'contact-form',
-  form_name: 'Contact Us'
-});
+- **Event tag fires before Rybbit loads**: the loader script is deferred, so an event tag on the same page load may run first and hit the `if (window.rybbit)` guard. Open the event tag's **Advanced Settings → Tag Sequencing** and set the loader tag to fire before it, or trigger the event tag on **Window Loaded** instead of **Page View**.
+- **Consent mode**: if your container gates tags on consent, add the loader tag to the same consent group as your other analytics tags, otherwise it never fires.
+- **Tag shows in Preview but not live**: the container version was not published. Click **Submit** and publish.
 
-// E-commerce tracking
-window.rybbit.event('add_to_cart', {
-  product_id: '12345',
-  product_name: 'Example Product',
-  price: 29.99,
-  quantity: 1
-});
+## Next steps
 
-// Video engagement
-window.rybbit.event('video_played', {
-  video_title: 'Product Demo',
-  duration: 120,
-  percent_watched: 75
-});
-
-// Download tracking
-window.rybbit.event('file_downloaded', {
-  file_name: 'whitepaper.pdf',
-  file_type: 'pdf',
-  file_size: '2.5MB'
-});
-```
-
+<include>../../../partials/guides/next-steps.mdx</include>

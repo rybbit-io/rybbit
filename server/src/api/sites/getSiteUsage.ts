@@ -120,7 +120,7 @@ export async function getSiteUsage(request: FastifyRequest<GetSiteUsageRequest>,
 
     return reply.send(response);
   } catch (error) {
-    console.error("Error fetching site usage:", error);
+    request.log.error({ err: error }, "Error fetching site usage");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

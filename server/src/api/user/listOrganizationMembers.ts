@@ -97,7 +97,7 @@ export async function listOrganizationMembers(
       })),
     });
   } catch (error) {
-    console.error("Error listing organization members:", error);
+    request.log.error({ err: error }, "Error listing organization members");
     return reply.status(500).send({
       error: "InternalServerError",
       message: "An error occurred while listing organization members",

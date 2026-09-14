@@ -1,12 +1,25 @@
 import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
-import { processResults } from "../../api/analytics/utils/utils.js";
+import { createServiceLogger } from "../../lib/logger/logger.js";
+import { correctReplayClockSkew } from "./replayClockSkew.js";
 import { parseTrackingData } from "./trackingUtils.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { userIdService } from "../userId/userIdService.js";
 import { r2Storage } from "../storage/r2StorageService.js";
 import { siteConfig } from "../../lib/siteConfig.js";
+
+const logger = createServiceLogger("session-replay-ingest");
+
+/** What a single batch observed about its session — no history involved. */
+type BatchStats = {
+  startTime: Date;
+  endTime: Date;
+  eventCount: number;
+  compressedSizeBytes: number;
+  screenWidth: number;
+  screenHeight: number;
+};
 
 export interface RequestMetadata {
   userAgent: string;
@@ -25,7 +38,14 @@ export class SessionReplayIngestService {
     request: RecordSessionReplayRequest,
     requestMeta?: RequestMetadata
   ): Promise<void> {
-    const { userId: clientUserId, events, metadata } = request;
+    const { userId: clientUserId, events: rawEvents, metadata } = request;
+
+    // Device clocks, not ours. Correct the whole batch onto server time before
+    // anything downstream partitions or TTLs on these values.
+    const { events, skewMs } = correctReplayClockSkew(rawEvents, Date.now());
+    if (skewMs !== 0) {
+      logger.warn({ siteId, skewMs, eventCount: events.length }, "Corrected replay clock skew");
+    }
 
     // Always generate device fingerprint (anonymous user ID) server-side
     const deviceFingerprint = await userIdService.generateUserId(
@@ -121,7 +141,28 @@ export class SessionReplayIngestService {
 
     // Update or insert metadata
     if (metadata) {
-      await this.updateSessionMetadata(siteId, sessionId, userId, identifiedUserId, metadata, requestMeta);
+      // An events-free batch still carries metadata worth recording, but it has
+      // no timestamps to bound it — anchor those on server time rather than
+      // letting Math.min of nothing produce an epoch-dated row.
+      const timestamps = events.length > 0 ? events.map(event => event.timestamp) : [Date.now()];
+      const batchStats: BatchStats = {
+        startTime: new Date(Math.min(...timestamps)),
+        endTime: new Date(Math.max(...timestamps)),
+        eventCount: eventsToInsert.length,
+        compressedSizeBytes: eventsToInsert.reduce((total, event) => total + event.event_size_bytes, 0),
+        screenWidth: metadata.viewportWidth || 0,
+        screenHeight: metadata.viewportHeight || 0,
+      };
+
+      await this.updateSessionMetadata(
+        siteId,
+        sessionId,
+        userId,
+        identifiedUserId,
+        metadata,
+        batchStats,
+        requestMeta
+      );
     }
   }
 
@@ -131,42 +172,13 @@ export class SessionReplayIngestService {
     userId: string,
     identifiedUserId: string,
     metadata: any,
+    batchStats: BatchStats,
     requestMeta?: RequestMetadata
   ): Promise<void> {
-    // Get existing session info from events table
-    const sessionInfo = await clickhouse.query({
-      query: `
-        SELECT 
-          MIN(timestamp) as start_time,
-          MAX(timestamp) as end_time,
-          COUNT() as event_count,
-          SUM(event_size_bytes) as compressed_size_bytes,
-          MAX(viewport_width) as screen_width,
-          MAX(viewport_height) as screen_height
-        FROM session_replay_events
-        WHERE site_id = {siteId:UInt16} 
-          AND session_id = {sessionId:String}
-      `,
-      query_params: { siteId, sessionId },
-      format: "JSONEachRow",
-    });
-
-    type SessionInfoResult = {
-      start_time: string;
-      end_time: string | null;
-      event_count: number;
-      compressed_size_bytes: number;
-      screen_width: number | null;
-      screen_height: number | null;
-    };
-
-    const sessionResults = await processResults<SessionInfoResult>(sessionInfo);
-
-    if (!sessionResults || sessionResults.length === 0) return;
-
-    const sessionReplayData = sessionResults[0];
-
-    // Parse tracking data from request metadata
+    // Append-only. This used to read the session back first — MIN/MAX/COUNT/SUM
+    // across every row the session had ever written, on every batch — purely to
+    // recompute a cumulative row. The aggregating table does that combining at
+    // merge time, so a batch now writes only what it saw.
     let trackingData: any = {};
     if (requestMeta?.userAgent) {
       try {
@@ -181,33 +193,26 @@ export class SessionReplayIngestService {
           urlObj.search || "", // querystring from URL
           hostname,
           metadata.language || "", // language from client
-          sessionReplayData.screen_width || metadata.viewportWidth || 0,
-          sessionReplayData.screen_height || metadata.viewportHeight || 0
+          batchStats.screenWidth || metadata.viewportWidth || 0,
+          batchStats.screenHeight || metadata.viewportHeight || 0
         );
       } catch (error) {
-        console.error("Error parsing tracking data for session replay:", error);
+        logger.error({ siteId, sessionId, err: error }, "Error parsing tracking data for session replay");
       }
     }
 
-    // Calculate duration
-    const startTime = new Date(sessionReplayData.start_time);
-    const endTime = sessionReplayData.end_time ? new Date(sessionReplayData.end_time) : null;
-    const durationMs = endTime ? endTime.getTime() - startTime.getTime() : null;
-
-    // Insert or update metadata
     await clickhouse.insert({
-      table: "session_replay_metadata",
+      table: "session_replay_metadata_v2",
       values: [
         {
           site_id: siteId,
           session_id: sessionId,
           user_id: userId,
           identified_user_id: identifiedUserId,
-          start_time: DateTime.fromJSDate(startTime).toFormat("yyyy-MM-dd HH:mm:ss"),
-          end_time: endTime ? DateTime.fromJSDate(endTime).toFormat("yyyy-MM-dd HH:mm:ss") : null,
-          duration_ms: durationMs,
-          event_count: sessionReplayData.event_count || 0,
-          compressed_size_bytes: sessionReplayData.compressed_size_bytes || 0,
+          start_time: DateTime.fromJSDate(batchStats.startTime).toFormat("yyyy-MM-dd HH:mm:ss.SSS"),
+          end_time: DateTime.fromJSDate(batchStats.endTime).toFormat("yyyy-MM-dd HH:mm:ss.SSS"),
+          event_count: batchStats.eventCount,
+          compressed_size_bytes: batchStats.compressedSizeBytes,
           page_url: metadata.pageUrl || "",
           country: trackingData.country || "",
           region: trackingData.region || "",
@@ -219,8 +224,8 @@ export class SessionReplayIngestService {
           operating_system: trackingData.operatingSystem || "",
           operating_system_version: trackingData.operatingSystemVersion || "",
           language: trackingData.language || "",
-          screen_width: sessionReplayData.screen_width || metadata?.viewportWidth || 0,
-          screen_height: sessionReplayData.screen_height || metadata?.viewportHeight || 0,
+          screen_width: batchStats.screenWidth || metadata?.viewportWidth || 0,
+          screen_height: batchStats.screenHeight || metadata?.viewportHeight || 0,
           device_type: trackingData.deviceType || "",
           channel: trackingData.channel || "",
           hostname: trackingData.hostname || "",

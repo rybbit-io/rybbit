@@ -13,20 +13,11 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://rybbit.com/tools/page-speed-calculator",
     siteName: "Rybbit",
-    images: [
-      {
-        url: "https://rybbit.com/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Page Speed Calculator",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Free Page Speed Calculator | Website Load Time Impact Calculator",
     description: "Calculate how page load time affects your conversions and revenue.",
-    images: ["https://rybbit.com/og-image.png"],
   },
   alternates: {
     canonical: "https://rybbit.com/tools/page-speed-calculator",
@@ -62,7 +53,7 @@ const structuredData = {
           name: "How much does page speed really matter?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Studies show that for every 1 second delay in page load time, conversions decrease by approximately 7%, bounce rate increases by 7%, and customer satisfaction drops by 16%. A 2-second delay can result in abandonment rates up to 87% for e-commerce sites.",
+            text: "A widely cited industry benchmark: every 1 second of delay in page load time costs roughly 7% of conversions, adds 7% to bounce rate, and drops customer satisfaction by 16%. A 2-second delay can result in abandonment rates up to 87% for e-commerce sites.",
           },
         },
         {
@@ -78,7 +69,7 @@ const structuredData = {
           name: "What's a good page load time?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Google recommends pages load in under 3 seconds on mobile. However, the faster the better—pages that load in under 1 second see significantly higher engagement. Amazon found that every 100ms improvement in load time increased revenue by 1%.",
+            text: "Google recommends pages load in under 3 seconds on mobile. Faster is better: pages that load in under 1 second see significantly higher engagement. Amazon found that every 100ms improvement in load time increased revenue by 1%.",
           },
         },
         {
@@ -106,8 +97,8 @@ const educationalContent = (
   <>
     <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">Why Page Speed Matters</h2>
     <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
-      Page speed is one of the most critical factors affecting user experience and business metrics. Every millisecond
-      counts—slow-loading pages lead to higher bounce rates, reduced engagement, and ultimately lost revenue.
+      Page speed is one of the most critical factors affecting user experience and business metrics. Slow-loading pages
+      lead to higher bounce rates, reduced engagement, and lost revenue.
     </p>
     <ul className="space-y-2 text-neutral-700 dark:text-neutral-300 mb-6">
       <li>
@@ -154,8 +145,8 @@ const faqs = [
     question: "How much does page speed really matter?",
     answer: (
       <>
-        Studies show that for every 1 second delay in page load time, conversions decrease by approximately 7%, bounce
-        rate increases by 7%, and customer satisfaction drops by 16%. A 2-second delay can result in abandonment rates
+        A widely cited industry benchmark: every 1 second of delay in page load time costs roughly 7% of conversions,
+        adds 7% to bounce rate, and drops customer satisfaction by 16%. A 2-second delay can result in abandonment rates
         up to 87% for e-commerce sites.
       </>
     ),
@@ -174,9 +165,9 @@ const faqs = [
     question: "What's a good page load time?",
     answer: (
       <>
-        Google recommends pages load in under 3 seconds on mobile. However, the faster the better—pages that load in
-        under 1 second see significantly higher engagement. Amazon found that every 100ms improvement in load time
-        increased revenue by 1%.
+        Google recommends pages load in under 3 seconds on mobile. Faster is better: pages that load in under 1 second
+        see significantly higher engagement. Amazon found that every 100ms improvement in load time increased revenue by
+        1%.
       </>
     ),
   },

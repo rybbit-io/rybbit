@@ -11,9 +11,11 @@ To start tracking user activity on your website, add the Rybbit tracking script 
 The webpage should give you this script tag like this when you first add a website. Place it within the `<head>` section of your website. Include it on every page you wish to track.
 
 ```html
-<script src="https://app.rybbit.io/api/script.js" async data-site-id="YOUR_SITE_ID"></script>
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" async></script>
 ```
 If you are self-hosting Rybbit `app.rybbit.io` will be domain of your Rybbit instance.
+
+The site ID is passed in the script URL. The older `data-site-id="YOUR_SITE_ID"` attribute still works, but the URL form is recommended because script optimizers (WP Rocket, Perfmatters, FlyingPress and similar "delay JavaScript" features) rebuild script tags and drop `data-*` attributes, while leaving the URL intact.
 
 <Callout type="info">
   **Bypass Ad Blockers**: Some ad blockers may block analytics scripts regardless of privacy compliance. To improve tracking accuracy, you can proxy the tracking script through your own domain. See our [Proxy Guide](/docs/proxy-guide) for setup instructions for Next.js, Nginx, Caddy, and more.

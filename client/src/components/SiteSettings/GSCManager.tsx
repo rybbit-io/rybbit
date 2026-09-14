@@ -14,14 +14,15 @@ import { useQueryState, parseAsString } from "nuqs";
 
 interface GSCManagerProps {
   disabled?: boolean;
+  siteId?: number;
 }
 
-export function GSCManager({ disabled = false }: GSCManagerProps) {
+export function GSCManager({ disabled = false, siteId }: GSCManagerProps) {
   const t = useExtracted();
   const [gscStatus] = useQueryState("gsc", parseAsString);
-  const { data: connection, isLoading, refetch } = useGetGSCConnection();
-  const { mutate: connect, isPending: isConnecting } = useConnectGSC();
-  const { mutate: disconnect, isPending: isDisconnecting } = useDisconnectGSC();
+  const { data: connection, isLoading, refetch } = useGetGSCConnection({ site: siteId });
+  const { mutate: connect, isPending: isConnecting } = useConnectGSC(siteId);
+  const { mutate: disconnect, isPending: isDisconnecting } = useDisconnectGSC(siteId);
   const [isDisconnectModalOpen, setIsDisconnectModalOpen] = useState(false);
 
   // Check for OAuth success/error in URL params

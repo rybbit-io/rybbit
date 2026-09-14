@@ -1,100 +1,75 @@
 ---
 title: React (Vite / CRA)
-description: Integrate Rybbit with your client-side React application
+description: Add Rybbit analytics to your React app
+category: frameworks
+icon: SiReact
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps'
-import { Callout } from 'fumadocs-ui/components/callout'
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-
-This guide explains how to integrate Rybbit with your client-side React application, such as those created with Create React App (CRA) or Vite.
-
-## How to Add Rybbit to Your React App
-
-The recommended and simplest method to add the Rybbit tracking script is directly in your `index.html` file. This ensures the script is loaded early and reliably.
-
-### Adding to `public/index.html` (or `index.html` for Vite)
-
-This is the most straightforward method and ensures the script is loaded early.
+A client-side React app built with Vite or Create React App has a single HTML entry file. Paste the snippet into its `<head>` and it loads on every route.
 
 <Steps>
 <Step>
-### Retrieve Your Tracking Script
+### Get your tracking snippet
 
-Navigate to your Rybbit dashboard to obtain your code snippet. It will look like this:
-
-```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
-```
-Remember to replace `YOUR_SITE_ID` with your actual Site ID.
+<include>../../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Locate Your `index.html` File
+### Add the snippet to React
 
--   For **Create React App (CRA)**: This file is typically located at `public/index.html`.
--   For **Vite (React template)**: This file is typically located at the root of your project as `index.html`.
-</Step>
+Find the HTML entry file for your tooling:
 
-<Step>
-### Add the Snippet to `index.html`
+- **Vite**: `index.html` at the project root.
+- **Create React App**: `public/index.html`.
 
-Open your `index.html` file and paste the Rybbit tracking snippet just before the closing `</head>` tag or `</body>` tag. Placing it in the `<head>` allows it to load sooner.
+Paste the snippet just before `</head>`:
 
-```html filename="public/index.html (CRA) or index.html (Vite)"
-<!DOCTYPE html>
+```html title="index.html"
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" /> <!-- Example for CRA -->
-    <!-- Other meta tags and links -->
     <title>My React App</title>
-    <!-- Rybbit Tracking Snippet -->
-    <script
-      src="https://app.rybbit.io/api/script.js"
-      data-site-id="YOUR_SITE_ID"
-      defer
-    ></script>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <!-- If you prefer, you can also place the script here, before </body> -->
   </body>
 </html>
 ```
-Make sure to replace `YOUR_SITE_ID` with your actual Site ID.
+
+Placing it before `</body>` also works; `<head>` lets it start loading sooner. Route changes made by React Router and similar libraries are tracked automatically as pageviews.
 </Step>
 
 <Step>
-### Verify Installation
+### Verify installation
 
-After deploying your application, open your Rybbit dashboard to see if data is being received. You can also check your browser's network tab to ensure `script.js` is loaded.
+<include>../../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-<Callout type="info">
-  **SPA Page View Tracking**: Rybbit's tracking script is designed to automatically detect route changes in most modern SPAs (including those using React Router or similar libraries) and track them as page views. If you find that page views are not being tracked correctly after navigation, you might need to manually trigger page views using `window.rybbit.pageview()` after each route change. However, try the standard installation first.
-</Callout>
+## Track custom events
 
-## Custom Event Tracking
+Call `window.rybbit.event()` from any component. Guard the call so a blocked or still-loading script does not throw.
 
-Once the script is installed, you can track custom events from any of your React components:
-
-```jsx
-function MyComponent() {
-  const handleButtonClick = () => {
+```jsx title="src/components/LearnMoreButton.jsx"
+export default function LearnMoreButton() {
+  const handleClick = () => {
     if (window.rybbit) {
-      window.rybbit.event('button_click', { category: 'CTA', label: 'Learn More' });
+      window.rybbit.event("button_click", { category: "CTA", label: "Learn More" });
     }
   };
 
-  return <button onClick={handleButtonClick}>Learn More</button>;
+  return <button onClick={handleClick}>Learn More</button>;
 }
 ```
 
-Ensure `window.rybbit` is available before calling its methods, especially if you load the script dynamically or have strict Content Security Policies.
+## Troubleshooting
+
+- **Pageviews missing after navigation**: this is rare with React Router. If it happens, call `window.rybbit.pageview()` after each route change; test the default behaviour first.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

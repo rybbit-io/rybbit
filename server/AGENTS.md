@@ -28,7 +28,7 @@ Do not run database migration, push, pull, or drop commands unless the user expl
 - Drizzle ORM with Postgres for relational data.
 - ClickHouse for analytics event storage and querying.
 - Zod for request validation.
-- BullMQ, cron jobs, and service classes for background work.
+- Cron jobs and service classes for background work.
 - Vitest for tests.
 - Pino via Fastify logger for logging.
 
@@ -39,13 +39,12 @@ Do not run database migration, push, pull, or drop commands unless the user expl
 - `src/api/` - route handlers grouped by domain.
 - `src/api/analytics/` - analytics query endpoints.
 - `src/api/sites/` - site management, imports, tracking config, and script verification.
-- `src/api/uptime/` - uptime monitor endpoints.
 - `src/api/user/`, `src/api/teams/`, `src/api/memberAccess/` - account, organization, team, and access APIs.
 - `src/api/stripe/` - billing and Stripe webhook handlers.
 - `src/db/postgres/` - Drizzle schema, client setup, and Postgres helpers.
 - `src/db/clickhouse/` - ClickHouse client, migrations, and analytics storage helpers.
 - `src/lib/` - auth middleware, auth utilities, constants, logger helpers, and shared server utilities.
-- `src/services/` - domain services for tracking, sessions, replay, uptime, imports, reporting, storage, and email.
+- `src/services/` - domain services for tracking, sessions, replay, imports, reporting, storage, and email.
 - `src/analytics-script/` - browser analytics script source and build tooling.
 - `drizzle/` - generated SQL migration files.
 - `public/` - served browser assets such as tracking and replay scripts.

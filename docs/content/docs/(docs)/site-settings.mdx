@@ -90,7 +90,19 @@ Block specific IP addresses or ranges from being tracked. Supports:
 
 Block all traffic from specific countries using ISO country codes (e.g., `US`, `DE`, `FR`).
 
-Both filtering methods work at the server level, ensuring blocked traffic never reaches your analytics database.
+### Path Exclusions
+
+Exclude traffic to specific pages. Use `*` as a wildcard (e.g., `/admin/*` or `/preview`). Matching is case-insensitive. Up to 100 path exclusions are allowed.
+
+### Hostname Exclusions
+
+Exclude traffic from specific hostnames such as staging or preview domains. Use `*` as a wildcard (e.g., `localhost` or `*.vercel.app`). Matching is case-insensitive. Up to 100 hostname exclusions are allowed.
+
+### User Agent Exclusions
+
+Exclude traffic from user agents containing any of these terms. Matching is a case-insensitive substring (e.g., `HeadlessChrome`). Up to 100 user agent exclusions are allowed.
+
+All of these exclusions work at the server level, ensuring blocked traffic never reaches your analytics database.
 
 ## Embeds
 

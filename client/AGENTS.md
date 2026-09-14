@@ -33,7 +33,6 @@ Run commands from `client/`.
 - `src/app/[site]/` - per-site analytics dashboard routes.
 - `src/app/admin/` - admin UI.
 - `src/app/settings/` - account, organization, billing, and team settings.
-- `src/app/uptime/` - uptime monitoring UI.
 - `src/api/` - endpoint functions and React Query hooks.
 - `src/components/ui/` - Shadcn UI primitives.
 - `src/components/` - shared feature components.

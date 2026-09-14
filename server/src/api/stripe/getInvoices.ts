@@ -1,7 +1,8 @@
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member } from "../../db/postgres/schema.js";
+import { organization } from "../../db/postgres/schema.js";
+import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import { stripe } from "../../lib/stripe.js";
 
 export async function getInvoices(
@@ -27,18 +28,14 @@ export async function getInvoices(
     return reply.status(500).send({ error: "Stripe is not configured" });
   }
 
-  // Verify user is a member of this organization
-  const memberResult = await db
-    .select({ role: member.role })
-    .from(member)
-    .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-    .limit(1);
-
-  if (!memberResult.length) {
-    return reply.status(403).send({ error: "You do not have access to this organization" });
-  }
-
   try {
+    // Verify user has permission to manage billing for this organization
+    const membership = await getOrgMembership(userId, organizationId);
+
+    if (!isOrgOwner(membership)) {
+      return reply.status(403).send({ error: "Only organization owners can manage billing" });
+    }
+
     // Get the organization's Stripe customer ID
     const orgResult = await db
       .select({ stripeCustomerId: organization.stripeCustomerId })
@@ -56,7 +53,7 @@ export async function getInvoices(
       limit: 100,
     });
 
-    const formatted = invoices.data.map((invoice) => ({
+    const formatted = invoices.data.map(invoice => ({
       id: invoice.id,
       number: invoice.number,
       status: invoice.status,
@@ -72,7 +69,7 @@ export async function getInvoices(
 
     return reply.send(formatted);
   } catch (error: any) {
-    console.error("Get Invoices Error:", error);
+    request.log.error({ err: error }, "Get Invoices Error");
     return reply.status(500).send({
       error: "Failed to fetch invoices",
     });

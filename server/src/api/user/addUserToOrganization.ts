@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { member, user } from "../../db/postgres/schema.js";
 import { randomBytes } from "crypto";
+import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
@@ -38,10 +39,8 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
       if (!userId) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
-      callerMembership = await db.query.member.findFirst({
-        where: and(eq(member.userId, userId), eq(member.organizationId, organizationId)),
-      });
-      if (!callerMembership || (callerMembership.role !== "admin" && callerMembership.role !== "owner")) {
+      callerMembership = await getOrgMembership(userId, organizationId);
+      if (!isOrgAdmin(callerMembership)) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
     }
@@ -97,7 +96,7 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
       message: "User added to organization successfully",
     });
   } catch (error: any) {
-    console.error(String(error));
+    request.log.error({ err: error }, "Error adding user to organization");
     return reply.status(500).send({ error: String(error) });
   }
 }

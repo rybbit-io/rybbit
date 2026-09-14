@@ -1,9 +1,19 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
-import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
-import { enrichWithTraits, getTimeStatement, processResults } from "../utils/utils.js";
+import {
+  SESSION_CHANNEL_AGG,
+  SESSION_REFERRER_AGG,
+  SESSION_UTM_CAMPAIGN_AGG,
+  SESSION_UTM_CONTENT_AGG,
+  SESSION_UTM_MEDIUM_AGG,
+  SESSION_UTM_SOURCE_AGG,
+  SESSION_UTM_TERM_AGG,
+} from "../utils/sessionAttribution.js";
+import { getSessionFilterStatement } from "../utils/sessionFilters.js";
+import { enrichWithTraits } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
+import { analyticsRoute, runAnalyticsQuery, QuerySpec } from "../utils/analyticsQuery.js";
+import { matchesUser } from "../utils/effectiveUserId.js";
 
 export type GetSessionsResponse = {
   session_id: string;
@@ -58,8 +68,7 @@ export interface GetSessionsRequest {
     limit: number;
     page: number;
     user_id?: string;
-    session_id?: string
-    ;
+    session_id?: string;
     identified_only?: string;
     min_pageviews?: string;
     min_events?: string;
@@ -67,16 +76,7 @@ export interface GetSessionsRequest {
   }>;
 }
 
-// Field mappings for the CTE which extracts UTM params as separate columns
-const SESSION_FIELD_MAPPINGS = {
-  "url_parameters['utm_source']": "utm_source",
-  "url_parameters['utm_medium']": "utm_medium",
-  "url_parameters['utm_campaign']": "utm_campaign",
-  "url_parameters['utm_term']": "utm_term",
-  "url_parameters['utm_content']": "utm_content",
-};
-
-export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: FastifyReply) {
+export const buildSessionsQuery = (query: GetSessionsRequest["Querystring"], siteId: number): QuerySpec => {
   const {
     filters,
     page = 1,
@@ -87,26 +87,22 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
     min_pageviews: minPageviewsStr,
     min_events: minEventsStr,
     min_duration: minDurationStr,
-  } = req.query;
-  const site = req.params.siteId;
+  } = query;
   const filterIdentified = identifiedOnly === "true";
   const minPageviews = minPageviewsStr ? parseInt(minPageviewsStr, 10) : undefined;
   const minEvents = minEventsStr ? parseInt(minEventsStr, 10) : undefined;
   const minDuration = minDurationStr ? parseInt(minDurationStr, 10) : undefined;
 
-  const timeStatement = getTimeStatement(req.query);
+  const timeStatement = getTimeStatement(query);
 
   // Use composable filter options:
   // - sessionLevelParams: per-event fields filter at session level (finds sessions
   //   containing a matching event) — required for any parameter the aggregated CTE
   //   below doesn't project, otherwise the outer WHERE hits an unknown identifier
   // - fieldMappings: CTE extracts UTM params as separate columns, so we need to map the field names
-  const filterStatement = getFilterStatement(filters, Number(site), timeStatement, {
-    sessionLevelParams: ["event_name", "pathname", "page_title", "querystring", "channel"],
-    fieldMappings: SESSION_FIELD_MAPPINGS,
-  });
+  const filterStatement = getSessionFilterStatement(filters, siteId, timeStatement);
 
-  const query = `
+  const querySQL = `
   WITH AggregatedSessions AS (
       SELECT
           session_id,
@@ -126,16 +122,16 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
           ${SESSION_REFERRER_AGG} AS referrer,
           ${SESSION_CHANNEL_AGG} AS channel,
           argMin(hostname, timestamp) AS hostname,
-          argMin(url_parameters, timestamp)['utm_source'] AS utm_source,
-          argMin(url_parameters, timestamp)['utm_medium'] AS utm_medium,
-          argMin(url_parameters, timestamp)['utm_campaign'] AS utm_campaign,
-          argMin(url_parameters, timestamp)['utm_term'] AS utm_term,
-          argMin(url_parameters, timestamp)['utm_content'] AS utm_content,
+          ${SESSION_UTM_SOURCE_AGG} AS utm_source,
+          ${SESSION_UTM_MEDIUM_AGG} AS utm_medium,
+          ${SESSION_UTM_CAMPAIGN_AGG} AS utm_campaign,
+          ${SESSION_UTM_TERM_AGG} AS utm_term,
+          ${SESSION_UTM_CONTENT_AGG} AS utm_content,
           MAX(timestamp) AS session_end,
           MIN(timestamp) AS session_start,
           dateDiff('second', MIN(timestamp), MAX(timestamp)) AS session_duration,
-          argMinIf(pathname, timestamp, type = 'pageview') AS entry_page,
-          argMaxIf(pathname, timestamp, type = 'pageview') AS exit_page,
+          argMinIf(pathname, timestamp_ms, type = 'pageview') AS entry_page,
+          argMaxIf(pathname, timestamp_ms, type = 'pageview') AS exit_page,
           countIf(type = 'pageview') AS pageviews,
           countIf(type = 'custom_event') AS events,
           countIf(type = 'error') AS errors,
@@ -152,7 +148,7 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
       FROM events
       WHERE
           site_id = {siteId:Int32}
-          ${userId ? ` AND (events.user_id = {user_id:String} OR events.identified_user_id = {user_id:String})` : ""}
+          ${userId ? ` AND ${matchesUser("{user_id:String}", "events")}` : ""}
           ${sessionId ? ` AND events.session_id = {session_id:String}` : ""}
           ${timeStatement}
       GROUP BY
@@ -161,7 +157,7 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
   ),
   ReplaySessions AS (
       SELECT DISTINCT session_id
-      FROM session_replay_metadata
+      FROM session_replay_metadata_v2
       FINAL
       WHERE site_id = {siteId:Int32}
         AND event_count >= 2
@@ -179,31 +175,33 @@ export async function getSessions(req: FastifyRequest<GetSessionsRequest>, res: 
   LIMIT {limit:Int32} OFFSET {offset:Int32}
   `;
 
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-        user_id: userId,
-        session_id: sessionId,
-        limit: limit || 100,
-        offset: (page - 1) * (limit || 100),
-        minPageviews: minPageviews ?? 0,
-        minEvents: minEvents ?? 0,
-        minDuration: minDuration ?? 0,
-      },
-    });
+  return {
+    query: querySQL,
+    params: {
+      siteId,
+      user_id: userId,
+      session_id: sessionId,
+      limit: limit || 100,
+      offset: (page - 1) * (limit || 100),
+      minPageviews: minPageviews ?? 0,
+      minEvents: minEvents ?? 0,
+      minDuration: minDuration ?? 0,
+    },
+  };
+};
 
-    const data = await processResults<Omit<GetSessionsResponse[number], "traits">>(result);
+export const getSessions = analyticsRoute<GetSessionsRequest>(
+  "sessions",
+  async (req: FastifyRequest<GetSessionsRequest>, res: FastifyReply) => {
+    const site = req.params.siteId;
+
+    const data = await runAnalyticsQuery<Omit<GetSessionsResponse[number], "traits">>(
+      buildSessionsQuery(req.query, Number(site))
+    );
 
     // Enrich with traits from Postgres
     const dataWithTraits = await enrichWithTraits(data, Number(site));
 
     return res.send({ data: dataWithTraits });
-  } catch (error) {
-    console.error("Generated Query:", query);
-    console.error("Error fetching sessions:", error);
-    return res.status(500).send({ error: "Failed to fetch sessions" });
   }
-}
+);

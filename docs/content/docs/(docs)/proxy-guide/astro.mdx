@@ -8,6 +8,13 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 Astro's middleware feature makes it simple to proxy Rybbit tracking. This guide shows how to set up server-side request proxying in your Astro application.
 
+<Callout type="warn">
+**Two settings make or break a first-party proxy:**
+
+1. Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**, so the visitor IP your proxy forwards in `X-Forwarded-For` is trusted directly.
+2. Forward **all** of the browser's request headers, not a hand-picked few. Rybbit's bot detection expects the headers every real browser sends (`Accept`, `Accept-Language`, `Accept-Encoding`, `Sec-Fetch-*`) — proxies that forward only `User-Agent` get their events accepted with `200 OK` but classified as bot traffic. Use `X-Forwarded-For` for the visitor IP; `X-Real-IP` does not survive Rybbit Cloud's edge.
+</Callout>
+
 ## Overview
 
 Astro middleware allows you to intercept and modify requests before they're handled, making it perfect for creating a transparent analytics proxy.

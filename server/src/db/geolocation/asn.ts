@@ -44,3 +44,34 @@ export function lookupAsn(ip: string): AsnInfo | null {
     return null;
   }
 }
+
+/**
+ * An ASN resolver. Everything that needs an ASN takes one of these rather than
+ * importing `lookupAsn` directly, so a caller can hand the same memoised
+ * resolver to every module involved in one request — and tests can inject a
+ * fake without the MaxMind DB.
+ */
+export type AsnLookup = (ip: string) => AsnInfo | null;
+
+/**
+ * A per-request ASN resolver that answers each IP once.
+ *
+ * A single tracking request asks about the same handful of IPs from IP
+ * resolution, identity bucketing, sticky re-attachment, exclusion matching and
+ * bot detection. The reader is an in-memory mmdb, so each lookup is cheap, but
+ * repeating it several times per event on the hot ingestion path is pure waste.
+ * Memoise for the life of one request only — never longer, since the DB is
+ * reloaded in place.
+ */
+export function createAsnLookup(lookup: AsnLookup = lookupAsn): AsnLookup {
+  const resolved = new Map<string, AsnInfo | null>();
+
+  return ip => {
+    const cached = resolved.get(ip);
+    if (cached !== undefined) return cached;
+
+    const info = lookup(ip);
+    resolved.set(ip, info);
+    return info;
+  };
+}

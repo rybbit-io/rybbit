@@ -60,7 +60,7 @@ export function EmbedTab({ siteMetadata, embedEnabled }: EmbedTabProps) {
   const [accent, setAccent] = useState<string>(DEFAULT_ACCENT);
   const [widgetOutputTab, setWidgetOutputTab] = useState<OutputTab>("preview");
 
-  const siteId = siteMetadata.siteId;
+  const siteId = siteMetadata.id ?? String(siteMetadata.siteId);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const widgetUrl = new URL(`${origin}/widget/${siteId}`);

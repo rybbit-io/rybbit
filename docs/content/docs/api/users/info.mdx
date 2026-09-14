@@ -131,9 +131,164 @@ Returns detailed information about a specific user, including their profile trai
       type: 'string',
       typeDescription: 'ISO 8601 datetime',
     },
+    timezone: {
+      description: 'Timezone reported by the browser',
+      type: 'string',
+    },
+    ip: {
+      description: 'Last known IP address',
+      type: 'string',
+    },
+    first_referrer: {
+      description: 'Referrer URL of the first session',
+      type: 'string',
+    },
+    first_channel: {
+      description: 'Acquisition channel of the first session',
+      type: 'string',
+    },
+    first_entry_page: {
+      description: 'Entry page path of the first session',
+      type: 'string',
+    },
+    first_utm_source: {
+      description: 'UTM source of the first session',
+      type: 'string',
+    },
+    first_utm_medium: {
+      description: 'UTM medium of the first session',
+      type: 'string',
+    },
+    first_utm_campaign: {
+      description: 'UTM campaign of the first session',
+      type: 'string',
+    },
+    last_referrer: {
+      description: 'Referrer URL of the most recent session',
+      type: 'string',
+    },
+    last_channel: {
+      description: 'Acquisition channel of the most recent session',
+      type: 'string',
+    },
+    vitals: {
+      description: 'p75 Core Web Vitals for this user, or null when no performance data exists',
+      type: 'UserVitals | null',
+    },
+    locations: {
+      description: 'Per-location breakdown of sessions',
+      type: 'UserLocation[]',
+    },
+    devices: {
+      description: 'Per-device breakdown of sessions',
+      type: 'UserDevice[]',
+    },
     linked_devices: {
       description: 'Devices linked to this identified user',
       type: 'LinkedDevice[]',
+    },
+  }}
+/>
+
+#### UserVitals Object
+
+<TypeTable
+  type={{
+    lcp_p75: {
+      description: 'p75 Largest Contentful Paint (ms)',
+      type: 'number | null',
+    },
+    cls_p75: {
+      description: 'p75 Cumulative Layout Shift',
+      type: 'number | null',
+    },
+    inp_p75: {
+      description: 'p75 Interaction to Next Paint (ms)',
+      type: 'number | null',
+    },
+    fcp_p75: {
+      description: 'p75 First Contentful Paint (ms)',
+      type: 'number | null',
+    },
+    ttfb_p75: {
+      description: 'p75 Time to First Byte (ms)',
+      type: 'number | null',
+    },
+    performance_events: {
+      description: 'Number of performance events collected',
+      type: 'number',
+    },
+  }}
+/>
+
+#### UserLocation Object
+
+<TypeTable
+  type={{
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    region: {
+      description: 'Region/state',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    sessions: {
+      description: 'Number of sessions from this location',
+      type: 'number',
+    },
+    last_seen: {
+      description: 'Most recent activity from this location',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+  }}
+/>
+
+#### UserDevice Object
+
+<TypeTable
+  type={{
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system name',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
+    },
+    sessions: {
+      description: 'Number of sessions on this device',
+      type: 'number',
+    },
+    last_seen: {
+      description: 'Most recent activity on this device',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
     },
   }}
 />
@@ -160,14 +315,14 @@ Returns detailed information about a specific user, including their profile trai
 <Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl -X GET "https://app.rybbit.io/api/sites/123/users/user@example.com/123" \
+curl -X GET "https://app.rybbit.io/api/sites/123/users/user@example.com" \
   -H "Authorization: Bearer your_api_key_here"
 ```
   </Tab>
   <Tab value="JavaScript">
 ```javascript title="Request"
 const response = await fetch(
-  'https://app.rybbit.io/api/sites/123/users/user@example.com/123',
+  'https://app.rybbit.io/api/sites/123/users/user@example.com',
   {
     headers: {
       'Authorization': 'Bearer your_api_key_here'
@@ -183,7 +338,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://app.rybbit.io/api/sites/123/users/user@example.com/123',
+    'https://app.rybbit.io/api/sites/123/users/user@example.com',
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
@@ -195,7 +350,7 @@ data = response.json()
   <Tab value="PHP">
 ```php title="Request"
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/users/user@example.com/123');
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/users/user@example.com');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer your_api_key_here'
@@ -212,7 +367,7 @@ $data = json_decode($response, true);
 require 'net/http'
 require 'json'
 
-uri = URI('https://app.rybbit.io/api/sites/123/users/user@example.com/123')
+uri = URI('https://app.rybbit.io/api/sites/123/users/user@example.com')
 req = Net::HTTP::Get.new(uri)
 req['Authorization'] = 'Bearer your_api_key_here'
 
@@ -222,7 +377,7 @@ data = JSON.parse(res.body)
   </Tab>
   <Tab value="Go">
 ```go title="Request"
-req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/users/user@example.com/123", nil)
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/users/user@example.com", nil)
 req.Header.Set("Authorization", "Bearer your_api_key_here")
 
 client := &http.Client{}
@@ -237,7 +392,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 ```rust title="Request"
 let client = reqwest::Client::new();
 let res = client
-    .get("https://app.rybbit.io/api/sites/123/users/user@example.com/123")
+    .get("https://app.rybbit.io/api/sites/123/users/user@example.com")
     .header("Authorization", "Bearer your_api_key_here")
     .send()
     .await?;
@@ -249,7 +404,7 @@ let data: serde_json::Value = res.json().await?;
 ```java title="Request"
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://app.rybbit.io/api/sites/123/users/user@example.com/123"))
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/users/user@example.com"))
     .header("Authorization", "Bearer your_api_key_here")
     .GET()
     .build();
@@ -262,7 +417,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
 
-var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/users/user@example.com/123");
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/users/user@example.com");
 var data = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
@@ -295,6 +450,46 @@ var data = await response.Content.ReadAsStringAsync();
     "screen_height": 1440,
     "first_seen": "2024-01-15T10:30:00.000Z",
     "last_seen": "2024-01-31T14:22:00.000Z",
+    "timezone": "America/Los_Angeles",
+    "ip": "203.0.113.42",
+    "first_referrer": "https://google.com",
+    "first_channel": "Organic Search",
+    "first_entry_page": "/pricing",
+    "first_utm_source": "google",
+    "first_utm_medium": "cpc",
+    "first_utm_campaign": "launch",
+    "last_referrer": "https://twitter.com",
+    "last_channel": "Social",
+    "vitals": {
+      "lcp_p75": 1240,
+      "cls_p75": 0.02,
+      "inp_p75": 180,
+      "fcp_p75": 890,
+      "ttfb_p75": 210,
+      "performance_events": 48
+    },
+    "locations": [
+      {
+        "country": "US",
+        "region": "California",
+        "city": "San Francisco",
+        "sessions": 10,
+        "last_seen": "2024-01-31T14:22:00.000Z"
+      }
+    ],
+    "devices": [
+      {
+        "device_type": "desktop",
+        "browser": "Chrome",
+        "browser_version": "120.0.0",
+        "operating_system": "macOS",
+        "operating_system_version": "14.2",
+        "screen_width": 2560,
+        "screen_height": 1440,
+        "sessions": 9,
+        "last_seen": "2024-01-31T14:22:00.000Z"
+      }
+    ],
     "linked_devices": [
       {
         "anonymous_id": "xyz789ghi012",

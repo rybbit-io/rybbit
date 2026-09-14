@@ -125,7 +125,7 @@ export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, 
         {showMap && data && !isLoading && (
           <UserLocationMap
             country={data.country}
-            region={data.region}
+            region={getRegionName(data.region)}
             city={data.city}
             className="mb-3 h-[132px]"
           />

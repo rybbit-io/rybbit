@@ -63,6 +63,18 @@ Bot filtering supports a subset of filter parameters: `browser`, `browser_versio
       type: 'number',
       typeDescription: 'Range: 0-100',
     },
+    ai_requests: {
+      description: 'Requests from named AI systems: training crawlers, answer-engine indexers, and user-triggered agents',
+      type: 'number',
+    },
+    ai_agent_requests: {
+      description: 'Requests from user-triggered AI agents (a person asked an assistant to open the page)',
+      type: 'number',
+    },
+    ai_crawler_requests: {
+      description: 'Requests from AI training crawlers and answer-engine indexers',
+      type: 'number',
+    },
     ua_pattern: {
       description: 'Bot requests flagged by the user-agent pattern layer',
       type: 'number',
@@ -211,6 +223,9 @@ var data = await response.Content.ReadAsStringAsync();
     "bot_requests": 1840,
     "total_events": 48933,
     "bot_percentage": 3.76,
+    "ai_requests": 940,
+    "ai_agent_requests": 180,
+    "ai_crawler_requests": 760,
     "ua_pattern": 1200,
     "header_heuristics": 410,
     "client_signals": 95,

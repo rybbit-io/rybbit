@@ -3,7 +3,6 @@ import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
 import { db } from "../../db/postgres/postgres.js";
-import { logger } from "../../lib/logger/logger.js";
 import { getGSCProperties, refreshGSCToken } from "./utils.js";
 
 interface SelectPropertyRequest {
@@ -41,12 +40,12 @@ export async function selectGSCProperty(req: FastifyRequest<SelectPropertyReques
     // The property must be one the connected Google account actually owns.
     // Accepting an arbitrary string would silently break every later data fetch
     // (Google returns 403 for unowned properties) until the site is reconnected.
-    const accessToken = await refreshGSCToken(numericSiteId);
+    const accessToken = await refreshGSCToken(numericSiteId, req.log);
     if (!accessToken) {
       return res.status(404).send({ error: "GSC connection not found" });
     }
 
-    const availableProperties = await getGSCProperties(accessToken);
+    const availableProperties = await getGSCProperties(accessToken, req.log);
     if (!availableProperties.includes(propertyUrl)) {
       return res.status(400).send({ error: "Selected property is not available for the connected account" });
     }
@@ -67,7 +66,7 @@ export async function selectGSCProperty(req: FastifyRequest<SelectPropertyReques
 
     return res.send({ success: true, property: propertyUrl });
   } catch (error) {
-    logger.error(error, "Error selecting GSC property");
+    req.log.error(error, "Error selecting GSC property");
     return res.status(500).send({ error: "Failed to select property" });
   }
 }

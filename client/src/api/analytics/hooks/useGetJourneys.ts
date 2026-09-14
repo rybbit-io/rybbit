@@ -1,10 +1,9 @@
 import { Filter } from "@rybbit/shared";
-import { useQuery } from "@tanstack/react-query";
 import { Time } from "../../../components/DateSelector/types";
 import { JOURNEY_PAGE_FILTERS } from "../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../lib/store";
-import { buildApiParams } from "../../utils";
-import { fetchJourneys, Journey, JourneysResponse } from "../endpoints";
+import { getFilteredFilters } from "../../../lib/store";
+import { JourneysResponse } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export interface JourneyParams {
   siteId?: number;
@@ -18,21 +17,24 @@ export interface JourneyParams {
 }
 
 export const useJourneys = ({ siteId, steps = 3, time, limit = 100, stepFilters, additionalFilters }: JourneyParams) => {
-  const { timezone } = useStore();
   const filteredFilters = getFilteredFilters(JOURNEY_PAGE_FILTERS);
   const combinedFilters = additionalFilters?.length ? [...filteredFilters, ...additionalFilters] : filteredFilters;
-  const params = buildApiParams(time, { filters: combinedFilters });
 
-  return useQuery<JourneysResponse>({
-    queryKey: ["journeys", siteId, steps, time, limit, combinedFilters, stepFilters, timezone],
-    queryFn: () =>
-      fetchJourneys(siteId!, {
-        ...params,
-        steps,
-        limit,
-        stepFilters,
-      }),
-    enabled: !!siteId,
-    placeholderData: previousData => previousData,
+  return useAnalyticsQuery<JourneysResponse>({
+    key: "journeys",
+    path: "journeys",
+    unwrap: false,
+    site: siteId,
+    overrideTime: time,
+    // customFilters fall back to the store filters when empty; disable filters
+    // entirely instead so an empty page-filter set stays unfiltered.
+    useFilters: combinedFilters.length > 0,
+    customFilters: combinedFilters,
+    params: {
+      steps,
+      limit,
+      stepFilters: stepFilters && Object.keys(stepFilters).length > 0 ? JSON.stringify(stepFilters) : undefined,
+    },
+    enabled: siteId !== undefined,
   });
 };

@@ -71,7 +71,10 @@ export async function mcpRoutes(fastify: FastifyInstance, options: McpRouteOptio
           );
           reply.header("Access-Control-Expose-Headers", "WWW-Authenticate");
         } else {
-          reply.header("Retry-After", error.statusCode === 429 ? "60" : "30");
+          reply.header(
+            "Retry-After",
+            String(error.retryAfterSeconds ?? (error.statusCode === 429 ? 60 : 30))
+          );
         }
         return reply.status(error.statusCode).send({
           jsonrpc: "2.0",

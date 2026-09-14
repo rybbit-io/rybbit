@@ -154,7 +154,7 @@ export function OGTagForm() {
                   {copiedIndex === index ? (
                     <>
                       <CheckCircle className="w-4 h-4" />
-                      Copied!
+                      Copied
                     </>
                   ) : (
                     <>

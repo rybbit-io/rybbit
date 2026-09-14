@@ -56,7 +56,7 @@ export async function updateUserTraits(req: FastifyRequest<UpdateUserTraitsReque
 
     return res.send({ success: true });
   } catch (error) {
-    console.error("Error updating user traits:", error);
+    req.log.error({ err: error }, "Error updating user traits");
     return res.status(500).send({ error: "Failed to update user traits" });
   }
 }

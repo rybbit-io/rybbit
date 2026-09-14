@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import { generateOGImage } from './generate';
 
 const logoBase64 = readFile(
-  join(process.cwd(), 'public/rybbit/horizontal_white.png'),
+  join(process.cwd(), 'public/rybbit/horizontal_for dark BG.png'),
 ).then((buf) => `data:image/png;base64,${buf.toString('base64')}`);
 
 async function loadInterFont(

@@ -1,6 +1,5 @@
 import { TimeBucket } from "@rybbit/shared";
-import { authedFetch } from "../../utils";
-import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
+import { CommonApiParams, PaginationParams } from "./types";
 
 // Error Name Item type
 export type ErrorNameItem = {
@@ -69,68 +68,4 @@ export interface ErrorEventsParams extends CommonApiParams, PaginationParams {
 export interface ErrorBucketedParams extends CommonApiParams {
   errorMessage: string;
   bucket: TimeBucket;
-}
-
-/**
- * Fetch error names with counts
- * GET /api/sites/:site/errors/names
- */
-export async function fetchErrorNames(
-  site: string | number,
-  params: ErrorNamesParams
-): Promise<ErrorNamesPaginatedResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    limit: params.limit,
-    page: params.page,
-  };
-
-  const response = await authedFetch<{ data: ErrorNamesPaginatedResponse }>(
-    `/sites/${site}/errors/names`,
-    queryParams
-  );
-  return response.data;
-}
-
-/**
- * Fetch individual error events
- * GET /api/sites/:site/errors/events
- */
-export async function fetchErrorEvents(
-  site: string | number,
-  params: ErrorEventsParams
-): Promise<ErrorEventsPaginatedResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    errorMessage: params.errorMessage,
-    limit: params.limit,
-    page: params.page,
-  };
-
-  const response = await authedFetch<{ data: ErrorEventsPaginatedResponse }>(
-    `/sites/${site}/errors/events`,
-    queryParams
-  );
-  return response.data;
-}
-
-/**
- * Fetch error counts over time
- * GET /api/sites/:site/errors/time-series
- */
-export async function fetchErrorBucketed(
-  site: string | number,
-  params: ErrorBucketedParams
-): Promise<GetErrorBucketedResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    errorMessage: params.errorMessage,
-    bucket: params.bucket,
-  };
-
-  const response = await authedFetch<{ data: GetErrorBucketedResponse }>(
-    `/sites/${site}/errors/time-series`,
-    queryParams
-  );
-  return response.data;
 }
