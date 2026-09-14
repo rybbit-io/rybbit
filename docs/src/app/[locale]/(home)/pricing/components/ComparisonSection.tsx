@@ -248,14 +248,14 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
             <SectionKicker>{t("Plan details")}</SectionKicker>
             <h2
               id="plan-comparison-title"
-              className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance bare:text-[36px] bare:font-medium bare:leading-[1.1] bare:tracking-[-0.03em]"
+              className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
             >
               {t("Compare Plans")}
             </h2>
           </div>
         </div>
 
-        <div className="overflow-x-auto bare:mx-5 bare:mb-8 bare:rounded-xl bare:border bare:border-neutral-200 dark:bare:border-neutral-800 bare:sm:mx-8 bare:lg:mx-10">
+        <div className="overflow-x-auto">
           <div className="min-w-[900px]">
             <div className="grid grid-cols-4 border-b border-neutral-200 dark:border-neutral-800">
               <div className="flex items-end border-r border-neutral-200 px-6 py-7 text-sm font-medium text-neutral-500 dark:border-neutral-800 lg:px-10">
@@ -266,13 +266,13 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
                   name: t("Standard"),
                   price: "From $" + (isAnnual ? "13" : "19") + " /month",
                   href: "https://app.rybbit.io/signup",
-                  cta: t("Start for $0"),
+                  cta: t("Start free trial for $0"),
                 },
                 {
                   name: t("Pro"),
                   price: "From $" + (isAnnual ? "26" : "39") + " /month",
                   href: "https://app.rybbit.io/signup",
-                  cta: t("Start for $0"),
+                  cta: t("Start free trial for $0"),
                   featured: true,
                 },
                 {
@@ -281,19 +281,21 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
                   href: "https://www.rybbit.com/contact",
                   cta: t("Contact us"),
                 },
-              ].map((plan) => (
+              ].map(plan => (
                 <div
                   key={plan.name}
                   className="flex flex-col items-center border-r border-neutral-200 px-4 py-7 text-center last:border-r-0 dark:border-neutral-800"
                 >
-                  <h3 className={cn("text-lg font-semibold", plan.featured && "text-emerald-600 dark:text-emerald-400")}>
+                  <h3
+                    className={cn("text-lg font-semibold", plan.featured && "text-emerald-600 dark:text-emerald-400")}
+                  >
                     {plan.name}
                   </h3>
                   <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{plan.price}</p>
                   <AppLink
                     href={plan.href}
                     className={cn(
-                      "mt-5 inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 bare:rounded-full bare:px-5",
+                      "mt-5 inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
                       plan.featured
                         ? "bg-emerald-600 text-white hover:bg-emerald-500"
                         : "border border-neutral-300 text-neutral-900 hover:bg-neutral-100 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-900"
@@ -305,12 +307,12 @@ export function ComparisonSection({ isAnnual }: { isAnnual: boolean }) {
               ))}
             </div>
 
-            {COMPARISON_FEATURES.map((category) => (
+            {COMPARISON_FEATURES.map(category => (
               <div key={category.category}>
                 <div className="border-b border-neutral-200 bg-neutral-50 px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/60 lg:px-10">
                   {category.category}
                 </div>
-                {category.features.map((feature) => (
+                {category.features.map(feature => (
                   <div
                     key={feature.name}
                     className="grid grid-cols-4 border-b border-neutral-200 text-sm last:border-b-0 dark:border-neutral-800"

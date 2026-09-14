@@ -5,7 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
-import { cn } from "../../../../../lib/utils";
+import { cn, getCountryName } from "../../../../../lib/utils";
 import { Skeleton } from "../../../../../components/ui/skeleton";
 import { useConfigs } from "../../../../../lib/configs";
 
@@ -23,13 +23,13 @@ export function UserLocationMap({ country, region, city, className }: UserLocati
   const { configs } = useConfigs();
   const { resolvedTheme } = useTheme();
 
-  const query = [city, region, country].filter(Boolean).join(", ");
+  const query = [city, region, getCountryName(country)].filter(Boolean).join(", ");
 
   const style = resolvedTheme === "dark" ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11";
 
   const { data: coordinates, isLoading } = useQuery({
-    queryKey: ["user-location-geocode", configs?.mapboxToken, query],
-    queryFn: () => geocodeUserLocation(configs!.mapboxToken, query),
+    queryKey: ["user-location-geocode", configs?.mapboxToken, query, country],
+    queryFn: () => geocodeUserLocation(configs!.mapboxToken, query, country),
     enabled: Boolean(configs?.mapboxToken && query),
     staleTime: 24 * 60 * 60 * 1000,
     retry: false,
@@ -99,12 +99,14 @@ interface MapboxGeocodingResponse {
   }>;
 }
 
-async function geocodeUserLocation(token: string, query: string): Promise<[number, number] | null> {
+async function geocodeUserLocation(token: string, query: string, country: string): Promise<[number, number] | null> {
   try {
     const params = new URLSearchParams({
       access_token: token,
       limit: "1",
     });
+
+    if (country) params.set("country", country.toLowerCase());
 
     const response = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params}`

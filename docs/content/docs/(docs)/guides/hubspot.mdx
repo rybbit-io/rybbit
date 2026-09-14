@@ -1,0 +1,81 @@
+---
+title: HubSpot
+description: Add Rybbit analytics to your HubSpot site
+category: cms
+icon: SiHubspot
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+HubSpot Content Hub (formerly CMS Hub) has a **Site header HTML** setting that injects code into the `<head>` of every website page, landing page, blog post and knowledge base article on a domain, so no template edits are needed. Individual pages can add or override code from the content editor.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to HubSpot
+
+<Tabs items={["Site header HTML", "Single page"]}>
+<Tab>
+This adds the snippet to all HubSpot-hosted content on a domain.
+
+1. In your HubSpot account, click the **settings** icon in the top navigation bar.
+2. In the left sidebar, go to **Content > Pages**.
+3. Use the **Choose a domain to edit its settings** dropdown to pick the domain, or stay on the default settings to apply the code to every domain.
+4. Paste the snippet into the **Site header HTML** field.
+5. Click **Save**.
+
+If a domain has **Override default settings** turned on, the default header code no longer applies to it. Add the snippet to that domain's own settings as well.
+</Tab>
+
+<Tab>
+Use this to track a single page, or when someone else controls the domain settings.
+
+1. Open **Content > Website Pages** (or **Landing Pages**, **Blog**, **Knowledge Base**) and click the page name to open the editor.
+2. Click the **Settings** menu, then select **Advanced**.
+3. Under **Additional code snippets**, paste the snippet into the **Head HTML** field.
+4. Click **Update** or **Publish**.
+
+Per-page head HTML is added on top of the site header HTML, so a page tracked by both methods loads the script twice. Pick one.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+HubSpot forms submit inside the page without a full reload, so track them with a custom event. Add `data-rybbit-event` to a call-to-action button, or listen for HubSpot's form-submitted message in a small script placed after the snippet:
+
+```html
+<script>
+  window.addEventListener("message", function (event) {
+    if (event.data.type === "hsFormCallback" && event.data.eventName === "onFormSubmitted") {
+      window.rybbit.event("form_submitted", { formId: event.data.id });
+    }
+  });
+</script>
+```
+
+See [Track custom events](/docs/track-events) for the event API.
+
+## Troubleshooting
+
+- **Snippet missing on one domain**: the site header HTML is per domain. Check whether that domain has **Override default settings** enabled and add the snippet there.
+- **Duplicate pageviews**: the same page has the snippet in both site header HTML and its own **Head HTML**. Remove one.
+- **Editor and preview**: the content editor renders pages in an iframe with unpublished changes. Previews are tracked like any other visit if they load the script, so avoid checking analytics from the editor.
+- **Quotes**: header HTML set at the domain level also loads on HubSpot quotes hosted on that domain.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

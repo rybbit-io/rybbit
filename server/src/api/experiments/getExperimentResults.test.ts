@@ -31,7 +31,7 @@ describe("experiment result queries", () => {
     const { exposureQuery } = buildQueries();
 
     expect(exposureQuery).toContain("FilteredSessions AS");
-    expect(exposureQuery).toContain("argMin(url_parameters, timestamp)['utm_campaign'] AS utm_campaign");
+    expect(exposureQuery).toContain("argMinIf(url_parameters['utm_campaign'], timestamp, url_parameters['utm_campaign'] != '') AS utm_campaign");
     expect(exposureQuery).toContain("WHERE 1 = 1 AND utm_campaign = 'recipe_book_2026'");
     expect(exposureQuery.match(/INNER JOIN FilteredSessions USING \(session_id\)/g)).toHaveLength(2);
     expect(exposureQuery).toContain("event_name = 'feature_flag_exposure'");

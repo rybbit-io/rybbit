@@ -6,11 +6,14 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
+import { useGetSite } from "../api/admin/hooks/useSites";
 import { useEmbedablePage } from "../app/[site]/utils";
 import { useAdminPermission } from "../app/admin/hooks/useAdminPermission";
 import { useSignout } from "../hooks/useSignout";
 import { authClient } from "../lib/auth";
 import { DEPLOYMENT, IS_CLOUD } from "../lib/const";
+import { getSiteRouteContext } from "../lib/siteRoute";
+import { useStore } from "../lib/store";
 import { useStripeSubscription } from "../lib/subscription/useStripeSubscription";
 import { cn } from "../lib/utils";
 import { RybbitLogo } from "./RybbitLogo";
@@ -40,6 +43,15 @@ function AppSidebarContent() {
 
   const { data: subscription } = useStripeSubscription();
 
+  // On an unclaimed site's dashboard the visitor has no account yet: the user
+  // menu is inert until they claim the site from the banner.
+  const pathname = usePathname();
+  const { site } = useStore();
+  const onSiteRoute = !!site && getSiteRouteContext(pathname).siteId === String(site);
+  const { data: siteMetadata } = useGetSite(site, { enabled: onSiteRoute });
+  const isUnclaimedSite =
+    onSiteRoute && !!siteMetadata && siteMetadata.organizationId === null && !!siteMetadata.claimExpiresAt;
+
   if (embed) return null;
 
   return (
@@ -68,7 +80,12 @@ function AppSidebarContent() {
         )}
         {session?.user.role === "admin" && <AdminLink />}
       </div>
-      <UserMenu name={session?.user.name} email={session?.user.email} image={session?.user.image} />
+      <UserMenu
+        name={session?.user.name}
+        email={session?.user.email}
+        image={session?.user.image}
+        disabled={isUnclaimedSite}
+      />
     </div>
   );
 }
@@ -152,7 +169,17 @@ function ThemeRow() {
   );
 }
 
-function UserMenu({ name, email, image }: { name?: string | null; email?: string | null; image?: string | null }) {
+function UserMenu({
+  name,
+  email,
+  image,
+  disabled = false,
+}: {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  disabled?: boolean;
+}) {
   const signout = useSignout();
   const t = useExtracted();
   const initials = getInitials(name, email);
@@ -188,6 +215,27 @@ function UserMenu({ name, email, image }: { name?: string | null; email?: string
     clearTimers();
     setOpen(false);
   };
+
+  if (disabled) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled
+            aria-label={t("Account")}
+            className={cn(
+              "w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 select-none",
+              "bg-neutral-200 dark:bg-neutral-750 text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
+            )}
+          >
+            <User className="w-4 h-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{t("Claim your site to create an account")}</TooltipContent>
+      </Tooltip>
+    );
+  }
 
   return (
     <Popover

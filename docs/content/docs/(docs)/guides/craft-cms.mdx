@@ -1,0 +1,70 @@
+---
+title: Craft CMS
+description: Add Rybbit analytics to your Craft CMS site
+category: cms
+icon: SiCraftcms
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Craft CMS renders pages from Twig templates in the `templates/` folder, so the snippet goes into the base template that your section templates extend. A fresh `craftcms/craft` project ships a single `templates/index.twig` containing the full HTML document; most projects move that boilerplate into a base template and `{% extends %}` it.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Craft CMS
+
+1. Open the template that owns your `<head>`. In a fresh install that is `templates/index.twig`; in a project with a base template it is the underscore-prefixed file every page extends, such as `templates/_layout.twig`.
+2. Add the tag before `</head>`:
+
+```twig title="templates/_layout.twig"
+<!DOCTYPE html>
+<html lang="{{ currentSite.language }}">
+<head>
+    <meta charset="utf-8">
+    <title>{{ siteName }}</title>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>
+```
+
+3. Every section template that extends the base template now loads the script:
+
+```twig title="templates/blog/_entry.twig"
+{% extends "_layout" %}
+
+{% block content %}
+    <h1>{{ entry.title }}</h1>
+    {{ entry.body }}
+{% endblock %}
+{% endraw %}
+```
+
+To keep the site ID out of templates and vary it per environment, read it from `.env` with `{{ getenv('RYBBIT_SITE_ID') }}`, or store it in a Global Set and use `{{ settings.rybbitSiteId }}`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Template caching**: if you wrap the head in `{% cache %}` tags, the change appears only after the cache expires or you run `php craft clear-caches/all`.
+- **Live Preview counts as visits**: the control panel's Live Preview renders your template in an iframe with `x-craft-live-preview` in the query string. Wrap the tag in `{% if not craft.app.request.isPreview %}` to leave editors' previews out of your data.
+- **Control panel is not tracked**: `/admin` uses Craft's own templates, so the snippet never runs there.
+- **Multiple base templates**: if some sections extend a different base (for example `_layout-landing.twig`), add the tag to each one, or move it into a partial and `{% include %}` it from every base.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

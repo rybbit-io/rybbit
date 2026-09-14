@@ -1,5 +1,7 @@
 // Site Management
 export { addSite } from "./addSite.js";
+export { claimSite } from "./claimSite.js";
+export { createUnclaimedSite } from "./createUnclaimedSite.js";
 export { deleteSite } from "./deleteSite.js";
 export { getSite } from "./getSite.js";
 export { getSiteHasData } from "./getSiteHasData.js";

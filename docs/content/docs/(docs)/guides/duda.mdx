@@ -1,0 +1,46 @@
+---
+title: Duda
+description: Add Rybbit analytics to your Duda site
+category: builders
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Duda has a site-wide **Header HTML** panel in the site settings with two fields: **Head HTML**, printed inside `<head>` on every page, and **Body End HTML**, printed before `</body>`. The snippet goes into Head HTML, and the site must be republished for it to reach the live site.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Duda
+
+1. In the editor's side panel, click **More**, then **Settings**.
+2. Click **Header HTML**.
+3. Paste the snippet into **Head HTML** and click **Save**.
+4. **Republish** the site. Saved header code shows in the editor and preview, but the live site is only updated on republish.
+
+Head HTML accepts `<script>`, `<link>` and `<meta>` tags; anything else is stripped on save. The tracking snippet is a single `<script>` tag, so it is kept.
+
+To limit tracking to one page instead, open that page's **settings** (gear icon), click **SEO** and paste the snippet into that page's **Header HTML**.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Snippet saved but not in the live page source**: the site was not republished. Republish after every change to Header HTML.
+- **Code disappears after saving**: Head HTML strips tags other than `<script>`, `<link>` and `<meta>`. Paste only the script tag, without wrapping HTML or comments.
+- **Consent management app in use**: Duda loads Head HTML before consent banners can intercept it. If you need the tracker gated by consent, put the snippet in **Body End HTML** instead, where the consent app can control it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

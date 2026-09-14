@@ -2,13 +2,15 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { eq } from "drizzle-orm";
 import { member, organization, sites, user } from "../../db/postgres/schema.js";
-import { getSessionFromReq, getUserIdFromRequest, wasRateLimited } from "../../lib/auth-utils.js";
+import { getRequestIdentity, getSessionFromReq, wasRateLimited } from "../../lib/auth-utils.js";
 import { filterSitesByMemberAccess, getOrgMembership } from "../../lib/access.js";
 
 export const getMyOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
+    // Organization-owned API keys have no user id — they resolve to their
+    // single organization instead. One resolution covers both cases.
+    const { userId, organizationId: apiKeyOrganizationId } = await getRequestIdentity(request);
+    if (!userId && !apiKeyOrganizationId) {
       // This route has no auth pre-handler, so a throttled credential resolves
       // to no user. Reporting that as 401 would tell a caller their key is
       // invalid when it is merely out of budget.
@@ -32,19 +34,38 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
     const session = await getSessionFromReq(request);
     const includeMembers = !!session?.user;
 
-    // First, get all organizations the user is a member of
-    const userOrganizations = await db
-      .select({
-        id: organization.id,
-        name: organization.name,
-        slug: organization.slug,
-        logo: organization.logo,
-        createdAt: organization.createdAt,
-        role: member.role,
-      })
-      .from(member)
-      .innerJoin(organization, eq(member.organizationId, organization.id))
-      .where(eq(member.userId, userId));
+    // First, get all organizations the user is a member of — or, for an
+    // org-owned key, just its own organization (it has no member row).
+    let userOrganizations;
+    if (userId) {
+      userOrganizations = await db
+        .select({
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+          logo: organization.logo,
+          createdAt: organization.createdAt,
+          role: member.role,
+        })
+        .from(member)
+        .innerJoin(organization, eq(member.organizationId, organization.id))
+        .where(eq(member.userId, userId));
+    } else {
+      const orgRows = await db
+        .select({
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+          logo: organization.logo,
+          createdAt: organization.createdAt,
+        })
+        .from(organization)
+        // apiKeyOrganizationId is guaranteed set here: the guard above already
+        // returned if both it and userId were missing.
+        .where(eq(organization.id, apiKeyOrganizationId!))
+        .limit(1);
+      userOrganizations = orgRows.map(org => ({ ...org, role: "admin" as const }));
+    }
 
     // For each organization, get all members with user details and sites
     const organizationsWithMembersAndSites = await Promise.all(
@@ -88,10 +109,12 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
         let organizationSites = allOrgSites;
 
         if (callerMemberRecord?.role === "member") {
+          // getOrgMembership null-guards a missing userId, so a non-null
+          // callerMemberRecord here means userId was set.
           organizationSites = await filterSitesByMemberAccess(
             allOrgSites,
             org.id,
-            userId,
+            userId!,
             callerMemberRecord.id,
             callerMemberRecord.hasRestrictedSiteAccess
           );

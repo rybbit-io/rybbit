@@ -2,8 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { EVENT_SCHEMA } from "../../api/analytics/utils/eventSchema.js";
 import { RybbitApiClient } from "../apiClient.js";
-import { filtersInput, organizationIdInput, siteIdInput, timeInputs } from "../inputs.js";
-import { looseRow, looseRows, ok, readOnly, siteQuery, type ScopeCheck, type ToolGuard } from "./shared.js";
+import { fieldsInput, filtersInput, organizationIdInput, siteIdInput, timeInputs } from "../inputs.js";
+import { looseRow, looseRows, ok, pickRowFields, readOnly, siteQuery, type ScopeCheck, type ToolGuard } from "./shared.js";
 
 const sessionsOutput = z.object({ data: looseRows.optional() }).passthrough();
 
@@ -45,14 +45,21 @@ export function registerRawDataTools(server: McpServer, api: RybbitApiClient, gu
         limit: z.number().int().min(1).max(100).default(20),
         page: z.number().int().min(1).default(1),
         user_id: z.string().optional().describe("Only sessions for this user (device fingerprint id or identified user id)"),
+        fields: fieldsInput,
         ...timeInputs,
         filters: filtersInput,
       },
       outputSchema: sessionsOutput,
       annotations: readOnly,
     },
-    guard(async ({ site_id, limit, page, user_id, ...rest }) =>
-      ok(await api.call("GET", `/sites/${site_id}/sessions`, { query: { limit, page, user_id, ...siteQuery(rest) } }))
+    guard(async ({ site_id, limit, page, user_id, fields, ...rest }) =>
+      ok(
+        pickRowFields(
+          await api.call("GET", `/sites/${site_id}/sessions`, { query: { limit, page, user_id, ...siteQuery(rest) } }),
+          "data",
+          fields
+        )
+      )
     )
   );
 
@@ -90,14 +97,21 @@ export function registerRawDataTools(server: McpServer, api: RybbitApiClient, gu
       inputSchema: {
         site_id: siteIdInput,
         page_size: z.number().int().min(1).max(100).default(20),
+        fields: fieldsInput,
         ...timeInputs,
         filters: filtersInput,
       },
       outputSchema: eventsOutput,
       annotations: readOnly,
     },
-    guard(async ({ site_id, page_size, ...rest }) =>
-      ok(await api.call("GET", `/sites/${site_id}/events`, { query: { page_size, ...siteQuery(rest) } }))
+    guard(async ({ site_id, page_size, fields, ...rest }) =>
+      ok(
+        pickRowFields(
+          await api.call("GET", `/sites/${site_id}/events`, { query: { page_size, ...siteQuery(rest) } }),
+          "data",
+          fields
+        )
+      )
     )
   );
 

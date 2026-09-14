@@ -118,7 +118,7 @@ export function SegmentsTab({
   };
 
   const footer = canWrite && (
-    <div className="border-t border-neutral-200 dark:border-neutral-800 p-2 flex flex-col gap-1.5">
+    <div className="border-t border-neutral-200 dark:border-neutral-700 p-2 flex flex-col gap-1.5">
       {canSaveCurrent && (
         <Button size="sm" variant="success" className="w-full gap-1.5" onClick={onSaveCurrent}>
           <BookmarkPlus className="h-4 w-4" />
@@ -173,7 +173,7 @@ export function SegmentsTab({
                   key={segment.segmentId}
                   value={`${segment.name} ${segment.segmentId}`}
                   onSelect={() => toggle(segment)}
-                  className={cn("cursor-pointer items-start gap-2 py-2", isActive && "bg-neutral-100 dark:bg-neutral-800")}
+                  className={cn("cursor-pointer items-start gap-2 py-2", isActive && "bg-neutral-100 dark:bg-neutral-750")}
                 >
                   <Layers className="h-4 w-4 mt-0.5 shrink-0 text-neutral-500 dark:text-neutral-400" />
                   <div className="flex-1 min-w-0">

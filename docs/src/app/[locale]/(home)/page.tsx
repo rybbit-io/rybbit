@@ -30,9 +30,7 @@ export default function HomePage() {
   return (
     <LandingPageTemplate
       title={t("The Modern Google Analytics Replacement")}
-      subtitle={t(
-        "Rybbit is open-source, cookieless analytics: one readable dashboard and an 18 KB script. No consent banner needed, GDPR and CCPA compliant."
-      )}
+      subtitle={t("Rybbit is open-source, cookieless analytics. No consent banner needed.")}
       showEUFlag
     />
   );

@@ -1,0 +1,182 @@
+---
+title: "Core Web Vitals Explained: LCP, INP, CLS and How to Fix Them"
+description: "What Core Web Vitals are, the LCP, INP and CLS thresholds Google uses, why lab and field data disagree, and the fixes that usually work."
+date: 2026-09-13
+tags: ["web vitals", "performance", "seo"]
+author: Rybbit Team
+---
+
+Core Web Vitals are three metrics Google uses to judge how a page feels to real visitors: how quickly the main content shows up, how fast the page reacts when someone clicks or taps, and how much the layout jumps around while it loads. Google scores them from real Chrome visits at the 75th percentile, and a page passes when all three are in the "good" range.
+
+The three metrics and the thresholds Google publishes on [web.dev](https://web.dev/articles/vitals):
+
+| Metric | What it measures | Good | Needs improvement | Poor |
+| --- | --- | --- | --- | --- |
+| [Largest Contentful Paint (LCP)](https://web.dev/articles/lcp) | Loading: when the largest image, text block or video in the viewport has rendered | 2.5 s or less | 2.5 s to 4 s | Over 4 s |
+| [Interaction to Next Paint (INP)](https://web.dev/articles/inp) | Responsiveness: how long clicks, taps and key presses take to produce a visual update | 200 ms or less | 200 ms to 500 ms | Over 500 ms |
+| [Cumulative Layout Shift (CLS)](https://web.dev/articles/cls) | Visual stability: how much visible content moves unexpectedly | 0.1 or less | 0.1 to 0.25 | Over 0.25 |
+
+All three are evaluated at the 75th percentile of page loads, segmented by mobile and desktop: at least three out of four visits have to be good before the page counts as good.
+
+INP is the newest of the three. It [replaced First Input Delay (FID) on March 12, 2024](https://web.dev/blog/inp-cwv-march-12), and FID was removed from Search Console the same day. Any guide that still talks about FID is out of date.
+
+## The three Core Web Vitals metrics, and how to fix each one
+
+### Largest Contentful Paint (LCP)
+
+LCP is the time from the start of navigation until the largest visible element has rendered: an `img` element, an image inside an inline SVG, a video poster frame, an element with a CSS background image, or a block of text ([web.dev](https://web.dev/articles/lcp)). It is a proxy for "when did the page look loaded".
+
+Common causes of a poor LCP:
+
+- **Slow server response.** Nothing else can start until the HTML arrives.
+- **The LCP image is discovered late.** It is a CSS `background-image`, injected by JavaScript, or lazy-loaded.
+- **Render-blocking CSS and synchronous scripts** in the `<head>`.
+- **Oversized images** in old formats, served at desktop size to phones.
+
+Citing the 2024 Web Almanac, web.dev notes that [73% of mobile pages have an image as their LCP element, and 35% of those images had source URLs that were not discoverable in the initial HTML response](https://web.dev/articles/top-cwv).
+
+Fixes that usually work, from web.dev's [Optimize LCP](https://web.dev/articles/optimize-lcp) guide:
+
+- Put the LCP image in the HTML as a plain `img` element with a `src`, and add `fetchpriority="high"`. The guide is blunt: "Never lazy-load your LCP image."
+- If the hero must be a CSS background image, preload it with `<link rel="preload">`.
+- Cut time to first byte: a CDN in front of the HTML, a proper `cache-control` policy, no redirect chains.
+- Compress images, use modern formats, serve responsive sizes.
+- Keep synchronous scripts out of the `<head>`; web.dev calls it "almost never necessary". Use `defer` or `async`, and defer non-critical CSS.
+
+### Interaction to Next Paint (INP)
+
+INP measures responsiveness. It observes every click, tap and key press during a visit and reports the slowest one: the time from the input until the next frame is painted. Hovering and scrolling do not count, and on pages with many interactions one outlier is ignored per 50 ([web.dev](https://web.dev/articles/inp)).
+
+Common causes:
+
+- **Long tasks.** Anything that holds the main thread for more than 50 milliseconds is a long task, and while it runs the browser blocks interactions ([web.dev](https://web.dev/articles/optimize-long-tasks)).
+- **Too much JavaScript.** Bundles, tag managers, chat widgets and A/B testing scripts all compete for one thread.
+- **Large DOMs.** Rendering work scales with DOM size.
+
+Fixes, from web.dev's [Optimize INP](https://web.dev/articles/optimize-inp) guide:
+
+- Break up long tasks. Yield to the main thread with `scheduler.yield()` or `setTimeout()` so input can be handled between chunks.
+- Ship less JavaScript: code-split, drop unused code, audit every third-party tag.
+- In handlers, paint first and defer the rest: `requestAnimationFrame()` followed by `setTimeout()`.
+- Keep the DOM small and avoid reading layout right after writing styles.
+
+### Cumulative Layout Shift (CLS)
+
+CLS measures how much visible content moves unexpectedly. Each shift is scored by how much of the viewport moved and how far, shifts that happen close together are grouped into a session window, and CLS is the largest window's total ([web.dev](https://web.dev/articles/cls)). Shifts within 500 ms of a user input are excluded, so an accordion expanding on click does not count.
+
+Common causes:
+
+- **Images and videos without dimensions**, so the browser cannot reserve space.
+- **Ads, embeds and iframes** that arrive late and push everything down.
+- **Content injected above existing content**: cookie banners, notification bars.
+- **Web fonts** that render larger or smaller than the fallback font.
+- **Animations** that use layout properties like `top` and `left`.
+
+web.dev reports that [66% of pages have at least one unsized image](https://web.dev/articles/top-cwv).
+
+Fixes, from web.dev's [Optimize CLS](https://web.dev/articles/optimize-cls) guide:
+
+- Always set `width` and `height` attributes on `img` and `video` elements, or use CSS `aspect-ratio`.
+- Reserve space for ads and embeds with `min-height`, and do not collapse the slot if no ad is returned.
+- Do not insert content above the fold unless the user asked for it. Use an overlay for banners.
+- Preload critical fonts, use `font-display: optional` where the design allows, and use `size-adjust` so the fallback font takes the same space.
+- Animate with `transform` instead of layout properties.
+
+## Lab data vs field data
+
+Lab data is collected in a controlled environment with predefined device and network settings: one device, one network, one location. Field data, also called real user monitoring (RUM), comes from the people actually visiting your site, and it is a distribution rather than a single number ([web.dev](https://web.dev/articles/lab-and-field-data-differences)).
+
+Lighthouse and a DevTools trace are lab tools. The Chrome User Experience Report (CrUX) is Google's field dataset and feeds both PageSpeed Insights and Search Console; your own real-user monitoring is field data too.
+
+Google's assessment is based on field data; lab data is for diagnosis. A page can pass in the lab and fail in the field because:
+
+- **Viewports differ.** A desktop test measures the hero image; on a phone the largest element may be a text block waiting on a web font.
+- **Devices differ.** A lab run is a cold load on fast hardware; real visits include mid-range Android phones on cellular connections far from your server.
+- **The lab has no interactions.** INP is missing entirely, and field CLS includes shifts from scrolling into lazy-loaded content.
+
+There is also a coverage gap. CrUX only includes Chrome users who opted in to usage statistics reporting and history sync, on desktop and Android; Chrome on iOS, WebViews and other Chromium browsers do not contribute, and a page has to be publicly discoverable and "sufficiently popular" to appear at all ([CrUX methodology](https://developer.chrome.com/docs/crux/methodology)).
+
+## Do Core Web Vitals affect rankings?
+
+Yes, but by less than most performance vendors imply. Google's [page experience documentation](https://developers.google.com/search/docs/appearance/page-experience) states: "Core Web Vitals are used by our ranking systems." It also says, "There is no single signal. Our core ranking systems look at a variety of signals that align with overall page experience," and: "Google Search always seeks to show the most relevant content, even if the page experience is sub-par."
+
+Read that as: relevance comes first, and Core Web Vitals help at the margin between comparable pages. They matter more directly for people: a page that takes four seconds to show anything loses visitors first, and that shows up in your [bounce rate](/blog/bounce-rate). When you investigate a [drop in organic traffic](/blog/website-traffic-drop), rule out a Core Web Vitals regression, but it is rarely the whole story.
+
+## How to measure Core Web Vitals
+
+### PageSpeed Insights
+
+Enter a URL and you get CrUX field data for the previous 28 days plus a fresh Lighthouse lab run ([PSI docs](https://developers.google.com/speed/docs/insights/v5/about)). When a URL lacks field data of its own, PSI falls back to origin-level data and says so.
+
+Rybbit's [Core Web Vitals checker](/tools/core-web-vitals-checker) runs the same PageSpeed Insights test for any public URL, mobile or desktop, and puts the 75th-percentile field metrics next to the Lighthouse lab metrics and largest opportunities.
+
+### Search Console's Core Web Vitals report
+
+The [Core Web Vitals report](https://support.google.com/webmasters/answer/9205520) groups your indexed URLs by status (Poor, Needs improvement, Good), metric and URL group, with separate mobile and desktop views. Two things trip people up: URL groups without enough LCP and CLS data are omitted, and only indexed URLs appear.
+
+### Chrome DevTools
+
+The Performance panel shows local LCP and CLS as soon as you open it, INP once you interact, and the CrUX field data for the URL alongside them ([DevTools docs](https://developer.chrome.com/docs/devtools/performance/overview)). Record a trace with CPU and network throttling to find the long tasks behind a bad INP.
+
+### Real-user monitoring
+
+Everything above is a snapshot or a 28-day aggregate of popular pages. Real-user monitoring gives you field numbers for every page, continuously; the [web-vitals JavaScript library](https://web.dev/articles/vitals) web.dev recommends is what Rybbit's tracking script uses.
+
+Rybbit's [Web Vitals report](/features/web-vitals) is real-user monitoring built into the analytics you already run. [Enable Web Vitals in your site settings](/docs/feature-guides/performance) and the Performance tab starts collecting LCP, INP and CLS from your visitors, plus First Contentful Paint and Time to First Byte.
+
+![Rybbit's Web Vitals report (public demo, September 2026)](/blog/core-web-vitals/rybbit-web-vitals-report.webp)
+
+Each metric is graded against the same thresholds Google uses. A percentile selector switches between p50, p75, p90 and p99, each card shows the change from the previous period, and the breakdowns split every metric by page, device, browser, operating system and country. That is usually how the cause shows up: LCP is fine on desktop but poor on mobile, or fine everywhere except one region.
+
+To make the business case, the [page speed calculator](/tools/page-speed-calculator) turns current and target load times, monthly visitors, conversion rate and order value into an estimated revenue figure.
+
+## "Core Web Vitals assessment: Failed" and what to do first
+
+PageSpeed Insights passes a page only when the 75th percentiles of LCP, INP and CLS are all good over the last 28 days of CrUX data; with too little INP data it passes on LCP and CLS alone ([PSI docs](https://developers.google.com/speed/docs/insights/v5/about)). "Failed" means at least one metric's 75th percentile is in the needs improvement or poor range. What to do, in order:
+
+1. **Check what the verdict covers.** PSI says whether it is showing this URL or the whole origin; an origin-level failure is about the site, not the page.
+2. **Find the failing metric and device.** It is usually one metric, and usually mobile.
+3. **Check the blast radius in Search Console.** One failing URL group is one template; most groups failing is something shared, like hosting or a tag manager.
+4. **Reproduce it in the lab.** Lighthouse for LCP and CLS; a throttled DevTools trace for INP.
+5. **Fix, deploy, then watch the field.** CrUX is a trailing 28-day window, so PSI and Search Console reflect the fix slowly. Real-user monitoring shows it the same day.
+6. **Validate in Search Console.** Start Tracking opens a 28-day monitoring session; if the issue does not reappear, it is marked fixed.
+
+## Core Web Vitals on WordPress
+
+WordPress sites fail for predictable reasons: a heavy theme, too many plugins, unoptimized images, and scripts that plugins inject into the `<head>`. Sliders, page builders and font loaders hurt LCP; ad and embed plugins that do not reserve space cause CLS; a stack of plugins each adding JavaScript is where poor INP comes from.
+
+The fixes are the ones WordPress's own [performance documentation](https://developer.wordpress.org/advanced-administration/performance/optimization/) recommends: a lightweight theme ("a fast lightweight theme will perform much more efficiently than a heavy graphic-laden inefficient one"), deactivating and deleting plugins you do not need, optimizing images and considering WebP, a caching plugin, a CDN, a current PHP version, and minified CSS and JavaScript.
+
+WordPress core also helps with LCP. [Since 6.3](https://make.wordpress.org/core/2023/07/13/image-performance-enhancements-in-wordpress-6-3/) it adds `fetchpriority="high"` to the image it determines is most likely the LCP image and omits `loading="lazy"` from the first few images on the page. That only covers images rendered through WordPress's own functions: a hero set as a CSS background image, or a slider that injects images with JavaScript, gets none of it, and a plugin that lazy-loads everything can undo it. Check the rendered HTML of your slowest template.
+
+Search Console's URL groups usually map to templates, so fixing one template moves a whole group.
+
+## Monitor Core Web Vitals over time
+
+A one-off test is a single load on a single device on a single day. Sites change constantly: a new plugin, a new ad partner, a redesigned hero, a tag pasted into the tag manager. Any of them can push p75 LCP from 2.3 to 3 seconds, and a Lighthouse score from March will not tell you.
+
+CrUX is a trailing 28-day window, so a regression deployed on Monday takes weeks to fully show in PageSpeed Insights and Search Console, and never shows for pages below CrUX's popularity threshold.
+
+Real-user monitoring closes that gap. Track p75 per page, compare the week after a deploy with the week before, and treat a metric crossing from good to needs improvement as a bug. In Rybbit, the trend chart and the previous-period comparison make a regression visible quickly, and the breakdowns show whether it hit everyone or only one device, country or page.
+
+## FAQ
+
+### What is a good Core Web Vitals score?
+
+A page is good when its 75th-percentile LCP is 2.5 seconds or less, INP 200 milliseconds or less, and CLS 0.1 or less, measured separately for mobile and desktop. Needs improvement runs up to 4 seconds, 500 milliseconds and 0.25; above that is poor. There is no combined score; the Lighthouse performance score is a lab number.
+
+### Do Core Web Vitals affect SEO?
+
+Yes. Google says Core Web Vitals are used by its ranking systems, and in the same breath that there is no single page experience signal and that it always seeks to show the most relevant content. Treat them as a tie-breaker and a user experience requirement, not a way to outrank better content.
+
+### How often are Core Web Vitals updated?
+
+PageSpeed Insights and Search Console report field data over the previous 28 days, so a change takes up to four weeks to be fully reflected. The metrics themselves change rarely: web.dev states that "developers should expect the definitions and thresholds of the Core Web Vitals to be stable, and updates to have prior notice and a predictable, annual cadence."
+
+### What replaced FID?
+
+Interaction to Next Paint (INP) replaced First Input Delay (FID) on March 12, 2024. FID only measured the delay before the first interaction's handler started; INP measures the full time to the next paint for every interaction, which is why pages that passed FID can fail INP.
+
+### Why does my page pass in Lighthouse but fail the Core Web Vitals assessment?
+
+Lighthouse is one simulated load on one device and cannot measure INP at all. The assessment is 28 days of real Chrome visits at the 75th percentile across every device and network your visitors use. Use field data to decide whether there is a problem, the lab to find the cause, and your own real-user monitoring to confirm the fix landed.

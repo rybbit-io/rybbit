@@ -114,9 +114,9 @@ export default function ForStartupsPage() {
             </div>
             <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
               <p className="max-w-md text-lg leading-8 text-neutral-600 text-pretty dark:text-neutral-400">
-                Analytics at a startup is a Tuesday-morning question (did the launch work, where did those signups
-                come from?), not a discipline someone owns. Rybbit is built for the person answering that question
-                between two other jobs.
+                Analytics at a startup is a Tuesday-morning question (did the launch work, where did those signups come
+                from?), not a discipline someone owns. Rybbit is built for the person answering that question between
+                two other jobs.
               </p>
             </div>
           </div>
@@ -135,8 +135,7 @@ export default function ForStartupsPage() {
                 Your first week with Rybbit.
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                An honest sequence, not a setup project. Each step works on the data the previous one already
-                collected.
+                An honest sequence, not a setup project. Each step works on the data the previous one already collected.
               </p>
             </div>
           </div>
@@ -168,9 +167,8 @@ export default function ForStartupsPage() {
             <article className="bg-white px-5 py-10 dark:bg-neutral-950 sm:px-8 lg:col-span-7 lg:px-10">
               <h3 className="text-lg font-semibold tracking-tight">Launch-day realtime</h3>
               <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                On the morning you hit the front page, watch visitors, referrers, and signups move in realtime.
-                And because Rybbit is cookieless, the Hacker News crowd running ad blockers still shows up in your
-                numbers.
+                On the morning you hit the front page, watch visitors, referrers, and signups move in realtime. And
+                because Rybbit is cookieless, the Hacker News crowd running ad blockers still shows up in your numbers.
               </p>
               <div className="mt-6 flex max-w-md items-center justify-between rounded-md border border-neutral-200 px-3.5 py-3 text-sm dark:border-neutral-800">
                 <span className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
@@ -187,24 +185,24 @@ export default function ForStartupsPage() {
             <article className="bg-white px-5 py-10 dark:bg-neutral-950 sm:px-8 lg:col-span-5 lg:px-10">
               <h3 className="text-lg font-semibold tracking-tight">Errors before bug reports</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                Error tracking is on the same dashboard as traffic, so a broken signup page shows up as both a
-                falling funnel and a rising error, usually before the first support email lands.
+                Error tracking is on the same dashboard as traffic, so a broken signup page shows up as both a falling
+                funnel and a rising error, usually before the first support email lands.
               </p>
             </article>
 
             <article className="bg-white px-5 py-10 dark:bg-neutral-950 sm:px-8 lg:col-span-5 lg:px-10">
               <h3 className="text-lg font-semibold tracking-tight">One workspace for the team</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                Invite your cofounder and first hires into an organization with member roles. Standard includes 3
-                team members; Pro removes the limit.
+                Invite your cofounder and first hires into an organization with member roles. Standard includes 3 team
+                members; Pro removes the limit.
               </p>
             </article>
 
             <article className="bg-white px-5 py-10 dark:bg-neutral-950 sm:px-8 lg:col-span-7 lg:px-10">
               <h3 className="text-lg font-semibold tracking-tight">Speed you can defend</h3>
               <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                Web vitals from real visits show where your pages feel slow, by route and device. Performance
-                arguments in standup end with a number instead of a feeling.
+                Web vitals from real visits show where your pages feel slow, by route and device. Performance arguments
+                in standup end with a number instead of a feeling.
               </p>
               <Link
                 href="/features/web-vitals"
@@ -232,8 +230,8 @@ export default function ForStartupsPage() {
               Starts small. Priced by traffic, not by seat.
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
-              Standard starts at $13/month billed annually for 100K pageviews, and the pricing slider shows exactly
-              what the next stage of growth costs before you get there. Every plan starts with a 7-day free trial.
+              Standard starts at $13/month billed annually for 100K pageviews, and the pricing slider shows exactly what
+              the next stage of growth costs before you get there. Every plan starts with a 7-day free trial.
             </p>
           </div>
           <div className="flex flex-col justify-center gap-4 px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
@@ -261,7 +259,7 @@ export default function ForStartupsPage() {
         </div>
       </section>
 
-      <PersonaFaqSection heading="Startup questions, answered plainly." items={faqItems} />
+      <PersonaFaqSection heading="Startup FAQ" items={faqItems} />
       <PersonaCrossLinks current="for-startups" />
 
       <CTASection

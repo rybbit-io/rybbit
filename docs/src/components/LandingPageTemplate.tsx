@@ -406,10 +406,6 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                 <p className="max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400 text-pretty">
                   {t("What teams say after replacing heavier analytics products with Rybbit.")}
                 </p>
-                <div className="mt-10 flex items-center justify-between border-t border-neutral-200 pt-4 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 md:text-xs">
-                  <span>{t("Customer notes")}</span>
-                  <span className="hidden md:inline">{t("Pause on hover")}</span>
-                </div>
               </div>
             </div>
 
@@ -445,7 +441,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                   id="faq-title"
                   className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
                 >
-                  {t("Questions, answered plainly.")}
+                  {t("FAQ")}
                 </h2>
                 <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
                   {t("The questions people ask before adding Rybbit to their site.")}

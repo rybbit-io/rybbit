@@ -42,7 +42,7 @@ const defaultDependencies: McpAuthenticatorDependencies = {
   },
   getOAuthSession: async bearerToken => {
     const { auth } = await import("../lib/auth.js");
-    return auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${bearerToken}` }) });
+    return auth.api.verifyRybbitOAuthToken({ body: { token: bearerToken } });
   },
   consumeRateLimit: async identity => {
     const { IS_CLOUD } = await import("../lib/const.js");

@@ -122,8 +122,8 @@ export default function ForCreatorsPage() {
             <article className="bg-white px-5 py-10 dark:bg-neutral-950 sm:px-8 lg:col-span-7 lg:px-10">
               <h3 className="text-lg font-semibold tracking-tight">Which posts actually land</h3>
               <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                Top pages in realtime, so on publish day you watch a post find its readers. Over months, you learn
-                which topics deserve the sequel.
+                Top pages in realtime, so on publish day you watch a post find its readers. Over months, you learn which
+                topics deserve the sequel.
               </p>
               <ul className="mt-6 max-w-lg divide-y divide-neutral-200 rounded-md border border-neutral-200 text-sm dark:divide-neutral-800 dark:border-neutral-800">
                 {topPosts.map(post => (
@@ -192,8 +192,8 @@ export default function ForCreatorsPage() {
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
               Make your dashboard fully public and put the link in your bio, or share it privately with a secret link
-              when a sponsor asks for real numbers. Your stats become something you can point at instead of a
-              screenshot you have to crop.
+              when a sponsor asks for real numbers. Your stats become something you can point at instead of a screenshot
+              you have to crop.
             </p>
           </div>
           <div className="flex flex-col justify-center px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
@@ -210,7 +210,7 @@ export default function ForCreatorsPage() {
         </div>
       </section>
 
-      <PersonaFaqSection heading="Creator questions, answered plainly." items={faqItems} />
+      <PersonaFaqSection heading="Creator FAQ" items={faqItems} />
       <PersonaCrossLinks current="for-creators" />
 
       <CTASection

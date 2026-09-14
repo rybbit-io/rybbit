@@ -1,95 +1,73 @@
 ---
 title: Svelte (Vite / Client-Side)
-description: Integrate Rybbit with your client-side Svelte application
+description: Add Rybbit analytics to your Svelte app
+category: frameworks
+icon: SiSvelte
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps'
-import { Callout } from 'fumadocs-ui/components/callout'
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-
-This guide explains how to integrate Rybbit with your standard client-side Svelte applications, typically built using Vite (e.g., via `npm create vite@latest -- --template svelte`).
-
-## How to Add Rybbit to Your Client-Side Svelte App
-
-The most straightforward method is to add the Rybbit tracking script directly to your `index.html` file.
+A client-side Svelte app built with Vite (`npm create vite@latest -- --template svelte`) serves a single `index.html` at the project root. Add the snippet there and it loads on every route.
 
 <Steps>
 <Step>
-### Retrieve Your Tracking Script
+### Get your tracking snippet
 
-Navigate to your Rybbit dashboard to obtain your code snippet:
-
-```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
-```
-Replace `YOUR_SITE_ID` with your actual Site ID.
+<include>../../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Locate Your `index.html` File
+### Add the snippet to Svelte
 
-For Vite-based Svelte projects, this file is typically located at the root of your project as `index.html`.
-</Step>
+Open `index.html` at the root of your project and paste the snippet inside `<head>`:
 
-<Step>
-### Add the Snippet to `index.html`
-
-Open `index.html` and paste the Rybbit tracking snippet just before the closing `</head>` tag or `</body>` tag.
-
-```html filename="index.html (Vite)"
-<!DOCTYPE html>
+```html title="index.html"
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" /> <!-- Or your favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Svelte App</title>
-    <!-- Rybbit Tracking Snippet -->
-    <script
-      src="https://app.rybbit.io/api/script.js"
-      data-site-id="YOUR_SITE_ID"
-      defer
-    ></script>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.js"></script> <!-- Or main.ts -->
-    <!-- Or place script here, before </body> -->
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>
 ```
-Ensure `YOUR_SITE_ID` is replaced.
+
+Placing it just before `</body>` also works, but `<head>` lets the script start loading sooner.
 </Step>
 
 <Step>
-### Verify Installation
+### Verify installation
 
-Deploy your application and check your Rybbit dashboard for incoming data. You can also inspect your browser's network tab to confirm `script.js` is loaded.
+<include>../../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-<Callout type="info">
-  **SPA Page View Tracking**: Rybbit's script is designed to automatically track route changes in client-side Svelte SPAs using common routers (like `svelte-routing` or `svelte-spa-router`). If page views aren't tracked correctly after navigation, you might need to manually trigger `window.rybbit.pageview()` after each route change, using your router's specific API for navigation events.
-</Callout>
+## Track custom events
 
-## Custom Event Tracking
+Call `window.rybbit.event()` from any Svelte component:
 
-From any Svelte component, you can track custom events:
-
-```svelte
+```svelte title="src/lib/ActionButton.svelte"
 <script>
-  function handleClientAction() {
-    // Ensure running in browser, though for client-side Svelte this is usually the case
-    if (typeof window !== 'undefined' && window.rybbit) {
-      window.rybbit.event('user_action_svelte_vite', { component: 'MySvelteViteComponent' });
+  function handleAction() {
+    if (window.rybbit) {
+      window.rybbit.event("user_action", { component: "ActionButton" });
     }
   }
 </script>
 
-<button on:click={handleClientAction}>Perform Client Svelte Action</button>
+<button on:click={handleAction}>Perform action</button>
 ```
-Always check for `window.rybbit` before calling its methods.
+
+## Troubleshooting
+
+- **Pageviews missing after navigation**: Rybbit tracks History API and hash navigations, which covers routers such as `svelte-routing` and `svelte-spa-router`. If a route change is still not recorded, call `window.rybbit.pageview()` from that router's navigation callback.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

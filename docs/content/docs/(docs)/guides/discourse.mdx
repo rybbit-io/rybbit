@@ -1,0 +1,46 @@
+---
+title: Discourse
+description: Add Rybbit analytics to your Discourse forum
+category: other
+icon: SiDiscourse
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Discourse adds site-wide code through **theme components**. A component has an editable `</head>` section that Discourse injects into every page and, because Discourse ships a strict Content Security Policy, it stamps the required nonce onto script tags placed there. No server access or plugin is needed.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Discourse
+
+1. In the admin sidebar open **Appearance → Themes and components** (older versions: **Admin → Customize → Themes**).
+2. On the **Components** tab click **Install**, choose **Create new**, name it "Rybbit Analytics", make sure the type is **Component** and click **Create**.
+3. Click **Edit CSS/HTML**, stay on the **Common** tab and open the **`</head>`** section (not **Header**, which is the visible page header).
+4. Paste the snippet and click **Save**.
+5. Back on the component page, add your active theme under **Include component on these themes** so the component is enabled.
+
+Discourse is a single-page app: after the first load, topics and categories open without a full page reload. The tracker wraps `history.pushState` and `history.replaceState` and listens for `popstate`, so those navigations are recorded as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Component saved but the script is missing from the page source**: the component is not attached to the active theme. Add the theme under **Include component on these themes**, or add the component from the theme's **Included components** list.
+- **Script tag present but blocked**: check the browser console for a CSP error. Scripts added through the `</head>` section receive Discourse's nonce automatically; scripts injected any other way (for example from a plugin's raw HTML) do not.
+- **Only the first pageview is recorded**: the **SPA Navigation** setting is off for the site in your Rybbit dashboard. Turn it on under Site Settings.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

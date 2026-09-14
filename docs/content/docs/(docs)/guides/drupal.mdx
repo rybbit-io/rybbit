@@ -1,61 +1,70 @@
 ---
 title: Drupal
-description: Integrate Rybbit Analytics with your Drupal site using the rybbit module
+description: Add Rybbit analytics to your Drupal site
+category: cms
+icon: SiDrupal
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-Drupal is a flexible and secure content management system that features robust content modeling and user management tools. You can add Rybbit to Drupal to track anonymous and logged-in users.
-
-## How to Add Rybbit to Drupal
-
-You can add Rybbit to your site by installing the [Rybbit](https://drupal.org/project/rybbit) module from Drupal.org
+The [Rybbit module](https://www.drupal.org/project/rybbit) on Drupal.org adds the tracking script to every page and can pass logged-in user details to Rybbit, so you enter a Site ID instead of editing your theme. It requires Drupal 10.3 or later.
 
 <Steps>
 <Step>
+### Get your tracking snippet
 
-### Get Your Tracking Script
-
-First, you'll need your Rybbit tracking script. You can find this in your Rybbit dashboard under **Site Settings > Tracking Code**. It will look something like this:
-
-```html
-<script defer src="https://app.rybbit.io/api/script.js" data-site-id="YOUR_SITE_ID"></script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
+
 <Step>
+### Add the snippet to Drupal
 
-### Download and install the Rybbit module
+<Tabs items={["Rybbit module", "Theme template"]}>
+<Tab>
+1. Install and enable the module:
 
-Follow Drupal's [recommended procedure](https://www.drupal.org/docs/extending-drupal/installing-modules) for installing the Rybbit module from https://www.drupal.org/project/rybbit:
+   ```bash
+   composer require drupal/rybbit
+   drush en rybbit
+   ```
+
+2. Go to **Configuration → Web services → Rybbit analytics** (`/admin/config/services/rybbit`). Your account needs the *administer rybbit* permission.
+3. Enter your **Site ID** and save.
+
+Optional settings on the same page:
+
+- **Script URL**: defaults to Rybbit cloud. Point it at your own instance if you self-host Rybbit.
+- **Visibility**: restrict tracking by role or by page path, each in include or exclude mode.
+- **Identify logged-in users**: calls `identify()` with the user's UUID by default, and sends traits you define as key/value pairs. `username`, `name` and `email` are recognised trait names.
+- The module also exposes hooks for altering the sitewide and per-user tracking data from your own module.
+</Tab>
+<Tab>
+If you cannot install contributed modules, copy `core/modules/system/templates/html.html.twig` into your theme's `templates` folder and add the snippet just before `</head>`:
+
+```twig
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
 ```
-  $ composer require drupal/rybbit
-  $ drush en rybbit
-```
+
+Clear caches afterwards so Drupal picks up the new template.
+</Tab>
+</Tabs>
 </Step>
+
 <Step>
+### Verify installation
 
-### Configure module settings
-
-Visit `admin/services/rybbit` and add your Site ID to the site's configuration page.
-
-You can also modify the script's source and loading optimizations, set rules for when the script gets loaded, and configure the site to use the `identify()` method to pass details about logged-in users from Drupal to Rybbit.
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-## Verify Integration
+## Troubleshooting
 
-<Steps>
-<Step>
+- **Script missing after saving settings**: pages are served from Drupal's page cache. Clear caches with `drush cr` or **Configuration → Development → Performance → Clear all caches**.
+- **Visitors are tracked but you are not**: check the role and path visibility settings on the module page. Excluding the administrator role is a common setup.
+- **Logged-in users appear anonymous**: enable **Identify logged-in users** in the module settings; without it Drupal accounts are tracked like any other visitor.
 
-### Test Your Integration
+## Next steps
 
-- Open your live Drupal website in a browser.
-- Navigate through a few pages.
-- Check your Rybbit dashboard for incoming data. It might take a few minutes for the first events to appear.
-</Step>
-</Steps>
-
-That's it! Rybbit Analytics should now be integrated with your Drupal site.
+<include>../../../partials/guides/next-steps.mdx</include>

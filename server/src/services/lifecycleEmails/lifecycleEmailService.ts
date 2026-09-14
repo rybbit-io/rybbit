@@ -19,6 +19,12 @@ import { detectPlatform, platformForKey, type PlatformInfo } from "./platformDet
  * fire at most once. At most one email per user per run (enforced across both
  * passes via a per-run set), with a minimum gap between educational sends.
  *
+ * Per-site emails (install track, "you're live", went quiet) are evaluated per
+ * site but sent per user: every site eligible in the same run is bundled into
+ * one message, and each kind is sent to a user at most once per
+ * KIND_COOLDOWN_HOURS. An agency that adds 13 domains gets one snippet email
+ * listing 13 snippets, not 13 emails ten minutes apart.
+ *
  * Concurrency: the cron runs on the cluster primary only, so a single
  * evaluator holds the "one email per user per run" invariant. If this ever
  * moves to multiple replicas, the per-run set must become a distributed
@@ -27,6 +33,7 @@ import { detectPlatform, platformForKey, type PlatformInfo } from "./platformDet
 
 const COHORT_DAYS = 30; // users/sites older than this never enter the onboarding flow
 const MIN_GAP_HOURS = 48; // between non-transition emails to the same user
+const KIND_COOLDOWN_HOURS = 24; // between two emails of the same per-site kind to the same user
 const CHECK_INSTALL_TTL_SECONDS = 30 * 24 * 3600;
 const NEGATIVE_CACHE_TTL_MS = 12 * 3600 * 1000; // don't re-run a no-result ClickHouse probe for this long
 
@@ -49,6 +56,21 @@ const parseTs = (value: string): DateTime => {
   const sql = DateTime.fromSQL(value, { zone: "utc" });
   return sql.isValid ? sql : DateTime.fromISO(value, { zone: "utc" });
 };
+
+/** Latest sentAt among log keys starting with any of the prefixes, or null. */
+const lastSentWithPrefix = (sentLog: Map<string, DateTime>, prefixes: string[]): DateTime | null => {
+  let latest: DateTime | null = null;
+  for (const [key, at] of sentLog) {
+    if (!prefixes.some(p => key.startsWith(p))) continue;
+    if (!latest || at > latest) latest = at;
+  }
+  return latest;
+};
+
+interface BundleEntry {
+  key: string;
+  siteId: number | null;
+}
 
 const countryName = (code: string | null): string | null => {
   if (!code) return null;
@@ -219,45 +241,79 @@ class LifecycleEmailService {
   }
 
   /**
-   * Record + send. The insert happens first with the unique index as the guard,
-   * so a re-entrant run can never double-send; if the send then fails, the row
-   * is removed so the next tick retries. The lifecycle key doubles as the
-   * Resend idempotency key so an "accepted but response lost" retry can't
-   * deliver twice.
+   * Record + send one email covering one or more per-site keys. The inserts
+   * happen first with the unique index as the guard, so a re-entrant run can
+   * never double-send; if the send then fails, the rows are removed so the next
+   * tick retries. Keys that already exist are dropped from the bundle and the
+   * email is built from the ones actually claimed.
+   *
+   * A send failure can't be told apart from "accepted but response lost", so
+   * the rollback-and-retry is only safe because the Resend idempotency key is
+   * stable across retries: it must not depend on which sites happen to be in
+   * the bundle (membership can change between ticks) - see bundleKey. Resend
+   * then either returns the original response or rejects the mismatched
+   * payload; it never delivers a second email.
    */
-  private async sendOnce(
+  private async sendBundle(
+    userId: string,
+    email: string,
+    entries: BundleEntry[],
+    idempotencyKey: string,
+    build: (claimed: BundleEntry[]) => Promise<content.LifecycleEmail | null> | content.LifecycleEmail | null
+  ): Promise<boolean> {
+    if (entries.length === 0) return false;
+    const inserted = await db
+      .insert(lifecycleEmailLog)
+      .values(entries.map(e => ({ userId, emailKey: e.key, siteId: e.siteId })))
+      .onConflictDoNothing()
+      .returning({ id: lifecycleEmailLog.id, emailKey: lifecycleEmailLog.emailKey });
+    if (inserted.length === 0) return false; // all already sent
+
+    const insertedIds = inserted.map(r => r.id);
+    const claimedKeys = new Set(inserted.map(r => r.emailKey));
+    const claimed = entries.filter(e => claimedKeys.has(e.key));
+    const rollback = () => db.delete(lifecycleEmailLog).where(inArray(lifecycleEmailLog.id, insertedIds));
+
+    try {
+      const message = await build(claimed);
+      if (!message) {
+        await rollback();
+        return false;
+      }
+      const sent = await sendLifecycleEmail(email, message.subject, message.text, idempotencyKey);
+      if (!sent) {
+        await rollback();
+        return false;
+      }
+      this.emailedThisRun.add(userId);
+      this.logger.info({ userId, emailKeys: claimed.map(e => e.key) }, "Sent lifecycle email");
+      return true;
+    } catch (error) {
+      this.logger.error({ err: error, userId, emailKeys: claimed.map(e => e.key) }, "Error sending lifecycle email");
+      await rollback();
+      return false;
+    }
+  }
+
+  /**
+   * Idempotency key for a bundled kind. Each kind reaches a user at most once
+   * per cooldown window, so "the window since this kind's last successful
+   * send" identifies the email: a rolled-back send leaves lastSent unchanged
+   * and the retry reuses the key whatever sites are eligible by then, while a
+   * successful send advances lastSent and the next bundle gets a fresh key.
+   */
+  private bundleKey(userId: string, kind: string, lastSent: DateTime | null): string {
+    return `lifecycle:${userId}:${kind}:${lastSent ? lastSent.toMillis() : "first"}`;
+  }
+
+  private sendOnce(
     userId: string,
     email: string,
     emailKey: string,
     siteId: number | null,
     build: () => Promise<content.LifecycleEmail | null> | content.LifecycleEmail | null
   ): Promise<boolean> {
-    const [inserted] = await db
-      .insert(lifecycleEmailLog)
-      .values({ userId, emailKey, siteId })
-      .onConflictDoNothing()
-      .returning({ id: lifecycleEmailLog.id });
-    if (!inserted) return false; // already sent
-
-    try {
-      const message = await build();
-      if (!message) {
-        await db.delete(lifecycleEmailLog).where(eq(lifecycleEmailLog.id, inserted.id));
-        return false;
-      }
-      const sent = await sendLifecycleEmail(email, message.subject, message.text, `lifecycle:${userId}:${emailKey}`);
-      if (!sent) {
-        await db.delete(lifecycleEmailLog).where(eq(lifecycleEmailLog.id, inserted.id));
-        return false;
-      }
-      this.emailedThisRun.add(userId);
-      this.logger.info({ userId, emailKey, siteId }, "Sent lifecycle email");
-      return true;
-    } catch (error) {
-      this.logger.error({ err: error, userId, emailKey }, "Error sending lifecycle email");
-      await db.delete(lifecycleEmailLog).where(eq(lifecycleEmailLog.id, inserted.id));
-      return false;
-    }
+    return this.sendBundle(userId, email, [{ key: emailKey, siteId }], `lifecycle:${userId}:${emailKey}`, build);
   }
 
   // -------------------------------------------------------------------------
@@ -400,21 +456,33 @@ class LifecycleEmailService {
 
     const unsubscribed = () => isContactUnsubscribed(u.email);
 
+    const lastLiveSent = lastSentWithPrefix(sentLog, ["site_live:"]);
+    const lastInstallSent = lastSentWithPrefix(sentLog, ["install_"]);
+    const cooldownElapsed = (last: DateTime | null) => !last || now.diff(last, "hours").hours >= KIND_COOLDOWN_HOURS;
+
     // --- Transition: a site just received its first data -> "you're live" ---
     // Exempt from the gap; it's a confirmation, not education. Only fires while
-    // the first event is fresh so pre-existing sites don't get it late.
-    for (const site of userSites) {
+    // the first event is fresh so pre-existing sites don't get it late. All
+    // sites that went live since the last such email share one message.
+    const liveSites = userSites.filter(site => {
       const s = stats.get(site.siteId);
-      if (!s || s.total === 0) continue;
-      const firstEventAge = now.diff(s.firstEvent, "hours").hours;
-      if (firstEventAge > 72) continue;
-      if (sentLog.has(`site_live:${site.siteId}`)) continue;
+      if (!s || s.total === 0) return false;
+      if (now.diff(s.firstEvent, "hours").hours > 72) return false;
+      return !sentLog.has(`site_live:${site.siteId}`);
+    });
+    if (liveSites.length > 0 && cooldownElapsed(lastLiveSent)) {
       if (await unsubscribed()) return;
-
-      const sent = await this.sendOnce(u.id, u.email, `site_live:${site.siteId}`, site.siteId, async () => {
-        const first = await this.fetchFirstPageview(site.siteId);
-        return content.siteLive(site.domain, site.siteId, countryName(first?.country ?? null), u.name);
-      });
+      const sent = await this.sendBundle(
+        u.id,
+        u.email,
+        liveSites.map(site => ({ key: `site_live:${site.siteId}`, siteId: site.siteId })),
+        this.bundleKey(u.id, "site_live", lastLiveSent),
+        async claimed => {
+          const chosen = liveSites.filter(site => claimed.some(e => e.siteId === site.siteId));
+          const first = chosen.length === 1 ? await this.fetchFirstPageview(chosen[0].siteId) : null;
+          return content.siteLive(chosen, countryName(first?.country ?? null), u.name);
+        }
+      );
       if (sent) return;
     }
 
@@ -432,41 +500,92 @@ class LifecycleEmailService {
     }
 
     // --- Install track: evaluated per site, so a working site doesn't
-    // suppress install help for the owner's other new sites ---
+    // suppress install help for the owner's other new sites. Sent per user:
+    // every site at the same stage goes into one email, and the track sends
+    // at most one email per KIND_COOLDOWN_HOURS, snippet stage first ---
     const noDataSites = userSites
       .filter(site => !stats.get(site.siteId) && now.diff(site.createdAt, "days").days < COHORT_DAYS)
       .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
 
-    for (const site of noDataSites) {
-      const siteAge = now.diff(site.createdAt, "hours").hours;
-      const snippetKey = `install_snippet:${site.siteId}`;
-      const checkKey = `install_check:${site.siteId}`;
-      const finalKey = `install_final:${site.siteId}`;
-      const snippetSentAt = sentLog.get(snippetKey);
-      const checkSentAt = sentLog.get(checkKey);
+    if (noDataSites.length > 0 && cooldownElapsed(lastInstallSent)) {
+      // One install email per window, so the three stages share the key.
+      const installKey = this.bundleKey(u.id, "install", lastInstallSent);
+      const hoursSince = (key: string) => {
+        const at = sentLog.get(key);
+        return at ? now.diff(at, "hours").hours : null;
+      };
+      const snippetKey = (id: number) => `install_snippet:${id}`;
+      const checkKey = (id: number) => `install_check:${id}`;
+      const finalKey = (id: number) => `install_final:${id}`;
 
-      if (!sentLog.has(snippetKey)) {
-        // The snippet email is the user's next step right after creating a
-        // site; it is exempt from the educational gap.
-        if (siteAge < 1) continue;
+      // The snippet email is the user's next step right after creating a
+      // site; it is exempt from the educational gap.
+      const snippetDue = noDataSites.filter(
+        site => !sentLog.has(snippetKey(site.siteId)) && now.diff(site.createdAt, "hours").hours >= 1
+      );
+      if (snippetDue.length > 0) {
         if (await unsubscribed()) return;
-        const sent = await this.sendOnce(u.id, u.email, snippetKey, site.siteId, async () => {
-          const platform = await this.resolvePlatform(site);
-          return content.installSnippet(site.domain, site.siteId, platform, u.name);
-        });
-        if (sent) return;
-      } else if (!sentLog.has(checkKey) && snippetSentAt && now.diff(snippetSentAt, "hours").hours >= 24) {
-        // Timed from the snippet email, not site age, so a pre-existing site
-        // picked up at rollout doesn't get two install emails in one hour.
-        if (await unsubscribed()) return;
-        const sent = await this.sendOnce(u.id, u.email, checkKey, site.siteId, () =>
-          content.installCheck(site.domain, this.checkInstallUrl(site.siteId, site.domain), u.name)
+        const sent = await this.sendBundle(
+          u.id,
+          u.email,
+          snippetDue.map(site => ({ key: snippetKey(site.siteId), siteId: site.siteId })),
+          installKey,
+          async claimed => {
+            const chosen = snippetDue.filter(site => claimed.some(e => e.siteId === site.siteId));
+            const withPlatform: content.SnippetSite[] = [];
+            for (const site of chosen) {
+              withPlatform.push({ domain: site.domain, siteId: site.siteId, platform: await this.resolvePlatform(site) });
+            }
+            return content.installSnippet(withPlatform, u.name);
+          }
         );
         if (sent) return;
-      } else if (!sentLog.has(finalKey) && checkSentAt && now.diff(checkSentAt, "hours").hours >= 96 && gapElapsed) {
+      }
+
+      // Timed from the snippet email, not site age, so a pre-existing site
+      // picked up at rollout doesn't get two install emails in one hour.
+      const checkDue = noDataSites.filter(site => {
+        if (sentLog.has(checkKey(site.siteId))) return false;
+        const since = hoursSince(snippetKey(site.siteId));
+        return since !== null && since >= 24;
+      });
+      if (checkDue.length > 0) {
         if (await unsubscribed()) return;
-        const sent = await this.sendOnce(u.id, u.email, finalKey, site.siteId, () =>
-          content.installFinal(site.domain, u.name)
+        const sent = await this.sendBundle(
+          u.id,
+          u.email,
+          checkDue.map(site => ({ key: checkKey(site.siteId), siteId: site.siteId })),
+          installKey,
+          claimed =>
+            content.installCheck(
+              checkDue
+                .filter(site => claimed.some(e => e.siteId === site.siteId))
+                .map(site => ({ domain: site.domain, checkInstallUrl: this.checkInstallUrl(site.siteId, site.domain) })),
+              u.name
+            )
+        );
+        if (sent) return;
+      }
+
+      const finalDue = gapElapsed
+        ? noDataSites.filter(site => {
+            if (sentLog.has(finalKey(site.siteId))) return false;
+            const since = hoursSince(checkKey(site.siteId));
+            return since !== null && since >= 96;
+          })
+        : [];
+      if (finalDue.length > 0) {
+        if (await unsubscribed()) return;
+        const sent = await this.sendBundle(
+          u.id,
+          u.email,
+          finalDue.map(site => ({ key: finalKey(site.siteId), siteId: site.siteId })),
+          installKey,
+          claimed =>
+            content.installFinal(
+              finalDue.filter(site => claimed.some(e => e.siteId === site.siteId)).map(site => site.domain),
+              u.name
+            )
         );
         if (sent) return;
       }
@@ -563,9 +682,10 @@ class LifecycleEmailService {
     if (quietSites.length === 0) return;
 
     // 30-day per-site cooldown: a recovered-then-quiet-again site alerts at
-    // most monthly even though each outage gets its own email key.
+    // most monthly even though each outage gets its own email key. The same
+    // rows give each owner's last went-quiet email for the per-user cooldown.
     const recentQuietLogs = await db
-      .select({ siteId: lifecycleEmailLog.siteId, emailKey: lifecycleEmailLog.emailKey })
+      .select({ siteId: lifecycleEmailLog.siteId, userId: lifecycleEmailLog.userId, sentAt: lifecycleEmailLog.sentAt })
       .from(lifecycleEmailLog)
       .where(
         and(
@@ -574,6 +694,12 @@ class LifecycleEmailService {
         )
       );
     const recentlyAlerted = new Set(recentQuietLogs.map(r => r.siteId));
+    const lastQuietEmailByUser = new Map<string, DateTime>();
+    for (const r of recentQuietLogs) {
+      const at = parseTs(r.sentAt);
+      const prev = lastQuietEmailByUser.get(r.userId);
+      if (!prev || at > prev) lastQuietEmailByUser.set(r.userId, at);
+    }
 
     const orgIds = [...new Set(quietSites.map(s => s.organizationId).filter((id): id is string => !!id))];
     const owners =
@@ -588,24 +714,46 @@ class LifecycleEmailService {
     const ownerByOrg = new Map(owners.map(o => [o.organizationId, o]));
     const lastEventBySite = new Map(quietRows.map(r => [Number(r.site_id), parseTs(r.last_event)]));
 
+    // Group by owner: an agency with eight quiet sites gets one email listing
+    // eight sites, at most once per KIND_COOLDOWN_HOURS.
+    const quietByOwner = new Map<string, { owner: (typeof owners)[number]; sites: typeof quietSites }>();
     for (const site of quietSites) {
       if (recentlyAlerted.has(site.siteId)) continue;
       const owner = site.organizationId ? ownerByOrg.get(site.organizationId) : null;
       if (!owner) continue;
-      // One email per user per run, across both passes: an owner with five
-      // quiet sites (or one who just got an onboarding email) gets one message.
+      const entry = quietByOwner.get(owner.userId) ?? { owner, sites: [] };
+      entry.sites.push(site);
+      quietByOwner.set(owner.userId, entry);
+    }
+
+    for (const { owner, sites: ownerSites } of quietByOwner.values()) {
+      // One email per user per run, across both passes: an owner who just got
+      // an onboarding email waits for the next tick.
       if (this.emailedThisRun.has(owner.userId)) continue;
+      const lastQuiet = lastQuietEmailByUser.get(owner.userId) ?? null;
+      if (lastQuiet && now.diff(lastQuiet, "hours").hours < KIND_COOLDOWN_HOURS) continue;
       try {
         if (await isContactUnsubscribed(owner.email)) continue;
-        const lastEvent = lastEventBySite.get(site.siteId);
         // Per-outage key: the date of the last event identifies the outage, so
         // a site that recovers and goes quiet again next month can alert again.
-        const outageKey = `went_quiet:${site.siteId}:${lastEvent?.toFormat("yyyy-MM-dd") ?? "unknown"}`;
-        await this.sendOnce(owner.userId, owner.email, outageKey, site.siteId, () =>
-          content.wentQuiet(site.domain, site.siteId, lastEvent?.toFormat("MMMM d 'at' HH:mm 'UTC'") ?? "two days ago", owner.name)
+        const entries = ownerSites.map(site => ({
+          key: `went_quiet:${site.siteId}:${lastEventBySite.get(site.siteId)?.toFormat("yyyy-MM-dd") ?? "unknown"}`,
+          siteId: site.siteId,
+        }));
+        await this.sendBundle(owner.userId, owner.email, entries, this.bundleKey(owner.userId, "went_quiet", lastQuiet), claimed =>
+          content.wentQuiet(
+            ownerSites
+              .filter(site => claimed.some(e => e.siteId === site.siteId))
+              .map(site => ({
+                domain: site.domain,
+                siteId: site.siteId,
+                lastEventAt: lastEventBySite.get(site.siteId)?.toFormat("MMMM d 'at' HH:mm 'UTC'") ?? "two days ago",
+              })),
+            owner.name
+          )
         );
       } catch (error) {
-        this.logger.error({ err: error, siteId: site.siteId }, "Error processing went-quiet email");
+        this.logger.error({ err: error, userId: owner.userId }, "Error processing went-quiet email");
       }
     }
   }

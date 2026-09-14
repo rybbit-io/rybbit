@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LegalPageShell } from "@/components/LegalPageShell";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
@@ -86,20 +87,27 @@ export default function DataProcessingAgreement() {
         <p>
           The Controller authorizes Rybbit to engage Sub-processors for the provision of the Services. Rybbit will
           inform the Controller of any intended changes to Sub-processors, giving the Controller the opportunity to
-          object. Current Sub-processors include:
+          object. The current list of Sub-processors, including their purpose and processing location, is maintained
+          at <Link href="/subprocessors">rybbit.com/subprocessors</Link>. At the time of this DPA they are:
         </p>
         <ul className="list-disc pl-6 space-y-2">
           <li>
-            <strong>Hetzner:</strong> Servers and storage
+            <strong>Hetzner:</strong> Servers, databases, and storage
           </li>
           <li>
-            <strong>Cloudflare:</strong> Object storage and security
+            <strong>Cloudflare:</strong> CDN, DNS, security, and object storage
           </li>
           <li>
             <strong>Stripe:</strong> Payment processing
           </li>
           <li>
             <strong>Resend:</strong> Email delivery
+          </li>
+          <li>
+            <strong>Google (Gmail):</strong> Support and business email
+          </li>
+          <li>
+            <strong>Anthropic and OpenAI:</strong> Language model providers for AI-assisted features
           </li>
         </ul>
 

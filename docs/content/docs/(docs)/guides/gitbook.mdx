@@ -1,40 +1,45 @@
 ---
 title: GitBook
-description: Options for using Rybbit Analytics with GitBook documentation
+description: Add Rybbit analytics to your GitBook docs
+category: docs
+icon: SiGitbook
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
 
-GitBook is a popular platform for creating documentation and knowledge bases.
+GitBook does not let you add custom scripts to a published site, and its integration platform does not let third parties inject them either. This page explains what that means and what your options are.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to GitBook
 
 <Callout type="warn">
-GitBook no longer supports adding arbitrary custom scripts (JS/HTML) to published sites. The old **Custom scripts → Head** setting this guide previously described has been removed, so the standard Rybbit `<script>` snippet cannot be pasted into a GitBook-hosted site. Analytics on GitBook now works through its built-in integrations, and Rybbit does not currently have a prebuilt GitBook integration.
+There is currently no supported way to load the Rybbit snippet on a GitBook-hosted site. The old **Custom scripts → Head** setting was removed, and GitBook's [integration scopes](https://gitbook.com/docs/developers/integrations/configurations) reserve `site:script:inject` for GitBook's own integrations: "Building integrations that inject JavaScript into a site or space is not possible at this time."
 </Callout>
 
-## Current options
+Your options:
 
-### Build a custom GitBook integration
+- **Use GitBook's built-in analytics.** The **Insights** section in the GitBook app reports page views and search terms for published sites without any script.
+- **Wait for a native integration.** A Rybbit integration would need GitBook to build or approve it. Ask GitBook support for it, and watch the [Rybbit roadmap](/docs/roadmap).
+- **Host the docs elsewhere.** [Docusaurus](/docs/guides/docusaurus), [Mintlify](/docs/guides/mintlify), [VitePress](/docs/guides/vitepress), [Starlight](/docs/guides/starlight) and [Fumadocs](/docs/guides/fumadocs) all take the snippet directly, and GitBook can export a space as Markdown to migrate.
 
-GitBook's [developer platform](https://gitbook.com/docs/integrations) lets you build and install your own integration, and integrations can inject scripts into published content — this is how GitBook's own analytics integrations (Google Analytics, Fathom, etc.) work. A minimal custom integration that injects the Rybbit snippet:
+The rest of your site (marketing pages, app, blog) is unaffected: add the snippet there as usual so traffic from the docs is still attributed by referrer.
+</Step>
 
-```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
-```
+<Step>
+### Verify installation
 
-Refer to GitBook's integration documentation for the current manifest format and publishing flow, and note that script injection only applies to published spaces (typically on a custom domain).
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
 
-### Host your docs on a platform with custom-code support
+## Next steps
 
-If building an integration isn't worth it for your use case, platforms like [Docusaurus](/docs/guides/docusaurus), [VitePress](/docs/guides/vitepress), [Mintlify](/docs/guides/mintlify), or [Hugo](/docs/guides/hugo) support adding the Rybbit script directly — see their guides.
-
-## Verifying installation
-
-If you do get the script injected via an integration:
-
-1. Visit your published documentation through its public URL
-2. Open the browser Network tab and confirm `script.js` loads and `POST` requests go to `/api/track`
-3. Check your Rybbit dashboard for incoming pageviews
+<include>../../../partials/guides/next-steps.mdx</include>

@@ -62,7 +62,7 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative rounded-md border border-neutral-150 shadow-xs has-focus:border-neutral-500 has-focus:ring-[3px] has-focus:ring-neutral-500/50 dark:border-neutral-800 dark:has-focus:border-neutral-400 dark:has-focus:ring-neutral-400/50",
+          "relative rounded-md border border-neutral-150 shadow-xs has-focus:border-neutral-500 has-focus:ring-[3px] has-focus:ring-neutral-500/50 dark:border-neutral-700 dark:has-focus:border-neutral-400 dark:has-focus:ring-neutral-400/50",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn("absolute inset-0 bg-white opacity-0 dark:bg-neutral-900", defaultClassNames.dropdown),

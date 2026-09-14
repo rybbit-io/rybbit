@@ -1,0 +1,95 @@
+/* Design-sync stylesheet entry. Compiles the app's real globals.css (Tailwind
+   v4 + tokens) against the whole client app, the authored previews, and this
+   package, then adds the Inter faces the app normally gets from next/font. */
+@import "../../../client/src/app/globals.css";
+@source "../../../client/src";
+@source "../../previews";
+@source "./";
+
+/* ---- Safelist: utilities a design agent reaches for that the app itself may
+   not use. Tailwind v4 `@source inline()` with brace expansion; every class
+   below is generated regardless of scanning. Keep it to the DS vocabulary. ---- */
+@source inline("{,hover:,dark:,dark:hover:}{bg,text,border}-{neutral-{0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000},accent-{50,100,200,300,400,500,600,700,800,900,950},emerald-{50,100,200,300,400,500,600,700,800,900,950},red-{50,100,200,300,400,500,600,700,800,900,950},yellow-{50,100,200,300,400,500,600,700,800,900,950},blue-{50,100,200,300,400,500,600,700,800,900,950},green-{50,100,200,300,400,500,600,700,800,900,950},amber-{100,200,300,400,500,600,700,800,900},orange-{100,200,300,400,500,600,700,800,900},violet-{100,200,300,400,500,600,700,800,900},background,foreground,card,card-foreground,popover,popover-foreground,muted,muted-foreground,accent,accent-foreground,primary,primary-foreground,secondary,secondary-foreground,destructive,destructive-foreground,border,input,ring,dataviz,dataviz-2,white,black,transparent}");
+@source inline("{bg,text,border}-{neutral-{400,500,800,850,900},accent-{400,500,600},emerald-{400,500,600},red-{400,500},yellow-{400,500},blue-{400,500},dataviz,white,black}/{5,10,15,20,30,40,50,60,70,80,90}");
+@source inline("{p,px,py,pt,pb,pl,pr,m,mx,my,mt,mb,ml,mr,gap,gap-x,gap-y,space-x,space-y}-{0,0.5,1,1.5,2,2.5,3,3.5,4,5,6,7,8,9,10,11,12,14,16,20,24,28,32}");
+@source inline("{mx,ml,mr,mt,mb}-auto");
+@source inline("{w,h,min-w,min-h,max-w,max-h,size}-{0,1,2,3,4,5,6,7,8,9,10,11,12,14,16,20,24,28,32,36,40,44,48,52,56,60,64,72,80,96,px,full,screen,auto,fit,min,max}");
+@source inline("{w,h}-{1/2,1/3,2/3,1/4,3/4,1/5,2/5,3/5,4/5,1/6,5/6}");
+@source inline("max-w-{xs,sm,md,lg,xl,2xl,3xl,4xl,5xl,6xl,7xl,prose,none}");
+@source inline("{min-h,h}-{dvh,svh}");
+@source inline("{,sm:,md:,lg:,xl:}grid-cols-{1,2,3,4,5,6,7,8,9,10,11,12,none}");
+@source inline("{,sm:,md:,lg:}col-span-{1,2,3,4,5,6,7,8,9,10,11,12,full}");
+@source inline("{grid-rows,row-span}-{1,2,3,4,5,6}");
+@source inline("{,sm:,md:,lg:}{flex,grid,block,inline,inline-block,inline-flex,hidden,contents}");
+@source inline("{,sm:,md:,lg:}flex-{row,row-reverse,col,col-reverse,wrap,nowrap,1,auto,initial,none}");
+@source inline("{grow,grow-0,shrink,shrink-0,basis-0,basis-full,basis-auto}");
+@source inline("{items,self}-{start,end,center,baseline,stretch}");
+@source inline("{justify,content}-{start,end,center,between,around,evenly,stretch}");
+@source inline("{justify-items,place-items}-{start,end,center,stretch}");
+@source inline("order-{1,2,3,first,last}");
+@source inline("text-{xs,sm,base,lg,xl,2xl,3xl,4xl,5xl,left,center,right,justify}");
+@source inline("font-{normal,medium,semibold,bold,mono,sans}");
+@source inline("leading-{none,tight,snug,normal,relaxed,3,4,5,6,7,8}");
+@source inline("tracking-{tighter,tight,normal,wide,wider}");
+@source inline("{truncate,tabular-nums,uppercase,lowercase,capitalize,normal-case,underline,no-underline,line-through,italic,not-italic,whitespace-nowrap,whitespace-pre-wrap,break-words,break-all,antialiased,sr-only}");
+@source inline("line-clamp-{1,2,3,4}");
+@source inline("underline-offset-{2,4}");
+@source inline("rounded-{none,xs,sm,md,lg,xl,2xl,3xl,full}");
+@source inline("rounded-{t,b,l,r,tl,tr,bl,br}-{none,sm,md,lg,xl,full}");
+@source inline("border-{0,2,4,t,b,l,r,x,y,t-0,b-0,l-0,r-0}");
+@source inline("{border,divide-x,divide-y,divide-y-0,ring,ring-0,ring-1,ring-2,ring-inset,outline-none,border-dashed,border-dotted,border-solid}");
+@source inline("divide-{neutral-{100,150,200,800,850,900},border}");
+@source inline("ring-{neutral-{300,700,800,950},accent-500,red-500,ring}");
+@source inline("{ring,border,outline}-offset-{0,1,2}");
+@source inline("shadow-{none,xs,sm,md,lg,xl}");
+@source inline("opacity-{0,5,10,20,25,30,40,50,60,70,75,80,90,100}");
+@source inline("{hover:,}opacity-{50,70,80,90,100}");
+@source inline("{relative,absolute,fixed,sticky,static,inset-0,inset-x-0,inset-y-0,isolate}");
+@source inline("{top,bottom,left,right}-{0,1,2,3,4,6,8,1/2,full,auto}");
+@source inline("z-{0,10,20,30,40,50,auto}");
+@source inline("overflow-{hidden,auto,visible,scroll,x-auto,y-auto,x-hidden,y-hidden,clip}");
+@source inline("{cursor-pointer,cursor-default,cursor-not-allowed,select-none,select-text,pointer-events-none,pointer-events-auto,appearance-none,resize-none}");
+@source inline("{transition,transition-all,transition-colors,transition-opacity,transition-transform,duration-100,duration-150,duration-200,duration-300,ease-in-out,ease-out,animate-pulse,animate-spin,animate-none}");
+@source inline("{scale,hover:scale}-{95,100,105}");
+@source inline("{translate-x,translate-y,-translate-x,-translate-y}-{0,1,2,1/2,full}");
+@source inline("aspect-{square,video,auto}");
+@source inline("object-{cover,contain,center}");
+@source inline("list-{none,disc,decimal,inside,outside}");
+@source inline("{table,table-auto,table-fixed,border-collapse,border-separate,caption-bottom,align-middle,align-top,align-bottom}");
+@source inline("{bg-gradient-to-r,bg-gradient-to-b,bg-gradient-to-t}");
+@source inline("{from,to,via}-{neutral-{800,900,950},background,transparent}");
+@source inline("{focus-visible:,focus:}{ring-1,ring-2,ring-neutral-300,ring-neutral-950,outline-none,border-neutral-600}");
+@source inline("{disabled:opacity-50,disabled:pointer-events-none,disabled:cursor-not-allowed}");
+@source inline("{group,group-hover:opacity-100,group-hover:text-foreground,group-hover:bg-neutral-800,peer}");
+@source inline("[&_svg]:size-{3,4,5}");
+@source inline("{h,w,size}-{3,3.5,4,5,6}");
+@source inline("{sm:,md:,lg:}{p,px,py,gap}-{2,3,4,6,8}");
+@source inline("{sm:,md:,lg:}{text-sm,text-base,text-lg,text-xl,text-2xl,text-3xl}");
+@source inline("{sm:,md:,lg:}{w,max-w}-{64,72,80,96,full,sm,md,lg,xl,2xl,3xl}");
+@source inline("{first:,last:}{border-0,border-t-0,border-b-0,rounded-t-lg,rounded-b-lg,pt-0,pb-0}");
+@source inline("{even:,odd:}bg-{neutral-900,neutral-950,neutral-50}");
+@source inline("{dark:,}{placeholder:text-neutral-400,placeholder:text-neutral-500}");
+
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(./fonts/inter-latin.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(./fonts/inter-latin-ext.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* The app sets Inter on <body> through next/font's generated class; the kit
+   sets it on the RybbitTheme root instead. */
+.rybbit-theme {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

@@ -207,8 +207,8 @@ export default function WhiteLabelPage() {
             <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
               <p className="max-w-md text-lg leading-8 text-neutral-600 text-pretty dark:text-neutral-400">
                 When the analytics you resell carries someone else&apos;s brand, every client dashboard is an ad for a
-                tool they could go buy directly. Rybbit is built to disappear behind your product: as an embed, an
-                API, or a copy you host yourself.
+                tool they could go buy directly. Rybbit is built to disappear behind your product: as an embed, an API,
+                or a copy you host yourself.
               </p>
             </div>
           </div>
@@ -465,8 +465,8 @@ export default function WhiteLabelPage() {
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
               Because Rybbit is open source with full API access and data export on every plan, a white-label built on
-              it is never a black box you&apos;re renting. You can inspect it, extend it, and, if it ever matters,
-              take the entire deployment in-house without losing a single client dashboard.
+              it is never a black box you&apos;re renting. You can inspect it, extend it, and, if it ever matters, take
+              the entire deployment in-house without losing a single client dashboard.
             </p>
           </div>
           <div className="flex flex-col justify-center gap-4 px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
@@ -497,7 +497,7 @@ export default function WhiteLabelPage() {
       </section>
 
       <div id="wl-faq" className="scroll-mt-24">
-        <PersonaFaqSection heading="White-label questions, answered plainly." items={faqItems} />
+        <PersonaFaqSection heading="White-label FAQ" items={faqItems} />
       </div>
       <PersonaCrossLinks current="white-label" />
 

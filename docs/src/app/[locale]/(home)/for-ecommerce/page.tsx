@@ -85,7 +85,10 @@ export default function ForEcommercePage() {
         eventLocation="for_ecommerce_hero"
       />
 
-      <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="ecommerce-problem-title">
+      <section
+        className="border-b border-neutral-200 dark:border-neutral-800"
+        aria-labelledby="ecommerce-problem-title"
+      >
         <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
           <GridCrosses />
           <div className="grid grid-cols-1 lg:grid-cols-12">
@@ -212,16 +215,16 @@ export default function ForEcommercePage() {
             <article className="bg-white px-5 py-10 dark:bg-neutral-950 sm:px-8 lg:col-span-5 lg:px-10">
               <h3 className="text-lg font-semibold tracking-tight">Launch-drop realtime</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                When the drop goes live, watch traffic, sources, and purchases move in realtime. Bot blocking keeps
-                the scrapers out of your conversion math.
+                When the drop goes live, watch traffic, sources, and purchases move in realtime. Bot blocking keeps the
+                scrapers out of your conversion math.
               </p>
             </article>
 
             <article className="bg-white px-5 py-10 dark:bg-neutral-950 sm:px-8 lg:col-span-7 lg:px-10">
               <h3 className="text-lg font-semibold tracking-tight">A slow store is a silent discount</h3>
               <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                Web vitals from real shopper visits show which pages feel slow, by route, country, and device. You
-                fix the product page that's quietly costing conversions instead of guessing.
+                Web vitals from real shopper visits show which pages feel slow, by route, country, and device. You fix
+                the product page that's quietly costing conversions instead of guessing.
               </p>
               <Link
                 href="/features/web-vitals"
@@ -238,7 +241,7 @@ export default function ForEcommercePage() {
         </div>
       </section>
 
-      <PersonaFaqSection heading="Ecommerce questions, answered plainly." items={faqItems} />
+      <PersonaFaqSection heading="Ecommerce FAQ" items={faqItems} />
       <PersonaCrossLinks current="for-ecommerce" />
 
       <CTASection

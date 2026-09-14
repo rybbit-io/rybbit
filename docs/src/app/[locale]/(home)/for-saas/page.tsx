@@ -309,8 +309,8 @@ export default function ForSaasPage() {
                 Find the step that loses trials.
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                Build a funnel from page paths or custom events in a few clicks (pricing page to trial to activation
-                to paid) and see exactly where the numbers fall off. Then open the sessions that dropped.
+                Build a funnel from page paths or custom events in a few clicks (pricing page to trial to activation to
+                paid) and see exactly where the numbers fall off. Then open the sessions that dropped.
               </p>
               <Link
                 href="/features/funnels"
@@ -402,8 +402,8 @@ export default function ForSaasPage() {
                 Know if this month&apos;s users stick better than last month&apos;s.
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                Retention cohorts show how each week&apos;s new users keep coming back: the first number a SaaS
-                should watch, and usually the last one a web-analytics tool offers.
+                Retention cohorts show how each week&apos;s new users keep coming back: the first number a SaaS should
+                watch, and usually the last one a web-analytics tool offers.
               </p>
               <Link
                 href="/features/retention"
@@ -526,8 +526,8 @@ export default function ForSaasPage() {
             <article className="bg-white px-5 py-10 dark:bg-neutral-950 sm:px-8 lg:col-span-5 lg:px-10">
               <h3 className="text-lg font-semibold tracking-tight">Events from the backend too</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-                Name the product moments that matter with custom events from the browser, or send them server-side
-                with the Node SDK when the moment doesn&apos;t happen in a click.
+                Name the product moments that matter with custom events from the browser, or send them server-side with
+                the Node SDK when the moment doesn&apos;t happen in a click.
               </p>
             </article>
 
@@ -594,8 +594,8 @@ export default function ForSaasPage() {
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
               Rybbit is 100% open source under AGPL v3, with API access and data export on every plan. Start on cloud
-              and self-host later, or the other way around, and the funnels, cohorts, and profiles come with you.
-              For a product team, that means the analytics layer is a dependency you can read, patch, and pin.
+              and self-host later, or the other way around, and the funnels, cohorts, and profiles come with you. For a
+              product team, that means the analytics layer is a dependency you can read, patch, and pin.
             </p>
           </div>
           <div className="flex flex-col justify-center gap-4 px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
@@ -636,7 +636,7 @@ export default function ForSaasPage() {
       </section>
 
       <div id="saas-faq" className="scroll-mt-24">
-        <PersonaFaqSection heading="SaaS questions, answered plainly." items={faqItems} />
+        <PersonaFaqSection heading="SaaS FAQ" items={faqItems} />
       </div>
       <PersonaCrossLinks current="for-saas" />
 

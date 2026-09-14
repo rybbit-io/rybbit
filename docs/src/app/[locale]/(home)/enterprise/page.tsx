@@ -259,7 +259,7 @@ export default function EnterprisePage() {
         </div>
       </section>
 
-      <PersonaFaqSection heading="Enterprise questions, answered plainly." items={faqItems} />
+      <PersonaFaqSection heading="Enterprise FAQ" items={faqItems} />
       <PersonaCrossLinks current="enterprise" />
 
       <CTASection

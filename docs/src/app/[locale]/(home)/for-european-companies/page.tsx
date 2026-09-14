@@ -22,10 +22,14 @@ export const metadata = createMetadata({
     title: pageTitle,
     description: pageDescription,
     url: "https://rybbit.com/for-european-companies",
-    images: [createOGImageUrl("Rybbit for European Companies", "EU-hosted, cookieless, compliant by design.", "Solutions")],
+    images: [
+      createOGImageUrl("Rybbit for European Companies", "EU-hosted, cookieless, compliant by design.", "Solutions"),
+    ],
   },
   twitter: {
-    images: [createOGImageUrl("Rybbit for European Companies", "EU-hosted, cookieless, compliant by design.", "Solutions")],
+    images: [
+      createOGImageUrl("Rybbit for European Companies", "EU-hosted, cookieless, compliant by design.", "Solutions"),
+    ],
   },
 });
 
@@ -110,8 +114,8 @@ export default function ForEuropeanCompaniesPage() {
             <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
               <p className="max-w-md text-lg leading-8 text-neutral-600 text-pretty dark:text-neutral-400">
                 Consent-gated analytics only measures the visitors who click accept, so every report starts from a
-                partial number. Analytics that never touches personal data doesn&apos;t have that gap. Compliance
-                and accurate data stop being a trade-off.
+                partial number. Analytics that never touches personal data doesn&apos;t have that gap. Compliance and
+                accurate data stop being a trade-off.
               </p>
             </div>
           </div>
@@ -193,9 +197,9 @@ export default function ForEuropeanCompaniesPage() {
               When "EU-hosted" isn&apos;t strict enough, host it yourself.
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
-              Rybbit is 100% open source under AGPL v3 and self-hosts with Docker. For regulated setups, Enterprise
-              adds dedicated isolated instances and on-premise installation. The residency conversation ends at
-              your own rack.
+              Rybbit is 100% open source under AGPL v3 and self-hosts with Docker. For regulated setups, Enterprise adds
+              dedicated isolated instances and on-premise installation. The residency conversation ends at your own
+              rack.
             </p>
           </div>
           <div className="flex flex-col justify-center gap-4 px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
@@ -223,7 +227,7 @@ export default function ForEuropeanCompaniesPage() {
         </div>
       </section>
 
-      <PersonaFaqSection heading="European-company questions, answered plainly." items={faqItems} />
+      <PersonaFaqSection heading="European-company FAQ" items={faqItems} />
       <PersonaCrossLinks current="for-european-companies" />
 
       <CTASection

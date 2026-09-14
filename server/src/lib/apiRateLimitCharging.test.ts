@@ -28,7 +28,9 @@ const consumeRateLimitForIdentity = vi.fn();
 async function loadModules(isCloud: boolean) {
   vi.resetModules();
   vi.doMock("./auth.js", () => ({
-    auth: { api: { verifyApiKey, getMcpSession: vi.fn(async () => null), getSession: vi.fn(async () => null) } },
+    auth: {
+      api: { verifyApiKey, verifyRybbitOAuthToken: vi.fn(async () => null), getSession: vi.fn(async () => null) },
+    },
   }));
   vi.doMock("./apiRateLimitPolicy.js", () => ({ consumeRateLimitForIdentity }));
   vi.doMock("../db/postgres/postgres.js", () => ({ db: {} }));

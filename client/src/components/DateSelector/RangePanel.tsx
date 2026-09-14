@@ -173,7 +173,7 @@ export function RangePanel({
   return (
     <div className="flex flex-col">
       <div className="flex flex-col md:flex-row">
-        <div className="w-full border-b border-neutral-150 md:w-[190px] md:shrink-0 md:border-b-0 md:border-r dark:border-neutral-800">
+        <div className="w-full border-b border-neutral-150 md:w-[190px] md:shrink-0 md:border-b-0 md:border-r dark:border-neutral-700">
           <Command shouldFilter={false} defaultValue={defaultValue}>
             <CommandInput placeholder={t("Search, or type 14d, 6h")} value={query} onValueChange={setQuery} />
             {/* Capped so the rail ends level with the calendar column beside it
@@ -272,7 +272,7 @@ export function RangePanel({
             className="mx-auto p-0 md:mx-0"
           />
 
-          <div className="mt-3 hidden flex-col gap-2 border-t border-neutral-150 pt-3 md:flex dark:border-neutral-800">
+          <div className="mt-3 hidden flex-col gap-2 border-t border-neutral-150 pt-3 md:flex dark:border-neutral-700">
             <BoundRow
               label={t("From")}
               date={draft.fields.startDate}
@@ -297,7 +297,7 @@ export function RangePanel({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-neutral-150 px-3 py-2 dark:border-neutral-800">
+      <div className="flex flex-wrap items-center gap-2 border-t border-neutral-150 px-3 py-2 dark:border-neutral-700">
         {draft.invalid ? (
           <span className="mr-auto text-xs text-red-500 dark:text-red-400">
             {t("Enter a date range that ends after it starts, on or before today")}

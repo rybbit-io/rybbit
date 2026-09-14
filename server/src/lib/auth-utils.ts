@@ -3,12 +3,7 @@ import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { member, sites, user } from "../db/postgres/schema.js";
-import {
-  getOrgMembership,
-  memberCanAccessSite,
-  resolveMemberSiteGrants,
-  restrictedMemberSiteIds,
-} from "./access.js";
+import { getOrgMembership, memberCanAccessSite, resolveMemberSiteGrants, restrictedMemberSiteIds } from "./access.js";
 import type { RateLimitDecision } from "./apiRateLimit.js";
 import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
@@ -27,7 +22,7 @@ import { logger } from "./logger/logger.js";
 // The MCP gate injects fakes; the REST layer always uses better-auth.
 const bearerResolverDeps: BearerResolverDeps = {
   verifyApiKey: apiKey => auth.api.verifyApiKey({ body: { key: apiKey } }),
-  getOAuthSession: token => auth.api.getMcpSession({ headers: new Headers({ authorization: `Bearer ${token}` }) }),
+  getOAuthSession: token => auth.api.verifyRybbitOAuthToken({ body: { token } }),
 };
 
 // Several guards resolve the same credential more than once per HTTP request:
@@ -219,9 +214,7 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
       }
 
       const memberOrgIds = Array.from(memberRowByOrgId.keys());
-      const restrictedMembers = Array.from(memberRowByOrgId.values()).filter(
-        record => record.hasRestrictedSiteAccess
-      );
+      const restrictedMembers = Array.from(memberRowByOrgId.values()).filter(record => record.hasRestrictedSiteAccess);
       const restrictedOrgIds = restrictedMembers.map(record => record.organizationId);
 
       // A restricted membership reaches a closed set of sites, so its
@@ -420,15 +413,31 @@ export async function checkApiKey(
   return { valid: false, role: null, statements: null };
 }
 
-export async function getUserIdFromRequest(req: FastifyRequest): Promise<string | null> {
+export interface RequestIdentity {
+  userId: string | null;
+  // Set for organization-owned API keys, which authenticate as the org itself
+  // and carry no user id.
+  organizationId: string | null;
+}
+
+const ANONYMOUS_IDENTITY: RequestIdentity = { userId: null, organizationId: null };
+
+/**
+ * Resolve who a request is acting as: a person (dashboard session, personal
+ * API key, OAuth token) or an organization (org-owned API key). Resolves the
+ * bearer credential exactly once — the MCP proxy's bearer handoff is single
+ * use, so a second resolution would fall through to a fresh key verification
+ * and charge the caller again.
+ */
+export async function getRequestIdentity(req: FastifyRequest): Promise<RequestIdentity> {
   if (req.user?.id) {
-    return req.user.id;
+    return { userId: req.user.id, organizationId: null };
   }
 
   // First, check for session-based auth
   const session = await getSessionFromReq(req);
   if (session?.user?.id) {
-    return session.user.id;
+    return { userId: session.user.id, organizationId: null };
   }
 
   // Fall back to bearer auth (API key or OAuth token).
@@ -437,12 +446,16 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
     const identity =
       consumeBearerHandoff(req.headers[INTERNAL_BEARER_HANDOFF_HEADER], apiKey) ??
       (await resolveBearerIdentity(apiKey, bearerResolverDeps));
-    if (identity.status === "valid" && identity.userId) {
-      return identity.userId;
+    if (identity.status === "valid") {
+      return { userId: identity.userId ?? null, organizationId: identity.organizationId ?? null };
     }
   }
 
-  return null;
+  return ANONYMOUS_IDENTITY;
+}
+
+export async function getUserIdFromRequest(req: FastifyRequest): Promise<string | null> {
+  return (await getRequestIdentity(req)).userId;
 }
 
 // for routes that are potentially public
@@ -451,10 +464,12 @@ export async function getUserHasAccessToSitePublic(
   siteId: string | number,
   requiredScope?: ScopeRequirement
 ) {
-  const [userSites, config] = await Promise.all([getSitesUserHasAccessTo(req), siteConfig.getConfig(siteId)]);
+  const [hasDirectAccess, config] = await Promise.all([
+    getUserHasAccessToSite(req, siteId),
+    siteConfig.getConfig(siteId),
+  ]);
 
   // Check if user has direct access to the site
-  const hasDirectAccess = userSites.some(site => site.siteId === Number(siteId));
   if (hasDirectAccess) {
     return true;
   }
@@ -467,7 +482,8 @@ export async function getUserHasAccessToSitePublic(
   // Check if a valid private key was provided in the header
   const privateKey = req.headers["x-private-key"];
   if (privateKey && typeof privateKey === "string" && config?.privateLinkKey === privateKey) {
-    return true;
+    const fresh = await siteConfig.reload(siteId);
+    return fresh?.privateLinkKey === privateKey;
   }
 
   // Bearer-credential fallback. Scopes apply here too — without this check a
@@ -480,14 +496,24 @@ export async function getUserHasAccessToSitePublic(
   return false;
 }
 
+async function hasSiteAccess(req: FastifyRequest, siteId: string | number, adminOnly: boolean): Promise<boolean> {
+  const matches = (accessible: { siteId: number }[]) => accessible.some(site => site.siteId === Number(siteId));
+  if (matches(await getSitesUserHasAccessTo(req, adminOnly))) return true;
+
+  // A claim may have committed in another worker while this one still holds
+  // the user's pre-claim site list. Never let a cached miss deny a new grant.
+  const userId = req.user?.id ?? (await getSessionFromReq(req))?.user.id;
+  if (!userId) return false;
+  invalidateSitesAccessCache(userId);
+  return matches(await getSitesUserHasAccessTo(req, adminOnly));
+}
+
 export async function getUserHasAccessToSite(req: FastifyRequest, siteId: string | number) {
-  const sites = await getSitesUserHasAccessTo(req);
-  return sites.some(site => site.siteId === Number(siteId));
+  return hasSiteAccess(req, siteId, false);
 }
 
 export async function getUserHasAdminAccessToSite(req: FastifyRequest, siteId: string | number) {
-  const sites = await getSitesUserHasAccessTo(req, true);
-  return sites.some(site => site.siteId === Number(siteId));
+  return hasSiteAccess(req, siteId, true);
 }
 
 export async function getUserIsInOrg(req: FastifyRequest, organizationId: string): Promise<boolean> {

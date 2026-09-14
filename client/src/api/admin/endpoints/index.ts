@@ -1,6 +1,8 @@
 // Sites endpoints
 export {
   addSite,
+  claimSite,
+  createUnclaimedSite,
   deleteSite,
   deleteSiteIcon,
   moveSite,
@@ -12,7 +14,7 @@ export {
   fetchSiteUsage,
   uploadSiteIcon,
 } from "./sites";
-export type { SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse } from "./sites";
+export type { SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse, UnclaimedSiteResponse } from "./sites";
 
 // Organizations endpoints
 export {

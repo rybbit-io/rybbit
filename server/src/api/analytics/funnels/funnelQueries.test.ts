@@ -37,7 +37,7 @@ describe("funnel queries with global session filters", () => {
     const sessionActions = getSessionActions(sql);
 
     expect(sql).toContain("FilteredSessions AS");
-    expect(sql).toContain("argMin(url_parameters, timestamp)['utm_campaign'] AS utm_campaign");
+    expect(sql).toContain("argMinIf(url_parameters['utm_campaign'], timestamp, url_parameters['utm_campaign'] != '') AS utm_campaign");
     expect(sql).toContain("WHERE 1 = 1 AND utm_campaign = 'launch'");
     expect(sessionActions).toContain("INNER JOIN FilteredSessions USING (session_id)");
     expect(sessionActions).not.toContain("url_parameters['utm_campaign'] = 'launch'");

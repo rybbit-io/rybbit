@@ -1,59 +1,44 @@
 ---
 title: Ghost
-description: Integrate Rybbit Analytics with your Ghost blog or publication
+description: Add Rybbit analytics to your Ghost publication
+category: cms
+icon: SiGhost
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Ghost is a powerful publishing platform for blogs and publications. You can easily add Rybbit Analytics using Ghost's built-in code injection feature.
-
-## How to Add Rybbit to Ghost
+Ghost has a built-in **Code injection** setting that adds HTML to the `<head>` of every page, so no theme edits are needed.
 
 <Steps>
 <Step>
-### Access Code Injection Settings
+### Get your tracking snippet
 
-1. Log in to your Ghost Admin panel
-2. Go to **Settings** (gear icon in the bottom left)
-3. Scroll down and click on **Code injection**
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add the Tracking Script
+### Add the snippet to Ghost
 
-In the **Site Header** section, paste the following code:
+1. Open **Ghost Admin** and click the **Settings** gear in the bottom left.
+2. Under **Advanced**, open **Code injection**.
+3. Paste the snippet into **Site header** and click **Save**.
 
-```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
-```
-
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
+If you maintain your own theme instead, add the snippet to `default.hbs` just before `</head>`.
 </Step>
 
 <Step>
-### Save Changes
+### Verify installation
 
-Click **Save** in the top right corner. The script will now be loaded on all pages of your Ghost site.
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
 ## Troubleshooting
 
-### Script not appearing
+- **Ghost(Pro) with a custom theme**: code injection still applies on top of the theme, so prefer it over editing `default.hbs`.
+- **Member-only content**: pages behind the paywall are tracked like any other page for visitors who can view them.
+- **Portal and newsletter previews** render in an iframe and are not tracked.
 
-1. Make sure you clicked **Save** after adding the code
-2. Clear your browser cache and refresh the page
-3. Check "View Page Source" and search for `rybbit` to verify the script is present
+## Next steps
 
-### Using a Ghost theme with custom code
-
-If your theme has its own code injection or you're modifying theme files directly, you can add the script to your theme's `default.hbs` file, just before the closing `</head>` tag.
-
-### Membership/Subscriber tracking
-
-Ghost's membership features work normally with Rybbit. All page views, including member-only content, will be tracked (for visitors who have access to view the content).
+<include>../../../partials/guides/next-steps.mdx</include>

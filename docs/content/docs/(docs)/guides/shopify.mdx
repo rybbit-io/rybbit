@@ -1,214 +1,129 @@
 ---
-title: "Shopify"
-description: "Integrate Rybbit with your Shopify store to capture events, track conversions, and analyze user behavior."
+title: Shopify
+description: Add Rybbit analytics to your Shopify store
+category: ecommerce
+icon: SiShopify
 ---
 
-import { Step, Steps } from "fumadocs-ui/components/steps";
+import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-# Shopify
-
-Rybbit can be integrated with your Shopify store to capture events, track conversions, and analyze user behavior.
-
-## How to Add Rybbit to Shopify
+On Shopify the snippet goes into your theme's `theme.liquid` layout, which wraps every storefront page. Checkout runs on Shopify's own sandboxed pages, so purchases are tracked separately through a custom web pixel.
 
 <Steps>
 <Step>
-### Retrieve Your Tracking Script
+### Get your tracking snippet
 
-Navigate to your Rybbit dashboard to obtain your code snippet.
-
-```html
-<script
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID"
-  defer
-></script>
-```
+<include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
 
 <Step>
-### Add the Snippet to Your Shopify Store
+### Add the snippet to Shopify
 
-- In Shopify, go to **Online Store > Themes**.
-- Find your current theme, click the **three dots (...)** button next to **Customize**, and select **Edit code**.
-- Open `theme.liquid` in the **Layout** folder.
-- Just before the closing `</head>` tag, insert your snippet.
-- Save the file to apply the changes to your live store.
+1. In Shopify admin, go to **Online Store > Themes**.
+2. On your current theme, click the **...** button next to **Customize** and choose **Edit code**.
+3. Open `theme.liquid` in the **Layout** folder.
+4. Paste the snippet just before the closing `</head>` tag and click **Save**.
 
-**Note:** If you are editing a theme you purchased or one that receives updates, be aware that theme updates might overwrite your changes, requiring you to re-add the snippet. While Shopify doesn't have a formal "child theme" system like WordPress, some developers use theme duplication or version control as a workaround. For most users, re-adding the snippet after an update is the simplest approach if this occurs.
+Theme updates can overwrite `theme.liquid`. Shopify has no child-theme system, so after updating a purchased theme, re-add the snippet.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
 </Step>
 </Steps>
 
-## Tracking E-commerce Events
+## Track custom events
 
-To get the most out of Rybbit with Shopify, you should track key e-commerce events. This typically involves adding small Liquid and JavaScript snippets to your theme files.
+Storefront templates can call `window.rybbit.event()` directly. Wrap the calls in a `DOMContentLoaded` listener because the tracking script is loaded with `defer`, and divide Liquid prices by 100 because they are in cents.
 
 <Callout type="warn">
-  Always back up your theme before making code changes. If you are not comfortable editing theme code, consider hiring a Shopify expert. The following snippets are examples and might need adjustments based on your specific theme structure and Shopify version.
+Back up your theme before editing code. Liquid object names such as `product.selected_or_first_available_variant` and the form selectors below vary between themes, so adjust them to match yours.
 </Callout>
 
-### 1. View Product (`view_item`)
+#### View product
 
-Track when a user views a single product page.
-
-**Edit `product.liquid` (or your theme's main product template file, often found in `templates/product.liquid` or `sections/main-product.liquid` or similar):**
-
-Add the following script towards the end of the file, or within a relevant product information block:
+Add to your main product template (`sections/main-product.liquid` or `templates/product.liquid`, depending on the theme):
 
 ```liquid
-{% raw %}{% comment %} Add to product.liquid or main product section {% endcomment %}
-<script type="text/javascript">
-  if (typeof window.rybbit !== 'undefined' && {{ product | json }}) {
-    const rybbitProduct = {{ product | json }};
-    const rybbitCurrentVariant = {{ product.selected_or_first_available_variant | json }};
-
-    window.rybbit.event('view_item', {
-      item_id: rybbitCurrentVariant.sku || rybbitCurrentVariant.id,
-      item_name: rybbitProduct.title,
-      item_variant: rybbitCurrentVariant.title === 'Default Title' ? null : rybbitCurrentVariant.title,
-      price: parseFloat(rybbitCurrentVariant.price) / 100, // Price is in cents
-      currency: {{ cart.currency.iso_code | json }}
-    });
-  }
-</script>{% endraw %}
-```
-
-### 2. Add to Cart (`add_to_cart`)
-
-Tracking "add to cart" events can be complex due to themes using AJAX for cart updates. Here's a common approach by attaching an event listener to your "Add to Cart" button.
-
-**Identify your "Add to Cart" button/form in `product.liquid` or your product form section.**
-
-You'll need to add a script that listens for clicks or form submissions. This example assumes your "Add to Cart" button has an ID like `add-to-cart-button` or is part of a form with a specific class or ID. You may need to adjust the selector.
-
-```liquid
-{% raw %}{% comment %} Add near your product form or Add to Cart button in product.liquid/product form section {% endcomment %}
-<script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  const addToCartForm = document.querySelector('form[action="/cart/add"]'); // Common selector for product forms
-  const addToCartButton = document.getElementById('add-to-cart-button') || addToCartForm?.querySelector('[type="submit"]');
-
-  const trackAddToCart = function() {
-    if (typeof window.rybbit !== 'undefined' && {{ product | json }}) {
-      const rybbitProduct = {{ product | json }};
-      const rybbitCurrentVariant = {{ product.selected_or_first_available_variant | json }};
-      let quantity = 1;
-      const quantityInput = addToCartForm?.querySelector('[name="quantity"], input[type="number"]'); // Common quantity input selectors
-      if (quantityInput && quantityInput.value) {
-        quantity = parseInt(quantityInput.value, 10);
-      }
-
-      window.rybbit.event('add_to_cart', {
-        item_id: rybbitCurrentVariant.sku || rybbitCurrentVariant.id,
-        item_name: rybbitProduct.title,
-        item_variant: rybbitCurrentVariant.title === 'Default Title' ? null : rybbitCurrentVariant.title,
-        price: parseFloat(rybbitCurrentVariant.price) / 100,
-        currency: {{ cart.currency.iso_code | json }},
-        quantity: quantity > 0 ? quantity : 1
-      });
-    }
-  };
-
-  if (addToCartButton) {
-    addToCartButton.addEventListener('click', function(event) {
-      // Delay slightly to allow form submission/validation if needed, or track on form submit
-      // For themes with AJAX add to cart, this might need to hook into the theme's specific JS events.
-      setTimeout(trackAddToCart, 100); // Basic click tracking
-    });
-  } else if (addToCartForm) {
-     addToCartForm.addEventListener('submit', function(event) {
-        trackAddToCart(); // Track on form submission
-     });
-  }
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var variant = {{ product.selected_or_first_available_variant | json }};
+  window.rybbit.event('view_item', {
+    item_id: variant.sku || variant.id,
+    item_name: {{ product.title | json }},
+    item_variant: variant.title === 'Default Title' ? null : variant.title,
+    price: variant.price / 100,
+    currency: {{ cart.currency.iso_code | json }}
+  });
 });
-</script>{% endraw %}
+</script>
 ```
-<Callout type="info">
-  For themes with AJAX "Add to Cart" functionality (where the page doesn't reload), you might need to listen for custom JavaScript events fired by your theme after an item is successfully added to the cart, or observe changes to the cart. This can be theme-specific.
-</Callout>
 
-### 3. Begin Checkout (`begin_checkout`)
+#### Add to cart
 
-Shopify's checkout process is on a separate domain (`checkout.shopify.com`), and direct script injection into the checkout pages (beyond the "Order status" page) is limited for most plans. However, Rybbit's script, if loaded on your main store, should persist session information.
-
-A common way to track "begin_checkout" is by tracking clicks on checkout buttons.
-
-**Edit `cart.liquid` (or your theme's main cart template, often `templates/cart.liquid` or `sections/main-cart-items.liquid`):**
-
-Find your "Checkout" button and add an ID to it if it doesn't have one (e.g., `id="checkout-button"`). Then add this script:
+In the same template, listen on the product form. Themes with an AJAX cart drawer usually fire their own JavaScript event after an item is added; hooking that is more reliable than the form submit.
 
 ```liquid
-{% raw %}{% comment %} Add to cart.liquid, near the checkout button logic {% endcomment %}
-<script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-  const checkoutButton = document.getElementById('checkout-button') || document.querySelector('[name="checkout"], form[action$="/checkout"] [type="submit"]'); // Common selectors
-
-  if (checkoutButton && typeof window.rybbit !== 'undefined' && {{ cart | json }}) {
-    checkoutButton.addEventListener('click', function() {
-      const rybbitCart = {{ cart | json }};
-      let items = [];
-      rybbitCart.items.forEach(function(item) {
-        items.push({
-          item_id: item.sku || item.variant_id,
-          item_name: item.product_title,
-          item_variant: item.variant_title === 'Default Title' ? null : item.variant_title,
-          price: parseFloat(item.final_price) / 100,
-          quantity: item.quantity
-        });
-      });
-
-      window.rybbit.event('begin_checkout', {
-        currency: rybbitCart.currency,
-        value: parseFloat(rybbitCart.total_price) / 100,
-        items: items
-      });
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var form = document.querySelector('form[action="/cart/add"]');
+  if (!form) return;
+  form.addEventListener('submit', function () {
+    var variant = {{ product.selected_or_first_available_variant | json }};
+    var qty = form.querySelector('[name="quantity"]');
+    window.rybbit.event('add_to_cart', {
+      item_id: variant.sku || variant.id,
+      item_name: {{ product.title | json }},
+      price: variant.price / 100,
+      currency: {{ cart.currency.iso_code | json }},
+      quantity: qty && parseInt(qty.value, 10) > 0 ? parseInt(qty.value, 10) : 1
     });
-  }
+  });
 });
-</script>{% endraw %}
+</script>
 ```
 
-<Callout type="warn">
-  Rybbit limits an event's `properties` to **2048 characters** once serialized to
-  JSON, and events that exceed the limit are rejected (not truncated). A full
-  per-item `items` array can blow past this on large carts. For carts with many
-  line items, send a compact payload — trimmed item fields (e.g. id, quantity,
-  price only) or just the aggregate `value`, `currency`, and `transaction_id`.
-</Callout>
+#### Begin checkout
 
-### 4. Purchase (`purchase`)
+Add to your cart template (`sections/main-cart-items.liquid` or `templates/cart.liquid`) to track clicks on the checkout button:
 
-Track completed purchases on the Shopify "Thank You" / order status page.
+```liquid
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var button = document.querySelector('[name="checkout"]');
+  if (!button) return;
+  button.addEventListener('click', function () {
+    var cart = {{ cart | json }};
+    window.rybbit.event('begin_checkout', {
+      currency: cart.currency,
+      value: cart.total_price / 100,
+      items: cart.items.map(function (item) {
+        return { item_id: item.sku || item.variant_id, quantity: item.quantity, price: item.final_price / 100 };
+      })
+    });
+  });
+});
+</script>
+```
 
-<Callout type="warn">
-  The old **Order status page > Additional scripts** field has been deprecated. As
-  of August 28, 2025 it is view-only (Shopify Plus migration deadline), non-Plus
-  stores must migrate by August 26, 2026, and automatic upgrades that began in
-  January 2026 remove any remaining `checkout.liquid` / Additional-scripts
-  customizations. The supported path for tracking purchases is now
-  [Checkout Extensibility](https://help.shopify.com/en/manual/checkout-settings/customize-checkout-configurations)
-  via a **custom web pixel**.
-</Callout>
+Event properties are limited to 2048 characters of serialised JSON and larger payloads are rejected, not truncated. Keep `items` compact, or send only the totals for large carts.
 
-Custom web pixels run in a sandboxed environment, so they **cannot access
-`window.rybbit`** on the storefront. Instead, subscribe to the standard
-`checkout_completed` event and send the purchase directly to Rybbit's tracking
-endpoint with `fetch`.
+#### Purchase
 
-**1. Create a custom pixel:**
-- In your Shopify Admin, go to **Settings > Customer events**.
-- Click **Add custom pixel**, give it a name (e.g. `Rybbit`), and click **Add pixel**.
+Checkout and the order status page do not load your theme, and the old **Order status page > Additional scripts** field is deprecated: view-only since August 28, 2025, with non-Plus stores required to migrate by August 26, 2026. Track purchases with a custom web pixel from [Checkout Extensibility](https://help.shopify.com/en/manual/checkout-settings/customize-checkout-configurations) instead.
 
-**2. Add the pixel code:**
-- Paste the following into the code editor, replacing `YOUR_SITE_ID` with your Site ID, then **Save** and **Connect** the pixel.
+Pixels run in a sandbox with no access to `window.rybbit`, so the pixel posts the event straight to Rybbit's track endpoint.
+
+1. In Shopify admin, go to **Settings > Customer events**.
+2. Click **Add custom pixel**, name it `Rybbit`, and click **Add pixel**.
+3. Paste the code below, replace `YOUR_SITE_ID`, then **Save** and **Connect** the pixel.
 
 ```javascript
 analytics.subscribe("checkout_completed", (event) => {
   const checkout = event.data.checkout;
-
-  // Keep the payload small — Rybbit rejects event properties over 2048 chars
-  // (serialized JSON). Send compact per-item data for large carts.
   const items = (checkout.lineItems || []).map((li) => ({
     id: li.variant?.sku || li.variant?.id,
     qty: li.quantity,
@@ -223,29 +138,20 @@ analytics.subscribe("checkout_completed", (event) => {
       type: "custom_event",
       site_id: "YOUR_SITE_ID",
       event_name: "purchase",
-      // `properties` must be a JSON string (max 2048 chars).
+      // properties must be a JSON string of at most 2048 characters
       properties: JSON.stringify({
         transaction_id: checkout.order?.id || checkout.token,
         value: checkout.totalPrice?.amount,
         currency: checkout.currencyCode,
-        items: items,
+        items,
       }),
     }),
   });
 });
 ```
 
-**Explanation:**
-- `analytics.subscribe("checkout_completed", ...)` fires once when an order is
-  successfully placed, so purchases are tracked without editing `checkout.liquid`.
-- The pixel POSTs a `custom_event` straight to Rybbit's `/api/track` endpoint
-  because the sandbox has no access to the storefront's `window.rybbit`.
-- `properties` is sent as a JSON **string** and must stay under 2048 characters —
-  see the note above about trimming large carts.
+`checkout_completed` fires once per placed order. The same [Customer Events](https://shopify.dev/docs/api/customer-events) API also exposes `product_added_to_cart` and `checkout_started`, so you can move add-to-cart and begin-checkout into the pixel too if theme code is unreliable on your store.
 
-## Important Considerations
-*   **Theme Differences**: Shopify themes can vary significantly. You may need to adjust Liquid object paths (e.g., `product.selected_or_first_available_variant` vs. `current_variant`) and JavaScript selectors based on your specific theme's structure.
-*   **Currency Conversion**: Prices in Shopify Liquid objects are often in cents. Ensure you divide by 100 to get the decimal value for Rybbit.
-*   **AJAX Carts**: If your theme uses an AJAX cart (drawer or pop-up cart that updates without page reload), tracking `add_to_cart` accurately requires hooking into your theme's specific JavaScript events or using MutationObserver to detect cart changes. The provided `add_to_cart` example is a basic starting point.
-*   **Shopify Customer Events**: For more robust server-side or client-side event tracking, especially for `add_to_cart` and `begin_checkout` without relying on DOM manipulation, explore [Shopify Customer Events](https://shopify.dev/docs/api/customer-events). This allows you to subscribe to events like "product added to cart" or "checkout started" and send data to Rybbit via a custom pixel or by triggering client-side JavaScript. This is a more advanced but often more reliable method.
-*   **Testing**: Thoroughly test each event in your Rybbit dashboard after implementation. Use your browser's developer console to check for JavaScript errors.
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

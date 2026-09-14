@@ -37,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Get all blog posts
   const blogPosts = blogSource.getPages().map(post => ({
     url: `${baseUrl}/blog/${post.slugs.join("/")}`,
-    lastModified: post.data.date || new Date(),
+    lastModified: post.data.updated || post.data.date || new Date(),
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));
@@ -144,7 +144,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // Legal / company pages
-  const legalSlugs = ["privacy", "terms-and-conditions", "dpa", "security", "contact"];
+  const legalSlugs = ["privacy", "terms-and-conditions", "dpa", "subprocessors", "security", "contact"];
   const legalPages = legalSlugs.map(slug => ({
     url: `${baseUrl}/${slug}`,
     lastModified: new Date(),

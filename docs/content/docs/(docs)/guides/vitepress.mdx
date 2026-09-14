@@ -1,116 +1,103 @@
 ---
 title: VitePress
-description: Integrate Rybbit Analytics with your VitePress documentation site
+description: Add Rybbit analytics to your VitePress docs
+category: docs
+icon: SiVitepress
 ---
 
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-VitePress is a static site generator powered by Vite and Vue, commonly used for documentation. Here's how to add Rybbit Analytics to your VitePress site.
+VitePress has a `head` option in `.vitepress/config.ts` that adds tags to every page, which is where the snippet goes. A custom theme is the fallback when you need to load it conditionally at runtime.
 
-## How to Add Rybbit to VitePress
+<Steps>
+<Step>
+### Get your tracking snippet
 
-<Tabs items={['Config File (Recommended)', 'Custom Theme']}>
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to VitePress
+
+<Tabs items={["Config file", "Custom theme"]}>
 <Tab>
-### Using VitePress Config
+Edit `.vitepress/config.ts` (or `.js` / `.mts`) and add the tag to `head`:
 
-The simplest way to add Rybbit is through your VitePress configuration file.
-
-Edit your `.vitepress/config.ts` (or `.js`/`.mts`):
-
-```typescript
-import { defineConfig } from 'vitepress'
+```typescript filename=".vitepress/config.ts"
+import { defineConfig } from "vitepress";
 
 export default defineConfig({
   // ... your other config
   head: [
     [
-      'script',
+      "script",
       {
-        src: 'https://app.rybbit.io/api/script.js',
-        'data-site-id': 'YOUR_SITE_ID',
-        defer: ''
-      }
-    ]
-  ]
-})
+        src: "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID",
+        defer: "",
+      },
+    ],
+  ],
+});
 ```
 
-Replace `YOUR_SITE_ID` with your actual Site ID from your Rybbit dashboard.
-
 <Callout type="info">
-The empty string for `defer` is intentional - VitePress will render it as a boolean attribute.
+The empty string for `defer` is intentional. VitePress renders it as a boolean attribute.
 </Callout>
+
+To track production only, make `head` conditional:
+
+```typescript filename=".vitepress/config.ts"
+const isProd = process.env.NODE_ENV === "production";
+
+export default defineConfig({
+  head: isProd
+    ? [["script", { src: "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID", defer: "" }]]
+    : [],
+});
+```
 </Tab>
 
 <Tab>
-### Using Custom Theme
+If you need runtime control, inject the tag from a custom theme. Create or edit `.vitepress/theme/index.ts`:
 
-If you need more control, you can add the script through a custom theme.
-
-Create or edit `.vitepress/theme/index.ts`:
-
-```typescript
-import { type Theme } from 'vitepress'
-import DefaultTheme from 'vitepress/theme'
-import { onMounted } from 'vue'
+```typescript filename=".vitepress/theme/index.ts"
+import { type Theme } from "vitepress";
+import DefaultTheme from "vitepress/theme";
 
 export default {
   extends: DefaultTheme,
-  enhanceApp({ app }) {
-    // Only run in browser
-    if (typeof window !== 'undefined') {
-      onMounted(() => {
-        const script = document.createElement('script')
-        script.src = 'https://app.rybbit.io/api/script.js'
-        script.defer = true
-        script.setAttribute('data-site-id', 'YOUR_SITE_ID')
-        document.head.appendChild(script)
-      })
-    }
-  }
-} satisfies Theme
+  enhanceApp() {
+    if (typeof window === "undefined") return;
+
+    const el = document.createElement("script");
+    el.src = "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID";
+    el.defer = true;
+    document.head.appendChild(el);
+  },
+} satisfies Theme;
 ```
 
-Replace `YOUR_SITE_ID` with your actual Site ID.
+The `window` check keeps the injector out of the server-side build.
 </Tab>
 </Tabs>
 
-## SPA Navigation
+VitePress navigates between pages client-side. Rybbit picks up those History API changes as pageviews, so no extra code is needed.
+</Step>
 
-VitePress uses client-side navigation between pages. The Rybbit script automatically tracks page views during SPA navigation, so no additional configuration is needed.
+<Step>
+### Verify installation
 
-## Development vs Production
-
-The script will load in both development and production environments. If you only want to track production:
-
-```typescript
-import { defineConfig } from 'vitepress'
-
-const isProd = process.env.NODE_ENV === 'production'
-
-export default defineConfig({
-  head: isProd ? [
-    [
-      'script',
-      {
-        src: 'https://app.rybbit.io/api/script.js',
-        'data-site-id': 'YOUR_SITE_ID',
-        defer: ''
-      }
-    ]
-  ] : []
-})
-```
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
 
 ## Troubleshooting
 
-### Script not loading in development
+- **Tag missing in `vitepress dev`**: if you used the `isProd` guard, the tag only renders in `vitepress build`. Remove the guard to test locally.
+- **Pageviews stop after navigation**: check the browser console for errors thrown by other `head` scripts or theme code; an exception during route change can block Rybbit's listener.
 
-By default, the script loads on all environments. Check your browser's developer tools Network tab to see if the script is being requested.
+## Next steps
 
-### Page views not tracking on navigation
-
-VitePress handles this automatically through the History API. If you're experiencing issues:
-1. Ensure you're using a recent version of VitePress
-2. Check the browser console for any JavaScript errors
+<include>../../../partials/guides/next-steps.mdx</include>

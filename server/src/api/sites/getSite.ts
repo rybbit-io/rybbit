@@ -1,3 +1,4 @@
+import { claimExpiryIso } from "../../services/sites/claimExpiry.js";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
@@ -36,6 +37,7 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       updatedAt: site.updatedAt,
       createdBy: site.createdBy,
       organizationId: site.organizationId,
+      claimExpiresAt: claimExpiryIso(site.claimExpiresAt),
       saltUserIds: site.saltUserIds,
       public: site.public,
       embedEnabled: site.embedEnabled,

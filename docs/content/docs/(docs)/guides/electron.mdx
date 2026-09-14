@@ -1,0 +1,88 @@
+---
+title: Electron
+description: Add Rybbit analytics to your Electron app
+category: apps
+icon: SiElectron
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+An Electron renderer is a Chromium page, so Rybbit runs in it the same way it runs in a browser. For a renderer built with a bundler (Vite, webpack, the Electron Forge templates) install the `@rybbit/js` SDK and initialise it in the renderer entry file; for a plain HTML renderer put the snippet in the `<head>` of the HTML file the window loads. In both cases allow `https://app.rybbit.io` in the renderer's Content Security Policy.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Electron
+
+<Tabs items={["@rybbit/js SDK", "Script tag"]}>
+<Tab>
+The SDK is bundled with your renderer code, so nothing is loaded from a CDN at runtime and `script-src 'self'` stays intact.
+
+1. Install the package in your project:
+
+```bash
+npm install @rybbit/js
+```
+
+2. Initialise it once in the renderer entry file, before any other tracking call:
+
+```js title="src/renderer.js"
+import rybbit from "@rybbit/js";
+
+await rybbit.init({
+  analyticsHost: "https://app.rybbit.io/api",
+  siteId: "YOUR_SITE_ID",
+});
+```
+
+3. Allow the analytics host in `connect-src`. Electron recommends a CSP for every renderer; when the renderer is loaded from a file, HTTP headers are not available, so use the meta tag:
+
+```html title="src/index.html"
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'self'; connect-src 'self' https://app.rybbit.io"
+/>
+```
+</Tab>
+
+<Tab>
+Paste the snippet into the `<head>` of the renderer HTML and allow the host in both `script-src` (the script itself) and `connect-src` (its requests):
+
+```html title="src/index.html"
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'self'; script-src 'self' https://app.rybbit.io; connect-src 'self' https://app.rybbit.io"
+/>
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+If you set the CSP from the main process with `session.defaultSession.webRequest.onHeadersReceived` instead, add the same two sources there.
+</Tab>
+</Tabs>
+
+Both methods track in-app navigation without extra code: the tracker wraps `history.pushState` and `history.replaceState` and listens for `popstate` and `hashchange`, so history-mode and hash-mode routers are covered.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Requests are blocked on the `file://` origin**: Rybbit's tracking endpoints answer CORS preflights for `http://` and `https://` origins only. A renderer opened with `win.loadFile()` runs on the `file://` origin and sends `Origin: null`, so Chromium blocks the `POST` to `/api/track` before it leaves the app. The same applies to custom schemes registered with `protocol.handle()`. Load the renderer over http(s) with `win.loadURL()` (your dev server in development, a hosted or locally served build in production) and tracking works.
+- **Console shows a CSP violation**: the message names the directive that blocked the request. Add `https://app.rybbit.io` to that directive; `connect-src` covers the SDK, and the script tag also needs `script-src`.
+- **Hostname is empty in the dashboard**: pageviews report the renderer's `window.location.hostname`, which is empty for `file://` pages. Filter by site rather than hostname.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

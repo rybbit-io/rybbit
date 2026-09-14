@@ -235,8 +235,8 @@ export default function ForSmallBusinessPage() {
             </div>
             <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
               <p className="max-w-md text-lg leading-8 text-neutral-600 text-pretty dark:text-neutral-400">
-                No enterprise sales call, no per-seat surprises. Every plan starts with a 7-day free trial, and
-                pricing scales by traffic. You only pay more once your site is actually busier.
+                No enterprise sales call, no per-seat surprises. Every plan starts with a 7-day free trial, and pricing
+                scales by traffic. You only pay more once your site is actually busier.
               </p>
             </div>
           </div>
@@ -304,7 +304,7 @@ export default function ForSmallBusinessPage() {
         </div>
       </section>
 
-      <PersonaFaqSection heading="Small-business questions, answered plainly." items={faqItems} />
+      <PersonaFaqSection heading="Small-business FAQ" items={faqItems} />
       <PersonaCrossLinks current="for-small-business" />
 
       <CTASection

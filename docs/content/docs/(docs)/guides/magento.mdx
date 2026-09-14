@@ -1,0 +1,129 @@
+---
+title: Magento
+description: Add Rybbit analytics to your Magento store
+category: ecommerce
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Magento Open Source and Adobe Commerce have a **Scripts and Style Sheets** field in the design configuration that prints HTML into the `<head>` of every storefront page, so no theme edits are needed. On 2.4.7 and later the checkout page runs under a strict Content Security Policy, so the tracker's host also needs a CSP whitelist entry before it loads there.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Magento
+
+1. In the Admin sidebar, go to **Content > Design > Configuration**.
+2. Find the row for the scope you want to track (usually the store view) and click **Edit** in the **Action** column.
+3. Expand **HTML Head**.
+4. Paste the snippet at the end of **Scripts and Style Sheets** and click **Save Configuration**.
+5. Go to **System > Cache Management** and refresh the invalidated cache types, then purge Varnish or your CDN if you use one.
+
+#### Allow the tracker under CSP (2.4.7 and later)
+
+Magento 2.4.7 switched the checkout page (`checkout_index_index`) to CSP restrict mode; other storefront pages stay in report-only mode. Scripts from hosts that are not whitelisted are blocked on checkout, so add the tracker's host to `script-src` and `connect-src` with a `csp_whitelist.xml` in a module of your own (plus the usual `registration.php` and `etc/module.xml`):
+
+```xml title="app/code/Vendor/Rybbit/etc/csp_whitelist.xml"
+<?xml version="1.0"?>
+<csp_whitelist xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Csp:etc/csp_whitelist.xsd">
+    <policies>
+        <policy id="script-src">
+            <values>
+                <value id="rybbit" type="host">https://app.rybbit.io</value>
+            </values>
+        </policy>
+        <policy id="connect-src">
+            <values>
+                <value id="rybbit" type="host">https://app.rybbit.io</value>
+            </values>
+        </policy>
+    </policies>
+</csp_whitelist>
+```
+
+Run `bin/magento setup:upgrade` and flush the cache after adding the module. If you self-host Rybbit, whitelist your own instance's domain instead.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+The order success page renders `Magento_Checkout::success.phtml` through the `checkout.success` block, which reserves an `order.success.additional.info` container for extra content. Add a block to that container from the same module as the CSP whitelist; the block reads the order from the checkout session.
+
+```php title="app/code/Vendor/Rybbit/Block/Purchase.php"
+<?php
+namespace Vendor\Rybbit\Block;
+
+class Purchase extends \Magento\Checkout\Block\Onepage\Success
+{
+    public function getOrder(): \Magento\Sales\Model\Order
+    {
+        return $this->_checkoutSession->getLastRealOrder();
+    }
+}
+```
+
+```xml title="app/code/Vendor/Rybbit/view/frontend/layout/checkout_onepage_success.xml"
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="order.success.additional.info">
+            <block class="Vendor\Rybbit\Block\Purchase" name="rybbit.purchase" template="Vendor_Rybbit::purchase.phtml" cacheable="false"/>
+        </referenceContainer>
+    </body>
+</page>
+```
+
+```php title="app/code/Vendor/Rybbit/view/frontend/templates/purchase.phtml"
+<?php
+/** @var \Vendor\Rybbit\Block\Purchase $block */
+$order = $block->getOrder();
+if (!$order->getId()) {
+    return;
+}
+$items = [];
+foreach ($order->getAllVisibleItems() as $item) {
+    $items[] = [
+        'item_id'   => $item->getSku(),
+        'item_name' => $item->getName(),
+        'price'     => (float) $item->getPrice(),
+        'quantity'  => (int) $item->getQtyOrdered(),
+    ];
+}
+$purchase = [
+    'transaction_id' => $order->getIncrementId(),
+    'value'          => (float) $order->getGrandTotal(),
+    'currency'       => $order->getOrderCurrencyCode(),
+    'items'          => $items,
+];
+?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    window.rybbit.event('purchase', <?= /* @noEscape */ json_encode($purchase) ?>);
+});
+</script>
+```
+
+The script waits for `DOMContentLoaded` because the tracker loads with `defer`. Event properties are limited to 2048 characters of JSON, so drop `items` for stores with large orders. `getTaxAmount()` and `getShippingAmount()` are available on the same order object if you want those too.
+
+## Troubleshooting
+
+- **Snippet not in the page source**: design configuration is scoped, and a store-view row overrides the website and global rows. Edit the row that applies to the storefront you are checking, then flush the page cache and Varnish.
+- **Tracked everywhere except checkout**: CSP restrict mode on `checkout_index_index` is blocking the script. Confirm the whitelist module is enabled and look for `Content-Security-Policy` errors naming `app.rybbit.io` in the browser console.
+- **Purchase event missing**: `getLastRealOrder()` is only set in the session that placed the order, so reopening the success page later renders nothing.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

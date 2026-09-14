@@ -51,6 +51,7 @@ CREATE TABLE "member" (
   "has_restricted_site_access" boolean NOT NULL DEFAULT false
 );
 CREATE TABLE "team" (
+  "memberCount" integer NOT NULL DEFAULT 0,
   "id" text PRIMARY KEY,
   "name" text NOT NULL,
   "organizationId" text NOT NULL REFERENCES "organization"("id") ON DELETE CASCADE,
@@ -58,6 +59,7 @@ CREATE TABLE "team" (
   "updatedAt" timestamp
 );
 CREATE TABLE "teamMember" (
+  "membershipKey" text UNIQUE,
   "id" text PRIMARY KEY,
   "teamId" text NOT NULL REFERENCES "team"("id") ON DELETE CASCADE,
   "userId" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
@@ -153,8 +155,8 @@ describe("createTeam", () => {
       members: ["member_1", "member_2"],
       siteIds: [1, 2],
     });
-    expect(await rows(`SELECT name, "organizationId" FROM team`)).toEqual([
-      { name: "Product", organizationId: "org_1" },
+    expect(await rows(`SELECT name, "organizationId", "memberCount" FROM team`)).toEqual([
+      { name: "Product", organizationId: "org_1", memberCount: 2 },
     ]);
     expect(await rows(`SELECT "userId" FROM "teamMember" ORDER BY "userId"`)).toEqual([
       { userId: "member_1" },
@@ -338,7 +340,9 @@ describe("updateTeam", () => {
 
     expect(reply.statusCode).toBe(200);
     expect(reply.body).toEqual({ success: true });
-    expect(await rows(`SELECT name FROM team WHERE id = 'team_a'`)).toEqual([{ name: "Renamed" }]);
+    expect(await rows(`SELECT name, "memberCount" FROM team WHERE id = 'team_a'`)).toEqual([
+      { name: "Renamed", memberCount: 1 },
+    ]);
     expect(await rows(`SELECT "userId" FROM "teamMember" WHERE "teamId" = 'team_a'`)).toEqual([{ userId: "member_2" }]);
     expect(await rows(`SELECT site_id FROM team_site_access WHERE team_id = 'team_a'`)).toEqual([{ site_id: 2 }]);
     expect(mocks.invalidateSitesAccessCache).toHaveBeenCalledTimes(2);

@@ -16,6 +16,9 @@ vi.mock("./segmentAccess.js", async () => {
 });
 
 vi.mock("../../../db/postgres/postgres.js", () => ({ db: {} }));
+// The partial segmentAccess mock imports auth-utils, but this unit test never
+// authenticates requests. Keep the production auth/DB initializer out of it.
+vi.mock("../../../lib/auth.js", () => ({ auth: { api: {} } }));
 
 import { expandSegmentParam, mergeSegmentFilters } from "./expandSegmentParam.js";
 

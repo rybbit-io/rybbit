@@ -4,11 +4,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
 import { appendVary, markdownProxyTarget, preferredType } from "./lib/content-negotiation";
 import {
-  HOME_VARIANT_B_PATH,
-  HOME_VARIANT_COOKIE,
+  HOME_EXPERIMENT,
   HOME_VARIANT_MAX_AGE,
   HOME_VARIANT_PARAM,
+  type HomeExperiment,
   type HomeVariant,
+  RETIRED_COOKIES,
+  homeVariantCookie,
   isCrawler,
   isHomeVariant,
 } from "./lib/landing-experiment";
@@ -20,11 +22,14 @@ const internationalization = createMiddleware(routing);
  * remembered one, else a fresh 50/50 draw. `assigned` asks the caller to
  * (re)persist the cookie. Crawlers are never enrolled unless they ask.
  */
-function resolveHomeVariant(request: NextRequest): { variant: HomeVariant; assigned: boolean } | null {
+function resolveHomeVariant(
+  request: NextRequest,
+  experiment: HomeExperiment
+): { variant: HomeVariant; assigned: boolean } | null {
   const forced = request.nextUrl.searchParams.get(HOME_VARIANT_PARAM);
   if (isHomeVariant(forced)) return { variant: forced, assigned: true };
   if (isCrawler(request.headers.get("user-agent"))) return null;
-  const existing = request.cookies.get(HOME_VARIANT_COOKIE)?.value;
+  const existing = request.cookies.get(homeVariantCookie(experiment))?.value;
   if (isHomeVariant(existing)) return { variant: existing, assigned: false };
   return { variant: Math.random() < 0.5 ? "a" : "b", assigned: true };
 }
@@ -55,26 +60,31 @@ export default function proxy(request: NextRequest) {
     });
   }
 
-  // Homepage experiment: variant B visitors get the redesign served at `/`.
-  // Only the bare default-locale homepage takes part; the i18n middleware
-  // still handles the rewritten path (→ /en/lp/b) so the URL never changes.
-  const experiment = resolveHomeVariant(request);
-  const servesVariantB = experiment?.variant === "b" && request.nextUrl.pathname === "/";
+  // Homepage experiment (see lib/landing-experiment.ts): B-arm visitors get
+  // the challenger served at `/`. Only the default-locale homepage takes
+  // part; the i18n middleware still handles the rewritten path (→ /en/lp/…)
+  // so the URL never changes.
+  const experiment = HOME_EXPERIMENT;
+  const arm = experiment ? resolveHomeVariant(request, experiment) : null;
+  const servesVariantB = experiment !== null && arm?.variant === "b" && request.nextUrl.pathname === "/";
   if (servesVariantB) {
-    request.nextUrl.pathname = HOME_VARIANT_B_PATH;
+    request.nextUrl.pathname = experiment.variantPath;
   }
 
   const response = internationalization(request);
   appendVary(response.headers, "Accept", "Accept-Encoding");
-  if (experiment?.assigned) {
-    response.cookies.set(HOME_VARIANT_COOKIE, experiment.variant, {
+  if (experiment && arm?.assigned) {
+    response.cookies.set(homeVariantCookie(experiment), arm.variant, {
       path: "/",
       maxAge: HOME_VARIANT_MAX_AGE,
       sameSite: "lax",
     });
   }
+  for (const name of RETIRED_COOKIES) {
+    if (request.cookies.has(name)) response.cookies.delete(name);
+  }
   if (servesVariantB) {
-    // Don't advertise the internal /lp/b path as this page's alternates.
+    // Don't advertise the internal challenger path as this page's alternates.
     response.headers.delete("Link");
   }
   return response;
