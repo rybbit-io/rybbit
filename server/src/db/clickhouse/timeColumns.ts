@@ -13,14 +13,6 @@ export type TimeColumnDefinition = {
   /** The full target type, e.g. `DateTime('UTC')` or `SimpleAggregateFunction(min, DateTime64(3, 'UTC'))`. */
   type: string;
   partitionKey?: boolean;
-  /**
-   * Before the fix the writer sent this column a timezone-less string, so a
-   * non-UTC server stored a shifted instant. Only these columns may be
-   * re-read by the repair script's --reinterpret-from. Columns written as an
-   * epoch number (replay event timestamps) or by `DEFAULT now()` were always
-   * correct and must be left alone.
-   */
-  naiveWriter?: boolean;
 };
 
 export type TimeTableDefinition = {
@@ -33,31 +25,26 @@ export type TimeTableDefinition = {
   derived?: boolean;
 };
 
-// Rollup hour buckets are computed by streaming materialized views from
-// events.timestamp in the server timezone, so on a non-UTC server they carry
-// the same shift as the events they were built from.
 const EVENT_HOUR: TimeTableDefinition = {
-  columns: [{ name: "event_hour", type: "DateTime('UTC')", partitionKey: true, naiveWriter: true }],
+  columns: [{ name: "event_hour", type: "DateTime('UTC')", partitionKey: true }],
 };
 
 export const UTC_TIME_TABLES = {
   events: {
     columns: [
-      { name: "timestamp", type: "DateTime('UTC')", partitionKey: true, naiveWriter: true },
-      // Old rows took DEFAULT toDateTime64(timestamp, 3), so they carry timestamp's shift.
-      { name: "timestamp_ms", type: "DateTime64(3, 'UTC')", naiveWriter: true },
+      { name: "timestamp", type: "DateTime('UTC')", partitionKey: true },
+      { name: "timestamp_ms", type: "DateTime64(3, 'UTC')" },
     ],
   },
-  bot_events: { columns: [{ name: "timestamp", type: "DateTime('UTC')", partitionKey: true, naiveWriter: true }] },
+  bot_events: { columns: [{ name: "timestamp", type: "DateTime('UTC')", partitionKey: true }] },
   bot_observations: {
-    columns: [{ name: "timestamp", type: "DateTime('UTC')", partitionKey: true, naiveWriter: true }],
+    columns: [{ name: "timestamp", type: "DateTime('UTC')", partitionKey: true }],
   },
-  // rrweb timestamps were inserted as epoch milliseconds: never shifted.
   session_replay_events: { columns: [{ name: "timestamp", type: "DateTime64(3, 'UTC')", partitionKey: true }] },
   session_replay_metadata: {
     columns: [
-      { name: "start_time", type: "DateTime('UTC')", partitionKey: true, naiveWriter: true },
-      { name: "end_time", type: "Nullable(DateTime('UTC'))", naiveWriter: true },
+      { name: "start_time", type: "DateTime('UTC')", partitionKey: true },
+      { name: "end_time", type: "Nullable(DateTime('UTC'))" },
       { name: "created_at", type: "DateTime('UTC')" },
     ],
   },
@@ -67,9 +54,8 @@ export const UTC_TIME_TABLES = {
         name: "start_time",
         type: "SimpleAggregateFunction(min, DateTime64(3, 'UTC'))",
         partitionKey: true,
-        naiveWriter: true,
       },
-      { name: "end_time", type: "SimpleAggregateFunction(max, Nullable(DateTime64(3, 'UTC')))", naiveWriter: true },
+      { name: "end_time", type: "SimpleAggregateFunction(max, Nullable(DateTime64(3, 'UTC')))" },
     ],
   },
   // Cloud only.
@@ -81,10 +67,9 @@ export const UTC_TIME_TABLES = {
         name: "start_time",
         type: "SimpleAggregateFunction(min, DateTime('UTC'))",
         partitionKey: true,
-        naiveWriter: true,
       },
-      { name: "end_time", type: "SimpleAggregateFunction(max, DateTime('UTC'))", naiveWriter: true },
-      { name: "last_seen", type: "SimpleAggregateFunction(max, DateTime('UTC'))", naiveWriter: true },
+      { name: "end_time", type: "SimpleAggregateFunction(max, DateTime('UTC'))" },
+      { name: "last_seen", type: "SimpleAggregateFunction(max, DateTime('UTC'))" },
     ],
   },
   overview_hourly_mv_target: EVENT_HOUR,

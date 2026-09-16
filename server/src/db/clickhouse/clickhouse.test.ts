@@ -231,7 +231,6 @@ describe("UTC time columns", () => {
 
     const queries = mocks.query.mock.calls.map(([args]) => args.query as string);
     expect(queries.some(query => query.includes("AS misplaced"))).toBe(false);
-    expect(mocks.insert).not.toHaveBeenCalled();
     expect(mocks.logger.warn).not.toHaveBeenCalled();
   });
 
@@ -261,12 +260,6 @@ describe("UTC time columns", () => {
     expect(mocks.logger.error).toHaveBeenCalledWith(
       expect.objectContaining({ table: "events", column: "timestamp", misplaced: 42 }),
       expect.stringContaining("repair:utc-partitions")
-    );
-    expect(mocks.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        table: "utc_repair_log",
-        values: [expect.objectContaining({ table: "events", kind: "migrated" })],
-      })
     );
   });
 

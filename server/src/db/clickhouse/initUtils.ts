@@ -45,45 +45,6 @@ export function resetServerTimezoneCache() {
   serverTimezone = undefined;
 }
 
-/**
- * Bookkeeping for the non-UTC-server repair. Startup writes a `migrated` row
- * when it converts a table's partition column, which the repair script uses
- * as the default upper bound for re-reading mis-stored instants (everything
- * written after that moment came from the fixed backend); the script writes a
- * `repaired` row per completed run so a retry does not shift rows twice.
- */
-export const UTC_REPAIR_LOG_TABLE = "utc_repair_log";
-
-export type UtcRepairLogEntry = {
-  table: string;
-  kind: "migrated" | "repaired";
-  reinterpret_from?: string;
-  since?: string;
-  until?: string;
-};
-
-export async function recordUtcRepair(entry: UtcRepairLogEntry) {
-  await clickhouse.exec({
-    query: `CREATE TABLE IF NOT EXISTS ${UTC_REPAIR_LOG_TABLE} (
-      table String, kind String, reinterpret_from String, since String, until String, completed_at DateTime('UTC')
-    ) ENGINE = MergeTree ORDER BY completed_at`,
-  });
-  await clickhouse.insert({
-    table: UTC_REPAIR_LOG_TABLE,
-    format: "JSONEachRow",
-    values: [
-      {
-        table: entry.table,
-        kind: entry.kind,
-        reinterpret_from: entry.reinterpret_from ?? "",
-        since: entry.since ?? "",
-        until: entry.until ?? "",
-        completed_at: new Date().toISOString(),
-      },
-    ],
-  });
-}
-
 export async function countMisplacedPartitionRows(table: string, column: string) {
   const result = await clickhouse.query({
     query: `SELECT count() AS misplaced FROM ${table} WHERE ${misplacedPartitionRowsCondition(column)}`,
@@ -168,7 +129,6 @@ export async function ensureUtcTimeColumns(table: string, columns: TimeColumnDef
   }
 
   try {
-    await recordUtcRepair({ table, kind: "migrated" });
     const misplaced = await countMisplacedPartitionRows(table, partitionColumn.name);
     if (misplaced > 0) {
       clickhouseInitLogger.error(

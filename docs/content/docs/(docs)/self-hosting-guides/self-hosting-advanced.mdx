@@ -100,19 +100,25 @@ Before this change the backend wrote timezone-less strings, which ClickHouse rea
 
    ```bash
    docker compose stop backend
-   docker compose run --rm --no-deps backend npm run repair:utc-partitions            # dry run: counts and SQL
-   docker compose run --rm --no-deps backend npm run repair:utc-partitions -- --apply
+   docker compose run --rm --no-deps backend npm run repair:utc-partitions                              # dry run: counts and SQL
+   docker compose run --rm --no-deps backend npm run repair:utc-partitions -- --apply --backend-stopped
    docker compose start backend
    ```
 
-   The script copies each affected table, validates the copy, swaps it in atomically, and keeps the original as `<table>_utc_repair_backup` until you drop it. Materialized views are left alone. It refuses to run while it can see recent inserts, and it rewrites every row, so run it off-peak.
+   The script copies each affected table row for row, validates the copy, swaps it in atomically, and keeps the original as `<table>_utc_repair_backup` until you drop it. Materialized views are left alone. It refuses if it can see inserts running or queued, and it rewrites every row, so run it off-peak. Running it again is harmless.
 
-2. **Shifted timestamps.** Rows written by rybbit-backend 2.9.0 or 2.9.1 while ClickHouse was not in UTC were stored shifted by the server's offset (the dashboard looked frozen at the upgrade time). Rows written by 2.8.0 or earlier were shifted only if the backend container's `TZ` differed from the ClickHouse timezone. If you know the window, the same script can correct them in the same pass:
+2. **Shifted timestamps.** Rows written by rybbit-backend 2.9.0 or 2.9.1 while ClickHouse was not in UTC were stored shifted by the server's offset (the dashboard looked frozen at the upgrade time). Rows written by 2.8.0 or earlier were shifted only if the backend container's `TZ` differed from the ClickHouse timezone. Rybbit cannot correct these automatically: a shifted row and a correct row can carry the same timestamp, so only you know which rows the old backend wrote. If you want them fixed, use the same copy-and-swap on the `events` table with your own bounds, then rebuild the rollups from it:
 
-   ```bash
-   docker compose run --rm --no-deps backend npm run repair:utc-partitions -- --apply \
-     --reinterpret-from Europe/Berlin \
-     --since "2026-09-10 08:00:00" --until "2026-09-16 12:00:00"
+   ```sql
+   CREATE TABLE events_fixed AS events;
+   INSERT INTO events_fixed
+   SELECT * REPLACE (
+     -- Re-read the stored wall-clock, rendered in the old server timezone, as UTC.
+     if(<written by the old backend>, toDateTime(toString(toTimeZone(timestamp, 'Europe/Berlin')), 'UTC'), timestamp) AS timestamp,
+     if(<written by the old backend>, toDateTime64(toString(toTimeZone(timestamp_ms, 'Europe/Berlin')), 3, 'UTC'), timestamp_ms) AS timestamp_ms
+   ) FROM events;
+   -- Check counts and a few known rows, then:
+   EXCHANGE TABLES events AND events_fixed;
    ```
 
-   This re-reads each stored timestamp's wall-clock in the given timezone as UTC for rows in that UTC window, for the columns the old backend wrote as strings (events, bot events, replay metadata, hourly rollups). Replay event timestamps were always written as epoch numbers and are not touched. It cannot tell a shifted row from a correct one, so `--since` must be the moment the old backend started writing to the non-UTC server. `--until` defaults to the moment the upgraded backend first started, which it recorded in the `utc_repair_log` table; rows after that are already correct. Completed windows are recorded in the same table, so re-running the command skips tables it already corrected. Run it before importing historical data from another tool: imported rows carry old timestamps that would fall inside the window.
+   Replace `<written by the old backend>` with a predicate that is true only for rows the old backend wrote, for example a `timestamp` range that ends before the upgraded backend started, minus the server offset. Run it once: applying it twice shifts rows twice. Do it before importing historical data from another tool. Afterwards rebuild the lite-dashboard rollups with `npm run backfill:lite-mvs -- --truncate`, and drop `events_fixed`. The same applies to `bot_events`, `bot_observations` and the two `session_replay_metadata` tables; replay event timestamps were always written as epoch numbers and are correct as they are.
