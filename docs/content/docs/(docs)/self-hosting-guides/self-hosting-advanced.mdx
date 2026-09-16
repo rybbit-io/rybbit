@@ -87,3 +87,30 @@ IMAGE_TAG=latest
 HOST_BACKEND_PORT="3001:3001"
 HOST_CLIENT_PORT="3002:3002"
 ```
+
+## ClickHouse Timezone
+
+Rybbit stores every timestamp as a UTC instant and converts to your dashboard timezone when it queries. Every time column is declared `DateTime('UTC')`, and the backend writes timestamps with an explicit UTC offset, so the ClickHouse server's own `<timezone>` setting does not change what gets stored. Leave it at the default (UTC) unless you have a reason not to; the backend logs a warning at startup if it is anything else.
+
+### Upgrading from 2.9.1 or earlier on a non-UTC ClickHouse
+
+Before this change the backend wrote timezone-less strings, which ClickHouse read in the server's timezone. If your ClickHouse was configured for anything but UTC, two things need attention after upgrading:
+
+1. **Month partitions.** Existing rows keep the month partition computed in the old timezone. The backend converts the columns to UTC on startup without rewriting data, and afterwards rows that fall within the old offset of a month boundary (for Europe/Berlin, the last one or two hours of each month) sit in a partition ClickHouse no longer expects. A query whose whole time window falls inside those hours will miss them. The startup log names the affected tables. Rebuild them once with:
+
+   ```bash
+   docker compose exec backend npm run repair:utc-partitions            # dry run: report counts and print SQL
+   docker compose exec backend npm run repair:utc-partitions -- --apply
+   ```
+
+   The script copies each affected table, swaps the copy in atomically, and leaves materialized views alone. It reads and rewrites every row, so run it off-peak.
+
+2. **Shifted timestamps.** Rows written by rybbit-backend 2.9.0 or 2.9.1 while ClickHouse was not in UTC were stored shifted by the server's offset (the dashboard looked frozen at the upgrade time). Rows written by 2.8.0 or earlier were shifted only if the backend container's `TZ` differed from the ClickHouse timezone. If you know the window, the same script can correct them:
+
+   ```bash
+   docker compose exec backend npm run repair:utc-partitions -- --apply \
+     --reinterpret-from Europe/Berlin \
+     --since "2026-09-10 08:00:00" --until "2026-09-16 12:00:00"
+   ```
+
+   This re-reads each stored timestamp's wall-clock in the given timezone as UTC for rows in that UTC window. It cannot tell a shifted row from a correct one, so bound the window to the period the old backend was running against the non-UTC server.

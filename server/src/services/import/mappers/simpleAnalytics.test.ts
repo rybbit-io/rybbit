@@ -113,6 +113,19 @@ describe("SimpleAnalyticsImportMapper", () => {
         expect(result[0].timestamp).toBe("2024-06-15T14:30:00.123Z");
       });
 
+      it("drops a well-shaped impossible date without losing the rest of the batch", () => {
+        const result = SimpleAnalyticsImportMapper.transform(
+          [
+            makeEvent({ added_iso: "2024-06-15T14:30:00Z" }),
+            makeEvent({ added_iso: "2024-02-31T12:00:00Z" }),
+            makeEvent({ added_iso: "2024-06-16T09:00:00Z" }),
+          ],
+          1,
+          "i"
+        );
+        expect(result.map(row => row.timestamp)).toEqual(["2024-06-15T14:30:00.000Z", "2024-06-16T09:00:00.000Z"]);
+      });
+
       it("should drop rows with non-ISO timestamps", () => {
         for (const added_iso of [
           "2024-06-15 14:30:00", // space separator

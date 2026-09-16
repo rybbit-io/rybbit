@@ -3,7 +3,7 @@ import { getChannel } from "../../tracker/getChannel.js";
 import { RybbitEvent } from "./rybbit.js";
 import { z } from "zod";
 import { UAParser } from "ua-parser-js";
-import { toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
+import { isClickHouseDateTime, toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
 import { getDeviceType } from "../../../utils.js";
 import { deriveKeyOnlySchema } from "./utils.js";
 
@@ -11,7 +11,9 @@ export type SimpleAnalyticsEvent = z.input<typeof SimpleAnalyticsImportMapper.si
 
 export class SimpleAnalyticsImportMapper {
   private static readonly simpleAnalyticsEventSchema = z.object({
-    added_iso: z.string().datetime(),
+    // datetime() checks the shape, not the calendar; 2024-02-31 would
+    // otherwise throw at serialisation and fail the whole batch.
+    added_iso: z.string().datetime().refine(isClickHouseDateTime),
     country_code: z
       .string()
       .regex(/^[A-Z]{2}$/)

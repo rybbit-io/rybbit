@@ -30,6 +30,11 @@ export function toClickHouseDateTime(input: ClickHouseDateTimeInput): string {
   return instant.toUTC().toISO() as string;
 }
 
+/** Whether toClickHouseDateTime would accept the value: a real instant, not just the right shape. */
+export function isClickHouseDateTime(input: ClickHouseDateTimeInput): boolean {
+  return toInstant(input).isValid;
+}
+
 function toInstant(input: ClickHouseDateTimeInput): DateTime {
   if (DateTime.isDateTime(input)) return input;
   if (input instanceof Date) return DateTime.fromJSDate(input);

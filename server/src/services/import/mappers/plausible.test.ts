@@ -81,6 +81,16 @@ describe("PlausibleImportMapper", () => {
       expect(result[0].props).toEqual({ plan: "pro" });
     });
 
+    it("drops a well-shaped impossible date without losing the rest of the batch", () => {
+      const events = [
+        makeEvent({ timestamp: "2024-06-15 14:30:00" }),
+        makeEvent({ timestamp: "2024-02-31 12:00:00" }),
+        makeEvent({ timestamp: "2024-06-16 09:00:00" }),
+      ];
+      const result = PlausibleImportMapper.transform(events, 1, "import-1");
+      expect(result.map(row => row.timestamp)).toEqual(["2024-06-15T14:30:00.000Z", "2024-06-16T09:00:00.000Z"]);
+    });
+
     it("should skip events with invalid timestamps", () => {
       const events = [makeEvent({ timestamp: "not-a-date" })];
       const result = PlausibleImportMapper.transform(events, 1, "import-1");

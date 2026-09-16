@@ -3,8 +3,8 @@ import {
   ensureUtcTimeColumns,
   execClickhouseInitStep,
   getTableColumns,
-  type TimeColumnDefinition,
 } from "../initUtils.js";
+import { UTC_TIME_COLUMNS } from "../timeColumns.js";
 
 type ColumnDefinition = {
   name: string;
@@ -59,27 +59,6 @@ const BOT_EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
   // half of the claim, so the two together are what makes attribution arguable.
   { name: "asn_provider", definition: "asn_provider LowCardinality(String) DEFAULT ''" },
 ];
-
-// Time columns whose timezone the startup migration pins to UTC on tables
-// created before the CREATE statements below declared it. Types must match
-// those statements exactly; see ensureUtcTimeColumns for why this is safe.
-const UTC_TIME_COLUMNS = {
-  events: [
-    { name: "timestamp", type: "DateTime('UTC')" },
-    { name: "timestamp_ms", type: "DateTime64(3, 'UTC')" },
-  ],
-  bot_events: [{ name: "timestamp", type: "DateTime('UTC')" }],
-  session_replay_events: [{ name: "timestamp", type: "DateTime64(3, 'UTC')" }],
-  session_replay_metadata: [
-    { name: "start_time", type: "DateTime('UTC')" },
-    { name: "end_time", type: "Nullable(DateTime('UTC'))" },
-    { name: "created_at", type: "DateTime('UTC')" },
-  ],
-  session_replay_metadata_v2: [
-    { name: "start_time", type: "SimpleAggregateFunction(min, DateTime64(3, 'UTC'))" },
-    { name: "end_time", type: "SimpleAggregateFunction(max, Nullable(DateTime64(3, 'UTC')))" },
-  ],
-} satisfies Record<string, TimeColumnDefinition[]>;
 
 // Runs against both audit tables: they carry the same columns on purpose, so a
 // column added to one has to reach the other or the shared queries stop working.
@@ -293,7 +272,7 @@ export async function initializeCoreTables() {
   );
 
   await ensureBotEventsColumns("bot_observations");
-  await ensureUtcTimeColumns("bot_observations", UTC_TIME_COLUMNS.bot_events);
+  await ensureUtcTimeColumns("bot_observations", UTC_TIME_COLUMNS.bot_observations);
 
   await execClickhouseInitStep(
     "create session replay events table",

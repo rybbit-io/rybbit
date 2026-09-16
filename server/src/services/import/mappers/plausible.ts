@@ -1,4 +1,4 @@
-import { toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
+import { isClickHouseDateTime, toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
 import { clearSelfReferrer, getAllUrlParams } from "../../tracker/utils.js";
 import { getChannel } from "../../tracker/getChannel.js";
 import { RybbitEvent } from "./rybbit.js";
@@ -15,7 +15,10 @@ export class PlausibleImportMapper {
       .string()
       .regex(
         /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]) ([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/
-      ),
+      )
+      // The regex accepts 2024-02-31; a row that is not a real instant is
+      // dropped here instead of failing the whole batch at serialisation.
+      .refine(isClickHouseDateTime),
     session_id: z.string().uuid(),
     user_id: z.string().uuid(),
     hostname: z.string().max(253),

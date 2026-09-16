@@ -1,4 +1,5 @@
 import { ensureUtcTimeColumns, execClickhouseInitStep } from "../initUtils.js";
+import { UTC_TIME_COLUMNS } from "../timeColumns.js";
 
 // Hourly per-site event counts, used by cloud usage tracking / billing.
 export async function initializeCloudTables() {
@@ -16,7 +17,7 @@ export async function initializeCloudTables() {
       TTL event_hour + INTERVAL 60 DAY
     `
   );
-  await ensureUtcTimeColumns("hourly_events_by_site_mv_target", [{ name: "event_hour", type: "DateTime('UTC')" }]);
+  await ensureUtcTimeColumns("hourly_events_by_site_mv_target", UTC_TIME_COLUMNS.hourly_events_by_site_mv_target);
 
   await execClickhouseInitStep(
     "create hourly events by site materialized view",

@@ -1,6 +1,6 @@
 import { DateTime, Settings } from "luxon";
 import { afterEach, describe, expect, it } from "vitest";
-import { toClickHouseDateTime } from "./dateTime.js";
+import { isClickHouseDateTime, toClickHouseDateTime } from "./dateTime.js";
 
 const originalZone = Settings.defaultZone;
 
@@ -34,6 +34,13 @@ describe("toClickHouseDateTime", () => {
     Settings.defaultZone = "Europe/Berlin";
     expect(toClickHouseDateTime("2026-10-25T02:30:00.999+02:00")).toBe("2026-10-25T00:30:00.999Z");
     expect(toClickHouseDateTime("2026-10-25T02:30:00.999+01:00")).toBe("2026-10-25T01:30:00.999Z");
+  });
+
+  it("tells a real instant from a well-shaped impossible one", () => {
+    expect(isClickHouseDateTime("2024-02-29 12:00:00")).toBe(true);
+    expect(isClickHouseDateTime("2024-02-31 12:00:00")).toBe(false);
+    expect(isClickHouseDateTime("2024-02-31T12:00:00Z")).toBe(false);
+    expect(isClickHouseDateTime("2024-06-15T25:00:00Z")).toBe(false);
   });
 
   it("rejects values ClickHouse could not parse", () => {

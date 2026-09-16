@@ -250,6 +250,19 @@ describe("UmamiImportMapper", () => {
         expect(result[0].country).toBe("");
       });
 
+      it("drops a well-shaped impossible date without losing the rest of the batch", () => {
+        const result = UmamiImportMapper.transform(
+          [
+            makeEvent({ created_at: "2024-06-15 14:30:00" }),
+            makeEvent({ created_at: "2024-02-31 12:00:00" }),
+            makeEvent({ created_at: "2024-06-16 09:00:00" }),
+          ],
+          1,
+          "i"
+        );
+        expect(result.map(row => row.timestamp)).toEqual(["2024-06-15T14:30:00.000Z", "2024-06-16T09:00:00.000Z"]);
+      });
+
       it("should drop rows with an invalid timestamp format", () => {
         for (const created_at of [
           "2024-06-15T14:30:00", // ISO "T" separator
