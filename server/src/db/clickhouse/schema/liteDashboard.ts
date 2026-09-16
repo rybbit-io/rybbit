@@ -1,4 +1,9 @@
-import { clickhouseInitLogger as logger, execClickhouseInitStep, getTableCreateQuery } from "../initUtils.js";
+import {
+  clickhouseInitLogger as logger,
+  ensureUtcTimeColumns,
+  execClickhouseInitStep,
+  getTableCreateQuery,
+} from "../initUtils.js";
 
 const SESSION_HOURLY_MV_NAME = "session_hourly_mv";
 const SESSION_HOURLY_MV_REFRESH_INTERVAL = "REFRESH EVERY 1 HOUR";
@@ -80,8 +85,8 @@ export async function initializeLiteDashboardMVs() {
         site_id UInt16,
         session_id String,
         user_id String,
-        start_time SimpleAggregateFunction(min, DateTime),
-        end_time SimpleAggregateFunction(max, DateTime),
+        start_time SimpleAggregateFunction(min, DateTime('UTC')),
+        end_time SimpleAggregateFunction(max, DateTime('UTC')),
         pageviews SimpleAggregateFunction(sum, UInt64),
         events SimpleAggregateFunction(sum, UInt64),
         country LowCardinality(FixedString(2)),
@@ -90,13 +95,18 @@ export async function initializeLiteDashboardMVs() {
         browser LowCardinality(String),
         operating_system LowCardinality(String),
         hostname String,
-        last_seen SimpleAggregateFunction(max, DateTime)
+        last_seen SimpleAggregateFunction(max, DateTime('UTC'))
       )
       ENGINE = AggregatingMergeTree()
       PARTITION BY toYYYYMM(start_time)
       ORDER BY (site_id, session_id)
     `
   );
+  await ensureUtcTimeColumns("sessions_mv_target", [
+    { name: "start_time", type: "SimpleAggregateFunction(min, DateTime('UTC'))" },
+    { name: "end_time", type: "SimpleAggregateFunction(max, DateTime('UTC'))" },
+    { name: "last_seen", type: "SimpleAggregateFunction(max, DateTime('UTC'))" },
+  ]);
 
   await execClickhouseInitStep(
     "create sessions rollup materialized view",
@@ -129,7 +139,7 @@ export async function initializeLiteDashboardMVs() {
     `
       CREATE TABLE IF NOT EXISTS overview_hourly_mv_target (
         site_id UInt16,
-        event_hour DateTime,
+        event_hour DateTime('UTC'),
         pageviews SimpleAggregateFunction(sum, UInt64),
         events SimpleAggregateFunction(sum, UInt64),
         users AggregateFunction(uniq, String),
@@ -140,6 +150,7 @@ export async function initializeLiteDashboardMVs() {
       ORDER BY (site_id, event_hour)
     `
   );
+  await ensureUtcTimeColumns("overview_hourly_mv_target", [{ name: "event_hour", type: "DateTime('UTC')" }]);
 
   await execClickhouseInitStep(
     "create hourly overview rollup materialized view",
@@ -165,7 +176,7 @@ export async function initializeLiteDashboardMVs() {
     `
       CREATE TABLE IF NOT EXISTS pathname_hourly_mv_target (
         site_id UInt16,
-        event_hour DateTime,
+        event_hour DateTime('UTC'),
         pathname String,
         hostname String,
         pageviews SimpleAggregateFunction(sum, UInt64),
@@ -177,6 +188,7 @@ export async function initializeLiteDashboardMVs() {
       ORDER BY (site_id, event_hour, pathname)
     `
   );
+  await ensureUtcTimeColumns("pathname_hourly_mv_target", [{ name: "event_hour", type: "DateTime('UTC')" }]);
 
   await execClickhouseInitStep(
     "create hourly pathname rollup materialized view",
@@ -203,7 +215,7 @@ export async function initializeLiteDashboardMVs() {
     `
       CREATE TABLE IF NOT EXISTS country_hourly_mv_target (
         site_id UInt16,
-        event_hour DateTime,
+        event_hour DateTime('UTC'),
         country LowCardinality(FixedString(2)),
         region LowCardinality(String),
         pageviews SimpleAggregateFunction(sum, UInt64),
@@ -215,6 +227,7 @@ export async function initializeLiteDashboardMVs() {
       ORDER BY (site_id, event_hour, country, region)
     `
   );
+  await ensureUtcTimeColumns("country_hourly_mv_target", [{ name: "event_hour", type: "DateTime('UTC')" }]);
 
   await execClickhouseInitStep(
     "create hourly country rollup materialized view",
@@ -240,7 +253,7 @@ export async function initializeLiteDashboardMVs() {
     `
       CREATE TABLE IF NOT EXISTS device_type_hourly_mv_target (
         site_id UInt16,
-        event_hour DateTime,
+        event_hour DateTime('UTC'),
         device_type LowCardinality(String),
         pageviews SimpleAggregateFunction(sum, UInt64),
         users AggregateFunction(uniq, String),
@@ -251,6 +264,7 @@ export async function initializeLiteDashboardMVs() {
       ORDER BY (site_id, event_hour, device_type)
     `
   );
+  await ensureUtcTimeColumns("device_type_hourly_mv_target", [{ name: "event_hour", type: "DateTime('UTC')" }]);
 
   await execClickhouseInitStep(
     "create hourly device type rollup materialized view",
@@ -279,7 +293,7 @@ export async function initializeLiteDashboardMVs() {
     `
       CREATE TABLE IF NOT EXISTS session_hourly_mv_target (
         site_id UInt16,
-        session_hour DateTime,
+        session_hour DateTime('UTC'),
         sessions UInt64,
         pageviews UInt64,
         users AggregateFunction(uniq, String),
@@ -291,6 +305,7 @@ export async function initializeLiteDashboardMVs() {
       ORDER BY (site_id, session_hour)
     `
   );
+  await ensureUtcTimeColumns("session_hourly_mv_target", [{ name: "session_hour", type: "DateTime('UTC')" }]);
 
   // CREATE IF NOT EXISTS cannot update an already-installed view. Inspect the
   // stored definition so deployments replace the old five-minute raw-events

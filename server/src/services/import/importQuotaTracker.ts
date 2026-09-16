@@ -167,7 +167,8 @@ export class ImportQuotaTracker {
 
     for (let i = 0; i < timestamps.length; i++) {
       const timestamp = timestamps[i];
-      const dt = DateTime.fromFormat(timestamp, "yyyy-MM-dd HH:mm:ss", { zone: "utc" });
+      // Mappers emit the explicit-UTC ISO form that ClickHouse is given.
+      const dt = DateTime.fromISO(timestamp, { zone: "utc", setZone: true });
 
       if (!dt.isValid || dt > now) {
         continue;

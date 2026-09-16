@@ -39,7 +39,7 @@ describe("UmamiImportMapper", () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         site_id: 1,
-        timestamp: "2024-06-15 14:30:00",
+        timestamp: "2024-06-15T14:30:00.000Z",
         session_id: TEST_SESSION_ID,
         user_id: "visitor-1",
         hostname: "example.com",

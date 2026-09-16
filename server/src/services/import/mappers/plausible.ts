@@ -1,3 +1,4 @@
+import { toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
 import { clearSelfReferrer, getAllUrlParams } from "../../tracker/utils.js";
 import { getChannel } from "../../tracker/getChannel.js";
 import { RybbitEvent } from "./rybbit.js";
@@ -66,7 +67,7 @@ export class PlausibleImportMapper {
 
       acc.push({
         site_id: site,
-        timestamp: data.timestamp,
+        timestamp: toClickHouseDateTime(data.timestamp),
         session_id: data.session_id,
         user_id: data.user_id,
         hostname: data.hostname,

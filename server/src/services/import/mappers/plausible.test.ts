@@ -37,7 +37,7 @@ describe("PlausibleImportMapper", () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         site_id: 1,
-        timestamp: "2024-06-15 14:30:00",
+        timestamp: "2024-06-15T14:30:00.000Z",
         session_id: TEST_SESSION_ID,
         user_id: TEST_USER_ID,
         hostname: "example.com",
@@ -115,11 +115,7 @@ describe("PlausibleImportMapper", () => {
       ];
       const result = PlausibleImportMapper.transform(events, 1, "import-1");
       expect(result).toHaveLength(3);
-      expect(result.map((e) => e.pathname)).toEqual([
-        "/page-1",
-        "/page-2",
-        "/page-3",
-      ]);
+      expect(result.map(e => e.pathname)).toEqual(["/page-1", "/page-2", "/page-3"]);
     });
 
     it("should skip events with hostname exceeding max length", () => {
@@ -147,9 +143,7 @@ describe("PlausibleImportMapper", () => {
     });
 
     it("should compute channel from referrer", () => {
-      const events = [
-        makeEvent({ referrer: "https://google.com", querystring: "" }),
-      ];
+      const events = [makeEvent({ referrer: "https://google.com", querystring: "" })];
       const result = PlausibleImportMapper.transform(events, 1, "import-1");
       expect(result).toHaveLength(1);
       // getChannel should classify google.com as organic search

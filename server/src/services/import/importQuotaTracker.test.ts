@@ -62,7 +62,11 @@ describe("ImportQuotaTracker", () => {
   describe("canImportBatch", () => {
     it("should allow all timestamps when under the monthly limit", () => {
       const tracker = makeTracker({}, 10, "202312");
-      const result = tracker.canImportBatch(["2024-06-01 00:00:00", "2024-06-10 08:15:30", "2024-06-14 23:59:59"]);
+      const result = tracker.canImportBatch([
+        "2024-06-01T00:00:00.000Z",
+        "2024-06-10T08:15:30.000Z",
+        "2024-06-14T23:59:59.000Z",
+      ]);
       expect(result).toEqual([0, 1, 2]);
     });
 
@@ -74,10 +78,10 @@ describe("ImportQuotaTracker", () => {
     it("should account for existing usage in a month", () => {
       const tracker = makeTracker({ "202405": 3 }, 5, "202312");
       const result = tracker.canImportBatch([
-        "2024-05-01 10:00:00",
-        "2024-05-02 10:00:00",
-        "2024-05-03 10:00:00",
-        "2024-05-04 10:00:00",
+        "2024-05-01T10:00:00.000Z",
+        "2024-05-02T10:00:00.000Z",
+        "2024-05-03T10:00:00.000Z",
+        "2024-05-04T10:00:00.000Z",
       ]);
       // Only 2 slots remain in May (3 used out of 5).
       expect(result).toEqual([0, 1]);
@@ -86,52 +90,52 @@ describe("ImportQuotaTracker", () => {
     it("should track quota per month independently in a batch spanning months", () => {
       const tracker = makeTracker({}, 2, "202312");
       const result = tracker.canImportBatch([
-        "2024-05-01 10:00:00",
-        "2024-06-01 10:00:00",
-        "2024-05-02 10:00:00",
-        "2024-06-02 10:00:00",
-        "2024-05-03 10:00:00", // 3rd May event exceeds May's limit
+        "2024-05-01T10:00:00.000Z",
+        "2024-06-01T10:00:00.000Z",
+        "2024-05-02T10:00:00.000Z",
+        "2024-06-02T10:00:00.000Z",
+        "2024-05-03T10:00:00.000Z", // 3rd May event exceeds May's limit
       ]);
       expect(result).toEqual([0, 1, 2, 3]);
     });
 
     it("should reject events for a month exactly at the limit", () => {
       const tracker = makeTracker({ "202406": 5 }, 5, "202312");
-      expect(tracker.canImportBatch(["2024-06-01 10:00:00"])).toEqual([]);
+      expect(tracker.canImportBatch(["2024-06-01T10:00:00.000Z"])).toEqual([]);
     });
 
     it("should allow exactly one more event when one below the limit", () => {
       const tracker = makeTracker({ "202406": 4 }, 5, "202312");
-      expect(tracker.canImportBatch(["2024-06-01 10:00:00", "2024-06-02 10:00:00"])).toEqual([0]);
+      expect(tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z"])).toEqual([0]);
     });
 
     it("should accumulate increments across successive calls", () => {
       const tracker = makeTracker({}, 3, "202312");
-      expect(tracker.canImportBatch(["2024-06-01 10:00:00", "2024-06-02 10:00:00"])).toEqual([0, 1]);
-      expect(tracker.canImportBatch(["2024-06-03 10:00:00", "2024-06-04 10:00:00"])).toEqual([0]);
-      expect(tracker.canImportBatch(["2024-06-05 10:00:00"])).toEqual([]);
+      expect(tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z"])).toEqual([0, 1]);
+      expect(tracker.canImportBatch(["2024-06-03T10:00:00.000Z", "2024-06-04T10:00:00.000Z"])).toEqual([0]);
+      expect(tracker.canImportBatch(["2024-06-05T10:00:00.000Z"])).toEqual([]);
     });
 
     it("should reject future timestamps", () => {
       const tracker = makeTracker({}, 10, "202312");
-      expect(tracker.canImportBatch(["2024-06-15 12:00:01", "2025-01-01 00:00:00"])).toEqual([]);
+      expect(tracker.canImportBatch(["2024-06-15T12:00:01.000Z", "2025-01-01T00:00:00.000Z"])).toEqual([]);
     });
 
     it("should allow a timestamp exactly at the current time", () => {
       const tracker = makeTracker({}, 10, "202312");
       // dt > now is false when equal, so it is not treated as future.
-      expect(tracker.canImportBatch(["2024-06-15 12:00:00"])).toEqual([0]);
+      expect(tracker.canImportBatch(["2024-06-15T12:00:00.000Z"])).toEqual([0]);
     });
 
     it("should reject timestamps older than the allowed window", () => {
       const tracker = makeTracker({}, 10, "202312");
-      expect(tracker.canImportBatch(["2023-11-30 23:59:59", "2020-01-01 00:00:00"])).toEqual([]);
+      expect(tracker.canImportBatch(["2023-11-30T23:59:59.000Z", "2020-01-01T00:00:00.000Z"])).toEqual([]);
     });
 
     it("should allow timestamps exactly in the oldest allowed month", () => {
       const tracker = makeTracker({}, 10, "202312");
       // "202312" < "202312" is false, so the boundary month is allowed.
-      expect(tracker.canImportBatch(["2023-12-01 00:00:00"])).toEqual([0]);
+      expect(tracker.canImportBatch(["2023-12-01T00:00:00.000Z"])).toEqual([0]);
     });
 
     it("should reject invalid timestamp strings", () => {
@@ -139,9 +143,9 @@ describe("ImportQuotaTracker", () => {
       expect(
         tracker.canImportBatch([
           "not-a-date",
-          "2024-06-15T10:00:00", // ISO "T" separator does not match the expected format
+          "2024-06-15 10:00:00", // legacy naive form; mappers emit explicit-UTC ISO now
           "",
-          "2024-13-01 10:00:00", // invalid month
+          "2024-13-01T10:00:00.000Z", // invalid month
         ])
       ).toEqual([]);
     });
@@ -149,16 +153,16 @@ describe("ImportQuotaTracker", () => {
     it("should not consume quota for rejected timestamps", () => {
       const tracker = makeTracker({}, 1, "202312");
       const result = tracker.canImportBatch([
-        "2025-01-01 00:00:00", // future, rejected
+        "2025-01-01T00:00:00.000Z", // future, rejected
         "bad-timestamp", // invalid, rejected
-        "2024-06-01 10:00:00", // valid, takes the single slot
+        "2024-06-01T10:00:00.000Z", // valid, takes the single slot
       ]);
       expect(result).toEqual([2]);
     });
 
     it("should keep valid events interleaved with rejected ones", () => {
       const tracker = makeTracker({}, 10, "202312");
-      const result = tracker.canImportBatch(["2024-06-01 10:00:00", "garbage", "2024-06-02 10:00:00"]);
+      const result = tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "garbage", "2024-06-02T10:00:00.000Z"]);
       expect(result).toEqual([0, 2]);
     });
 
@@ -166,14 +170,16 @@ describe("ImportQuotaTracker", () => {
       const tracker = makeTracker({}, Infinity, "190001");
       // Self-hosted: quota accounting is disabled, but timestamp validation
       // applies exactly like the cloud path.
-      expect(tracker.canImportBatch(["not-a-date", "2099-01-01 00:00:00", "2024-06-01 10:00:00"])).toEqual([2]);
+      expect(tracker.canImportBatch(["not-a-date", "2099-01-01T00:00:00.000Z", "2024-06-01T10:00:00.000Z"])).toEqual([
+        2,
+      ]);
     });
 
     it("should ignore the historical window when the limit is Infinity", () => {
       // The window is tier/quota-derived, so it is disabled for self-hosted
       // even if oldestAllowedMonth would otherwise reject the timestamp.
       const tracker = makeTracker({}, Infinity, "202401");
-      expect(tracker.canImportBatch(["2020-01-01 00:00:00"])).toEqual([0]);
+      expect(tracker.canImportBatch(["2020-01-01T00:00:00.000Z"])).toEqual([0]);
     });
   });
 
@@ -225,9 +231,9 @@ describe("ImportQuotaTracker", () => {
         source: "free",
         eventLimit: 2,
       });
-      expect(tracker.canImportBatch(["2024-06-01 10:00:00", "2024-06-02 10:00:00", "2024-06-03 10:00:00"])).toEqual([
-        0, 1,
-      ]);
+      expect(
+        tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z", "2024-06-03T10:00:00.000Z"])
+      ).toEqual([0, 1]);
     });
 
     it("should throw when the organization is not found", async () => {

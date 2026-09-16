@@ -3,7 +3,7 @@ import { getChannel } from "../../tracker/getChannel.js";
 import { RybbitEvent } from "./rybbit.js";
 import { z } from "zod";
 import { UAParser } from "ua-parser-js";
-import { DateTime } from "luxon";
+import { toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
 import { getDeviceType } from "../../../utils.js";
 import { deriveKeyOnlySchema } from "./utils.js";
 
@@ -52,7 +52,7 @@ export class SimpleAnalyticsImportMapper {
 
       acc.push({
         site_id: site,
-        timestamp: DateTime.fromISO(data.added_iso).toFormat("yyyy-MM-dd HH:mm:ss"),
+        timestamp: toClickHouseDateTime(data.added_iso),
         session_id: data.session_id,
         user_id: data.uuid,
         hostname: data.hostname,

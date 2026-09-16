@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   existingSessionHourlyView: undefined as string | undefined,
+  existingColumns: {} as Record<string, { name: string; type: string }[]>,
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -21,8 +22,9 @@ vi.mock("@clickhouse/client", () => ({
   }),
 }));
 
+// Both flags on so every CREATE TABLE the server can issue is under test.
 vi.mock("../../lib/const.js", () => ({
-  IS_CLOUD: false,
+  IS_CLOUD: true,
   LITE_DASHBOARD: true,
 }));
 
@@ -44,21 +46,24 @@ describe("session hourly materialized view initialization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.existingSessionHourlyView = undefined;
+    state.existingColumns = {};
     mocks.exec.mockResolvedValue(undefined);
-    mocks.query.mockImplementation(async ({ query }: { query: string }) => {
-      if (query.includes("FROM system.columns")) {
-        return { json: async () => [] };
-      }
+    mocks.query.mockImplementation(
+      async ({ query, query_params }: { query: string; query_params?: { table?: string } }) => {
+        if (query.includes("FROM system.columns")) {
+          return { json: async () => state.existingColumns[query_params?.table ?? ""] ?? [] };
+        }
 
-      if (query.includes("FROM system.tables")) {
-        return {
-          json: async () =>
-            state.existingSessionHourlyView ? [{ create_table_query: state.existingSessionHourlyView }] : [],
-        };
-      }
+        if (query.includes("FROM system.tables")) {
+          return {
+            json: async () =>
+              state.existingSessionHourlyView ? [{ create_table_query: state.existingSessionHourlyView }] : [],
+          };
+        }
 
-      throw new Error(`Unexpected ClickHouse query: ${query}`);
-    });
+        throw new Error(`Unexpected ClickHouse query: ${query}`);
+      }
+    );
   });
 
   it("creates the hourly rollup from finalized sessions instead of raw events", async () => {
@@ -79,8 +84,8 @@ describe("session hourly materialized view initialization", () => {
     const createEvents = queries.find(query => /CREATE TABLE IF NOT EXISTS events\b/.test(query));
     const alterEvents = queries.find(query => /ALTER TABLE events\b/.test(query));
 
-    expect(createEvents).toContain("timestamp_ms DateTime64(3)");
-    expect(alterEvents).toContain("timestamp_ms DateTime64(3) DEFAULT toDateTime64(timestamp, 3)");
+    expect(createEvents).toContain("timestamp_ms DateTime64(3, 'UTC')");
+    expect(alterEvents).toContain("timestamp_ms DateTime64(3, 'UTC') DEFAULT toDateTime64(timestamp, 3)");
   });
 
   it("replaces the old five-minute raw-events definition", async () => {
@@ -113,5 +118,98 @@ describe("session hourly materialized view initialization", () => {
 
     expect(findSessionHourlyCreateQuery()).toBeUndefined();
     expect(executedQueries()).not.toContainEqual(expect.stringMatching(/DROP VIEW/));
+  });
+});
+
+// A bare `DateTime` column takes the server's timezone, so on a self-hosted
+// ClickHouse configured for anything but UTC every stored instant would read
+// back shifted. Every time column has to carry an explicit 'UTC', and tables
+// created before that was declared have to be migrated on startup.
+describe("UTC time columns", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    state.existingSessionHourlyView = undefined;
+    state.existingColumns = {};
+    mocks.exec.mockResolvedValue(undefined);
+    mocks.query.mockImplementation(
+      async ({ query, query_params }: { query: string; query_params?: { table?: string } }) => {
+        if (query.includes("FROM system.columns")) {
+          return { json: async () => state.existingColumns[query_params?.table ?? ""] ?? [] };
+        }
+        if (query.includes("FROM system.tables")) {
+          return { json: async () => [] };
+        }
+        throw new Error(`Unexpected ClickHouse query: ${query}`);
+      }
+    );
+  });
+
+  it("declares every DateTime column in the DDL with an explicit UTC timezone", async () => {
+    await initializeClickhouse();
+
+    const ddl = executedQueries().filter(query => /CREATE TABLE|ALTER TABLE/.test(query));
+    expect(ddl.length).toBeGreaterThan(0);
+
+    // Matches type tokens only: `toDateTime(...)` / `toDateTime64(...)` calls
+    // have no word boundary before the `D`, so they are left alone.
+    const timeTypes = ddl.flatMap(query => query.match(/\bDateTime(?:64)?(?:\([^()]*\))?/g) ?? []);
+    expect(timeTypes.length).toBeGreaterThan(0);
+    const bare = timeTypes.filter(type => !type.includes("'UTC'"));
+    expect(bare).toEqual([]);
+  });
+
+  it("pins existing bare time columns to UTC with a metadata-only ALTER", async () => {
+    state.existingColumns = {
+      events: [
+        { name: "timestamp", type: "DateTime" },
+        { name: "timestamp_ms", type: "DateTime64(3)" },
+      ],
+      session_replay_metadata_v2: [
+        { name: "start_time", type: "SimpleAggregateFunction(min, DateTime64(3))" },
+        { name: "end_time", type: "SimpleAggregateFunction(max, Nullable(DateTime64(3)))" },
+      ],
+      sessions_mv_target: [{ name: "start_time", type: "SimpleAggregateFunction(min, DateTime)" }],
+    };
+
+    await initializeClickhouse();
+
+    const modifies = executedQueries().filter(query => /MODIFY COLUMN/.test(query));
+    expect(modifies.find(query => /ALTER TABLE events\b/.test(query))).toContain(
+      "MODIFY COLUMN timestamp DateTime('UTC'),\n        MODIFY COLUMN timestamp_ms DateTime64(3, 'UTC')"
+    );
+    expect(modifies.find(query => /ALTER TABLE session_replay_metadata_v2\b/.test(query))).toContain(
+      "MODIFY COLUMN end_time SimpleAggregateFunction(max, Nullable(DateTime64(3, 'UTC')))"
+    );
+    expect(modifies.find(query => /ALTER TABLE sessions_mv_target\b/.test(query))).toContain(
+      "MODIFY COLUMN start_time SimpleAggregateFunction(min, DateTime('UTC'))"
+    );
+    expect(modifies.some(query => /ALTER TABLE bot_events\b/.test(query))).toBe(false);
+  });
+
+  it("leaves columns that already carry UTC untouched", async () => {
+    state.existingColumns = {
+      events: [
+        { name: "timestamp", type: "DateTime('UTC')" },
+        { name: "timestamp_ms", type: "DateTime64(3, 'UTC')" },
+      ],
+      overview_hourly_mv_target: [{ name: "event_hour", type: "DateTime('UTC')" }],
+    };
+
+    await initializeClickhouse();
+
+    expect(executedQueries().some(query => /MODIFY COLUMN/.test(query))).toBe(false);
+  });
+
+  it("keeps starting when the timezone migration fails", async () => {
+    state.existingColumns = { events: [{ name: "timestamp", type: "DateTime" }] };
+    mocks.exec.mockImplementation(async ({ query }: { query: string }) => {
+      if (/MODIFY COLUMN/.test(query)) throw new Error("ALTER refused");
+    });
+
+    await expect(initializeClickhouse()).resolves.toBeUndefined();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ step: "pin events time columns to UTC" }),
+      expect.any(String)
+    );
   });
 });

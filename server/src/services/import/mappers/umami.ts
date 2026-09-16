@@ -1,3 +1,4 @@
+import { toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
 import { clearSelfReferrer, getAllUrlParams } from "../../tracker/utils.js";
 import { getChannel } from "../../tracker/getChannel.js";
 import { RybbitEvent } from "./rybbit.js";
@@ -131,7 +132,7 @@ export class UmamiImportMapper {
 
       acc.push({
         site_id: site,
-        timestamp: data.created_at,
+        timestamp: toClickHouseDateTime(data.created_at),
         session_id: data.session_id,
         user_id: data.distinct_id,
         hostname: data.hostname,

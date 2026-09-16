@@ -1,4 +1,10 @@
-import { clickhouseInitLogger as logger, execClickhouseInitStep, getTableColumns } from "../initUtils.js";
+import {
+  clickhouseInitLogger as logger,
+  ensureUtcTimeColumns,
+  execClickhouseInitStep,
+  getTableColumns,
+  type TimeColumnDefinition,
+} from "../initUtils.js";
 
 type ColumnDefinition = {
   name: string;
@@ -9,7 +15,10 @@ const EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
   // `timestamp` is part of the MergeTree key and ClickHouse forbids widening a
   // key column in place. Keep it for partition pruning; use this additive
   // column wherever event order matters. Old rows read as whole-second values.
-  { name: "timestamp_ms", definition: "timestamp_ms DateTime64(3) DEFAULT toDateTime64(timestamp, 3) AFTER timestamp" },
+  {
+    name: "timestamp_ms",
+    definition: "timestamp_ms DateTime64(3, 'UTC') DEFAULT toDateTime64(timestamp, 3) AFTER timestamp",
+  },
   { name: "lcp", definition: "lcp Nullable(Float64)" },
   { name: "cls", definition: "cls Nullable(Float64)" },
   { name: "inp", definition: "inp Nullable(Float64)" },
@@ -50,6 +59,27 @@ const BOT_EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
   // half of the claim, so the two together are what makes attribution arguable.
   { name: "asn_provider", definition: "asn_provider LowCardinality(String) DEFAULT ''" },
 ];
+
+// Time columns whose timezone the startup migration pins to UTC on tables
+// created before the CREATE statements below declared it. Types must match
+// those statements exactly; see ensureUtcTimeColumns for why this is safe.
+const UTC_TIME_COLUMNS = {
+  events: [
+    { name: "timestamp", type: "DateTime('UTC')" },
+    { name: "timestamp_ms", type: "DateTime64(3, 'UTC')" },
+  ],
+  bot_events: [{ name: "timestamp", type: "DateTime('UTC')" }],
+  session_replay_events: [{ name: "timestamp", type: "DateTime64(3, 'UTC')" }],
+  session_replay_metadata: [
+    { name: "start_time", type: "DateTime('UTC')" },
+    { name: "end_time", type: "Nullable(DateTime('UTC'))" },
+    { name: "created_at", type: "DateTime('UTC')" },
+  ],
+  session_replay_metadata_v2: [
+    { name: "start_time", type: "SimpleAggregateFunction(min, DateTime64(3, 'UTC'))" },
+    { name: "end_time", type: "SimpleAggregateFunction(max, Nullable(DateTime64(3, 'UTC')))" },
+  ],
+} satisfies Record<string, TimeColumnDefinition[]>;
 
 // Runs against both audit tables: they carry the same columns on purpose, so a
 // column added to one has to reach the other or the shared queries stop working.
@@ -101,8 +131,8 @@ export async function initializeCoreTables() {
     `
       CREATE TABLE IF NOT EXISTS events (
         site_id UInt16,
-        timestamp DateTime,
-        timestamp_ms DateTime64(3) DEFAULT toDateTime64(timestamp, 3),
+        timestamp DateTime('UTC'),
+        timestamp_ms DateTime64(3, 'UTC') DEFAULT toDateTime64(timestamp, 3),
         session_id String,
         user_id String,
         hostname String,
@@ -153,13 +183,14 @@ export async function initializeCoreTables() {
   // TABLE above was missing these columns). Only columns that are actually
   // missing are altered in — even a no-op ALTER needs the events table ALTER lock.
   await ensureEventsColumns();
+  await ensureUtcTimeColumns("events", UTC_TIME_COLUMNS.events);
 
   await execClickhouseInitStep(
     "create bot events table",
     `
       CREATE TABLE IF NOT EXISTS bot_events (
         site_id UInt16,
-        timestamp DateTime,
+        timestamp DateTime('UTC'),
         session_id String,
         user_id String,
         hostname String,
@@ -205,6 +236,7 @@ export async function initializeCoreTables() {
   );
 
   await ensureBotEventsColumns("bot_events");
+  await ensureUtcTimeColumns("bot_events", UTC_TIME_COLUMNS.bot_events);
 
   // Forensic mirror of bot_events for sites with bot blocking turned OFF: the
   // event is still tracked normally, and this row is the only trace that
@@ -215,7 +247,7 @@ export async function initializeCoreTables() {
     `
       CREATE TABLE IF NOT EXISTS bot_observations (
         site_id UInt16,
-        timestamp DateTime,
+        timestamp DateTime('UTC'),
         session_id String,
         user_id String,
         hostname String,
@@ -261,6 +293,7 @@ export async function initializeCoreTables() {
   );
 
   await ensureBotEventsColumns("bot_observations");
+  await ensureUtcTimeColumns("bot_observations", UTC_TIME_COLUMNS.bot_events);
 
   await execClickhouseInitStep(
     "create session replay events table",
@@ -269,7 +302,7 @@ export async function initializeCoreTables() {
         site_id UInt16,
         session_id String,
         user_id String,
-        timestamp DateTime64(3),
+        timestamp DateTime64(3, 'UTC'),
         event_type LowCardinality(String),
         event_data String,
         event_data_key Nullable(String), -- R2 storage key for cloud deployments
@@ -296,6 +329,7 @@ export async function initializeCoreTables() {
         ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT ''
       `
   );
+  await ensureUtcTimeColumns("session_replay_events", UTC_TIME_COLUMNS.session_replay_events);
 
   await execClickhouseInitStep(
     "create session replay metadata table",
@@ -304,8 +338,8 @@ export async function initializeCoreTables() {
         site_id UInt16,
         session_id String,
         user_id String,
-        start_time DateTime,
-        end_time Nullable(DateTime),
+        start_time DateTime('UTC'),
+        end_time Nullable(DateTime('UTC')),
         duration_ms Nullable(UInt32),
         event_count UInt32,
         compressed_size_bytes UInt32,
@@ -327,7 +361,7 @@ export async function initializeCoreTables() {
         hostname String,
         referrer String,
         has_replay_data UInt8 DEFAULT 1,
-        created_at DateTime DEFAULT now()
+        created_at DateTime('UTC') DEFAULT now()
       )
       ENGINE = ReplacingMergeTree(created_at)
       PARTITION BY toYYYYMM(start_time)
@@ -343,6 +377,7 @@ export async function initializeCoreTables() {
         ADD COLUMN IF NOT EXISTS identified_user_id String DEFAULT ''
       `
   );
+  await ensureUtcTimeColumns("session_replay_metadata", UTC_TIME_COLUMNS.session_replay_metadata);
 
   // Successor to session_replay_metadata. The old table is a
   // ReplacingMergeTree holding one cumulative row per session, so every replay
@@ -371,8 +406,8 @@ export async function initializeCoreTables() {
         -- Millisecond resolution, matching session_replay_events.timestamp:
         -- duration is now derived from these bounds instead of being stored,
         -- and second-resolution columns would floor a 900ms replay to 0.
-        start_time SimpleAggregateFunction(min, DateTime64(3)),
-        end_time SimpleAggregateFunction(max, Nullable(DateTime64(3))),
+        start_time SimpleAggregateFunction(min, DateTime64(3, 'UTC')),
+        end_time SimpleAggregateFunction(max, Nullable(DateTime64(3, 'UTC'))),
         event_count SimpleAggregateFunction(sum, UInt64),
         compressed_size_bytes SimpleAggregateFunction(sum, UInt64),
         -- KNOWN LIMITATION. These merge independently, so a session whose
@@ -418,4 +453,5 @@ export async function initializeCoreTables() {
       TTL toDateTime(start_time) + INTERVAL 30 DAY
       `
   );
+  await ensureUtcTimeColumns("session_replay_metadata_v2", UTC_TIME_COLUMNS.session_replay_metadata_v2);
 }
