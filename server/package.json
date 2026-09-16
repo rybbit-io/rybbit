@@ -25,7 +25,7 @@
     "format": "prettier --write \"src/**/*.{js,ts,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,json,md}\"",
     "backfill:lite-mvs": "tsc && node dist/scripts/backfillLiteDashboardMVs.js",
-    "repair:utc-partitions": "tsc && node dist/scripts/repairUtcPartitions.js",
+    "repair:utc-partitions": "node dist/scripts/repairUtcPartitions.js",
     "replays:disable-unentitled": "tsc && node dist/scripts/disableUnentitledReplays.js"
   },
   "dependencies": {

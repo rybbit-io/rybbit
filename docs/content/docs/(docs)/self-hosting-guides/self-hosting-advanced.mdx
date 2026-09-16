@@ -96,21 +96,23 @@ Rybbit stores every timestamp as a UTC instant and converts to your dashboard ti
 
 Before this change the backend wrote timezone-less strings, which ClickHouse read in the server's timezone. If your ClickHouse was configured for anything but UTC, two things need attention after upgrading:
 
-1. **Month partitions.** Existing rows keep the month partition computed in the old timezone. The backend converts the columns to UTC on startup without rewriting data, and afterwards rows that fall within the old offset of a month boundary (for Europe/Berlin, the last one or two hours of each month) sit in a partition ClickHouse no longer expects. A query whose whole time window falls inside those hours will miss them. The startup log names the affected tables. Rebuild them once with:
+1. **Month partitions.** Existing rows keep the month partition computed in the old timezone. The backend converts the columns to UTC on startup without rewriting data, and afterwards rows that fall within the old offset of a month boundary (for Europe/Berlin, the last one or two hours of each month) sit in a partition ClickHouse no longer expects. A query whose whole time window falls inside those hours will miss them. The startup log names the affected tables. Rebuild them once, with the backend stopped so no events arrive while the copy is taken:
 
    ```bash
-   docker compose exec backend npm run repair:utc-partitions            # dry run: report counts and print SQL
-   docker compose exec backend npm run repair:utc-partitions -- --apply
+   docker compose stop backend
+   docker compose run --rm --no-deps backend npm run repair:utc-partitions            # dry run: counts and SQL
+   docker compose run --rm --no-deps backend npm run repair:utc-partitions -- --apply
+   docker compose start backend
    ```
 
-   The script copies each affected table, swaps the copy in atomically, and leaves materialized views alone. It reads and rewrites every row, so run it off-peak.
+   The script copies each affected table, validates the copy, swaps it in atomically, and keeps the original as `<table>_utc_repair_backup` until you drop it. Materialized views are left alone. It refuses to run while it can see recent inserts, and it rewrites every row, so run it off-peak.
 
-2. **Shifted timestamps.** Rows written by rybbit-backend 2.9.0 or 2.9.1 while ClickHouse was not in UTC were stored shifted by the server's offset (the dashboard looked frozen at the upgrade time). Rows written by 2.8.0 or earlier were shifted only if the backend container's `TZ` differed from the ClickHouse timezone. If you know the window, the same script can correct them:
+2. **Shifted timestamps.** Rows written by rybbit-backend 2.9.0 or 2.9.1 while ClickHouse was not in UTC were stored shifted by the server's offset (the dashboard looked frozen at the upgrade time). Rows written by 2.8.0 or earlier were shifted only if the backend container's `TZ` differed from the ClickHouse timezone. If you know the window, the same script can correct them in the same pass:
 
    ```bash
-   docker compose exec backend npm run repair:utc-partitions -- --apply \
+   docker compose run --rm --no-deps backend npm run repair:utc-partitions -- --apply \
      --reinterpret-from Europe/Berlin \
      --since "2026-09-10 08:00:00" --until "2026-09-16 12:00:00"
    ```
 
-   This re-reads each stored timestamp's wall-clock in the given timezone as UTC for rows in that UTC window. It cannot tell a shifted row from a correct one, so bound the window to the period the old backend was running against the non-UTC server.
+   This re-reads each stored timestamp's wall-clock in the given timezone as UTC for rows in that UTC window, for the columns the old backend wrote as strings (events, bot events, replay metadata, hourly rollups). Replay event timestamps were always written as epoch numbers and are not touched. It cannot tell a shifted row from a correct one, so `--since` must be the moment the old backend started writing to the non-UTC server. `--until` defaults to the moment the upgraded backend first started, which it recorded in the `utc_repair_log` table; rows after that are already correct. Completed windows are recorded in the same table, so re-running the command skips tables it already corrected. Run it before importing historical data from another tool: imported rows carry old timestamps that would fall inside the window.
