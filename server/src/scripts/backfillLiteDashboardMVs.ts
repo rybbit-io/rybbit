@@ -3,7 +3,7 @@
 // LITE_DASHBOARD on a deployment that already has data, run this once.
 //
 // Usage:
-//   tsc && node dist/scripts/backfillLiteDashboardMVs.js [options]
+//   npm run backfill:lite-mvs -- [options]        (runs the built dist; `npm run build` first in dev)
 //
 // Options:
 //   --cutoff <YYYY-MM-DD HH:MM:SS>   Only backfill events strictly before this
@@ -195,7 +195,10 @@ async function main() {
   const from = opts.from
     ? new Date(opts.from + "T00:00:00Z")
     : eventsRange.minTs;
-  const to = cutoff < eventsRange.maxTs ? cutoff : eventsRange.maxTs;
+  // Month windows use an exclusive upper bound, so a rebuild has to reach
+  // past the newest event or that second is left out.
+  const pastMax = new Date(eventsRange.maxTs.getTime() + 1000);
+  const to = cutoff < pastMax ? cutoff : pastMax;
 
   console.log(`Backfilling tables: ${opts.tables.join(", ")}`);
   console.log(`Range: ${from.toISOString()} → ${to.toISOString()}`);

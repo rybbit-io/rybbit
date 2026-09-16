@@ -119,6 +119,12 @@ describe("utcPartitionRepair", () => {
   it("refuses on any evidence of writers, from whichever signal the server offers", async () => {
     state.runningInserts = 1;
     expect(await repairTable("events", options(), () => {})).toBe("refused");
+    const processesQuery = mocks.query.mock.calls
+      .map(([a]) => a.query as string)
+      .find(q => q.includes("system.processes"));
+    // Any running INSERT, not just ones naming this table: qualified or
+    // multi-line statements would slip past a name match.
+    expect(processesQuery).not.toContain("{table:String}");
     state.runningInserts = 0;
     state.queuedInserts = 2;
     expect(await repairTable("events", options(), () => {})).toBe("refused");
@@ -130,12 +136,17 @@ describe("utcPartitionRepair", () => {
     expect(await repairTable("events", options(), () => {})).toBe("repaired");
   });
 
-  it("never drops a copy left over from an interrupted run", async () => {
+  it("never drops a copy left over from an interrupted run, even when the live table looks clean", async () => {
     state.engines = { events: "MergeTree", events_utc_repair: "MergeTree" };
+    // A crash between EXCHANGE and RENAME leaves the repaired copy live and
+    // the original under the copy name.
+    state.misplaced = { events: 0 };
     const lines: string[] = [];
     expect(await repairTable("events", options(), l => lines.push(l))).toBe("refused");
     expect(lines.join("\n")).toContain("RENAME TABLE events_utc_repair TO events_utc_repair_backup");
+    expect(lines.join("\n")).not.toContain("nothing to do");
     expect(mocks.exec).not.toHaveBeenCalled();
+    expect(await repairTable("events", options({ apply: false }), () => {})).toBe("refused");
   });
 
   it("refuses to overwrite an earlier backup unless asked to drop it", async () => {

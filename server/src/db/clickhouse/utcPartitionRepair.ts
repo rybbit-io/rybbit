@@ -89,11 +89,13 @@ export async function liveWriteEvidence(table: string): Promise<string[]> {
   const evidence: string[] = [];
   const count = async (query: string) => Number((await queryOne<{ n: string | number }>(query, { table }))?.n ?? 0);
 
+  // Any running INSERT counts: with the backend stopped there should be none,
+  // and matching the target table by name would miss qualified, quoted or
+  // multi-line statements.
   const running = await count(
-    `SELECT count() AS n FROM system.processes
-     WHERE query_kind = 'Insert' AND query ILIKE concat('%INSERT INTO ', {table:String}, ' %')`
+    `SELECT count() AS n FROM system.processes WHERE query_kind = 'Insert' AND query NOT LIKE '%${COPY_SUFFIX}%'`
   );
-  if (running > 0) evidence.push(`${running} INSERT into ${table} running now`);
+  if (running > 0) evidence.push(`${running} INSERT running now`);
 
   try {
     await clickhouse.exec({ query: "SYSTEM FLUSH ASYNC INSERT QUEUE" });
@@ -138,15 +140,27 @@ export async function repairTable(table: UtcTimeTable, opts: RepairOptions, log 
     return "skipped";
   }
 
+  const copy = `${table}${COPY_SUFFIX}`;
+  const backup = `${table}${BACKUP_SUFFIX}`;
+
+  // Never drop a leftover copy: after an interrupted run it is either a
+  // partial copy or, if the swap went through but the rename did not, the
+  // original data (in which case the live table already looks clean). Only
+  // the operator can tell which, so this comes before every other check.
+  if (await tableEngine(copy)) {
+    log(
+      `\n${table}: ${copy} is left over from an interrupted run. If ${table} now has 0 misplaced rows the swap completed: ` +
+        `RENAME TABLE ${copy} TO ${backup}. Otherwise it is a partial copy: DROP TABLE ${copy}. Then rerun.`
+    );
+    return "refused";
+  }
+
   const misplaced = await countMisplacedPartitionRows(table, partitionColumn.name);
   log(`\n${table}: ${misplaced} rows in a partition named under the old timezone`);
   if (misplaced === 0) {
     log("  nothing to do");
     return "skipped";
   }
-
-  const copy = `${table}${COPY_SUFFIX}`;
-  const backup = `${table}${BACKUP_SUFFIX}`;
   const statements = [
     `CREATE TABLE ${copy} AS ${table}`,
     `INSERT INTO ${copy} SELECT * FROM ${table}`,
@@ -163,16 +177,6 @@ export async function repairTable(table: UtcTimeTable, opts: RepairOptions, log 
     return "refused";
   }
 
-  // Never drop a leftover copy: after an interrupted run it is either a
-  // partial copy or, if the swap went through but the rename did not, the
-  // original data. Only the operator can tell which.
-  if (await tableEngine(copy)) {
-    log(
-      `  ${copy} is left over from an interrupted run. If ${table} now has 0 misplaced rows the swap completed: ` +
-        `RENAME TABLE ${copy} TO ${backup}. Otherwise it is a partial copy: DROP TABLE ${copy}. Then rerun.`
-    );
-    return "refused";
-  }
   if (await tableEngine(backup)) {
     if (!opts.dropBackups) {
       log(`  ${backup} exists from an earlier run; verify and DROP it, or pass --drop-backups`);
