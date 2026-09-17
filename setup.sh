@@ -150,14 +150,18 @@ if [ "$USE_WEBSERVER" = "false" ]; then
   fi
 fi
 
-# Build and start the Docker Compose stack
-echo "Building and starting Docker services..."
+# Pull the prebuilt images and start the Docker Compose stack.
+# --no-build: images come from ghcr.io; never build from source here (the
+# sparse clone documented for self-hosting doesn't include the source anyway).
+echo "Pulling Docker images..."
 if [ "$USE_WEBSERVER" = "false" ]; then
-  # Start without the caddy service when using --no-webserver
-  docker compose up -d
+  docker compose pull
+  echo "Starting Docker services..."
+  docker compose up -d --no-build
 else
-  # Start all services including caddy
-  docker compose --profile with-webserver up -d
+  docker compose --profile with-webserver pull
+  echo "Starting Docker services..."
+  docker compose --profile with-webserver up -d --no-build
 fi
 
 echo "Setup complete. Services are starting in the background."
