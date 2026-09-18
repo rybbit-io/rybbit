@@ -87,3 +87,38 @@ IMAGE_TAG=latest
 HOST_BACKEND_PORT="3001:3001"
 HOST_CLIENT_PORT="3002:3002"
 ```
+
+## ClickHouse Timezone
+
+Rybbit stores every timestamp as a UTC instant and converts to your dashboard timezone when it queries. Every time column is declared `DateTime('UTC')`, and the backend writes timestamps with an explicit UTC offset, so the ClickHouse server's own `<timezone>` setting does not change what gets stored. Leave it at the default (UTC) unless you have a reason not to; the backend logs a warning at startup if it is anything else.
+
+### Upgrading from 2.9.1 or earlier on a non-UTC ClickHouse
+
+Before this change the backend wrote timezone-less strings, which ClickHouse read in the server's timezone. If your ClickHouse was configured for anything but UTC, two things need attention after upgrading:
+
+1. **Month partitions.** Existing rows keep the month partition computed in the old timezone. The backend converts the columns to UTC on startup without rewriting data, and afterwards rows that fall within the old offset of a month boundary (for Europe/Berlin, the last one or two hours of each month) sit in a partition ClickHouse no longer expects. A query whose whole time window falls inside those hours will miss them. The startup log names the affected tables. Rebuild them once, with the backend stopped so no events arrive while the copy is taken:
+
+   ```bash
+   docker compose stop backend
+   docker compose run --rm --no-deps backend npm run repair:utc-partitions                              # dry run: counts and SQL
+   docker compose run --rm --no-deps backend npm run repair:utc-partitions -- --apply --backend-stopped
+   docker compose start backend      # or first do step 2 below
+   ```
+
+   The script copies each affected table row for row, validates the copy, swaps it in atomically, and keeps the original as `<table>_utc_repair_backup` until you drop it. Materialized views are left alone. It refuses if it can see inserts running or queued, and it rewrites every row, so run it off-peak. Running it again is harmless.
+
+2. **Shifted timestamps.** Keep the backend stopped for this step too: any event that arrives between the copy and the swap ends up only in the table you drop. Rows written by rybbit-backend 2.9.0 or 2.9.1 while ClickHouse was not in UTC were stored shifted by the server's offset (the dashboard looked frozen at the upgrade time). Rows written by 2.8.0 or earlier were shifted only if the backend container's `TZ` differed from the ClickHouse timezone. Rybbit cannot correct these automatically: a shifted row and a correct row can carry the same timestamp, so only you know which rows the old backend wrote. If you want them fixed, use the same copy-and-swap on the `events` table with your own bounds, then rebuild the rollups from it:
+
+   ```sql
+   CREATE TABLE events_fixed AS events;
+   INSERT INTO events_fixed
+   SELECT * REPLACE (
+     -- Re-read the stored wall-clock, rendered in the old server timezone, as UTC.
+     if(<written by the old backend>, toDateTime(toString(toTimeZone(timestamp, 'Europe/Berlin')), 'UTC'), timestamp) AS timestamp,
+     if(<written by the old backend>, toDateTime64(toString(toTimeZone(timestamp_ms, 'Europe/Berlin')), 3, 'UTC'), timestamp_ms) AS timestamp_ms
+   ) FROM events;
+   -- Check counts and a few known rows, then:
+   EXCHANGE TABLES events AND events_fixed;
+   ```
+
+   Replace `<written by the old backend>` with a predicate that is true only for rows the old backend wrote, for example a `timestamp` range that ends before the upgraded backend started, minus the server offset. Run it once: applying it twice shifts rows twice. Do it before importing historical data from another tool. Afterwards, if you run with `LITE_DASHBOARD=true`, rebuild its rollups with `docker compose run --rm --no-deps backend npm run backfill:lite-mvs -- --truncate` (the rollup tables only exist with that setting). Drop `events_fixed`, and only then start the backend. The same applies to `bot_events`, `bot_observations` and the two `session_replay_metadata` tables; replay event timestamps were always written as epoch numbers and are correct as they are.

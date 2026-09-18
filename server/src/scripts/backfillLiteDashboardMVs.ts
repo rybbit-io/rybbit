@@ -3,7 +3,7 @@
 // LITE_DASHBOARD on a deployment that already has data, run this once.
 //
 // Usage:
-//   tsc && node dist/scripts/backfillLiteDashboardMVs.js [options]
+//   npm run backfill:lite-mvs -- [options]        (runs the built dist; `npm run build` first in dev)
 //
 // Options:
 //   --cutoff <YYYY-MM-DD HH:MM:SS>   Only backfill events strictly before this
@@ -14,7 +14,9 @@
 //   --from   <YYYY-MM-DD>            Lower bound (inclusive). Default: no bound.
 //   --truncate                       TRUNCATE target tables first. Required if
 //                                    re-running — AggregatingMergeTree is not
-//                                    idempotent on re-insert.
+//                                    idempotent on re-insert. Without --cutoff
+//                                    this rebuilds everything up to the newest
+//                                    event.
 //   --tables sessions,overview,...   Subset to backfill. Default: all targets.
 //   --dry-run                        Print SQL without executing.
 
@@ -195,7 +197,13 @@ async function main() {
   const from = opts.from
     ? new Date(opts.from + "T00:00:00Z")
     : eventsRange.minTs;
-  const to = cutoff < eventsRange.maxTs ? cutoff : eventsRange.maxTs;
+  // Month windows use an exclusive upper bound, so a rebuild has to reach
+  // past the newest event or that second is left out. After --truncate the
+  // rollups hold nothing, so everything up to now belongs in the backfill and
+  // the default "now minus a minute" cutoff (meant for a first fill next to a
+  // live MV) would drop the newest events for good.
+  const pastMax = new Date(eventsRange.maxTs.getTime() + 1000);
+  const to = opts.cutoff || !opts.truncate ? (cutoff < pastMax ? cutoff : pastMax) : pastMax;
 
   console.log(`Backfilling tables: ${opts.tables.join(", ")}`);
   console.log(`Range: ${from.toISOString()} → ${to.toISOString()}`);
@@ -214,7 +222,7 @@ async function main() {
     console.log(`\n=== ${table} → ${target} ===`);
 
     for await (const month of monthRanges(from, to)) {
-      const where = `WHERE timestamp >= toDateTime('${month.start}') AND timestamp < toDateTime('${month.end}')`;
+      const where = `WHERE timestamp >= toDateTime('${month.start}', 'UTC') AND timestamp < toDateTime('${month.end}', 'UTC')`;
       const select = buildSelectQuery(table, where);
       const insertSql = `INSERT INTO ${target}\n${select}`;
 

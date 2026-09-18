@@ -104,7 +104,9 @@ export async function getAdminOrganizations(request: FastifyRequest, reply: Fast
       .where(allOrgIds.length > 0 ? inArray(sites.organizationId, allOrgIds) : undefined);
 
     // Get event counts for the past 24 hours and 30 days from ClickHouse
-    const now = DateTime.now();
+    // Bounds are rendered and parsed in UTC so neither Node's nor ClickHouse's
+    // timezone shifts the window.
+    const now = DateTime.utc();
     const yesterday = now.minus({ hours: 24 });
     const thirtyDaysAgo = now.minus({ days: 30 });
 
@@ -121,8 +123,8 @@ export async function getAdminOrganizations(request: FastifyRequest, reply: Fast
           FROM
             hourly_events_by_site_mv_target
           WHERE
-            event_hour >= toDateTime('${yesterday.toFormat("yyyy-MM-dd HH:mm:ss")}') AND
-            event_hour <= toDateTime('${now.toFormat("yyyy-MM-dd HH:mm:ss")}')
+            event_hour >= toDateTime('${yesterday.toFormat("yyyy-MM-dd HH:mm:ss")}', 'UTC') AND
+            event_hour <= toDateTime('${now.toFormat("yyyy-MM-dd HH:mm:ss")}', 'UTC')
           GROUP BY
             site_id
         `,
@@ -145,8 +147,8 @@ export async function getAdminOrganizations(request: FastifyRequest, reply: Fast
           FROM
             hourly_events_by_site_mv_target
           WHERE
-            event_hour >= toDateTime('${thirtyDaysAgo.toFormat("yyyy-MM-dd HH:mm:ss")}') AND
-            event_hour <= toDateTime('${now.toFormat("yyyy-MM-dd HH:mm:ss")}')
+            event_hour >= toDateTime('${thirtyDaysAgo.toFormat("yyyy-MM-dd HH:mm:ss")}', 'UTC') AND
+            event_hour <= toDateTime('${now.toFormat("yyyy-MM-dd HH:mm:ss")}', 'UTC')
           GROUP BY
             site_id
         `,
