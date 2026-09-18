@@ -104,4 +104,16 @@ describe("pageviewQueue ASN enrichment", () => {
     expect(row.timestamp).toBe("2026-08-28 12:34:56");
     expect(row.timestamp_ms).toBe("2026-08-28 12:34:56.789");
   });
+
+  it("keeps trusted locations per event, with GeoLite2 fallback for the same IP", async () => {
+    mocks.getLocation.mockResolvedValue({ "203.0.113.10": { countryIso: "DE", city: "Berlin", latitude: 52 } });
+    await pageviewQueue.add(
+      makePayload({ location: { countryIso: "TW", region: "TPE", city: "Taipei", latitude: 0 } })
+    );
+    await pageviewQueue.add(makePayload());
+    await vi.advanceTimersByTimeAsync(1000);
+    const rows = mocks.insert.mock.calls[0][0].values;
+    expect(rows[0]).toMatchObject({ country: "TW", region: "TW-TPE", city: "Taipei", lat: 0 });
+    expect(rows[1]).toMatchObject({ country: "DE", city: "Berlin", lat: 52 });
+  });
 });
