@@ -56,6 +56,40 @@ This will:
 For detailed configuration examples with Nginx, Traefik, NPM, and other reverse proxies, see our [Manual Docker Compose Setup](/docs/self-hosting-guides/self-hosting-manual) guide.
 </Callout>
 
+## Optional Cloudflare visitor location
+
+Rybbit can prefer Cloudflare's visitor location headers for tracked events and
+bot events. GeoLite2 remains the default and the fallback when headers are
+missing, untrusted, or have no usable country code.
+
+1. Enable Cloudflare's [Add visitor location headers Managed Transform](https://developers.cloudflare.com/rules/transform/managed-transforms/reference/#add-visitor-location-headers).
+2. Restrict origin access to Cloudflare. If Caddy or another proxy is between
+   Cloudflare and the backend, it must reject bypass traffic or remove the
+   Cloudflare headers from that traffic. Merely having these headers does not
+   prove that a request came from Cloudflare.
+3. Set `CLOUDFLARE_GEO_TRUSTED_PROXIES` to a comma-separated list of the **socket
+   peer IPs or CIDRs** the backend should trust, then recreate the backend
+   container. With a local reverse proxy, use its backend-facing address, not
+   the visitor IP. For a direct Cloudflare connection, use Cloudflare's
+   [published proxy ranges](https://www.cloudflare.com/ips/).
+
+For example, if your secured reverse proxy connects from `10.0.0.2`:
+
+```bash
+CLOUDFLARE_GEO_TRUSTED_PROXIES=10.0.0.2/32
+```
+
+Leave this empty to disable the feature. Do not trust all addresses or a shared
+network containing untrusted peers. The bundled Compose file passes this setting
+to the backend; custom deployment files must do the same.
+
+Rybbit only uses the headers when `CF-Connecting-IP` matches the resolved visitor
+IP. First-party proxy requests whose resolved visitor differs, cross-zone Worker
+subrequests, and authenticated server-side ingestion use GeoLite2 instead.
+Locations stay together as one provider's result: a valid Cloudflare country
+with missing city or coordinates leaves those fields empty rather than mixing
+potentially conflicting GeoLite2 data. No ClickHouse schema change is needed.
+
 ## Environment Variables
 
 The setup script creates a minimal `.env` file with only the essential variables:
