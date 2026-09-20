@@ -1,19 +1,11 @@
-import { TimeBucket } from "@rybbit/shared";
-import { QuerySpec } from "../utils/analyticsQuery.js";
-import { resolveTimeWindow, TimeWindowParams } from "../utils/timeWindow.js";
+import { SiteCardQueries, SiteCardQueryParams } from "../siteCardsQuery.js";
+import { resolveTimeWindow } from "../utils/timeWindow.js";
 import { liteBucket } from "./utils.js";
-
-export interface SiteCardQueryParams {
-  siteIds: number[];
-  current: TimeWindowParams;
-  comparison: TimeWindowParams | null;
-  bucket: TimeBucket;
-}
 
 export function buildSiteCardsQueries(
   { siteIds, current, comparison, bucket: requestedBucket }: SiteCardQueryParams,
   now = Date.now()
-): { totals: QuerySpec; series: QuerySpec; fillMissingBuckets: boolean } {
+): SiteCardQueries {
   // Resolve both periods against one clock, including adjacent rolling windows.
   const window = resolveTimeWindow(current, now);
   const previous = comparison === null ? null : resolveTimeWindow(comparison, now);

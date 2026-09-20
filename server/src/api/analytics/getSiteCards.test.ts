@@ -9,19 +9,17 @@ const mocks = vi.hoisted(() => ({
   siteIdsInOrganization: vi.fn(),
   query: vi.fn(),
 }));
-vi.mock("../../../lib/auth-utils.js", () => mocks);
-vi.mock("../../../lib/access.js", () => ({ ...mocks }));
-vi.mock("../../../lib/siteConfig.js", () => ({ siteConfig: {} }));
-vi.mock("../../../db/clickhouse/clickhouse.js", () => ({ clickhouse: { query: mocks.query } }));
+vi.mock("../../lib/auth-utils.js", () => mocks);
+vi.mock("../../lib/access.js", () => ({ ...mocks }));
+vi.mock("../../lib/siteConfig.js", () => ({ siteConfig: {} }));
+vi.mock("../../db/clickhouse/clickhouse.js", () => ({ clickhouse: { query: mocks.query } }));
 
-import { requireOrgMember } from "../../../lib/auth-middleware.js";
-import { getSiteCardsLite } from "./getSiteCardsLite.js";
+import { requireOrgMember } from "../../lib/auth-middleware.js";
+import { getSiteCards, getSiteCardsLite } from "./getSiteCards.js";
 
 let app: FastifyInstance;
 const allIds = Array.from({ length: 20 }, (_, i) => i + 1);
 const comparison = { past_minutes_start: 2880, past_minutes_end: 1440, time_zone: "America/New_York" };
-const url =
-  "/organizations/org-1/site-cards-lite?past_minutes_start=1440&past_minutes_end=0&time_zone=America%2FNew_York&bucket=hour";
 
 beforeEach(async () => {
   vi.resetAllMocks();
@@ -63,6 +61,11 @@ beforeEach(async () => {
     },
     getSiteCardsLite
   );
+  app.post<{ Params: { organizationId: string }; Querystring: unknown; Body: unknown }>(
+    "/organizations/:organizationId/site-cards",
+    { preHandler: [requireOrgMember({ resource: "analytics", action: "read" })] },
+    getSiteCards
+  );
   await app.ready();
 });
 
@@ -71,15 +74,16 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-const request = (payload: unknown = { siteIds: allIds, comparison }, requestUrl = url) =>
-  app.inject({
-    method: "POST",
-    url: requestUrl,
-    payload: JSON.stringify(payload),
-    headers: { "content-type": "application/json" },
-  });
+describe.each(["site-cards", "site-cards-lite"])("batched %s", endpoint => {
+  const url = `/organizations/org-1/${endpoint}?past_minutes_start=1440&past_minutes_end=0&time_zone=America%2FNew_York&bucket=hour`;
+  const request = (payload: unknown = { siteIds: allIds, comparison }, requestUrl = url) =>
+    app.inject({
+      method: "POST",
+      url: requestUrl,
+      payload: JSON.stringify(payload),
+      headers: { "content-type": "application/json" },
+    });
 
-describe("batched lite Site cards", () => {
   it("runs exactly two bounded queries for 20 sites, returning totals and zero-filled sessions", async () => {
     const response = await request();
     expect(response.statusCode).toBe(200);
@@ -103,6 +107,10 @@ describe("batched lite Site cards", () => {
     for (const [spec] of mocks.query.mock.calls) {
       expect(spec.query_params).toEqual({ siteIds: allIds });
       expect(spec.clickhouse_settings.max_execution_time).toBe(60);
+      if (endpoint === "site-cards") {
+        expect(spec.query).toContain("FROM events");
+        expect(spec.query).not.toContain("_mv_target");
+      }
     }
   });
 
@@ -125,7 +133,8 @@ describe("batched lite Site cards", () => {
     { siteIds: [1], comparison: { start_date: "2026-09-18" } },
     { siteIds: [1], comparison: { past_minutes_start: 60, past_minutes_end: 60 } },
     { siteIds: [1], comparison: { start_date: "2026-09-19", end_date: "2026-09-18" } },
-    { siteIds: [1], comparison: { start_datetime: "2026-09-18 10:30:00", end_datetime: "2026-09-18 11:30:00" } },
+    { siteIds: [1], comparison: { start_datetime: "2026-09-18 10:30:00" } },
+    { siteIds: [1], comparison: { start_datetime: "2026-09-18 11:30:00", end_datetime: "2026-09-18 10:30:00" } },
   ])("rejects malformed or unsupported bodies without querying analytics: %j", async body => {
     expect((await request(body)).statusCode).toBe(400);
     expect(mocks.query).not.toHaveBeenCalled();
@@ -139,9 +148,9 @@ describe("batched lite Site cards", () => {
     "time_zone=invalid",
     "bucket=bad",
     "filters=[]",
-    "start_datetime=2026-09-18+10:30:00&end_datetime=2026-09-18+11:30:00",
+    "start_datetime=bad&end_datetime=bad",
   ])("rejects invalid current windows or unsupported parameters: %s", async query => {
-    const response = await request(undefined, `/organizations/org-1/site-cards-lite?${query}`);
+    const response = await request(undefined, `/organizations/org-1/${endpoint}?${query}`);
     expect(response.statusCode).toBe(400);
     expect(mocks.query).not.toHaveBeenCalled();
   });
@@ -149,7 +158,7 @@ describe("batched lite Site cards", () => {
   it("accepts the dashboard's empty date bounds for all-time", async () => {
     const response = await request(
       { siteIds: [1, 20], comparison: null },
-      "/organizations/org-1/site-cards-lite?start_date=&end_date=&bucket=month"
+      `/organizations/org-1/${endpoint}?start_date=&end_date=&bucket=month`
     );
     expect(response.statusCode).toBe(200);
     expect(response.json().data[1].series).toHaveLength(2);
@@ -192,5 +201,20 @@ describe("batched lite Site cards", () => {
     const response = await request();
     expect(response.statusCode).toBe(500);
     expect(response.json()).toEqual({ error: "Failed to fetch site cards" });
+  });
+
+  it("serves exact datetime windows only from raw events", async () => {
+    const response = await request(
+      { siteIds: [1], comparison: { start_datetime: "2026-09-17 10:30:00", end_datetime: "2026-09-17 11:30:00" } },
+      `/organizations/org-1/${endpoint}?start_datetime=2026-09-18+10:30:00&end_datetime=2026-09-18+11:30:00&bucket=minute`
+    );
+    expect(response.statusCode).toBe(endpoint === "site-cards" ? 200 : 400);
+    if (endpoint === "site-cards") {
+      expect(mocks.query.mock.calls[0][0].query).toContain("timestamp >= toDateTime('2026-09-18 10:30:00', 'UTC')");
+      expect(mocks.query.mock.calls[0][0].query).toContain("timestamp < toDateTime('2026-09-17 11:30:00', 'UTC')");
+      expect(mocks.query.mock.calls[1][0].query).toContain("toStartOfMinute");
+    } else {
+      expect(mocks.query).not.toHaveBeenCalled();
+    }
   });
 });

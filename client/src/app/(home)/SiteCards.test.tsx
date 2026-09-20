@@ -43,7 +43,7 @@ beforeEach(() => {
   });
   mocks.fetch.mockImplementation(
     async (path: string, _params: unknown, config?: { data: { siteIds: number[]; comparison: unknown } }) => {
-      if (path.endsWith("/site-cards-lite")) {
+      if (path.endsWith("/site-cards-lite") || path.endsWith("/site-cards")) {
         return {
           data: Object.fromEntries(
             config!.data.siteIds.map(siteId => [
@@ -179,11 +179,62 @@ describe("homepage Site cards", () => {
     expect(mocks.fetch.mock.calls.some(([, params]) => params.start_datetime)).toBe(true);
   });
 
-  it("preserves the standard dashboard endpoints when lite mode is off", async () => {
+  it("batches standard deployments without using the materialized-view endpoint", async () => {
     mocks.lite = false;
     render(cards());
-    await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(60));
-    expect(mocks.fetch.mock.calls.every(([path]) => path.startsWith("/sites/") && !path.includes("lite"))).toBe(true);
+    await waitFor(() => expect(screen.getAllByText("123")).toHaveLength(20));
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.fetch.mock.lastCall![0]).toBe("/organizations/org-1/site-cards");
+    expect(mocks.fetch.mock.lastCall![2].data.siteIds).toEqual(sites.map(site => site.siteId));
+  });
+
+  it("batches exact datetime ranges with minute buckets in standard mode", async () => {
+    mocks.lite = false;
+    useStore.setState({
+      time: { mode: "range", startDate: "2026-09-18", endDate: "2026-09-18", startTime: "10:30", endTime: "12:45" },
+      previousTime: {
+        mode: "range",
+        startDate: "2026-09-17",
+        endDate: "2026-09-17",
+        startTime: "10:30",
+        endTime: "12:45",
+      },
+      bucket: "minute",
+    });
+    render(cards());
+    await waitFor(() => expect(screen.getAllByText("123")).toHaveLength(20));
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.fetch.mock.lastCall![0]).toBe("/organizations/org-1/site-cards");
+    expect(mocks.fetch.mock.lastCall![1]).toMatchObject({
+      start_datetime: "2026-09-18 14:30:00",
+      end_datetime: "2026-09-18 16:45:00",
+      bucket: "minute",
+    });
+    expect(mocks.fetch.mock.lastCall![2].data.comparison).toMatchObject({
+      start_datetime: "2026-09-17 14:30:00",
+      end_datetime: "2026-09-17 16:45:00",
+    });
+  });
+
+  it("batches all-time hourly charts in standard mode", async () => {
+    mocks.lite = false;
+    useStore.setState({ time: { mode: "all-time" }, previousTime: null, bucket: "hour" });
+    render(cards());
+    await waitFor(() => expect(screen.getAllByText("123")).toHaveLength(20));
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.fetch.mock.lastCall![0]).toBe("/organizations/org-1/site-cards");
+    expect(mocks.fetch.mock.lastCall![2].data.comparison).toBeNull();
+  });
+
+  it("does not reuse MV metrics for a raw-events request", async () => {
+    const view = render(cards());
+    await waitFor(() => expect(screen.getAllByText("123")).toHaveLength(20));
+    mocks.lite = false;
+    mocks.fetch.mockImplementationOnce(() => new Promise(() => {}));
+    view.rerender(cards());
+    await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(2));
+    expect(mocks.fetch.mock.lastCall![0]).toBe("/organizations/org-1/site-cards");
+    expect(screen.queryAllByText("123")).toHaveLength(0);
   });
 
   it("retains event-only buckets in unbounded hourly charts through the existing endpoint", async () => {

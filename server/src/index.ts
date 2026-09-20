@@ -70,6 +70,7 @@ import {
   getOverviewBucketedLite,
   getOverviewLite,
   getSiteCardsLite,
+  getSiteCards,
   getPageTitles,
   getPerformanceByDimension,
   getPerformanceOverview,
@@ -572,6 +573,7 @@ async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.get("/organizations", getMyOrganizations);
   fastify.get("/organizations/:organizationId/sites", orgOrgRead, getSitesFromOrg);
   fastify.post("/organizations/:organizationId/site-cards-lite", orgAnalyticsRead, getSiteCardsLite);
+  fastify.post("/organizations/:organizationId/site-cards", orgAnalyticsRead, getSiteCards);
   fastify.post("/organizations/:organizationId/sites", orgAdminSitesWrite, addSite);
   // Landing-page domain input: creates an owner-less site reachable only by
   // its private link key. Public, so cap creations per IP.
