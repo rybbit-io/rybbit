@@ -65,6 +65,7 @@ export { getOrgEventCount } from "./getOrgEventCount.js";
 export { getOverview } from "./getOverview.js";
 export { getOverviewBucketed } from "./getOverviewBucketed.js";
 export { getOverviewLite } from "./lite/getOverviewLite.js";
+export { getSiteCardsLite } from "./lite/getSiteCardsLite.js";
 export { getOverviewBucketedLite } from "./lite/getOverviewBucketedLite.js";
 export { getMetricLite } from "./lite/getMetricLite.js";
 export { getPageTitles } from "./getPageTitles.js";

@@ -1,7 +1,8 @@
 import { Tag, Settings } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { useRef } from "react";
+import { Ref, useRef } from "react";
+import { SiteCardMetrics } from "@/api/analytics/endpoints/siteCards";
 import { useGetOverview } from "@/api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "@/api/analytics/hooks/useGetOverviewBucketed";
 import { ChangePercentage } from "@/app/[site]/main/components/MainSection/Overview";
@@ -17,7 +18,7 @@ import { LITE_DASHBOARD } from "@/lib/const";
 import { useStore } from "@/lib/store";
 import { formatter } from "@/lib/utils";
 
-interface SiteCardProps {
+export interface SiteCardProps {
   siteId: number;
   name: string;
   domain: string;
@@ -28,17 +29,8 @@ interface SiteCardProps {
   onTagClick?: (tag: string) => void;
 }
 
-export function SiteCard({
-  siteId,
-  name,
-  domain,
-  tags = [],
-  allTags = [],
-  onTagsUpdated,
-  selectedTags = [],
-  onTagClick,
-}: SiteCardProps) {
-  const t = useExtracted();
+export function SiteCard(props: SiteCardProps) {
+  const { siteId } = props;
   const { ref, isInView } = useInView({
     // Start loading slightly before the card comes into view
     rootMargin: "200px",
@@ -84,15 +76,64 @@ export function SiteCard({
     hasLoadedData.current = true;
   }
 
-  const hasData = (overviewData?.sessions || 0) > 0;
-
   // Show skeleton when loading or not yet in view, but not if we've already loaded data previously
   const showSkeleton = (isLoading || isOverviewLoading || !isInView) && !hasLoadedData.current;
 
   return (
+    <SiteCardView
+      {...props}
+      cardRef={ref}
+      data={data}
+      overviewData={overviewData}
+      overviewDataPrevious={overviewDataPrevious}
+      showSkeleton={showSkeleton}
+    />
+  );
+}
+
+export function BatchedSiteCard({ metrics, ...props }: SiteCardProps & { metrics?: SiteCardMetrics }) {
+  const { ref, isInView } = useInView({ rootMargin: "200px", persistVisibility: true });
+  return (
+    <SiteCardView
+      {...props}
+      cardRef={ref}
+      data={metrics?.series}
+      overviewData={metrics?.current}
+      overviewDataPrevious={metrics?.previous}
+      showSkeleton={!metrics}
+      showChart={isInView}
+    />
+  );
+}
+
+function SiteCardView({
+  siteId,
+  name,
+  domain,
+  tags = [],
+  allTags = [],
+  onTagsUpdated,
+  onTagClick,
+  cardRef,
+  data,
+  overviewData,
+  overviewDataPrevious,
+  showSkeleton,
+  showChart = true,
+}: SiteCardProps & {
+  cardRef: Ref<HTMLDivElement>;
+  data?: SiteCardMetrics["series"];
+  overviewData?: SiteCardMetrics["current"];
+  overviewDataPrevious?: SiteCardMetrics["previous"];
+  showSkeleton: boolean;
+  showChart?: boolean;
+}) {
+  const t = useExtracted();
+  const hasData = (overviewData?.sessions || 0) > 0;
+  return (
     <Link href={`/${siteId}`}>
       <div
-        ref={ref}
+        ref={cardRef}
         className="flex flex-col md:flex-row md:justify-between gap-3 rounded-lg bg-white dark:bg-neutral-900/70 px-3 py-2 border border-neutral-100 dark:border-neutral-850 transition-all duration-300 hover:translate-y-[-2px] w-full"
       >
         {showSkeleton ? (
@@ -124,6 +165,7 @@ export function SiteCard({
                 <Tooltip>
                   <SiteSettings
                     siteId={siteId}
+                    lazy
                     trigger={
                       <TooltipTrigger asChild>
                         <button className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
@@ -176,7 +218,7 @@ export function SiteCard({
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center justify-between">
               <div className="relative rounded-md w-40 h-12.5">
-                <SiteSessionChart data={data ?? []} />
+                {showChart && <SiteSessionChart data={data ?? []} />}
                 {!hasData && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm">
                     <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("No data available")}</span>
@@ -190,10 +232,7 @@ export function SiteCard({
                   <div className="font-semibold text-xl flex gap-2">
                     {formatter(overviewData?.sessions ?? 0)}{" "}
                     {overviewData?.sessions && overviewDataPrevious?.sessions ? (
-                      <ChangePercentage
-                        current={overviewData?.sessions}
-                        previous={overviewDataPrevious?.sessions}
-                      />
+                      <ChangePercentage current={overviewData?.sessions} previous={overviewDataPrevious?.sessions} />
                     ) : null}
                   </div>
                 </div>
@@ -203,10 +242,7 @@ export function SiteCard({
                   <div className="font-semibold text-xl flex gap-2">
                     {formatter(overviewData?.users ?? 0)}{" "}
                     {overviewData?.users && overviewDataPrevious?.users ? (
-                      <ChangePercentage
-                        current={overviewData?.users}
-                        previous={overviewDataPrevious?.users}
-                      />
+                      <ChangePercentage current={overviewData?.users} previous={overviewDataPrevious?.users} />
                     ) : null}
                   </div>
                 </div>

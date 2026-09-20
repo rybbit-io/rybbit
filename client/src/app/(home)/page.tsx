@@ -24,11 +24,9 @@ import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../lib/store";
 import { AddSite } from "../components/AddSite";
-import { SiteCard } from "./SiteCard";
+import { SiteCards } from "./SiteCards";
 
-// Only render a bounded slice of site cards at a time. Each card mounts an
-// IntersectionObserver and fires its own analytics queries, so rendering every
-// site at once crashes orgs with thousands of websites.
+// Bound both rendering and the lite analytics batch for large organizations.
 const PAGE_SIZE = 20;
 
 export default function Home() {
@@ -194,21 +192,14 @@ export default function Home() {
 
   const siteCards = (
     <div className="flex flex-col gap-2">
-      {paginatedSites?.map(site => {
-        return (
-          <SiteCard
-            key={site.siteId}
-            siteId={site.siteId}
-            name={site.name}
-            domain={site.domain}
-            tags={site.tags || []}
-            allTags={allTags}
-            onTagsUpdated={refetchSites}
-            selectedTags={selectedTags}
-            onTagClick={handleTagClick}
-          />
-        );
-      })}
+      <SiteCards
+        organizationId={activeOrganization?.id ?? ""}
+        sites={paginatedSites?.map(site => ({ ...site, tags: site.tags ?? [] })) ?? []}
+        allTags={allTags}
+        onTagsUpdated={refetchSites}
+        selectedTags={selectedTags}
+        onTagClick={handleTagClick}
+      />
       {hasSites && hasNoMatches ? (
         <Card className="p-6 flex flex-col items-center text-center">
           <CardTitle className="mb-2 text-xl">{t("No matching websites")}</CardTitle>

@@ -6,15 +6,17 @@ import { CommonApiParams, toQueryParams } from "./endpoints/types";
 /**
  * The analytics read layer, as a value.
  *
- * Every analytics endpoint is `/sites/:site/<path>` carrying the shared time
- * window and filters on the query string plus a handful of endpoint params.
+ * Analytics endpoints carry the shared time window and filters on the query
+ * string plus a handful of endpoint params.
  * A descriptor says only what differs between them; `buildAnalyticsRequest`
  * turns it into the exact request that goes on the wire, and the query key is
  * built from that same object — so key and request cannot drift.
  */
 export interface AnalyticsDescriptor {
-  /** Path under `/sites/:site` — e.g. "overview", "events/names". */
+  /** Path under the Site or organization — e.g. "overview", "site-cards-lite". */
   path: string;
+  /** Organization-scoped analytics, instead of the default `/sites/:site` scope. */
+  organizationId?: string;
   /**
    * Endpoint params beyond the shared time/filter context, already named as
    * the API expects them on the wire. Undefined values are dropped.
@@ -44,6 +46,7 @@ export interface AnalyticsContext {
 
 export interface AnalyticsRequest {
   path: string;
+  organizationId?: string;
   params: Record<string, unknown>;
   body?: unknown;
   unwrap: boolean;
@@ -64,6 +67,7 @@ export function buildAnalyticsRequest(descriptor: AnalyticsDescriptor, context: 
 
   return {
     path: descriptor.path,
+    ...(descriptor.organizationId !== undefined ? { organizationId: descriptor.organizationId } : {}),
     params: omitUndefined({ ...contextParams, ...descriptor.params }),
     body: descriptor.body?.(common),
     unwrap: descriptor.unwrap ?? true,
@@ -75,8 +79,12 @@ export function buildAnalyticsRequest(descriptor: AnalyticsDescriptor, context: 
  * callers (CSV export), so both go through the same seam.
  */
 export async function fetchAnalytics<TData>(site: number | string, request: AnalyticsRequest): Promise<TData> {
+  const base =
+    request.organizationId === undefined
+      ? `/sites/${site}`
+      : `/organizations/${encodeURIComponent(request.organizationId)}`;
   const response = await authedFetch<TData | { data: TData }>(
-    `/sites/${site}/${request.path}`,
+    `${base}/${request.path}`,
     request.params,
     request.body === undefined ? {} : { method: "POST", data: request.body }
   );

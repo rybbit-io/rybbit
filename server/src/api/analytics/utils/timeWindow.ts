@@ -162,7 +162,7 @@ type ResolvedWindow =
 /** Formats an instant the way ClickHouse's `toDateTime` wants it. */
 const toClickhouseInstant = (date: Date) => date.toISOString().slice(0, 19).replace("T", " ");
 
-function resolve(params: TimeWindowParams): ResolvedWindow {
+function resolve(params: TimeWindowParams, now: number): ResolvedWindow {
   const timeZone = params.time_zone || "UTC";
 
   // An unusable timezone makes every window meaningless — a date range means
@@ -201,7 +201,6 @@ function resolve(params: TimeWindowParams): ResolvedWindow {
       // Resolved to absolute instants here, once, so the predicate and the fill
       // describe the same window: `now()` used to be read separately by each
       // builder — and four times over inside the overview query alone.
-      const now = Date.now();
       return {
         kind: "pastMinutes",
         start: toClickhouseInstant(new Date(now - parsed.data.start * 60 * 1000)),
@@ -356,8 +355,8 @@ function fillClause(window: ResolvedWindow, bucket: TimeBucket): string {
  * the endpoints have always applied. A mode whose params are incomplete or
  * malformed is skipped rather than failing the whole resolution.
  */
-export function resolveTimeWindow(params: TimeWindowParams): TimeWindow {
-  const window = resolve(params);
+export function resolveTimeWindow(params: TimeWindowParams, now = Date.now()): TimeWindow {
+  const window = resolve(params, now);
   // An all-time window still buckets — it just doesn't fill — so the display
   // timezone has to survive a window that resolved to no bounds.
   const timeZone = window.kind === "all" ? params.time_zone || "UTC" : window.timeZone;

@@ -97,7 +97,10 @@ export function useAnalyticsContext(options: AnalyticsContextOptions = {}): {
 
 function useAnalyticsRequest(options: AnalyticsContextOptions & AnalyticsDescriptor) {
   const { site, context, hasPeriod } = useAnalyticsContext(options);
-  return { site, hasPeriod, request: buildAnalyticsRequest(options, context) };
+  const request = buildAnalyticsRequest(options, context);
+  const scope = request.organizationId === undefined ? site : `organization:${request.organizationId}`;
+  const hasScope = request.organizationId === undefined ? !!site : !!request.organizationId;
+  return { site, scope, hasScope, hasPeriod, request };
 }
 
 export interface AnalyticsQueryOptions<TData> extends AnalyticsContextOptions, AnalyticsDescriptor {
@@ -115,24 +118,24 @@ export interface AnalyticsQueryOptions<TData> extends AnalyticsContextOptions, A
 
 const buildQueryKey = (
   key: string | readonly unknown[],
-  site: number | string | undefined,
+  scope: number | string | undefined,
   request: AnalyticsRequest
-) => [...(Array.isArray(key) ? key : [key]), site, request.path, request.params, request.body];
+) => [...(Array.isArray(key) ? key : [key]), scope, request.path, request.params, request.body];
 
 export function useAnalyticsQuery<TData>(options: AnalyticsQueryOptions<TData>): UseQueryResult<TData> {
-  const { site, request, hasPeriod } = useAnalyticsRequest(options);
+  const { site, scope, hasScope, request, hasPeriod } = useAnalyticsRequest(options);
 
   return useQuery<TData, Error>({
-    queryKey: buildQueryKey(options.key, site, request),
+    queryKey: buildQueryKey(options.key, scope, request),
     queryFn: () => fetchAnalytics<TData>(site!, request),
     staleTime: options.staleTime ?? 60_000,
     refetchInterval: options.refetchInterval,
     placeholderData:
       (options.placeholder ?? true)
         ? (previousData, previousQuery) =>
-            site !== undefined && previousQuery?.queryKey?.includes(site) ? previousData : undefined
+            scope !== undefined && previousQuery?.queryKey?.includes(scope) ? previousData : undefined
         : undefined,
-    enabled: (options.enabled ?? true) && !!site && hasPeriod,
+    enabled: (options.enabled ?? true) && hasScope && hasPeriod,
     ...options.props,
   });
 }
@@ -153,10 +156,10 @@ export interface AnalyticsInfiniteQueryOptions<TPage, TCursor> extends Analytics
 export function useAnalyticsInfiniteQuery<TPage, TCursor = number>(
   options: AnalyticsInfiniteQueryOptions<TPage, TCursor>
 ): UseInfiniteQueryResult<InfiniteData<TPage>> {
-  const { site, request, hasPeriod } = useAnalyticsRequest(options);
+  const { site, scope, hasScope, request, hasPeriod } = useAnalyticsRequest(options);
 
   return useInfiniteQuery<TPage, Error, InfiniteData<TPage>, readonly unknown[], TCursor>({
-    queryKey: [...buildQueryKey(options.key, site, request), "infinite"],
+    queryKey: [...buildQueryKey(options.key, scope, request), "infinite"],
     queryFn: ({ pageParam }) =>
       fetchAnalytics<TPage>(site!, {
         ...request,
@@ -167,7 +170,7 @@ export function useAnalyticsInfiniteQuery<TPage, TCursor = number>(
     staleTime: options.staleTime ?? 60_000,
     refetchInterval: options.refetchInterval,
     refetchOnWindowFocus: options.refetchOnWindowFocus,
-    enabled: (options.enabled ?? true) && !!site && hasPeriod,
+    enabled: (options.enabled ?? true) && hasScope && hasPeriod,
   });
 }
 
