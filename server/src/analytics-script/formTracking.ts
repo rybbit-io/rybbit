@@ -46,6 +46,11 @@ export class FormTrackingManager {
 
   private handleChange(event: Event): void {
     const target = event.target as HTMLElement;
+    // A capturing document listener sees every "change" event on the page, not
+    // only native input events. Libraries dispatch their own (e.g. Vidstack's
+    // media player overrides `event.target` with a plain component object),
+    // and `document` itself can be a target — none of those have a tagName.
+    if (!(target instanceof Element)) return;
     const tagName = target.tagName.toUpperCase();
 
     if (!["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
