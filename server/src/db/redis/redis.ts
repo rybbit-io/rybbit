@@ -45,6 +45,9 @@ function createRedisClient(label: string): Redis {
 // general use.
 export const redis = createRedisClient("main");
 
+// Dashboard JSON responses must not queue behind tracking/session commands.
+export const dashboardCacheRedis = createRedisClient("dashboard-cache");
+
 // Dedicated connection for per-event session resolution. Isolated from `redis`
 // so a session GET/SET is never head-of-line blocked behind the anomaly scorer's
 // Lua call — that blocking timed sessions out, and a timed-out session forced the

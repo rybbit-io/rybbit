@@ -1,4 +1,5 @@
 import cluster from "node:cluster";
+import { createHash } from "node:crypto";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
@@ -180,10 +181,11 @@ import {
   unsubscribeMarketing,
   updateAccountSettings,
 } from "./api/user/index.js";
+import { createDashboardCache } from "./api/analytics/utils/dashboardCache.js";
 import { validateHttpTimeParams } from "./api/analytics/utils/query-validation.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { unclaimedSiteRouteOptions } from "./api/sites/createUnclaimedSite.js";
-import { apiRateLimitRedis } from "./db/redis/redis.js";
+import { apiRateLimitRedis, dashboardCacheRedis } from "./db/redis/redis.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
 import {
   allowPublicSiteAccess,
@@ -267,8 +269,18 @@ const authOnlyScoped = (resource: ScopeResource, action: ScopeAction) => ({
 
 // Reused scoped chains
 const publicAnalyticsRead = publicSiteScoped("analytics", "read");
+const dashboardCacheSeconds = Number(process.env.DASHBOARD_CACHE_TTL_SECONDS ?? 30);
+const cacheDashboard = createDashboardCache({
+  redis: dashboardCacheRedis,
+  namespace: createHash("sha256")
+    .update(JSON.stringify([process.env.CLICKHOUSE_HOST, process.env.CLICKHOUSE_DB]))
+    .digest("hex"),
+  ttlMs: (Number.isFinite(dashboardCacheSeconds) ? Math.max(0, Math.min(30, dashboardCacheSeconds)) : 30) * 1000,
+});
+const cachedAnalyticsRead = cacheDashboard(publicAnalyticsRead);
 const publicSessionsRead = publicSiteScoped("sessions", "read");
 const publicEventsRead = publicSiteScoped("events", "read");
+const cachedEventsRead = cacheDashboard(publicEventsRead);
 const publicUsersRead = publicSiteScoped("users", "read");
 const publicFunnelsRead = publicSiteScoped("funnels", "read");
 const publicGoalsRead = publicSiteScoped("goals", "read");
@@ -425,13 +437,13 @@ async function analyticsRoutes(fastify: FastifyInstance) {
 
   // This endpoint gets called a lot so we don't want to log it
   fastify.get("/sites/:siteId/live-user-count", { logLevel: "silent", ...publicAnalyticsRead }, getLiveUsercount);
-  fastify.get("/sites/:siteId/overview", publicAnalyticsRead, getOverview);
-  fastify.get("/sites/:siteId/overview/time-series", publicAnalyticsRead, getOverviewBucketed);
-  fastify.get("/sites/:siteId/overview-lite", publicAnalyticsRead, getOverviewLite);
-  fastify.get("/sites/:siteId/overview-bucketed-lite", publicAnalyticsRead, getOverviewBucketedLite);
-  fastify.get("/sites/:siteId/metric-lite", publicAnalyticsRead, getMetricLite);
-  fastify.get("/sites/:siteId/metric", publicAnalyticsRead, getMetric);
-  fastify.get("/sites/:siteId/page-titles", publicAnalyticsRead, getPageTitles);
+  fastify.get("/sites/:siteId/overview", cachedAnalyticsRead, getOverview);
+  fastify.get("/sites/:siteId/overview/time-series", cachedAnalyticsRead, getOverviewBucketed);
+  fastify.get("/sites/:siteId/overview-lite", cachedAnalyticsRead, getOverviewLite);
+  fastify.get("/sites/:siteId/overview-bucketed-lite", cachedAnalyticsRead, getOverviewBucketedLite);
+  fastify.get("/sites/:siteId/metric-lite", cachedAnalyticsRead, getMetricLite);
+  fastify.get("/sites/:siteId/metric", cachedAnalyticsRead, getMetric);
+  fastify.get("/sites/:siteId/page-titles", cachedAnalyticsRead, getPageTitles);
   fastify.get("/sites/:siteId/errors/names", publicAnalyticsRead, getErrorNames);
   fastify.get("/sites/:siteId/errors/events", publicAnalyticsRead, getErrorEvents);
   fastify.get("/sites/:siteId/errors/time-series", publicAnalyticsRead, getErrorBucketed);
@@ -501,11 +513,11 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.put("/sites/:siteId/experiments/:experimentId", adminExperimentsWrite, updateExperiment);
   fastify.delete("/sites/:siteId/experiments/:experimentId", adminExperimentsWrite, deleteExperiment);
   fastify.get("/sites/:siteId/experiments/:experimentId/results", authExperimentsRead, getExperimentResults);
-  fastify.get("/sites/:siteId/events/names", publicEventsRead, getEventNames);
+  fastify.get("/sites/:siteId/events/names", cachedEventsRead, getEventNames);
   fastify.get("/sites/:siteId/events/properties", publicEventsRead, getEventProperties);
-  fastify.get("/sites/:siteId/events/autocapture", publicEventsRead, getAutocaptureEvents);
+  fastify.get("/sites/:siteId/events/autocapture", cachedEventsRead, getAutocaptureEvents);
   fastify.get("/sites/:siteId/events/autocapture-values", publicEventsRead, getAutocaptureValues);
-  fastify.get("/sites/:siteId/events/outbound", publicEventsRead, getOutboundLinks);
+  fastify.get("/sites/:siteId/events/outbound", cachedEventsRead, getOutboundLinks);
   fastify.get("/org-event-count/:organizationId", orgAnalyticsRead, getOrgEventCount);
   fastify.post(
     "/organizations/:organizationId/analytics/query",
