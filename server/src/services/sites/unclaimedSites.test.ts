@@ -73,6 +73,7 @@ CREATE TABLE sites (
   "api_key" text,
   "private_link_key" text,
   "tags" jsonb DEFAULT '[]'::jsonb,
+  "icon" bytea,
   "detected_platform" text,
   "claim_expires_at" timestamp
 );

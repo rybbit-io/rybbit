@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Plus } from "lucide-react";
+import { Check, ChevronDown, Plus, Smartphone } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
@@ -22,6 +22,7 @@ type SiteOption = {
   siteId: number;
   name: string;
   domain: string;
+  type?: "web" | "mobile" | null;
   sessions?: number;
 };
 
@@ -37,10 +38,20 @@ function SiteRow({ site, isSelected }: { site: SiteOption; isSelected: boolean }
 
   return (
     <>
-      <Favicon domain={site.domain} className="w-5 h-5 rounded shrink-0" />
+      <Favicon
+        domain={site.domain}
+        className="w-5 h-5 rounded shrink-0"
+        siteType={(site.type ?? "web") === "web" ? "web" : "mobile"}
+        siteId={site.siteId}
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm text-neutral-900 dark:text-white">{site.name}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm text-neutral-900 dark:text-white">{site.name}</span>
+            {site.type && site.type !== "web" && (
+              <Smartphone className="h-3 w-3 shrink-0 text-neutral-400" />
+            )}
+          </span>
           {!showDomain && sessionsLabel && (
             <span className="shrink-0 text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
               {sessionsLabel}
@@ -115,6 +126,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
         siteId: site.siteId,
         name: site.name,
         domain: site.domain,
+        type: site.type,
         sessions: site.sessionsLast24Hours,
       }));
 
@@ -199,7 +211,12 @@ function SiteSelectorWrapper() {
       <PopoverTrigger asChild>
         {site ? (
           <button className="flex gap-2 items-center border border-neutral-200 dark:border-neutral-800 rounded-lg py-1.5 px-3 justify-start cursor-pointer hover:bg-neutral-150 dark:hover:bg-neutral-800/50 data-[state=open]:bg-neutral-150 dark:data-[state=open]:bg-neutral-800/50 transition-colors h-[36px] w-full">
-            <Favicon domain={site.domain} className="w-5 h-5" />
+            <Favicon
+              domain={site.domain}
+              className="w-5 h-5"
+              siteType={(site.type ?? "web") === "web" ? "web" : "mobile"}
+              siteId={site.siteId}
+            />
             <div className="text-neutral-900 dark:text-white truncate text-sm flex-1 text-left">{site.name}</div>
             {!embed && (
               <ChevronDown

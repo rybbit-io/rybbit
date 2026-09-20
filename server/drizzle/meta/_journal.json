@@ -148,6 +148,13 @@
       "when": 1789189000176,
       "tag": "0020_unclaimed_sites",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789399760196,
+      "tag": "0021_site_icon",
+      "breakpoints": true
     }
   ]
 }

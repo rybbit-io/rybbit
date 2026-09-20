@@ -4,6 +4,7 @@ import { Calendar, CalendarCheck, Clock, Files } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { ReactNode } from "react";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { UserInfo } from "../../../../../api/analytics/endpoints";
 import { EventIcon, PageviewIcon } from "../../../../../components/EventIcons";
 import { Skeleton } from "../../../../../components/ui/skeleton";
@@ -49,6 +50,8 @@ function StatCell({
 // hairline seams (gap-px over the border color), wrapping 6 → 3 → 2 per row.
 export function UserStatBand({ data, isLoading }: { data: UserInfo | undefined; isLoading: boolean }) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isMobileSite = siteMetadata?.type === "mobile";
   const { formatRelative, formatDateTime, hour12 } = useDateTimeFormat();
 
   const timezone = getTimezone();
@@ -86,7 +89,7 @@ export function UserStatBand({ data, isLoading }: { data: UserInfo | undefined; 
         />
         <StatCell
           icon={<PageviewIcon className="h-3 w-3" />}
-          label={t("Pageviews")}
+          label={isMobileSite ? t("Screenviews") : t("Pageviews")}
           value={count(data?.pageviews)}
           title={countTitle(data?.pageviews)}
           isLoading={isLoading}

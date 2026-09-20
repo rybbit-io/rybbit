@@ -4,9 +4,10 @@ import { AlertCircle, AppWindow, ChevronRight, Globe2, Plus, Smartphone } from "
 import { useExtracted } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ReactNode, useState } from "react";
-import { addSite } from "../../api/admin/endpoints";
+import { addSite, uploadSiteIcon } from "../../api/admin/endpoints";
 import { useGetSitesFromOrg } from "../../api/admin/hooks/useSites";
 import { SettingRow } from "../../components/SiteSettings/SettingsSection";
+import { resizeImageToIcon } from "../../lib/imageUtils";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -84,6 +85,8 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [toggles, setToggles] = useState({ ...DEFAULT_TOGGLES });
   const [error, setError] = useState("");
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const [iconBase64, setIconBase64] = useState<string | null>(null);
 
   const isMobile = siteType === "mobile";
   const setToggle = (key: ToggleKey, checked: boolean) => setToggles(prev => ({ ...prev, [key]: checked }));
@@ -236,6 +239,14 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
         trackFormInteractions: toggles.trackFormInteractions && !standardFeaturesDisabled,
       });
 
+      if (siteType === "mobile" && iconBase64) {
+        try {
+          await uploadSiteIcon(site.siteId, iconBase64);
+        } catch (iconError) {
+          console.warn("Site created but icon upload failed", iconError);
+        }
+      }
+
       resetStore();
       setSite(site.siteId.toString());
       router.push(`/${site.siteId}`);
@@ -255,6 +266,20 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
     setError("");
     setShowAdvanced(false);
     setToggles({ ...DEFAULT_TOGGLES });
+    setIconPreview(null);
+    setIconBase64(null);
+  };
+
+  const handleIconSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const base64 = await resizeImageToIcon(file);
+      setIconBase64(base64);
+      setIconPreview(`data:image/png;base64,${base64}`);
+    } catch {
+      setError(t("Failed to process icon image"));
+    }
   };
 
   const renderToggleGroup = (title: string, groupToggles: CreateToggle[]) => {
@@ -344,8 +369,8 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AppWindow className="h-6 w-6" />
-              {t("Add Site")}
+              {siteType === "web" ? <AppWindow className="h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
+              {siteType === "web" ? t("Add Website") : t("Add App")}
             </DialogTitle>
             <DialogDescription>
               {t("Track analytics for a new website or React Native app in your organization")}
@@ -355,7 +380,11 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
           <div className="grid gap-4 py-2">
             <RadioGroup
               value={siteType}
-              onValueChange={value => setSiteType(value as SiteType)}
+              onValueChange={value => {
+                setSiteType(value as SiteType);
+                setDomain("");
+                setError("");
+              }}
               className="grid grid-cols-2 gap-3"
             >
               <Label
@@ -401,6 +430,24 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
                 placeholder={t("Display name (defaults to domain)")}
               />
             </div>
+            {siteType === "mobile" && (
+              <div className="grid w-full items-center gap-1.5">
+                <Label className="text-sm font-medium">{t("App Icon")}</Label>
+                <div className="flex items-center gap-3">
+                  {iconPreview ? (
+                    <img src={iconPreview} alt="App icon preview" className="w-10 h-10 rounded" />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center">
+                      <Smartphone className="w-5 h-5 text-neutral-400" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <Input type="file" accept="image/*" onChange={handleIconSelect} className="text-sm" />
+                    <p className="text-xs text-muted-foreground mt-1">{t("Optional. Resized to 128x128 PNG.")}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <button

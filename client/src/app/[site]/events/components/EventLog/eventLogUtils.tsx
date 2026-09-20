@@ -21,8 +21,9 @@ export function parseEventProperties(event: Event): Record<string, any> {
 // EVENT_TYPE_CONFIG labels are display strings ("Pageview", "Input Change"), not
 // message keys, so they must not be passed to t() — doing so throws MISSING_MESSAGE
 // and breaks the events page. Return them as-is.
-export function getEventTypeLabel(type: string) {
-  return EVENT_TYPE_CONFIG.find(item => item.value === type)?.label ?? "Event";
+export function getEventTypeLabel(type: string, isMobileSite?: boolean) {
+  const label = EVENT_TYPE_CONFIG.find(item => item.value === type)?.label ?? "Event";
+  return isMobileSite && label === "Pageview" ? "Screenview" : label;
 }
 
 export function buildEventPath(event: Event) {

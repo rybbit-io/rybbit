@@ -142,6 +142,7 @@ CREATE TABLE "sites" (
   "api_key" text,
   "private_link_key" text,
   "tags" jsonb DEFAULT '[]',
+  "icon" bytea,
   "detected_platform" text,
   "claim_expires_at" timestamp
 );
