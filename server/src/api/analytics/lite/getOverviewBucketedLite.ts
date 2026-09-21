@@ -1,5 +1,6 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
+import { readSessionRollups } from "../../../services/dashboardRollups/read.js";
 import { getOverviewBucketed } from "../getOverviewBucketed.js";
 import { TimeBucket } from "../types.js";
 import { resolveTimeWindow } from "../utils/timeWindow.js";
@@ -76,11 +77,7 @@ function buildHourBucketQuery(args: {
   `;
 }
 
-function buildDayBucketQuery(args: {
-  bucketed: (column: string) => string;
-  sessionTime: string;
-  fill: string;
-}) {
+function buildDayBucketQuery(args: { bucketed: (column: string) => string; sessionTime: string; fill: string }) {
   const { bucketed, sessionTime, fill } = args;
   // Aggregate in the inner GROUP BY, then compose ratios in the outer SELECT.
   // Aliasing `sum(sessions) AS sessions` would shadow the column inside the
@@ -190,6 +187,10 @@ export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteReq
     const where = (column: string) => window.where(column);
 
     const filtersPresent = hasLiteFilters(req.query.filters);
+    if (!filtersPresent && ["day", "week", "month", "year"].includes(bucket)) {
+      const data = await readSessionRollups<GetOverviewBucketedLiteResponse[number]>(site, req.query, bucket);
+      if (data !== null) return res.send({ data });
+    }
 
     let query: string;
     if (filtersPresent) {

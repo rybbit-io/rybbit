@@ -1,5 +1,6 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
+import { projectedMetricGroups } from "../../../services/dashboardRollups/projections.js";
 import { getMetric } from "../getMetric.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
@@ -116,6 +117,7 @@ export const buildMetricLiteQuery = (query: GetMetricLiteRequest["Querystring"])
     `;
   }
   if (parameter === "country") {
+    if (process.env.DASHBOARD_ROLLUPS === "true") return buildProjectedDimensionQuery(query, "country");
     return `
       SELECT
         value,
@@ -140,6 +142,7 @@ export const buildMetricLiteQuery = (query: GetMetricLiteRequest["Querystring"])
     `;
   }
   if (parameter === "device_type") {
+    if (process.env.DASHBOARD_ROLLUPS === "true") return buildProjectedDimensionQuery(query, "device_type");
     return `
       SELECT
         value,
@@ -166,6 +169,23 @@ export const buildMetricLiteQuery = (query: GetMetricLiteRequest["Querystring"])
   }
   return null;
 };
+
+function buildProjectedDimensionQuery(
+  query: GetMetricLiteRequest["Querystring"],
+  dimension: "country" | "device_type"
+) {
+  const { limit, offsetStatement } = getLitePagination(query);
+  const groups = projectedMetricGroups(query, {
+    table: `${dimension}_hourly_mv_target`,
+    value: dimension,
+    nonEmpty: dimension === "device_type",
+  });
+  return `SELECT value, pageviews, count,
+    round(count * 100.0 / nullIf(sum(count) OVER (), 0), 2) AS percentage,
+    round(pageviews * 100.0 / nullIf(sum(pageviews) OVER (), 0), 2) AS pageviews_percentage,
+    count() OVER () AS total_count
+    FROM (${groups}) ORDER BY count DESC, value ASC LIMIT ${limit} ${offsetStatement}`;
+}
 
 export const getMetricLite = analyticsRoute<GetMetricLiteRequest>(
   "metric",
