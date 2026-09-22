@@ -1,5 +1,6 @@
 {
   "name": "@rybbit/shared",
+  "private": true,
   "version": "1.0.0",
   "description": "Shared types for Rybbit analytics",
   "main": "./dist/index.js",

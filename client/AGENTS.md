@@ -4,15 +4,17 @@ Guidance for agents working in the `client` package. Keep changes scoped to this
 
 ## Commands
 
-Run commands from `client/`.
+Run package commands from `client/`. Install dependencies at the repository
+root with `pnpm install`. The root `pnpm dev:client` and `pnpm build:client`
+commands build `shared` first; use them on a fresh checkout. Docs is separate.
 
-- `npm run dev` - start the Next.js dev server on port 3002.
-- `npm run build` - create a production build.
-- `npm run lint` - run ESLint.
-- `npx tsc --noEmit` - type-check without emitting files.
-- `npm run format` - run Prettier over client source files.
-- `npm run format:check` - check formatting.
-- `npm run extract` - extract next-intl messages.
+- `pnpm run dev` - start the Next.js dev server on port 3002.
+- `pnpm run build` - create a production build.
+- `pnpm run lint` - run ESLint.
+- `pnpm exec tsc --noEmit` - type-check without emitting files.
+- `pnpm run format` - run Prettier over client source files.
+- `pnpm run format:check` - check formatting.
+- `pnpm run extract` - extract next-intl messages.
 
 ## Stack
 
@@ -69,7 +71,7 @@ Use `buildApiParams()` for analytics requests that depend on time range, timezon
 
 - Use `useTranslations()` from next-intl for user-facing strings.
 - Keep locale keys consistent across `messages/*.json`.
-- Run `npm run extract` when adding or changing translatable UI text.
+- Run `pnpm run extract` when adding or changing translatable UI text.
 
 ## Conventions
 
@@ -83,7 +85,7 @@ Use `buildApiParams()` for analytics requests that depend on time range, timezon
 
 For most client changes, run:
 
-1. `npm run lint`
-2. `npx tsc --noEmit`
+1. `pnpm run lint`
+2. `pnpm exec tsc --noEmit`
 
-Run `npm run build` for route, config, bundling, or Next.js behavior changes.
+Run `pnpm run build` for route, config, bundling, or Next.js behavior changes.

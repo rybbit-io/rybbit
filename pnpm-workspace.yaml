@@ -1,0 +1,23 @@
+packages:
+  - client
+  - server
+  - shared
+
+# Preserve the existing npm installs' explicit peer dependencies.
+autoInstallPeers: false
+
+# These were previously npm overrides in the client and server manifests.
+overrides:
+  "@types/react": 19.2.7
+  kysely: 0.28.17
+
+# Native modules and build tools used by the apps.
+allowBuilds:
+  "@mongodb-js/zstd": true
+  "@parcel/watcher": true
+  "@swc/core": true
+  esbuild: true
+  fsevents: true
+  puppeteer: true
+  sharp: true
+  unrs-resolver: true

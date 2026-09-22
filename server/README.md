@@ -41,59 +41,66 @@ cost, so measure cold and warm loads separately when evaluating performance.
 
 ### Prerequisites
 
-- Node.js (v22.1.0 or higher)
-- npm
+- Node.js 24 (see the root `.nvmrc`)
+- pnpm (the version pinned in the root `package.json`)
 
 ### Installation
 
 ```bash
-npm install
+# From the repository root
+corepack enable
+pnpm install --frozen-lockfile
+pnpm --filter @rybbit/shared build
 ```
 
 ### Running the Application
 
+Run the following commands from `server/`, or use `pnpm dev:server` and
+`pnpm build:server` from the repository root to build shared code automatically.
+See [workspace development](../CONTRIBUTE.md#local-development).
+
 ```bash
 # Development mode
-npm run dev
+pnpm run dev
 
 # Production build
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
 
 ### Testing
 
 ```bash
 # Run tests once
-npm run test:run
+pnpm run test:run
 
 # Run tests in watch mode
-npm run test:watch
+pnpm run test:watch
 
 # Run tests with coverage
-npm run test
+pnpm run test
 ```
 
 ### Database Operations
 
 ```bash
 # Generate migrations
-npm run db:generate
+pnpm run db:generate
 
 # Run migrations
-npm run db:migrate
+pnpm run db:migrate
 
 # Push schema changes
-npm run db:push
+pnpm run db:push
 
 # Pull schema from database
-npm run db:pull
+pnpm run db:pull
 
 # Drop database
-npm run db:drop
+pnpm run db:drop
 
 # Check migrations
-npm run db:check
+pnpm run db:check
 ```
 
 ## Testing
@@ -108,8 +115,8 @@ The project uses [Vitest](https://vitest.dev/) for testing. Test files should be
 
 ```bash
 # Run a specific test file
-npx vitest src/utils.test.ts
+pnpm exec vitest src/utils.test.ts
 
 # Run tests matching a pattern
-npx vitest --grep "normalizeOrigin"
+pnpm exec vitest --grep "normalizeOrigin"
 ```

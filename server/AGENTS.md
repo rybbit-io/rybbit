@@ -4,19 +4,21 @@ Guidance for agents working in the `server` package. Keep changes scoped to this
 
 ## Commands
 
-Run commands from `server/`.
+Run package commands from `server/`. Install dependencies at the repository
+root with `pnpm install`. The root `pnpm dev:server` and `pnpm build:server`
+commands build `shared` first; use them on a fresh checkout. Docs is separate.
 
-- `npm run dev` - compile TypeScript and start `dist/index.js`.
-- `npm run dev:cluster` - compile TypeScript and start the cluster entrypoint.
-- `npm run build` - compile TypeScript and rebuild the analytics script.
-- `npm run start` - run the compiled single-process server.
-- `npm run start:cluster` - run the compiled cluster server.
-- `npm run test:run` - run Vitest once.
-- `npm run test:watch` - run Vitest in watch mode.
-- `npm run test` - run Vitest.
-- `npm run db:check` - check Drizzle migrations.
-- `npm run format` - run Prettier over server source files.
-- `npm run format:check` - check formatting.
+- `pnpm run dev` - compile TypeScript and start `dist/index.js`.
+- `pnpm run dev:cluster` - compile TypeScript and start the cluster entrypoint.
+- `pnpm run build` - compile TypeScript and rebuild the analytics script.
+- `pnpm run start` - run the compiled single-process server.
+- `pnpm run start:cluster` - run the compiled cluster server.
+- `pnpm run test:run` - run Vitest once.
+- `pnpm run test:watch` - run Vitest in watch mode.
+- `pnpm run test` - run Vitest.
+- `pnpm run db:check` - check Drizzle migrations.
+- `pnpm run format` - run Prettier over server source files.
+- `pnpm run format:check` - check formatting.
 
 Do not run database migration, push, pull, or drop commands unless the user explicitly asks for them. Avoid editing `dist/`; make source changes in `src/` and rebuild when needed.
 
@@ -86,7 +88,7 @@ Do not run database migration, push, pull, or drop commands unless the user expl
 
 For most server changes, run:
 
-1. `npm run build`
-2. `npm run test:run`
+1. `pnpm run build`
+2. `pnpm run test:run`
 
-Run targeted Vitest files while iterating, for example `npx vitest run src/utils.test.ts`.
+Run targeted Vitest files while iterating, for example `pnpm exec vitest run src/utils.test.ts`.

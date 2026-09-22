@@ -1101,7 +1101,7 @@
     }
   };
 
-  // ../../node_modules/web-vitals/dist/web-vitals.js
+  // ../../../node_modules/.pnpm/web-vitals@5.1.0/node_modules/web-vitals/dist/web-vitals.js
   var e = -1;
   var t = (t2) => {
     addEventListener("pageshow", ((n2) => {

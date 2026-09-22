@@ -22,6 +22,9 @@ const withMDX = createMDX();
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
+  // Keep this independent app rooted here despite the parent pnpm workspace.
+  outputFileTracingRoot: import.meta.dirname,
+  turbopack: { root: import.meta.dirname },
   images: {
     remotePatterns: [
       {
