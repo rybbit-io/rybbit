@@ -102,7 +102,7 @@
     "unique-names-generator": "^4.7.1",
     "vaul": "^1.1.2",
     "zod": "3.24.4",
-    "zustand": "5.0.4"
+    "zustand": "5.0.15"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
