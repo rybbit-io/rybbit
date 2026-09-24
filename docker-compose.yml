@@ -136,6 +136,10 @@ services:
       - DASHBOARD_CACHE_TTL_SECONDS=${DASHBOARD_CACHE_TTL_SECONDS:-30}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL}
+      # Optional Google Search Console integration; see the self-hosting docs.
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
     depends_on:
       clickhouse:
         condition: service_healthy
