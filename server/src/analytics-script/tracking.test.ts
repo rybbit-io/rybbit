@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Tracker } from "./tracking.js";
 import { ScriptConfig } from "./types.js";
+import { resetBotScoreCacheForTests } from "./botSignals.js";
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -11,6 +12,8 @@ describe("Tracker", () => {
   let mockLocation: any;
 
   beforeEach(() => {
+    resetBotScoreCacheForTests();
+
     // Reset fetch mock
     vi.mocked(global.fetch).mockReset();
     vi.mocked(global.fetch).mockResolvedValue({} as Response);
@@ -47,6 +50,7 @@ describe("Tracker", () => {
       pathname: mockLocation.pathname,
       search: mockLocation.search,
       hash: mockLocation.hash,
+      searchParams: { entries: () => [["query", "test"]] },
     })) as any;
 
     Object.defineProperty(screen, "width", {
@@ -74,10 +78,16 @@ describe("Tracker", () => {
       writable: true,
     });
 
+    Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+      value: vi.fn(() => null),
+      configurable: true,
+    });
+
     config = {
       namespace: "rybbit",
       analyticsHost: "https://analytics.example.com",
       siteId: "123",
+      visitorId: "visitor-123",
       debounceDuration: 0,
       autoTrackPageview: true,
       autoTrackSpa: true,
@@ -91,6 +101,12 @@ describe("Tracker", () => {
       sessionReplayMaskTextSelectors: [],
       skipPatterns: [],
       maskPatterns: [],
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
+      tag: "",
+      featureFlagsEnabled: false,
+      featureFlags: {},
     };
 
     tracker = new Tracker(config);
@@ -114,6 +130,8 @@ describe("Tracker", () => {
         language: "en-US",
         page_title: "Test Page",
         referrer: "https://google.com",
+        _bs: expect.any(Number),
+        _bsm: expect.any(Number),
       });
     });
 
@@ -141,6 +159,19 @@ describe("Tracker", () => {
       expect(payload?.pathname).toBe("/user/*/profile");
     });
 
+    it("should support regex skip and mask patterns", () => {
+      config.skipPatterns = ["re:^/private/.*$"];
+      config.maskPatterns = ["re:^/user/\\d+/profile$"];
+      tracker = new Tracker(config);
+
+      mockLocation.pathname = "/private/settings";
+      expect(tracker.createBasePayload()).toBeNull();
+
+      mockLocation.pathname = "/user/123/profile";
+      const payload = tracker.createBasePayload();
+      expect(payload?.pathname).toBe("re:^/user/\\d+/profile$");
+    });
+
     it("should exclude querystring when disabled", () => {
       config.trackQuerystring = false;
       tracker = new Tracker(config);
@@ -155,6 +186,26 @@ describe("Tracker", () => {
 
       const payload = tracker.createBasePayload();
       expect(payload?.user_id).toBe("user-123");
+    });
+
+    it("should include evaluated feature flags in payloads", () => {
+      config.featureFlags = {
+        new_checkout: {
+          key: "new_checkout",
+          value: true,
+          flagType: "boolean",
+          payload: { copy: "Try it now" },
+          version: 1,
+          reason: "rollout",
+          matched: true,
+          rolloutPercentage: 100,
+        },
+      };
+      tracker = new Tracker(config);
+
+      const payload = tracker.createBasePayload();
+      expect(payload?.feature_flags).toEqual({ new_checkout: "true" });
+      expect(tracker.getFeatureFlagPayload("new_checkout")).toEqual({ copy: "Try it now" });
     });
   });
 
@@ -187,6 +238,36 @@ describe("Tracker", () => {
       const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
       expect(body.event_name).toBe("button_click");
       expect(body.properties).toBe(JSON.stringify({ button: "submit" }));
+    });
+
+    it("should track feature flag exposure once when a flag is read", () => {
+      config.featureFlags = {
+        new_checkout: {
+          key: "new_checkout",
+          value: true,
+          flagType: "boolean",
+          version: 1,
+          reason: "rollout",
+          matched: true,
+          rolloutPercentage: 100,
+        },
+      };
+      tracker = new Tracker(config);
+      vi.mocked(global.fetch).mockClear();
+
+      expect(tracker.getFeatureFlag("new_checkout", false)).toBe(true);
+      expect(tracker.getFeatureFlag("new_checkout", false)).toBe(true);
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
+      expect(body.type).toBe("custom_event");
+      expect(body.event_name).toBe("feature_flag_exposure");
+      expect(JSON.parse(body.properties)).toMatchObject({
+        key: "new_checkout",
+        value: "true",
+        version: 1,
+        reason: "rollout",
+      });
     });
 
     it("should validate custom event name", () => {
@@ -382,11 +463,19 @@ describe("Tracker", () => {
     });
 
     it("should clear user ID", () => {
+      const updateReplayUserId = vi.fn();
+      (
+        tracker as unknown as { sessionReplayRecorder: { updateUserId: (userId: string) => void } }
+      ).sessionReplayRecorder = {
+        updateUserId: updateReplayUserId,
+      };
+
       tracker.identify("user-789");
       tracker.clearUserId();
 
       expect(window.localStorage.removeItem).toHaveBeenCalledWith(`${config.namespace}-user-id`);
       expect(tracker.getUserId()).toBeNull();
+      expect(updateReplayUserId).toHaveBeenLastCalledWith("");
     });
 
     it("should handle localStorage errors", () => {
@@ -399,6 +488,26 @@ describe("Tracker", () => {
       expect(consoleSpy).toHaveBeenCalledWith("Could not persist user ID to localStorage");
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe("feature flag refresh", () => {
+    it("does not evaluate flags on page changes when the site has no flags", () => {
+      tracker.onPageChange();
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("evaluates flags on page changes when feature flags are enabled", () => {
+      config.featureFlagsEnabled = true;
+      tracker = new Tracker(config);
+
+      tracker.onPageChange();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://analytics.example.com/site/123/feature-flags/evaluate",
+        expect.objectContaining({ method: "POST", signal: expect.any(AbortSignal) })
+      );
     });
   });
 });

@@ -1,48 +1,168 @@
 "use client";
 
-import { Settings } from "lucide-react";
-import { useState } from "react";
+import {
+  Ban,
+  Code,
+  Download,
+  Gauge,
+  LayoutDashboard,
+  LayoutTemplate,
+  Plug,
+  Settings,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import { useExtracted } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/components/ui/sonner";
+import { authClient } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 import { ScriptBuilder } from "./ScriptBuilder";
-import { SiteConfiguration } from "./SiteConfiguration";
 import { ImportManager } from "./ImportManager";
+import { GeneralTab } from "./GeneralTab";
+import { TrackingTab } from "./TrackingTab";
+import { ExclusionsTab } from "./ExclusionsTab";
+import { IntegrationsTab } from "./IntegrationsTab";
+import { EmbedTab } from "./EmbedTab";
+import { DashboardEmbedTab } from "./DashboardEmbedTab";
+import { UsageTab } from "./UsageTab";
 import { useGetSite } from "../../api/admin/hooks/useSites";
 import { useUserOrganizations } from "../../api/admin/hooks/useOrganizations";
-import { SiteResponse } from "../../api/admin/endpoints";
+import { useGetSitesFromOrg } from "../../api/admin/hooks/useSites";
+import { SiteResponse, updateSiteConfig } from "../../api/admin/endpoints";
+import { IS_CLOUD } from "../../lib/const";
 
-export function SiteSettings({ siteId, trigger }: { siteId: number; trigger?: React.ReactNode }) {
-  const { data: siteMetadata, isLoading, error } = useGetSite(siteId);
+interface SiteSettingsProps {
+  siteId: number;
+  trigger?: React.ReactNode;
+  lazy?: boolean;
+  adminOrganization?: {
+    id: string;
+    subscription: { planName: string; eventLimit?: number };
+  };
+}
 
-  if (isLoading || !siteMetadata || error) {
+export function SiteSettings({ siteId, trigger, adminOrganization, lazy = false }: SiteSettingsProps) {
+  const [loadRequested, setLoadRequested] = useState(!lazy);
+  const { data: siteMetadata, isLoading, error } = useGetSite(siteId, { enabled: loadRequested });
+
+  const defaultTrigger = trigger ?? (
+    <Button variant="ghost" size="icon">
+      <Settings className="h-4 w-4" />
+    </Button>
+  );
+
+  if (!loadRequested || isLoading) {
+    return (
+      <span className="contents" onClick={() => setLoadRequested(true)}>
+        {defaultTrigger}
+      </span>
+    );
+  }
+
+  if (!siteMetadata || error) {
     return null;
   }
 
-  return <SiteSettingsInner siteMetadata={siteMetadata} trigger={trigger} />;
+  return (
+    <SiteSettingsInner
+      siteMetadata={siteMetadata}
+      trigger={trigger}
+      adminOrganization={adminOrganization}
+      initialOpen={lazy}
+    />
+  );
 }
 
-function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteResponse; trigger?: React.ReactNode }) {
-  const { data: userOrganizationsData } = useUserOrganizations();
-  const disabled = !userOrganizationsData?.[0]?.role || userOrganizationsData?.[0]?.role === "member";
+type TabKey =
+  | "general"
+  | "tracking"
+  | "exclusions"
+  | "integrations"
+  | "script"
+  | "import"
+  | "widget-embeds"
+  | "dashboard-embed"
+  | "usage";
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("settings");
+function SiteSettingsInner({
+  siteMetadata,
+  trigger,
+  adminOrganization,
+  initialOpen = false,
+}: {
+  siteMetadata: SiteResponse;
+  trigger?: React.ReactNode;
+  adminOrganization?: SiteSettingsProps["adminOrganization"];
+  initialOpen?: boolean;
+}) {
+  const t = useExtracted();
+  const { data: session } = authClient.useSession();
+  const { data: userOrganizationsData } = useUserOrganizations();
+  const siteOrgMembership = userOrganizationsData?.find(org => org.id === siteMetadata.organizationId);
+  const disabled = session?.user.role !== "admin" && (!siteOrgMembership?.role || siteOrgMembership.role === "member");
+
+  const [dialogOpen, setDialogOpen] = useState(initialOpen);
+  const [activeTab, setActiveTab] = useState<TabKey>("general");
+  const [embedEnabled, setEmbedEnabled] = useState(!!siteMetadata.embedEnabled);
+  const [togglingEmbed, setTogglingEmbed] = useState(false);
+  const [sitePublic, setSitePublic] = useState(!!siteMetadata.public);
+  const adminMode = !!adminOrganization;
+  const { refetch: refetchOrgSites } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "", {
+    enabled: !adminMode,
+  });
+
+  useEffect(() => {
+    setEmbedEnabled(!!siteMetadata.embedEnabled);
+    setSitePublic(!!siteMetadata.public);
+  }, [siteMetadata.siteId, siteMetadata.embedEnabled, siteMetadata.public]);
+
+  const handleToggleEmbed = useCallback(
+    async (checked: boolean) => {
+      setTogglingEmbed(true);
+      try {
+        await updateSiteConfig(siteMetadata.siteId, { embedEnabled: checked });
+        setEmbedEnabled(checked);
+        toast.success(checked ? t("Embed widget enabled") : t("Embed widget disabled"));
+        if (!adminMode) {
+          refetchOrgSites();
+        }
+      } catch (error) {
+        console.error("Error toggling embed:", error);
+        toast.error(t("Failed to update embed setting"));
+      } finally {
+        setTogglingEmbed(false);
+      }
+    },
+    [siteMetadata.siteId, refetchOrgSites, t, adminMode]
+  );
 
   if (!siteMetadata) {
     return null;
   }
+
+  const currentSiteMetadata = { ...siteMetadata, public: sitePublic };
+  const isMobileSite = currentSiteMetadata.type === "mobile";
+
+  const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; hidden?: boolean }[] = [
+    { key: "general", label: t("General"), icon: Settings },
+    { key: "tracking", label: t("Tracking"), icon: SlidersHorizontal },
+    { key: "exclusions", label: t("Exclusions"), icon: Ban },
+    { key: "integrations", label: t("Integrations"), icon: Plug, hidden: !IS_CLOUD },
+    { key: "script", label: isMobileSite ? t("React Native SDK") : t("Tracking Script"), icon: Code },
+    { key: "widget-embeds", label: t("Widget Embeds"), icon: LayoutTemplate },
+    { key: "dashboard-embed", label: t("Dashboard Embed"), icon: LayoutDashboard },
+    { key: "import", label: t("Import"), icon: Download },
+    { key: "usage", label: t("Usage"), icon: Gauge },
+  ];
+
+  const visibleTabs = tabs.filter(t => !t.hidden);
+  const currentTab = visibleTabs.find(t => t.key === activeTab) ?? visibleTabs[0];
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -53,36 +173,92 @@ function SiteSettingsInner({ siteMetadata, trigger }: { siteMetadata: SiteRespon
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[750px]">
-        <DialogHeader>
-          <DialogTitle>Site Settings</DialogTitle>
-          <DialogDescription>Manage settings for {siteMetadata.domain}</DialogDescription>
-        </DialogHeader>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="pb-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="settings">Site Settings</TabsTrigger>
-            <TabsTrigger value="script">Tracking Script</TabsTrigger>
-            <TabsTrigger value="import">Import</TabsTrigger>
-          </TabsList>
+      <DialogContent className="sm:max-w-[1000px] p-0 gap-0 overflow-hidden" hideClose>
+        <div className="flex h-[80vh]">
+          <aside className="w-[220px] shrink-0 border-r border-neutral-200 dark:border-neutral-850 bg-neutral-50 dark:bg-neutral-900/50 p-3 flex flex-col gap-1">
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon" className="self-start mb-2 h-8 w-8">
+                <X className="h-4 w-4" />
+                <span className="sr-only">{t("Close")}</span>
+              </Button>
+            </DialogClose>
+            {visibleTabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = tab.key === activeTab;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-left transition-colors",
+                    isActive
+                      ? "bg-neutral-200/70 text-foreground dark:bg-neutral-800 dark:text-neutral-50"
+                      : "text-neutral-600 hover:bg-neutral-200/50 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-100"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
+          </aside>
 
-          <TabsContent value="script" className="pt-4 space-y-4 max-h-[70vh] overflow-y-auto">
-            <ScriptBuilder siteId={siteMetadata.id ?? String(siteMetadata.siteId)} />
-          </TabsContent>
-
-          <TabsContent value="import" className="pt-4 space-y-4 max-h-[70vh] overflow-y-auto">
-            <ImportManager siteId={siteMetadata.siteId} disabled={disabled} />
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <SiteConfiguration siteMetadata={siteMetadata} disabled={disabled} onClose={() => setDialogOpen(false)} />
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Close</Button>
-          </DialogClose>
-        </DialogFooter>
+          <main className="flex-1 flex flex-col min-w-0">
+            <header className="px-6 pt-5 pb-3 border-b border-neutral-200 dark:border-neutral-850 flex items-center justify-between gap-4">
+              <DialogTitle className="text-lg font-semibold mb-0">{currentTab.label}</DialogTitle>
+              {activeTab === "widget-embeds" && (
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                  {t("Widget Enabled")}
+                  <Switch
+                    aria-label={t("Enable Embed Widget")}
+                    checked={embedEnabled}
+                    disabled={togglingEmbed}
+                    onCheckedChange={handleToggleEmbed}
+                  />
+                </label>
+              )}
+            </header>
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              {activeTab === "general" && (
+                <GeneralTab
+                  siteMetadata={currentSiteMetadata}
+                  disabled={disabled}
+                  onClose={() => setDialogOpen(false)}
+                  onPublicChange={setSitePublic}
+                  adminMode={adminMode}
+                />
+              )}
+              {activeTab === "tracking" && (
+                <TrackingTab
+                  siteMetadata={currentSiteMetadata}
+                  disabled={disabled}
+                  adminMode={adminMode}
+                  adminSubscription={adminOrganization?.subscription}
+                />
+              )}
+              {activeTab === "exclusions" && <ExclusionsTab siteId={siteMetadata.siteId} disabled={disabled} />}
+              {activeTab === "integrations" && IS_CLOUD && (
+                <IntegrationsTab disabled={disabled} siteId={siteMetadata.siteId} />
+              )}
+              {activeTab === "script" && (
+                <ScriptBuilder
+                  siteId={siteMetadata.id ?? String(siteMetadata.siteId)}
+                  siteType={currentSiteMetadata.type || "web"}
+                  appIdentifier={currentSiteMetadata.domain}
+                />
+              )}
+              {activeTab === "widget-embeds" && (
+                <EmbedTab siteMetadata={currentSiteMetadata} embedEnabled={embedEnabled} />
+              )}
+              {activeTab === "dashboard-embed" && (
+                <DashboardEmbedTab siteMetadata={currentSiteMetadata} disabled={disabled} />
+              )}
+              {activeTab === "import" && <ImportManager siteId={siteMetadata.siteId} disabled={disabled} />}
+              {activeTab === "usage" && <UsageTab siteId={siteMetadata.siteId} />}
+            </div>
+          </main>
+        </div>
       </DialogContent>
     </Dialog>
   );

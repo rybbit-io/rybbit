@@ -1,21 +1,17 @@
-import { FastifyRequest } from "fastify";
 import UAParser, { UAParser as userAgentParser } from "ua-parser-js";
-import { z } from "zod";
-import { getIpAddress } from "../../utils.js";
 import { userIdService } from "../userId/userIdService.js";
-import { trackingPayloadSchema } from "./trackEvent.js";
+import type { TrackingRequest } from "./trackingRequest.js";
 import { TrackingPayload } from "./types.js";
-import { SiteConfigData } from "../../lib/siteConfig.js";
 
 export type TotalTrackingPayload = TrackingPayload & {
-  userId: string; // Always the device fingerprint (same as anonymousId)
-  anonymousId: string; // Always the hash of IP+UserAgent (device fingerprint)
+  userId: string; // Always the device fingerprint
   identifiedUserId: string; // Custom user ID when identified, empty string otherwise
   timestamp: string;
   type?: string;
   event_name?: string;
   properties?: string;
   ua: UAParser.IResult;
+  userAgent: string;
   referrer: string;
   ipAddress: string;
   storeIp?: boolean;
@@ -24,10 +20,34 @@ export type TotalTrackingPayload = TrackingPayload & {
   inp?: number;
   fcp?: number;
   ttfb?: number;
+  tag?: string;
+  feature_flags?: Record<string, string>;
 };
 
-// Infer type from Zod schema
-type ValidatedTrackingPayload = z.infer<typeof trackingPayloadSchema>;
+// ua-parser-js is regex-heavy and runs on every event. User-agent strings repeat
+// constantly across requests, so memoize parsing in a bounded LRU-ish cache to
+// keep this off the per-event hot path.
+const UA_CACHE_MAX = 10_000;
+const uaCache = new Map<string, UAParser.IResult>();
+
+export function parseUserAgent(userAgent: string): UAParser.IResult {
+  const cached = uaCache.get(userAgent);
+  if (cached) {
+    // Refresh recency: re-insert so frequently-seen UAs survive eviction.
+    uaCache.delete(userAgent);
+    uaCache.set(userAgent, cached);
+    return cached;
+  }
+
+  const result = userAgentParser(userAgent);
+  uaCache.set(userAgent, result);
+  if (uaCache.size > UA_CACHE_MAX) {
+    // Evict the oldest (least recently used) entry.
+    const oldest = uaCache.keys().next().value;
+    if (oldest !== undefined) uaCache.delete(oldest);
+  }
+  return result;
+}
 
 // UTM and URL parameter parsing utilities
 export function getUTMParams(querystring: string): Record<string, string> {
@@ -90,47 +110,50 @@ export function clearSelfReferrer(referrer: string, hostname: string): string {
   return referrer;
 }
 
-// Create base tracking payload from request
-export async function createBasePayload(
-  request: FastifyRequest,
-  eventType: "pageview" | "custom_event" | "performance" | "error" | "outbound" = "pageview",
-  validatedBody: ValidatedTrackingPayload,
-  siteConfiguration: SiteConfigData
-): Promise<TotalTrackingPayload> {
-  // Use custom user agent if provided, otherwise fall back to header
-  const userAgent = validatedBody.user_agent || request.headers["user-agent"] || "";
-  // Override IP if provided in payload
-  const ipAddress = validatedBody.ip_address || getIpAddress(request);
+/**
+ * Build the queued event from an already-resolved Tracking Request.
+ *
+ * Identity, IP, user agent and the Site Configuration all arrive resolved —
+ * this does not re-derive any of them, so the fingerprint hashed here is by
+ * construction the same one bot detection and exclusion matching just saw.
+ */
+export async function createBasePayload(trackingRequest: TrackingRequest): Promise<TotalTrackingPayload> {
+  const { payload, site, ipAddress, userAgent } = trackingRequest;
+  const { ip_address: _ipAddressOverride, user_agent: _userAgentOverride, ...payloadBody } = payload;
 
-  // Always compute anonymous_id based on IP+UserAgent (device fingerprint)
-  const anonymousId = await userIdService.generateUserId(
-    ipAddress,
-    userAgent,
-    siteConfiguration.siteId
-  );
+  const anonymousId = payload.anonymous_id
+    ? await userIdService.generateUserIdFromClientId(payload.anonymous_id, site.siteId, {
+        saltUserIds: site.saltUserIds,
+        receivedAt: trackingRequest.receivedAt,
+      })
+    : await userIdService.generateUserId(ipAddress, userAgent, site.siteId, {
+        saltUserIds: site.saltUserIds,
+        lookupAsn: trackingRequest.lookupAsn,
+        receivedAt: trackingRequest.receivedAt,
+      });
 
   // userId is always the device fingerprint
   // identifiedUserId is the custom user ID when provided, empty string otherwise
-  const identifiedUserId = validatedBody.user_id ? validatedBody.user_id.trim() : "";
+  const identifiedUserId = payload.user_id ? payload.user_id.trim() : "";
 
   return {
-    ...validatedBody,
-    site_id: siteConfiguration.siteId, // Use the numeric site ID
-    hostname: validatedBody.hostname || "",
-    pathname: validatedBody.pathname || "",
-    querystring: validatedBody.querystring || "",
-    screenWidth: validatedBody.screenWidth || 0,
-    screenHeight: validatedBody.screenHeight || 0,
-    language: validatedBody.language || "",
-    page_title: validatedBody.page_title || "",
-    referrer: validatedBody.referrer || "",
-    type: eventType,
+    ...payloadBody,
+    site_id: site.siteId, // Use the numeric site ID
+    hostname: payload.hostname || "",
+    pathname: payload.pathname || "",
+    querystring: payload.querystring || "",
+    screenWidth: payload.screenWidth || 0,
+    screenHeight: payload.screenHeight || 0,
+    language: payload.language || "",
+    page_title: payload.page_title || "",
+    referrer: payload.referrer || "",
+    type: payload.type,
     ipAddress: ipAddress,
-    timestamp: new Date().toISOString(),
-    ua: userAgentParser(userAgent),
+    timestamp: trackingRequest.receivedAt.toISOString(),
+    ua: parseUserAgent(userAgent),
+    userAgent,
     userId: anonymousId, // Always the device fingerprint
-    anonymousId: anonymousId,
     identifiedUserId: identifiedUserId, // Custom user ID when identified
-    storeIp: siteConfiguration.trackIp,
+    storeIp: site.trackIp,
   } as any;
 }

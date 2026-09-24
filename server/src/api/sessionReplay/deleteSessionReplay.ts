@@ -30,7 +30,7 @@ export async function deleteSessionReplay(
 
     return reply.status(200).send({ success: true });
   } catch (error) {
-    console.error("Error deleting session replay:", error);
+    request.log.error({ err: error }, "Error deleting session replay");
     return reply.status(500).send({ error: "Failed to delete session replay" });
   }
 }

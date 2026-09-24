@@ -1,0 +1,130 @@
+---
+title: Nuxt.js
+description: Add Rybbit analytics to your Nuxt app
+category: frameworks
+icon: SiNuxt
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Nuxt has two ways to load Rybbit: the [Nuxt Scripts](https://scripts.nuxt.com/scripts/rybbit-analytics) module, which ships a first-class Rybbit registry entry with a typed composable, or the `app.head.script` array in `nuxt.config.ts`.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Nuxt
+
+<Tabs items={["Nuxt Scripts (Nuxt 3 and 4)", "nuxt.config head"]}>
+<Tab value="Nuxt Scripts (Nuxt 3 and 4)">
+Install the module. This adds `@nuxt/scripts` to the `modules` array in your `nuxt.config`:
+
+```bash
+npx nuxi module add scripts
+```
+
+Register Rybbit under `scripts.registry` with the site ID from your snippet:
+
+```typescript title="nuxt.config.ts"
+export default defineNuxtConfig({
+  modules: ["@nuxt/scripts"],
+  scripts: {
+    registry: {
+      rybbitAnalytics: {
+        siteId: "YOUR_SITE_ID",
+        trigger: "onNuxtReady",
+      },
+    },
+  },
+});
+```
+
+Options:
+
+- `siteId` (required): your Rybbit site ID.
+- `autoTrackPageview`: track pageviews automatically (on by default).
+- `trackSpa`: track client-side route changes (on by default).
+- `analyticsHost`: script and API host for a self-hosted instance, for example `https://your-instance.com/api`.
+- `sessionReplay`, `webVitals`, `trackOutbound`: optional features.
+
+<Callout type="info">
+  To keep the site ID out of source control, leave `siteId` unset and provide `NUXT_PUBLIC_SCRIPTS_RYBBIT_ANALYTICS_SITE_ID` in the environment; Nuxt Scripts reads it at runtime.
+</Callout>
+</Tab>
+<Tab value="nuxt.config head">
+Add the script to the `app.head.script` array in `nuxt.config.ts`:
+
+```typescript title="nuxt.config.ts"
+export default defineNuxtConfig({
+  app: {
+    head: {
+      script: [
+        {
+          src: "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID",
+          defer: true,
+        },
+      ],
+    },
+  },
+});
+```
+
+On Nuxt 2 the array is `head.script` at the top level of `nuxt.config.js`, with the same entry.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+With Nuxt Scripts, use the `useScriptRybbitAnalytics` composable. Its `proxy` queues calls until the script is ready, so it is safe to call immediately:
+
+```vue title="components/ActionButton.vue"
+<template>
+  <button @click="handleAction">Track action</button>
+</template>
+
+<script setup>
+const { proxy } = useScriptRybbitAnalytics();
+
+function handleAction() {
+  proxy.event("nuxt_interaction", { detail: "User clicked the action button" });
+}
+</script>
+```
+
+With the `app.head.script` method, call `window.rybbit` directly and guard it with `import.meta.client`, since components also run on the server (on Nuxt 2 use `process.client`):
+
+```vue title="components/ActionButton.vue"
+<template>
+  <button @click="handleAction">Track action</button>
+</template>
+
+<script setup>
+function handleAction() {
+  if (import.meta.client && window.rybbit) {
+    window.rybbit.event("nuxt_interaction", { detail: "User clicked the action button" });
+  }
+}
+</script>
+```
+
+## Troubleshooting
+
+- **Pageviews missing after navigation**: both methods track Nuxt's client-side route changes automatically, so test the default first. If a route change is still not recorded, call `window.rybbit.pageview()` from a `router.afterEach` hook in a client plugin.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

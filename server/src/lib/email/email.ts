@@ -1,15 +1,13 @@
 import { Resend } from "resend";
 import { render } from "@react-email/components";
 import { IS_CLOUD } from "../const.js";
+import { ApproachingLimitEmail } from "./templates/ApproachingLimitEmail.js";
 import { InvitationEmail } from "./templates/InvitationEmail.js";
 import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
-import { OnboardingTipEmail } from "./templates/OnboardingTipEmail.js";
 import { OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
-import { ReengagementEmail } from "./templates/ReengagementEmail.js";
 import { WeeklyReportEmail } from "./templates/WeeklyReportEmail.js";
-import type { OrganizationReport } from "../../services/weekyReports/weeklyReportTypes.js";
-import type { OnboardingTipContent } from "../../services/onboardingTips/onboardingTipsContent.js";
-import type { ReengagementContent } from "../../services/reengagement/reengagementContent.js";
+import type { SiteReport } from "../../services/weekyReports/weeklyReportTypes.js";
+import { signExpiringPayload } from "../signedToken.js";
 
 let resend: Resend | undefined;
 let marketingAudienceId: string | null = null;
@@ -96,11 +94,47 @@ const OTP_SUBJECTS: Record<OtpEmailType, string> = {
   "sign-in": "Your Rybbit Sign-In Code",
   "email-verification": "Verify Your Email Address",
   "forget-password": "Reset Your Password",
+  "change-email": "Change Your Email Address",
 };
 
 export const sendOtpEmail = async (email: string, otp: string, type: OtpEmailType) => {
   const html = await render(OtpEmail({ otp, type }));
   await sendEmail(email, OTP_SUBJECTS[type], html);
+};
+
+export const sendEmailVerificationLink = async (email: string, verificationUrl: string) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
+      <h2 style="margin: 0 0 16px;">Verify your email</h2>
+      <p>Click the button below to verify this email address on your Rybbit account.</p>
+      <p style="margin: 24px 0;">
+        <a href="${verificationUrl}" style="background: #111; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Verify email</a>
+      </p>
+      <p style="font-size: 12px; color: #666; word-break: break-all;">Or paste this link into your browser: ${verificationUrl}</p>
+    </div>
+  `;
+
+  await sendEmail(email, "Verify your Rybbit email", html);
+};
+
+export const sendChangeEmailVerification = async (
+  currentEmail: string,
+  newEmail: string,
+  verificationUrl: string
+) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
+      <h2 style="margin: 0 0 16px;">Confirm your new email</h2>
+      <p>We received a request to change the email on your Rybbit account from <strong>${currentEmail}</strong> to <strong>${newEmail}</strong>.</p>
+      <p>Click the button below to confirm the change. If you didn't request this, you can safely ignore this email.</p>
+      <p style="margin: 24px 0;">
+        <a href="${verificationUrl}" style="background: #111; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Confirm email change</a>
+      </p>
+      <p style="font-size: 12px; color: #666; word-break: break-all;">Or paste this link into your browser: ${verificationUrl}</p>
+    </div>
+  `;
+
+  await sendEmail(currentEmail, "Confirm your email change on Rybbit", html);
 };
 
 export const sendInvitationEmail = async (
@@ -127,7 +161,7 @@ export const sendLimitExceededEmail = async (
   eventCount: number,
   eventLimit: number
 ) => {
-  const upgradeLink = "https://app.rybbit.io/settings/organization/subscription";
+  const upgradeLink = "https://app.rybbit.io/settings/subscription";
 
   const html = await render(
     LimitExceededEmail({
@@ -141,19 +175,41 @@ export const sendLimitExceededEmail = async (
   await sendEmail(email, `Action Required: ${organizationName} has exceeded its monthly event limit`, html);
 };
 
+export const sendApproachingLimitEmail = async (
+  email: string,
+  organizationName: string,
+  eventCount: number,
+  eventLimit: number
+) => {
+  const upgradeLink = "https://app.rybbit.io/settings/subscription";
+
+  const html = await render(
+    ApproachingLimitEmail({
+      organizationName,
+      eventCount,
+      eventLimit,
+      upgradeLink,
+    })
+  );
+
+  await sendEmail(email, `${organizationName} is approaching its monthly event limit`, html);
+};
+
 export const sendWeeklyReportEmail = async (
   email: string,
   userName: string,
-  organizationReport: OrganizationReport
+  organizationName: string,
+  site: SiteReport
 ) => {
   const html = await render(
     WeeklyReportEmail({
       userName,
-      organizationReport,
+      organizationName,
+      site,
     })
   );
 
-  const subject = `Weekly Analytics Report - ${organizationReport.sites[0].siteName}`;
+  const subject = `Weekly Analytics Report - ${site.siteName}`;
 
   await sendEmail(email, subject, html);
 };
@@ -186,47 +242,6 @@ Bill`;
   }
 };
 
-// Scheduled onboarding tip email - returns the email ID for cancellation
-export const scheduleOnboardingTipEmail = async (
-  email: string,
-  userName: string,
-  tipContent: OnboardingTipContent,
-  scheduledAt: string
-): Promise<string | null> => {
-  if (!resend) return null;
-
-  const unsubscribeUrl = `${process.env.BASE_URL}/api/user/unsubscribe-marketing-oneclick?email=${encodeURIComponent(email)}`;
-
-  try {
-    const html = await render(
-      OnboardingTipEmail({
-        userName,
-        body: tipContent.body,
-        linkText: tipContent.linkText,
-        linkUrl: tipContent.linkUrl,
-        unsubscribeUrl,
-      })
-    );
-
-    const response = await resend.emails.send({
-      from: "Rybbit <automail@email.rybbit.com>",
-      to: email,
-      subject: tipContent.subject,
-      html,
-      scheduledAt,
-      headers: {
-        "List-Unsubscribe": `<${unsubscribeUrl}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
-    });
-
-    return response.data?.id ?? null;
-  } catch (error) {
-    console.error("Failed to schedule onboarding tip email:", error);
-    return null;
-  }
-};
-
 // Cancel a scheduled email
 export const cancelScheduledEmail = async (emailId: string): Promise<void> => {
   if (!resend) return;
@@ -237,43 +252,58 @@ export const cancelScheduledEmail = async (emailId: string): Promise<void> => {
   }
 };
 
-// Send re-engagement email
-export const sendReengagementEmail = async (
-  email: string,
-  userName: string,
-  content: ReengagementContent,
-  siteId: number,
-  domain: string
-): Promise<void> => {
-  if (!resend) return;
+/**
+ * Signed one-click marketing unsubscribe URL used by all lifecycle emails.
+ * Unsubscribe links must keep working from old emails, so the TTL is long
+ * (2 years) - the expiry exists so a leaked link is not valid forever.
+ */
+export const marketingUnsubscribeUrl = (email: string): string => {
+  const { exp, sig } = signExpiringPayload(`unsubscribe:${email}`, 2 * 365 * 24 * 3600);
+  return `${process.env.BASE_URL}/api/user/unsubscribe-marketing-oneclick?email=${encodeURIComponent(email)}&exp=${exp}&sig=${sig}`;
+};
 
-  const unsubscribeUrl = `${process.env.BASE_URL}/api/user/unsubscribe-marketing-oneclick?email=${encodeURIComponent(email)}`;
+/**
+ * Plain-text lifecycle email from Bill with a monitored reply address.
+ * All state-machine onboarding/retention emails go through here.
+ *
+ * Returns true only when Resend actually accepted the message: the SDK
+ * resolves with { data: null, error } on HTTP/network failures rather than
+ * throwing, so the response is checked explicitly. The caller passes a
+ * stable idempotencyKey (the lifecycle email key) so a retry after an
+ * "accepted but response lost" failure can't double-send.
+ */
+export const sendLifecycleEmail = async (
+  email: string,
+  subject: string,
+  text: string,
+  idempotencyKey?: string
+): Promise<boolean> => {
+  if (!resend) return false;
+
+  const unsubscribeUrl = marketingUnsubscribeUrl(email);
 
   try {
-    const html = await render(
-      ReengagementEmail({
-        userName,
-        day: content.day,
-        title: content.title,
-        message: content.message,
-        ctaText: content.ctaText,
-        siteId,
-        domain,
-        unsubscribeUrl,
-      })
-    );
-
-    await resend.emails.send({
-      from: "Rybbit <automail@email.rybbit.com>",
-      to: email,
-      subject: content.subject,
-      html,
-      headers: {
-        "List-Unsubscribe": `<${unsubscribeUrl}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    const response = await resend.emails.send(
+      {
+        from: "Bill from Rybbit <bill@email.rybbit.com>",
+        replyTo: "hello@rybbit.com",
+        to: email,
+        subject,
+        text: `${text}\n\n--\nUnsubscribe from these emails: ${unsubscribeUrl}`,
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       },
-    });
+      idempotencyKey ? { idempotencyKey } : undefined
+    );
+    if (response.error || !response.data?.id) {
+      console.error("Resend rejected lifecycle email:", response.error);
+      return false;
+    }
+    return true;
   } catch (error) {
-    console.error("Failed to send re-engagement email:", error);
+    console.error("Failed to send lifecycle email:", error);
+    return false;
   }
 };

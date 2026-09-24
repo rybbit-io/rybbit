@@ -1,40 +1,39 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
 
-interface SkeletonProps {
+interface UserTableSkeletonProps {
   rowCount?: number;
-  columnCount?: number;
 }
 
-export function UserTableSkeleton({ rowCount = 50 }: SkeletonProps) {
+export function UserTableSkeleton({ rowCount = 10 }: UserTableSkeletonProps) {
   return (
     <>
       {Array.from({ length: rowCount }).map((_, index) => (
-        <TableRow key={index} className="animate-pulse">
-          {/* User ID column */}
+        <TableRow key={index}>
+          {/* User (name + email) */}
           <TableCell>
-            <div className="h-6 bg-neutral-800 rounded w-32 font-mono"></div>
+            <div className="space-y-1 py-0.5">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-44" />
+            </div>
           </TableCell>
-          {/* Name column */}
+          {/* Role */}
           <TableCell>
-            <div className="h-6 bg-neutral-800 rounded w-24"></div>
+            <Skeleton className="h-4 w-12" />
           </TableCell>
-          {/* Email column */}
+          {/* Created */}
           <TableCell>
-            <div className="h-6 bg-neutral-800 rounded w-48"></div>
+            <Skeleton className="h-4 w-24" />
           </TableCell>
-          {/* Role column */}
+          {/* User ID */}
           <TableCell>
-            <div className="h-6 bg-neutral-800 rounded w-16"></div>
+            <Skeleton className="h-4 w-24" />
           </TableCell>
-          {/* Created At column */}
+          {/* Actions */}
           <TableCell>
-            <div className="h-6 bg-neutral-800 rounded w-24"></div>
-          </TableCell>
-          {/* Action column */}
-          <TableCell>
-            <div className="h-8 bg-neutral-800 rounded w-28"></div>
+            <Skeleton className="ml-auto h-8 w-8" />
           </TableCell>
         </TableRow>
       ))}

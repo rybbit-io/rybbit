@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Rybbit ClickHouse backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+RandomizedDelaySec=20m
+Unit=rybbit-clickhouse-backup.service
+
+[Install]
+WantedBy=timers.target
+

@@ -1,0 +1,85 @@
+---
+title: Laravel
+description: Add Rybbit analytics to your Laravel app
+category: backend
+icon: SiLaravel
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Laravel renders pages through Blade layouts, so the snippet goes into the layout file that wraps your site. Read the site ID from `config/services.php` and `.env` so it stays out of the template and differs per environment.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Laravel
+
+#### Configure the site ID
+
+Add the Rybbit values to `.env`:
+
+```bash filename=".env"
+RYBBIT_INSTANCE_URL=https://app.rybbit.io
+RYBBIT_SITE_ID=YOUR_SITE_ID
+```
+
+Then register them in `config/services.php`:
+
+```php filename="config/services.php"
+<?php
+
+return [
+    // ... other services
+
+    'rybbit' => [
+        'instance_url' => env('RYBBIT_INSTANCE_URL', 'https://app.rybbit.io'),
+        'site_id' => env('RYBBIT_SITE_ID'),
+    ],
+];
+```
+
+Run `php artisan config:clear` if your configuration is cached, otherwise the new keys are not picked up.
+
+#### Add the tag to your layout
+
+Open the Blade layout that wraps your pages. In a default install this is `resources/views/layouts/app.blade.php`; Breeze and Jetstream also ship `resources/views/layouts/guest.blade.php`, and Inertia apps use `resources/views/app.blade.php`. Add the tag inside `<head>`:
+
+```php filename="resources/views/layouts/app.blade.php"
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ config('app.name', 'Laravel') }}</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    @production
+        <script src="{{ config('services.rybbit.instance_url') }}/api/script.js?siteId={{ config('services.rybbit.site_id') }}" defer></script>
+    @endproduction
+</head>
+```
+
+`@production` only renders the tag when `APP_ENV=production`, so local development is not tracked. Drop the directive if you also want data from staging.
+
+If you have several layouts (for example `app` and `guest`), add the tag to each one, or move it into a partial such as `resources/views/partials/rybbit.blade.php` and `@include` it from every layout.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Tag missing in production**: run `php artisan config:clear` and `php artisan view:clear` after changing `.env` or `config/services.php`; cached config and compiled views keep the old values.
+- **Tag missing locally**: `@production` hides it unless `APP_ENV=production`. Set that temporarily to test, or remove the directive.
+- **Self-hosted instance**: set `RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the template appends the script path to it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

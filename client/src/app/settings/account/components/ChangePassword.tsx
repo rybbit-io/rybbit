@@ -2,8 +2,9 @@
 
 import { cn } from "@/lib/utils";
 import { CheckCircle2, KeyRound, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "../../../../components/ui/button";
 import {
   Dialog,
@@ -20,6 +21,7 @@ import { Label } from "../../../../components/ui/label";
 import { authClient } from "../../../../lib/auth";
 
 export function ChangePassword() {
+  const t = useExtracted();
   const [open, setOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -46,7 +48,7 @@ export function ChangePassword() {
     if (newPassword.length >= 8) {
       strength += 1;
     } else {
-      feedback = "Password should be at least 8 characters";
+      feedback = t("Password should be at least 8 characters");
     }
 
     // Complexity checks
@@ -56,11 +58,11 @@ export function ChangePassword() {
     if (/[^A-Za-z0-9]/.test(newPassword)) strength += 1;
 
     if (strength >= 4 && newPassword.length >= 8) {
-      feedback = "Strong password";
+      feedback = t("Strong password");
     } else if (strength >= 3 && newPassword.length >= 8) {
-      feedback = "Good password";
+      feedback = t("Good password");
     } else if (newPassword.length >= 8) {
-      feedback = "Add uppercase, lowercase, numbers, or symbols for a stronger password";
+      feedback = t("Add uppercase, lowercase, numbers, or symbols for a stronger password");
     }
 
     setPasswordStrength(strength);
@@ -80,12 +82,12 @@ export function ChangePassword() {
 
   const handleSubmit = async () => {
     if (!passwordsMatch) {
-      toast.error("New password and confirm password do not match");
+      toast.error(t("New password and confirm password do not match"));
       return;
     }
 
     if (passwordStrength < 3) {
-      toast.error("Please use a stronger password");
+      toast.error(t("Please use a stronger password"));
       return;
     }
 
@@ -101,7 +103,7 @@ export function ChangePassword() {
         return;
       }
 
-      toast.success("Password changed successfully");
+      toast.success(t("Password changed successfully"));
       setOpen(false);
       resetForm();
     } catch (error) {
@@ -130,19 +132,19 @@ export function ChangePassword() {
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full">
           <KeyRound className="h-4 w-4 mr-2" />
-          Change Password
+          {t("Change Password")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Change Password</DialogTitle>
-          <DialogDescription>Update your password to keep your account secure</DialogDescription>
+          <DialogTitle>{t("Change Password")}</DialogTitle>
+          <DialogDescription>{t("Update your password to keep your account secure")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-4">
           <div className="space-y-2">
             <Label htmlFor="currentPassword" className="text-sm font-medium flex items-center">
-              Current Password
+              {t("Current Password")}
             </Label>
             <div className="relative">
               <Input
@@ -150,7 +152,7 @@ export function ChangePassword() {
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
                 type="password"
-                placeholder="Your current password"
+                placeholder={t("Your current password")}
                 className="pr-10"
               />
               {currentPassword && (
@@ -163,7 +165,7 @@ export function ChangePassword() {
 
           <div className="space-y-2">
             <Label htmlFor="newPassword" className="text-sm font-medium flex items-center justify-between">
-              <span>New Password</span>
+              <span>{t("New Password")}</span>
               {passwordStrength > 0 && (
                 <span
                   className={cn(
@@ -175,7 +177,7 @@ export function ChangePassword() {
                         : "text-green-500"
                   )}
                 >
-                  {passwordStrength <= 2 ? "Weak" : passwordStrength === 3 ? "Good" : "Strong"}
+                  {passwordStrength <= 2 ? t("Weak") : passwordStrength === 3 ? t("Good") : t("Strong")}
                 </span>
               )}
             </Label>
@@ -185,7 +187,7 @@ export function ChangePassword() {
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 type="password"
-                placeholder="Your new password"
+                placeholder={t("Your new password")}
                 className="pr-10"
               />
               {newPassword && (
@@ -233,7 +235,7 @@ export function ChangePassword() {
 
           <div className="space-y-2">
             <Label htmlFor="confirmPassword" className="text-sm font-medium flex items-center">
-              Confirm Password
+              {t("Confirm Password")}
             </Label>
             <div className="relative">
               <Input
@@ -241,7 +243,7 @@ export function ChangePassword() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 type="password"
-                placeholder="Confirm your new password"
+                placeholder={t("Confirm your new password")}
                 className="pr-10"
               />
               {confirmPassword && (
@@ -254,18 +256,18 @@ export function ChangePassword() {
                 </div>
               )}
             </div>
-            {!passwordsMatch && confirmPassword && <p className="text-xs text-red-500 mt-1">Passwords do not match</p>}
+            {!passwordsMatch && confirmPassword && <p className="text-xs text-red-500 mt-1">{t("Passwords do not match")}</p>}
           </div>
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           <DialogClose asChild>
             <Button variant="outline" className="sm:flex-1">
-              Cancel
+              {t("Cancel")}
             </Button>
           </DialogClose>
           <Button onClick={handleSubmit} disabled={!canSubmit || isSubmitting} variant="success" className="sm:flex-1">
-            {isSubmitting ? "Changing..." : "Change Password"}
+            {isSubmitting ? t("Changing...") : t("Change Password")}
           </Button>
         </DialogFooter>
       </DialogContent>

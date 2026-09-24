@@ -1,0 +1,155 @@
+---
+title: Autocapture
+description: Automatically track user interactions without writing code
+---
+
+Rybbit can automatically capture common user interactions without requiring any code changes. These features can be enabled in your [Site Settings](/docs/site-settings) under the "Auto Capture" section.
+
+## Available Autocapture Features
+
+| Feature | Description | Event Type |
+|---------|-------------|------------|
+| Outbound Links | Track clicks on external links | `outbound` |
+| Error Tracking | Capture JavaScript errors and exceptions | `error` |
+| Button Clicks | Track clicks on buttons | `button_click` |
+| Copy Events | Track when users copy text | `copy` |
+| Form Interactions | Track form submissions and input changes | `form_submit`, `input_change` |
+
+## Outbound Links
+
+When enabled, Rybbit automatically tracks clicks on links that navigate to external domains.
+
+**Tracked properties:**
+- `url` - The destination URL
+- `text` - The link text
+- `target` - The link target attribute (e.g., `_blank`, `_self`)
+
+## Error Tracking
+
+Captures uncaught JavaScript errors and unhandled promise rejections from your site. Only errors originating from your domain are tracked (third-party script errors are filtered out).
+
+**Tracked properties:**
+- `message` - The error message
+- `stack` - Stack trace (truncated to 2000 characters)
+- `fileName` - Source file where the error occurred
+- `lineNumber` - Line number
+- `columnNumber` - Column number
+
+## Button Clicks
+
+Automatically tracks clicks on:
+- `<button>` elements
+- Elements with `role="button"`
+- `<input type="submit">` and `<input type="button">`
+
+**Tracked properties:**
+- `text` - The button's text content (falls back to `aria-label`, then `value` for input buttons, then `title`)
+
+### Adding Custom Properties
+
+You can add custom properties to auto-tracked button clicks using `data-rybbit-prop-*` attributes:
+
+```html
+<button
+  data-rybbit-prop-category="pricing"
+  data-rybbit-prop-variant="blue"
+>
+  Buy Now
+</button>
+```
+
+This tracks: `{ text: "Buy Now", category: "pricing", variant: "blue" }`
+
+### Skipping Autocapture for Specific Buttons
+
+If you want to track a button with a custom event instead of the automatic `button_click`, add the `data-rybbit-event` attribute:
+
+```html
+<!-- This button will fire a custom "signup" event, NOT a button_click -->
+<button data-rybbit-event="signup" data-rybbit-prop-plan="pro">
+  Sign Up
+</button>
+```
+
+See [Track Events](/docs/track-events) for more details on custom event tracking.
+
+## Copy Events
+
+Tracks when users copy text from your site using Ctrl+C, Cmd+C, or the context menu.
+
+**Tracked properties:**
+- `text` - The copied text (truncated to 500 characters)
+- `textLength` - Original length of the copied text (only included if text was truncated)
+- `sourceElement` - The HTML tag where the text was copied from (e.g., `p`, `div`, `span`)
+
+## Form Interactions
+
+Tracks two types of form events:
+
+### Form Submissions (`form_submit`)
+
+Triggered when a form is submitted.
+
+**Tracked properties:**
+- `formId` - The form's `id` attribute
+- `formName` - The form's `name` attribute
+- `formAction` - The form's `action` URL
+- `method` - HTTP method (GET, POST, etc.)
+- `fieldCount` - Number of form fields
+- `ariaLabel` - The form's `aria-label` attribute (if present)
+
+You can add custom properties using `data-rybbit-prop-*` on the form element:
+
+```html
+<form
+  id="signup"
+  data-rybbit-prop-form-type="registration"
+  data-rybbit-prop-variant="a"
+>
+  ...
+</form>
+```
+
+### Input Changes (`input_change`)
+
+Triggered when a user changes the value of an input, select, or textarea field. Disabled inputs are automatically excluded from tracking.
+
+**Tracked properties:**
+- `element` - The element type (`input`, `select`, or `textarea`)
+- `inputType` - For inputs: the type attribute (e.g., `text`, `email`, `checkbox`)
+- `inputName` - The field's `name`, `id`, `aria-label`, or `placeholder` attribute (first available)
+- `formId` - The parent form's `id` (if within a form)
+- `formName` - The parent form's `name` (if within a form)
+
+You can add custom properties using `data-rybbit-prop-*` on the input element:
+
+```html
+<input
+  name="email"
+  data-rybbit-prop-field-category="contact"
+/>
+
+<select
+  name="country"
+  data-rybbit-prop-section="demographics"
+>
+  ...
+</select>
+```
+
+**Privacy note:** Hidden inputs, password fields, and disabled inputs are automatically excluded from tracking.
+
+## Enabling Autocapture
+
+1. Go to your site's **Settings**
+2. Navigate to the **Auto Capture** section
+3. Toggle on the features you want to enable
+
+Changes take effect immediately for new visitors. Existing sessions may need to refresh to pick up the new configuration.
+
+---
+
+**Related Documentation:**
+- [Track Events](/docs/track-events) - Manual event tracking
+- [Site Settings](/docs/site-settings) - Configure your site
+- [Behavior Analytics - Events](/docs/behavior-analytics/events) - View captured events

@@ -155,7 +155,7 @@ export const hourMinuteLabels: string[] = getLocalizedTimeLabels(userLocale, {
   hour12: hour12,
 });
 
-export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
+export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket, locale = userLocale) => {
   const showMinutes = ["minute", "five_minutes", "ten_minutes", "fifteen_minutes", "hour"].includes(bucket);
   const options: Intl.DateTimeFormatOptions = {
     month: "short",
@@ -176,7 +176,7 @@ export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
     options.minute = "numeric";
     options.hour = "numeric";
   }
-  return new Intl.DateTimeFormat(userLocale, options).format(dt.toJSDate());
+  return new Intl.DateTimeFormat(locale, options).format(dt.toJSDate());
 };
 
 /**
@@ -184,7 +184,10 @@ export const formatChartDateTime = (dt: DateTime, bucket: TimeBucket) => {
  * @param timestamp - UTC timestamp string from the server
  * @returns DateTime object in user's selected timezone
  */
-export const parseUtcTimestamp = (timestamp: string): DateTime => {
+export const parseUtcTimestamp = (timestamp: string | Date): DateTime => {
+  if (timestamp instanceof Date) {
+    return DateTime.fromJSDate(timestamp, { zone: "utc" }).setZone(getTimezone());
+  }
   return DateTime.fromSQL(timestamp, { zone: "utc" }).setZone(getTimezone());
 };
 
@@ -222,8 +225,7 @@ export const timezones = [
 // Get timezone label for display
 export const getTimezoneLabel = (value: string): string => {
   if (value === "system") {
-    return `System (${timeZone})`;
+    return `System`;
   }
-  const tz = timezones.find((t) => t.value === value);
-  return tz?.label ?? value;
+  return value;
 };

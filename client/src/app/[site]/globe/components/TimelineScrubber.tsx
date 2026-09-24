@@ -1,16 +1,29 @@
-import { debounce } from "lodash";
+import debounce from "lodash/debounce";
 import { AlertTriangle, Pause, Play } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TimelineSlider } from "../../../../components/ui/timeline-slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../../components/ui/tooltip";
 import { useStore } from "../../../../lib/store";
+import { useShallow } from "zustand/react/shallow";
 import { useTimelineStore, useActiveSessions } from "../timelineStore";
 import { formatTimelineTime, generateTimeWindows, getSessionCountsPerWindow } from "../timelineUtils";
 import { MAX_PAGES, PAGE_SIZE } from "../3d/hooks/timelineLayer/timelineLayerConstants";
 
 export function TimelineScrubber() {
+  const t = useExtracted();
   const { currentTime, timeRange, windowSize, setCurrentTime, allSessions, isLoading, hasMoreData } =
-    useTimelineStore();
+    useTimelineStore(
+      useShallow(s => ({
+        currentTime: s.currentTime,
+        timeRange: s.timeRange,
+        windowSize: s.windowSize,
+        setCurrentTime: s.setCurrentTime,
+        allSessions: s.allSessions,
+        isLoading: s.isLoading,
+        hasMoreData: s.hasMoreData,
+      }))
+    );
   const activeSessions = useActiveSessions();
   // Use reactive timezone from useStore
   const storeTimezone = useStore(state => state.timezone);
@@ -145,7 +158,7 @@ export function TimelineScrubber() {
     return (
       <div className="flex items-center justify-center gap-2 text-xs text-neutral-400 h-[70px] w-full">
         <div className="w-4 h-4 border-2 border-neutral-600 border-t-accent-500 rounded-full animate-spin" />
-        <span>Loading sessions...</span>
+        <span>{t("Loading sessions...")}</span>
       </div>
     );
   }
@@ -177,7 +190,7 @@ export function TimelineScrubber() {
                 opacity: isCalculating ? 0.5 : 1,
               }}
               className="flex-1 transition-all duration-150 cursor-pointer"
-              title={`${count} session${count !== 1 ? "s" : ""}`}
+              title={count !== 1 ? t("{count} sessions", { count: String(count) }) : t("{count} session", { count: String(count) })}
               onClick={() => {
                 setLocalSliderIndex(index);
                 if (timeWindows[index]) {
@@ -195,7 +208,7 @@ export function TimelineScrubber() {
           <button
             onClick={() => setIsPlaying(!isPlaying)}
             className="p-1.5 rounded"
-            aria-label={isPlaying ? "Pause" : "Play"}
+            aria-label={isPlaying ? t("Pause") : t("Play")}
           >
             {isPlaying ? <Pause className="w-4 h-4 text-neutral-100" /> : <Play className="w-4 h-4 text-neutral-100" />}
           </button>
@@ -208,7 +221,7 @@ export function TimelineScrubber() {
             <span className="font-bold text-accent-400">
               {activeSessions.length.toLocaleString()} / {allSessions.length.toLocaleString()}
             </span>{" "}
-            sessions
+            {t("sessions")}
             {hasMoreData && (
               <TooltipProvider>
                 <Tooltip>
@@ -217,8 +230,7 @@ export function TimelineScrubber() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      Showing only the first {(MAX_PAGES * PAGE_SIZE).toLocaleString()} sessions. More data may be
-                      available.
+                      {t("Showing only the first {count} sessions. More data may be available.", { count: (MAX_PAGES * PAGE_SIZE).toLocaleString() })}
                     </p>
                   </TooltipContent>
                 </Tooltip>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { authClient } from "../../../lib/auth";
 import { userStore } from "../../../lib/userStore";
@@ -13,6 +14,7 @@ interface LoginProps {
 }
 
 export function Login({ callbackURL }: LoginProps) {
+  const t = useExtracted();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -38,7 +40,7 @@ export function Login({ callbackURL }: LoginProps) {
       }
 
       if (error) {
-        setError(error.message || "An error occurred during login");
+        setError(error.message || t("An error occurred during login"));
       }
     } catch (error) {
       setError(String(error));
@@ -53,7 +55,7 @@ export function Login({ callbackURL }: LoginProps) {
         <SocialButtons onError={setError} callbackURL={callbackURL} />
         <AuthInput
           id="email"
-          label="Email"
+          label={t("Email")}
           type="email"
           placeholder="example@email.com"
           required
@@ -62,15 +64,15 @@ export function Login({ callbackURL }: LoginProps) {
         />
         <AuthInput
           id="password"
-          label="Password"
+          label={t("Password")}
           type="password"
           placeholder="••••••••"
           required
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
-        <AuthButton isLoading={isLoading} loadingText="Logging in...">
-          Login to Accept Invitation
+        <AuthButton isLoading={isLoading} loadingText={t("Logging in...")}>
+          {t("Login to Accept Invitation")}
         </AuthButton>
         <AuthError error={error} />
       </div>

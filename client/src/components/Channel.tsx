@@ -1,4 +1,5 @@
 import {
+  Bot,
   Calendar,
   DollarSign,
   ExternalLink,
@@ -19,43 +20,49 @@ import { cn } from "../lib/utils";
 import { Favicon } from "./Favicon";
 import { Badge } from "./ui/badge";
 
-export const ChannelIcon = ({ channel, className }: { channel: string; className?: string }) => {
+export function getChannelIconComponent(channel: string) {
   switch (channel) {
     case "Direct":
-      return <Link className={cn("w-4 h-4", className)} />;
+      return Link;
     case "Organic Search":
-      return <Search className={cn("w-4 h-4", className)} />;
-    case "Referral":
-      return <ExternalLink className={cn("w-4 h-4", className)} />;
-    case "Organic Social":
-      return <Users className={cn("w-4 h-4", className)} />;
-    case "Email":
-      return <Mail className={cn("w-4 h-4", className)} />;
-    case "Unknown":
-      return <HelpCircle className={cn("w-4 h-4", className)} />;
     case "Paid Search":
-      return <Search className={cn("w-4 h-4", className)} />;
-    case "Paid Unknown":
-      return <DollarSign className={cn("w-4 h-4", className)} />;
+      return Search;
+    case "Referral":
+      return ExternalLink;
+    case "Organic Social":
     case "Paid Social":
-      return <Users className={cn("w-4 h-4", className)} />;
+      return Users;
+    case "Email":
+      return Mail;
+    case "Unknown":
+      return HelpCircle;
+    case "Paid Unknown":
+      return DollarSign;
     case "Display":
-      return <Monitor className={cn("w-4 h-4", className)} />;
+      return Monitor;
     case "Organic Video":
-      return <Video className={cn("w-4 h-4", className)} />;
+      return Video;
     case "Affiliate":
-      return <Handshake className={cn("w-4 h-4", className)} />;
+      return Handshake;
     case "Content":
-      return <FileText className={cn("w-4 h-4", className)} />;
+      return FileText;
     case "Organic Shopping":
-      return <ShoppingCart className={cn("w-4 h-4", className)} />;
+      return ShoppingCart;
     case "Event":
-      return <Calendar className={cn("w-4 h-4", className)} />;
+      return Calendar;
     case "Audio":
-      return <Headphones className={cn("w-4 h-4", className)} />;
+      return Headphones;
+    case "AI":
+    case "Paid AI":
+      return Bot;
     default:
-      return <FileQuestion className={cn("w-4 h-4", className)} />;
+      return FileQuestion;
   }
+}
+
+export const ChannelIcon = ({ channel, className }: { channel: string; className?: string }) => {
+  const Icon = getChannelIconComponent(channel);
+  return <Icon className={cn("w-4 h-4", className)} />;
 };
 
 export const getDisplayName = (hostname: string): string => {
@@ -105,8 +112,26 @@ export const getDisplayName = (hostname: string): string => {
     "pinterest.com": "Pinterest",
     "www.pinterest.com": "Pinterest",
     "chatgpt.com": "ChatGPT",
+    "chat.openai.com": "ChatGPT",
+    "claude.ai": "Claude",
+    "gemini.google.com": "Gemini",
+    "copilot.microsoft.com": "Copilot",
+    "chat.deepseek.com": "DeepSeek",
+    "deepseek.com": "DeepSeek",
+    "chat.mistral.ai": "Mistral",
+    "mistral.ai": "Mistral",
+    "meta.ai": "Meta AI",
+    "poe.com": "Poe",
+    "grok.com": "Grok",
+    "pi.ai": "Pi",
+    "character.ai": "Character.AI",
     "perplexity.ai": "Perplexity",
     "www.perplexity.ai": "Perplexity",
+    "phind.com": "Phind",
+    "andi.com": "Andi",
+    "you.com": "You.com",
+    "cursor.com": "Cursor",
+    "jasper.ai": "Jasper",
     "news.ycombinator.com": "Hacker News",
     "stripe.com": "Stripe",
     "checkout.stripe.com": "Stripe",

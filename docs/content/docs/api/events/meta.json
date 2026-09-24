@@ -1,0 +1,4 @@
+{
+  "title": "Events",
+  "pages": ["list", "names", "time-series", "count", "properties", "outbound"]
+}

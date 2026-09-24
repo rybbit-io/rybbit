@@ -1,0 +1,16 @@
+{
+  "title": "Feature Guides",
+  "pages": [
+    "errors",
+    "events",
+    "globe",
+    "journeys",
+    "main",
+    "pages",
+    "performance",
+    "session-replay",
+    "retention",
+    "sessions",
+    "users"
+  ]
+}

@@ -5,6 +5,7 @@ import { AuthError } from "@/components/auth/AuthError";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { Turnstile } from "@/components/auth/Turnstile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,7 +15,8 @@ import { authClient } from "../../lib/auth";
 import { IS_CLOUD } from "../../lib/const";
 
 export default function ResetPasswordPage() {
-  useSetPageTitle("Rybbit · Reset Password");
+  useSetPageTitle("Reset Password");
+  const t = useExtracted();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -32,7 +34,7 @@ export default function ResetPasswordPage() {
 
     // Validate Turnstile token if in cloud mode and production
     if (IS_CLOUD && process.env.NODE_ENV === "production" && !turnstileToken) {
-      setError("Please complete the captcha verification");
+      setError(t("Please complete the captcha verification"));
       setIsLoading(false);
       return;
     }
@@ -72,7 +74,7 @@ export default function ResetPasswordPage() {
     try {
       // Simple validation for password length
       if (newPassword.length < 8) {
-        setError("Password must be at least 8 characters long");
+        setError(t("Password must be at least 8 characters long"));
         setIsLoading(false);
         return;
       }
@@ -104,7 +106,7 @@ export default function ResetPasswordPage() {
         <CardHeader>
           <RybbitLogo width={32} height={32} />
           <CardTitle className="text-2xl flex justify-center">
-            {resetSuccess ? "Password Reset Successful" : otpSent ? "Enter OTP Code" : "Reset Password"}
+            {resetSuccess ? t("Password Reset Successful") : otpSent ? t("Enter OTP Code") : t("Reset Password")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -114,24 +116,24 @@ export default function ResetPasswordPage() {
                 <span className="text-3xl font-bold">✓</span>
               </div>
               <div className="text-center space-y-2">
-                <h3 className="text-xl font-medium text-green-500">Success!</h3>
-                <p className="text-muted-foreground">Your password has been reset successfully.</p>
+                <h3 className="text-xl font-medium text-green-500">{t("Success!")}</h3>
+                <p className="text-muted-foreground">{t("Your password has been reset successfully.")}</p>
               </div>
               <div className="w-full rounded-md bg-neutral-100 dark:bg-neutral-800/30 p-3 mt-4">
                 <div className="flex justify-center">
-                  <p className="text-sm text-muted-foreground">Redirecting to login page...</p>
+                  <p className="text-sm text-muted-foreground">{t("Redirecting to login page...")}</p>
                 </div>
               </div>
             </div>
           ) : otpSent ? (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                We've sent a verification code to {email}. Please enter the code below along with your new password.
+                {t("We've sent a verification code to {email}. Please enter the code below along with your new password.", { email })}
               </p>
 
               <AuthInput
                 id="otp"
-                label="Verification Code"
+                label={t("Verification Code")}
                 type="text"
                 placeholder="000000"
                 required
@@ -141,7 +143,7 @@ export default function ResetPasswordPage() {
 
               <AuthInput
                 id="new-password"
-                label="New Password"
+                label={t("New Password")}
                 type="password"
                 placeholder="••••••••"
                 required
@@ -149,11 +151,11 @@ export default function ResetPasswordPage() {
                 onChange={e => setNewPassword(e.target.value)}
               />
 
-              <AuthButton isLoading={isLoading} loadingText="Resetting password...">
-                Reset Password
+              <AuthButton isLoading={isLoading} loadingText={t("Resetting password...")}>
+                {t("Reset Password")}
               </AuthButton>
 
-              <AuthError error={error} title="Error Resetting Password" />
+              <AuthError error={error} title={t("Error Resetting Password")} />
 
               <div className="text-center text-sm">
                 <button
@@ -161,19 +163,19 @@ export default function ResetPasswordPage() {
                   onClick={() => setOtpSent(false)}
                   className="text-xs text-muted-foreground hover:text-primary"
                 >
-                  Use a different email
+                  {t("Use a different email")}
                 </button>
               </div>
             </form>
           ) : (
             <form onSubmit={handleRequestOTP} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Enter your email address and we'll send you a verification code to reset your password.
+                {t("Enter your email address and we'll send you a verification code to reset your password.")}
               </p>
 
               <AuthInput
                 id="email"
-                label="Email"
+                label={t("Email")}
                 type="email"
                 placeholder="example@email.com"
                 required
@@ -192,18 +194,18 @@ export default function ResetPasswordPage() {
 
               <AuthButton
                 isLoading={isLoading}
-                loadingText="Sending code..."
+                loadingText={t("Sending code...")}
                 disabled={IS_CLOUD && process.env.NODE_ENV === "production" ? !turnstileToken || isLoading : isLoading}
               >
-                Send Verification Code
+                {t("Send Verification Code")}
               </AuthButton>
 
-              <AuthError error={error} title="Error Sending Code" />
+              <AuthError error={error} title={t("Error Sending Code")} />
 
               <div className="text-center text-sm">
-                Remember your password?{" "}
+                {t("Remember your password?")}{" "}
                 <Link href="/login" className="underline">
-                  Sign in
+                  {t("Sign in")}
                 </Link>
               </div>
             </form>

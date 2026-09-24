@@ -56,7 +56,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
     <th
       ref={ref}
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium text-neutral-500 [&:has([role=checkbox])]:pr-0 *:[role=checkbox]:translate-y-[2px] dark:text-neutral-400 first:rounded-l-lg last:rounded-r-lg",
+        "h-8 px-2 text-left align-middle font-medium text-xs text-neutral-500 [&:has([role=checkbox])]:pr-0 *:[role=checkbox]:translate-y-[2px] dark:text-neutral-400 first:rounded-l-xl last:rounded-r-xl",
         className
       )}
       {...props}
@@ -84,9 +84,7 @@ const TableCaption = React.forwardRef<HTMLTableCaptionElement, React.HTMLAttribu
 TableCaption.displayName = "TableCaption";
 
 interface TableSortIndicatorProps {
-  /** The current sort direction: 'asc', 'desc', or false/undefined for unsorted */
   sortDirection?: false | "asc" | "desc";
-  /** Whether sorting is enabled for this column */
   canSort?: boolean;
   className?: string;
 }

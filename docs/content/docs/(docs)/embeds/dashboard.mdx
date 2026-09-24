@@ -1,0 +1,65 @@
+---
+title: Dashboard Embed
+description: Embed your analytics dashboard on another site
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { DashboardEmbedDemo } from '@/components/DashboardEmbedDemo';
+
+The dashboard embed lets you place the main Rybbit analytics dashboard on another site with a self-contained iframe. Dashboard embeds use private-link routes with `embed=true`.
+
+## Try It Out
+
+Configure the private-link dashboard embed URL below. The generated snippet uses the same private-link route created in the Rybbit dashboard.
+
+<DashboardEmbedDemo />
+
+## Requirements
+
+Dashboard embeds require a generated private link. The private link key is included in the route, for example `/{siteId}/{privateLinkKey}/main`.
+
+Unlike [Widget Embeds](/docs/embeds/widget), dashboard embeds expose the full read-only analytics dashboard, not just the compact live visitor widget.
+
+<Callout type="warn">
+  Private links are not listed publicly, but anyone with the private link can view the dashboard. Treat the iframe URL like a shareable read-only secret.
+</Callout>
+
+## Setup
+
+1. Open your site in the Rybbit dashboard and click the settings icon.
+2. Go to the **Dashboard Embed** tab.
+3. Generate a private link if one does not already exist.
+4. Choose the embed theme: light, dark, or system.
+5. Choose whether to hide the dashboard sidebar.
+6. Copy the generated `<iframe>` snippet and paste it anywhere on your site.
+
+## Appearance
+
+- **Theme**: `light`, `dark`, or `system`. `system` follows the viewer's operating system color-scheme preference.
+- **Hide sidebar**: removes the dashboard sidebar and keeps viewers on the main dashboard page.
+- **Footer**: the Rybbit footer is hidden automatically in embed mode.
+
+## Example
+
+```html
+<iframe
+  src="https://app.rybbit.io/YOUR_SITE_ID/YOUR_PRIVATE_LINK_KEY/main?embed=true&theme=system&hideSidebar=true"
+  style="border: 0; width: 100%; height: 720px;"
+  loading="lazy"
+  title="Analytics dashboard"
+></iframe>
+```
+
+If you self-host Rybbit, replace `app.rybbit.io` with your own domain.
+
+## URL Parameters
+
+| Parameter     | Values                   | Description                                                                 |
+| ------------- | ------------------------ | --------------------------------------------------------------------------- |
+| `embed`       | `true`                   | Enables embed mode                                                          |
+| `theme`       | `light`, `dark`, `system` | Sets the embedded dashboard color scheme. Defaults to `system`              |
+| `hideSidebar` | `true`, `false`          | Hides the dashboard sidebar and keeps visitors on the main dashboard page   |
+
+When `hideSidebar=true`, only the main dashboard page is shown in the iframe. Leave it off if you want viewers to use the dashboard sidebar to navigate other analytics pages allowed by the private link.
+
+The private key is part of the path, not a query parameter: `/{siteId}/{privateLinkKey}/main?embed=true`.

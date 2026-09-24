@@ -1,115 +1,91 @@
 "use client";
 
-import { BarChart, Building2, HomeIcon, LogOut, Settings, ShieldUser, User } from "lucide-react";
+import { BookOpen, Building2, HelpCircle, LogOut, Moon, ShieldUser, Sun, User } from "lucide-react";
+import { useExtracted } from "next-intl";
+import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
+import { useGetSite } from "../api/admin/hooks/useSites";
 import { useEmbedablePage } from "../app/[site]/utils";
 import { useAdminPermission } from "../app/admin/hooks/useAdminPermission";
-import { IS_CLOUD } from "../lib/const";
+import { useSignout } from "../hooks/useSignout";
+import { authClient } from "../lib/auth";
+import { DEPLOYMENT, IS_CLOUD } from "../lib/const";
+import { getSiteRouteContext } from "../lib/siteRoute";
+import { useStore } from "../lib/store";
+import { useStripeSubscription } from "../lib/subscription/useStripeSubscription";
 import { cn } from "../lib/utils";
 import { RybbitLogo } from "./RybbitLogo";
-import { ThemeSwitcher } from "./ThemeSwitcher";
-import { authClient } from "../lib/auth";
-import { useSignout } from "../hooks/useSignout";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
-function AdminLink({ isExpanded }: { isExpanded: boolean }) {
+function AdminLink() {
   const pathname = usePathname();
   const { isAdmin } = useAdminPermission();
-  if (!IS_CLOUD || !isAdmin) return null;
+  const t = useExtracted();
+  if ((!IS_CLOUD && !DEPLOYMENT) || !isAdmin) return null;
 
   return (
-    <SidebarLink
+    <RailLink
       href="/admin"
       icon={<ShieldUser className="w-5 h-5" />}
-      label="Admin"
+      label={t("Admin")}
       active={pathname.startsWith("/admin")}
-      expanded={isExpanded}
     />
   );
 }
 
 function AppSidebarContent() {
-  const pathname = usePathname();
   const { data: session } = authClient.useSession();
-  const [isExpanded, setIsExpanded] = useState(false);
   const embed = useEmbedablePage();
-  const signout = useSignout();
+  const t = useExtracted();
+
+  const { data: subscription } = useStripeSubscription();
+
+  // On an unclaimed site's dashboard the visitor has no account yet: the user
+  // menu is inert until they claim the site from the banner.
+  const pathname = usePathname();
+  const { site } = useStore();
+  const onSiteRoute = !!site && getSiteRouteContext(pathname).siteId === String(site);
+  const { data: siteMetadata } = useGetSite(site, { enabled: onSiteRoute });
+  const isUnclaimedSite =
+    onSiteRoute && !!siteMetadata && siteMetadata.organizationId === null && !!siteMetadata.claimExpiresAt;
 
   if (embed) return null;
 
   return (
-    <div
-      className={cn(
-        "flex flex-col items-start justify-between h-dvh p-2 py-3 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-850 gap-3 transition-all duration-1s00",
-        isExpanded ? "w-44" : "w-[45px]"
-      )}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-    >
-      <div className="flex flex-col items-start gap-2">
-        {/* <Link href="/" className="mb-3 mt-1 ml-0.5 flex items-center justify-center">
-          <RybbitLogo width={24} height={18} />
-          <HomeIcon className="w-5 h-5" />
-        </Link> */}
-        <SidebarLink
+    <div className="flex flex-col items-center justify-between h-dvh w-[45px] shrink-0 p-2 py-3 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-850 gap-3">
+      <div className="flex flex-col items-center gap-2">
+        <Link
           href="/"
-          icon={<HomeIcon className="w-5 h-5" />}
-          label="Home"
-          // active={!isNaN(Number(pathname.split("/")[1]))}
-          active={false}
-          expanded={isExpanded}
+          aria-label="Rybbit"
+          className="mb-2 mt-1 flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300"
+        >
+          <RybbitLogo width={24} height={18} />
+        </Link>
+        <RailLink
+          href="https://rybbit.com/docs"
+          icon={<BookOpen className="w-5 h-5" />}
+          label={t("Documentation")}
+          target="_blank"
         />
-        {/* <SidebarLink
-          href="/uptime/monitors"
-          icon={<SquareActivity className="w-5 h-5" />}
-          label="Uptime"
-          active={pathname.startsWith("/uptime")}
-          expanded={isExpanded}
-        /> */}
-        {session?.user.role === "admin" && <AdminLink isExpanded={isExpanded} />}
-      </div>
-      <div className="flex flex-col items-start gap-2 w-full">
-        <div className={cn("flex items-center w-full px-0.5", isExpanded ? "justify-start" : "hidden")}>
-          <ThemeSwitcher />
-        </div>
-
-        {isExpanded ? (
-          <>
-            <SidebarLink
-              href="/settings/account"
-              icon={<User className="w-5 h-5" />}
-              label="Account"
-              active={pathname.startsWith("/settings/account")}
-              expanded={isExpanded}
-            />
-            <SidebarLink
-              href="/settings/organization"
-              icon={<Building2 className="w-5 h-5" />}
-              label="Organization"
-              active={pathname.startsWith("/settings/organization")}
-              expanded={isExpanded}
-            />
-            <SidebarLink
-              onClick={signout}
-              icon={<LogOut className="w-5 h-5" />}
-              label="Sign out"
-              expanded={isExpanded}
-            />
-          </>
-        ) : (
-          <div
-            className={cn(
-              "p-1 rounded-md transition-all duration-200 flex items-center gap-2",
-              "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-150 dark:hover:bg-neutral-800/80"
-            )}
-          >
-            <div className="flex items-center justify-center w-5 h-5 shrink-0">
-              <Settings className="w-5 h-5" />
-            </div>
-          </div>
+        {IS_CLOUD && (subscription?.status === "active" || subscription?.status === "trialing") && (
+          <RailLink
+            href="mailto:hello@rybbit.com"
+            icon={<HelpCircle className="w-5 h-5" />}
+            label={t("Email Support")}
+            target="_blank"
+          />
         )}
+        {session?.user.role === "admin" && <AdminLink />}
       </div>
+      <UserMenu
+        name={session?.user.name}
+        email={session?.user.email}
+        image={session?.user.image}
+        disabled={isUnclaimedSite}
+      />
     </div>
   );
 }
@@ -122,53 +98,228 @@ export function AppSidebar() {
   );
 }
 
-function SidebarLink({
+function RailLink({
   active = false,
   href,
   icon,
   label,
-  expanded = false,
-  onClick,
+  target,
 }: {
   active?: boolean;
-  href?: string;
-  icon?: React.ReactNode;
-  label?: string;
-  expanded?: boolean;
-  onClick?: () => void;
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  target?: string;
 }) {
-  if (!href) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          href={href}
+          target={target}
+          aria-label={label}
+          className={cn(
+            "p-1 rounded-md transition-colors flex items-center justify-center",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300",
+            active
+              ? "bg-neutral-150 dark:bg-neutral-800 text-neutral-800 dark:text-white"
+              : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-150 dark:hover:bg-neutral-800/80"
+          )}
+        >
+          {icon}
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function getInitials(name?: string | null, email?: string | null) {
+  const trimmedName = name?.trim();
+  if (trimmedName) {
+    const parts = trimmedName.split(/\s+/);
+    const first = parts[0][0];
+    const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+    return (first + last).toUpperCase();
+  }
+  return email?.trim()[0]?.toUpperCase() ?? "";
+}
+
+const MENU_ROW = cn(
+  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors cursor-pointer",
+  "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+  "focus-visible:outline-none focus-visible:bg-neutral-100 dark:focus-visible:bg-neutral-800"
+);
+
+function MenuSeparator() {
+  return <div className="-mx-1 my-1 h-px bg-neutral-100 dark:bg-neutral-800" />;
+}
+
+function ThemeRow() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const t = useExtracted();
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <button type="button" className={MENU_ROW} onClick={() => setTheme(isDark ? "light" : "dark")}>
+      {isDark ? <Moon className="w-4 h-4 shrink-0" /> : <Sun className="w-4 h-4 shrink-0" />}
+      {t("Theme")}
+      <span className="ml-auto text-xs text-neutral-600 dark:text-neutral-400">{isDark ? t("Dark") : t("Light")}</span>
+    </button>
+  );
+}
+
+function UserMenu({
+  name,
+  email,
+  image,
+  disabled = false,
+}: {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  disabled?: boolean;
+}) {
+  const signout = useSignout();
+  const t = useExtracted();
+  const initials = getInitials(name, email);
+
+  const [open, setOpen] = useState(false);
+  // True while the menu is only open because of hover: focus must not move,
+  // and mouse-leave is allowed to close it. Click/keyboard opens "pin" it instead.
+  const hoverOpenRef = useRef(false);
+  const firstItemRef = useRef<HTMLAnchorElement>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimers = () => {
+    if (openTimer.current) clearTimeout(openTimer.current);
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    openTimer.current = null;
+    closeTimer.current = null;
+  };
+  const hoverOpen = () => {
+    clearTimers();
+    if (open) return;
+    openTimer.current = setTimeout(() => {
+      hoverOpenRef.current = true;
+      setOpen(true);
+    }, 100);
+  };
+  const hoverClose = () => {
+    clearTimers();
+    if (!hoverOpenRef.current) return;
+    closeTimer.current = setTimeout(() => setOpen(false), 200);
+  };
+  const close = () => {
+    clearTimers();
+    setOpen(false);
+  };
+
+  if (disabled) {
     return (
-      <div
-        onClick={onClick}
-        className={cn(
-          "p-1 rounded-md transition-all duration-200 flex items-center gap-2",
-          "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-150 dark:hover:bg-neutral-800/80"
-        )}
-      >
-        <div className="flex items-center justify-center w-5 h-5 shrink-0">{icon}</div>
-        {expanded && label && (
-          <span className="text-sm font-medium whitespace-nowrap overflow-hidden w-[120px]">{label}</span>
-        )}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled
+            aria-label={t("Account")}
+            className={cn(
+              "w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 select-none",
+              "bg-neutral-200 dark:bg-neutral-750 text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
+            )}
+          >
+            <User className="w-4 h-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{t("Claim your site to create an account")}</TooltipContent>
+      </Tooltip>
     );
   }
 
   return (
-    <Link href={href} className="focus:outline-none">
-      <div
-        className={cn(
-          "p-1 rounded-md transition-all duration-200 flex items-center gap-2",
-          active
-            ? "bg-neutral-150 dark:bg-neutral-800 text-neutral-800 dark:text-white"
-            : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-150 dark:hover:bg-neutral-800/80"
-        )}
+    <Popover
+      open={open}
+      onOpenChange={value => {
+        // Click / keyboard / Escape / outside interactions come through here
+        clearTimers();
+        hoverOpenRef.current = false;
+        setOpen(value);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          aria-label={name || email || t("Account")}
+          onMouseEnter={hoverOpen}
+          onMouseLeave={hoverClose}
+          onClick={e => {
+            clearTimers();
+            if (open && hoverOpenRef.current) {
+              // Clicking a hover-opened menu pins it instead of toggling it closed
+              e.preventDefault();
+              hoverOpenRef.current = false;
+            }
+          }}
+          className={cn(
+            "w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 select-none",
+            "bg-neutral-200 dark:bg-neutral-750 text-neutral-700 dark:text-neutral-200 text-[11px] font-semibold",
+            "ring-neutral-300 dark:ring-neutral-600 transition-shadow hover:ring-2 data-[state=open]:ring-2",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300"
+          )}
+        >
+          {image ? (
+            <img src={image} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+          ) : initials ? (
+            initials
+          ) : (
+            <User className="w-4 h-4" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="end"
+        sideOffset={8}
+        className="w-60 rounded-lg p-1 shadow-2xl dark:border-neutral-750 dark:bg-neutral-850"
+        onMouseEnter={clearTimers}
+        onMouseLeave={hoverClose}
+        onOpenAutoFocus={e => {
+          // Radix skips anchor tags when auto-focusing, so place focus manually;
+          // on hover-open, focus must stay wherever the user has it
+          e.preventDefault();
+          if (!hoverOpenRef.current) firstItemRef.current?.focus();
+        }}
+        onCloseAutoFocus={e => {
+          if (hoverOpenRef.current) e.preventDefault();
+        }}
       >
-        <div className="flex items-center justify-center w-5 h-5 shrink-0">{icon}</div>
-        {expanded && label && (
-          <span className="text-sm font-medium whitespace-nowrap overflow-hidden w-[120px]">{label}</span>
-        )}
-      </div>
-    </Link>
+        <div className="flex flex-col gap-0.5 px-2 py-1.5">
+          {name && <span className="text-sm font-medium truncate text-neutral-900 dark:text-neutral-50">{name}</span>}
+          {email && <span className="text-xs text-neutral-600 dark:text-neutral-400 truncate">{email}</span>}
+        </div>
+        <MenuSeparator />
+        <Link href="/settings/account" className={MENU_ROW} onClick={close} ref={firstItemRef}>
+          <User className="w-4 h-4 shrink-0" />
+          {t("Account")}
+        </Link>
+        <Link href="/settings/organization" className={MENU_ROW} onClick={close}>
+          <Building2 className="w-4 h-4 shrink-0" />
+          {t("Organization")}
+        </Link>
+        <ThemeRow />
+        <MenuSeparator />
+        <button
+          type="button"
+          className={MENU_ROW}
+          onClick={() => {
+            close();
+            signout();
+          }}
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          {t("Sign out")}
+        </button>
+      </PopoverContent>
+    </Popover>
   );
 }

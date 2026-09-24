@@ -1,15 +1,22 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { PerformanceOverviewMetrics } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "../utils/sessionFilters.js";
 
-const getQuery = (params: FilterParams, siteId: number) => {
-  const timeStatement = getTimeStatement(params);
-  const filterStatement = getFilterStatement(params.filters, siteId, timeStatement);
+export const buildPerformanceOverviewQuery = (query: FilterParams, siteId: number) => {
+  const timeStatement = getTimeStatement(query);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    query.filters,
+    siteId,
+    timeStatement,
+    TARGET_EVENT_ROW_LEVEL_PARAMS
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
-  return `SELECT
+  return `${filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : ""}
+    SELECT
       quantile(0.5)(lcp) AS lcp_p50,
       quantile(0.75)(lcp) AS lcp_p75,
       quantile(0.9)(lcp) AS lcp_p90,
@@ -32,10 +39,11 @@ const getQuery = (params: FilterParams, siteId: number) => {
       quantile(0.99)(ttfb) AS ttfb_p99,
       COUNT(*) AS total_performance_events
     FROM events
+    ${sessionJoin}
     WHERE
         site_id = {siteId:Int32}
         AND type = 'performance'
-        ${filterStatement}
+        ${rowFilterStatement}
         ${timeStatement}`;
 };
 
@@ -46,24 +54,16 @@ export interface PerformanceOverviewRequest {
   Querystring: FilterParams;
 }
 
-export async function getPerformanceOverview(req: FastifyRequest<PerformanceOverviewRequest>, res: FastifyReply) {
-  const site = req.params.siteId;
+export const getPerformanceOverview = analyticsRoute<PerformanceOverviewRequest>(
+  "performance overview",
+  async (req: FastifyRequest<PerformanceOverviewRequest>, res: FastifyReply) => {
+    const siteId = Number(req.params.siteId);
 
-  const query = getQuery(req.query, Number(site));
-
-  try {
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(site),
-      },
+    const data = await runAnalyticsQuery<PerformanceOverviewMetrics>({
+      query: buildPerformanceOverviewQuery(req.query, siteId),
+      params: { siteId },
     });
 
-    const data = await processResults<PerformanceOverviewMetrics>(result);
     return res.send({ data: data[0] });
-  } catch (error) {
-    console.error("Error fetching performance overview:", error);
-    return res.status(500).send({ error: "Failed to fetch performance overview" });
   }
-}
+);

@@ -1,26 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
 import { EVENT_FILTERS } from "../../../../lib/filterGroups";
-import { getFilteredFilters, getTimezone, useStore } from "../../../../lib/store";
-import { getStartAndEndDate } from "../../../utils";
-import { fetchEventProperties } from "../../endpoints";
+import { getFilteredFilters } from "../../../../lib/store";
+import { EventProperty } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetEventProperties(eventName: string | null) {
-  const { site, time, timezone } = useStore();
-
   const filteredFilters = getFilteredFilters(EVENT_FILTERS);
-  const { startDate, endDate } = getStartAndEndDate(time);
 
-  return useQuery({
-    queryKey: ["event-properties", site, eventName, time, filteredFilters, timezone],
-    enabled: !!site && !!eventName,
-    queryFn: () => {
-      return fetchEventProperties(site, {
-        startDate: startDate ?? "",
-        endDate: endDate ?? "",
-        timeZone: getTimezone(),
-        filters: filteredFilters.length > 0 ? filteredFilters : undefined,
-        eventName: eventName!,
-      });
-    },
+  return useAnalyticsQuery<EventProperty[]>({
+    key: "event-properties",
+    path: "events/properties",
+    // Only event-relevant filters go on the wire; when none apply, send no filters.
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    params: { event_name: eventName },
+    enabled: !!eventName,
+    // Keyed by event name: never show the previously selected event's
+    // properties while the new one loads.
+    staleTime: 0,
+    placeholder: false,
   });
 }

@@ -1,23 +1,22 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { eq } from "drizzle-orm";
-import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
-import { siteConfig } from "../../lib/siteConfig.js";
+import { SiteLifecycleError, siteConfigurationLifecycle } from "../../services/sites/siteConfigurationLifecycle.js";
 
 export async function deleteSite(request: FastifyRequest<{ Params: { siteId: string } }>, reply: FastifyReply) {
-  const { siteId: id } = request.params;
+  try {
+    const siteId = Number(request.params.siteId);
+    if (!Number.isInteger(siteId) || siteId <= 0) {
+      return reply.status(400).send({ success: false, error: "Invalid site ID" });
+    }
 
-  // Auth is handled by requireSiteAdminAccess middleware
+    await siteConfigurationLifecycle.delete(siteId);
 
-  // await clickhouse.command({
-  //   query: "DELETE FROM events WHERE site_id = {id:UInt32}",
-  //   query_params: { id: Number(id) },
-  // });
+    return reply.status(200).send({ success: true });
+  } catch (error) {
+    if (error instanceof SiteLifecycleError) {
+      return reply.status(error.statusCode).send({ success: false, error: error.message });
+    }
 
-  // Delete the site from the sites table (related records will cascade delete automatically)
-  await db.delete(sites).where(eq(sites.siteId, Number(id)));
-
-  siteConfig.removeSite(Number(id));
-
-  return reply.status(200).send({ success: true });
+    request.log.error({ err: error }, "Error deleting site");
+    return reply.status(500).send({ success: false, error: "Failed to delete site" });
+  }
 }

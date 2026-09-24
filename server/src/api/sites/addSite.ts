@@ -1,59 +1,41 @@
-import { randomBytes } from "crypto";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
+import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import {
+  type CreateSiteInput,
+  SiteLifecycleError,
+  siteConfigurationLifecycle,
+} from "../../services/sites/siteConfigurationLifecycle.js";
+
+type AddSiteRequestBody = Omit<CreateSiteInput, "organizationId" | "createdBy">;
 
 export async function addSite(
   request: FastifyRequest<{
-    Params: {
-      organizationId: string;
-    };
-    Body: {
-      domain: string;
-      name: string;
-      public?: boolean;
-      saltUserIds?: boolean;
-      blockBots?: boolean;
-    };
+    Params: { organizationId: string };
+    Body: AddSiteRequestBody;
   }>,
   reply: FastifyReply
 ) {
-  const { organizationId } = request.params;
-  const { domain, name, public: isPublic, saltUserIds, blockBots } = request.body;
-
-  // Validate domain format using regex
-  const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
-  if (!domainRegex.test(domain)) {
-    return reply.status(400).send({
-      error: "Invalid domain format. Must be a valid domain like example.com or sub.example.com",
-    });
-  }
-
   try {
-    // Auth and org admin check handled by requireOrgAdminFromBody middleware
-    const userId = request.user?.id;
+    const newSite = await siteConfigurationLifecycle.create({
+      ...request.body,
+      organizationId: request.params.organizationId,
+      createdBy: request.user?.id,
+    });
 
-    // Generate a random 12-character hex ID
-    const id = randomBytes(6).toString("hex");
+    if (request.user?.id) {
+      invalidateSitesAccessCache(request.user.id);
+    }
 
-    // Create the new site
-    const newSite = await db
-      .insert(sites)
-      .values({
-        id,
-        domain,
-        name,
-        createdBy: userId,
-        organizationId,
-        public: isPublic || false,
-        saltUserIds: saltUserIds || false,
-        blockBots: blockBots === undefined ? true : blockBots,
-      })
-      .returning();
-
-    return reply.status(201).send(newSite[0]);
+    return reply.status(201).send(newSite);
   } catch (error) {
-    console.error("Error adding site:", error);
+    if (error instanceof SiteLifecycleError) {
+      return reply.status(error.statusCode).send({
+        error: error.message,
+        ...(error.details !== undefined && { details: error.details }),
+      });
+    }
+
+    request.log.error({ err: error }, "Error adding site");
     return reply.status(500).send({
       error: "Internal server error",
     });

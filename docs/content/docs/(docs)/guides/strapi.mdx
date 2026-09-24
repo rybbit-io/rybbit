@@ -1,0 +1,60 @@
+---
+title: Strapi
+description: Add Rybbit analytics to your Strapi site
+category: cms
+icon: SiStrapi
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Strapi is a headless CMS: it exposes your content over a REST or GraphQL API and does not render your website. The tracking snippet therefore goes into the frontend that consumes the Strapi API, not into Strapi.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Strapi
+
+<Callout type="info">
+Strapi has no template or head setting to paste into. Add the snippet to the `<head>` of the frontend application that fetches content from Strapi.
+</Callout>
+
+<Tabs items={["Next.js", "Nuxt", "Other frontends"]}>
+<Tab>
+Next.js is the most common Strapi frontend. Add the snippet with `next/script` in your root layout so it loads on every route. Follow the [Next.js guide](/docs/guides/react/next-js).
+</Tab>
+<Tab>
+Nuxt is a popular Strapi frontend. Add the snippet under `app.head.script` in `nuxt.config.ts`. Follow the [Nuxt guide](/docs/guides/vue/nuxt).
+</Tab>
+<Tab>
+- [Gatsby](/docs/guides/react/gatsby)
+- [Remix](/docs/guides/react/remix)
+- [Vite + React](/docs/guides/react/vite-cra)
+- [Vite + Vue](/docs/guides/vue/vite)
+- [Astro](/docs/guides/astro)
+- [SvelteKit](/docs/guides/svelte/sveltekit)
+- [Angular](/docs/guides/angular)
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **The admin panel is not tracked**: the Strapi admin at `/admin` is served by the Strapi server, not by your frontend, so it never loads the snippet. Content editors' activity does not appear in Rybbit, which is usually what you want.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

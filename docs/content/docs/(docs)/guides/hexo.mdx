@@ -1,0 +1,85 @@
+---
+title: Hexo
+description: Add Rybbit analytics to your Hexo site
+category: static
+icon: SiHexo
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Hexo 5 and later ship an injector API that adds HTML to the `<head>` of every generated page from a small file in your site's `scripts/` directory, so no theme edits are needed. Editing the theme's head partial is the fallback for older versions.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Hexo
+
+<Tabs items={["Injector script", "Theme layout"]}>
+<Tab value="Injector script">
+1. Add your site ID to the site `_config.yml` at the root of your project (not the theme config). `instance_url` is only needed if you self-host:
+
+   ```yaml title="_config.yml"
+   rybbit:
+     site_id: "YOUR_SITE_ID"
+     instance_url: "https://app.rybbit.io"
+   ```
+
+2. Create `scripts/rybbit.js` (create the `scripts/` directory if it does not exist). Hexo loads every file in this directory at startup with the `hexo` object in scope:
+
+   ```javascript title="scripts/rybbit.js"
+   const { site_id: siteId, instance_url: instanceUrl = "https://app.rybbit.io" } =
+     hexo.config.rybbit || {};
+
+   if (siteId) {
+     hexo.extend.injector.register(
+       "head_end",
+       `<script src="${instanceUrl}/api/script.js?siteId=${siteId}" defer></script>`
+     );
+   }
+   ```
+
+   `head_end` places the tag right before `</head>`. With no third argument the injector applies to every page type.
+</Tab>
+<Tab value="Theme layout">
+Open your theme's head partial and paste the snippet before `</head>`. For the default Landscape theme that file is `themes/landscape/layout/_partial/head.ejs`; other themes keep an equivalent partial under `layout/`.
+
+```html title="themes/landscape/layout/_partial/head.ejs"
+  ...
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+```
+
+Theme updates overwrite this file, so prefer the injector when your Hexo version supports it.
+</Tab>
+</Tabs>
+
+Regenerate and deploy the `public/` directory:
+
+```bash
+hexo clean && hexo generate
+```
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **`hexo.extend.injector` is undefined**: the injector API arrived in Hexo 5.0. Check `hexo version` and upgrade, or use the theme layout method.
+- **Tag missing after adding the script**: run `hexo clean` before `hexo generate`; Hexo caches rendered output in `db.json` and can serve stale pages.
+- **Local previews are tracked**: `hexo server` runs the same injector as `hexo generate`. Leave `site_id` empty in a local copy of `_config.yml`, or accept the local pageviews.
+- **Theme config vs site config**: `hexo.config` reads the root `_config.yml`, not `themes/<name>/_config.yml`. Put the `rybbit` block in the root file.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

@@ -1,0 +1,44 @@
+---
+title: Thinkific
+description: Add Rybbit analytics to your Thinkific site
+category: creators
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Thinkific adds custom scripts through the **Site Footer Code** field under **Settings > Code & Analytics**. The code runs at the bottom of every page, including the Course Player, and editing it is available on paid plans (Basic or higher). Placing the snippet in the footer rather than the head is fine: it loads with `defer`, so timing is the same.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Thinkific
+
+1. In the admin dashboard, go to **Settings** and open the **Code & Analytics** tab.
+2. Paste the snippet into **Site Footer Code**.
+3. Save.
+
+See Thinkific's [Site Footer Code](https://support.thinkific.com/hc/en-us/articles/360030724953-Site-Footer-Code) article for the field's current limits. Lesson changes inside the Course Player happen without a page reload; Rybbit tracks them as pageviews automatically as the URL changes.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Field is read-only or missing**: editing Site Footer Code needs a paid plan (Basic or higher).
+- **Checkout is not tracked**: Site Footer Code does not run on Performance Checkout pages, so purchases complete outside Rybbit's view. Track the enrolment from the first page a student lands on after checkout, or use a webhook on your side.
+- **Community pages are not tracked**: pages where students post and comment, and direct-messaging pages, are excluded from Site Footer Code by default.
+- **Per-page footer code**: individual site pages also accept footer code in their page settings. Keep the site-wide field as the single place for the snippet so pages are not tracked twice.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

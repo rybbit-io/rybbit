@@ -1,0 +1,12 @@
+{
+  "name": "@rybbit/ui",
+  "version": "2.9.1",
+  "private": true,
+  "description": "Design-sync facade over client/src/components/ui (built by build.mjs, never published)",
+  "type": "module",
+  "module": "dist/index.js",
+  "types": "dist/types/index.d.ts",
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}

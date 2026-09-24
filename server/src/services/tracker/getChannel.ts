@@ -1,10 +1,10 @@
 import {
+  aiChatAppIds,
   emailAppIds,
   getMediumType,
   getSourceType,
   isMobileAppId,
   isPaidTraffic,
-  // New imports for expanded categories
   newsAppIds,
   productivityAppIds,
   searchAppIds,
@@ -25,6 +25,10 @@ function getMobileAppCategory(appId: string): { type: string; isPaid: boolean } 
 
   if (videoAppIds.some(id => appIdLower.includes(id))) {
     return { type: "Organic Video", isPaid: false };
+  }
+
+  if (aiChatAppIds.some(id => appIdLower.includes(id))) {
+    return { type: "AI", isPaid: false };
   }
 
   if (searchAppIds.some(id => appIdLower.includes(id))) {
@@ -183,6 +187,7 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
   if (
     (referringDomain === "$direct" || (!referrer && !selfReferral)) &&
     !utmMedium &&
+    !utmCampaign &&
     (!utmSource || utmSource === "direct" || utmSource === "(direct)")
   ) {
     return "Direct";
@@ -191,6 +196,8 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
   // Paid channels - use intelligent categorization
   if (isPaid) {
     switch (sourceType) {
+      case "ai":
+        return "Paid AI";
       case "search":
         return "Paid Search";
       case "social":
@@ -202,6 +209,8 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
       default:
         // Fall back to medium-based detection for paid traffic
         switch (mediumType) {
+          case "ai":
+            return "Paid AI";
           case "social":
             return "Paid Social";
           case "video":
@@ -223,6 +232,8 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
 
   // Organic channels - prioritize source type detection
   switch (sourceType) {
+    case "ai":
+      return "AI";
     case "search":
       return "Organic Search";
     case "social":
@@ -243,6 +254,8 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
 
   // Medium-based detection for organic traffic
   switch (mediumType) {
+    case "ai":
+      return "AI";
     case "social":
       return "Organic Social";
     case "video":
@@ -268,15 +281,18 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
   }
 
   // Campaign-based detection as fallback
+  if (/\bai\b|chatgpt|claude|gemini|copilot|llm/.test(utmCampaign)) return "AI";
   if (/video/.test(utmCampaign)) return "Organic Video";
   if (/shop|shopping/.test(utmCampaign)) return "Organic Shopping";
   if (/influencer|creator|sponsored/.test(utmCampaign)) return "Influencer";
   if (/event|conference|webinar/.test(utmCampaign)) return "Event";
   if (/social|facebook|twitter|instagram|linkedin/.test(utmCampaign)) return "Organic Social";
 
-  // If referring domain exists but we couldn't categorize it
-  // Don't mark as referral if it's a self-referral
-  if (referringDomain && referringDomain !== "$direct" && !selfReferral) return "Referral";
+  // If referring domain or UTM parameters exist but couldn't be categorized into a specific channel,
+  // classify as Referral (unless it's a self-referral)
+  if ((utmSource || utmMedium || utmCampaign || (referringDomain && referringDomain !== "$direct")) && !selfReferral) {
+    return "Referral";
+  }
 
   // Default fallback
   return "Unknown";

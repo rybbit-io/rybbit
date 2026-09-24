@@ -27,7 +27,7 @@ export default function StripeSuccessPage() {
         <p className="text-lg text-neutral-600 dark:text-neutral-400">
           Your subscription has been processed successfully.
         </p>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-2">Redirecting you to your subscription details...</p>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-2">Redirecting you to your subscription details&hellip;</p>
       </div>
     </div>
   );

@@ -1,11 +1,13 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useGetPerformanceByDimension } from "@/api/analytics/hooks/performance/useGetPerformanceByDimension";
 import { useMeasure } from "@uidotdev/usehooks";
 import { Feature } from "geojson";
 import "ol/ol.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Map from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import View from "ol/View";
 import { fromLonLat } from "ol/proj";
 import VectorLayer from "ol/layer/Vector";
@@ -39,6 +41,7 @@ interface TooltipPosition {
 }
 
 export function PerformanceMap({ height }: { height: string }) {
+  const t = useExtracted();
   const params = useParams();
   const site = params.site as string;
   const { selectedPercentile, selectedPerformanceMetric } = usePerformanceStore();
@@ -149,7 +152,7 @@ export function PerformanceMap({ height }: { height: string }) {
     mapInstanceRef.current = map;
 
     // Handle pointer move for hover effects
-    map.on("pointermove", evt => {
+    const handlePointerMove = (evt: any) => {
       if (evt.dragging) {
         return;
       }
@@ -196,10 +199,11 @@ export function PerformanceMap({ height }: { height: string }) {
         setHoveredId(null);
         setTooltipContent(null);
       }
-    });
+    };
+    const pointerMoveKey = map.on("pointermove", handlePointerMove);
 
     // Handle click for filtering
-    map.on("click", evt => {
+    const handleClick = (evt: any) => {
       const pixel = map.getEventPixel(evt.originalEvent);
       const feature = map.forEachFeatureAtPixel(pixel, feature => feature);
 
@@ -213,9 +217,11 @@ export function PerformanceMap({ height }: { height: string }) {
           type: "equals",
         });
       }
-    });
+    };
+    const clickKey = map.on("click", handleClick);
 
     return () => {
+      dispose([pointerMoveKey, clickKey]);
       map.setTarget(undefined);
     };
   }, []);
@@ -321,7 +327,7 @@ export function PerformanceMap({ height }: { height: string }) {
         <div className="absolute inset-0 bg-neutral-100/30 dark:bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-            <span className="text-sm text-neutral-600 dark:text-neutral-300">Loading performance data...</span>
+            <span className="text-sm text-neutral-600 dark:text-neutral-300">{t("Loading performance data...")}</span>
           </div>
         </div>
       )}
@@ -359,19 +365,19 @@ export function PerformanceMap({ height }: { height: string }) {
                     {getMetricUnit(selectedPerformanceMetric, tooltipContent.metricValue)}
                   </span>
                 ) : (
-                  <span className="text-neutral-400">No data</span>
+                  <span className="text-neutral-400">{t("No data")}</span>
                 )}
               </div>
 
               <div className="text-xs">
                 <div className="text-neutral-600 dark:text-neutral-300">
                   <span className="font-bold text-accent-400">{tooltipContent.eventCount.toLocaleString()}</span>{" "}
-                  performance events
+                  {t("performance events")}
                 </div>
               </div>
             </>
           ) : (
-            <div className="text-neutral-500 dark:text-neutral-400 text-xs">No performance data available</div>
+            <div className="text-neutral-500 dark:text-neutral-400 text-xs">{t("No performance data available")}</div>
           )}
         </div>
       )}

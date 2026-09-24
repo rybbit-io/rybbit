@@ -1,0 +1,103 @@
+---
+title: SolidJS
+description: Add Rybbit analytics to your SolidJS app
+category: frameworks
+icon: SiSolid
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+A client-side Solid app built with Vite has a single `index.html` at the project root; a SolidStart app renders its document from `src/entry-server.tsx`. Paste the snippet into the `<head>` of whichever file your project has and it loads on every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to SolidJS
+
+<Tabs items={["Vite", "SolidStart"]}>
+<Tab value="Vite">
+Open `index.html` at the root of the project (the file `npm create solid@latest` generates for the vanilla templates) and paste the snippet inside `<head>`:
+
+```html title="index.html"
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solid App</title>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/src/index.tsx" type="module"></script>
+  </body>
+</html>
+```
+</Tab>
+<Tab value="SolidStart">
+SolidStart has no `index.html`. The `<html>` document is the `document` prop of `<StartServer>` in `src/entry-server.tsx`; `src/app.tsx` only renders the router inside it. Add the tag to `<head>` next to `{assets}`:
+
+```tsx title="src/entry-server.tsx"
+// @refresh reload
+import { createHandler, StartServer } from "@solidjs/start/server";
+
+export default createHandler(() => (
+  <StartServer
+    document={({ assets, children, scripts }) => (
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" href="/favicon.ico" />
+          <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+          {assets}
+        </head>
+        <body>
+          <div id="app">{children}</div>
+          {scripts}
+        </body>
+      </html>
+    )}
+  />
+));
+```
+
+Restart the dev server after the change.
+</Tab>
+</Tabs>
+
+Route changes made by `@solidjs/router` (including SolidStart's file routes) are tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any component. Guard the call so a blocked or still-loading script does not throw; in SolidStart the guard also covers server rendering.
+
+```tsx title="src/components/SignupButton.tsx"
+export default function SignupButton() {
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.rybbit) {
+      window.rybbit.event("signup_click", { location: "hero" });
+    }
+  };
+
+  return <button onClick={handleClick}>Sign up</button>;
+}
+```
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

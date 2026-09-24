@@ -1,8 +1,5 @@
 import { useGeoStore, getSubdivisions, getCountries } from "./geoStore";
 
-// Re-export types for backward compatibility
-export type { Subdivisions, Country } from "./geoStore";
-
 // Hook-based access (for components that need reactive updates)
 export const useSubdivisions = () => {
   const { subdivisions, isLoadingSubdivisions: isLoading, subdivisionsError: error } = useGeoStore();

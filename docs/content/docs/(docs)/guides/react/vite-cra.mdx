@@ -1,0 +1,75 @@
+---
+title: React (Vite / CRA)
+description: Add Rybbit analytics to your React app
+category: frameworks
+icon: SiReact
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+A client-side React app built with Vite or Create React App has a single HTML entry file. Paste the snippet into its `<head>` and it loads on every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to React
+
+Find the HTML entry file for your tooling:
+
+- **Vite**: `index.html` at the project root.
+- **Create React App**: `public/index.html`.
+
+Paste the snippet just before `</head>`:
+
+```html title="index.html"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>My React App</title>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+```
+
+Placing it before `</body>` also works; `<head>` lets it start loading sooner. Route changes made by React Router and similar libraries are tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any component. Guard the call so a blocked or still-loading script does not throw.
+
+```jsx title="src/components/LearnMoreButton.jsx"
+export default function LearnMoreButton() {
+  const handleClick = () => {
+    if (window.rybbit) {
+      window.rybbit.event("button_click", { category: "CTA", label: "Learn More" });
+    }
+  };
+
+  return <button onClick={handleClick}>Learn More</button>;
+}
+```
+
+## Troubleshooting
+
+- **Pageviews missing after navigation**: this is rare with React Router. If it happens, call `window.rybbit.pageview()` after each route change; test the default behaviour first.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

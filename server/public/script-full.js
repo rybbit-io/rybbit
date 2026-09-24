@@ -6,6 +6,14 @@
 
   // utils.ts
   function patternToRegex(pattern) {
+    const REGEX_PREFIX = "re:";
+    if (pattern.startsWith(REGEX_PREFIX)) {
+      const rawRegex = pattern.slice(REGEX_PREFIX.length);
+      if (!rawRegex) {
+        throw new Error("Empty regex pattern");
+      }
+      return new RegExp(rawRegex);
+    }
     const DOUBLE_WILDCARD_TOKEN = "__DOUBLE_ASTERISK_TOKEN__";
     const SINGLE_WILDCARD_TOKEN = "__SINGLE_ASTERISK_TOKEN__";
     let tokenized = pattern.replace(/\*\*/g, DOUBLE_WILDCARD_TOKEN).replace(/\*/g, SINGLE_WILDCARD_TOKEN);
@@ -59,6 +67,88 @@
   }
 
   // config.ts
+  var FEATURE_FLAG_REQUEST_TIMEOUT_MS = 2e3;
+  function createVisitorId() {
+    try {
+      if (crypto?.randomUUID) {
+        return crypto.randomUUID();
+      }
+    } catch (e2) {
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+  function getOrCreateVisitorId(namespace) {
+    const key = `${namespace}-visitor-id`;
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) return stored;
+      const visitorId = createVisitorId();
+      localStorage.setItem(key, visitorId);
+      return visitorId;
+    } catch (e2) {
+      return createVisitorId();
+    }
+  }
+  function getIdentifiedUserId(namespace) {
+    try {
+      return localStorage.getItem(`${namespace}-user-id`) || void 0;
+    } catch (e2) {
+      return void 0;
+    }
+  }
+  function getEvaluationPathname(url) {
+    if (url.hash && url.hash.startsWith("#/")) {
+      return url.hash.substring(1);
+    }
+    return url.pathname;
+  }
+  async function fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS);
+    try {
+      const url = new URL(window.location.href);
+      const response = await fetch(`${analyticsHost}/site/${siteId}/feature-flags/evaluate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "omit",
+        signal: controller.signal,
+        body: JSON.stringify({
+          anonymousId: visitorId,
+          identifiedUserId: getIdentifiedUserId(namespace),
+          hostname: url.hostname,
+          pathname: getEvaluationPathname(url),
+          querystring: url.search,
+          query: Object.fromEntries(url.searchParams.entries()),
+          referrer: document.referrer,
+          language: navigator.language,
+          screenWidth: screen.width,
+          screenHeight: screen.height
+        })
+      });
+      if (!response.ok) {
+        return { enabled: true, flags: {} };
+      }
+      const data = await response.json();
+      return {
+        enabled: data?.featureFlagsEnabled !== false,
+        flags: data?.flags && typeof data.flags === "object" ? data.flags : {}
+      };
+    } catch (e2) {
+      return { enabled: true, flags: {} };
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+  function getSiteIdFromSrc(src) {
+    try {
+      const url = new URL(src, window.location.href);
+      return url.searchParams.get("siteId") || url.searchParams.get("site-id") || url.searchParams.get("site_id");
+    } catch (e2) {
+      return null;
+    }
+  }
   async function parseScriptConfig(scriptTag) {
     const src = scriptTag.getAttribute("src");
     if (!src) {
@@ -70,12 +160,13 @@
       console.error("Please provide a valid analytics host");
       return null;
     }
-    const siteId = scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
+    const siteId = getSiteIdFromSrc(src) || scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
     if (!siteId) {
-      console.error("Please provide a valid site ID using the data-site-id attribute");
+      console.error("Please provide a valid site ID using the ?siteId= query parameter or the data-site-id attribute");
       return null;
     }
     const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+    const visitorId = getOrCreateVisitorId(namespace);
     const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
     const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
     const sessionReplayMaskTextSelectors = parseJsonSafely(
@@ -102,10 +193,12 @@
     const sessionReplaySlimDOMOptions = slimDOMAttr ? parseJsonSafely(slimDOMAttr, {}) : void 0;
     const sampleRateAttr = scriptTag.getAttribute("data-replay-sample-rate");
     const sessionReplaySampleRate = sampleRateAttr ? Math.min(100, Math.max(0, parseInt(sampleRateAttr, 10))) : void 0;
+    const tag = scriptTag.getAttribute("data-tag") || "";
     const defaultConfig = {
       namespace,
       analyticsHost,
       siteId,
+      visitorId,
       debounceDuration,
       sessionReplayBatchSize,
       sessionReplayBatchInterval,
@@ -120,6 +213,12 @@
       enableWebVitals: false,
       trackErrors: false,
       enableSessionReplay: false,
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
+      tag,
+      featureFlagsEnabled: false,
+      featureFlags: {},
       // rrweb session replay options (undefined means use rrweb defaults)
       sessionReplayBlockClass,
       sessionReplayBlockSelector,
@@ -133,6 +232,7 @@
       sessionReplaySlimDOMOptions,
       sessionReplaySampleRate
     };
+    let resolvedConfig = defaultConfig;
     try {
       const configUrl = `${analyticsHost}/site/tracking-config/${siteId}`;
       const response = await fetch(configUrl, {
@@ -142,7 +242,7 @@
       });
       if (response.ok) {
         const apiConfig = await response.json();
-        return {
+        resolvedConfig = {
           ...defaultConfig,
           // Map API field names to script config field names
           autoTrackPageview: apiConfig.trackInitialPageView ?? defaultConfig.autoTrackPageview,
@@ -151,16 +251,24 @@
           trackOutbound: apiConfig.trackOutbound ?? defaultConfig.trackOutbound,
           enableWebVitals: apiConfig.webVitals ?? defaultConfig.enableWebVitals,
           trackErrors: apiConfig.trackErrors ?? defaultConfig.trackErrors,
-          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay
+          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay,
+          trackButtonClicks: apiConfig.trackButtonClicks ?? defaultConfig.trackButtonClicks,
+          trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
+          trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions,
+          featureFlagsEnabled: apiConfig.featureFlagsEnabled === true
         };
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
-        return defaultConfig;
       }
     } catch (error) {
       console.warn("Error fetching tracking config:", error);
-      return defaultConfig;
     }
+    if (resolvedConfig.featureFlagsEnabled) {
+      const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+      resolvedConfig.featureFlagsEnabled = result.enabled;
+      resolvedConfig.featureFlags = result.flags;
+    }
+    return resolvedConfig;
   }
 
   // sessionReplay.ts
@@ -350,6 +458,12 @@
     }
     // Update user ID when it changes
     updateUserId(userId) {
+      if (userId === this.userId) {
+        return;
+      }
+      if (this.eventBuffer.length > 0) {
+        void this.flushEvents();
+      }
       this.userId = userId;
     }
     // Handle page navigation for SPAs
@@ -364,14 +478,276 @@
     }
   };
 
+  // ../../../shared/src/botSignalContract.ts
+  var CLIENT_BOT_SIGNAL_MASKS = {
+    automationApi: 1 << 0,
+    zeroOuterDimensions: 1 << 1,
+    missingChrome: 1 << 2,
+    swiftShader: 1 << 3,
+    emptyPlugins: 1 << 4,
+    defaultViewport800x600: 1 << 5,
+    defaultViewport1024x768: 1 << 6,
+    impossibleDimensions: 1 << 7,
+    outerDimensionsWeird: 1 << 8,
+    pluginApiAbsence: 1 << 9,
+    defaultViewport1280x1200: 1 << 10,
+    squareScreen: 1 << 11,
+    missingScreenDimensions: 1 << 12
+  };
+  var CLIENT_BOT_SIGNAL_NAMES = Object.keys(CLIENT_BOT_SIGNAL_MASKS);
+  var CLIENT_BOT_SIGNAL_WEIGHTS = {
+    automationApi: 3,
+    zeroOuterDimensions: 2,
+    missingChrome: 1,
+    swiftShader: 1,
+    emptyPlugins: 1,
+    defaultViewport800x600: 3,
+    defaultViewport1024x768: 3,
+    impossibleDimensions: 3,
+    outerDimensionsWeird: 2,
+    pluginApiAbsence: 0,
+    defaultViewport1280x1200: 3,
+    squareScreen: 3,
+    missingScreenDimensions: 1
+  };
+  var ALL_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_NAMES.reduce(
+    (mask, name) => mask | CLIENT_BOT_SIGNAL_MASKS[name],
+    0
+  );
+  var STRONG_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_MASKS.automationApi | CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions | CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600 | CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768 | CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200 | CLIENT_BOT_SIGNAL_MASKS.squareScreen;
+  var MAX_CLIENT_BOT_SCORE = 10;
+  var MIN_PLAUSIBLE_SCREEN_DIMENSION = 200;
+  var MAX_PLAUSIBLE_SCREEN_DIMENSION = 8192;
+  var IMPLAUSIBLE_DESKTOP_VIEWPORTS = [
+    { width: 800, height: 600, signal: "defaultViewport800x600" },
+    { width: 1024, height: 768, signal: "defaultViewport1024x768" },
+    { width: 1280, height: 1200, signal: "defaultViewport1280x1200" }
+  ];
+  function isPlausibleScreenDimensions(width, height) {
+    return Number.isFinite(width) && Number.isFinite(height) && width >= MIN_PLAUSIBLE_SCREEN_DIMENSION && height >= MIN_PLAUSIBLE_SCREEN_DIMENSION && width <= MAX_PLAUSIBLE_SCREEN_DIMENSION && height <= MAX_PLAUSIBLE_SCREEN_DIMENSION;
+  }
+  function isDesktopUserAgent(userAgent) {
+    return /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
+  }
+  function getScreenDimensionSignals(width, height, userAgent) {
+    if (!isPlausibleScreenDimensions(width, height)) {
+      return ["impossibleDimensions"];
+    }
+    const signals = [];
+    if (width === height) {
+      signals.push("squareScreen");
+    }
+    if (isDesktopUserAgent(userAgent)) {
+      for (const viewport of IMPLAUSIBLE_DESKTOP_VIEWPORTS) {
+        if (width === viewport.width && height === viewport.height) {
+          signals.push(viewport.signal);
+        }
+      }
+    }
+    return signals;
+  }
+
+  // botSignals.ts
+  var cachedBotSignals = null;
+  function getBotScore() {
+    return getBotSignals().score;
+  }
+  function getBotSignalMask() {
+    return getBotSignals().mask;
+  }
+  function isPrerendering() {
+    return document.prerendering === true;
+  }
+  function getBotSignals() {
+    if (isPrerendering()) {
+      return calculateBotSignals();
+    }
+    cachedBotSignals ?? (cachedBotSignals = calculateBotSignals());
+    return cachedBotSignals;
+  }
+  function calculateBotSignals() {
+    let score = 0;
+    let mask = 0;
+    function addSignal(name) {
+      const signalMask = CLIENT_BOT_SIGNAL_MASKS[name];
+      if ((mask & signalMask) !== 0) {
+        return;
+      }
+      mask |= signalMask;
+      score += CLIENT_BOT_SIGNAL_WEIGHTS[name];
+    }
+    try {
+      const userAgent = navigator.userAgent;
+      const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
+      const screenWidth = Number(window.screen?.width);
+      const screenHeight = Number(window.screen?.height);
+      const outerWidth = Number(window.outerWidth);
+      const outerHeight = Number(window.outerHeight);
+      const innerWidth = Number(window.innerWidth);
+      const innerHeight = Number(window.innerHeight);
+      const automationGlobalNames = [
+        "__webdriver_evaluate",
+        "__selenium_evaluate",
+        "__webdriver_script_function",
+        "__webdriver_script_func",
+        "__webdriver_script_fn",
+        "__fxdriver_evaluate",
+        "__driver_unwrapped",
+        "__webdriver_unwrapped",
+        "__driver_evaluate",
+        "__selenium_unwrapped",
+        "__fxdriver_unwrapped",
+        "_phantom",
+        "callPhantom",
+        "__nightmare",
+        "domAutomation",
+        "domAutomationController"
+      ];
+      const hasAutomationGlobal = automationGlobalNames.some((name) => name in window || name in document);
+      if (navigator.webdriver === true || hasAutomationGlobal) {
+        addSignal("automationApi");
+      }
+      if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
+        addSignal("zeroOuterDimensions");
+      }
+      for (const signal of getScreenDimensionSignals(screenWidth, screenHeight, userAgent)) {
+        addSignal(signal);
+      }
+      if (Number.isFinite(outerWidth) && Number.isFinite(outerHeight) && Number.isFinite(innerWidth) && Number.isFinite(innerHeight) && outerWidth > 0 && outerHeight > 0 && innerWidth > 0 && innerHeight > 0 && (outerWidth + 8 < innerWidth || outerHeight + 8 < innerHeight)) {
+        addSignal("outerDimensionsWeird");
+      }
+      let hasPluginOrApiAbsence = false;
+      if (!window.chrome && isChromeLike) {
+        addSignal("missingChrome");
+        hasPluginOrApiAbsence = true;
+      }
+      try {
+        const canvas = document.createElement("canvas");
+        const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        if (gl) {
+          try {
+            const rendererParts = [];
+            const rendererRaw = gl.getParameter(gl.RENDERER);
+            if (typeof rendererRaw === "string") {
+              rendererParts.push(rendererRaw);
+            }
+            try {
+              const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+              if (debugInfo) {
+                const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                if (typeof unmaskedRaw === "string") {
+                  rendererParts.push(unmaskedRaw);
+                }
+              }
+            } catch {
+            }
+            if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
+              addSignal("swiftShader");
+            }
+          } finally {
+            releaseWebGlContext(canvas, gl);
+          }
+        }
+      } catch {
+      }
+      if ((!navigator.plugins || navigator.plugins.length === 0) && isChromeLike) {
+        addSignal("emptyPlugins");
+        hasPluginOrApiAbsence = true;
+      }
+      if (hasPluginOrApiAbsence) {
+        addSignal("pluginApiAbsence");
+      }
+    } catch (e2) {
+    }
+    return {
+      score: Math.min(score, MAX_CLIENT_BOT_SCORE),
+      mask
+    };
+  }
+  function releaseWebGlContext(canvas, gl) {
+    try {
+      const loseContextExt = gl.getExtension("WEBGL_lose_context");
+      loseContextExt?.loseContext?.();
+    } catch {
+    }
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+
   // tracking.ts
+  var FEATURE_FLAG_REQUEST_TIMEOUT_MS2 = 2e3;
   var Tracker = class {
     constructor(config) {
       this.customUserId = null;
+      this.errorDedupeCache = /* @__PURE__ */ new Map();
+      this.errorDedupeLastCleanup = 0;
+      this.exposedFeatureFlags = /* @__PURE__ */ new Set();
       this.config = config;
       this.loadUserId();
       if (config.enableSessionReplay) {
         this.initializeSessionReplay();
+      }
+    }
+    serializeFeatureFlagValue(value) {
+      if (value === null || value === void 0) return "";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      try {
+        return JSON.stringify(value);
+      } catch (e2) {
+        return "";
+      }
+    }
+    getFeatureFlagEventPayload() {
+      const payload = {};
+      for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+        payload[key] = this.serializeFeatureFlagValue(assignment.value);
+      }
+      return payload;
+    }
+    getCurrentUrlContext() {
+      const url = new URL(window.location.href);
+      const pathname = url.hash && url.hash.startsWith("#/") ? url.hash.substring(1) : url.pathname;
+      return {
+        hostname: url.hostname,
+        pathname,
+        querystring: url.search,
+        query: Object.fromEntries(url.searchParams.entries()),
+        referrer: document.referrer,
+        language: navigator.language,
+        screenWidth: screen.width,
+        screenHeight: screen.height
+      };
+    }
+    async refreshFeatureFlags() {
+      if (!this.config.featureFlagsEnabled) return;
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS2);
+      try {
+        const response = await fetch(`${this.config.analyticsHost}/site/${this.config.siteId}/feature-flags/evaluate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            anonymousId: this.config.visitorId,
+            identifiedUserId: this.customUserId || void 0,
+            ...this.getCurrentUrlContext()
+          }),
+          mode: "cors",
+          credentials: "omit",
+          keepalive: true,
+          signal: controller.signal
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        this.config.featureFlags = data?.flags && typeof data.flags === "object" ? data.flags : {};
+        if (data?.featureFlagsEnabled === false) {
+          this.config.featureFlagsEnabled = false;
+        }
+      } catch (e2) {
+      } finally {
+        window.clearTimeout(timeout);
       }
     }
     loadUserId() {
@@ -434,10 +810,19 @@
         screenHeight: screen.height,
         language: navigator.language,
         page_title: document.title,
-        referrer: document.referrer
+        referrer: document.referrer,
+        _bs: getBotScore(),
+        _bsm: getBotSignalMask()
       };
       if (this.customUserId) {
         payload.user_id = this.customUserId;
+      }
+      if (this.config.tag) {
+        payload.tag = this.config.tag;
+      }
+      const featureFlagPayload = this.getFeatureFlagEventPayload();
+      if (Object.keys(featureFlagPayload).length > 0) {
+        payload.feature_flags = featureFlagPayload;
       }
       return payload;
     }
@@ -465,11 +850,20 @@
       if (!basePayload) {
         return;
       }
+      const typesWithProperties = [
+        "custom_event",
+        "outbound",
+        "error",
+        "button_click",
+        "copy",
+        "form_submit",
+        "input_change"
+      ];
       const payload = {
         ...basePayload,
         type: eventType,
         event_name: eventName,
-        properties: eventType === "custom_event" || eventType === "outbound" || eventType === "error" ? JSON.stringify(properties) : void 0
+        properties: typesWithProperties.includes(eventType) ? JSON.stringify(properties) : void 0
       };
       this.sendTrackingData(payload);
     }
@@ -478,6 +872,40 @@
     }
     trackEvent(name, properties = {}) {
       this.track("custom_event", name, properties);
+    }
+    getFeatureFlag(key, fallback) {
+      const assignment = this.config.featureFlags?.[key];
+      if (!assignment) {
+        return fallback;
+      }
+      const exposureKey = `${key}:${assignment.version}:${this.serializeFeatureFlagValue(assignment.value)}`;
+      if (!this.exposedFeatureFlags.has(exposureKey)) {
+        this.exposedFeatureFlags.add(exposureKey);
+        this.trackEvent("feature_flag_exposure", {
+          key,
+          value: this.serializeFeatureFlagValue(assignment.value),
+          version: assignment.version,
+          reason: assignment.reason
+        });
+      }
+      return assignment.value;
+    }
+    getFeatureFlags() {
+      return Object.fromEntries(
+        Object.entries(this.config.featureFlags || {}).map(([key, assignment]) => [key, assignment.value])
+      );
+    }
+    getFeatureFlagPayload(key, fallback) {
+      const assignment = this.config.featureFlags?.[key];
+      if (!assignment || assignment.payload === void 0) {
+        return fallback;
+      }
+      return assignment.payload;
+    }
+    getFeatureFlagPayloads() {
+      return Object.fromEntries(
+        Object.entries(this.config.featureFlags || {}).filter(([, assignment]) => assignment.payload !== void 0).map(([key, assignment]) => [key, assignment.payload])
+      );
     }
     trackOutbound(url, text = "", target = "_self") {
       this.track("outbound", "", { url, text, target });
@@ -496,6 +924,10 @@
       this.sendTrackingData(payload);
     }
     trackError(error, additionalInfo = {}) {
+      const message = error?.message || "";
+      if (message.includes("ResizeObserver loop completed with undelivered notifications") || message.includes("ResizeObserver loop limit exceeded")) {
+        return;
+      }
       const currentOrigin = window.location.origin;
       const filename = additionalInfo.filename || "";
       const errorStack = error.stack || "";
@@ -511,6 +943,30 @@
         if (!errorStack.includes(currentOrigin)) {
           return;
         }
+      }
+      const dedupeKeyParts = [
+        error.name || "Error",
+        message,
+        additionalInfo.filename || "",
+        additionalInfo.lineno ?? "",
+        additionalInfo.colno ?? ""
+      ];
+      const dedupeKey = dedupeKeyParts.join("|");
+      const now = Date.now();
+      const dedupeWindowMs = 6e4;
+      const lastSeen = this.errorDedupeCache.get(dedupeKey);
+      if (lastSeen && now - lastSeen < dedupeWindowMs) {
+        return;
+      }
+      this.errorDedupeCache.set(dedupeKey, now);
+      const pruneAfterMs = 10 * 6e4;
+      if (now - this.errorDedupeLastCleanup > dedupeWindowMs) {
+        for (const [key, ts] of this.errorDedupeCache.entries()) {
+          if (now - ts > pruneAfterMs) {
+            this.errorDedupeCache.delete(key);
+          }
+        }
+        this.errorDedupeLastCleanup = now;
       }
       const errorProperties = {
         message: error.message?.substring(0, 500) || "Unknown error",
@@ -540,6 +996,18 @@
       }
       this.track("error", error.name || "Error", errorProperties);
     }
+    trackButtonClick(properties) {
+      this.track("button_click", "", properties);
+    }
+    trackCopy(properties) {
+      this.track("copy", "", properties);
+    }
+    trackFormSubmit(properties) {
+      this.track("form_submit", "", properties);
+    }
+    trackInputChange(properties) {
+      this.track("input_change", "", properties);
+    }
     identify(userId, traits) {
       if (typeof userId !== "string" || userId.trim() === "") {
         console.error("User ID must be a non-empty string");
@@ -551,7 +1019,7 @@
       } catch (e2) {
         console.warn("Could not persist user ID to localStorage");
       }
-      this.sendIdentifyEvent(this.customUserId, traits, true);
+      void this.sendIdentifyEvent(this.customUserId, traits, true).then(() => this.refreshFeatureFlags());
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.updateUserId(this.customUserId);
       }
@@ -566,7 +1034,7 @@
         console.warn("Cannot set traits without identifying user first. Call identify() first.");
         return;
       }
-      this.sendIdentifyEvent(userId, traits, false);
+      void this.sendIdentifyEvent(userId, traits, false).then(() => this.refreshFeatureFlags());
     }
     async sendIdentifyEvent(userId, traits, isNewIdentify = true) {
       try {
@@ -594,6 +1062,10 @@
         localStorage.removeItem(`${this.config.namespace}-user-id`);
       } catch (e2) {
       }
+      if (this.sessionReplayRecorder) {
+        this.sessionReplayRecorder.updateUserId("");
+      }
+      void this.refreshFeatureFlags();
     }
     getUserId() {
       return this.customUserId;
@@ -616,6 +1088,7 @@
     }
     // Handle page changes for SPA
     onPageChange() {
+      void this.refreshFeatureFlags();
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.onPageChange();
       }
@@ -628,7 +1101,7 @@
     }
   };
 
-  // ../../node_modules/web-vitals/dist/web-vitals.js
+  // ../../../node_modules/.pnpm/web-vitals@5.1.0/node_modules/web-vitals/dist/web-vitals.js
   var e = -1;
   var t = (t2) => {
     addEventListener("pageshow", ((n2) => {
@@ -925,9 +1398,194 @@
     }
   };
 
+  // clickTracking.ts
+  var CLICK_THROTTLE_MS = 1e3;
+  var ClickTrackingManager = class {
+    constructor(tracker, config) {
+      this.lastClickAt = /* @__PURE__ */ new WeakMap();
+      this.tracker = tracker;
+      this.config = config;
+    }
+    initialize() {
+      document.addEventListener("click", this.handleClick.bind(this), true);
+    }
+    handleClick(event) {
+      const target = event.target;
+      if (this.config.trackButtonClicks && this.isButton(target)) {
+        this.trackButtonClick(target);
+      }
+    }
+    isButton(element) {
+      if (element.tagName === "BUTTON") return true;
+      if (element.getAttribute("role") === "button") return true;
+      if (element.tagName === "INPUT") {
+        const type = element.type?.toLowerCase();
+        if (type === "submit" || type === "button") return true;
+      }
+      let parent = element.parentElement;
+      let depth = 0;
+      while (parent && depth < 3) {
+        if (parent.tagName === "BUTTON") return true;
+        if (parent.getAttribute("role") === "button") return true;
+        parent = parent.parentElement;
+        depth++;
+      }
+      return false;
+    }
+    trackButtonClick(element) {
+      const buttonElement = this.findButton(element);
+      if (!buttonElement) return;
+      if (buttonElement.hasAttribute("data-rybbit-event")) return;
+      const now = Date.now();
+      const lastAt = this.lastClickAt.get(buttonElement);
+      if (lastAt !== void 0 && now - lastAt < CLICK_THROTTLE_MS) return;
+      this.lastClickAt.set(buttonElement, now);
+      const properties = {
+        text: this.getElementText(buttonElement),
+        ...this.extractDataAttributes(buttonElement)
+      };
+      this.tracker.trackButtonClick(properties);
+    }
+    extractDataAttributes(element) {
+      const attrs = {};
+      for (const attr of element.attributes) {
+        if (attr.name.startsWith("data-rybbit-prop-")) {
+          const key = attr.name.replace("data-rybbit-prop-", "");
+          attrs[key] = attr.value;
+        }
+      }
+      return attrs;
+    }
+    findButton(element) {
+      if (element.tagName === "BUTTON") return element;
+      if (element.getAttribute("role") === "button") return element;
+      if (element.tagName === "INPUT") {
+        const type = element.type?.toLowerCase();
+        if (type === "submit" || type === "button") return element;
+      }
+      let parent = element.parentElement;
+      let depth = 0;
+      while (parent && depth < 3) {
+        if (parent.tagName === "BUTTON") return parent;
+        if (parent.getAttribute("role") === "button") return parent;
+        parent = parent.parentElement;
+        depth++;
+      }
+      return null;
+    }
+    getElementText(element) {
+      const text = element.textContent?.trim().substring(0, 100);
+      if (text) return text;
+      const ariaLabel = element.getAttribute("aria-label")?.trim().substring(0, 100);
+      if (ariaLabel) return ariaLabel;
+      if (element.tagName === "INPUT") {
+        const value = element.value?.trim().substring(0, 100);
+        if (value) return value;
+      }
+      const title = element.getAttribute("title")?.trim().substring(0, 100);
+      if (title) return title;
+      return void 0;
+    }
+    cleanup() {
+      document.removeEventListener("click", this.handleClick.bind(this), true);
+    }
+  };
+
+  // copyTracking.ts
+  var CopyTrackingManager = class {
+    constructor(tracker) {
+      this.tracker = tracker;
+    }
+    initialize() {
+      document.addEventListener("copy", this.handleCopy.bind(this));
+    }
+    handleCopy() {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      const text = selection.toString();
+      const textLength = text.length;
+      if (textLength === 0) return;
+      const anchorNode = selection.anchorNode;
+      const sourceElement = anchorNode instanceof HTMLElement ? anchorNode : anchorNode?.parentElement;
+      if (!sourceElement) return;
+      const properties = {
+        text: text.substring(0, 500),
+        ...textLength > 500 && { textLength },
+        sourceElement: sourceElement.tagName.toLowerCase()
+      };
+      this.tracker.trackCopy(properties);
+    }
+    cleanup() {
+      document.removeEventListener("copy", this.handleCopy.bind(this));
+    }
+  };
+
+  // formTracking.ts
+  var FormTrackingManager = class {
+    constructor(tracker, config) {
+      this.tracker = tracker;
+      this.config = config;
+      this.boundHandleSubmit = this.handleSubmit.bind(this);
+      this.boundHandleChange = this.handleChange.bind(this);
+    }
+    initialize() {
+      document.addEventListener("submit", this.boundHandleSubmit, true);
+      document.addEventListener("change", this.boundHandleChange, true);
+    }
+    cleanup() {
+      document.removeEventListener("submit", this.boundHandleSubmit, true);
+      document.removeEventListener("change", this.boundHandleChange, true);
+    }
+    handleSubmit(event) {
+      const form = event.target;
+      if (form.tagName !== "FORM") return;
+      const properties = {
+        formId: form.id || "",
+        formName: form.name || "",
+        formAction: form.action || "",
+        method: (form.method || "get").toUpperCase(),
+        fieldCount: form.elements.length,
+        ariaLabel: form.getAttribute("aria-label") || void 0,
+        ...this.extractDataAttributes(form)
+      };
+      this.tracker.trackFormSubmit(properties);
+    }
+    handleChange(event) {
+      const target = event.target;
+      const tagName = target.tagName.toUpperCase();
+      if (!["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
+      if (target.disabled) return;
+      if (target.readOnly) return;
+      if (tagName === "INPUT") {
+        const inputType = target.type?.toLowerCase();
+        if (inputType === "hidden" || inputType === "password") return;
+      }
+      const inputName = target.name || target.id || target.getAttribute("aria-label") || target.placeholder || "";
+      const properties = {
+        element: tagName.toLowerCase(),
+        inputType: tagName === "INPUT" ? target.type?.toLowerCase() : void 0,
+        inputName,
+        formId: target.form?.id || void 0,
+        formName: target.form?.name || void 0,
+        ...this.extractDataAttributes(target)
+      };
+      this.tracker.trackInputChange(properties);
+    }
+    extractDataAttributes(element) {
+      const attrs = {};
+      for (const attr of element.attributes) {
+        if (attr.name.startsWith("data-rybbit-prop-")) {
+          const key = attr.name.replace("data-rybbit-prop-", "");
+          attrs[key] = attr.value;
+        }
+      }
+      return attrs;
+    }
+  };
+
   // index.ts
   (async function() {
-    const scriptTag = document.currentScript;
+    const scriptTag = document.currentScript || document.querySelector('script[src*="/script.js"]');
     if (!scriptTag) {
       console.error("Could not find current script tag");
       return;
@@ -951,6 +1609,12 @@
         clearUserId: () => {
         },
         getUserId: () => null,
+        flag: (_key, fallback) => fallback,
+        flagPayload: (_key, fallback) => fallback,
+        flags: () => ({}),
+        flagPayloads: () => ({}),
+        onReady: () => {
+        },
         startSessionReplay: () => {
         },
         stopSessionReplay: () => {
@@ -959,6 +1623,28 @@
       };
       return;
     }
+    const earlyQueue = [];
+    const queueMethod = (method) => (...args) => {
+      earlyQueue.push([method, args]);
+    };
+    window[namespace] = {
+      pageview: queueMethod("pageview"),
+      event: queueMethod("event"),
+      error: queueMethod("error"),
+      trackOutbound: queueMethod("trackOutbound"),
+      identify: queueMethod("identify"),
+      setTraits: queueMethod("setTraits"),
+      clearUserId: queueMethod("clearUserId"),
+      getUserId: () => null,
+      flag: (_key, fallback) => fallback,
+      flagPayload: (_key, fallback) => fallback,
+      flags: () => ({}),
+      flagPayloads: () => ({}),
+      onReady: queueMethod("onReady"),
+      startSessionReplay: queueMethod("startSessionReplay"),
+      stopSessionReplay: queueMethod("stopSessionReplay"),
+      isSessionReplayActive: () => false
+    };
     const config = await parseScriptConfig(scriptTag);
     if (!config) {
       return;
@@ -969,6 +1655,21 @@
         tracker.trackWebVitals(vitals);
       });
       webVitalsCollector.initialize();
+    }
+    let clickManager = null;
+    let copyManager = null;
+    let formManager = null;
+    if (config.trackButtonClicks) {
+      clickManager = new ClickTrackingManager(tracker, config);
+      clickManager.initialize();
+    }
+    if (config.trackCopy) {
+      copyManager = new CopyTrackingManager(tracker);
+      copyManager.initialize();
+    }
+    if (config.trackFormInteractions) {
+      formManager = new FormTrackingManager(tracker, config);
+      formManager.initialize();
     }
     if (config.trackErrors) {
       window.addEventListener("error", (event) => {
@@ -1046,12 +1747,23 @@
       setTraits: (traits) => tracker.setTraits(traits),
       clearUserId: () => tracker.clearUserId(),
       getUserId: () => tracker.getUserId(),
+      flag: (key, fallback) => tracker.getFeatureFlag(key, fallback),
+      flagPayload: (key, fallback) => tracker.getFeatureFlagPayload(key, fallback),
+      flags: () => tracker.getFeatureFlags(),
+      flagPayloads: () => tracker.getFeatureFlagPayloads(),
+      onReady: (callback) => callback(window[config.namespace]),
       startSessionReplay: () => tracker.startSessionReplay(),
       stopSessionReplay: () => tracker.stopSessionReplay(),
       isSessionReplayActive: () => tracker.isSessionReplayActive()
     };
+    const api = window[config.namespace];
+    for (const [method, args] of earlyQueue) {
+      api[method](...args);
+    }
     setupEventListeners();
     window.addEventListener("beforeunload", () => {
+      clickManager?.cleanup();
+      copyManager?.cleanup();
       tracker.cleanup();
     });
     if (config.autoTrackPageview) {

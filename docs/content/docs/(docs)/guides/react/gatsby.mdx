@@ -1,0 +1,99 @@
+---
+title: Gatsby
+description: Add Rybbit analytics to your Gatsby site
+category: frameworks
+icon: SiGatsby
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Gatsby generates the `<head>` of every page at build time. Add the snippet through the `onRenderBody` API in `gatsby-ssr.js`, or with Gatsby's own `<Script>` component if you want control over load timing.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Gatsby
+
+<Tabs items={["gatsby-ssr.js", "Gatsby Script component"]}>
+<Tab value="gatsby-ssr.js">
+Create `gatsby-ssr.js` at the root of your project if it does not exist and register the script with `setHeadComponents`:
+
+```javascript title="gatsby-ssr.js"
+import React from "react";
+
+export const onRenderBody = ({ setHeadComponents }) => {
+  setHeadComponents([
+    <script
+      key="rybbit-analytics"
+      src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+      defer
+    />,
+  ]);
+};
+```
+
+This puts the tag in the `<head>` of every generated page.
+</Tab>
+<Tab value="Gatsby Script component">
+The [Gatsby Script API](https://www.gatsbyjs.com/docs/reference/built-in-components/gatsby-script/) loads third-party scripts with a chosen `strategy` (`post-hydrate`, `idle` or `off-main-thread`). Render it in a layout component that wraps every page:
+
+```jsx title="src/components/layout.js"
+import React from "react";
+import { Script } from "gatsby";
+
+export default function Layout({ children }) {
+  return (
+    <>
+      {children}
+      <Script
+        src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+        strategy="post-hydrate"
+      />
+    </>
+  );
+}
+```
+</Tab>
+</Tabs>
+
+Rebuild the site (`gatsby build`) and deploy the `public` folder. Client-side navigation through Gatsby's `<Link>` is tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any React component. Guard the call, because Gatsby renders components on the server during the build.
+
+```jsx title="src/components/TrackedButton.js"
+import React from "react";
+
+export default function TrackedButton({ label, eventName, eventData }) {
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.rybbit) {
+      window.rybbit.event(eventName, eventData);
+    }
+  };
+
+  return <button onClick={handleClick}>{label}</button>;
+}
+```
+
+## Troubleshooting
+
+- **Pageviews missing after client-side navigation**: this is rare. If it happens, export `onRouteUpdate` from `gatsby-browser.js` and call `window.rybbit.pageview()` there when `location.pathname` changes. Test the default behaviour first.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

@@ -69,7 +69,7 @@ export async function getSiteImports(request: FastifyRequest<GetSiteImportsReque
       ),
     });
   } catch (error) {
-    console.error("Error fetching imports:", error);
+    request.log.error({ err: error }, "Error fetching imports");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

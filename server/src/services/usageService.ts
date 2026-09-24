@@ -1,22 +1,57 @@
 import { and, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
+import Stripe from "stripe";
 import { processResults } from "../api/analytics/utils/utils.js";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { db } from "../db/postgres/postgres.js";
 import { member, organization, sites, user } from "../db/postgres/schema.js";
-import { DEFAULT_EVENT_LIMIT, IS_CLOUD } from "../lib/const.js";
-import { sendLimitExceededEmail } from "../lib/email/email.js";
+import { IS_CLOUD, USAGE_COUNTED_EVENT_TYPES } from "../lib/const.js";
+import { sendApproachingLimitEmail, sendLimitExceededEmail } from "../lib/email/email.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
-import { getBestSubscription } from "../lib/subscriptionUtils.js";
+import {
+  getAllStripeSubscriptionsByCustomer,
+  getBestSubscriptionFromStripeSub,
+  getReplayLimit,
+  stripeSubscriptionInfoFromSnapshot,
+  subscriptionIncludesReplay,
+  SubscriptionInfo,
+} from "../lib/subscriptionUtils.js";
+
+type UsageUpdateCallback = () => void;
 
 class UsageService {
   private sitesOverLimit = new Set<number>();
+  // Sites that should not record session replays right now: their organization's plan
+  // doesn't include replays, or its monthly replay quota is exhausted. Empty until the
+  // usage cron runs (and always empty when self-hosted), so enforcement fails open.
+  private sitesWithoutReplay = new Set<number>();
   private usageCheckTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("usage-checker");
+  private onUsageUpdatedCallbacks: UsageUpdateCallback[] = [];
 
-  constructor() {
-    this.initializeUsageCheckCron();
+  constructor() {}
+
+  /**
+   * Sets the sitesOverLimit set (used by workers receiving IPC updates from primary)
+   */
+  public setSitesOverLimit(sites: Set<number>): void {
+    this.sitesOverLimit = sites;
+  }
+
+  /**
+   * Sets the sitesWithoutReplay set (used by workers receiving IPC updates from primary)
+   */
+  public setSitesWithoutReplay(sites: Set<number>): void {
+    this.sitesWithoutReplay = sites;
+  }
+
+  /**
+   * Register a callback to be invoked after usage data is updated.
+   * Used by the cluster primary to broadcast sitesOverLimit to workers.
+   */
+  public onUsageUpdated(callback: UsageUpdateCallback): void {
+    this.onUsageUpdatedCallbacks.push(callback);
   }
 
   /**
@@ -56,6 +91,20 @@ class UsageService {
   }
 
   /**
+   * Gets the set of site IDs whose plan does not include session replay
+   */
+  public getSitesWithoutReplay(): Set<number> {
+    return this.sitesWithoutReplay;
+  }
+
+  /**
+   * Checks if a site's plan excludes session replay
+   */
+  public isSiteWithoutReplay(siteId: number): boolean {
+    return this.sitesWithoutReplay.has(siteId);
+  }
+
+  /**
    * Gets the first day of the current month in YYYY-MM-DD format using Luxon
    */
   private getStartOfMonth(): string {
@@ -77,7 +126,7 @@ class UsageService {
 
       return owners.map(owner => owner.email);
     } catch (error) {
-      this.logger.error(error as Error, `Error getting owner emails for organization ${organizationId}`);
+      this.logger.error({ err: error, organizationId }, "Error getting organization owner emails");
       return [];
     }
   }
@@ -103,23 +152,21 @@ class UsageService {
   }
 
   /**
-   * Gets event limit and billing period start date for an organization based on their best subscription.
-   * Checks both AppSumo and Stripe subscriptions and uses the one with the higher event limit.
-   * @returns [eventLimit, periodStartDate]
+   * Resolves an organization's best subscription (custom plan / override / Stripe / AppSumo / free).
    */
-  private async getOrganizationSubscriptionInfo(orgData: {
-    id: string;
-    stripeCustomerId: string | null;
-    createdAt: string;
-    name: string;
-  }): Promise<[number, string | null]> {
-    // Special case for specific organizations
-    if (orgData.name === "rybbit" || orgData.name === "Zam") {
-      return [Infinity, this.getStartOfMonth()];
-    }
-
-    // Get the best subscription (highest event limit from AppSumo or Stripe)
-    const subscription = await getBestSubscription(orgData.id, orgData.stripeCustomerId);
+  private async getOrganizationSubscriptionInfo(
+    orgData: {
+      id: string;
+      stripeCustomerId: string | null;
+      createdAt: string;
+      name: string;
+    },
+    stripeSubscriptions: Map<string, Stripe.Subscription>
+  ): Promise<SubscriptionInfo> {
+    // Resolve this org's Stripe subscription from the bulk snapshot (no per-org Stripe call),
+    // then layer in custom plan / override / AppSumo via the same priority rules as elsewhere.
+    const stripeSub = stripeSubscriptionInfoFromSnapshot(stripeSubscriptions, orgData.stripeCustomerId);
+    const subscription = await getBestSubscriptionFromStripeSub(orgData.id, stripeSub);
 
     // Log subscription details
     if (subscription.source === "appsumo") {
@@ -134,7 +181,7 @@ class UsageService {
       this.logger.info(`Organization ${orgData.name} on free tier with ${subscription.eventLimit} events/month`);
     }
 
-    return [subscription.eventLimit, subscription.periodStart];
+    return subscription;
   }
 
   /**
@@ -151,13 +198,14 @@ class UsageService {
             site_id,
             COUNT(*) as count
           FROM events
-          WHERE type IN ('pageview', 'custom_event', 'performance')
+          WHERE type IN {types:Array(String)}
             AND timestamp >= toDate({periodStart:String})
           GROUP BY site_id
         `,
         format: "JSONEachRow",
         query_params: {
           periodStart: periodStart,
+          types: [...USAGE_COUNTED_EVENT_TYPES],
         },
       });
 
@@ -176,24 +224,79 @@ class UsageService {
   }
 
   /**
+   * Gets monthly session replay counts for all sites in a single query (for current month).
+   * The metadata table is a ReplacingMergeTree keyed by (site_id, session_id), so uniq
+   * dedupes the multiple rows written per session before merges run.
+   * Returns a map of site_id -> replay count; empty on failure so quota enforcement fails open.
+   */
+  private async getAllSiteReplayCounts(): Promise<Map<number, number>> {
+    try {
+      const periodStart = this.getStartOfMonth();
+
+      const result = await clickhouse.query({
+        query: `
+          SELECT
+            site_id,
+            uniq(session_id) as count
+          FROM session_replay_metadata_v2
+          WHERE start_time >= toDate({periodStart:String})
+          GROUP BY site_id
+        `,
+        format: "JSONEachRow",
+        query_params: {
+          periodStart: periodStart,
+        },
+      });
+
+      const rows = await processResults<{ site_id: number; count: string }>(result);
+
+      const replayCountMap = new Map<number, number>();
+      for (const row of rows) {
+        replayCountMap.set(row.site_id, parseInt(String(row.count), 10));
+      }
+
+      return replayCountMap;
+    } catch (error) {
+      this.logger.error(error as Error, "Error querying ClickHouse for replay counts");
+      return new Map();
+    }
+  }
+
+  /**
    * Updates monthly event usage for all organizations
    */
   public async updateOrganizationsMonthlyUsage(): Promise<void> {
     this.logger.info("Starting check of monthly event usage for organizations...");
 
     try {
+      // Step 0: Pull every customer's subscription from Stripe in one bulk pass (a handful of
+      // paginated calls) instead of one call per org. If this fails (e.g. rate limit/outage),
+      // skip the whole run rather than treating every paying org as free — which would wrongly
+      // flag them over-limit, block ingestion, and email their owners.
+      let stripeSubscriptions: Map<string, Stripe.Subscription>;
+      try {
+        stripeSubscriptions = await getAllStripeSubscriptionsByCustomer();
+      } catch (error) {
+        this.logger.error(error as Error, "Skipping usage check: failed to fetch Stripe subscriptions in bulk");
+        return;
+      }
+
       // Step 1: Get all sites with their organization IDs
       const allSites = await this.getAllSites();
 
-      // Step 2: Get event counts for all sites in a single query (current month)
-      const eventCountMap = await this.getAllSiteEventCounts();
+      // Step 2: Get event and replay counts for all sites (current month, one query each)
+      const [eventCountMap, replayCountMap] = await Promise.all([
+        this.getAllSiteEventCounts(),
+        this.getAllSiteReplayCounts(),
+      ]);
 
-      // Step 3: Build a map of organizationId -> { siteIds, eventCount }
-      const orgDataMap = new Map<string, { siteIds: number[]; eventCount: number }>();
+      // Step 3: Build a map of organizationId -> { siteIds, eventCount, replayCount }
+      const orgDataMap = new Map<string, { siteIds: number[]; eventCount: number; replayCount: number }>();
       for (const site of allSites) {
-        const orgData = orgDataMap.get(site.organizationId) || { siteIds: [], eventCount: 0 };
+        const orgData = orgDataMap.get(site.organizationId) || { siteIds: [], eventCount: 0, replayCount: 0 };
         orgData.siteIds.push(site.siteId);
         orgData.eventCount += eventCountMap.get(site.siteId) || 0;
+        orgData.replayCount += replayCountMap.get(site.siteId) || 0;
         orgDataMap.set(site.organizationId, orgData);
       }
 
@@ -205,8 +308,15 @@ class UsageService {
           stripeCustomerId: organization.stripeCustomerId,
           createdAt: organization.createdAt,
           overMonthlyLimit: organization.overMonthlyLimit,
+          approachingLimitNotifiedPeriodStart: organization.approachingLimitNotifiedPeriodStart,
         })
         .from(organization);
+
+      const monthStart = this.getStartOfMonth();
+      const now = DateTime.now();
+      const totalDaysInMonth = now.daysInMonth ?? 30;
+      const daysElapsed = now.diff(now.startOf("month"), "days").days;
+      const daysRemaining = totalDaysInMonth - daysElapsed;
 
       // Step 5: Process each organization
       for (const orgData of organizations) {
@@ -215,24 +325,24 @@ class UsageService {
           const eventCount = orgStats?.eventCount || 0;
           const siteIds = orgStats?.siteIds || [];
 
-          // Only fetch subscription info for organizations with > 3000 events
-          // This avoids slow Stripe API calls for low-usage orgs
-          let eventLimit: number;
-          let isOverLimit: boolean;
-
-          if (eventCount <= DEFAULT_EVENT_LIMIT) {
-            // Free tier limit is 3000, so they're definitely not over limit
-            eventLimit = DEFAULT_EVENT_LIMIT;
-            isOverLimit = false;
-            this.logger.debug(`Organization ${orgData.name} has ${eventCount} events, skipping subscription check`);
-          } else {
-            // High usage - need to check their actual subscription
-            const [fetchedLimit, periodStart] = await this.getOrganizationSubscriptionInfo(orgData);
-            eventLimit = fetchedLimit;
-            isOverLimit = eventCount > eventLimit;
-          }
-
           const wasOverLimit = orgData.overMonthlyLimit ?? false;
+          const alreadyNotifiedApproaching = orgData.approachingLimitNotifiedPeriodStart === monthStart;
+
+          const subscription = await this.getOrganizationSubscriptionInfo(orgData, stripeSubscriptions);
+          const eventLimit = subscription.eventLimit;
+          const isOverLimit = eventCount > eventLimit;
+
+          const replayCount = orgStats?.replayCount || 0;
+          const replayBlocked =
+            !subscriptionIncludesReplay(subscription) || replayCount >= getReplayLimit(subscription);
+
+          let sendApproaching = false;
+          if (!alreadyNotifiedApproaching && !isOverLimit && Number.isFinite(eventLimit) && daysRemaining >= 2) {
+            const projected = daysElapsed >= 1 ? eventCount * (totalDaysInMonth / daysElapsed) : 0;
+            const trigger90 = eventCount >= eventLimit * 0.9;
+            const triggerProjection = daysElapsed >= 7 && projected >= eventLimit;
+            sendApproaching = trigger90 || triggerProjection;
+          }
 
           // Update organization's monthlyEventCount and overMonthlyLimit fields
           await db
@@ -240,6 +350,7 @@ class UsageService {
             .set({
               monthlyEventCount: eventCount,
               overMonthlyLimit: isOverLimit,
+              ...(sendApproaching ? { approachingLimitNotifiedPeriodStart: monthStart } : {}),
             })
             .where(eq(organization.id, orgData.id));
 
@@ -252,16 +363,44 @@ class UsageService {
               for (const ownerEmail of ownerEmails) {
                 try {
                   await sendLimitExceededEmail(ownerEmail, orgData.name, eventCount, eventLimit);
-                  this.logger.info(`Sent limit exceeded email to owner ${ownerEmail} for organization ${orgData.name}`);
+                  this.logger.info({ organizationId: orgData.id }, "Sent limit-exceeded email to organization owner");
                 } catch (error) {
                   this.logger.error(
-                    error as Error,
-                    `Failed to send limit exceeded email to owner ${ownerEmail} for organization ${orgData.name}`
+                    { err: error, organizationId: orgData.id },
+                    "Failed to send limit-exceeded email to organization owner"
                   );
                 }
               }
             } else {
-              this.logger.warn(`No owners found for organization ${orgData.name}, skipping limit exceeded email`);
+              this.logger.warn(
+                { organizationId: orgData.id },
+                "No organization owners found; skipping limit-exceeded email"
+              );
+            }
+          }
+
+          if (sendApproaching) {
+            const ownerEmails = await this.getOrganizationOwnerEmails(orgData.id);
+            if (ownerEmails.length > 0) {
+              for (const ownerEmail of ownerEmails) {
+                try {
+                  await sendApproachingLimitEmail(ownerEmail, orgData.name, eventCount, eventLimit);
+                  this.logger.info(
+                    { organizationId: orgData.id },
+                    "Sent approaching-limit email to organization owner"
+                  );
+                } catch (error) {
+                  this.logger.error(
+                    { err: error, organizationId: orgData.id },
+                    "Failed to send approaching-limit email to organization owner"
+                  );
+                }
+              }
+            } else {
+              this.logger.warn(
+                { organizationId: orgData.id },
+                "No organization owners found; skipping approaching-limit email"
+              );
             }
           }
 
@@ -279,6 +418,17 @@ class UsageService {
             }
           }
 
+          // Track sites that shouldn't record session replays — plan doesn't include
+          // them (e.g. after a downgrade from Pro) or the monthly quota is exhausted —
+          // so ingest/config endpoints can stop recording for them
+          for (const siteId of siteIds) {
+            if (replayBlocked) {
+              this.sitesWithoutReplay.add(siteId);
+            } else {
+              this.sitesWithoutReplay.delete(siteId);
+            }
+          }
+
           this.logger.info(
             `Updated organization ${orgData.name}: ${eventCount.toLocaleString()} events, limit ${eventLimit.toLocaleString()}`
           );
@@ -287,10 +437,25 @@ class UsageService {
         }
       }
 
-      this.logger.info(`Completed monthly event usage check. ${this.sitesOverLimit.size} sites are over their limit.`);
+      this.logger.info(
+        `Completed monthly event usage check. ${this.sitesOverLimit.size} sites are over their limit, ` +
+          `${this.sitesWithoutReplay.size} sites lack session replay access.`
+      );
+
+      // Notify listeners (e.g., cluster primary broadcasts to workers)
+      for (const callback of this.onUsageUpdatedCallbacks) {
+        callback();
+      }
     } catch (error) {
       this.logger.error(error as Error, "Error updating monthly usage");
     }
+  }
+
+  /**
+   * Method to start the usage check cron job
+   */
+  public startUsageCheckCron() {
+    this.initializeUsageCheckCron();
   }
 
   /**

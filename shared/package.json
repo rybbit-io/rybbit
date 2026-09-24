@@ -1,5 +1,6 @@
 {
   "name": "@rybbit/shared",
+  "private": true,
   "version": "1.0.0",
   "description": "Shared types for Rybbit analytics",
   "main": "./dist/index.js",
@@ -13,7 +14,7 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "@types/node": "^20.10.6",
+    "@types/node": "^24.13.3",
     "typescript": "^5.3.3"
   },
   "license": "MIT"

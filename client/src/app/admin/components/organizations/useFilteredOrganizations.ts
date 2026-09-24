@@ -25,7 +25,7 @@ export function useFilteredOrganizations(
         return (
           org.id.toLowerCase().includes(lowerSearchQuery) ||
           org.name.toLowerCase().includes(lowerSearchQuery) ||
-          org.sites.some(site => site.domain.toLowerCase().includes(lowerSearchQuery)) ||
+          org.sites.some(site => site.name.toLowerCase().includes(lowerSearchQuery) || site.domain.toLowerCase().includes(lowerSearchQuery)) ||
           org.members.some(
             member =>
               member.email.toLowerCase().includes(lowerSearchQuery) ||

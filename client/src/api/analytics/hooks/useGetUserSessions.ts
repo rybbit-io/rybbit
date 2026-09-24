@@ -1,16 +1,8 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { SESSION_PAGE_FILTERS } from "../../../lib/filterGroups";
-import { getFilteredFilters, getTimezone, useStore } from "../../../lib/store";
-import { buildApiParams } from "../../utils";
-import {
-  fetchSession,
-  fetchSessions,
-  fetchUserSessionCount,
-  GetSessionsResponse,
-  SessionPageviewsAndEvents,
-  UserSessionCountResponse,
-} from "../endpoints";
 import { Time } from "../../../components/DateSelector/types";
+import { SESSION_PAGE_FILTERS, USER_DETAIL_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { getFilteredFilters, useStore } from "../../../lib/store";
+import { GetSessionsResponse, SessionPageviewsAndEvents, UserSessionCountResponse } from "../endpoints";
+import { useAnalyticsInfiniteQuery, useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export function useGetSessions({
   userId,
@@ -31,29 +23,24 @@ export function useGetSessions({
   minEvents?: number;
   minDuration?: number;
 }) {
-  const { time, site, timezone } = useStore();
-
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
-  // When filtering by userId, we fetch all sessions for that user (no time filter)
-  // Otherwise use buildApiParams which handles past-minutes mode
-  const params = userId
-    ? { startDate: "", endDate: "", timeZone: getTimezone(), filters: filteredFilters }
-    : buildApiParams(timeOverride || time, { filters: filteredFilters });
-
-  return useQuery<{ data: GetSessionsResponse }>({
-    queryKey: ["sessions", timeOverride || time, site, filteredFilters, userId, page, limit, identifiedOnly, timezone, minPageviews, minEvents, minDuration],
-    queryFn: () => {
-      return fetchSessions(site, {
-        ...params,
-        page,
-        limit,
-        userId,
-        identifiedOnly,
-        minPageviews,
-        minEvents,
-        minDuration,
-      });
+  return useAnalyticsQuery<GetSessionsResponse>({
+    key: "sessions",
+    path: "sessions",
+    overrideTime: timeOverride,
+    // customFilters fall back to the store filters when empty; disable filters
+    // entirely instead so an empty page-filter set stays unfiltered.
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    params: {
+      page,
+      limit,
+      user_id: userId,
+      identified_only: identifiedOnly,
+      min_pageviews: minPageviews,
+      min_events: minEvents,
+      min_duration: minDuration,
     },
     staleTime: Infinity,
   });
@@ -70,85 +57,63 @@ export function useGetSessionsInfinite({
   limit?: number;
   refetchInterval?: number;
 }) {
-  const { time, site, timezone } = useStore();
-
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
-  // When filtering by userId, we fetch all sessions for that user (no time filter)
-  // Otherwise use buildApiParams which handles past-minutes mode
-  const params = userId
-    ? { startDate: "", endDate: "", timeZone: getTimezone(), filters: filteredFilters }
-    : buildApiParams(timeOverride || time, { filters: filteredFilters });
-
-  return useInfiniteQuery<{ data: GetSessionsResponse }>({
-    queryKey: ["sessions-infinite", timeOverride || time, site, filteredFilters, userId, timezone],
-    queryFn: ({ pageParam = 1 }) => {
-      return fetchSessions(site, {
-        ...params,
-        page: pageParam as number,
-        userId,
-        limit,
-      });
-    },
+  return useAnalyticsInfiniteQuery<GetSessionsResponse>({
+    key: "sessions-infinite",
+    path: "sessions",
+    overrideTime: timeOverride,
+    // Scoping to a user means every session that user ever had, not just the
+    // ones inside the selected period.
+    useTime: !userId,
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    params: { limit, user_id: userId },
     initialPageParam: 1,
-    getNextPageParam: (lastPage: { data: GetSessionsResponse }, allPages) => {
-      // If we have data and it's a full page (100 items), there might be more
-      if (lastPage?.data && lastPage.data.length === limit) {
-        return allPages.length + 1;
-      }
-      return undefined;
-    },
+    pageParams: page => ({ page }),
+    // A full page might have more behind it; a short one is the last.
+    getNextPageParam: (lastPage, allPages) => (lastPage.length === limit ? allPages.length + 1 : undefined),
     staleTime: Infinity,
     refetchInterval,
   });
 }
 
 export function useGetSessionDetailsInfinite(sessionId: string | null) {
-  const { site, time } = useStore();
-  const pastMinutesMode = time.mode === "past-minutes";
+  const time = useStore(state => state.time);
+  // In past-minutes mode the session detail endpoint takes the window as a
+  // minute count rather than a date range.
+  const minutes = time.mode === "past-minutes" ? time.pastMinutesStart : undefined;
 
-  // Get minutes based on the time mode
-  let minutes: number | undefined;
-  if (pastMinutesMode && time.mode === "past-minutes") {
-    minutes = time.pastMinutesStart;
-  }
-
-  return useInfiniteQuery<{ data: SessionPageviewsAndEvents }>({
-    queryKey: ["session-details-infinite", sessionId, site, minutes],
-    queryFn: ({ pageParam = 0 }) => {
-      if (!sessionId) throw new Error("Session ID is required");
-
-      return fetchSession(site, {
-        sessionId,
-        limit: 100,
-        offset: pageParam as number,
-        minutes: pastMinutesMode ? minutes : undefined,
-      });
-    },
+  return useAnalyticsInfiniteQuery<SessionPageviewsAndEvents>({
+    key: ["session-details-infinite", sessionId],
+    path: `sessions/${sessionId}`,
+    useTime: false,
+    useFilters: false,
+    params: { limit: 100, minutes },
     initialPageParam: 0,
-    getNextPageParam: lastPage => {
-      if (lastPage?.data?.pagination?.hasMore) {
-        return lastPage.data.pagination.offset + lastPage.data.pagination.limit;
-      }
-      return undefined;
-    },
-    enabled: !!sessionId && !!site,
+    pageParams: offset => ({ offset }),
+    getNextPageParam: lastPage =>
+      lastPage?.pagination?.hasMore ? lastPage.pagination.offset + lastPage.pagination.limit : undefined,
+    enabled: !!sessionId,
     staleTime: Infinity,
   });
 }
 
 export function useGetUserSessionCount(userId: string) {
-  const { site, timezone } = useStore();
+  // The calendar always spans the user's full history, so it only takes the
+  // dimension filters, not the selected time range.
+  const filteredFilters = getFilteredFilters(USER_DETAIL_PAGE_FILTERS);
 
-  return useQuery<{ data: UserSessionCountResponse[] }>({
-    queryKey: ["user-session-count", userId, site, timezone],
-    queryFn: () => {
-      return fetchUserSessionCount(site, {
-        userId,
-        timeZone: getTimezone(),
-      });
-    },
+  return useAnalyticsQuery<UserSessionCountResponse[]>({
+    key: ["user-session-count", userId],
+    path: "users/session-count",
+    useTime: false,
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    params: { user_id: userId },
     staleTime: Infinity,
-    enabled: !!site && !!userId,
+    // Keyed by user: never show the previous user's session calendar.
+    placeholder: false,
+    enabled: !!userId,
   });
 }

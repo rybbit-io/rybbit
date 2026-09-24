@@ -5,9 +5,10 @@ import { AuthError } from "@/components/auth/AuthError";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { RybbitTextLogo } from "../../components/RybbitLogo";
 import { SpinningGlobe } from "../../components/SpinningGlobe";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
@@ -16,9 +17,13 @@ import { useConfigs } from "../../lib/configs";
 import { IS_CLOUD } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
 
-export default function Page() {
+function LoginPage() {
+  const searchParams = useSearchParams();
+  const requestedReturn = searchParams.get("returnTo") ?? "";
+  const returnTo = /^\/\d+\/[a-f0-9]{12}\?claim=1$/i.test(requestedReturn) ? requestedReturn : "/";
   const { configs, isLoading: isLoadingConfigs } = useConfigs();
-  useSetPageTitle("Rybbit · Login");
+  useSetPageTitle("Login");
+  const t = useExtracted();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +39,7 @@ export default function Page() {
 
     // Validate Turnstile token if in cloud mode and production
     if (IS_CLOUD && process.env.NODE_ENV === "production" && !turnstileToken) {
-      setError("Please complete the captcha verification");
+      setError(t("Please complete the captcha verification"));
       setIsLoading(false);
       return;
     }
@@ -57,7 +62,7 @@ export default function Page() {
         userStore.setState({
           user: data.user,
         });
-        router.push("/");
+        router.push(returnTo);
       }
 
       if (error) {
@@ -82,14 +87,14 @@ export default function Page() {
           </a>
         </div>
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
-          <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">Welcome back</h1>
+          <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">{t("Welcome back")}</h1>
           <div className="flex flex-col gap-4">
-            <SocialButtons onError={setError} />
+            <SocialButtons onError={setError} callbackURL={returnTo} />
             <form onSubmit={handleSubmit}>
               <div className="flex flex-col gap-4">
                 <AuthInput
                   id="email"
-                  label="Email"
+                  label={t("Email")}
                   type="email"
                   placeholder="example@email.com"
                   required
@@ -99,7 +104,7 @@ export default function Page() {
 
                 <AuthInput
                   id="password"
-                  label="Password"
+                  label={t("Password")}
                   type="password"
                   placeholder="••••••••"
                   required
@@ -108,7 +113,7 @@ export default function Page() {
                   rightElement={
                     IS_CLOUD && (
                       <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
-                        Forgot password?
+                        {t("Forgot password?")}
                       </Link>
                     )
                   }
@@ -125,24 +130,24 @@ export default function Page() {
 
                 <AuthButton
                   isLoading={isLoading}
-                  loadingText="Logging in..."
+                  loadingText={t("Logging in...")}
                   disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
                 >
-                  Login
+                  {t("Login")}
                 </AuthButton>
 
-                <AuthError error={error} title="Error Logging In" />
+                <AuthError error={error} title={t("Error Logging In")} />
               </div>
             </form>
 
             {(!configs?.disableSignup || !isLoadingConfigs) && (
               <div className="text-center text-sm">
-                Don't have an account?{" "}
+                {t("Don't have an account?")}{" "}
                 <Link
                   href="/signup"
                   className="underline underline-offset-4 hover:text-emerald-400 transition-colors duration-300"
                 >
-                  Sign up
+                  {t("Sign up")}
                 </Link>
               </div>
             )}
@@ -157,7 +162,7 @@ export default function Page() {
               rel="noopener"
               title="Rybbit - Open Source Privacy-Focused Web Analytics"
             >
-              Open source web analytics powered by Rybbit
+              {t("Open source web analytics powered by Rybbit")}
             </a>
           </div>
         )}
@@ -168,5 +173,13 @@ export default function Page() {
         <SpinningGlobe />
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPage />
+    </Suspense>
   );
 }

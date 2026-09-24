@@ -1,0 +1,56 @@
+---
+title: Kajabi
+description: Add Rybbit analytics to your Kajabi site
+category: creators
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Kajabi has a site-wide **Header Page Scripts** field under **Site details** that puts code in the `<head>` of every page, but it deliberately skips Offer checkout and upsell pages. Those have their own **Checkout Tracking Code** setting, so a full install is two pastes.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Kajabi
+
+**Site-wide pages**
+
+1. From the **Dashboard**, open **Settings**.
+2. Under **Site settings**, click **Site details**.
+3. Scroll to **Page scripts** and paste the snippet into **Header Page Scripts**.
+4. Save.
+
+**Checkout and upsell pages**
+
+1. From the **Dashboard**, open **Settings**.
+2. Under **Payment settings**, click **Checkout**.
+3. In the **Checkout Tracking Code** section, click to edit the **Header tracking code** and paste the same snippet.
+4. Save.
+
+<Callout type="info">
+Do not paste the snippet into a page's **Custom Code** section (under **Customize > Settings**). That field is for CSS and JavaScript without `<style>` or `<script>` tags, and it only applies to that one page.
+</Callout>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Checkout pages missing from the dashboard**: Header Page Scripts do not run on Offer checkout or upsell pages. Add the snippet under **Settings > Checkout > Checkout Tracking Code** as well.
+- **Both fields filled, one visitor, two sites?** Use the same site ID in both places so a visitor who browses your site and then buys is one session, and funnels can follow them through checkout.
+- **Snippet added to a page's Custom Code block instead**: the **Add block > Custom Code** block does accept `<script>` tags, but it only covers that page. Keep the site-wide field as the source of truth.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

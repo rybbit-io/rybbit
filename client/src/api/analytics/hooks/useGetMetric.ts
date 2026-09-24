@@ -1,18 +1,19 @@
 import { Filter, FilterParameter } from "@rybbit/shared";
-import {
-  InfiniteData,
-  useInfiniteQuery,
-  UseInfiniteQueryResult,
-  useQuery,
-  UseQueryResult,
-} from "@tanstack/react-query";
-import { useStore } from "../../../lib/store";
-import { APIResponse } from "../../types";
-import { buildApiParams } from "../../utils";
+import { InfiniteData, UseInfiniteQueryResult, UseQueryResult } from "@tanstack/react-query";
 import { Time } from "../../../components/DateSelector/types";
-import { fetchMetric, MetricResponse } from "../endpoints";
+import { MetricResponse } from "../endpoints";
+import { nextPageByTotalCount, useAnalyticsInfiniteQuery, useAnalyticsQuery } from "../useAnalyticsQuery";
 
 type PeriodTime = "current" | "previous";
+
+type PaginatedResponse = {
+  data: MetricResponse[];
+  totalCount: number;
+};
+
+// Lite endpoints forward filters too — the server falls back to raw events
+// when a filter is active. `lite` only selects the endpoint, not the filters.
+const metricPath = (lite: boolean) => (lite ? "metric-lite" : "metric");
 
 export function useMetric({
   parameter,
@@ -24,53 +25,16 @@ export function useMetric({
   limit?: number;
   periodTime?: PeriodTime;
   useFilters?: boolean;
-}): UseQueryResult<APIResponse<MetricResponse[]>> {
-  const { time, previousTime, site, filters, timezone } = useStore();
-  const timeToUse = periodTime === "previous" ? previousTime : time;
-
-  // For "previous" periods in past-minutes mode, we need to modify the time object
-  // to use doubled duration for the start and the original start as the end
-  const timeForQuery: Time =
-    timeToUse.mode === "past-minutes" && periodTime === "previous"
-      ? {
-          ...timeToUse,
-          pastMinutesStart: timeToUse.pastMinutesStart * 2,
-          pastMinutesEnd: timeToUse.pastMinutesStart,
-        }
-      : timeToUse;
-
-  const params = buildApiParams(timeForQuery, { filters: useFilters ? filters : undefined });
-  const queryKey = [parameter, timeForQuery, site, filters, limit, useFilters, timezone];
-
-  return useQuery({
-    queryKey,
-    queryFn: async () => {
-      const result = await fetchMetric(site, {
-        ...params,
-        parameter,
-        limit,
-      });
-      return { data: result.data };
-    },
-    staleTime: 60_000,
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const prevQueryKey = query.queryKey as [string, string, string];
-      const [, , prevSite] = prevQueryKey;
-
-      if (prevSite === site) {
-        return query.state.data;
-      }
-      return undefined;
-    },
-    enabled: !!site,
+}): UseQueryResult<PaginatedResponse> {
+  return useAnalyticsQuery<PaginatedResponse>({
+    key: parameter,
+    path: metricPath(false),
+    periodTime,
+    doublePastMinutesForPrevious: true,
+    useFilters,
+    params: { parameter, limit },
   });
 }
-
-type PaginatedResponse = {
-  data: MetricResponse[];
-  totalCount: number;
-};
 
 export function usePaginatedMetric({
   parameter,
@@ -80,6 +44,7 @@ export function usePaginatedMetric({
   additionalFilters = [],
   customFilters = [],
   customTime,
+  lite = false,
 }: {
   parameter: FilterParameter;
   limit?: number;
@@ -89,39 +54,16 @@ export function usePaginatedMetric({
   additionalFilters?: Filter[];
   customFilters?: Filter[];
   customTime?: Time;
+  lite?: boolean;
 }): UseQueryResult<PaginatedResponse> {
-  const { time, site, filters, timezone } = useStore();
-  const timeToUse = customTime ?? time;
-  const combinedFilters = useFilters
-    ? customFilters.length > 0
-      ? customFilters
-      : [...filters, ...additionalFilters]
-    : undefined;
-
-  const params = buildApiParams(timeToUse, { filters: combinedFilters });
-
-  return useQuery({
-    queryKey: [parameter, customTime, time, site, filters, limit, page, additionalFilters, customFilters, timezone],
-    queryFn: async () => {
-      return fetchMetric(site, {
-        ...params,
-        parameter,
-        limit,
-        page,
-      });
-    },
-    staleTime: 60_000,
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const prevQueryKey = query.queryKey;
-      const [, , prevSite] = prevQueryKey;
-
-      if (prevSite === site) {
-        return query.state.data;
-      }
-      return undefined;
-    },
-    enabled: !!site,
+  return useAnalyticsQuery<PaginatedResponse>({
+    key: parameter,
+    path: metricPath(lite),
+    overrideTime: customTime,
+    useFilters,
+    additionalFilters,
+    customFilters,
+    params: { parameter, limit, page },
   });
 }
 
@@ -129,37 +71,29 @@ export function useInfiniteMetric({
   parameter,
   limit = 25,
   useFilters = true,
+  additionalFilters = [],
+  customFilters = [],
+  customTime,
+  lite = false,
 }: {
   parameter: FilterParameter;
   limit?: number;
   useFilters?: boolean;
+  additionalFilters?: Filter[];
+  customFilters?: Filter[];
+  customTime?: Time;
+  lite?: boolean;
 }): UseInfiniteQueryResult<InfiniteData<PaginatedResponse>> {
-  const { time, site, filters, timezone } = useStore();
-  const params = buildApiParams(time, { filters: useFilters ? filters : undefined });
-
-  return useInfiniteQuery({
-    queryKey: [parameter, time, site, filters, limit, "infinite-metric", timezone],
-    queryFn: async ({ pageParam = 1 }) => {
-      return fetchMetric(site, {
-        ...params,
-        parameter,
-        limit,
-        page: pageParam,
-      });
-    },
+  return useAnalyticsInfiniteQuery<PaginatedResponse>({
+    key: parameter,
+    path: metricPath(lite),
+    overrideTime: customTime,
+    useFilters,
+    additionalFilters,
+    customFilters,
+    params: { parameter, limit },
     initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      // If we've fetched all items, don't get next page
-      const totalItems = lastPage.totalCount;
-      const fetchedItemCount = allPages.reduce((acc, page) => acc + page.data.length, 0);
-
-      if (fetchedItemCount >= totalItems) {
-        return undefined;
-      }
-
-      return allPages.length + 1;
-    },
-    staleTime: 60_000,
-    enabled: !!site,
+    pageParams: page => ({ page }),
+    getNextPageParam: nextPageByTotalCount,
   });
 }

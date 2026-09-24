@@ -1,8 +1,4 @@
-/**
- * Set to true to disable origin checking for tracking requests
- * This should only be enabled in development or testing environments
- */
-export const DISABLE_ORIGIN_CHECK = process.env.DISABLE_ORIGIN_CHECK === "true";
+import { AI_CHAT_DOMAINS } from "@rybbit/shared";
 
 const searchDomains = [
   // Google and variants
@@ -55,11 +51,7 @@ const searchDomains = [
   "goo.ne.jp",
   "rambler.ru",
 
-  // AI-powered search engines
-  "perplexity.ai",
-  "you.com",
-  "phind.com",
-  "andi.com",
+  // Other search engines
   "neeva.com",
   "kagi.com",
 ];
@@ -304,6 +296,67 @@ const shoppingDomains = [
   "foodpanda.com",
 ];
 
+// AI chat domains. Sourced from shared/ so that channel classification and the
+// bots dashboard's crawl-vs-referral comparison cannot drift apart — the
+// dashboard has to spell an operator's name the same way the bot patterns do.
+const aiChatDomains = AI_CHAT_DOMAINS;
+
+// AI chat sources (utm_source values)
+const aiChatSources = [
+  "chatgpt",
+  "openai",
+  "claude",
+  "anthropic",
+  "gemini",
+  "copilot",
+  "deepseek",
+  "mistral",
+  "meta ai",
+  "metaai",
+  "poe",
+  "grok",
+  "pi",
+  "huggingchat",
+  "cohere",
+  "character.ai",
+  "qwen",
+  "jasper",
+  "writesonic",
+  "chatsonic",
+  "perplexity",
+  "phind",
+  "andi",
+  "you",
+  "cursor",
+  "codeium",
+  "windsurf",
+  "lechat",
+];
+
+// AI chat mediums (utm_medium values)
+const aiChatMediums = [
+  "ai",
+  "ai-chat",
+  "chatbot",
+  "llm",
+  "ai-assistant",
+  "gen-ai",
+  "ai-search",
+];
+
+// AI chat mobile app IDs
+export const aiChatAppIds = [
+  "com.openai.chatgpt",
+  "com.anthropic.claude",
+  "com.google.android.apps.bard",
+  "com.microsoft.copilot",
+  "ai.perplexity.app.android",
+  "ai.perplexity.app.ios",
+  "com.quora.poe",
+  "ai.character.app",
+  "com.deepseek.chat",
+];
+
 // Define sources types
 const searchSources = [
   // Major search engines
@@ -341,11 +394,7 @@ const searchSources = [
   "goo",
   "rambler",
 
-  // AI-powered search engines
-  "perplexity",
-  "you",
-  "phind",
-  "andi",
+  // Other search engines
   "neeva",
   "kagi",
 ];
@@ -1090,13 +1139,15 @@ export function isMobileAppId(source: string): boolean {
 export function getSourceType(source: string): string {
   const lowerSource = source.toLowerCase();
 
-  // Check domains first
+  // Check domains first (AI before search to avoid misclassification)
+  if (aiChatDomains.some(domain => lowerSource.includes(domain))) return "ai";
   if (searchDomains.some(domain => lowerSource.includes(domain))) return "search";
   if (socialDomains.some(domain => lowerSource.includes(domain))) return "social";
   if (videoDomains.some(domain => lowerSource.includes(domain))) return "video";
   if (shoppingDomains.some(domain => lowerSource.includes(domain))) return "shopping";
 
-  // Check source names
+  // Check source names (AI before search)
+  if (aiChatSources.includes(lowerSource)) return "ai";
   if (searchSources.includes(lowerSource)) return "search";
   if (socialSources.includes(lowerSource)) return "social";
   if (videoSources.includes(lowerSource)) return "video";
@@ -1104,8 +1155,9 @@ export function getSourceType(source: string): string {
   if (emailSources.includes(lowerSource)) return "email";
   if (smsSources.includes(lowerSource)) return "sms";
 
-  // Check mobile app IDs
+  // Check mobile app IDs (AI before search)
   if (isMobileAppId(source)) {
+    if (aiChatAppIds.includes(source)) return "ai";
     if (socialAppIds.includes(source)) return "social";
     if (videoAppIds.includes(source)) return "video";
     if (searchAppIds.includes(source)) return "search";
@@ -1123,6 +1175,7 @@ export function getSourceType(source: string): string {
 export function getMediumType(medium: string): string {
   const lowerMedium = medium.toLowerCase();
 
+  if (aiChatMediums.includes(lowerMedium)) return "ai";
   if (socialMediums.includes(lowerMedium)) return "social";
   if (videoMediums.includes(lowerMedium)) return "video";
   if (displayMediums.includes(lowerMedium)) return "display";

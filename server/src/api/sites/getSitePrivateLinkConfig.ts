@@ -1,41 +1,33 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
-import { eq } from "drizzle-orm";
+import { siteConfig } from "../../lib/siteConfig.js";
 
 export async function getSitePrivateLinkConfig(
   request: FastifyRequest<{ Params: { siteId: string } }>,
   reply: FastifyReply
 ) {
   try {
-    const { siteId } = request.params;
-    const parsedSiteId = parseInt(siteId, 10);
+    const parsedSiteId = parseInt(request.params.siteId, 10);
 
     if (isNaN(parsedSiteId)) {
       return reply.status(400).send({ success: false, error: "Invalid site ID" });
     }
 
-    // Get site data
-    const site = await db
-      .select({
-        privateLinkKey: sites.privateLinkKey,
-      })
-      .from(sites)
-      .where(eq(sites.siteId, parsedSiteId))
-      .limit(1);
+    // Generating or revoking the key writes through the Site Configuration
+    // module, and this screen reads that write back straight away.
+    const config = await siteConfig.reload(parsedSiteId);
 
-    if (site.length === 0) {
+    if (!config) {
       return reply.status(404).send({ success: false, error: "Site not found" });
     }
 
     return reply.send({
       success: true,
       data: {
-        privateLinkKey: site[0].privateLinkKey,
+        privateLinkKey: config.privateLinkKey,
       },
     });
   } catch (error) {
-    console.error("Error getting site private link configuration:", error);
+    request.log.error({ err: error }, "Error getting site private link configuration");
     return reply.status(500).send({
       success: false,
       error: "Failed to get site private link configuration",

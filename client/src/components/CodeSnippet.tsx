@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
+import { useExtracted } from "next-intl";
 import * as React from "react";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
@@ -44,6 +45,7 @@ export const CodeSnippet = React.memo(function CodeSnippet({
   className,
 }: CodeSnippetProps) {
   const [hasCopied, setHasCopied] = React.useState(false);
+  const t = useExtracted();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -78,7 +80,7 @@ export const CodeSnippet = React.memo(function CodeSnippet({
         onClick={copyToClipboard}
       >
         {hasCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
-        <span className="sr-only">Copy code</span>
+        <span className="sr-only">{t("Copy code")}</span>
       </Button>
     </div>
   );

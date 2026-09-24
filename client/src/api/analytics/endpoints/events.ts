@@ -1,34 +1,44 @@
 import { authedFetch } from "../../utils";
-import { BucketedParams, CommonApiParams, PaginationParams, toBucketedQueryParams, toQueryParams } from "./types";
-
+import { BucketedParams, CommonApiParams, toBucketedQueryParams } from "./types";
 
 // Event type
 export type Event = {
   timestamp: string;
   event_name: string;
   properties: string;
+  session_id: string;
   user_id: string;
+  identified_user_id: string;
   hostname: string;
   pathname: string;
   querystring: string;
   page_title: string;
   referrer: string;
   browser: string;
+  browser_version: string;
   operating_system: string;
+  operating_system_version: string;
+  language: string;
   country: string;
+  region: string;
+  city: string;
+  lat: number;
+  lon: number;
+  screen_width: number;
+  screen_height: number;
   device_type: string;
   type: string;
+  traits?: Record<string, unknown> | null;
 };
 
-// Events response with pagination
-export interface EventsResponse {
+// Response types for cursor-based API
+export interface NewEventsResponse {
   data: Event[];
-  pagination: {
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  };
+}
+
+export interface CursorEventsResponse {
+  data: Event[];
+  cursor: { hasMore: boolean; oldestTimestamp: string | null };
 }
 
 // Event name with count
@@ -44,11 +54,25 @@ export type EventProperty = {
   count: number;
 };
 
+// Common value of an autocapture event type's primary props (used for suggestions)
+export type AutocaptureValue = {
+  value: string;
+  count: number;
+};
+
 // Outbound link click data
 export type OutboundLink = {
   url: string;
   count: number;
   lastClicked: string;
+};
+
+// Autocapture events (button clicks, form submissions, copies) grouped by
+// their display value
+export type AutocaptureEvent = {
+  value: string;
+  count: number;
+  lastOccurred: string;
 };
 
 // Event counts over time
@@ -58,107 +82,42 @@ export type EventBucketedPoint = {
   event_count: number;
 };
 
-export interface EventsParams extends CommonApiParams, PaginationParams {
-  pageSize?: number;
-}
-
 export interface EventBucketedParams extends BucketedParams {
   limit?: number;
 }
 
+// Site-level event count breakdown by type
+export type SiteEventCountPoint = {
+  time: string;
+  pageview_count: number;
+  custom_event_count: number;
+  performance_count: number;
+  outbound_count: number;
+  error_count: number;
+  button_click_count: number;
+  copy_count: number;
+  form_submit_count: number;
+  input_change_count: number;
+  event_count: number;
+};
+
+export type SiteEventCountParams = BucketedParams;
 
 export interface EventPropertiesParams extends CommonApiParams {
   eventName: string;
 }
 
 /**
- * Fetch paginated events
- * GET /api/events/:site
+ * Fetch site-level event count breakdown by type
+ * GET /sites/:site/events/count
  */
-export async function fetchEvents(
+export async function fetchSiteEventCount(
   site: string | number,
-  params: EventsParams
-): Promise<EventsResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    page: params.page,
-    page_size: params.pageSize ?? params.limit,
-  };
-
-  const response = await authedFetch<EventsResponse>(
-    `/sites/${site}/events`,
-    queryParams
-  );
-  return response;
-}
-
-/**
- * Fetch event names
- * GET /api/events/names/:site
- */
-export async function fetchEventNames(
-  site: string | number,
-  params: CommonApiParams
-): Promise<EventName[]> {
-  const response = await authedFetch<{ data: EventName[] }>(
-    `/sites/${site}/events/names`,
-    toQueryParams(params)
+  params: SiteEventCountParams
+): Promise<SiteEventCountPoint[]> {
+  const response = await authedFetch<{ data: SiteEventCountPoint[] }>(
+    `/sites/${site}/events/count`,
+    toBucketedQueryParams(params)
   );
   return response.data;
 }
-
-/**
- * Fetch event properties for a specific event name
- * GET /api/events/properties/:site
- */
-export async function fetchEventProperties(
-  site: string | number,
-  params: EventPropertiesParams
-): Promise<EventProperty[]> {
-  const queryParams = {
-    ...toQueryParams(params),
-    event_name: params.eventName,
-  };
-
-  const response = await authedFetch<{ data: EventProperty[] }>(
-    `/sites/${site}/events/properties`,
-    queryParams
-  );
-  return response.data;
-}
-
-/**
- * Fetch outbound link clicks
- * GET /api/events/outbound/:site
- */
-export async function fetchOutboundLinks(
-  site: string | number,
-  params: CommonApiParams
-): Promise<OutboundLink[]> {
-  const response = await authedFetch<{ data: OutboundLink[] }>(
-    `/sites/${site}/events/outbound`,
-    toQueryParams(params)
-  );
-  return response.data;
-}
-
-/**
- * Fetch bucketed event counts for top custom events
- * GET /sites/:site/events/bucketed
- */
-export async function fetchEventBucketed(
-  site: string | number,
-  params: EventBucketedParams
-): Promise<EventBucketedPoint[]> {
-  const queryParams = {
-    ...toBucketedQueryParams(params),
-    limit: params.limit,
-  };
-
-  const response = await authedFetch<{ data: EventBucketedPoint[] }>(
-    `/sites/${site}/events/bucketed`,
-    queryParams
-  );
-  return response.data;
-}
-

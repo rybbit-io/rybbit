@@ -1,34 +1,70 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getSitesUserHasAccessTo } from "../../lib/auth-utils.js";
-import { processResults } from "./utils/utils.js";
+import { analyticsRoute, runAnalyticsQuery } from "./utils/analyticsQuery.js";
+import { resolveTimeWindow } from "./utils/timeWindow.js";
 
 type OrgEventCountResponse = {
   event_date: string;
   pageview_count: number;
   custom_event_count: number;
   performance_count: number;
+  outbound_count: number;
+  error_count: number;
+  button_click_count: number;
+  copy_count: number;
+  form_submit_count: number;
+  input_change_count: number;
   event_count: number;
 }[];
 
-export async function getOrgEventCount(
-  req: FastifyRequest<{
-    Params: {
-      organizationId: string;
-    };
-    Querystring: {
-      start_date?: string;
-      end_date?: string;
-      time_zone?: string;
-    };
-  }>,
-  res: FastifyReply
-) {
-  const { organizationId } = req.params;
-  const { start_date, end_date, time_zone = "UTC" } = req.query;
+interface GetOrgEventCountRequest {
+  Params: {
+    organizationId: string;
+  };
+  Querystring: {
+    start_date?: string;
+    end_date?: string;
+    time_zone?: string;
+  };
+}
 
-  try {
+export const buildOrgEventCountQuery = (query: GetOrgEventCountRequest["Querystring"], siteIds: number[]) => {
+  const window = resolveTimeWindow(query);
+
+  // Days are counted in the caller's timezone, the same one the window is
+  // bounded by. Grouping by `toStartOfDay(timestamp)` counted UTC days instead,
+  // which put the fill's day boundaries hours away from the data's — for a
+  // non-UTC caller the filled rows never landed on a real row, so every day
+  // appeared twice, once with its counts and once empty.
+  return `
+      SELECT
+        ${window.bucketed("timestamp", "day")} as event_date,
+        countIf(type = 'pageview') as pageview_count,
+        countIf(type = 'custom_event') as custom_event_count,
+        countIf(type = 'performance') as performance_count,
+        countIf(type = 'outbound') as outbound_count,
+        countIf(type = 'error') as error_count,
+        countIf(type = 'button_click') as button_click_count,
+        countIf(type = 'copy') as copy_count,
+        countIf(type = 'form_submit') as form_submit_count,
+        countIf(type = 'input_change') as input_change_count,
+        count() as event_count
+      FROM events
+      WHERE site_id IN (${siteIds.map((id: number) => SqlString.escape(id)).join(", ")})
+        AND type IN ('pageview', 'custom_event', 'performance', 'outbound', 'error', 'button_click', 'copy', 'form_submit', 'input_change')
+        ${window.where()}
+      GROUP BY event_date
+      ORDER BY event_date
+      ${window.fill("day")}
+    `;
+};
+
+export const getOrgEventCount = analyticsRoute<GetOrgEventCountRequest>(
+  "organization event count",
+  async (req: FastifyRequest<GetOrgEventCountRequest>, res: FastifyReply) => {
+    const { organizationId } = req.params;
+
     // Get all sites the user has access to
     const userSites = await getSitesUserHasAccessTo(req);
 
@@ -41,71 +77,9 @@ export async function getOrgEventCount(
 
     const siteIds = orgSites.map((site: any) => site.siteId);
 
-    // Build time filter for the query
-    let timeFilter = "";
-    let fillFromDate = "";
-    let fillToDate = "";
-
-    if (start_date && end_date) {
-      timeFilter = `AND event_hour >= toTimeZone(
-        toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
-        'UTC'
-      )
-      AND event_hour < if(
-        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        now(),
-        toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      )`;
-
-      // Set up WITH FILL parameters
-      fillFromDate = `FROM toTimeZone(
-        toStartOfDay(toDateTime(${SqlString.escape(start_date)}, ${SqlString.escape(time_zone)})),
-        'UTC'
-      )`;
-
-      fillToDate = `TO if(
-        toDate(${SqlString.escape(end_date)}) = toDate(now(), ${SqlString.escape(time_zone)}),
-        toStartOfDay(now()) + INTERVAL 1 DAY,
-        toTimeZone(
-          toStartOfDay(toDateTime(${SqlString.escape(end_date)}, ${SqlString.escape(time_zone)})) + INTERVAL 1 DAY,
-          'UTC'
-        )
-      )`;
-    } else {
-      // Default to last 30 days if no date range provided
-      timeFilter = "AND event_hour >= now() - INTERVAL 30 DAY";
-      fillFromDate = "FROM now() - INTERVAL 30 DAY";
-      fillToDate = "TO now() + INTERVAL 1 DAY";
-    }
-
-    const query = `
-      SELECT
-        toStartOfDay(timestamp) as event_date,
-        countIf(type = 'pageview') as pageview_count,
-        countIf(type = 'custom_event') as custom_event_count,
-        countIf(type = 'performance') as performance_count,
-        count() as event_count
-      FROM events
-      WHERE site_id IN (${siteIds.map((id: number) => SqlString.escape(id)).join(", ")})
-        AND type IN ('pageview', 'custom_event', 'performance')
-        ${timeFilter.replace(/event_hour/g, "timestamp")}
-      GROUP BY event_date
-      ORDER BY event_date
-      WITH FILL ${fillFromDate} ${fillToDate} STEP INTERVAL 1 DAY
-    `;
-
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
+    const data = await runAnalyticsQuery<OrgEventCountResponse[number]>({
+      query: buildOrgEventCountQuery(req.query, siteIds),
     });
-
-    const data = await processResults<OrgEventCountResponse[number]>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Error fetching organization event count:", error);
-    return res.status(500).send({ error: "Failed to fetch organization event count" });
   }
-}
+);

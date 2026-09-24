@@ -6,12 +6,11 @@ import "ldrs/react/Zoomies.css";
 import { useTheme } from "next-themes";
 import * as React from "react";
 
-// Default values shown
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "relative rounded-lg border border-neutral-100 bg-white text-neutral-950 dark:border-neutral-850 dark:bg-neutral-900 dark:text-neutral-50 overflow-hidden transition-all duration-300 ",
+      "relative rounded-lg border border-neutral-100 bg-white text-neutral-950 dark:border-neutral-850 dark:bg-neutral-900 dark:text-neutral-50 overflow-hidden transition-all duration-300",
       className
     )}
     {...props}
@@ -25,7 +24,7 @@ const CardLoader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
     const loaderColor = theme === "dark" ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-200))";
 
     return (
-      <div className="mt-[-15px] absolute top-0 left-0 w-full">
+      <div ref={ref} className={cn("mt-[-15px] absolute top-0 left-0 w-full", className)} {...props}>
         <Zoomies size={1400} stroke="3" bg-opacity="0.1" speed="1.4" color={loaderColor} />
       </div>
     );
@@ -56,7 +55,7 @@ CardDescription.displayName = "CardDescription";
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("relative p-4 pt-0 transition-all duration-300 ", className)} {...props} />
+    <div ref={ref} className={cn("relative p-4 pt-0 transition-all duration-300", className)} {...props} />
   )
 );
 CardContent.displayName = "CardContent";
@@ -66,4 +65,4 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 );
 CardFooter.displayName = "CardFooter";
 
-export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardLoader, CardTitle };
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent, CardLoader };

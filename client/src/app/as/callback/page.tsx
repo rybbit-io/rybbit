@@ -47,7 +47,7 @@ function AppSumoCodeHandler({
 }
 
 export default function AppSumoSignupPage() {
-  useSetPageTitle("Rybbit · AppSumo Signup");
+  useSetPageTitle("AppSumo Signup");
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -438,7 +438,7 @@ export default function AppSumoSignupPage() {
       <div className="flex justify-center items-center h-dvh w-full p-4 bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600 dark:text-emerald-500" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Loading&hellip;</p>
         </div>
       </div>
     );

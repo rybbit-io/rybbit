@@ -41,7 +41,10 @@ export const useRevokePrivateLinkKey = () => {
       const response = await revokePrivateLinkKey(siteId);
       return response.data;
     },
-    onSuccess: (_, siteId) => {
+    onSuccess: (data, siteId) => {
+      // Write through so the UI flips to "disabled" immediately instead of
+      // rendering the stale key until the refetch lands.
+      queryClient.setQueryData(["privateLinkConfig", siteId], data);
       queryClient.invalidateQueries({ queryKey: ["privateLinkConfig", siteId] });
     },
   });

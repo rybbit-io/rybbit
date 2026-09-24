@@ -1,17 +1,19 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useExtracted } from "next-intl";
 import { endpointCategories, EndpointConfig, methodColors } from "../utils/endpointConfig";
 import { usePlaygroundStore } from "../hooks/usePlaygroundStore";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
 
 export function EndpointList() {
+  const t = useExtracted();
   const { selectedEndpoint, setSelectedEndpoint } = usePlaygroundStore();
 
   return (
     <ScrollArea className="h-full overflow-y-auto border-r border-neutral-100 dark:border-neutral-850">
       <div className="p-3 border-b border-neutral-100 dark:border-neutral-850">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Endpoints</h2>
+        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t("Endpoints")}</h2>
       </div>
       <div className="p-2 overflow-x-hidden">
         {endpointCategories.map(category => (

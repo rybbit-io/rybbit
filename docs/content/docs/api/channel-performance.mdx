@@ -1,0 +1,183 @@
+---
+title: Compare Channel Performance
+description: Rank your acquisition channels by how well they convert — not just how much traffic they send — by combining the metric, overview, and goals endpoints with channel filters.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+The channel that sends the most visitors is rarely the channel that sends the most *customers*. This guide ranks each acquisition channel by conversion rate so you can see which sources punch above their weight — and which ones are vanity traffic.
+
+**Endpoints used:**
+
+- [`GET /metric`](/docs/api/overview/metric) — sessions broken down by channel
+- [`GET /goals`](/docs/api/goals/list) — conversion metrics, scoped with a channel filter
+
+<Callout type="info">
+The key technique here is the [`filters` parameter](/docs/api/getting-started#filter-parameters). Almost every endpoint accepts it, so you can take any site-wide metric and recompute it for a single segment — here, one channel at a time.
+</Callout>
+
+## The workflow
+
+<Steps>
+<Step>
+**List your channels** and their session counts with `metric?parameter=channel`.
+</Step>
+<Step>
+**For each channel, fetch your goal's conversion rate** by calling `/goals` with a `channel` filter applied.
+</Step>
+<Step>
+**Rank by conversion rate** to reveal which channels actually drive outcomes.
+</Step>
+</Steps>
+
+## Full script
+
+This script ranks every channel by the conversion rate of a chosen goal (here, goal `1` — your signup goal). Swap in whichever goal matters to your business.
+
+<Tabs items={['JavaScript', 'Python']}>
+<Tab value="JavaScript">
+```javascript title="channel-performance.js"
+const API = 'https://app.rybbit.io';
+const SITE = '123';
+const API_KEY = process.env.RYBBIT_API_KEY;
+const PRIMARY_GOAL_ID = 1; // the goal you care about
+
+const range = { start_date: '2024-01-01', end_date: '2024-01-31', time_zone: 'America/New_York' };
+
+async function get(path, params) {
+  const url = new URL(`${API}/api/sites/${SITE}${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${API_KEY}` } });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
+// 1. All channels with their session counts
+async function getChannels() {
+  const { data } = await get('/metric', { parameter: 'channel', limit: 20, ...range });
+  return data.data; // [{ value: 'Organic Search', count: 5400, ... }]
+}
+
+// 2. Conversion rate for one channel, scoped with a filter
+async function goalForChannel(channel) {
+  const filters = JSON.stringify([{ parameter: 'channel', type: 'equals', value: [channel] }]);
+  const { data } = await get('/goals', { filters, ...range });
+  return data.find((g) => g.goalId === PRIMARY_GOAL_ID);
+}
+
+async function rankChannels() {
+  const channels = await getChannels();
+
+  const rows = await Promise.all(
+    channels.map(async (c) => {
+      const goal = await goalForChannel(c.value);
+      return {
+        channel: c.value || 'Direct',
+        sessions: c.count,
+        conversions: goal?.total_conversions ?? 0,
+        // conversion_rate comes back as a 0–1 fraction
+        conversionRate: (goal?.conversion_rate ?? 0) * 100,
+      };
+    })
+  );
+
+  return rows.sort((a, b) => b.conversionRate - a.conversionRate);
+}
+
+rankChannels().then((rows) => {
+  console.log('Channel'.padEnd(18), 'Sessions'.padStart(10), 'Conv.'.padStart(8), 'Rate'.padStart(8));
+  for (const r of rows) {
+    console.log(
+      r.channel.padEnd(18),
+      r.sessions.toLocaleString().padStart(10),
+      String(r.conversions).padStart(8),
+      `${r.conversionRate.toFixed(2)}%`.padStart(8)
+    );
+  }
+});
+```
+</Tab>
+<Tab value="Python">
+```python title="channel_performance.py"
+import os, json, requests
+
+API = "https://app.rybbit.io"
+SITE = "123"
+API_KEY = os.environ["RYBBIT_API_KEY"]
+PRIMARY_GOAL_ID = 1  # the goal you care about
+
+RANGE = {"start_date": "2024-01-01", "end_date": "2024-01-31", "time_zone": "America/New_York"}
+
+session = requests.Session()
+session.headers["Authorization"] = f"Bearer {API_KEY}"
+
+
+def get(path, **params):
+    res = session.get(f"{API}/api/sites/{SITE}{path}", params=params)
+    res.raise_for_status()
+    return res.json()
+
+
+def get_channels():
+    # 1. All channels with their session counts
+    return get("/metric", parameter="channel", limit=20, **RANGE)["data"]["data"]
+
+
+def goal_for_channel(channel):
+    # 2. Conversion rate for one channel, scoped with a filter
+    filters = json.dumps([{"parameter": "channel", "type": "equals", "value": [channel]}])
+    goals = get("/goals", filters=filters, **RANGE)["data"]
+    return next((g for g in goals if g["goalId"] == PRIMARY_GOAL_ID), None)
+
+
+def rank_channels():
+    rows = []
+    for c in get_channels():
+        goal = goal_for_channel(c["value"])
+        rows.append({
+            "channel": c["value"] or "Direct",
+            "sessions": c["count"],
+            "conversions": goal["total_conversions"] if goal else 0,
+            # conversion_rate comes back as a 0–1 fraction
+            "conversion_rate": (goal["conversion_rate"] if goal else 0) * 100,
+        })
+    return sorted(rows, key=lambda r: r["conversion_rate"], reverse=True)
+
+
+print(f"{'Channel':<18}{'Sessions':>10}{'Conv.':>8}{'Rate':>8}")
+for r in rank_channels():
+    print(f"{r['channel']:<18}{r['sessions']:>10,}{r['conversions']:>8}{r['conversion_rate']:>7.2f}%")
+```
+</Tab>
+</Tabs>
+
+## Reading the result
+
+```text
+Channel             Sessions   Conv.    Rate
+Referral               1,820     310    17.03%
+Organic Search         5,400     642    11.89%
+Direct                 4,220     451    10.69%
+Email                    980      88     8.98%
+Paid Search            2,310     142     6.15%
+Social                 6,150     119     1.93%
+```
+
+Social sends the **most** traffic (6,150 sessions) but converts the **worst** (1.93%). Referral sends a fraction of the volume but converts nine times better. The takeaway writes itself: the referral partnerships deserve more investment, and the social strategy needs a hard look before more budget goes into it.
+
+<Callout type="warn">
+Conversion rate alone can mislead on tiny samples — Email looks healthy at 9% but it's only 88 conversions. Always show the raw `sessions` and `conversions` columns next to the rate so a channel with 12 sessions and one fluke conversion doesn't top your list.
+</Callout>
+
+## Variations
+
+- **By UTM campaign instead of channel:** swap `parameter: 'channel'` for `parameter: 'utm_campaign'`, and filter on `utm_campaign` in the goals call. Same code, campaign-level granularity.
+- **Engagement instead of conversion:** call [`/overview`](/docs/api/overview/overview) with the channel filter to compare `bounce_rate` and `session_duration` per channel — useful when you don't have a goal defined yet.
+- **Full-funnel by channel:** run [`/funnels/analyze`](/docs/api/funnels/analyze) with a channel filter to see *where* in the funnel each channel's visitors fall out, not just the final rate.
+
+## Next steps
+
+- [Find Where Users Drop Off](/docs/api/funnel-dropoff) — once you know your best channels, fix the funnel they pour into.
+- [Automated Weekly Report](/docs/api/weekly-report) — add a channel league table to a scheduled digest.

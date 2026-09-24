@@ -1,0 +1,92 @@
+---
+title: Vue.js (Vite / Client-Side)
+description: Add Rybbit analytics to your Vue app
+category: frameworks
+icon: SiVuedotjs
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+A client-side Vue app built with Vite (`npm create vue@latest` or `npm create vite@latest -- --template vue`) serves a single `index.html` at the project root. Add the snippet there and it loads on every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Vue.js
+
+Open `index.html` at the root of your project and paste the snippet inside `<head>`:
+
+```html title="index.html"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Vue App</title>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+```
+
+Placing it just before `</body>` also works, but `<head>` lets the script start loading sooner.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any component or method:
+
+```vue title="src/components/ActionButton.vue"
+<template>
+  <button @click="trackAction">Track action</button>
+</template>
+
+<script setup>
+function trackAction() {
+  if (window.rybbit) {
+    window.rybbit.event("custom_vue_action", { detail: "User performed an action" });
+  }
+}
+</script>
+```
+
+## Troubleshooting
+
+- **Pageviews missing after navigation**: Rybbit tracks Vue Router navigations automatically, so test the default first. If a route change is still not recorded, trigger it from an `afterEach` guard in your router setup:
+
+  ```javascript title="src/router/index.js"
+  import { createRouter, createWebHistory } from "vue-router";
+
+  const router = createRouter({
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes: [/* your routes */],
+  });
+
+  router.afterEach(() => {
+    if (window.rybbit) {
+      window.rybbit.pageview();
+    }
+  });
+
+  export default router;
+  ```
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

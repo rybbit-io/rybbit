@@ -1,6 +1,5 @@
 import { TimeBucket } from "@rybbit/shared";
-import { authedFetch } from "../../utils";
-import { CommonApiParams, PaginationParams, SortParams, toQueryParams } from "./types";
+import { CommonApiParams, PaginationParams, SortParams } from "./types";
 
 // Performance Overview Response
 export type GetPerformanceOverviewResponse = {
@@ -96,69 +95,4 @@ export interface PerformanceByDimensionParams
 export interface PaginatedPerformanceResponse {
   data: PerformanceByDimensionItem[];
   totalCount: number;
-}
-
-/**
- * Fetch performance overview (Core Web Vitals)
- * GET /api/performance/overview/:site
- */
-export async function fetchPerformanceOverview(
-  site: string | number,
-  params: PerformanceOverviewParams
-): Promise<GetPerformanceOverviewResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    percentile: params.percentile,
-  };
-
-  const response = await authedFetch<{ data: GetPerformanceOverviewResponse }>(
-    `/sites/${site}/performance/overview`,
-    queryParams
-  );
-  return response.data;
-}
-
-/**
- * Fetch performance time series data
- * GET /api/performance/time-series/:site
- */
-export async function fetchPerformanceTimeSeries(
-  site: string | number,
-  params: PerformanceTimeSeriesParams
-): Promise<GetPerformanceTimeSeriesResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    bucket: params.bucket,
-  };
-
-  const response = await authedFetch<{ data: GetPerformanceTimeSeriesResponse }>(
-    `/sites/${site}/performance/time-series`,
-    queryParams
-  );
-  return response.data;
-}
-
-/**
- * Fetch performance broken down by dimension
- * GET /api/performance/by-dimension/:site
- */
-export async function fetchPerformanceByDimension(
-  site: string | number,
-  params: PerformanceByDimensionParams
-): Promise<PaginatedPerformanceResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    dimension: params.dimension,
-    limit: params.limit,
-    page: params.page,
-    sort_by: params.sortBy,
-    sort_order: params.sortOrder,
-    percentile: params.percentile,
-  };
-
-  const response = await authedFetch<{ data: PaginatedPerformanceResponse }>(
-    `/sites/${site}/performance/by-dimension`,
-    queryParams
-  );
-  return response.data;
 }

@@ -1,0 +1,363 @@
+---
+title: Feature Flags
+description: Roll out features, serve remote config, and target variants in Rybbit
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+Feature flags let you change product behavior without deploying new code. In Rybbit, a flag can be evaluated in the browser, on your server, or in both places. Flag assignments are also attached to analytics events so you can filter and compare behavior by flag value.
+
+<Callout type="info">
+Feature flags are different from [tags](/docs/tagging). Tags label traffic that you already routed yourself. Feature flags decide which value a visitor receives at runtime.
+</Callout>
+
+## Create a Flag
+
+1. Open your site in the Rybbit dashboard.
+2. Go to **Feature Flags**.
+3. Click **New flag**.
+4. Choose a stable **key**, such as `new_checkout` or `pricing_banner`.
+5. Select the flag type, runtime, and targeting conditions.
+6. Enable the flag when you are ready for it to evaluate as active.
+
+The **key** is the public identifier used in code. Treat it as the flag name and avoid changing it after the flag is in use.
+
+## Flag Types
+
+| Type | Returns | Best for |
+| --- | --- | --- |
+| **Boolean** | `true` or `false` | Releasing a feature on/off, gradual rollouts, allowlists |
+| **Multiple variants** | A variant key like `"control"` or `"variant_a"` | Comparing more than one experience or configuration |
+| **Remote config** | `true` plus a payload from `flagPayload()` | Shipping structured config such as copy, colors, limits, or JSON settings |
+
+### Boolean Flags
+
+Boolean flags support a rollout percentage for each condition set. If the visitor matches the condition set and falls inside the rollout bucket, `window.rybbit.flag()` returns `true`.
+
+```javascript
+window.rybbit.onReady((rybbit) => {
+  const enabled = rybbit.flag("new_checkout", false);
+
+  if (enabled) {
+    showNewCheckout();
+  }
+});
+```
+
+### Multiple Variants
+
+Multiple variant flags return the selected variant key. Each variant has its own rollout percentage and optional payload.
+
+```javascript
+window.rybbit.onReady((rybbit) => {
+  const variant = rybbit.flag("homepage_cta", "control");
+
+  if (variant === "variant_a") {
+    renderAlternateCTA();
+  }
+});
+```
+
+Variant rollout percentages are evaluated in order. If the visitor falls outside the total allocated percentage, the flag returns `false`.
+
+### Remote Config
+
+Remote config flags are useful when you want Rybbit to choose a JSON payload. For remote config, `flag()` returns whether a config matched, and `flagPayload()` returns the actual config.
+
+```javascript
+window.rybbit.onReady((rybbit) => {
+  const config = rybbit.flagPayload("checkout_config", {
+    buttonText: "Continue",
+    theme: "default",
+  });
+
+  renderCheckout(config);
+});
+```
+
+Remote config can still use targeting. This lets you serve one config to beta users, another config to a country, and a default config to everyone else.
+
+## Runtime
+
+Each flag has a runtime:
+
+| Runtime | Evaluated by | Use when |
+| --- | --- | --- |
+| **Client** | The browser tracking script | UI changes, frontend copy, client-only experiments |
+| **Server** | Your backend through the API | Backend behavior, pricing logic, data access, anything private |
+| **Both** | Browser and server | Both sides need the same decision |
+
+<Callout type="warn">
+Do not put secrets in client or both-runtime flag payloads. Browser-evaluated flags and payloads are visible to the user.
+</Callout>
+
+## Targeting and Condition Sets
+
+Flags use ordered condition sets. Each set contains targeting rules plus the rollout, variants, or payload for users who match that set.
+
+Evaluation works like this:
+
+1. Rybbit checks condition sets from top to bottom.
+2. The first condition set whose rules all match is selected.
+3. Rybbit applies the rollout, variant allocation, or remote config payload from that selected set.
+4. Later condition sets are not evaluated.
+
+This means condition set order matters. Put narrow segments first and broad defaults last.
+
+<Callout type="warn">
+If a visitor matches a boolean condition set but falls outside that set's rollout percentage, Rybbit returns `false` and does not continue to later condition sets.
+</Callout>
+
+### Targeting Fields
+
+| Field | Description |
+| --- | --- |
+| Hostname | Current hostname, such as `example.com` |
+| Pathname | Current path, such as `/pricing` |
+| Query parameter | A specific URL query parameter |
+| Referrer | The document referrer |
+| Language | Browser language, such as `en-US` |
+| Country | Visitor country resolved from IP |
+| Region | Visitor region resolved from IP |
+| City | Visitor city resolved from IP |
+| Device type | Device category derived from user agent and screen size |
+| User ID | The identified user ID, falling back to the anonymous visitor ID |
+| User trait | A trait set through `identify()` or `setTraits()` |
+
+### Operators
+
+Targeting rules support:
+
+- `equals`
+- `not_equals`
+- `contains`
+- `starts_with`
+- `ends_with`
+- `regex`
+
+All rules in a condition set must match. Multiple condition sets act as ordered alternatives.
+
+## Browser Runtime
+
+The tracking script automatically evaluates client and both-runtime flags when it loads. It sends context such as anonymous visitor ID, identified user ID, URL, referrer, language, screen size, IP-derived location, and saved user traits.
+
+Use `onReady()` before reading flags if you need the evaluated value during page initialization:
+
+```javascript
+window.rybbit.onReady((rybbit) => {
+  const enabled = rybbit.flag("new_checkout", false);
+  const payload = rybbit.flagPayload("new_checkout", {});
+});
+```
+
+Available browser methods:
+
+<TypeTable
+  type={{
+    "flag(key, fallback)": {
+      description: "Returns a single flag value. Reading a flag also records a feature flag exposure event once per flag value/version.",
+      type: "function",
+    },
+    "flagPayload(key, fallback)": {
+      description: "Returns the payload for a flag or variant. Use this for remote config and multivariate payloads.",
+      type: "function",
+    },
+    "flags()": {
+      description: "Returns all evaluated flag values keyed by flag key.",
+      type: "function",
+    },
+    "flagPayloads()": {
+      description: "Returns all available flag payloads keyed by flag key.",
+      type: "function",
+    },
+  }}
+/>
+
+Assignments are included on analytics events as a feature flag map. This lets you filter dashboard reports by flag key and value.
+
+### Identify and Traits
+
+If you call `identify()` or `setTraits()`, the browser runtime refreshes feature flags using the updated user context.
+
+```javascript
+window.rybbit.identify("user_123", {
+  plan: "pro",
+  beta: true,
+});
+```
+
+You can then target flags using **User ID** or **User trait** rules.
+
+## Server Runtime
+
+Use server runtime for decisions that should not happen in the browser. The server endpoint returns server and both-runtime flags only.
+
+```
+POST /api/sites/:siteId/feature-flags/evaluate
+```
+
+### Request
+
+<TypeTable
+  type={{
+    anonymousId: {
+      description: "Stable anonymous visitor ID used for rollout bucketing. Keep this stable for sticky assignments.",
+      type: "string",
+      required: true,
+    },
+    identifiedUserId: {
+      description: "Logged-in user ID. Enables user ID rules and loads saved user traits.",
+      type: "string",
+    },
+    hostname: {
+      description: "Hostname used by hostname targeting rules.",
+      type: "string",
+    },
+    pathname: {
+      description: "Path used by pathname targeting rules.",
+      type: "string",
+    },
+    query: {
+      description: "Parsed query parameter object used by query targeting rules.",
+      type: "Record<string, string>",
+    },
+    querystring: {
+      description: "Raw query string. Used if query is not provided.",
+      type: "string",
+    },
+    referrer: {
+      description: "Referrer used by referrer targeting rules.",
+      type: "string",
+    },
+    language: {
+      description: "Language code used by language targeting rules.",
+      type: "string",
+    },
+    screenWidth: {
+      description: "Screen width used with user agent parsing to derive device type.",
+      type: "number",
+    },
+    screenHeight: {
+      description: "Screen height used with user agent parsing to derive device type.",
+      type: "number",
+    },
+  }}
+/>
+
+<Tabs items={['cURL', 'JavaScript']}>
+  <Tab value="cURL">
+```bash
+curl -X POST "https://app.rybbit.io/api/sites/123/feature-flags/evaluate" \
+  -H "Authorization: Bearer rb_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "anonymousId": "visitor_abc",
+    "identifiedUserId": "user_123",
+    "hostname": "example.com",
+    "pathname": "/checkout",
+    "query": { "plan": "pro" },
+    "language": "en-US",
+    "screenWidth": 1440,
+    "screenHeight": 900
+  }'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript
+const response = await fetch(
+  "https://app.rybbit.io/api/sites/123/feature-flags/evaluate",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer rb_your_api_key_here",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      anonymousId: "visitor_abc",
+      identifiedUserId: "user_123",
+      hostname: "example.com",
+      pathname: "/checkout",
+      query: { plan: "pro" },
+      language: "en-US",
+      screenWidth: 1440,
+      screenHeight: 900,
+    }),
+  }
+);
+
+const data = await response.json();
+const newCheckout = data.flags.new_checkout?.value === true;
+```
+  </Tab>
+</Tabs>
+
+### Response
+
+```json
+{
+  "flags": {
+    "new_checkout": {
+      "key": "new_checkout",
+      "value": true,
+      "flagType": "boolean",
+      "payload": { "copy": "Try it now" },
+      "conditionSet": "Default",
+      "version": 3,
+      "reason": "rollout",
+      "matched": true,
+      "rolloutPercentage": 100
+    }
+  },
+  "generatedAt": "2026-05-27T12:00:00.000Z"
+}
+```
+
+Assignment fields:
+
+| Field | Description |
+| --- | --- |
+| `value` | The evaluated flag value. Boolean flags return `true` or `false`; multiple variant flags return a variant key or `false`; remote config returns `true` when matched. |
+| `payload` | Optional payload from the selected condition set or selected variant. |
+| `variant` | Selected variant key for multiple variant flags. |
+| `conditionSet` | Name of the condition set that matched. |
+| `reason` | Why the assignment was produced, such as `rollout`, `variant`, `remote_config`, `fallthrough`, `target_mismatch`, or `disabled`. |
+| `matched` | Whether the flag produced an active match. |
+| `rolloutPercentage` | The rollout percentage that was evaluated. |
+| `version` | Flag version. Increments when the flag is edited. |
+
+## Analytics and Filtering
+
+Feature flag assignments are stored on events. Browser-tracked events include evaluated client flags automatically. Server-side events can include a `feature_flags` object in the [HTTP API](/docs/api/sending-events) payload:
+
+```json
+{
+  "site_id": "123",
+  "type": "custom_event",
+  "event_name": "purchase",
+  "pathname": "/checkout",
+  "feature_flags": {
+    "new_checkout": "true",
+    "homepage_cta": "variant_a"
+  }
+}
+```
+
+Use feature flag filters in the dashboard to compare behavior between flag values.
+
+## Best Practices
+
+- Keep flag keys stable and descriptive, such as `new_checkout` or `pricing_page_copy`.
+- Use **Client** runtime only for values that are safe to expose in the browser.
+- Use **Server** runtime for permission checks, pricing logic, and private backend behavior.
+- Put specific condition sets before broad default condition sets.
+- Keep remote config payloads small and JSON-serializable.
+- Use a stable `anonymousId` for server-side evaluation so rollout assignments remain sticky.
+- Remove stale flags after rollout is complete to keep your dashboard and codebase clean.
+
+**Related Documentation:**
+- [Tracking Script](/docs/script)
+- [Identify Users](/docs/identify-users)
+- [Tagging](/docs/tagging)
+- [API - Sending Events](/docs/api/sending-events)

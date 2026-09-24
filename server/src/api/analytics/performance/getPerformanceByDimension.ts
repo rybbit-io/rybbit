@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { getTimeStatement, processResults } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
-import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, getPaginationStatements, runPaginatedQuery } from "../utils/analyticsQuery.js";
+import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "../utils/sessionFilters.js";
 
 interface GetPerformanceByDimensionRequest {
   Params: {
@@ -53,9 +53,12 @@ type GetPerformanceByDimensionPaginatedResponse = {
   totalCount: number;
 };
 
-const getQuery = (request: FastifyRequest<GetPerformanceByDimensionRequest>, isCountQuery: boolean = false) => {
-  const queryParams = request.query;
-  const { filters, limit, page, sort_by: sortBy, sort_order: sortOrder, dimension } = queryParams;
+export const buildPerformanceByDimensionQuery = (
+  query: GetPerformanceByDimensionRequest["Querystring"],
+  siteId: number,
+  isCountQuery: boolean = false
+) => {
+  const { filters, sort_by: sortBy, sort_order: sortOrder, dimension } = query;
 
   // Validate dimension
   const validDimensions = ["pathname", "country", "device_type", "browser", "operating_system", "region"];
@@ -64,27 +67,16 @@ const getQuery = (request: FastifyRequest<GetPerformanceByDimensionRequest>, isC
     throw new Error(`Invalid dimension: ${dimension}`);
   }
 
-  const timeStatement = getTimeStatement(request.query);
-  const filterStatement = getFilterStatement(filters, Number(request.params.siteId), timeStatement);
+  const timeStatement = getTimeStatement(query);
+  const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(
+    filters,
+    siteId,
+    timeStatement,
+    TARGET_EVENT_ROW_LEVEL_PARAMS
+  );
+  const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
 
-  let validatedLimit: number | null = null;
-  if (!isCountQuery && limit !== undefined) {
-    const parsedLimit = parseInt(String(limit), 10);
-    if (!isNaN(parsedLimit) && parsedLimit > 0) {
-      validatedLimit = parsedLimit;
-    }
-  }
-  const limitStatement = !isCountQuery && validatedLimit ? `LIMIT ${validatedLimit}` : isCountQuery ? "" : "LIMIT 100";
-
-  let validatedOffset: number | null = null;
-  if (!isCountQuery && page !== undefined) {
-    const parsedPage = parseInt(String(page), 10);
-    if (!isNaN(parsedPage) && parsedPage >= 1) {
-      const pageOffset = (parsedPage - 1) * (validatedLimit || 100);
-      validatedOffset = pageOffset;
-    }
-  }
-  const offsetStatement = !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+  const { limitStatement, offsetStatement } = getPaginationStatements(query, 100, isCountQuery);
 
   // Handle sorting
   const validSortColumns = [
@@ -151,12 +143,13 @@ const getQuery = (request: FastifyRequest<GetPerformanceByDimensionRequest>, isC
             quantileIf(0.9)(ttfb, ttfb IS NOT NULL) as ttfb_p90,
             quantileIf(0.99)(ttfb, ttfb IS NOT NULL) as ttfb_p99
         FROM events
+        ${sessionJoin}
         WHERE 
           site_id = {siteId:Int32}
           AND type = 'performance'
           AND ${dimension} IS NOT NULL 
           AND ${dimension} <> ''
-          ${filterStatement}
+          ${rowFilterStatement}
           ${timeStatement}
         GROUP BY ${dimension}
     )
@@ -164,13 +157,13 @@ const getQuery = (request: FastifyRequest<GetPerformanceByDimensionRequest>, isC
 
   if (isCountQuery) {
     return `
-    WITH ${baseCteQuery}
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
     SELECT COUNT(DISTINCT ${dimension}) as totalCount FROM PerformanceStats;
     `;
   }
 
   return `
-  WITH ${baseCteQuery}
+  WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""} ${baseCteQuery}
   SELECT
       ${dimension},
       event_count,
@@ -206,48 +199,17 @@ const getQuery = (request: FastifyRequest<GetPerformanceByDimensionRequest>, isC
   `;
 };
 
-export async function getPerformanceByDimension(
-  req: FastifyRequest<GetPerformanceByDimensionRequest>,
-  res: FastifyReply
-) {
-  const { page, dimension } = req.query;
-  const site = req.params.siteId;
+export const getPerformanceByDimension = analyticsRoute<GetPerformanceByDimensionRequest>(
+  "performance by dimension",
+  async (req: FastifyRequest<GetPerformanceByDimensionRequest>, res: FastifyReply) => {
+    const siteId = Number(req.params.siteId);
+    const params = { siteId };
 
-  const isPaginatedRequest = page !== undefined;
+    const result = await runPaginatedQuery<PerformanceByDimensionItem>(
+      { query: buildPerformanceByDimensionQuery(req.query, siteId, false), params },
+      { query: buildPerformanceByDimensionQuery(req.query, siteId, true), params }
+    );
 
-  try {
-    const dataQuery = getQuery(req, false);
-    const countQuery = getQuery(req, true);
-
-    // Run both queries in parallel
-    const [dataResult, countResult] = await Promise.all([
-      clickhouse.query({
-        query: dataQuery,
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(site),
-        },
-      }),
-      clickhouse.query({
-        query: countQuery,
-        format: "JSONEachRow",
-        query_params: {
-          siteId: Number(site),
-        },
-      }),
-    ]);
-
-    const items = await processResults<PerformanceByDimensionItem>(dataResult);
-    const countData = await processResults<{ totalCount: number }>(countResult);
-    const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
-
-    return res.send({ data: { data: items, totalCount } });
-  } catch (error) {
-    console.error("Error fetching performance by dimension:", error);
-    console.error("Failed dataQuery for dimension:", dimension);
-    if (isPaginatedRequest) {
-      console.error("Failed countQuery for dimension:", dimension);
-    }
-    return res.status(500).send({ error: "Failed to fetch performance by dimension" });
+    return res.send({ data: result });
   }
-}
+);

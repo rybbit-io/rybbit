@@ -1,0 +1,57 @@
+---
+title: Bubble.io
+description: Add Rybbit analytics to your Bubble.io app
+category: builders
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Bubble adds custom header code to every page of your app through the **SEO / metatags** settings tab, so the snippet goes there once and ships with your next deploy.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Bubble.io
+
+1. Open your app in the Bubble editor and click the **Settings** tab in the left sidebar.
+2. Open the **SEO / metatags** sub-tab.
+3. Scroll to **Script/meta tags in header** and paste the snippet. It is added to the `<head>` of every page in the app.
+4. Deploy the app to **Live**. The development version does not pick up the change until you deploy.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Bubble workflows can run arbitrary JavaScript through a **Run JavaScript** action (provided by the free Toolbox plugin). Use it to send events from any workflow trigger.
+
+1. Open the **Workflow** tab and pick the trigger, for example *When Button Signup is clicked*.
+2. Add a **Run JavaScript** action.
+3. Paste the call, using Bubble's dynamic expressions for the values:
+
+```javascript
+if (window.rybbit) {
+  window.rybbit.event("signup_clicked", {
+    plan: "Current User's Plan",
+  });
+}
+```
+
+## Troubleshooting
+
+- **Only the first pageview is tracked**: Bubble apps that switch between groups on a single page do not change the URL, so there is nothing for the script to detect. Add a **Run JavaScript** action that calls `window.rybbit.pageview()` when the group becomes visible, or track those views as custom events. Apps that navigate between real Bubble pages are tracked automatically.
+- **Snippet missing on the live site**: the header script is versioned with your app, so check that you deployed to Live after saving the setting.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

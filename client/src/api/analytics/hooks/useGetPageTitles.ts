@@ -1,12 +1,14 @@
-import { useStore } from "@/lib/store";
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { buildApiParams } from "../../utils";
-import { fetchPageTitles, PageTitlesPaginatedResponse } from "../endpoints";
+import { UseQueryResult } from "@tanstack/react-query";
+import { PageTitlesPaginatedResponse } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
+
+type PeriodTime = "current" | "previous";
 
 type UseGetPageTitlesOptions = {
   limit?: number;
   page?: number;
   useFilters?: boolean;
+  periodTime?: PeriodTime;
 };
 
 // Hook for paginated fetching (e.g., for a dedicated "All Page Titles" screen)
@@ -14,22 +16,14 @@ export function useGetPageTitlesPaginated({
   limit = 10,
   page = 1,
   useFilters = true,
-}: UseGetPageTitlesOptions): UseQueryResult<{ data: PageTitlesPaginatedResponse }> {
-  const { time, site, filters, timezone } = useStore();
-
-  const params = buildApiParams(time, { filters: useFilters ? filters : undefined });
-
-  return useQuery({
-    queryKey: ["page-titles", time, site, filters, limit, page, useFilters, timezone],
-    queryFn: async () => {
-      const data = await fetchPageTitles(site, {
-        ...params,
-        limit,
-        page,
-      });
-      return { data };
-    },
+  periodTime = "current",
+}: UseGetPageTitlesOptions): UseQueryResult<PageTitlesPaginatedResponse> {
+  return useAnalyticsQuery<PageTitlesPaginatedResponse>({
+    key: "page-titles",
+    path: "page-titles",
+    periodTime,
+    useFilters,
+    params: { limit, page },
     staleTime: Infinity,
-    enabled: !!site,
   });
 }

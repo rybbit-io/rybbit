@@ -1,0 +1,49 @@
+---
+title: Squarespace
+description: Add Rybbit analytics to your Squarespace site
+category: builders
+icon: SiSquarespace
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Squarespace injects custom HTML into every page through its **Code Injection** panel, so no template edits are needed.
+
+<Callout type="warn">
+Code Injection is available on the **Business** and **Commerce** plans. It is not available on the Personal plan.
+</Callout>
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Squarespace
+
+1. From the Home Menu, open **Settings**.
+2. Open **Website**, then **Code Injection** (listed under **Advanced** or **Developer** depending on your Squarespace version).
+3. Paste the snippet into the **Header** field. The script is deferred, so it does not delay page rendering.
+4. Click **Save** at the top of the panel.
+
+The **Footer** field also works and loads the script on every page. Leave the **Lock Page** and **Order Confirmation Page** fields alone; they only apply to those single pages.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Code Injection is missing from Settings**: the site is on the Personal plan. Upgrade to Business or Commerce.
+- **Only the checkout is tracked**: the snippet was pasted into **Order Confirmation Page** instead of **Header** or **Footer**.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

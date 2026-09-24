@@ -1,0 +1,68 @@
+---
+title: Claude Code
+description: Connect Claude Code to Rybbit's MCP server with OAuth or an API key
+---
+
+Connecting Claude Code to Rybbit lets it answer analytics questions mid-task — whether the error it just fixed still occurs in production, which pages get traffic before a refactor, whether a newly instrumented event is firing — and wire up goals and funnels as you ship features.
+
+This page covers client setup only. The [MCP overview](/docs/mcp) covers the endpoint, API keys and scopes, the full tool list, and troubleshooting.
+
+## Connect with OAuth
+
+The simplest way to connect — no API key to create or store:
+
+```bash
+claude mcp add --transport http rybbit https://app.rybbit.io/api/mcp
+```
+
+For a self-hosted installation, replace the host with your configured `BASE_URL`.
+
+Then run `/mcp` inside a Claude Code session, select **rybbit**, and choose **Authenticate**. Your browser opens to log in to Rybbit and approve access, and the connection acts with your user's role.
+
+By default the server registers at the `local` scope — available to you in the current project only. Add `--scope user` to use it in all of your projects.
+
+## Team setup
+
+OAuth makes the team setup trivial: commit a project-scoped `.mcp.json` at the repository root containing only the URL, and each developer authenticates once with `/mcp`. No secret ever touches the repo:
+
+```json
+{
+  "mcpServers": {
+    "rybbit": {
+      "type": "http",
+      "url": "https://app.rybbit.io/api/mcp"
+    }
+  }
+}
+```
+
+## Connect with an API key
+
+Use an [API key](/docs/mcp#1-create-an-api-key) instead when there is no browser to authenticate in (CI, headless `claude -p` runs) or when you want to hand the agent a narrower, scoped credential:
+
+```bash
+claude mcp add --transport http rybbit https://app.rybbit.io/api/mcp \
+  --header "Authorization: Bearer <RYBBIT_API_KEY>"
+```
+
+In a committed `.mcp.json`, pass the key through an environment variable rather than hard-coding it — Claude Code expands `${VAR}` references from each developer's environment:
+
+```json
+{
+  "mcpServers": {
+    "rybbit": {
+      "type": "http",
+      "url": "https://app.rybbit.io/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${RYBBIT_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+## Verify
+
+Run `claude mcp list` (or `/mcp` inside a session) to confirm the server shows as connected, then try:
+
+> List my Rybbit sites and summarize last week's traffic for each.

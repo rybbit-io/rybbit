@@ -1,0 +1,50 @@
+---
+title: Wix
+description: Add Rybbit analytics to your Wix site
+category: builders
+icon: SiWix
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Wix adds third-party scripts through the **Custom Code** panel in the site dashboard, where you choose which pages load the code and where in the document it goes.
+
+<Callout type="warn">
+Custom code requires a **Wix Premium plan** and a **connected domain**. It is not available on free Wix sites.
+</Callout>
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Wix
+
+1. Open your site's dashboard and go to **Settings**.
+2. Open **Custom Code** (under **Advanced**). Older dashboards list it as **Tracking Tools & Analytics** under **Marketing & SEO**.
+3. Click **+ Add Custom Code** and paste the snippet into the code box.
+4. Name the code, for example `Rybbit`.
+5. Under **Add Code to Pages**, choose **All pages** and **Load code once**. The script tracks Wix's client-side navigation itself, so loading it on every page change would inject it repeatedly.
+6. Under **Place Code in**, choose **Head**.
+7. Click **Apply**.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Custom Code is missing from Settings**: the site has no Premium plan or no connected domain. Both are required before the panel appears.
+- **Duplicate pageviews**: the code was added with **Load code on each new page**. Edit the entry and switch to **Load code once**.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

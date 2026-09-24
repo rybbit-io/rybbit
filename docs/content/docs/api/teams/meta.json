@@ -1,0 +1,4 @@
+{
+  "title": "Teams",
+  "pages": ["list", "create", "update", "delete"]
+}

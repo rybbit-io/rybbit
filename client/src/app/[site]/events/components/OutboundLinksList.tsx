@@ -89,7 +89,8 @@ export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: 
   const maxCount = Math.max(...outboundLinks.map(link => link.count));
 
   return (
-    <ScrollArea className="h-[394px]">
+    /* [&>div]:!block forces Radix's display:table viewport wrapper to block so url truncate is bounded */
+    <ScrollArea className="h-[394px]" viewportClassName="[&>div]:!block">
       <div className="flex flex-col gap-2 pr-2 overflow-x-hidden">
         {outboundLinks.map((link, index) => {
           const percentageOfMax = (link.count / maxCount) * 100;

@@ -1,8 +1,10 @@
+import { useExtracted } from "next-intl";
 import { RefObject } from "react";
 import { NothingFound } from "../../../../../components/NothingFound";
 import { useConfigs } from "../../../../../lib/configs";
 
 export const MapboxMap = ({ mapContainer }: { mapContainer: RefObject<HTMLDivElement | null> }) => {
+  const t = useExtracted();
   const { configs, isLoading } = useConfigs();
 
   return (
@@ -15,11 +17,10 @@ export const MapboxMap = ({ mapContainer }: { mapContainer: RefObject<HTMLDivEle
       ) : isLoading ? null : (
         <div className="w-full h-full flex items-center justify-center">
           <NothingFound
-            title="Mapbox access token not found"
+            title={t("Mapbox access token not found")}
             description={
               <p className="text-sm max-w-[600px] text-center">
-                Please set the <code>MAPBOX_TOKEN</code> environment variable and rebuild all containers. To get a
-                Mapbox token, please visit{" "}
+                {t("Please set the MAPBOX_TOKEN environment variable and rebuild all containers. To get a Mapbox token, please visit")}{" "}
                 <a
                   href="https://docs.mapbox.com/help/dive-deeper/access-tokens/"
                   target="_blank"
@@ -28,7 +29,7 @@ export const MapboxMap = ({ mapContainer }: { mapContainer: RefObject<HTMLDivEle
                 >
                   Mapbox
                 </a>{" "}
-                and create an account.
+                {t("and create an account.")}
               </p>
             }
           />

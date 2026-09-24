@@ -1,0 +1,233 @@
+import { FilterParams } from "@rybbit/shared";
+import { FastifyReply, FastifyRequest } from "fastify";
+import { getOverviewBucketed } from "../getOverviewBucketed.js";
+import { TimeBucket } from "../types.js";
+import { resolveTimeWindow } from "../utils/timeWindow.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import {
+  getLiteSessionFilter,
+  hasLiteDatetimeRange,
+  hasLiteFilters,
+  hasLiteRealtimeRange,
+  liteBucket,
+} from "./utils.js";
+
+type GetOverviewBucketedLiteResponse = {
+  time: string;
+  pageviews: number;
+  sessions: number;
+  pages_per_session: number;
+  bounce_rate: number;
+  session_duration: number;
+  users: number;
+}[];
+
+// Hour-bucketed charts use the streaming MV JOIN: pageviews/users are bucketed
+// by EVENT timestamp (when the pageview happened) which matches the standard
+// endpoint's semantics.
+//
+// Day/week/month charts read the refreshable session_hourly_mv directly. At
+// day+ granularity the difference between event-time and session-start-time
+// bucketing is negligible (sessions rarely cross day boundaries), and we get
+// all 6 metrics from a single small table.
+function buildHourBucketQuery(args: {
+  bucketed: (column: string) => string;
+  overviewTime: string;
+  sessionsTime: string;
+  fill: string;
+}) {
+  const { bucketed, overviewTime, sessionsTime, fill } = args;
+  return `
+    SELECT
+      coalesce(p.time, s.time) AS time,
+      coalesce(p.pageviews, 0) AS pageviews,
+      coalesce(p.users, 0) AS users,
+      coalesce(s.sessions, 0) AS sessions,
+      coalesce(s.pages_per_session, 0) AS pages_per_session,
+      coalesce(s.bounce_rate, 0) AS bounce_rate,
+      coalesce(s.session_duration, 0) AS session_duration
+    FROM (
+      SELECT
+        ${bucketed("event_hour")} AS time,
+        sum(pageviews) AS pageviews,
+        uniqMerge(users) AS users
+      FROM overview_hourly_mv_target
+      WHERE site_id = {siteId:Int32}
+        ${overviewTime}
+      GROUP BY time
+      ORDER BY time ${fill}
+    ) p
+    FULL JOIN (
+      SELECT
+        ${bucketed("session_start")} AS time,
+        count() AS sessions,
+        avg(session_pageviews) AS pages_per_session,
+        countIf(session_pageviews = 1) / count() * 100 AS bounce_rate,
+        avg(session_end - session_start) AS session_duration
+      FROM (
+        SELECT
+          session_id,
+          sum(pageviews) AS session_pageviews,
+          min(start_time) AS session_start,
+          max(end_time) AS session_end
+        FROM sessions_mv_target
+        WHERE site_id = {siteId:Int32}
+          ${sessionsTime}
+        GROUP BY session_id
+      )
+      GROUP BY time
+      ORDER BY time ${fill}
+    ) s USING time
+    ORDER BY time
+  `;
+}
+
+function buildDayBucketQuery(args: { bucketed: (column: string) => string; sessionTime: string; fill: string }) {
+  const { bucketed, sessionTime, fill } = args;
+  // Aggregate in the inner GROUP BY, then compose ratios in the outer SELECT.
+  // Aliasing `sum(sessions) AS sessions` would shadow the column inside the
+  // div-by-zero guard and trigger ILLEGAL_AGGREGATION.
+  return `
+    SELECT
+      time,
+      sessions,
+      pageviews,
+      users,
+      if(sessions > 0, pageviews / sessions, 0) AS pages_per_session,
+      if(sessions > 0, bounced_sessions * 100.0 / sessions, 0) AS bounce_rate,
+      if(sessions > 0, total_session_duration_seconds / sessions, 0) AS session_duration
+    FROM (
+      SELECT
+        ${bucketed("session_hour")} AS time,
+        sum(sessions) AS sessions,
+        sum(pageviews) AS pageviews,
+        uniqMerge(users) AS users,
+        sum(bounced_sessions) AS bounced_sessions,
+        sum(total_session_duration_seconds) AS total_session_duration_seconds
+      FROM session_hourly_mv_target
+      WHERE site_id = {siteId:Int32}
+        ${sessionTime}
+      GROUP BY time
+      ORDER BY time ${fill}
+    )
+    ORDER BY time
+  `;
+}
+
+// Filtered charts read sessions_mv_target (one row per session) and bucket by
+// session start. pageviews/users come from the same rollup rather than the
+// dimensionless overview_hourly_mv, so any session-column filter stays on the
+// MVs. Bucketing by session-start instead of event-time is the same negligible
+// approximation the day-bucket path already makes.
+function buildSessionMvFilteredQuery(args: {
+  bucketed: (column: string) => string;
+  sessionsTime: string;
+  fill: string;
+  filterSql: string;
+}) {
+  const { bucketed, sessionsTime, fill, filterSql } = args;
+  return `
+    SELECT
+      time,
+      sessions,
+      pageviews,
+      users,
+      if(sessions > 0, pageviews / sessions, 0) AS pages_per_session,
+      if(sessions > 0, bounced_sessions * 100.0 / sessions, 0) AS bounce_rate,
+      if(sessions > 0, total_session_duration_seconds / sessions, 0) AS session_duration
+    FROM (
+      SELECT
+        ${bucketed("session_start")} AS time,
+        count() AS sessions,
+        sum(session_pageviews) AS pageviews,
+        uniqExact(user_id) AS users,
+        countIf(session_pageviews = 1) AS bounced_sessions,
+        sum(toUInt64(session_end - session_start)) AS total_session_duration_seconds
+      FROM (
+        SELECT
+          session_id,
+          any(user_id) AS user_id,
+          sum(pageviews) AS session_pageviews,
+          min(start_time) AS session_start,
+          max(end_time) AS session_end
+        FROM sessions_mv_target
+        WHERE site_id = {siteId:Int32}
+          ${sessionsTime}
+          ${filterSql}
+        GROUP BY session_id
+      )
+      GROUP BY time
+      ORDER BY time ${fill}
+    )
+    ORDER BY time
+  `;
+}
+
+interface GetOverviewBucketedLiteRequest {
+  Params: { siteId: string };
+  Querystring: FilterParams<{ bucket: TimeBucket }>;
+}
+
+export const getOverviewBucketedLite = analyticsRoute<GetOverviewBucketedLiteRequest>(
+  "overview",
+  async (req: FastifyRequest<GetOverviewBucketedLiteRequest>, res: FastifyReply) => {
+    const site = Number(req.params.siteId);
+
+    // Hourly rollups can't represent exact or short rolling windows.
+    if (hasLiteDatetimeRange(req.query) || hasLiteRealtimeRange(req.query)) {
+      return getOverviewBucketed(req, res);
+    }
+
+    const bucket = liteBucket(req.query.bucket);
+    const window = resolveTimeWindow(req.query);
+    // The rollups name their time column differently per table, so the window
+    // renders the bucket expression per column instead of each builder
+    // reassembling it from a function name and a timezone.
+    const bucketed = (column: string) => window.bucketed(column, bucket);
+    const fill = window.fill(bucket);
+    // Every predicate in the query comes off this one window. Resolving it per
+    // column re-read now(), so a past-minutes request built across an hour
+    // boundary could bound the pageview rollup and the session rollup to
+    // different windows and join two different questions together.
+    const where = (column: string) => window.where(column);
+
+    const filtersPresent = hasLiteFilters(req.query.filters);
+
+    let query: string;
+    if (filtersPresent) {
+      // Session-column filters stay on sessions_mv_target; anything else falls
+      // back to the raw-events query.
+      const filter = getLiteSessionFilter(req.query.filters);
+      if (!filter.supported) {
+        return getOverviewBucketed(req, res);
+      }
+      query = buildSessionMvFilteredQuery({
+        bucketed,
+        sessionsTime: where("start_time"),
+        fill,
+        filterSql: filter.sql,
+      });
+    } else {
+      const useDayBucket = bucket === "day" || bucket === "week" || bucket === "month" || bucket === "year";
+
+      query = useDayBucket
+        ? buildDayBucketQuery({
+            bucketed,
+            sessionTime: where("session_hour"),
+            fill,
+          })
+        : buildHourBucketQuery({
+            bucketed,
+            overviewTime: where("event_hour"),
+            sessionsTime: where("start_time"),
+            fill,
+          });
+    }
+
+    const data = await runAnalyticsQuery<GetOverviewBucketedLiteResponse[number]>({
+      query,
+      params: { siteId: site },
+    });
+    return res.send({ data });
+  }
+);

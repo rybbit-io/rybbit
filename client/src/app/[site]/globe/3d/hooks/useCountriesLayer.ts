@@ -22,6 +22,7 @@ export function useCountriesLayer({ map, mapLoaded, mapView }: UseCountriesLayer
 
   useEffect(() => {
     if (!map.current || !countriesGeoData || !countryData?.data || !mapLoaded) return;
+    const mapInstance = map.current;
 
     // Initialize popup once
     if (!popupRef.current) {
@@ -33,8 +34,6 @@ export function useCountriesLayer({ map, mapLoaded, mapView }: UseCountriesLayer
     }
 
     const addCountriesLayer = () => {
-      if (!map.current) return;
-
       const geoDataCopy = JSON.parse(JSON.stringify(countriesGeoData));
       geoDataCopy.features.forEach((feature: any) => {
         const code = feature.properties?.ISO_A2;
@@ -45,15 +44,15 @@ export function useCountriesLayer({ map, mapLoaded, mapView }: UseCountriesLayer
         feature.properties.count = count;
       });
 
-      if (map.current.getSource("countries")) {
-        (map.current.getSource("countries") as mapboxgl.GeoJSONSource).setData(geoDataCopy);
+      if (mapInstance.getSource("countries")) {
+        (mapInstance.getSource("countries") as mapboxgl.GeoJSONSource).setData(geoDataCopy);
       } else {
-        map.current.addSource("countries", {
+        mapInstance.addSource("countries", {
           type: "geojson",
           data: geoDataCopy,
         });
 
-        map.current.addLayer({
+        mapInstance.addLayer({
           id: "countries-fill",
           type: "fill",
           source: "countries",
@@ -66,7 +65,7 @@ export function useCountriesLayer({ map, mapLoaded, mapView }: UseCountriesLayer
           },
         });
 
-        map.current.addLayer({
+        mapInstance.addLayer({
           id: "countries-outline",
           type: "line",
           source: "countries",
@@ -79,25 +78,36 @@ export function useCountriesLayer({ map, mapLoaded, mapView }: UseCountriesLayer
             visibility: mapView === "countries" ? "visible" : "none",
           },
         });
+      }
+    };
 
-        map.current.on("mousemove", "countries-fill", e => {
-          if (!map.current || !e.features || e.features.length === 0 || !popupRef.current) return;
-          map.current.getCanvas().style.cursor = "pointer";
+    addCountriesLayer();
 
-          const feature = e.features[0];
-          const code = feature.properties?.ISO_A2;
-          const name = feature.properties?.ADMIN;
-          const count = feature.properties?.count || 0;
+    const setCursor = (cursor: string) => {
+      const canvas = mapInstance.getCanvas() as HTMLCanvasElement | undefined;
+      if (canvas) {
+        canvas.style.cursor = cursor;
+      }
+    };
 
-          const currentData = countryData?.data;
-          const foundData = currentData?.find((d: any) => d.value === code);
-          const percentage = foundData?.percentage || 0;
+    const handleMouseMove = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0 || !popupRef.current) return;
+      setCursor("pointer");
 
-          const flagSVG = renderCountryFlag(code);
+      const feature = e.features[0];
+      const code = feature.properties?.ISO_A2;
+      const name = feature.properties?.ADMIN;
+      const count = feature.properties?.count || 0;
 
-          // Use Mapbox native popup
-          const coordinates = e.lngLat;
-          const html = `
+      const currentData = countryData?.data;
+      const foundData = currentData?.find((d: any) => d.value === code);
+      const percentage = foundData?.percentage || 0;
+
+      const flagSVG = renderCountryFlag(code);
+
+      // Use Mapbox native popup
+      const coordinates = e.lngLat;
+      const html = `
             <div class="bg-neutral-850 border border-neutral-700 rounded-lg p-2">
               <div class="flex items-center gap-2 mb-1">
                 ${flagSVG}
@@ -110,30 +120,38 @@ export function useCountriesLayer({ map, mapLoaded, mapView }: UseCountriesLayer
             </div>
           `;
 
-          popupRef.current.setLngLat(coordinates).setHTML(html).addTo(map.current);
-        });
-
-        map.current.on("mouseleave", "countries-fill", () => {
-          if (!map.current || !popupRef.current) return;
-          map.current.getCanvas().style.cursor = "";
-          popupRef.current.remove();
-        });
-
-        map.current.on("click", "countries-fill", e => {
-          if (!e.features || e.features.length === 0) return;
-
-          const feature = e.features[0];
-          const code = feature.properties?.ISO_A2;
-
-          addFilter({
-            parameter: "country" as FilterParameter,
-            value: [code],
-            type: "equals",
-          });
-        });
-      }
+      popupRef.current.setLngLat(coordinates).setHTML(html).addTo(mapInstance);
     };
 
-    addCountriesLayer();
-  }, [countriesGeoData, countryData?.data, colorScale, map, mapLoaded]);
+    const handleMouseLeave = () => {
+      if (!popupRef.current) return;
+      setCursor("");
+      popupRef.current.remove();
+    };
+
+    const handleClick = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0) return;
+
+      const feature = e.features[0];
+      const code = feature.properties?.ISO_A2;
+
+      addFilter({
+        parameter: "country" as FilterParameter,
+        value: [code],
+        type: "equals",
+      });
+    };
+
+    mapInstance.on("mousemove", "countries-fill", handleMouseMove);
+    mapInstance.on("mouseleave", "countries-fill", handleMouseLeave);
+    mapInstance.on("click", "countries-fill", handleClick);
+
+    return () => {
+      mapInstance.off("mousemove", "countries-fill", handleMouseMove);
+      mapInstance.off("mouseleave", "countries-fill", handleMouseLeave);
+      mapInstance.off("click", "countries-fill", handleClick);
+      setCursor("");
+      popupRef.current?.remove();
+    };
+  }, [countriesGeoData, countryData?.data, colorScale, map, mapLoaded, mapView]);
 }

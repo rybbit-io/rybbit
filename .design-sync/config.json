@@ -1,0 +1,257 @@
+{
+  "projectId": "919373d2-dae3-4b32-b062-a45a4f918356",
+  "shape": "package",
+  "pkg": "@rybbit/ui",
+  "globalName": "Rybbit",
+  "entry": ".design-sync/pkg/dist/index.js",
+  "buildCmd": "node .design-sync/pkg/build.mjs",
+  "srcDir": "../../client/src/components/ui",
+  "cssEntry": "dist/styles.css",
+  "docsDir": "../docs",
+  "provider": {
+    "component": "RybbitTheme"
+  },
+  "componentSrcMap": {
+    "Toaster": "../../client/src/components/ui/sonner.tsx",
+    "RybbitTheme": null,
+    "AlertDescription": null,
+    "AlertDialogAction": null,
+    "AlertDialogCancel": null,
+    "AlertDialogContent": null,
+    "AlertDialogDescription": null,
+    "AlertDialogFooter": null,
+    "AlertDialogHeader": null,
+    "AlertDialogOverlay": null,
+    "AlertDialogPortal": null,
+    "AlertDialogTitle": null,
+    "AlertDialogTrigger": null,
+    "AlertTitle": null,
+    "BasicTabsContent": null,
+    "BasicTabsList": null,
+    "BasicTabsTrigger": null,
+    "BreadcrumbEllipsis": null,
+    "BreadcrumbItem": null,
+    "BreadcrumbLink": null,
+    "BreadcrumbList": null,
+    "BreadcrumbPage": null,
+    "BreadcrumbSeparator": null,
+    "ButtonGroupSeparator": null,
+    "ButtonGroupText": null,
+    "CalendarDayButton": null,
+    "CardContent": null,
+    "CardDescription": null,
+    "CardFooter": null,
+    "CardHeader": null,
+    "CardLoader": null,
+    "CardTitle": null,
+    "CarouselContent": null,
+    "CarouselItem": null,
+    "CarouselNext": null,
+    "CarouselPrevious": null,
+    "CommandDialog": null,
+    "CommandEmpty": null,
+    "CommandGroup": null,
+    "CommandInput": null,
+    "CommandItem": null,
+    "CommandList": null,
+    "CommandSeparator": null,
+    "CommandShortcut": null,
+    "DialogClose": null,
+    "DialogContent": null,
+    "DialogContentFullScreen": null,
+    "DialogDescription": null,
+    "DialogFooter": null,
+    "DialogHeader": null,
+    "DialogOverlay": null,
+    "DialogPortal": null,
+    "DialogTitle": null,
+    "DialogTrigger": null,
+    "DrawerClose": null,
+    "DrawerContent": null,
+    "DrawerDescription": null,
+    "DrawerFooter": null,
+    "DrawerHeader": null,
+    "DrawerOverlay": null,
+    "DrawerPortal": null,
+    "DrawerTitle": null,
+    "DrawerTrigger": null,
+    "DropdownMenuCheckboxItem": null,
+    "DropdownMenuContent": null,
+    "DropdownMenuGroup": null,
+    "DropdownMenuItem": null,
+    "DropdownMenuLabel": null,
+    "DropdownMenuPortal": null,
+    "DropdownMenuRadioGroup": null,
+    "DropdownMenuRadioItem": null,
+    "DropdownMenuSeparator": null,
+    "DropdownMenuShortcut": null,
+    "DropdownMenuSub": null,
+    "DropdownMenuSubContent": null,
+    "DropdownMenuSubTrigger": null,
+    "DropdownMenuTrigger": null,
+    "FormControl": null,
+    "FormDescription": null,
+    "FormField": null,
+    "FormItem": null,
+    "FormLabel": null,
+    "FormMessage": null,
+    "NavigationMenuContent": null,
+    "NavigationMenuIndicator": null,
+    "NavigationMenuItem": null,
+    "NavigationMenuLink": null,
+    "NavigationMenuList": null,
+    "NavigationMenuTrigger": null,
+    "NavigationMenuViewport": null,
+    "PopoverAnchor": null,
+    "PopoverContent": null,
+    "PopoverTrigger": null,
+    "RadioGroupItem": null,
+    "ResponsiveDialogClose": null,
+    "ResponsiveDialogContent": null,
+    "ResponsiveDialogDescription": null,
+    "ResponsiveDialogFooter": null,
+    "ResponsiveDialogHeader": null,
+    "ResponsiveDialogOverlay": null,
+    "ResponsiveDialogPortal": null,
+    "ResponsiveDialogTitle": null,
+    "ResponsiveDialogTrigger": null,
+    "ScrollBar": null,
+    "SelectContent": null,
+    "SelectGroup": null,
+    "SelectItem": null,
+    "SelectLabel": null,
+    "SelectScrollDownButton": null,
+    "SelectScrollUpButton": null,
+    "SelectSeparator": null,
+    "SelectTrigger": null,
+    "SelectValue": null,
+    "SheetClose": null,
+    "SheetContent": null,
+    "SheetDescription": null,
+    "SheetFooter": null,
+    "SheetHeader": null,
+    "SheetOverlay": null,
+    "SheetPortal": null,
+    "SheetTitle": null,
+    "SheetTrigger": null,
+    "TableBody": null,
+    "TableCaption": null,
+    "TableCell": null,
+    "TableFooter": null,
+    "TableHead": null,
+    "TableHeader": null,
+    "TableRow": null,
+    "TableSortIndicator": null,
+    "TabsContent": null,
+    "TabsList": null,
+    "TabsTrigger": null,
+    "TooltipContent": null,
+    "TooltipProvider": null,
+    "TooltipTrigger": null
+  },
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "viewport": "720x520",
+      "primaryStory": "CreateSite"
+    },
+    "Table": {
+      "cardMode": "column"
+    },
+    "AlertDialog": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "Sheet": {
+      "cardMode": "single",
+      "viewport": "800x520"
+    },
+    "Drawer": {
+      "cardMode": "single",
+      "viewport": "720x560"
+    },
+    "ResponsiveDialog": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "Popover": {
+      "cardMode": "single",
+      "viewport": "520x400"
+    },
+    "Tooltip": {
+      "cardMode": "single",
+      "viewport": "480x260",
+      "primaryStory": "Placements"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "viewport": "520x460"
+    },
+    "Select": {
+      "cardMode": "single",
+      "viewport": "520x420"
+    },
+    "MultiSelect": {
+      "cardMode": "single",
+      "viewport": "560x440",
+      "primaryStory": "CountriesOpen"
+    },
+    "InputWithSuggestions": {
+      "cardMode": "single",
+      "viewport": "560x400",
+      "primaryStory": "PagePathOpen"
+    },
+    "Toaster": {
+      "cardMode": "single",
+      "viewport": "720x400"
+    },
+    "NavigationMenu": {
+      "cardMode": "column"
+    },
+    "Carousel": {
+      "cardMode": "column"
+    },
+    "ButtonGroup": {
+      "cardMode": "column"
+    },
+    "Skeleton": {
+      "cardMode": "column"
+    },
+    "Checkbox": {
+      "cardMode": "column"
+    },
+    "Input": {
+      "cardMode": "column"
+    },
+    "Label": {
+      "cardMode": "column"
+    },
+    "RadioGroup": {
+      "cardMode": "column"
+    },
+    "Slider": {
+      "cardMode": "column"
+    },
+    "Switch": {
+      "cardMode": "column"
+    },
+    "Textarea": {
+      "cardMode": "column"
+    },
+    "BasicTabs": {
+      "cardMode": "column"
+    },
+    "Tabs": {
+      "cardMode": "column"
+    },
+    "Command": {
+      "cardMode": "single",
+      "primaryStory": "Palette"
+    }
+  },
+  "guidelinesGlob": [
+    "../../DESIGN.md",
+    "../../PRODUCT.md"
+  ],
+  "readmeHeader": ".design-sync/conventions.md"
+}

@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { processResults } from "./utils/utils.js";
+import { analyticsRoute, runAnalyticsQuery } from "./utils/analyticsQuery.js";
+import { effectiveUserId } from "./utils/effectiveUserId.js";
 
 // Define the expected shape of a single data row from the query
 interface RetentionDataRow {
@@ -19,32 +19,21 @@ interface ProcessedRetentionData {
   range: number;
 }
 
-export const getRetention = async (
-  req: FastifyRequest<{
-    Params: { siteId: string };
-    Querystring: { mode?: string; range?: string };
-  }>,
-  res: FastifyReply
-) => {
-  const { siteId } = req.params;
-  const { mode = "week", range = "90" } = req.query; // Default to weekly mode and 90 days range
+interface GetRetentionRequest {
+  Params: { siteId: string };
+  Querystring: { mode?: string; range?: string };
+}
 
-  // Validate mode parameter
-  const retentionMode = mode === "day" ? "day" : "week";
-
-  // Validate range parameter (between 7-365 days)
-  const timeRange = Math.min(365, Math.max(7, parseInt(range) || 90));
-
+export const buildRetentionQuery = (retentionMode: "day" | "week") => {
   // Build the appropriate SQL based on the retention mode
   const periodFunction = retentionMode === "day" ? "toDate" : "toStartOfWeek";
   const periodDiffFunc = retentionMode === "day" ? "day" : "week";
 
-  const query = await clickhouse.query({
-    query: `
+  return `
 WITH UserFirstPeriod AS (
     SELECT
         -- Use effective user ID: identified_user_id for identified users, user_id for anonymous
-        COALESCE(NULLIF(identified_user_id, ''), user_id) AS effective_user_id,
+        ${effectiveUserId()} AS effective_user_id,
         ${periodFunction}(min(timestamp)${retentionMode === "week" ? ", 1" : ""}) AS cohort_period
     FROM events
     WHERE site_id = {siteId:UInt16}
@@ -54,7 +43,7 @@ WITH UserFirstPeriod AS (
 ),
 PeriodActivity AS (
     SELECT DISTINCT
-        COALESCE(NULLIF(identified_user_id, ''), user_id) AS effective_user_id,
+        ${effectiveUserId()} AS effective_user_id,
         ${periodFunction}(timestamp${retentionMode === "week" ? ", 1" : ""}) AS activity_period
     FROM events
     WHERE site_id = {siteId:UInt16}
@@ -91,25 +80,39 @@ JOIN CohortSize cs ON cr.cohort_period = cs.cohort_period
 ORDER BY
     cr.cohort_period DESC,
     cr.period_difference ASC;
-    `,
-    format: "JSONEachRow",
-    query_params: {
-      siteId: Number(siteId),
-      timeRange: timeRange,
-    },
-  });
-
-  const results = await processResults<RetentionDataRow>(query);
-
-  // Process data into a grid-friendly format
-  const processedData: ProcessedRetentionData = {
-    ...processRetentionData(results),
-    mode: retentionMode as "day" | "week",
-    range: timeRange,
-  };
-
-  return res.send({ data: processedData });
+    `;
 };
+
+export const getRetention = analyticsRoute<GetRetentionRequest>(
+  "retention",
+  async (req: FastifyRequest<GetRetentionRequest>, res: FastifyReply) => {
+    const { siteId } = req.params;
+    const { mode = "week", range = "90" } = req.query; // Default to weekly mode and 90 days range
+
+    // Validate mode parameter
+    const retentionMode = mode === "day" ? "day" : "week";
+
+    // Validate range parameter (between 7-365 days)
+    const timeRange = Math.min(365, Math.max(7, parseInt(range) || 90));
+
+    const results = await runAnalyticsQuery<RetentionDataRow>({
+      query: buildRetentionQuery(retentionMode),
+      params: {
+        siteId: Number(siteId),
+        timeRange: timeRange,
+      },
+    });
+
+    // Process data into a grid-friendly format
+    const processedData: ProcessedRetentionData = {
+      ...processRetentionData(results),
+      mode: retentionMode as "day" | "week",
+      range: timeRange,
+    };
+
+    return res.send({ data: processedData });
+  }
+);
 
 // Process raw retention data into a grid-friendly format
 function processRetentionData(rawData: RetentionDataRow[]): Omit<ProcessedRetentionData, "mode" | "range"> {

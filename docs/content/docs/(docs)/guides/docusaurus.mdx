@@ -1,0 +1,113 @@
+---
+title: Docusaurus
+description: Add Rybbit analytics to your Docusaurus docs
+category: docs
+icon: SiDocusaurus
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Docusaurus has a `scripts` option in `docusaurus.config.js` that adds a `<script>` tag to the `<head>` of every page, so no theme swizzling is needed.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Docusaurus
+
+Open `docusaurus.config.js` (or `docusaurus.config.ts`) at the root of your project and add the script to the `scripts` array:
+
+```javascript filename="docusaurus.config.js"
+/** @type {import('@docusaurus/types').Config} */
+const config = {
+  // ... title, url, baseUrl, presets, themeConfig
+
+  scripts: [
+    {
+      src: "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID",
+      defer: true,
+    },
+  ],
+};
+
+module.exports = config;
+```
+
+If you already manage tags through `headTags`, this form is equivalent:
+
+```javascript filename="docusaurus.config.js"
+headTags: [
+  {
+    tagName: "script",
+    attributes: {
+      src: "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID",
+      defer: "true",
+    },
+  },
+],
+```
+
+Rebuild with `npm run build` and deploy. The tag is not hot-reloaded into a running `npm run start` session until you restart it.
+
+<Callout type="info">
+Docusaurus builds a single-page app on React Router. Rybbit detects client-side route changes and records them as pageviews, so no extra code is needed for navigation.
+</Callout>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Docusaurus pages are React, so you can fire events from a component and use it in MDX:
+
+```jsx filename="src/components/TrackedButton.jsx"
+import React from "react";
+
+export default function TrackedButton({ children, eventName, eventData }) {
+  const handleClick = () => {
+    window.rybbit?.event(eventName, eventData);
+  };
+
+  return (
+    <button onClick={handleClick} className="button button--primary">
+      {children}
+    </button>
+  );
+}
+```
+
+```mdx
+import TrackedButton from "@site/src/components/TrackedButton";
+
+<TrackedButton eventName="learn_more_clicked" eventData={{ page: "introduction" }}>
+  Learn more
+</TrackedButton>
+```
+
+For site-wide listeners, use a [client module](https://docusaurus.io/docs/advanced/client-modules). `onRouteDidUpdate` runs after every navigation once the DOM is ready:
+
+```javascript filename="src/client-modules/rybbit-events.js"
+export function onRouteDidUpdate() {
+  document.querySelectorAll('a[target="_blank"]').forEach((link) => {
+    link.addEventListener("click", () => {
+      window.rybbit?.event("external_link_click", { href: link.href });
+    });
+  });
+}
+```
+
+Register it in `docusaurus.config.js` under `clientModules: [require.resolve("./src/client-modules/rybbit-events.js")]`. Client modules also run during server-side rendering, so guard any `window` access.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

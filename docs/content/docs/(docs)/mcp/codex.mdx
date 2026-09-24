@@ -1,0 +1,44 @@
+---
+title: Codex
+description: Connect the Codex CLI to Rybbit's MCP server with OAuth or an API key
+---
+
+Connecting Codex to Rybbit lets it check analytics as part of your development workflow — verifying that a fixed error stopped occurring, checking which routes get traffic before a refactor, or creating goals and funnels for features as you ship them.
+
+This page covers client setup only. The [MCP overview](/docs/mcp) covers the endpoint, API keys and scopes, the full tool list, and troubleshooting.
+
+## Connect with OAuth
+
+The simplest way to connect — add the server and log in:
+
+```bash
+codex mcp add rybbit --url https://app.rybbit.io/api/mcp
+codex mcp login rybbit
+```
+
+For a self-hosted installation, replace the host with your configured `BASE_URL`.
+
+`codex mcp login` opens your browser to log in to Rybbit and approve access; the connection acts with your user's role.
+
+## Connect with an API key
+
+Use an [API key](/docs/mcp#1-create-an-api-key) instead for non-interactive runs or a narrower, scoped credential. Register the name of an environment variable holding the key:
+
+```bash
+codex mcp add rybbit --url https://app.rybbit.io/api/mcp \
+  --bearer-token-env-var RYBBIT_API_KEY
+```
+
+Codex reads the key from that variable rather than storing it, so `RYBBIT_API_KEY` must be exported in the shell that launches Codex. Equivalently, configure it in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.rybbit]
+url = "https://app.rybbit.io/api/mcp"
+bearer_token_env_var = "RYBBIT_API_KEY"
+```
+
+## Verify
+
+Run `codex mcp list` (or `/mcp` inside the Codex TUI) to confirm the server is connected, then try:
+
+> List my Rybbit sites and summarize last week's traffic for each.

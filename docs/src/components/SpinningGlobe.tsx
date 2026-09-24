@@ -4,11 +4,12 @@ import { isNil, round, throttle } from "lodash";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
-import BoringAvatar from "boring-avatars";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { frogAvatarSVG } from "@/lib/frogAvatar";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import {
+  Bot,
   Monitor,
   Smartphone,
   Link,
@@ -28,30 +29,6 @@ import {
   MousePointerClick,
 } from "lucide-react";
 import { DateTime } from "luxon";
-
-// Avatar colors from client
-const AVATAR_COLORS = [
-  "#ec4899",
-  "#be185d",
-  "#f97316",
-  "#c2410c",
-  "#eab308",
-  "#a16207",
-  "#10b981",
-  "#059669",
-  "#14b8a6",
-  "#0d9488",
-  "#06b6d4",
-  "#0e7490",
-  "#3b82f6",
-  "#1d4ed8",
-  "#6366f1",
-  "#8b5cf6",
-  "#475569",
-  "#6b7280",
-  "#9ca3af",
-  "#d1d5db",
-];
 
 // Session type (full version for tooltip)
 type Session = {
@@ -156,16 +133,6 @@ function generateName(userId: string): string {
   return `${colors[colorIndex]} ${animals[animalIndex]}`;
 }
 
-function generateAvatarSVG(userId: string, size: number): string {
-  const avatarElement = createElement(BoringAvatar, {
-    size,
-    name: userId,
-    variant: "beam",
-    colors: AVATAR_COLORS,
-  });
-  return renderToStaticMarkup(avatarElement);
-}
-
 // Hash function for deterministic spreading
 function hashStringToNumber(str: string): number {
   let hash = 0;
@@ -234,6 +201,9 @@ function getChannelIconComponent(channel: string) {
       return Calendar;
     case "Audio":
       return Headphones;
+    case "AI":
+    case "Paid AI":
+      return Bot;
     default:
       return null;
   }
@@ -331,7 +301,7 @@ function getDisplayName(hostname: string): string {
 
 // Build tooltip HTML
 function buildTooltipHTML(session: Session): string {
-  const avatarSVG = generateAvatarSVG(session.user_id, 36);
+  const avatarSVG = frogAvatarSVG(session.user_id, 36);
   const countryCode = session.country?.length === 2 ? session.country : "";
   const flagSVG = renderCountryFlag(countryCode);
   const deviceIconSVG = renderDeviceIcon(session.device_type || "");
@@ -380,16 +350,14 @@ function buildTooltipHTML(session: Session): string {
         </div>
       </div>
       <div class="tooltip-stats">
-        ${
-          browserIconPath
-            ? `<img src="${browserIconPath}" alt="${session.browser}" title="${session.browser}" class="tooltip-icon" />`
-            : ""
-        }
-        ${
-          osIconPath
-            ? `<img src="${osIconPath}" alt="${session.operating_system}" title="${session.operating_system}" class="tooltip-icon" />`
-            : ""
-        }
+        ${browserIconPath
+      ? `<img src="${browserIconPath}" alt="${session.browser}" title="${session.browser}" class="tooltip-icon" />`
+      : ""
+    }
+        ${osIconPath
+      ? `<img src="${osIconPath}" alt="${session.operating_system}" title="${session.operating_system}" class="tooltip-icon" />`
+      : ""
+    }
         <span class="tooltip-device" title="${session.device_type}">${deviceIconSVG}</span>
         <span class="tooltip-badge">
           ${pageviewIconSVG}
@@ -506,8 +474,6 @@ const tooltipStyles = `
     flex-shrink: 0;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
-    overflow: hidden;
   }
   .tooltip-info {
     flex: 1;
@@ -602,7 +568,7 @@ export function SpinningGlobe() {
     const fetchSessions = async () => {
       try {
         const response = await fetch(
-          "https://demo.rybbit.com/api/sites/1/sessions?past_minutes_start=120&past_minutes_end=0&filters=[]&page=1&limit=100"
+          "https://demo.rybbit.com/api/sites/81/sessions?past_minutes_start=240&past_minutes_end=0&filters=[]&page=1&limit=100"
         );
         const data = await response.json();
         setSessions(data.data || []);
@@ -954,13 +920,11 @@ export function SpinningGlobe() {
 
           const avatarContainer = document.createElement("div");
           avatarContainer.className = "timeline-avatar-marker";
-          avatarContainer.style.borderRadius = "50%";
-          avatarContainer.style.overflow = "hidden";
           avatarContainer.style.width = "32px";
           avatarContainer.style.height = "32px";
-          avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+          avatarContainer.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,0.55))";
           avatarContainer.style.transition = "transform 0.15s ease";
-          avatarContainer.innerHTML = generateAvatarSVG(session.user_id, 32);
+          avatarContainer.innerHTML = frogAvatarSVG(session.user_id, 32);
 
           markerContainer.appendChild(avatarContainer);
 

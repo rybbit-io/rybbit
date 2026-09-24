@@ -1,0 +1,68 @@
+---
+title: Mintlify
+description: Add Rybbit analytics to your Mintlify docs
+category: docs
+icon: SiMintlify
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Mintlify includes every `.js` file in your docs content directory on every page, so the snippet goes into a small JavaScript file that injects the tag.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Mintlify
+
+Create a JavaScript file in your content directory, next to `docs.json` and your `.mdx` pages:
+
+```javascript filename="rybbit.js"
+(function () {
+  var el = document.createElement("script");
+  el.src = "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID";
+  el.defer = true;
+  document.head.appendChild(el);
+})();
+```
+
+Commit and deploy. Mintlify picks the file up automatically; there is nothing to register in `docs.json`. See Mintlify's [custom scripts](https://www.mintlify.com/docs/customize/custom-scripts) page for the current rules on file placement.
+
+To pass [script attributes](/docs/script#script-attributes) such as skip patterns, set them on the element before appending it:
+
+```javascript filename="rybbit.js"
+el.setAttribute("data-skip-patterns", JSON.stringify(["/internal/**"]));
+```
+
+<Callout type="info">
+Mintlify sites are single-page apps. Rybbit records client-side navigation as pageviews, so no extra code is needed.
+</Callout>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Mintlify pages are MDX, so you can attach handlers inline:
+
+```mdx
+<button
+  onClick={() => window.rybbit?.event("download_clicked", { file: "getting-started.pdf" })}
+>
+  Download guide
+</button>
+```
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

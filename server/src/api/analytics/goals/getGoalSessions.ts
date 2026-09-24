@@ -1,12 +1,14 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getTimeStatement, processResults, patternToRegex } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
-import { GetSessionsResponse } from "../getSessions.js";
-import SqlString from "sqlstring";
+import { GetSessionsResponse } from "../sessions/getSessions.js";
+import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { goalSessionUtmAgg } from "../utils/sessionAttribution.js";
+import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
+import { buildGoalCondition } from "./goalConditions.js";
 
 export interface GetGoalSessionsRequest {
   Params: {
@@ -19,90 +21,22 @@ export interface GetGoalSessionsRequest {
   }>;
 }
 
-export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest>, res: FastifyReply) {
-  const { goalId, siteId } = req.params;
-  const { page, limit } = req.query;
+export const buildGoalSessionsQuery = (
+  query: GetGoalSessionsRequest["Querystring"],
+  siteId: number,
+  goalCondition: string
+) => {
+  const timeStatement = getTimeStatement(query);
+  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
 
-  try {
-    // Fetch the goal from PostgreSQL
-    const goal = await db
-      .select()
-      .from(goals)
-      .where(eq(goals.goalId, Number(goalId)))
-      .limit(1);
-
-    if (!goal || goal.length === 0) {
-      return res.status(404).send({ error: "Goal not found" });
-    }
-
-    const goalData = goal[0];
-
-    // Verify the goal belongs to the site
-    if (goalData.siteId !== Number(siteId)) {
-      return res.status(403).send({ error: "Goal does not belong to this site" });
-    }
-
-    const timeStatement = getTimeStatement(req.query);
-
-    // Build the goal matching condition
-    let goalCondition = "";
-
-    if (goalData.goalType === "path") {
-      const pathPattern = goalData.config.pathPattern;
-      if (!pathPattern) {
-        return res.status(400).send({ error: "Invalid path goal configuration" });
-      }
-
-      const regex = patternToRegex(pathPattern);
-      goalCondition = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
-
-      // Support both new propertyFilters array and legacy single property
-      const filters = goalData.config.propertyFilters || (
-        goalData.config.eventPropertyKey && goalData.config.eventPropertyValue !== undefined
-          ? [{ key: goalData.config.eventPropertyKey, value: goalData.config.eventPropertyValue }]
-          : []
-      );
-
-      // Add property matching for page goals (URL parameters)
-      for (const filter of filters) {
-        const propValueAccessor = `url_parameters[${SqlString.escape(filter.key)}]`;
-        goalCondition += ` AND ${propValueAccessor} = ${SqlString.escape(String(filter.value))}`;
-      }
-    } else if (goalData.goalType === "event") {
-      const eventName = goalData.config.eventName;
-      if (!eventName) {
-        return res.status(400).send({ error: "Invalid event goal configuration" });
-      }
-
-      goalCondition = `type = 'custom_event' AND event_name = ${SqlString.escape(eventName)}`;
-
-      // Support both new propertyFilters array and legacy single property
-      const filters = goalData.config.propertyFilters || (
-        goalData.config.eventPropertyKey && goalData.config.eventPropertyValue !== undefined
-          ? [{ key: goalData.config.eventPropertyKey, value: goalData.config.eventPropertyValue }]
-          : []
-      );
-
-      // Add property matching for event goals
-      for (const filter of filters) {
-        if (typeof filter.value === "string") {
-          goalCondition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value)}`;
-        } else if (typeof filter.value === "number") {
-          goalCondition += ` AND toFloat64(JSONExtractString(toString(props), ${SqlString.escape(filter.key)})) = ${SqlString.escape(filter.value)}`;
-        } else if (typeof filter.value === "boolean") {
-          goalCondition += ` AND JSONExtractString(toString(props), ${SqlString.escape(filter.key)}) = ${SqlString.escape(filter.value ? 'true' : 'false')}`;
-        }
-      }
-    } else {
-      return res.status(400).send({ error: "Invalid goal type" });
-    }
-
-    // Build query to find sessions that match the goal
-    // First, find all session_ids that have at least one event matching the goal
-    const query = `
-    WITH GoalSessions AS (
+  // Build query to find sessions that match the goal
+  // First, find all session_ids that have at least one event matching the goal
+  return `
+    WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
+    GoalSessions AS (
       SELECT DISTINCT session_id
       FROM events
+      ${filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : ""}
       WHERE
         site_id = {siteId:Int32}
         AND (${goalCondition})
@@ -128,23 +62,24 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
         argMin(e.hostname, e.timestamp) AS hostname,
         argMin(e.page_title, e.timestamp) AS page_title,
         argMin(e.querystring, e.timestamp) AS querystring,
-        argMin(e.url_parameters, e.timestamp)['utm_source'] AS utm_source,
-        argMin(e.url_parameters, e.timestamp)['utm_medium'] AS utm_medium,
-        argMin(e.url_parameters, e.timestamp)['utm_campaign'] AS utm_campaign,
-        argMin(e.url_parameters, e.timestamp)['utm_term'] AS utm_term,
-        argMin(e.url_parameters, e.timestamp)['utm_content'] AS utm_content,
+        ${goalSessionUtmAgg("utm_source")} AS utm_source,
+        ${goalSessionUtmAgg("utm_medium")} AS utm_medium,
+        ${goalSessionUtmAgg("utm_campaign")} AS utm_campaign,
+        ${goalSessionUtmAgg("utm_term")} AS utm_term,
+        ${goalSessionUtmAgg("utm_content")} AS utm_content,
         MAX(e.timestamp) AS session_end,
         MIN(e.timestamp) AS session_start,
         dateDiff('second', MIN(e.timestamp), MAX(e.timestamp)) AS session_duration,
-        argMinIf(e.pathname, e.timestamp, e.type = 'pageview') AS entry_page,
-        argMaxIf(e.pathname, e.timestamp, e.type = 'pageview') AS exit_page,
+        argMinIf(e.pathname, e.timestamp_ms, e.type = 'pageview') AS entry_page,
+        argMaxIf(e.pathname, e.timestamp_ms, e.type = 'pageview') AS exit_page,
         countIf(e.type = 'pageview') AS pageviews,
         countIf(e.type = 'custom_event') AS events,
         countIf(e.type = 'error') AS errors,
         countIf(e.type = 'outbound') AS outbound,
         argMax(e.ip, e.timestamp) AS ip,
         argMax(e.lat, e.timestamp) AS lat,
-        argMax(e.lon, e.timestamp) AS lon
+        argMax(e.lon, e.timestamp) AS lon,
+        argMax(e.tag, e.timestamp) AS tag
       FROM events e
       INNER JOIN GoalSessions gs ON e.session_id = gs.session_id
       WHERE
@@ -159,21 +94,47 @@ export async function getGoalSessions(req: FastifyRequest<GetGoalSessionsRequest
     FROM AggregatedSessions
     LIMIT {limit:Int32} OFFSET {offset:Int32}
     `;
+};
 
-    const result = await clickhouse.query({
-      query,
-      format: "JSONEachRow",
-      query_params: {
+export const getGoalSessions = analyticsRoute<GetGoalSessionsRequest>(
+  "goal sessions",
+  async (req: FastifyRequest<GetGoalSessionsRequest>, res: FastifyReply) => {
+    const { goalId, siteId } = req.params;
+    const { page, limit } = req.query;
+
+    // Fetch the goal from PostgreSQL
+    const goal = await db
+      .select()
+      .from(goals)
+      .where(eq(goals.goalId, Number(goalId)))
+      .limit(1);
+
+    if (!goal || goal.length === 0) {
+      return res.status(404).send({ error: "Goal not found" });
+    }
+
+    const goalData = goal[0];
+
+    // Verify the goal belongs to the site
+    if (goalData.siteId !== Number(siteId)) {
+      return res.status(403).send({ error: "Goal does not belong to this site" });
+    }
+
+    // Build the goal matching condition
+    const goalCondition = buildGoalCondition(goalData);
+    if (!goalCondition) {
+      return res.status(400).send({ error: "Invalid goal configuration" });
+    }
+
+    const data = await runAnalyticsQuery<GetSessionsResponse[number]>({
+      query: buildGoalSessionsQuery(req.query, Number(siteId), goalCondition),
+      params: {
         siteId: Number(siteId),
         limit: limit || 25,
-        offset: (page - 1) * (limit || 25),
+        offset: ((page || 1) - 1) * (limit || 25),
       },
     });
 
-    const data = await processResults<GetSessionsResponse[number]>(result);
     return res.send({ data });
-  } catch (error) {
-    console.error("Error fetching goal sessions:", error);
-    return res.status(500).send({ error: "Failed to fetch goal sessions" });
   }
-}
+);

@@ -1,0 +1,41 @@
+---
+title: Claude Desktop
+description: Add Rybbit as a custom connector on claude.ai, Claude Desktop, and mobile
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Adding Rybbit as a custom connector turns Claude into a conversational analytics interface: ask how a launch went, why traffic spiked on Tuesday, or where a funnel drops off — without opening the dashboard. Connectors are shared across claude.ai, Claude Desktop, and the mobile apps.
+
+This page covers client setup only. The [MCP overview](/docs/mcp) covers the endpoint, the full tool list, permissions, and troubleshooting.
+
+## Add the connector
+
+1. Open **Settings → Connectors** (in Claude Desktop: `Cmd/Ctrl + ,`, then **Connectors**; on claude.ai: your profile menu → **Settings** → **Connectors**).
+2. Click **Add custom connector**.
+3. Name it **Rybbit** and paste the endpoint URL:
+
+   ```text
+   https://app.rybbit.io/api/mcp
+   ```
+
+   For a self-hosted installation, use your configured `BASE_URL` host instead.
+
+4. Confirm, then click **Connect**. Your browser opens Rybbit's [OAuth flow](/docs/mcp#or-connect-with-oauth) — log in and approve access. The connector acts with your user's role.
+
+There is no API key to manage: custom connectors authenticate through OAuth, and the **Advanced settings** fields (OAuth client ID and secret) can stay empty — Rybbit registers the client automatically. Custom connectors are available on all Claude plans; the Free plan is limited to one.
+
+<Callout type="warn">
+  **Self-hosted installations must be publicly reachable.** Claude connects to
+  custom connectors from Anthropic's infrastructure, not from your device — a
+  Rybbit instance on a private network, behind a VPN, or on `localhost` will
+  not connect, even if you can reach it in your own browser.
+</Callout>
+
+## Use it
+
+Once connected, Rybbit appears in the chat's tools menu — enable it there if it isn't already. Then try:
+
+> List my Rybbit sites and summarize last month's traffic for the main one.
+
+Claude asks for confirmation before tool calls by default; destructive tools (deleting goals, funnels, sites) are marked so it always confirms those.

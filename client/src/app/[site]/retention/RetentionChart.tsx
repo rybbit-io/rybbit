@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useNivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
@@ -55,6 +56,7 @@ const RetentionChartSkeleton = () => (
 );
 
 export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
+  const t = useExtracted();
   const { resolvedTheme } = useTheme();
   const nivoTheme = useNivoTheme();
 
@@ -114,7 +116,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
   if (!data || chartData.length === 0) {
     return (
       <div className="h-[400px] flex items-center justify-center">
-        <div className="text-neutral-500 dark:text-neutral-400 text-sm">No retention data available</div>
+        <div className="text-neutral-500 dark:text-neutral-400 text-sm">{t("No retention data available")}</div>
       </div>
     );
   }
@@ -197,7 +199,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
             <ChartTooltip>
               <div className="p-2 text-sm">
                 <div className="font-medium mb-2 text-neutral-700 dark:text-neutral-200">
-                  {mode === "day" ? "Day" : "Week"} {xValue}
+                  {mode === "day" ? t("Day {value}", { value: String(xValue) }) : t("Week {value}", { value: String(xValue) })}
                 </div>
                 <div className="flex flex-col gap-1">
                   {slice.points.map((point: any) => {

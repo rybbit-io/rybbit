@@ -1,0 +1,106 @@
+---
+title: Django
+description: Add Rybbit analytics to your Django app
+category: backend
+icon: SiDjango
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Django pages extend a base template, so the snippet goes into the `<head>` of that base template. Put the site ID in `settings.py`, read from an environment variable, and pass it to templates with a small context processor so no template hard-codes the ID.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Django
+
+#### Configure the site ID
+
+Add the Rybbit values to `settings.py`, reading from the environment:
+
+```python filename="settings.py"
+import os
+
+RYBBIT_INSTANCE_URL = os.environ.get("RYBBIT_INSTANCE_URL", "https://app.rybbit.io")
+RYBBIT_SITE_ID = os.environ.get("RYBBIT_SITE_ID", "")
+```
+
+Set `RYBBIT_SITE_ID=YOUR_SITE_ID` in your production environment (or your `.env` file if you load one with django-environ or python-dotenv).
+
+#### Expose the values to templates
+
+Create a context processor that adds both settings to every template context:
+
+```python filename="myproject/context_processors.py"
+from django.conf import settings
+
+
+def rybbit(request):
+    return {
+        "RYBBIT_INSTANCE_URL": settings.RYBBIT_INSTANCE_URL,
+        "RYBBIT_SITE_ID": settings.RYBBIT_SITE_ID,
+    }
+```
+
+Register it under `TEMPLATES` in `settings.py`:
+
+```python filename="settings.py"
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "myproject.context_processors.rybbit",
+            ],
+        },
+    },
+]
+```
+
+#### Add the tag to your base template
+
+Open the template that every page extends, usually `templates/base.html`, and add the tag inside `<head>`:
+
+```jinja filename="templates/base.html"
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}My Site{% endblock %}</title>
+
+    {% if RYBBIT_SITE_ID %}
+    <script src="{{ RYBBIT_INSTANCE_URL }}/api/script.js?siteId={{ RYBBIT_SITE_ID }}" defer></script>
+    {% endif %}
+</head>
+```
+
+The `{% if %}` guard skips the tag when `RYBBIT_SITE_ID` is empty, so local development is not tracked unless you set the variable.
+
+Pages that do not `{% extends "base.html" %}` (for example a separate admin or landing template) need the same tag in their own `<head>`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Tag missing**: settings are read at startup, so restart the server (or your WSGI/ASGI workers) after changing `RYBBIT_SITE_ID`. Confirm the context processor path matches your project package name.
+- **Template rendered without a request**: context processors only run for templates rendered with a `RequestContext`, which `render()` and class-based views provide. `Template.render()` without a request has no `RYBBIT_SITE_ID` and the guard hides the tag.
+- **Content Security Policy**: if you use django-csp, add your Rybbit host to `script-src` and `connect-src`, or [proxy the script](/docs/proxy-guide) through your own domain.
+- **Self-hosted instance**: set `RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the template appends the script path to it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

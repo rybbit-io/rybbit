@@ -1,16 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createGoal } from "../../endpoints";
+import { createGoal, GoalConfig, GoalType } from "../../endpoints";
 
 export interface CreateGoalRequest {
   siteId: number;
   name?: string;
-  goalType: "path" | "event";
-  config: {
-    pathPattern?: string;
-    eventName?: string;
-    eventPropertyKey?: string;
-    eventPropertyValue?: string | number | boolean;
-  };
+  goalType: GoalType;
+  config: GoalConfig;
 }
 
 interface CreateGoalResponse {
@@ -33,6 +28,9 @@ export function useCreateGoal() {
       // Invalidate goals query to refetch with the new goal
       queryClient.invalidateQueries({
         queryKey: ["goals", variables.siteId.toString()],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["goal-time-series", variables.siteId.toString()],
       });
     },
   });

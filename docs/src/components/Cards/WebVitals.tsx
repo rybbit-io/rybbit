@@ -1,198 +1,75 @@
+import { Gauge } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { Card } from "./Card";
-import {
-  Activity,
-  Zap,
-  Timer,
-  MousePointer,
-  TrendingUp,
-  TrendingDown,
-} from "lucide-react";
-import React from "react";
+import { DemoFrame } from "./DemoFrame";
 
-// Web Vitals thresholds
-const vitals = {
-  LCP: {
-    name: "Largest Contentful Paint",
-    abbr: "LCP",
-    value: 2.4,
-    unit: "s",
-    status: "good", // good < 2.5s, needs improvement 2.5-4s, poor > 4s
-    change: -0.2,
-    icon: <Activity className="w-4 h-4" />,
-    color: "emerald" as const,
-  },
-  FID: {
-    name: "First Input Delay",
-    abbr: "FID",
-    value: 95,
-    unit: "ms",
-    status: "good", // good < 100ms, needs improvement 100-300ms, poor > 300ms
-    change: -5,
-    icon: <MousePointer className="w-4 h-4" />,
-    color: "emerald" as const,
-  },
-  CLS: {
-    name: "Cumulative Layout Shift",
-    abbr: "CLS",
-    value: 0.08,
-    unit: "",
-    status: "good", // good < 0.1, needs improvement 0.1-0.25, poor > 0.25
-    change: 0.01,
-    icon: <Zap className="w-4 h-4" />,
-    color: "emerald" as const,
-  },
-  FCP: {
-    name: "First Contentful Paint",
-    abbr: "FCP",
-    value: 1.8,
-    unit: "s",
-    status: "needs-improvement", // good < 1.8s, needs improvement 1.8-3s, poor > 3s
-    change: 0.3,
-    icon: <Timer className="w-4 h-4" />,
-    color: "amber" as const,
-  },
-};
+// p75 values against the standard Web Vitals thresholds (client
+// performance/utils). Gauge zones: good 0–55%, needs improvement 55–80%,
+// poor 80–100% of the track; position = value scaled into its zone.
+const METRICS = [
+  { code: "LCP", name: "Largest Contentful Paint", value: "2.1 s", position: 46.2, rating: "good" },
+  { code: "INP", name: "Interaction to Next Paint", value: "232 ms", position: 57.7, rating: "needs-improvement" },
+  { code: "CLS", name: "Cumulative Layout Shift", value: "0.04", position: 22, rating: "good" },
+  { code: "FCP", name: "First Contentful Paint", value: "1.4 s", position: 42.8, rating: "good" },
+  { code: "TTFB", name: "Time to First Byte", value: "640 ms", position: 44, rating: "good" },
+] as const;
 
-type MetricType = typeof vitals[keyof typeof vitals];
+const RATING_TEXT = {
+  good: "text-emerald-700 dark:text-emerald-400",
+  "needs-improvement": "text-amber-700 dark:text-amber-400",
+} as const;
 
-function MetricCard({ metric }: { metric: MetricType }) {
-  const isImproved = metric.change < 0;
-  const colorMap = {
-    emerald: {
-      bg: "bg-emerald-900/30",
-      border: "border-emerald-500/40",
-      text: "text-emerald-400",
-    },
-    amber: {
-      bg: "bg-amber-900/30",
-      border: "border-amber-500/40",
-      text: "text-amber-400",
-    },
-    red: {
-      bg: "bg-red-900/30",
-      border: "border-red-500/40",
-      text: "text-red-400",
-    },
-  };
-
-  const colors = colorMap[metric.color];
-
-  return (
-    <div className={`${colors.bg} ${colors.border} border rounded-lg p-3`}>
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className={colors.text}>{metric.icon}</div>
-          <span className="text-sm font-medium">{metric.abbr}</span>
-        </div>
-        <div
-          className={`flex items-center gap-1 text-xs ${
-            isImproved ? "text-emerald-400" : "text-red-400"
-          }`}
-        >
-          {isImproved ? (
-            <TrendingDown className="w-3 h-3" />
-          ) : (
-            <TrendingUp className="w-3 h-3" />
-          )}
-          <span>
-            {Math.abs(metric.change)}
-            {metric.unit}
-          </span>
-        </div>
-      </div>
-
-      <div className="mb-2">
-        <span className="text-2xl font-semibold">{metric.value}</span>
-        <span className="text-sm text-neutral-400 ml-1">{metric.unit}</span>
-      </div>
-
-      {/* Mini bar chart */}
-      <div className="h-1 bg-neutral-700 rounded-full overflow-hidden">
-        <div
-          className={`h-full transition-all duration-500 ${
-            metric.color === "emerald"
-              ? "bg-emerald-500"
-              : metric.color === "amber"
-              ? "bg-amber-500"
-              : "bg-red-500"
-          }`}
-          style={{
-            width:
-              metric.abbr === "CLS"
-                ? `${(metric.value / 0.25) * 100}%`
-                : metric.abbr === "FID"
-                ? `${(metric.value / 300) * 100}%`
-                : metric.abbr === "LCP"
-                ? `${(metric.value / 4) * 100}%`
-                : `${(metric.value / 3) * 100}%`,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
+const RATING_DOT = {
+  good: "bg-emerald-600 dark:bg-emerald-400",
+  "needs-improvement": "bg-amber-600 dark:bg-amber-400",
+} as const;
 
 export function WebVitals() {
+  const t = useExtracted();
+
   return (
     <Card
-      title="Web Vitals"
-      description="Monitor Core Web Vitals and performance metrics to ensure a great user experience."
+      title={t("Web Vitals")}
+      description={t("Core Web Vitals from real visits. See where your pages feel slow by route, country, and device.")}
+      icon={Gauge}
     >
-      <div className="space-y-4">
-        {/* Score overview */}
-        <div className="bg-neutral-900 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-medium">Performance Score</h4>
-            <span className="text-xs text-neutral-400">Last 28 days</span>
-          </div>
-
-          {/* Overall score */}
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative w-20 h-20">
-              <svg className="w-20 h-20 transform -rotate-90">
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  className="text-neutral-700"
-                />
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 36}`}
-                  strokeDashoffset={`${2 * Math.PI * 36 * (1 - 0.82)}`}
-                  className="text-emerald-500 transition-all duration-1000"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold">82</span>
+      <DemoFrame label="web-vitals" right={<span className="font-mono">p75 · 30d</span>}>
+        <div className="space-y-4 p-4">
+          {METRICS.map((metric, index) => (
+            <div key={metric.code}>
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">
+                  {metric.code}
+                </span>
+                <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{metric.name}</span>
+                <span className={`ml-auto shrink-0 font-mono text-xs tabular-nums ${RATING_TEXT[metric.rating]}`}>
+                  {metric.value}
+                </span>
+              </div>
+              <div className="relative mt-1.5">
+                <div className="flex h-1.5 overflow-hidden rounded-full">
+                  <div className="w-[55%] bg-emerald-500/20 dark:bg-emerald-500/25" />
+                  <div className="w-[25%] bg-amber-500/20 dark:bg-amber-500/25" />
+                  <div className="w-[20%] bg-red-500/20 dark:bg-red-500/25" />
+                </div>
+                <span
+                  className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${metric.position}%` }}
+                >
+                  <span
+                    className={`demo-marker block size-2.5 rounded-full border-2 border-white dark:border-neutral-950 ${RATING_DOT[metric.rating]}`}
+                    style={{ animationDelay: `${index * 80}ms` }}
+                  />
+                </span>
               </div>
             </div>
-            <div>
-              <div className="text-sm font-medium text-emerald-400">Good</div>
-              <div className="text-xs text-neutral-400">
-                Above 90 is excellent
-              </div>
-            </div>
-          </div>
-
-          {/* Metrics grid */}
-          <div className="grid grid-cols-2 gap-3">
-            {Object.values(vitals).map((vital) => (
-              <MetricCard key={vital.abbr} metric={vital} />
-            ))}
-          </div>
+          ))}
         </div>
-      </div>
+        <div className="mt-auto flex h-9 shrink-0 items-center justify-between border-t border-neutral-200 px-3 text-xs dark:border-neutral-800">
+          <span className="text-neutral-500 dark:text-neutral-400">{t("Passing Core Web Vitals")}</span>
+          <span className="font-mono font-medium tabular-nums text-emerald-700 dark:text-emerald-400">4 / 5</span>
+        </div>
+      </DemoFrame>
     </Card>
   );
 }
-
-export default WebVitals;

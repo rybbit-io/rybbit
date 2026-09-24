@@ -1,6 +1,6 @@
 import mapboxgl from "mapbox-gl";
 import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
-import { generateAvatarSVG } from "./timelineMarkerHelpers";
+import { frogAvatarSVG } from "../../../../../../lib/frogAvatar";
 import { getUnclusteredFeatures } from "./timelineClusterUtils";
 import { buildTooltipHTML } from "../../../utils/timelineTooltipBuilder";
 
@@ -25,14 +25,10 @@ export function createAvatarMarker(
 ): { marker: mapboxgl.Marker; element: HTMLDivElement; cleanup: () => void } {
   const avatarContainer = document.createElement("div");
   avatarContainer.className = "timeline-avatar-marker";
-  avatarContainer.style.cursor = "pointer";
-  avatarContainer.style.borderRadius = "50%";
-  avatarContainer.style.overflow = "hidden";
-  avatarContainer.style.width = "32px";
-  avatarContainer.style.height = "32px";
-  avatarContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+  avatarContainer.style.cssText =
+    "cursor: pointer; width: 32px; height: 32px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.55));";
 
-  const avatarSVG = generateAvatarSVG(session.user_id, 32);
+  const avatarSVG = frogAvatarSVG(session.user_id, 32);
   avatarContainer.innerHTML = avatarSVG;
 
   const marker = new mapboxgl.Marker({
@@ -108,7 +104,12 @@ export async function updateMarkers(
   );
 
   // Build set of current session IDs
-  const currentSessionIds = new Set(unclusteredFeatures.map(f => f.properties?.session_id).filter(Boolean));
+  const currentSessionIds = new Set(
+    unclusteredFeatures.flatMap(f => {
+      const sessionId = f.properties?.session_id;
+      return sessionId ? [sessionId] : [];
+    })
+  );
 
   // Remove markers that are no longer unclustered
   const toRemove: string[] = [];

@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { usePlaygroundStore } from "../hooks/usePlaygroundStore";
 import { useState, useRef } from "react";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -10,6 +11,7 @@ import { useTheme } from "next-themes";
 SyntaxHighlighter.registerLanguage("json", json);
 
 export function RequestBodyEditor() {
+  const t = useExtracted();
   const { requestBody, setRequestBody } = usePlaygroundStore();
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -26,14 +28,14 @@ export function RequestBodyEditor() {
       JSON.parse(value);
       setError(null);
     } catch {
-      setError("Invalid JSON");
+      setError(t("Invalid JSON"));
     }
   };
 
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Request Body (JSON)</label>
+        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("Request Body (JSON)")}</label>
         {error && <span className="text-xs text-red-500">{error}</span>}
       </div>
       <div

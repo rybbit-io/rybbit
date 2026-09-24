@@ -1,0 +1,44 @@
+---
+title: Ghost
+description: Add Rybbit analytics to your Ghost publication
+category: cms
+icon: SiGhost
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Ghost has a built-in **Code injection** setting that adds HTML to the `<head>` of every page, so no theme edits are needed.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Ghost
+
+1. Open **Ghost Admin** and click the **Settings** gear in the bottom left.
+2. Under **Advanced**, open **Code injection**.
+3. Paste the snippet into **Site header** and click **Save**.
+
+If you maintain your own theme instead, add the snippet to `default.hbs` just before `</head>`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Ghost(Pro) with a custom theme**: code injection still applies on top of the theme, so prefer it over editing `default.hbs`.
+- **Member-only content**: pages behind the paywall are tracked like any other page for visitors who can view them.
+- **Portal and newsletter previews** render in an iframe and are not tracked.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

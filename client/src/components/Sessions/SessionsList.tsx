@@ -1,7 +1,8 @@
-import { ChevronLeft, ChevronRight, Rewind } from "lucide-react";
+import { Rewind } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { GetSessionsResponse } from "../../api/analytics/endpoints";
 import { NothingFound } from "../NothingFound";
-import { Button } from "../ui/button";
+import { Pagination } from "../pagination";
 import { SessionCard, SessionCardSkeleton } from "./SessionCard";
 
 interface SessionsListProps {
@@ -24,29 +25,28 @@ export function SessionsList({
   onPageChange,
   hasNextPage,
   hasPrevPage,
-  emptyMessage = "Try a different date range or filter",
+  emptyMessage,
   userId,
   headerElement,
   pageSize,
 }: SessionsListProps) {
+  const t = useExtracted();
   return (
     <div className="space-y-3">
       {/* Header and pagination controls */}
       <div className="flex items-center justify-between gap-2">
         {headerElement}
-        <div className="flex items-center justify-end gap-2 ml-auto">
-          <Button variant="ghost" size="smIcon" onClick={() => onPageChange(page - 1)} disabled={!hasPrevPage}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">Page {page}</span>
-          <Button variant="ghost" size="smIcon" onClick={() => onPageChange(page + 1)} disabled={!hasNextPage}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        <Pagination
+          className="ml-auto w-auto"
+          page={page}
+          onPageChange={onPageChange}
+          hasPreviousPage={hasPrevPage}
+          hasNextPage={hasNextPage}
+        />
       </div>
 
       {sessions.length === 0 && !isLoading && (
-        <NothingFound icon={<Rewind className="w-10 h-10" />} title={"No sessions found"} description={emptyMessage} />
+        <NothingFound icon={<Rewind className="w-10 h-10" />} title={t("No sessions found")} description={emptyMessage || t("Try a different date range or filter")} />
       )}
 
       {/* Session cards */}

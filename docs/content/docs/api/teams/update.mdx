@@ -1,0 +1,256 @@
+---
+title: Update Team
+description: Updates a team's name, members, or site access. Requires admin/owner role.
+full: true
+method: PUT
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+PUT /api/organizations/:organizationId/teams/:teamId
+```
+
+Updates a team's name, members, or site access. Requires admin/owner role.
+
+When `memberUserIds` or `siteIds` is provided, it **replaces** the team's entire existing set (it is not merged). Omit a field to leave it unchanged.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    organizationId: {
+      description: 'Organization ID',
+      type: 'string',
+      required: true,
+    },
+    teamId: {
+      description: 'ID of the team to update',
+      type: 'string',
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    name: {
+      description: 'Updated team name',
+      type: 'string',
+      required: false,
+    },
+    memberUserIds: {
+      description: 'User IDs to set as the team members (replaces the existing set)',
+      type: 'string[]',
+      required: false,
+    },
+    siteIds: {
+      description: 'Site IDs to set as the team site access (replaces the existing set)',
+      type: 'number[]',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: 'Whether the team was updated',
+      type: 'boolean',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X PUT "https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Growth",
+    "memberUserIds": ["user_123", "user_456"]
+  }'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789',
+  {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'Growth',
+      memberUserIds: ['user_123', 'user_456']
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.put(
+    'https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789',
+    json={
+        'name': 'Growth',
+        'memberUserIds': ['user_123', 'user_456']
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$body = [
+    'name' => 'Growth',
+    'memberUserIds' => ['user_123', 'user_456']
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789')
+request = Net::HTTP::Put.new(uri)
+request['Authorization'] = 'Bearer your_api_key_here'
+request['Content-Type'] = 'application/json'
+request.body = {
+  name: 'Growth',
+  memberUserIds: ['user_123', 'user_456']
+}.to_json
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+data = JSON.parse(response.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+body := map[string]interface{}{
+    "name": "Growth",
+    "memberUserIds": []string{"user_123", "user_456"},
+}
+jsonBody, _ := json.Marshal(body)
+
+req, _ := http.NewRequest("PUT", "https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789", bytes.NewBuffer(jsonBody))
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let body = serde_json::json!({
+    "name": "Growth",
+    "memberUserIds": ["user_123", "user_456"]
+});
+
+let client = reqwest::Client::new();
+let res = client
+    .put("https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789")
+    .header("Authorization", "Bearer your_api_key_here")
+    .json(&body)
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+String json = """
+{
+  "name": "Growth",
+  "memberUserIds": ["user_123", "user_456"]
+}
+""";
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .header("Content-Type", "application/json")
+    .PUT(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+var body = new
+{
+    name = "Growth",
+    memberUserIds = new[] { "user_123", "user_456" }
+};
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(body),
+    Encoding.UTF8,
+    "application/json");
+
+var response = await client.PutAsync("https://app.rybbit.io/api/organizations/org_abc123/teams/team_xyz789", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true
+}
+```
+
+</div>
+</div>

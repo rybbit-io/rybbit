@@ -1,5 +1,6 @@
 import { FilterParameter } from "@rybbit/shared";
 import Map from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import GeoJSON from "ol/format/GeoJSON";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -153,13 +154,12 @@ export function useOpenLayersCountriesLayer({ mapInstanceRef, mapViewRef, mapVie
       }
     };
 
-    mapInstanceRef.current.on("pointermove", handlePointerMove);
-    mapInstanceRef.current.on("click", handleClick);
+    const pointerMoveKey = mapInstanceRef.current.on("pointermove", handlePointerMove);
+    const clickKey = mapInstanceRef.current.on("click", handleClick);
 
     return () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.un("pointermove", handlePointerMove);
-        mapInstanceRef.current.un("click", handleClick);
+        dispose([pointerMoveKey, clickKey]);
 
         // Remove layer on cleanup
         if (vectorLayerRef.current) {
@@ -198,9 +198,6 @@ export function useOpenLayersCountriesLayer({ mapInstanceRef, mapViewRef, mapVie
     if (!tooltip) {
       tooltip = document.createElement("div");
       tooltip.id = "ol-countries-tooltip";
-      tooltip.style.position = "fixed";
-      tooltip.style.pointerEvents = "none";
-      tooltip.style.zIndex = "9999";
       document.body.appendChild(tooltip);
     }
 
@@ -219,9 +216,9 @@ export function useOpenLayersCountriesLayer({ mapInstanceRef, mapViewRef, mapVie
       </div>
     `;
 
-    tooltip.style.left = `${tooltipData.x}px`;
-    tooltip.style.top = `${tooltipData.y - 10}px`;
-    tooltip.style.transform = "translate(-50%, -100%)";
+    tooltip.style.cssText = `position: fixed; pointer-events: none; z-index: 9999; left: ${tooltipData.x}px; top: ${
+      tooltipData.y - 10
+    }px; transform: translate(-50%, -100%);`;
 
     return () => {
       const existingTooltip = document.getElementById("ol-countries-tooltip");

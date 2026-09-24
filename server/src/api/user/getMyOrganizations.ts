@@ -2,33 +2,75 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { eq } from "drizzle-orm";
 import { member, organization, sites, user } from "../../db/postgres/schema.js";
-import { getUserIdFromRequest } from "../../lib/auth-utils.js";
+import { getRequestIdentity, getSessionFromReq, wasRateLimited } from "../../lib/auth-utils.js";
+import { filterSitesByMemberAccess, getOrgMembership } from "../../lib/access.js";
 
 export const getMyOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
+    // Organization-owned API keys have no user id — they resolve to their
+    // single organization instead. One resolution covers both cases.
+    const { userId, organizationId: apiKeyOrganizationId } = await getRequestIdentity(request);
+    if (!userId && !apiKeyOrganizationId) {
+      // This route has no auth pre-handler, so a throttled credential resolves
+      // to no user. Reporting that as 401 would tell a caller their key is
+      // invalid when it is merely out of budget.
+      const throttled = wasRateLimited(request);
+      if (throttled) {
+        reply.header("Retry-After", throttled.retryAfterSeconds);
+        return reply.status(429).send({
+          error: "Rate limit exceeded",
+          scope: throttled.scope,
+          retryAfter: throttled.retryAfterSeconds,
+        });
+      }
       return reply.status(401).send({ error: "Unauthorized" });
     }
 
-    // First, get all organizations the user is a member of
-    const userOrganizations = await db
-      .select({
-        id: organization.id,
-        name: organization.name,
-        slug: organization.slug,
-        logo: organization.logo,
-        createdAt: organization.createdAt,
-        role: member.role,
-      })
-      .from(member)
-      .innerJoin(organization, eq(member.organizationId, organization.id))
-      .where(eq(member.userId, userId));
+    // This route is scope-exempt so any credential can resolve site/org IDs
+    // (it backs the MCP list_sites entry tool). The member roster carries names
+    // and emails, though, so only cookie-session dashboard requests get it —
+    // bearer credentials (API keys, OAuth tokens) use the org:read-gated
+    // /organizations/:id/members route for member data.
+    const session = await getSessionFromReq(request);
+    const includeMembers = !!session?.user;
+
+    // First, get all organizations the user is a member of — or, for an
+    // org-owned key, just its own organization (it has no member row).
+    let userOrganizations;
+    if (userId) {
+      userOrganizations = await db
+        .select({
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+          logo: organization.logo,
+          createdAt: organization.createdAt,
+          role: member.role,
+        })
+        .from(member)
+        .innerJoin(organization, eq(member.organizationId, organization.id))
+        .where(eq(member.userId, userId));
+    } else {
+      const orgRows = await db
+        .select({
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+          logo: organization.logo,
+          createdAt: organization.createdAt,
+        })
+        .from(organization)
+        // apiKeyOrganizationId is guaranteed set here: the guard above already
+        // returned if both it and userId were missing.
+        .where(eq(organization.id, apiKeyOrganizationId!))
+        .limit(1);
+      userOrganizations = orgRows.map(org => ({ ...org, role: "admin" as const }));
+    }
 
     // For each organization, get all members with user details and sites
     const organizationsWithMembersAndSites = await Promise.all(
       userOrganizations.map(async org => {
-        const [organizationMembers, organizationSites] = await Promise.all([
+        const [organizationMembers, allOrgSites, callerMemberRecord] = await Promise.all([
           db
             .select({
               id: member.id,
@@ -59,7 +101,24 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
             })
             .from(sites)
             .where(eq(sites.organizationId, org.id)),
+          getOrgMembership(userId, org.id),
         ]);
+
+        // Filter sites based on the caller's per-member access restrictions
+        // and teams. Admins/owners see everything.
+        let organizationSites = allOrgSites;
+
+        if (callerMemberRecord?.role === "member") {
+          // getOrgMembership null-guards a missing userId, so a non-null
+          // callerMemberRecord here means userId was set.
+          organizationSites = await filterSitesByMemberAccess(
+            allOrgSites,
+            org.id,
+            userId!,
+            callerMemberRecord.id,
+            callerMemberRecord.hasRestrictedSiteAccess
+          );
+        }
 
         return {
           id: org.id,
@@ -68,17 +127,19 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
           logo: org.logo,
           createdAt: org.createdAt,
           role: org.role,
-          members: organizationMembers.map(m => ({
-            id: m.id,
-            role: m.role,
-            userId: m.userId,
-            createdAt: m.createdAt,
-            user: {
-              id: m.userActualId,
-              name: m.userName,
-              email: m.userEmail,
-            },
-          })),
+          members: includeMembers
+            ? organizationMembers.map(m => ({
+                id: m.id,
+                role: m.role,
+                userId: m.userId,
+                createdAt: m.createdAt,
+                user: {
+                  id: m.userActualId,
+                  name: m.userName,
+                  email: m.userEmail,
+                },
+              }))
+            : [],
           sites: organizationSites.map(site => ({
             id: String(site.siteId ?? site.siteUuid),
             domain: site.domain,
@@ -96,7 +157,7 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
 
     return reply.send(organizationsWithMembersAndSites);
   } catch (error) {
-    console.error("Error fetching organizations with members:", error);
+    request.log.error({ err: error }, "Error fetching organizations with members");
     return reply.status(500).send({ error: "Failed to fetch organizations" });
   }
 };

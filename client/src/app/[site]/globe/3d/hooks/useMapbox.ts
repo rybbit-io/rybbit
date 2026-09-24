@@ -53,7 +53,7 @@ export function useMapbox(containerRef: React.RefObject<HTMLDivElement | null>, 
 
     mapboxgl.accessToken = configs.mapboxToken;
 
-    map.current = new mapboxgl.Map({
+    const mapInstance = new mapboxgl.Map({
       container: containerRef.current,
       style: mapStyle,
       projection: { name: "globe" },
@@ -65,18 +65,22 @@ export function useMapbox(containerRef: React.RefObject<HTMLDivElement | null>, 
       attributionControl: false,
     });
 
-    map.current.on("style.load", () => {
-      if (!map.current) return;
-      applyCustomStyling(map.current);
+    map.current = mapInstance;
+
+    const handleStyleLoad = () => {
+      applyCustomStyling(mapInstance);
       setMapLoaded(true);
-    });
+    };
+
+    mapInstance.on("style.load", handleStyleLoad);
 
     return () => {
-      if (map.current) {
-        map.current.remove();
+      mapInstance.off("style.load", handleStyleLoad);
+      mapInstance.remove();
+      if (map.current === mapInstance) {
         map.current = null;
-        setMapLoaded(false);
       }
+      setMapLoaded(false);
     };
   }, [enabled, containerRef, configs?.mapboxToken]);
 

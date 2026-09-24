@@ -1,8 +1,9 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { stripe } from "../../lib/stripe.js";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member } from "../../db/postgres/schema.js";
-import { eq, and } from "drizzle-orm";
+import { organization } from "../../db/postgres/schema.js";
+import { eq } from "drizzle-orm";
+import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import Stripe from "stripe";
 
 interface PortalRequestBody {
@@ -27,15 +28,9 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
 
   try {
     // 1. Verify user has permission to manage billing for this organization
-    const memberResult = await db
-      .select({
-        role: member.role,
-      })
-      .from(member)
-      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-      .limit(1);
+    const membership = await getOrgMembership(userId, organizationId);
 
-    if (!memberResult.length || memberResult[0].role !== "owner") {
+    if (!isOrgOwner(membership)) {
       return reply.status(403).send({
         error: "Only organization owners can manage billing",
       });
@@ -66,11 +61,20 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
     if (flowType) {
       if (flowType === "subscription_update") {
         // For subscription_update flow, we need to fetch the subscription ID first
-        const subscriptions = await (stripe as Stripe).subscriptions.list({
+        // Check both active and trialing statuses (trials have status "trialing")
+        let subscriptions = await (stripe as Stripe).subscriptions.list({
           customer: org.stripeCustomerId,
           status: "active",
           limit: 1,
         });
+
+        if (subscriptions.data.length === 0) {
+          subscriptions = await (stripe as Stripe).subscriptions.list({
+            customer: org.stripeCustomerId,
+            status: "trialing",
+            limit: 1,
+          });
+        }
 
         if (subscriptions.data.length === 0) {
           return reply.status(404).send({ error: "No active subscription found" });
@@ -86,24 +90,39 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
         };
       } else if (flowType === "subscription_cancel") {
         // For subscription_cancel flow, we need to fetch the subscription ID first
-        const subscriptions = await (stripe as Stripe).subscriptions.list({
+        // Check both active and trialing statuses (trials have status "trialing")
+        let subscriptions = await (stripe as Stripe).subscriptions.list({
           customer: org.stripeCustomerId,
           status: "active",
           limit: 1,
         });
 
         if (subscriptions.data.length === 0) {
+          subscriptions = await (stripe as Stripe).subscriptions.list({
+            customer: org.stripeCustomerId,
+            status: "trialing",
+            limit: 1,
+          });
+        }
+
+        if (subscriptions.data.length === 0) {
           return reply.status(404).send({ error: "No active subscription found" });
         }
 
-        const subscriptionId = subscriptions.data[0].id;
+        const subscription = subscriptions.data[0];
 
-        sessionConfig.flow_data = {
-          type: "subscription_cancel",
-          subscription_cancel: {
-            subscription: subscriptionId,
-          },
-        };
+        // Stripe rejects a subscription_cancel flow when the subscription is already scheduled
+        // to cancel at period end ("already set to be canceled at period end"). In that case,
+        // fall back to the plain billing portal so the user can review or resume instead of
+        // hitting a 400.
+        if (!subscription.cancel_at_period_end) {
+          sessionConfig.flow_data = {
+            type: "subscription_cancel",
+            subscription_cancel: {
+              subscription: subscription.id,
+            },
+          };
+        }
       } else if (flowType === "payment_method_update") {
         sessionConfig.flow_data = {
           type: "payment_method_update",
@@ -116,7 +135,7 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
     // 4. Return the Billing Portal Session URL
     return reply.send({ portalUrl: portalSession.url });
   } catch (error: any) {
-    console.error("Stripe Portal Session Error:", error);
+    request.log.error({ err: error }, "Stripe Portal Session Error");
     return reply.status(500).send({
       error: "Failed to create Stripe portal session",
       details: error.message,

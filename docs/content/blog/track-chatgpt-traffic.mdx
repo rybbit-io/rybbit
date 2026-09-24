@@ -1,0 +1,130 @@
+---
+title: "How to Track ChatGPT and AI Referral Traffic to Your Site"
+description: "AI traffic is two things: crawlers reading your pages and people clicking through from ChatGPT, Perplexity or Claude. How to see both in GA4 and in Rybbit."
+date: 2026-09-13
+tags: ["ai", "bot detection", "traffic"]
+author: Rybbit Team
+---
+
+"AI traffic" is two different things that share a name. One is machines: crawlers and agents that fetch your pages to train a model, build an answer index, or answer one person's question on the spot. The other is people: visitors who click a link inside ChatGPT, Perplexity, Claude, or Gemini and land on your site. The first mostly never runs JavaScript, so a browser-based tracker never sees it; the second often arrives with no referrer and gets filed under Direct. They need different tracking, and this post covers both.
+
+## Why AI traffic is hard to see
+
+Referral attribution rests on one HTTP header: when someone clicks a link, the browser sends a `Referer` naming the page they came from, and your analytics tool turns it into a source. AI traffic breaks that chain in several places.
+
+**Many assistant clicks carry no referrer.** A link marked `rel="noreferrer"` tells the browser to omit the `Referer` header ([MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/noreferrer)). A link opened from a native app reaches the browser as a fresh navigation, with no referring page. Both match GA4's definition of Direct: source `(direct)` and medium `(none)` or `(not set)` ([GA4 channel definitions](https://support.google.com/analytics/answer/9756891)). When Google's AI Mode launched in May 2025, Search Engine Land reported that its links were marked `noreferrer`, so clicks showed as Direct or Unknown until Google fixed it a week later ([Search Engine Land](https://searchengineland.com/googles-ai-mode-traffic-untrackable-455883)).
+
+**The referrer you do get is trimmed.** The browser's default policy, `strict-origin-when-cross-origin`, sends only the origin on cross-origin navigations ([MDN Referrer-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy)). You see `https://chatgpt.com/`, never the conversation.
+
+**Some AI clicks look like ordinary search.** Google reports AI Overviews and AI Mode clicks inside the normal Web search type in Search Console ([Google Search Central](https://developers.google.com/search/docs/appearance/ai-features)), and GA4 counts them as Organic Search ([GA4 channel definitions](https://support.google.com/analytics/answer/9756891)). Nothing in the referrer separates them from a classic blue-link click.
+
+**UTM parameters exist, from one source.** OpenAI states that ChatGPT automatically includes `utm_source=chatgpt.com` in referral URLs from ChatGPT search results ([OpenAI Publishers and Developers FAQ](https://help.openai.com/en/articles/12627856-publishers-and-developers-faq)). A UTM survives an app hand-off where the referrer does not, but it covers one assistant and only its search results, so treat it as a bonus rather than a baseline.
+
+**Crawlers never fire a browser tracker.** A crawler fetches your HTML and, in most cases, executes nothing, so Rybbit's script, GA4's tag, and every other browser-side tracker never run; those fetches exist only in server or CDN logs. Some agents do render pages, which is why browser-based tracking sees part of the picture.
+
+## The referrer domains to watch
+
+Rybbit keeps one registry that maps each AI operator to the domains its assistant sends people from and the user agents its crawlers and agents announce, so crawls and referrals can be compared per company. This is what it maps today.
+
+| Operator | Assistant referrer domains | Crawler and agent user agents (purpose) |
+| --- | --- | --- |
+| OpenAI | chatgpt.com, chat.openai.com | GPTBot (training), OAI-SearchBot (search), ChatGPT-User (agent) |
+| Anthropic | claude.ai | ClaudeBot (training), Claude-SearchBot (search), Claude-User (agent), Claude Code (agent) |
+| Google | gemini.google.com | Google-Extended (training), Google-Agent (agent) |
+| Microsoft | copilot.microsoft.com | No AI-specific crawler mapped |
+| Perplexity | perplexity.ai | PerplexityBot (search), Perplexity-User (agent) |
+| Meta | meta.ai | Meta-ExternalAgent (training), Meta-ExternalFetcher (agent) |
+| Mistral | chat.mistral.ai, mistral.ai | MistralAI-User (agent) |
+| xAI | grok.com | GrokBot (search) |
+| You.com | you.com | YouChat (search) |
+| Cursor | cursor.com | Cursor (agent) |
+| Cohere | coral.cohere.com | cohere-ai (training) |
+
+The purposes matter more than the names:
+
+- **Training** crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended, Bytespider) collect pages to train a model and send no readers back.
+- **Search** crawlers, which Rybbit labels answer engines (OAI-SearchBot, Claude-SearchBot, PerplexityBot), index pages so an assistant can cite them, and can send readers back.
+- **Agents** (ChatGPT-User, Claude-User, Perplexity-User, Google-Agent) fetch a page because a person asked an assistant to open it, right then.
+
+Some operators only crawl: Common Crawl (CCBot), Apple (Applebot-Extended), ByteDance (Bytespider), Amazon (Amazonbot), Diffbot, and Webz.io (Omgilibot) train; DuckDuckGo (DuckAssistBot) indexes for search; Manus and Firecrawl run agents. Some assistants only refer: deepseek.com, poe.com, pi.ai, character.ai, qwen.ai, and phind.com count as AI referrals with no crawl side. A click from duckduckgo.com is deliberately left as organic search, not an AI hand-off.
+
+## How to track AI referrals in GA4
+
+GA4 now does part of this on its own. Its default channel group has a channel called **AI Assistant**: GA4 sets the medium to `ai-assistant` and the campaign to `(ai-assistant)` when the referrer matches its list of AI assistants, which Google describes as sources like ChatGPT, Gemini, DeepSeek, Copilot, and Grok ([GA4 default channel group](https://support.google.com/analytics/answer/9756891)). Google's own AI Overviews and AI Mode are excluded and stay in Organic Search. Start with that row in your acquisition reports; a referrer Google's list does not recognize still falls into Referral, and a click without a referrer stays in Direct.
+
+To catch the rest, build a custom channel group:
+
+1. Go to **Admin**, then **Data display**, then **Channel groups**, and create a new group. Standard properties get two custom groups of up to 50 channels each ([Google's guide](https://support.google.com/analytics/answer/13051316)).
+2. Add a channel named AI with the condition **Source** *matches regex*; Google's help page has an AI-assistants example built the same way. A pattern from the table above:
+
+```text
+.*(chatgpt\.com|chat\.openai\.com|perplexity\.ai|claude\.ai|gemini\.google\.com|copilot\.microsoft\.com|meta\.ai|mistral\.ai|grok\.com|you\.com|deepseek\.com|poe\.com).*
+```
+
+3. Save. Google states that custom channel groups apply to reports retroactively, so there is no waiting for new data.
+
+For a one-off look, open **Explore**, start a **Free form** exploration, add the session source dimension as a row, and add a filter for the assistant domains in the Filters section at the bottom of the Settings panel; expressions are case sensitive ([explorations](https://support.google.com/analytics/answer/9327972), [filters](https://support.google.com/analytics/answer/9328518)).
+
+Two limits remain whatever you build: GA4 cannot see crawlers, because they never load its tag, and the referrer-less, untagged remainder is Direct for good.
+
+## How Rybbit does it
+
+[Web analytics](/features/web-analytics) classifies each session into an acquisition channel, and one channel is named **AI**. A session lands there when its referrer is one of the domains in the table, when `utm_source` names an assistant (chatgpt, openai, claude, perplexity, gemini, copilot, deepseek and others), or when `utm_medium` is one of `ai`, `ai-chat`, `chatbot`, `llm`, `ai-assistant`, `gen-ai`, or `ai-search`. Channel is also a filter, so "Channel is AI" works anywhere the filter bar does.
+
+The crawler half comes from [bot detection](/features/bot-detection). Enable **Block Bot Traffic** in Site Settings and every tracking request runs through five detection layers; the user-agent layer carries the AI patterns, so a matched bot is stored with a `bot_name`, `bot_operator`, and `bot_purpose` (`ai_training`, `ai_search`, or `ai_agent`). Detected bots stay out of your analytics and your bill, and are kept separately for inspection ([bot detection docs](/docs/bot-detection)).
+
+The Bots page opens on the **AI & agents** tab (the other is **All bots**). Here is the [public demo](https://demo.rybbit.com/81/bots) over the last 30 days:
+
+![Rybbit's AI & agents report: AI requests, AI agents, AI crawlers, visits sent back, and the AI operators table](/blog/track-chatgpt-traffic/rybbit-ai-traffic-report.webp)
+
+Top to bottom:
+
+- Four counts: **AI requests**, **AI agents** (a person asked an assistant to open a page), **AI crawlers** (background crawling for training or an answer index), and **Visits sent back** (people who arrived from an AI product).
+- A coverage note, the most important sentence on the page: "These counts cover bots that execute JavaScript. Crawlers that fetch your HTML and run nothing — which includes most training crawlers — never reach Rybbit unless your server reports them through the tracking API."
+- A chart of **Agents** against **Crawlers** over time.
+- The **AI operators** table: per operator, **Agent**, **Answer engine**, **Training**, and **Total reads** on one side, **Visits back** on the other, and **Reads per visit**, the exchange rate. Reads are requests whose user agent names the operator; visits back are sessions that arrived from that company's product.
+- **AI bots** by bot, by purpose (**AI training crawler**, **AI answer engine**, **AI agent**), and by operator.
+- **Pages read by AI**, with an **Agents only** tab for **Pages agents opened**, which track live intent rather than a crawler's sweep.
+
+The same rows come from the API as [`GET /api/sites/:site/bots/ai-summary`](/docs/api/bots/ai-summary).
+
+The coverage note is the honest limit of browser-based tracking, and it has a fix: report the non-JavaScript crawlers from the edge. Middleware, a worker, or a reverse proxy forwards the request to the tracking API with an API key and the real `user_agent`, and a forwarded GPTBot user agent lands in your bot events with full identity rather than in your analytics as a phantom visitor ([how to report crawlers that never run JavaScript](/docs/bot-detection#reporting-crawlers-that-never-run-javascript)).
+
+## What to do with the data
+
+**Segment the AI-referred sessions.** Open the **Filter** button, switch to the **Segments** tab, click **New segment**, and define it as Channel is AI ([segments docs](/docs/segments)). Apply it to pages, sessions, journeys, funnels, and retention to see what these visitors read and where they go. To compare AI with other channels, use one segment per channel on the same report; our [marketing attribution guide](/blog/marketing-attribution-tools) covers the models behind that comparison.
+
+**Set a goal and check whether they convert.** [Goals](/features/goals) track a conversion rate against sessions for a page visit or a custom event. Filter the Goals page to the AI channel and you have the conversion rate of AI-referred visitors next to everyone else's, which is the number that decides whether AI referrals deserve attention.
+
+**Compare pages read with pages that earn visits.** Put **Pages read by AI** next to the pages your AI-channel sessions land on. Pages crawled heavily but never referred are feeding training, or an index that does not cite you. Pages that agents open are what people are actively asking about, and often deserve a clearer answer at the top.
+
+**Decide your crawler policy by purpose, not by name.** Every major operator documents its crawlers and how to block them, and the details differ:
+
+- OpenAI keeps GPTBot (training) and OAI-SearchBot (search) separate: "a webmaster can allow OAI-SearchBot in order to appear in search results while disallowing GPTBot", and sites that opt out of OAI-SearchBot "will not be shown in ChatGPT search answers". ChatGPT-User acts on user requests, so OpenAI notes robots.txt rules may not apply to it ([OpenAI crawler docs](https://developers.openai.com/api/docs/bots)).
+- Anthropic documents ClaudeBot (training), Claude-SearchBot (search), and Claude-User (user requests). All three honor robots.txt and support `Crawl-delay` ([Anthropic](https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler)).
+- Perplexity's PerplexityBot surfaces and links sites in Perplexity results and respects robots.txt; Perplexity-User fetches on a user's behalf and "generally ignores robots.txt rules", so Perplexity publishes its IP ranges for firewall blocking ([Perplexity](https://docs.perplexity.ai/guides/bots)).
+- Google-Extended controls whether your content trains future Gemini models or grounds Gemini Apps and Vertex AI; Google says it "does not impact a site's inclusion in Google Search nor is it used as a ranking signal in Google Search" ([Google crawlers](https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers)). AI Overviews follow the ordinary Googlebot rules and snippet controls instead ([Google AI features](https://developers.google.com/search/docs/appearance/ai-features)).
+
+The pattern: blocking a training crawler costs you no referrals, blocking a search crawler removes you from the answers that send them, and agents are people asking about you. The Bots report shows, per operator, which of the three you are getting, so the robots.txt decision can rest on numbers. If a traffic change follows a policy change, the [traffic drop checklist](/blog/website-traffic-drop) still applies: check the channel breakdown before assuming a cause.
+
+## FAQ
+
+### Does ChatGPT send referral traffic?
+
+Yes. A click on a link in a ChatGPT answer arrives with a `chatgpt.com` referrer when the browser sends one, and OpenAI says ChatGPT adds `utm_source=chatgpt.com` to referral URLs from ChatGPT search results. A click that reaches you with neither shows as Direct.
+
+### Why does AI traffic show as Direct?
+
+Because Direct is where every visit without a referrer and without campaign parameters goes, in GA4 and in Rybbit alike. Links marked `rel="noreferrer"` send no `Referer` header, and links opened from a native app start a fresh navigation with no referring page.
+
+### How do I see AI traffic in Google Analytics?
+
+Start with the AI Assistant channel in GA4's default channel group, which covers referrers on Google's list, then add a custom channel group with a Source regex for the assistant domains you care about; it applies retroactively. Google's AI Overviews and AI Mode clicks count as Organic Search and cannot be separated in GA4 or Search Console.
+
+### Can I block AI crawlers without losing AI referrals?
+
+Mostly, if you block by purpose. OpenAI, Anthropic, and Perplexity each document separate user agents for training, search, and user-triggered fetches, and OpenAI states that a site can allow OAI-SearchBot while disallowing GPTBot. Block the training crawlers, leave the rest alone, then watch the Visits back column to confirm nothing changed. Google-Extended only affects Gemini training and grounding; AI Overviews follow the normal Googlebot rules.
+
+### Why does Rybbit show zero crawls for an operator I see in my server logs?
+
+Because Rybbit's script runs in the browser, and a crawler that fetches HTML without executing JavaScript never triggers it. Forward those requests from your server or edge to the tracking API with the original user agent and they appear in the report with full identity.

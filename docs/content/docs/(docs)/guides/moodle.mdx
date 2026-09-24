@@ -1,0 +1,56 @@
+---
+title: Moodle
+description: Add Rybbit analytics to your Moodle site
+category: other
+icon: SiMoodle
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Moodle has an **Additional HTML** admin setting that adds code to every page without touching the theme. Its **Within HEAD** field is where the snippet goes.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Moodle
+
+1. Log in as an administrator and go to **Site administration → Appearance → Additional HTML**.
+2. Paste the snippet into **Within HEAD**.
+3. Click **Save changes**.
+
+The snippet now loads on every page, including course pages, activities and the login page. Users must be able to reach `app.rybbit.io` from their browser; nothing is proxied through the Moodle server.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Moodle renders standard HTML, so `data-rybbit-event` attributes work anywhere you control markup, for example in a course page's HTML block or a label:
+
+```html
+<a href="/course/view.php?id=42" data-rybbit-event="course_open" data-rybbit-prop-course="42">
+  Open course
+</a>
+```
+
+For enrolment or completion events, call `window.rybbit.event()` from a small block of JavaScript placed in the **When BODY is closed** field of the same Additional HTML page.
+
+## Troubleshooting
+
+- **Snippet saved but not in the page source**: Moodle caches rendered output. Go to **Site administration → Development → Purge caches** and reload.
+- **Pages inside the mobile app are not tracked**: the Moodle app renders course content in its own WebView with its own pages; the Additional HTML setting only affects the web site.
+- **Snippet pasted into Custom CSS**: theme settings such as Boost's **Raw SCSS** only accept styles. Use Additional HTML for script tags.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

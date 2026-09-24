@@ -1,18 +1,22 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useGetPerformanceOverview } from "../../../../api/analytics/hooks/performance/useGetPerformanceOverview";
 import { Card, CardContent, CardLoader } from "../../../../components/ui/card";
-import { useStore } from "../../../../lib/store";
+import { useComparisonEnabled, useStore } from "../../../../lib/store";
 import { PerformanceMetric, usePerformanceStore } from "../performanceStore";
 import { formatMetricValue, getMetricColor, getMetricUnit } from "../utils/performanceUtils";
 import { PercentileSelector } from "./PercentileSelector";
 import { MetricTooltip } from "./shared/MetricTooltip";
 
 const ChangePercentage = ({ current, previous }: { current: number; previous: number }) => {
+  const comparisonEnabled = useComparisonEnabled();
+  if (!comparisonEnabled) return null;
+
   const change = ((current - previous) / previous) * 100;
 
   if (previous === 0) {
@@ -89,6 +93,7 @@ const Stat = ({
 };
 
 export function PerformanceOverview() {
+  const t = useExtracted();
   const { site } = useStore();
   const { selectedPercentile } = usePerformanceStore();
 
@@ -101,8 +106,8 @@ export function PerformanceOverview() {
 
   const isLoading = isOverviewLoading || isOverviewLoadingPrevious;
 
-  const currentData = overviewData?.data ?? {};
-  const previousData = overviewDataPrevious?.data ?? {};
+  const currentData = overviewData ?? {};
+  const previousData = overviewDataPrevious ?? {};
 
   // Helper function to get metric value for selected percentile
   const getMetricValue = (data: any, metric: PerformanceMetric): number => {
@@ -113,7 +118,7 @@ export function PerformanceOverview() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Web Vitals</h2>
+        <h2 className="text-lg font-semibold">{t("Web Vitals")}</h2>
         <PercentileSelector />
       </div>
 
@@ -121,35 +126,35 @@ export function PerformanceOverview() {
         <CardContent className="p-0 w-full">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-0 items-center 0 rounded-lg overflow-hidden">
             <Stat
-              title="Largest Contentful Paint"
+              title={t("Largest Contentful Paint")}
               id="lcp"
               value={getMetricValue(currentData, "lcp")}
               previous={getMetricValue(previousData, "lcp")}
               isLoading={isLoading}
             />
             <Stat
-              title="Cumulative Layout Shift"
+              title={t("Cumulative Layout Shift")}
               id="cls"
               value={getMetricValue(currentData, "cls")}
               previous={getMetricValue(previousData, "cls")}
               isLoading={isLoading}
             />
             <Stat
-              title="Interaction to Next Paint"
+              title={t("Interaction to Next Paint")}
               id="inp"
               value={getMetricValue(currentData, "inp")}
               previous={getMetricValue(previousData, "inp")}
               isLoading={isLoading}
             />
             <Stat
-              title="First Contentful Paint"
+              title={t("First Contentful Paint")}
               id="fcp"
               value={getMetricValue(currentData, "fcp")}
               previous={getMetricValue(previousData, "fcp")}
               isLoading={isLoading}
             />
             <Stat
-              title="Time to First Byte"
+              title={t("Time to First Byte")}
               id="ttfb"
               value={getMetricValue(currentData, "ttfb")}
               previous={getMetricValue(previousData, "ttfb")}

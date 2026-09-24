@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { Plus } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import GoalFormModal from "./GoalFormModal";
@@ -9,6 +10,7 @@ interface CreateGoalButtonProps {
 }
 
 export default function CreateGoalButton({ siteId }: CreateGoalButtonProps) {
+  const t = useExtracted();
   return (
     <>
       <GoalFormModal
@@ -16,7 +18,7 @@ export default function CreateGoalButton({ siteId }: CreateGoalButtonProps) {
         trigger={
           <Button className="flex items-center gap-1">
             <Plus className="h-4 w-4" />
-            <span>Add Goal</span>
+            <span>{t("Add Goal")}</span>
           </Button>
         }
       />

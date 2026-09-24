@@ -26,7 +26,7 @@ export const getUserOrganizations = async (request: FastifyRequest, reply: Fasti
 
     return reply.send(userOrganizations);
   } catch (error) {
-    console.error("Error fetching user organizations:", error);
+    request.log.error({ err: error }, "Error fetching user organizations");
     return reply.status(500).send("Failed to fetch user organizations");
   }
 };

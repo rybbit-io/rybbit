@@ -1,0 +1,282 @@
+---
+title: List Imports
+description: Returns all data imports for a site with their progress counts.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/imports
+```
+
+Returns all data imports for a site with their progress counts. Requires an admin or owner API key. On Rybbit Cloud, this requires a paid plan.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+This endpoint takes no query parameters.
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of import objects',
+      type: 'Import[]',
+    },
+  }}
+/>
+
+#### Import Object
+
+<TypeTable
+  type={{
+    importId: {
+      description: 'Unique import identifier',
+      type: 'string',
+      typeDescription: 'UUID',
+    },
+    platform: {
+      description: 'Source platform the data was imported from',
+      type: 'string',
+      typeDescription: '"umami" | "simple_analytics" | "plausible"',
+    },
+    importedEvents: {
+      description: 'Number of events successfully imported',
+      type: 'number',
+    },
+    skippedEvents: {
+      description: 'Number of events skipped (e.g. outside the retention window)',
+      type: 'number',
+    },
+    invalidEvents: {
+      description: 'Number of events rejected as invalid',
+      type: 'number',
+    },
+    startedAt: {
+      description: 'When the import started',
+      type: 'string',
+      typeDescription: 'ISO 8601 datetime',
+    },
+    completedAt: {
+      description: 'When the import finished, or null while it is still running',
+      type: 'string | null',
+      typeDescription: 'ISO 8601 datetime',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/imports" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/imports',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/imports',
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+<?php
+$ch = curl_init();
+
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/imports');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+?>
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+require 'uri'
+
+uri = URI('https://app.rybbit.io/api/sites/123/imports')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(req)
+end
+
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+package main
+
+import (
+    "encoding/json"
+    "io"
+    "net/http"
+)
+
+func main() {
+    url := "https://app.rybbit.io/api/sites/123/imports"
+
+    req, _ := http.NewRequest("GET", url, nil)
+    req.Header.Add("Authorization", "Bearer your_api_key_here")
+
+    client := &http.Client{}
+    resp, _ := client.Do(req)
+    defer resp.Body.Close()
+
+    body, _ := io.ReadAll(resp.Body)
+
+    var data map[string]interface{}
+    json.Unmarshal(body, &data)
+}
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+use reqwest;
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get("https://app.rybbit.io/api/sites/123/imports")
+        .header("Authorization", "Bearer your_api_key_here")
+        .send()
+        .await?;
+
+    let data: Value = response.json().await?;
+
+    Ok(())
+}
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("https://app.rybbit.io/api/sites/123/imports"))
+            .header("Authorization", "Bearer your_api_key_here")
+            .GET()
+            .build();
+
+        HttpResponse<String> response = client.send(request,
+            HttpResponse.BodyHandlers.ofString());
+
+        String data = response.body();
+    }
+}
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        using var client = new HttpClient();
+
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+        var response = await client.GetAsync(
+            "https://app.rybbit.io/api/sites/123/imports");
+
+        var data = await response.Content.ReadAsStringAsync();
+    }
+}
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "importId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "platform": "plausible",
+      "importedEvents": 15420,
+      "skippedEvents": 120,
+      "invalidEvents": 3,
+      "startedAt": "2024-01-10T12:00:00.000Z",
+      "completedAt": "2024-01-10T12:04:30.000Z"
+    },
+    {
+      "importId": "9a1c8f2e-3b7d-4e1a-9c0f-2d5b6a7e8f10",
+      "platform": "umami",
+      "importedEvents": 8200,
+      "skippedEvents": 0,
+      "invalidEvents": 0,
+      "startedAt": "2024-01-15T09:30:00.000Z",
+      "completedAt": null
+    }
+  ]
+}
+```
+
+</div>
+</div>

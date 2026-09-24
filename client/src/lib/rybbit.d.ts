@@ -42,6 +42,39 @@ interface Rybbit {
    * @param target Optional target attribute of the link
    */
   trackOutbound: (url: string, text?: string, target?: string) => void;
+
+  /**
+   * Evaluates a feature flag and returns its value. Reading a flag records a
+   * feature flag exposure once per flag value/version.
+   * @param key The flag key
+   * @param fallback Value returned before flags resolve or if the flag is inactive
+   */
+  flag: <T = unknown>(key: string, fallback?: T) => T;
+
+  /**
+   * Returns the payload for a feature flag or its selected variant.
+   * Use this for remote config and multivariate payloads.
+   * @param key The flag key
+   * @param fallback Value returned before flags resolve or if the flag is inactive
+   */
+  flagPayload: <T = unknown>(key: string, fallback?: T) => T;
+
+  /**
+   * Returns all evaluated flag values keyed by flag key
+   */
+  flags: () => Record<string, unknown>;
+
+  /**
+   * Returns all available flag payloads keyed by flag key
+   */
+  flagPayloads: () => Record<string, unknown>;
+
+  /**
+   * Runs a callback once the tracking script and feature flags are ready.
+   * Use this before reading flags during page initialization.
+   * @param callback Receives the ready rybbit instance
+   */
+  onReady: (callback: (rybbit: Rybbit) => void) => void;
 }
 
 declare global {

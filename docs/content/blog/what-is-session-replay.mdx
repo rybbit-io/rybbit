@@ -1,0 +1,147 @@
+---
+title: "What Is Session Replay? How It Works and When to Use It"
+description: "Session replay rebuilds what a visitor did from DOM events, not video. How it works, what it can't capture, privacy rules, and setup in Rybbit."
+date: 2026-09-13
+tags: ["session replay", "analytics", "ux"]
+author: Rybbit Team
+---
+
+Session replay is a way to reconstruct what an individual visitor did on your website: the pages they opened, where they clicked, how far they scrolled, what they typed (masked), and where they gave up. It works by recording changes to the page and the visitor's interactions as a stream of events, then playing that stream back in a player that looks like a video but isn't one.
+
+This guide is for product managers, developers, and support teams who have the numbers from [web analytics](/blog/what-is-web-analytics) but not the story behind them. It covers how session replay works, what it can't capture, how it compares to heatmaps and analytics, privacy rules, performance cost, and setup in Rybbit.
+
+## How does session replay work?
+
+### It records the DOM, not pixels
+
+A session replay tool doesn't capture the screen. When a page loads, the recorder walks the DOM (the tree of elements the browser built from your HTML) and serializes it into a full snapshot. From then on it records only the differences, so a session is one snapshot followed by a long list of small updates.
+
+Many tools, including Rybbit, build on [rrweb](https://github.com/rrweb-io/rrweb), an open-source library whose name stands for "record and replay the web"; its README lists PostHog, Sentry, Datadog, and Mixpanel among its users. Rybbit's tracker loads the rrweb recorder in the visitor's browser, and the Rybbit dashboard plays sessions back with rrweb-player.
+
+Per rrweb's [observer documentation](https://github.com/rrweb-io/rrweb/blob/master/docs/observer.md), the recorder captures DOM changes (nodes added and removed, attribute and text changes), mouse movement and interaction, scrolling, window resizes, and input. DOM changes come from the browser's MutationObserver API, which delivers a batch of mutation records after each round of changes.
+
+### Playback rebuilds the page in a sandbox
+
+The player takes the initial snapshot, rebuilds the page inside a sandboxed iframe, and applies each recorded event at the right moment. rrweb's [sandbox notes](https://github.com/rrweb-io/rrweb/blob/master/docs/sandbox.md) state that the replayer "will not execute any JavaScript in the recorded page during replay" and that script tags are rewritten as noscript tags, so a recording can't run code, submit forms, or open pop-ups for the person watching.
+
+Since every event depends on the state before it, recorders also take periodic full snapshots (rrweb calls them checkouts) so the player can jump ahead without processing everything before it. Rybbit's recorder takes one every 60 seconds or every 500 events.
+
+### What a replay captures
+
+- Page structure and every change to it, including route changes in single-page apps
+- Clicks, focus and blur, and scroll position (Rybbit samples scroll every 500 ms)
+- Input values, masked by default (see the privacy section)
+- Viewport size, so the player shows what fit on the visitor's screen
+- Metadata such as country, browser, operating system, and device type, which Rybbit's [replay list API](/docs/api/session-replay/list) returns with each recording
+
+### What a replay can't capture
+
+- **Canvas and WebGL.** Anything drawn on a canvas element (charts, maps, games) is pixels, not DOM. rrweb's `recordCanvas` option is off by default, and Rybbit keeps it off to limit storage, so canvases appear empty in playback.
+- **Cross-origin iframes.** Payment forms, videos, and chat widgets served from another domain live in their own document. rrweb's [guide](https://github.com/rrweb-io/rrweb/blob/master/guide.md) notes that recording them is off by default and that "rrweb has to be injected in each child iframe for this to work." Rybbit doesn't do that, so those frames stay blank.
+- **Mouse movement, unless you ask for it.** Rybbit's default sampling turns mouse-move recording off to cut data volume; clicks are still recorded.
+- **Anything outside the page.** Browser chrome, other tabs, native dialogs, and operating system menus never enter the DOM.
+
+## What you can learn from session replay
+
+Analytics tells you a number moved. Replay tells you what a person did.
+
+**Debugging user-reported problems.** A customer says "the checkout button does nothing". The replay shows they clicked it four times while a validation message rendered below the fold. Pair recordings with [error tracking](/features/error-tracking) and you can watch the interaction that preceded an exception on the customer's own browser and device instead of reproducing it from a vague description.
+
+**Finding UX friction.** Some patterns are obvious the moment you watch them: repeated clicks on a heading that looks like a link, a form that clears a field when the user tabs past it, a mobile menu that covers the call to action. None of these show up as a metric; all of them are visible in a two-minute recording.
+
+**Explaining conversion drop-offs.** A [funnel](/features/funnels) tells you that 40% of visitors leave on the shipping-options step. Filter replays to sessions that reached that step and watch ten of them. If eight scroll up and down looking for a delivery date that isn't there, you have your answer. The same approach turns a [bounce rate](/blog/bounce-rate) into something concrete: did single-page visitors read for a minute and leave satisfied, or leave in three seconds because the page looked broken?
+
+**Faster support.** When a recording is tied to an identified user, a support agent can open the session behind a ticket and skip the "can you describe what you did?" round trip.
+
+## Session replay vs heatmaps vs traditional analytics
+
+| | Session replay | Heatmaps | Traditional analytics |
+| --- | --- | --- | --- |
+| What it shows | One visitor's session, step by step | Where many visitors clicked or scrolled on one page | Counts and rates across all visitors |
+| Best question | Why did this happen? | Which parts of this page get attention? | What happened, and how much? |
+| Sample size | One session can be useful | Needs many sessions per page | Works at any scale |
+| Time to insight | Minutes per session | Fast for one page | Fast for trends |
+| Privacy exposure | Highest: individual behavior | Aggregated, low | Aggregated, low |
+| Data cost | Highest per session | Moderate | Lowest |
+
+Work top down: analytics finds where the problem is, replay finds out what it is. Heatmaps sit in between, summarizing one page. Rybbit doesn't have heatmaps; if you need them, a standalone tool such as [Microsoft Clarity](https://clarity.microsoft.com/) bundles heatmaps with session recordings and is free.
+
+## Privacy and compliance
+
+Replay records far more than aggregate analytics does. This section describes what the tools do and what the rules say; it isn't legal advice.
+
+### What a recording can expose
+
+A replay of an account page, a checkout form, or a support chat contains information about a specific person. Under the GDPR's [Article 4(1)](https://gdpr-info.eu/art-4-gdpr/), personal data is "any information relating to an identified or identifiable natural person", and its list of identifiers includes names, location data, and online identifiers. Assume recordings are personal data and configure masking before you turn replay on.
+
+### Masking and blocking
+
+Rybbit's recorder has three levels of protection, documented on the [tracking script page](/docs/script):
+
+- **Mask.** All input values are replaced with asterisks by default (`data-replay-mask-all-inputs` is `true`), and password and email fields stay masked even if you turn that off. Add the `rr-mask` class to any element, or list selectors in `data-replay-mask-text-selectors`, to mask visible text such as names and addresses.
+- **Ignore.** Elements with the `rr-ignore` class (or matched by `data-replay-ignore-selector`) are shown, but interactions with them aren't recorded.
+- **Block.** Elements with the `rr-block` class (or matched by `data-replay-block-selector`) are left out entirely and replay as a placeholder. Use this for admin panels, payment modals, and third-party widgets.
+
+The npm SDK exposes the same options through `replayPrivacyConfig`, described in the [web SDK docs](/docs/sdks/web).
+
+### Consent
+
+In the EU, Article 5(3) of the [ePrivacy Directive](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:02002L0058-20091219) allows storing information on, or reading information from, a user's device only with consent, unless it's strictly necessary for a service the user asked for. Whether a given replay setup falls inside that rule depends on how it's implemented and where your users are; ask your counsel.
+
+In the US, session replay has drawn lawsuits under the California Invasion of Privacy Act. In *Javier v. Assurance IQ* (May 31, 2022), the Ninth Circuit held that the statute requires the prior consent of all parties, so consent collected after recording had begun, via a privacy policy accepted at the end of a form, was not enough ([DLA Piper's summary](https://www.dlapiper.com/en/insights/publications/2022/06/javier-v-assurance-iq-llc-et-al)).
+
+Rybbit's tracker has `startSessionReplay()` and `stopSessionReplay()` methods. Recording starts on its own once the site setting is on, so they're better suited to pausing recording on a sensitive page than to holding it until consent; test the timing before relying on them for that.
+
+### Data residency and retention
+
+Recordings live wherever your analytics backend runs. On Rybbit Cloud, replay data is kept for 30 days. If you self-host, recordings stay on infrastructure in the region you choose, and you control retention. Individual recordings can be deleted from the dashboard or through the [API](/docs/api/session-replay/delete).
+
+## Cost and performance
+
+### Script weight
+
+Rybbit's base tracking script (`script.js`) is about 11 KB compressed. The rrweb recorder is a separate file of roughly 80 KB compressed, fetched only when replay is enabled and the session has been chosen for recording. The tracker injects it at runtime from the same origin, so it isn't in your HTML and doesn't block parsing. That doesn't make it free: on pages with heavy DOM churn, serializing mutations is real CPU work in the visitor's browser.
+
+### Data volume and sampling
+
+Volume is driven by how busy the page is, not how long the visit lasts. Rybbit's defaults keep it down: no mouse-move events, scroll sampled every 500 ms, only the final value of each input rather than every keystroke, and a slimmed DOM snapshot that drops comments and most head metadata. Events are buffered and sent in batches of 250 or every five seconds.
+
+You can also record only a share of sessions. The script accepts a `data-replay-sample-rate` attribute from 0 to 100, and the decision sticks for the whole browser session. On a busy site, 10 to 20% is usually enough to catch recurring problems and cuts storage in proportion.
+
+### Retention and pricing
+
+Session replay is included in the Pro and Enterprise plans: Pro starts at $39 per month for 100,000 events, while the Standard plan ($19 per month) does not include replays. Every cloud plan has a 7-day free trial, with a card collected at signup and no charges until the trial ends; see the [pricing page](/pricing). Self-hosting is free and includes session replay.
+
+## How to set up session replay with Rybbit
+
+1. **Install the [tracking script](/docs/script)** or npm SDK if you haven't already; replay uses the same tracker as everything else.
+2. **Turn it on in site settings.** Find Session Replay under Analytics Features in your site's settings and enable it. The script picks up the setting automatically; nothing changes in your script tag.
+3. **Decide what to mask.** Inputs are masked by default. Add `rr-mask`, `rr-ignore`, or `rr-block` classes to sensitive elements, or set the `data-replay-*` attributes on the script tag.
+4. **Set a sample rate** with `data-replay-sample-rate` if you have significant traffic.
+5. **Watch sessions.** The Replay page lists recordings on the left and plays them in the middle, with a breadcrumb timeline of pages, clicks, and custom events on the right. Filter by minimum duration, browser, device, country, referrer, channel, or user ID, and delete any recording you don't want to keep.
+
+![Rybbit's session replay view: the recordings list, the player, and the event timeline](/blog/what-is-session-replay/rybbit-session-replay.webp)
+
+The [session replay feature guide](/docs/feature-guides/session-replay) covers the dashboard in more detail, and the [feature page](/features/session-replay) summarizes what's included.
+
+## FAQ
+
+### Is session replay legal?
+
+In most places, yes, with appropriate notice, masking, and consent, but the rules differ by jurisdiction. EU rules require consent for storing or accessing information on a user's device unless strictly necessary, and under California law *Javier v. Assurance IQ* makes clear that consent has to come before recording starts. Configure masking, update your privacy policy, and ask a lawyer about your setup.
+
+### Does session replay slow down my site?
+
+It adds a script (about 80 KB compressed for the rrweb recorder in Rybbit) and some CPU work as the page changes. Rybbit loads the recorder after the main tracker, only for sampled sessions, and skips mouse-move events by default. Most visitors won't notice, but pages with constant DOM churn spend more time serializing changes.
+
+### What's the difference between session replay and session recording?
+
+Nothing meaningful. "Session recording" describes the capture step and "session replay" the playback, and vendors use the terms interchangeably. Both refer to the DOM-event recording described above, not screen video.
+
+### Can session replay see passwords or credit card numbers?
+
+With Rybbit's defaults, no. Input values are masked in the browser before they're sent, so the recording contains asterisks rather than the typed text. Payment forms in a third-party iframe aren't recorded at all, since cross-origin iframes are outside the recording's reach.
+
+### How long should I keep recordings?
+
+Long enough to investigate the problems you care about. A session from three months ago shows a version of your site that may no longer exist. Rybbit Cloud keeps recordings for 30 days; if you self-host, you set your own retention.

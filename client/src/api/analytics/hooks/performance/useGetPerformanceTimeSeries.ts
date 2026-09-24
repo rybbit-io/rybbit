@@ -1,10 +1,8 @@
 import { Filter, TimeBucket } from "@rybbit/shared";
-import { useQuery, UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
-import { usePerformanceStore } from "../../../../app/[site]/performance/performanceStore";
+import { UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
 import { useStore } from "../../../../lib/store";
-import { APIResponse } from "../../../types";
-import { buildApiParams } from "../../../utils";
-import { fetchPerformanceTimeSeries, GetPerformanceTimeSeriesResponse } from "../../endpoints";
+import { GetPerformanceTimeSeriesResponse } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 type PeriodTime = "current" | "previous";
 
@@ -19,32 +17,18 @@ export function useGetPerformanceTimeSeries({
   site: number | string;
   bucket?: TimeBucket;
   dynamicFilters?: Filter[];
-  props?: Partial<UseQueryOptions<APIResponse<GetPerformanceTimeSeriesResponse>>>;
-}): UseQueryResult<APIResponse<GetPerformanceTimeSeriesResponse>> {
-  const { time, previousTime, filters: globalFilters, bucket: storeBucket, timezone } = useStore();
-  const { selectedPerformanceMetric } = usePerformanceStore();
+  props?: Partial<UseQueryOptions<GetPerformanceTimeSeriesResponse, Error>>;
+}): UseQueryResult<GetPerformanceTimeSeriesResponse> {
+  const storeBucket = useStore(state => state.bucket);
 
-  const timeToUse = periodTime === "previous" ? previousTime : time;
-  const bucketToUse = bucket || storeBucket;
-  const combinedFilters = [...globalFilters, ...dynamicFilters];
-
-  const params = buildApiParams(timeToUse, { filters: combinedFilters });
-
-  return useQuery({
-    queryKey: ["performance-time-series", timeToUse, bucketToUse, site, combinedFilters, selectedPerformanceMetric, timezone],
-    queryFn: () => {
-      return fetchPerformanceTimeSeries(site, { ...params, bucket: bucketToUse }).then(data => ({ data }));
-    },
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const [, , , prevSite] = query.queryKey as [string, any, TimeBucket, string | number, Filter[], string];
-
-      if (prevSite === site) {
-        return query.state.data;
-      }
-      return undefined;
-    },
+  return useAnalyticsQuery<GetPerformanceTimeSeriesResponse>({
+    key: "performance-time-series",
+    path: "performance/time-series",
+    site,
+    periodTime,
+    additionalFilters: dynamicFilters,
+    params: { bucket: bucket || storeBucket },
     staleTime: Infinity,
-    ...props,
+    props,
   });
 }

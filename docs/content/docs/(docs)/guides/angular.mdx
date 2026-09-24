@@ -1,0 +1,85 @@
+---
+title: Angular
+description: Add Rybbit analytics to your Angular app
+category: frameworks
+icon: SiAngular
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+An Angular CLI project serves one HTML shell, `src/index.html`, for every route. Paste the snippet into its `<head>` and the script loads once for the whole app.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Angular
+
+Open `src/index.html` and paste the snippet just before `</head>`:
+
+```html title="src/index.html"
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MyAngularApp</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
+```
+
+Placing it before `</body>` also works; `<head>` lets it start loading sooner. Navigation through the Angular Router is tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Declare `rybbit` on `window` once so TypeScript accepts the call, then call `window.rybbit.event()` from any component or service. Guard the call so a blocked script does not throw.
+
+```typescript title="src/app/feature/feature.component.ts"
+import { Component } from "@angular/core";
+
+declare global {
+  interface Window {
+    rybbit?: {
+      event: (eventName: string, eventData?: Record<string, any>) => void;
+      pageview: () => void;
+    };
+  }
+}
+
+@Component({
+  selector: "app-feature",
+  template: `<button (click)="onFeatureClick()">Use Feature</button>`,
+})
+export class FeatureComponent {
+  onFeatureClick(): void {
+    if (window.rybbit) {
+      window.rybbit.event("feature_used", { featureName: "Amazing Feature" });
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+- **Pageviews missing after navigation**: this is rare. If it happens, subscribe to `Router.events`, filter for `NavigationEnd` and call `window.rybbit.pageview()`; test the default behaviour first.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

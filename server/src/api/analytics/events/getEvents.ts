@@ -1,21 +1,33 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
-import { processResults, getTimeStatement } from "../utils/utils.js";
+import { enrichWithTraits } from "../utils/utils.js";
+import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
 import { getFilterStatement } from "../utils/getFilterStatement.js";
+import { analyticsRoute, QuerySpec, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 
 export type GetEventsResponse = {
   timestamp: string;
   event_name: string;
-  properties: string; // This will be populated from the props column
+  properties: string;
+  session_id: string;
   user_id: string;
+  identified_user_id: string;
   pathname: string;
   querystring: string;
   hostname: string;
   referrer: string;
   browser: string;
+  browser_version: string;
   operating_system: string;
+  operating_system_version: string;
+  language: string;
   country: string;
+  region: string;
+  city: string;
+  lat: number;
+  lon: number;
+  screen_width: number;
+  screen_height: number;
   device_type: string;
   type: string;
   page_title: string;
@@ -26,100 +38,125 @@ interface GetEventsRequest {
     siteId: string;
   };
   Querystring: FilterParams<{
-    page?: string;
     page_size?: string;
-    count?: string; // Keeping for backward compatibility
+    since_timestamp?: string;
+    before_timestamp?: string;
   }>;
 }
 
-export async function getEvents(req: FastifyRequest<GetEventsRequest>, res: FastifyReply) {
-  const { siteId } = req.params;
-  const { start_date, end_date, time_zone, filters, page = "1", page_size: pageSize = "20", count } = req.query;
+const EVENT_COLUMNS = `
+  timestamp,
+  event_name,
+  toString(props) as properties,
+  session_id,
+  user_id,
+  identified_user_id,
+  pathname,
+  querystring,
+  hostname,
+  page_title,
+  referrer,
+  browser,
+  browser_version,
+  operating_system,
+  operating_system_version,
+  language,
+  country,
+  region,
+  city,
+  lat,
+  lon,
+  screen_width,
+  screen_height,
+  device_type,
+  type
+`;
 
-  // Use count if provided (for backward compatibility), otherwise use page_size
-  const limit = count ? parseInt(count, 10) : parseInt(pageSize, 10);
-  const offset = (parseInt(page, 10) - 1) * limit;
+const EVENT_TYPE_FILTER = `AND type IN ('custom_event', 'pageview', 'outbound', 'button_click', 'copy', 'form_submit', 'input_change')`;
 
-  // Get time and filter statements if parameters are provided
-  const timeStatement =
-    start_date || end_date ? getTimeStatement(req.query) : "AND timestamp > now() - INTERVAL 30 MINUTE"; // Default to last 30 minutes if no time range specified
+export const buildEventsQuery = (query: GetEventsRequest["Querystring"], siteId: number): QuerySpec => {
+  const { since_timestamp, before_timestamp, page_size: pageSize = "50", filters } = query;
 
-  const filterStatement = filters ? getFilterStatement(filters, Number(siteId), timeStatement) : "";
+  const limit = parseInt(pageSize, 10);
+  // The event log filters individual rows; only channel remains session-attributed.
+  const filterStatement = filters
+    ? getFilterStatement(filters, siteId, undefined, { sessionLevelParams: ["channel"] })
+    : "";
 
-  try {
-    // First, get the total count for pagination metadata
-    const countQuery = `
-      SELECT
-        COUNT(*) as total
-      FROM events
-      WHERE
-        site_id = {siteId:Int32}
-        AND (type = 'custom_event' OR type = 'pageview' OR type = 'outbound')
-        ${timeStatement}
-        ${filterStatement}
-    `;
-
-    const countResult = await clickhouse.query({
-      query: countQuery,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(siteId),
+  // Mode A: Poll for new events since a timestamp (Realtime polling)
+  if (since_timestamp) {
+    return {
+      query: `
+        SELECT ${EVENT_COLUMNS}
+        FROM events
+        WHERE
+          site_id = {siteId:Int32}
+          ${EVENT_TYPE_FILTER}
+          AND timestamp > toDateTime64({sinceTimestamp:String}, 3)
+          ${filterStatement}
+        ORDER BY timestamp DESC
+        LIMIT 500
+      `,
+      params: {
+        siteId,
+        sinceTimestamp: since_timestamp,
       },
-    });
+    };
+  }
 
-    const countData = await processResults<{ total: number }>(countResult);
-    const totalCount = countData[0]?.total || 0;
+  // Mode B: Cursor-based pagination (initial load or scrolling back)
+  const timeStatement = query.start_date || query.end_date ? getTimeStatement(query) : "";
 
-    // Then, get the actual events with pagination
-    const eventsQuery = `
-      SELECT
-        timestamp,
-        event_name,
-        toString(props) as properties, -- Convert props Map to string
-        user_id,
-        pathname,
-        querystring,
-        hostname,
-        page_title,
-        referrer,
-        browser,
-        operating_system,
-        country,
-        device_type,
-        type
+  let cursorCondition = "";
+  const queryParams: Record<string, string | number> = {
+    siteId,
+    limit: Number(limit),
+  };
+
+  if (before_timestamp) {
+    cursorCondition = `AND timestamp < toDateTime64({beforeTimestamp:String}, 3)`;
+    queryParams.beforeTimestamp = before_timestamp;
+  }
+
+  return {
+    query: `
+      SELECT ${EVENT_COLUMNS}
       FROM events
       WHERE
         site_id = {siteId:Int32}
-        AND (type = 'custom_event' OR type = 'pageview' OR type = 'outbound')
+        ${EVENT_TYPE_FILTER}
         ${timeStatement}
+        ${cursorCondition}
         ${filterStatement}
       ORDER BY timestamp DESC
-      LIMIT {limit:Int32} OFFSET {offset:Int32}
-    `;
+      LIMIT {limit:Int32}
+    `,
+    params: queryParams,
+  };
+};
 
-    const eventsResult = await clickhouse.query({
-      query: eventsQuery,
-      format: "JSONEachRow",
-      query_params: {
-        siteId: Number(siteId),
-        limit: Number(limit),
-        offset: Number(offset),
-      },
-    });
+export const getEvents = analyticsRoute<GetEventsRequest>(
+  "events",
+  async (req: FastifyRequest<GetEventsRequest>, res: FastifyReply) => {
+    const { siteId } = req.params;
+    const { since_timestamp, page_size: pageSize = "50" } = req.query;
 
-    const events = await processResults<GetEventsResponse[number]>(eventsResult);
+    const events = await runAnalyticsQuery<GetEventsResponse[number]>(buildEventsQuery(req.query, Number(siteId)));
+    const eventsWithTraits = await enrichWithTraits(events, Number(siteId));
 
+    // Mode A: Poll for new events since a timestamp (Realtime polling)
+    if (since_timestamp) {
+      return res.send({ data: eventsWithTraits });
+    }
+
+    // Mode B: Cursor-based pagination (initial load or scrolling back)
+    const limit = parseInt(pageSize, 10);
     return res.send({
-      data: events,
-      pagination: {
-        total: totalCount,
-        page: parseInt(page, 10),
-        pageSize: limit,
-        totalPages: Math.ceil(totalCount / limit),
+      data: eventsWithTraits,
+      cursor: {
+        hasMore: events.length === limit,
+        oldestTimestamp: events.length > 0 ? events[events.length - 1].timestamp : null,
       },
     });
-  } catch (error) {
-    console.error("Error fetching events:", error);
-    return res.status(500).send({ error: "Failed to fetch events" });
   }
-}
+);

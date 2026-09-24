@@ -1,0 +1,112 @@
+---
+title: FastAPI
+description: Add Rybbit analytics to your FastAPI app
+category: backend
+icon: SiFastapi
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+FastAPI serves HTML through `Jinja2Templates`, so the snippet goes into the `<head>` of the base template your pages extend. Keep the site ID in a `pydantic-settings` class and register it as a Jinja global so every template can render the tag without passing it through each route.
+
+<Callout type="info">
+The tracking script runs in a browser, so it only applies to routes that return template-rendered HTML. JSON endpoints have nothing for it to track.
+</Callout>
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to FastAPI
+
+#### Configure the site ID
+
+Install `pydantic-settings` and `jinja2` if you have not already:
+
+```bash
+pip install pydantic-settings jinja2
+```
+
+Define the settings, reading from the environment and an optional `.env` file:
+
+```python filename="config.py"
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env")
+
+    rybbit_instance_url: str = "https://app.rybbit.io"
+    rybbit_site_id: str = ""
+
+
+settings = Settings()
+```
+
+```bash filename=".env"
+RYBBIT_INSTANCE_URL=https://app.rybbit.io
+RYBBIT_SITE_ID=YOUR_SITE_ID
+```
+
+#### Register the values with Jinja
+
+`Jinja2Templates` exposes its environment as `templates.env`, so add the settings as globals once, next to where you create the templates object:
+
+```python filename="main.py"
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from config import settings
+
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+templates.env.globals["rybbit_instance_url"] = settings.rybbit_instance_url
+templates.env.globals["rybbit_site_id"] = settings.rybbit_site_id
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse(request=request, name="index.html")
+```
+
+#### Add the tag to your base template
+
+Open the template your pages extend, usually `templates/base.html`, and add the tag inside `<head>`:
+
+```jinja filename="templates/base.html"
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}My App{% endblock %}</title>
+
+    {% if rybbit_site_id %}
+    <script src="{{ rybbit_instance_url }}/api/script.js?siteId={{ rybbit_site_id }}" defer></script>
+    {% endif %}
+</head>
+```
+
+The `{% if %}` guard skips the tag when `RYBBIT_SITE_ID` is empty, so local development is not tracked unless you set the variable. Templates that do not extend the base need the same tag in their own `<head>`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Tag missing**: `Settings()` reads the environment when the module is imported, so restart Uvicorn (or your process manager) after changing `RYBBIT_SITE_ID`.
+- **Several `Jinja2Templates` instances**: globals are per environment. If routers create their own `Jinja2Templates`, set the globals on each, or share one instance from a module.
+- **Content Security Policy**: if middleware sets one, add your Rybbit host to `script-src` and `connect-src`, or [proxy the script](/docs/proxy-guide) through your own domain.
+- **Self-hosted instance**: set `RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the template appends the script path to it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

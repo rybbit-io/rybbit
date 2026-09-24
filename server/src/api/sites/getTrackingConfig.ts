@@ -1,5 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { siteConfig } from "../../lib/siteConfig.js";
+import { hasFeatureFlagsForRuntime } from "../../services/featureFlags/definitions.js";
+import { usageService } from "../../services/usageService.js";
 
 export async function getTrackingConfig(request: FastifyRequest<{ Params: { siteId: string } }>, reply: FastifyReply) {
   try {
@@ -10,19 +12,33 @@ export async function getTrackingConfig(request: FastifyRequest<{ Params: { site
       return reply.status(404).send({ error: "Site not found" });
     }
 
+    // Report replay as off when the plan doesn't include it so the tracking script
+    // never loads the recorder (replay payloads would be dropped at ingest anyway)
+    const sessionReplay =
+      config.type === "mobile" ? false : config.sessionReplay && !usageService.isSiteWithoutReplay(config.siteId);
+    const featureFlagsEnabled = await hasFeatureFlagsForRuntime(config.siteId, "client");
+
     // Return tracking configuration
     // This endpoint is public since the analytics script needs to fetch it
+    // Every field below the plan/type overrides arrives already defaulted from
+    // the Site Configuration module — re-applying `?? true` / `|| false` here
+    // would only hide it if that ever stopped being true.
     return reply.send({
-      sessionReplay: config.sessionReplay || false,
-      webVitals: config.webVitals || false,
-      trackErrors: config.trackErrors || false,
-      trackOutbound: config.trackOutbound ?? true,
-      trackUrlParams: config.trackUrlParams ?? true,
-      trackInitialPageView: config.trackInitialPageView ?? true,
-      trackSpaNavigation: config.trackSpaNavigation ?? true,
+      type: config.type,
+      featureFlagsEnabled,
+      sessionReplay,
+      webVitals: config.type === "mobile" ? false : config.webVitals,
+      trackErrors: config.trackErrors,
+      trackOutbound: config.trackOutbound,
+      trackUrlParams: config.trackUrlParams,
+      trackInitialPageView: config.trackInitialPageView,
+      trackSpaNavigation: config.trackSpaNavigation,
+      trackButtonClicks: config.trackButtonClicks,
+      trackCopy: config.trackCopy,
+      trackFormInteractions: config.trackFormInteractions,
     });
   } catch (error) {
-    console.error("Error getting tracking config:", error);
+    request.log.error({ err: error }, "Error getting tracking config");
     return reply.status(500).send({ error: "Failed to get tracking configuration" });
   }
 }

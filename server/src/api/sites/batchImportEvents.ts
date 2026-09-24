@@ -2,8 +2,9 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { updateImportProgress, completeImport, getImportById } from "../../services/import/importStatusManager.js";
-import { UmamiEvent, UmamiImportMapper } from "../../services/import/mappings/umami.js";
-import { SimpleAnalyticsEvent, SimpleAnalyticsImportMapper } from "../../services/import/mappings/simpleAnalytics.js";
+import { UmamiEvent, UmamiImportMapper } from "../../services/import/mappers/umami.js";
+import { SimpleAnalyticsEvent, SimpleAnalyticsImportMapper } from "../../services/import/mappers/simpleAnalytics.js";
+import { PlausibleEvent, PlausibleImportMapper } from "../../services/import/mappers/plausible.js";
 import { MatomoEvent, MatomoImportMapper } from "../../services/import/mappings/matomo.js";
 import { importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { db } from "../../db/postgres/postgres.js";
@@ -22,6 +23,7 @@ const batchImportRequestSchema = z
       events: z.union([
         z.array(UmamiImportMapper.umamiEventKeyOnlySchema),
         z.array(SimpleAnalyticsImportMapper.simpleAnalyticsEventKeyOnlySchema),
+        z.array(PlausibleImportMapper.plausibleEventKeyOnlySchema),
         z.array(MatomoImportMapper.matomoEventKeyOnlySchema),
       ]),
       isLastBatch: z.boolean().optional(),
@@ -89,6 +91,8 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
         transformedEvents = UmamiImportMapper.transform(events as UmamiEvent[], siteId, importId);
       } else if (importRecord.platform === "simple_analytics") {
         transformedEvents = SimpleAnalyticsImportMapper.transform(events as SimpleAnalyticsEvent[], siteId, importId);
+      } else if (importRecord.platform === "plausible") {
+        transformedEvents = PlausibleImportMapper.transform(events as PlausibleEvent[], siteId, importId);
       } else if (importRecord.platform === "matomo") {
         transformedEvents = MatomoImportMapper.transform(events as MatomoEvent[], siteId, importId);
       } else {
@@ -120,7 +124,7 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
       return reply.send();
     } catch (insertError) {
       const errorMessage = insertError instanceof Error ? insertError.message : "Unknown error";
-      console.error("Failed to insert events:", errorMessage);
+      request.log.error({ err: insertError }, "Failed to insert imported events");
 
       if (isLastBatch) {
         await completeImport(importId);
@@ -132,7 +136,7 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
       });
     }
   } catch (error) {
-    console.error("Error importing events", error);
+    request.log.error({ err: error }, "Error importing events");
     return reply.status(500).send({ error: "Internal server error" });
   }
 }

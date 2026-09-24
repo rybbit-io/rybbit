@@ -1,0 +1,78 @@
+---
+title: Joomla
+description: Add Rybbit analytics to your Joomla site
+category: cms
+icon: SiJoomla
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Joomla has no built-in head-code setting, so the snippet goes in either a **Custom** module assigned to every page or in your template's `index.php`.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Joomla
+
+<Tabs items={["Custom module", "Template file"]}>
+<Tab>
+No file edits are needed, and the module survives template updates.
+
+1. In the Administrator panel go to **Content → Site Modules** (**Extensions → Modules** on Joomla 3), click **New** and choose **Custom**.
+2. Set **Title** to `Rybbit`, **Show Title** to **Hide**, and **Position** to any position your template renders on every page. Templates rarely expose a `<head>` position; the loader below moves the script into the head from wherever the module is rendered.
+3. In the editor, use the **Toggle Editor** button (or **Code** view) so the script is not stripped, then paste:
+
+   ```html
+   <script>
+   (function () {
+     var s = document.createElement("script");
+     s.src = "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID";
+     s.defer = true;
+     document.head.appendChild(s);
+   })();
+   </script>
+   ```
+
+4. Set **Status** to **Published**, choose **On all pages** under **Menu Assignment**, and click **Save & Close**.
+</Tab>
+<Tab>
+<Callout type="warn">
+Edit a child template (Joomla 4.1+) or your own copy of the template, otherwise the change is lost on the next template update.
+</Callout>
+
+1. Go to **System → Site Templates** and open your active template.
+2. Open `index.php` and add the snippet just before `</head>`:
+
+   ```php
+   <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+   </head>
+   ```
+
+3. Click **Save & Close**.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Module not on the page**: confirm it is published, assigned to **On all pages**, and that the chosen position exists in your template. Then clear the cache under **System → Clear Cache**.
+- **TinyMCE strips the script**: open the **Editor - TinyMCE** plugin under **System → Plugins** (**Extensions → Plugins** on Joomla 3) and add `script[src|defer]` to **Extended Valid Elements**, or keep using the toggled-off editor when saving the module.
+- **Page caching**: the **System - Page Cache** plugin serves cached HTML, so clear the cache after adding the snippet. The script itself loads client-side and works with cached pages.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

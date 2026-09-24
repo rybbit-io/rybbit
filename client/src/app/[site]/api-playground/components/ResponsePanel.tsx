@@ -2,14 +2,17 @@
 
 import { CodeSnippet } from "@/components/CodeSnippet";
 import { XCircle } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { usePlaygroundStore } from "../hooks/usePlaygroundStore";
 import { CodeGenConfig } from "../utils/codeGenerators";
+import { buildCommonQueryParams } from "../utils/queryParams";
 import { CodeExamples } from "./CodeExamples";
 import { BACKEND_URL } from "../../../../lib/const";
 
 export function ResponsePanel() {
+  const t = useExtracted();
   const params = useParams();
   const siteId = params.site as string;
 
@@ -17,6 +20,8 @@ export function ResponsePanel() {
     selectedEndpoint,
     startDate,
     endDate,
+    startTime,
+    endTime,
     timeZone,
     filters,
     endpointParams,
@@ -37,21 +42,7 @@ export function ResponsePanel() {
     const qp: Record<string, any> = {};
 
     if (selectedEndpoint.hasCommonParams) {
-      qp.start_date = startDate;
-      qp.end_date = endDate;
-      qp.time_zone = timeZone;
-
-      // Convert filters to API format inline
-      const apiFilters = filters
-        .filter(f => f.value.trim() !== "")
-        .map(f => ({
-          parameter: f.parameter,
-          type: f.operator,
-          value: [f.value],
-        }));
-      if (apiFilters.length > 0) {
-        qp.filters = JSON.stringify(apiFilters);
-      }
+      Object.assign(qp, buildCommonQueryParams({ startDate, endDate, startTime, endTime, timeZone, filters }));
     }
 
     // Add endpoint-specific params
@@ -74,7 +65,7 @@ export function ResponsePanel() {
     }
 
     return { queryParams: qp, parsedBody: body };
-  }, [selectedEndpoint, startDate, endDate, timeZone, filters, endpointParams, requestBody]);
+  }, [selectedEndpoint, startDate, endDate, startTime, endTime, timeZone, filters, endpointParams, requestBody]);
 
   // Code generation config
   const codeConfig: CodeGenConfig = useMemo(() => {
@@ -104,7 +95,7 @@ export function ResponsePanel() {
   if (!selectedEndpoint) {
     return (
       <div className="h-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 p-4">
-        <p className="text-sm text-center">Select an endpoint to see the request URL and code examples</p>
+        <p className="text-sm text-center">{t("Select an endpoint to see the request URL and code examples")}</p>
       </div>
     );
   }
@@ -118,7 +109,7 @@ export function ResponsePanel() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-            Response
+            {t("Response")}
           </h3>
           {responseTime !== null && (
             <span className="text-xs text-neutral-500 dark:text-neutral-400">{responseTime}ms</span>
@@ -138,7 +129,7 @@ export function ResponsePanel() {
           </div>
         ) : (
           <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded text-xs text-neutral-500 dark:text-neutral-400">
-            Click &quot;Execute Request&quot; to see the response
+            {t('Click "Run" to see the response')}
           </div>
         )}
       </div>

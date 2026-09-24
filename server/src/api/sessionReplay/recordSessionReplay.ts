@@ -4,9 +4,8 @@ import { siteConfig } from "../../lib/siteConfig.js";
 import { SessionReplayIngestService } from "../../services/replay/sessionReplayIngestService.js";
 import { usageService } from "../../services/usageService.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
-import { getIpAddress } from "../../utils.js";
-import { logger } from "../../lib/logger/logger.js";
-import { getLocation } from "../../db/geolocation/geolocation.js";
+import { collectCandidateClientIps, resolveClientIp } from "../../services/tracker/resolveClientIp.js";
+import { decideSiteExclusion } from "../../services/sites/siteExclusionDecision.js";
 
 const recordSessionReplaySchema = z.object({
   userId: z.string(),
@@ -27,6 +26,34 @@ const recordSessionReplaySchema = z.object({
     .optional(),
 });
 
+function parseReplayPageUrl(pageUrl: string | undefined): {
+  hostname?: string;
+  pathname?: string;
+  querystring?: string;
+} {
+  if (!pageUrl) {
+    return {};
+  }
+
+  try {
+    const url = new URL(pageUrl);
+    return {
+      hostname: url.hostname,
+      pathname: url.pathname,
+      querystring: url.search,
+    };
+  } catch {
+    if (pageUrl.startsWith("/")) {
+      return {
+        pathname: pageUrl.split(/[?#]/, 1)[0],
+        querystring: pageUrl.split("#", 1)[0].split(/\?(.*)/s)[1],
+      };
+    }
+
+    return {};
+  }
+}
+
 export async function recordSessionReplay(
   request: FastifyRequest<{
     Params: { siteId: string };
@@ -36,11 +63,11 @@ export async function recordSessionReplay(
 ) {
   try {
     // Get the site configuration to get the numeric siteId
-    const { siteId, excludedIPs, excludedCountries, sessionReplay } =
-      (await siteConfig.getConfig(request.params.siteId)) ?? {};
+    const siteConfiguration = await siteConfig.getConfig(request.params.siteId);
+    const { siteId, sessionReplay } = siteConfiguration ?? {};
 
     if (!sessionReplay) {
-      logger.info(`[SessionReplay] Skipping event for site ${siteId} - session replay not enabled`);
+      request.log.info({ siteId }, "Skipping session replay event because replay is not enabled");
       return reply.status(200).send({ success: true, message: "Session replay not enabled" });
     }
 
@@ -48,52 +75,56 @@ export async function recordSessionReplay(
       throw new Error(`Site not found: ${request.params.siteId}`);
     }
 
+    if (!siteConfiguration) {
+      throw new Error(`Site configuration not found: ${request.params.siteId}`);
+    }
+
     // Check if the site has exceeded its monthly limit
     if (usageService.isSiteOverLimit(Number(siteId))) {
-      logger.info(`[SessionReplay] Skipping event for site ${siteId} - over monthly limit`);
+      request.log.info({ siteId }, "Skipping session replay event because the Site is over its monthly limit");
       return reply.status(200).send("Site over monthly limit, event not tracked");
+    }
+
+    // Check if the site can record replays: the plan may not include them (e.g. enabled
+    // before a downgrade from Pro) or the monthly replay quota may be exhausted
+    if (usageService.isSiteWithoutReplay(Number(siteId))) {
+      request.log.info({ siteId }, "Skipping session replay event because replay is unavailable for plan or quota");
+      return reply.status(200).send({ success: true, message: "Session replay not available for plan or quota" });
     }
 
     const body = recordSessionReplaySchema.parse(request.body) as RecordSessionReplayRequest;
 
-    // Check if the IP should be excluded from tracking
-    const requestIP = getIpAddress(request);
+    const requestIP = resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy });
+    const { hostname, pathname, querystring } = parseReplayPageUrl(body.metadata?.pageUrl);
+    const userAgent = request.headers["user-agent"] || "";
 
-    if (excludedIPs && excludedIPs.includes(requestIP)) {
-      logger.info(`[SessionReplay] IP ${requestIP} excluded from tracking for site ${siteId}`);
+    const exclusionDecision = await decideSiteExclusion(siteConfiguration, {
+      ipAddress: requestIP,
+      candidateIps: collectCandidateClientIps(request, [requestIP]),
+      pathname,
+      querystring,
+      hostname,
+      userAgent: String(userAgent),
+    });
+
+    if (exclusionDecision.excluded) {
+      request.log.info(
+        { siteId, exclusionReason: exclusionDecision.reason },
+        "Skipping session replay event because a Site Exclusion Decision matched"
+      );
       return reply.status(200).send({
         success: true,
-        message: "Session replay not recorded - IP excluded",
+        message: `Session replay not recorded - ${exclusionDecision.label} excluded`,
       });
     }
 
-    // Check if the country should be excluded from tracking
-    if (excludedCountries && excludedCountries.length > 0) {
-      const locationResults = await getLocation([requestIP]);
-      const locationData = locationResults[requestIP];
-
-      if (locationData?.countryIso) {
-        const isCountryExcluded = await siteConfig.isCountryExcluded(locationData.countryIso, request.params.siteId);
-        if (isCountryExcluded) {
-          logger.info(`[SessionReplay] Country ${locationData.countryIso} excluded from tracking for site ${siteId}`);
-          return reply.status(200).send({
-            success: true,
-            message: "Session replay not recorded - country excluded",
-          });
-        }
-      }
-    }
-
-    // Extract request metadata for tracking
-    const userAgent = request.headers["user-agent"] || "";
-    const ipAddress = getIpAddress(request);
     const origin = request.headers.origin || "";
     const referrer = request.headers.referer || "";
 
     const sessionReplayService = new SessionReplayIngestService();
     await sessionReplayService.recordEvents(siteId, body, {
       userAgent,
-      ipAddress,
+      ipAddress: requestIP,
       origin,
       referrer,
     });
@@ -103,7 +134,7 @@ export async function recordSessionReplay(
     if (error instanceof z.ZodError) {
       return reply.status(400).send({ error: error.errors });
     }
-    logger.error(error as Error, "Error recording session replay");
+    request.log.error(error as Error, "Error recording session replay");
     return reply.status(500).send({ error });
   }
 }

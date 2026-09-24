@@ -1,0 +1,97 @@
+---
+title: Google Tag Manager
+description: Add Rybbit analytics to your Google Tag Manager container
+category: tag-managers
+icon: SiGoogletagmanager
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Google Tag Manager loads Rybbit through a **Custom HTML** tag fired on **All Pages**, so nothing in your site's code changes. Events you already push to the `dataLayer` can be forwarded to Rybbit with a second tag.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Google Tag Manager
+
+1. Open your GTM container and go to **Tags → New**.
+2. Under **Tag Configuration**, choose **Custom HTML** and paste the snippet:
+
+```html
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+3. Under **Triggering**, choose **All Pages** (the built-in Page View trigger).
+4. Name the tag, for example `Rybbit - Loader`, and click **Save**.
+5. Click **Submit** and publish the container version.
+
+<Callout type="warn">
+GTM rebuilds Custom HTML tags before injecting them and can drop non-standard attributes. Keep the site ID in the URL (`?siteId=`) as shown; the older `data-*` attribute form is not reliable here.
+</Callout>
+
+Use **Preview** mode to confirm the tag fires on page load before publishing.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Once the loader tag is published, `window.rybbit` is available to your own JavaScript and to other GTM tags.
+
+#### Forward dataLayer events
+
+If your site already pushes events like `dataLayer.push({ event: "signup" })`, one tag can forward them to Rybbit:
+
+1. Create a **Custom Event** trigger. Set the event name to a regex such as `signup|purchase|add_to_cart` (tick **Use regex matching**).
+2. Create a **Custom HTML** tag with that trigger:
+
+```html
+<script>
+  if (window.rybbit) {
+    window.rybbit.event("{{Event}}", {
+      page: "{{Page Path}}",
+      referrer: "{{Referrer}}"
+    });
+  }
+</script>
+```
+
+`{{Event}}`, `{{Page Path}}` and `{{Referrer}}` are GTM built-in variables. Add a **Data Layer Variable** for any custom field you push (for example `plan`) and reference it the same way.
+
+#### Use GTM's click and form triggers
+
+The same pattern works with built-in **Click** and **Form Submission** triggers:
+
+```html
+<script>
+  if (window.rybbit) {
+    window.rybbit.event("cta_clicked", {
+      text: "{{Click Text}}",
+      url: "{{Click URL}}"
+    });
+  }
+</script>
+```
+
+Enable the **Click Text** and **Click URL** built-in variables under **Variables → Configure**.
+
+## Troubleshooting
+
+- **Event tag fires before Rybbit loads**: the loader script is deferred, so an event tag on the same page load may run first and hit the `if (window.rybbit)` guard. Open the event tag's **Advanced Settings → Tag Sequencing** and set the loader tag to fire before it, or trigger the event tag on **Window Loaded** instead of **Page View**.
+- **Consent mode**: if your container gates tags on consent, add the loader tag to the same consent group as your other analytics tags, otherwise it never fires.
+- **Tag shows in Preview but not live**: the container version was not published. Click **Submit** and publish.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

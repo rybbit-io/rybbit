@@ -1,0 +1,63 @@
+---
+title: Carrd
+description: Add Rybbit analytics to your Carrd site
+category: builders
+icon: SiCarrd
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Carrd builds one-page sites, and the snippet goes into the **Head** embed code field in the site settings.
+
+<Callout type="warn">
+Custom head code requires a **Carrd Pro** subscription (Pro Standard or Pro Plus). The Embed Code feature is not included on Pro Lite.
+</Callout>
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Carrd
+
+1. Open your site in the Carrd editor and click the **Settings** gear in the top right.
+2. Open the **Settings** tab and scroll to **Embed Code**.
+3. Paste the following into the **Head** field:
+
+```html
+<script>
+  (function () {
+    var s = document.createElement("script");
+    s.src = "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID";
+    s.defer = true;
+    document.head.appendChild(s);
+  })();
+</script>
+```
+
+This wraps the snippet in a small loader so Carrd's embed processing cannot rewrite the tag.
+
+4. Click **Save**, then **Publish**. Changes are not live until you publish.
+
+If your site has multiple pages (a Pro Plus feature), the head code loads on all of them.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **The Head field is missing**: the site is on Pro Lite or the free plan. Upgrade to Pro Standard or Pro Plus.
+- **Snippet not in the page source**: the site was saved but not published. Publish again from the editor.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

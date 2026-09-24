@@ -1,0 +1,125 @@
+---
+title: "The 10 Best Web Analytics Tools in 2026, Compared by Use Case"
+description: "An honest guide to the best web analytics tools in 2026: privacy-first trackers, product analytics suites, and free options, with verified pricing for each."
+date: 2026-07-19
+tags: ["analytics", "tools", "comparisons"]
+author: Rybbit Team
+---
+
+Every list of web analytics tools pretends there's one "best" answer. There isn't. A solo blogger checking referrers, a SaaS team debugging a signup funnel, and an EU retailer with a nervous legal department need genuinely different products.
+
+So this guide is organized around the question that actually decides the purchase: **what do you need your analytics to do?** We build one of these tools ([Rybbit](https://rybbit.com)), so we'll flag that bias where it matters. Every price and limit below comes from the vendor's own published pages, checked July 2026.
+
+## The short version
+
+| If you need... | Use | Price anchor |
+| --- | --- | --- |
+| Depth + simplicity in one tool | [Rybbit](#rybbit) | $19/mo, 100k events |
+| The simplest possible dashboard | [Plausible](#plausible), [Fathom](#fathom-analytics) | $9/mo · slider ($45 at 500k) |
+| The cheapest paid plan | [Pirsch](#pirsch) | $6/mo, 10k pageviews |
+| Full product-analytics suite | [PostHog](#posthog) | 1M events/mo free, then usage-based |
+| Free ads-ecosystem default | [Google Analytics 4](#google-analytics-4) | Free (GA360 ≈ $50k/yr) |
+| Free forever, cloud-hosted | [Umami](#umami) | $0 Hobby plan |
+| Maximum features, self-hosted, free | [Matomo](#matomo) | Free on-premise; cloud €29/mo |
+| Strictest EU privacy posture | [Simple Analytics](#simple-analytics) | Free hobby tier; $20/mo paid |
+| Zero budget, zero setup | [Cloudflare](#cloudflare-web-analytics) | Free (sampled) |
+
+## How to choose a web analytics tool
+
+Four questions sort the whole market:
+
+1. **Traffic stats or behavior?** Counting visits, referrers, and top pages is the easy half. Understanding *behavior* (funnels, session replay, user journeys, errors) is where tools diverge sharply. Simple trackers stop at the first half.
+2. **Cookies or cookieless?** Cookie-based tools (GA4 chief among them) require consent banners in most of the world, and every declined banner is a visitor deleted from your data. Cookieless tools see everyone and need no banner.
+3. **Cloud or self-hosted?** If analytics data legally can't leave your infrastructure, your shortlist is the open-source tools: Rybbit, Matomo, Plausible CE, Umami.
+4. **Who reads the dashboard?** If the answer includes non-analysts, weight simplicity heavily. The most common analytics failure is a tool nobody opens, not missing data.
+
+## Rybbit
+
+**The all-rounder: product-analytics depth on a dashboard anyone can read.**
+
+Most tools on this list force a choice between simple-but-shallow and deep-but-painful. [Rybbit](https://rybbit.com) exists to refuse that choice: a single-page, real-time dashboard in the Plausible tradition, with [funnels](/features/funnels), [session replay](/features/session-replay), [user journeys](/features/user-journeys), [error tracking](/features/error-tracking), [Web Vitals](/features/web-vitals), and user profiles built in. That feature set otherwise requires a PostHog-class suite. Tracking is cookieless (no consent banner, no lost visitors, no sampling), the whole platform is open source, and there's a [live demo with real data](https://demo.rybbit.com/81) you can click around right now.
+
+**Pricing:** from $19/month for 100k events with [all features on every plan](/pricing), 7-day trial. Self-hosting is [free with Docker](/docs/self-hosting).
+**Skip it if:** you need years of GA-style ad-attribution workflows, or feature flags and experiments in the same tool (that's PostHog territory).
+
+## Google Analytics 4
+
+**The default, and the tool everyone on this page is measured against.**
+
+GA4 is free, integrates natively with Google Ads, and exports raw events to BigQuery. For paid-acquisition teams inside Google's ecosystem, it remains genuinely hard to replace. It's on this list on merit.
+
+But treat its price with suspicion: "free" is funded by your visitors' data feeding Google's ad network. The operational costs are consent banners (and the 30–60% of traffic they cost you), report sampling on busy properties, 14-month standard retention, and an interface that has made "how do I just see my top pages?" a support-forum genre. Unsampled data means GA360, at roughly $50,000/year. If those are your pain points, our [detailed GA4 comparison](/compare/google-analytics) breaks down the switch, or see the full [guide to Google Analytics alternatives](/blog/best-google-analytics-alternatives).
+
+## Plausible
+
+**The standard-bearer for simple, privacy-first analytics.**
+
+One page of stats, a tiny script (their claim: ~54× smaller than GA's), cookieless by design, EU-owned and EU-hosted. Plausible proved a paid GA alternative could be a real business, and a decade of polish shows. Its scope is deliberately narrow (traffic analytics, goals, basic funnels), which is either its best feature or its dealbreaker depending on your needs. **From $9/month** (10k pageviews), 30-day no-card trial, free self-hosted Community Edition. [Rybbit vs Plausible →](/compare/plausible)
+
+## Matomo
+
+**The open-source veteran with the largest feature list.**
+
+Heatmaps, A/B tests, a tag manager, hundreds of plugins, and a free on-premise edition with unlimited hits: Matomo (ex-Piwik) is what "we replaced Google Analytics" meant for a decade, and it's still the compliance-department favorite (cloud data lives in Frankfurt, no sampling). The cost is a dated interface and pricing complexity on-premise, where advanced features come in paid plugin bundles from €275. **Cloud from €29/month** for 50k hits; no-card trial. [Rybbit vs Matomo →](/compare/matomo)
+
+## PostHog
+
+**The product-analytics suite that swallowed web analytics.**
+
+PostHog bundles product analytics, session replay, feature flags, experiments, surveys, and a SQL-queryable event warehouse, with a web analytics dashboard on the side. For engineering-led product teams it's the most capable platform here, and the free tier is the market's most generous: **1M events every month, no card**. Past that it's usage-based (from $0.00005/event), which needs monitoring at scale. The trade: GA4-class complexity, because it's solving a much bigger problem than "how's my traffic." [Rybbit vs PostHog →](/compare/posthog)
+
+## Fathom Analytics
+
+**Simple stats from one of the original privacy-analytics companies.**
+
+Cookieless, one clean dashboard, forever data retention, and at least 50 sites on every plan. Fathom's pitch is stability: a profitable independent company that's been doing exactly this since before it was a category. Pricing is a pageview slider (**$45/month at 500k pageviews**; smaller tiers cost less), 7-day trial, no free tier, no self-hosting. [Rybbit vs Fathom →](/compare/fathom)
+
+## Umami
+
+**Free, minimal, MIT-licensed: the developer's hobby-project default.**
+
+Umami is the easiest analytics tool to self-host (a small Node app), and its cloud **Hobby plan is free forever**, with Pro at **$20/month for 1M events**. Reporting is deliberately minimal (pageviews, referrers, events), and that's the point. If your need is "decent stats on my side projects for $0," this is the answer. [Rybbit vs Umami →](/compare/umami)
+
+## Simple Analytics
+
+**The most privacy-conservative option, made and hosted in the EU.**
+
+Simple Analytics collects the least data of any paid tool here and wears it proudly. In 2026 it's also carved out a clever niche: positioning itself as the *fix* for GA4's consent-loss problem (their number: GA can miss up to 60% of traffic). **Free for hobby sites** (5 sites, 1 month history); paid from **$20/month per user** with usage sliders; 14-day no-card trial. No self-hosting. [Rybbit vs Simple Analytics →](/compare/simpleanalytics)
+
+## Pirsch
+
+**The lowest-cost paid entry in privacy analytics.**
+
+German-built, cookieless, with first-class server-side tracking SDKs and importers for GA, Plausible, and Fathom. **$6/month** buys 10k pageviews across up to 50 sites with unlimited team members and retention; $12/month adds funnels and A/B testing; 30-day no-card trial. Self-hosting exists but only behind the Enterprise tier. For tight budgets it's the best dollar-for-dollar deal on this list.
+
+## Cloudflare Web Analytics
+
+**Free and instant, as long as you understand what it isn't.**
+
+If your site is behind Cloudflare, this is one toggle. It's cookieless and costs nothing, but Cloudflare's own docs note the dashboard is built on a ~10% sample of page-load events with roughly 30-day retention, and there are no goals, events, or funnels. Use it as a free second opinion, not as your analytics.
+
+## What we'd actually do
+
+- Under 10k visits a month and a $0 budget: Umami's free cloud tier, or self-host if you enjoy it.
+- A business site where decisions ride on the data: [Rybbit](/pricing). You'll use the funnels and replay within the first week, and cookieless tracking means the numbers are actually complete.
+- A content site that just needs clean traffic stats: Plausible or Fathom. Pirsch if price wins.
+- An engineering-led product team: PostHog, or Rybbit if you want your PMs and marketers to actually open the dashboard.
+- A regulated or self-host-only environment: Rybbit or Matomo, both [free to run on your own infrastructure](/docs/self-hosting).
+
+## FAQ
+
+**What's the difference between web analytics and product analytics?**
+Web analytics answers traffic questions (visitors, sources, pages); product analytics answers behavior questions (activation, retention, funnels) usually tied to identified users. GA4 and PostHog are product-analytics tools wearing web-analytics clothes; Plausible and Fathom are pure web analytics; Rybbit deliberately covers both sides for websites and apps.
+
+**Are free web analytics tools good enough?**
+Often, yes. Umami and PostHog's free tiers are real products, and self-hosting an open-source tool costs only your server. The free options to be wary of are the ones with invisible costs: GA4 (consent loss, complexity, your users' data) and Cloudflare (sampling, 30-day window).
+
+**Can I run two analytics tools at once?**
+Yes, and during any migration you should. Scripts from different vendors don't conflict, and a few weeks of parallel data is the only honest way to compare them. It's also the standard way to [leave Google Analytics](/blog/best-google-analytics-alternatives) without losing your bearings.
+
+**Do cookieless analytics tools comply with GDPR?**
+The cookieless tools here (Rybbit, Plausible, Fathom, Umami, Simple Analytics, Pirsch) are built to run without consent banners: no cookies, no cross-site identifiers, no personal profiles. Self-hosting adds the strongest guarantee, since data never touches a third party at all.
+
+---
+
+*Want the deep version of any matchup? Every comparison above links to a feature-by-feature breakdown, or start with [Rybbit vs Google Analytics](/compare/google-analytics), the switch most teams are weighing.*

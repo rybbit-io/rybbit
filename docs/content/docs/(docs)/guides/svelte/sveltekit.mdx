@@ -1,0 +1,84 @@
+---
+title: SvelteKit
+description: Add Rybbit analytics to your SvelteKit app
+category: frameworks
+icon: SiSvelte
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+SvelteKit renders every page through a single HTML shell at `src/app.html`, so adding the snippet there loads Rybbit on every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to SvelteKit
+
+Open `src/app.html` and paste the snippet inside `<head>`, next to `%sveltekit.head%`:
+
+```html title="src/app.html"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>
+```
+
+Rybbit tracks SvelteKit's client-side navigations as pageviews automatically; no router hook is needed.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any Svelte component. Guard the call with `typeof window !== "undefined"`, since SvelteKit components also run on the server:
+
+```svelte title="src/lib/components/ActionButton.svelte"
+<script>
+  function handleAction() {
+    if (typeof window !== "undefined" && window.rybbit) {
+      window.rybbit.event("user_action", { component: "ActionButton" });
+    }
+  }
+</script>
+
+<button on:click={handleAction}>Perform action</button>
+```
+
+## Troubleshooting
+
+- **Pageviews missing after navigation**: automatic route tracking covers SvelteKit's router, so test the default first. If a navigation is still not recorded, trigger it from `afterNavigate` in your root layout:
+
+  ```svelte title="src/routes/+layout.svelte"
+  <script>
+    import { afterNavigate } from "$app/navigation";
+
+    afterNavigate(() => {
+      if (typeof window !== "undefined" && window.rybbit) {
+        window.rybbit.pageview();
+      }
+    });
+  </script>
+  ```
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

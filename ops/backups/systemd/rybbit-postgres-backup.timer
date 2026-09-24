@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Rybbit PostgreSQL backup every six hours
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:15:00
+Persistent=true
+RandomizedDelaySec=10m
+Unit=rybbit-postgres-backup.service
+
+[Install]
+WantedBy=timers.target
+

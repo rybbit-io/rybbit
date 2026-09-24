@@ -1,8 +1,9 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { stripe } from "../../lib/stripe.js";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member } from "../../db/postgres/schema.js";
-import { eq, and } from "drizzle-orm";
+import { organization } from "../../db/postgres/schema.js";
+import { eq } from "drizzle-orm";
+import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
 import Stripe from "stripe";
 
 interface PreviewSubscriptionBody {
@@ -29,15 +30,9 @@ export async function previewSubscriptionUpdate(
 
   try {
     // 1. Verify user has permission to manage billing for this organization
-    const memberResult = await db
-      .select({
-        role: member.role,
-      })
-      .from(member)
-      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-      .limit(1);
+    const membership = await getOrgMembership(userId, organizationId);
 
-    if (!memberResult.length || memberResult[0].role !== "owner") {
+    if (!isOrgOwner(membership)) {
       return reply.status(403).send({
         error: "Only organization owners can manage billing",
       });
@@ -58,18 +53,17 @@ export async function previewSubscriptionUpdate(
       return reply.status(404).send({ error: "Organization or Stripe customer ID not found" });
     }
 
-    // 3. Get the active subscription
-    const subscriptions = await stripe!.subscriptions.list({
-      customer: org.stripeCustomerId,
-      status: "active",
-      limit: 1,
-    });
+    // 3. Get the active or trialing subscription
+    const [activeSubscriptions, trialingSubscriptions] = await Promise.all([
+      stripe!.subscriptions.list({ customer: org.stripeCustomerId, status: "active", limit: 1 }),
+      stripe!.subscriptions.list({ customer: org.stripeCustomerId, status: "trialing", limit: 1 }),
+    ]);
 
-    if (subscriptions.data.length === 0) {
+    const subscription = activeSubscriptions.data[0] ?? trialingSubscriptions.data[0];
+
+    if (!subscription) {
       return reply.status(404).send({ error: "No active subscription found" });
     }
-
-    const subscription = subscriptions.data[0];
     const currentItem = subscription.items.data[0];
     const currentPeriodEnd = currentItem.current_period_end;
 
@@ -79,7 +73,35 @@ export async function previewSubscriptionUpdate(
       stripe!.prices.retrieve(newPriceId),
     ]);
 
-    // 5. Create a preview of the upcoming invoice with proration
+    const isTrialing = subscription.status === "trialing";
+
+    // 5. For trialing subscriptions, no proration is needed — just return plan details
+    if (isTrialing) {
+      return reply.send({
+        success: true,
+        preview: {
+          isTrialing: true,
+          currentPlan: {
+            priceId: currentItem.price.id,
+            amount: currentPrice.unit_amount || 0,
+            interval: currentPrice.recurring?.interval || "month",
+          },
+          newPlan: {
+            priceId: newPriceId,
+            amount: newPrice.unit_amount || 0,
+            interval: newPrice.recurring?.interval || "month",
+          },
+          proration: {
+            credit: 0,
+            charge: 0,
+            immediatePayment: 0,
+            nextBillingDate: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
+          },
+        },
+      });
+    }
+
+    // 6. Create a preview of the upcoming invoice with proration
     const upcomingInvoice = await (stripe as Stripe).invoices.createPreview({
       customer: org.stripeCustomerId,
       subscription: subscription.id,
@@ -94,7 +116,7 @@ export async function previewSubscriptionUpdate(
       },
     });
 
-    // 6. Calculate proration details
+    // 7. Calculate proration details
     const prorationItems = upcomingInvoice.lines.data.filter(item => {
       // Proration flag is nested in parent.subscription_item_details
       return item.parent?.subscription_item_details?.proration === true;
@@ -113,10 +135,11 @@ export async function previewSubscriptionUpdate(
 
     const immediateCharge = upcomingInvoice.amount_due;
 
-    // 7. Return preview information
+    // 8. Return preview information
     return reply.send({
       success: true,
       preview: {
+        isTrialing: false,
         currentPlan: {
           priceId: currentItem.price.id,
           amount: currentPrice.unit_amount || 0,
@@ -136,7 +159,7 @@ export async function previewSubscriptionUpdate(
       },
     });
   } catch (error: any) {
-    console.error("Subscription Preview Error:", error);
+    request.log.error({ err: error }, "Subscription Preview Error");
     return reply.status(500).send({
       error: "Failed to preview subscription update",
       details: error.message,

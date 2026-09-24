@@ -258,6 +258,17 @@ export class SessionReplayRecorder {
 
   // Update user ID when it changes
   public updateUserId(userId: string): void {
+    if (userId === this.userId) {
+      return;
+    }
+
+    // Keep events captured under the previous identity in their original batch.
+    // flushEvents snapshots this.userId before its first await, so the identity
+    // can be changed immediately after starting the send.
+    if (this.eventBuffer.length > 0) {
+      void this.flushEvents();
+    }
+
     this.userId = userId;
   }
 

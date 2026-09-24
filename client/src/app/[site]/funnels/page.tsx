@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { GOALS_PAGE_FILTERS } from "@/lib/filterGroups";
 import { useStore } from "@/lib/store";
@@ -15,6 +16,7 @@ import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { CreateFunnelDialog } from "./components/CreateFunnel";
 import { FunnelRow } from "./components/FunnelRow";
+import { ExternalLink } from "../../../components/ExternalLink";
 
 // Skeleton for the funnel row component
 const FunnelRowSkeleton = () => (
@@ -58,7 +60,8 @@ const FunnelRowSkeleton = () => (
 );
 
 export default function FunnelsPage() {
-  useSetPageTitle("Rybbit · Funnels");
+  const t = useExtracted();
+  useSetPageTitle("Funnels");
 
   const { site } = useStore();
   const { data: funnels, isLoading, error } = useGetFunnels(site);
@@ -87,7 +90,7 @@ export default function FunnelsPage() {
         <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
         <div className="flex justify-between items-center">
           <Input
-            placeholder="Filter funnels"
+            placeholder={t("Filter funnels")}
             className="w-48"
             isSearch
             value={searchQuery}
@@ -104,8 +107,8 @@ export default function FunnelsPage() {
           </div>
         ) : error ? (
           <ErrorState
-            title="Failed to load funnels"
-            message="There was a problem fetching the funnels. Please try again later."
+            title={t("Failed to load funnels")}
+            message={t("There was a problem fetching the funnels. Please try again later.")}
           />
         ) : filteredFunnels?.length ? (
           <div className="space-y-4">
@@ -116,14 +119,14 @@ export default function FunnelsPage() {
         ) : funnels?.length ? (
           <NothingFound
             icon={<Funnel className="w-10 h-10" />}
-            title={"No funnels found"}
-            description={`No funnels match "${searchQuery}"`}
+            title={t("No funnels found")}
+            description={t('No funnels match "{searchQuery}"', { searchQuery })}
           />
         ) : (
           <NothingFound
             icon={<Funnel className="w-10 h-10" />}
-            title={"No funnels yet"}
-            description={"Create your first funnel to track conversions through your site's user journey"}
+            title={t("No funnels yet")}
+            description={<span>{t("Create your first funnel to track conversions through your site's user journey.")} <ExternalLink href="https://rybbit.com/docs/funnels">{t("Learn more")}</ExternalLink></span>}
             action={<CreateFunnelDialog />}
           />
         )}

@@ -5,13 +5,14 @@ import { disconnectGSC } from "../endpoints";
 /**
  * Hook to disconnect GSC from a site
  */
-export function useDisconnectGSC() {
+export function useDisconnectGSC(siteOverride?: string | number) {
   const queryClient = useQueryClient();
-  const { site } = useStore();
+  const { site: storeSite } = useStore();
+  const site = siteOverride ?? storeSite;
 
   return useMutation({
     mutationFn: async () => {
-      return disconnectGSC(site);
+      return disconnectGSC(site!);
     },
     onSuccess: () => {
       // Invalidate connection status query

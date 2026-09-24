@@ -1,0 +1,73 @@
+---
+title: Svelte (Vite / Client-Side)
+description: Add Rybbit analytics to your Svelte app
+category: frameworks
+icon: SiSvelte
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+A client-side Svelte app built with Vite (`npm create vite@latest -- --template svelte`) serves a single `index.html` at the project root. Add the snippet there and it loads on every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Svelte
+
+Open `index.html` at the root of your project and paste the snippet inside `<head>`:
+
+```html title="index.html"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Svelte App</title>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+```
+
+Placing it just before `</body>` also works, but `<head>` lets the script start loading sooner.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any Svelte component:
+
+```svelte title="src/lib/ActionButton.svelte"
+<script>
+  function handleAction() {
+    if (window.rybbit) {
+      window.rybbit.event("user_action", { component: "ActionButton" });
+    }
+  }
+</script>
+
+<button on:click={handleAction}>Perform action</button>
+```
+
+## Troubleshooting
+
+- **Pageviews missing after navigation**: Rybbit tracks History API and hash navigations, which covers routers such as `svelte-routing` and `svelte-spa-router`. If a route change is still not recorded, call `window.rybbit.pageview()` from that router's navigation callback.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

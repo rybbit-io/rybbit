@@ -2,8 +2,6 @@ import { FilterParameter } from "@rybbit/shared";
 import {
   AppWindow,
   Brain,
-  Bug,
-  Building,
   Clock,
   FileText,
   Flag,
@@ -23,8 +21,6 @@ import {
   Puzzle,
   Radio,
   Search,
-  Server,
-  Shield,
   TabletSmartphone,
   Tag,
   Target,
@@ -36,7 +32,6 @@ export const FilterOptions: {
   label: string;
   value: FilterParameter;
   icon: React.ReactNode;
-  cloudOnly?: boolean;
 }[] = [
   {
     label: "Path",
@@ -164,6 +159,11 @@ export const FilterOptions: {
     icon: <Tag className="h-4 w-4" />,
   },
   {
+    label: "Tag",
+    value: "tag",
+    icon: <Tag className="h-4 w-4" />,
+  },
+  {
     label: "Lat",
     value: "lat",
     icon: <MapPin className="h-4 w-4" />,
@@ -177,60 +177,6 @@ export const FilterOptions: {
     label: "Timezone",
     value: "timezone",
     icon: <Clock className="h-4 w-4" />,
-  },
-  {
-    label: "VPN",
-    value: "vpn",
-    icon: <Shield className="h-4 w-4" />,
-    cloudOnly: true,
-  },
-  {
-    label: "Crawler",
-    value: "crawler",
-    icon: <Bug className="h-4 w-4" />,
-    cloudOnly: true,
-  },
-  {
-    label: "Datacenter",
-    value: "datacenter",
-    icon: <Server className="h-4 w-4" />,
-    cloudOnly: true,
-  },
-  {
-    label: "Company",
-    value: "company",
-    icon: <Building className="h-4 w-4" />,
-    cloudOnly: true,
-  },
-  {
-    label: "Company Type",
-    value: "company_type",
-    icon: <Building className="h-4 w-4" />,
-    cloudOnly: true,
-  },
-  {
-    label: "Company Domain",
-    value: "company_domain",
-    icon: <Building className="h-4 w-4" />,
-    cloudOnly: true,
-  },
-  {
-    label: "ASN Org",
-    value: "asn_org",
-    icon: <Building className="h-4 w-4" />,
-    cloudOnly: true,
-  },
-  {
-    label: "ASN Type",
-    value: "asn_type",
-    icon: <Building className="h-4 w-4" />,
-    cloudOnly: true,
-  },
-  {
-    label: "ASN Domain",
-    value: "asn_domain",
-    icon: <Building className="h-4 w-4" />,
-    cloudOnly: true,
   },
 ];
 
@@ -246,15 +192,26 @@ export const StringOperatorOptions = [
   { label: "Is not", value: "not_equals" },
   { label: "Contains", value: "contains" },
   { label: "Not contains", value: "not_contains" },
-  { label: "Matches regex", value: "regex" },
-  { label: "Not matches regex", value: "not_regex" },
+  { label: "Starts with", value: "starts_with" },
+  { label: "Ends with", value: "ends_with" },
+  { label: "Regex", value: "regex" },
+  { label: "Is null", value: "is_null" },
+  { label: "Is not null", value: "is_not_null" },
+  { label: "Greater than", value: "greater_than" },
+  { label: "Less than", value: "less_than" },
+  { label: "Greater than or equal to", value: "greater_than_or_equal" },
+  { label: "Less than or equal to", value: "less_than_or_equal" },
 ];
 
 export const NumericOperatorOptions = [
   { label: "Equals", value: "equals" },
   { label: "Not equals", value: "not_equals" },
-  { label: ">", value: "greater_than" },
-  { label: "<", value: "less_than" },
+  { label: "Is null", value: "is_null" },
+  { label: "Is not null", value: "is_not_null" },
+  { label: "Greater than", value: "greater_than" },
+  { label: "Less than", value: "less_than" },
+  { label: "Greater than or equal to", value: "greater_than_or_equal" },
+  { label: "Less than or equal to", value: "less_than_or_equal" },
 ];
 
 export const NUMERIC_PARAMETERS: FilterParameter[] = ["lat", "lon"];

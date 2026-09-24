@@ -1,0 +1,79 @@
+---
+title: Remix
+description: Add Rybbit analytics to your Remix app
+category: frameworks
+icon: SiRemix
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Remix renders the whole HTML document from `app/root.tsx`, so the snippet goes in the `<head>` of that file and reaches every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Remix
+
+Open `app/root.tsx` (or `app/root.jsx`) and add the tag inside `<head>`, after `<Meta />` and `<Links />`:
+
+```tsx title="app/root.tsx"
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
+
+export default function App() {
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta />
+        <Links />
+        <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+      </head>
+      <body>
+        <Outlet />
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+```
+
+Restart the dev server after the change. Client-side navigation after the initial server render is tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any route or component. Check for `window` first, because Remix renders components on the server.
+
+```tsx title="app/routes/offer.tsx"
+export default function OfferRoute() {
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.rybbit) {
+      window.rybbit.event("offer_claimed", { feature: "Special Offer" });
+    }
+  };
+
+  return <button onClick={handleClick}>Claim Offer</button>;
+}
+```
+
+## Troubleshooting
+
+- **Pageviews missing after client-side navigation**: this is rare. If it happens, call `window.rybbit.pageview()` from a root-level effect that runs on `useLocation()` changes; test the default behaviour first.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>
