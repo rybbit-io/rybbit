@@ -5,7 +5,7 @@ import { updateImportProgress, completeImport, getImportById } from "../../servi
 import { UmamiEvent, UmamiImportMapper } from "../../services/import/mappers/umami.js";
 import { SimpleAnalyticsEvent, SimpleAnalyticsImportMapper } from "../../services/import/mappers/simpleAnalytics.js";
 import { PlausibleEvent, PlausibleImportMapper } from "../../services/import/mappers/plausible.js";
-import { MatomoEvent, MatomoImportMapper } from "../../services/import/mappings/matomo.js";
+import { MatomoEvent, MatomoImportMapper } from "../../services/import/mappers/matomo.js";
 import { importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
