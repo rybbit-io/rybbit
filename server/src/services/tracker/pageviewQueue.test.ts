@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Settings } from "luxon";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type UAParser from "ua-parser-js";
 import type { TotalTrackingPayload } from "./utils.js";
 
@@ -27,6 +28,7 @@ vi.mock("./botBlocking/datacenterAsns.js", () => ({
 
 vi.useFakeTimers();
 const { pageviewQueue } = await import("./pageviewQueue.js");
+const originalZone = Settings.defaultZone;
 
 function makePayload(overrides: Partial<TotalTrackingPayload & { sessionId: string }> = {}) {
   return {
@@ -56,11 +58,15 @@ async function flush() {
   await vi.advanceTimersByTimeAsync(1000);
 }
 
-describe("pageviewQueue ASN enrichment", () => {
+describe("pageviewQueue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getLocation.mockResolvedValue({});
     mocks.insert.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    Settings.defaultZone = originalZone;
   });
 
   it("stores the ASN, org, and datacenter classification for a recognized IP", async () => {
@@ -101,7 +107,39 @@ describe("pageviewQueue ASN enrichment", () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     const row = mocks.insert.mock.calls[0][0].values[0];
-    expect(row.timestamp).toBe("2026-08-28 12:34:56");
-    expect(row.timestamp_ms).toBe("2026-08-28 12:34:56.789");
+    expect(row.timestamp).toBe("2026-08-28T12:34:56.789Z");
+    expect(row.timestamp_ms).toBe("2026-08-28T12:34:56.789Z");
+  });
+
+  it.each([
+    ["UTC", "2026-09-15T12:57:22.789Z", "2026-09-15T12:57:22.789Z"],
+    ["Europe/Berlin", "2026-09-15T14:57:22.789+02:00", "2026-09-15T12:57:22.789Z"],
+    ["Asia/Shanghai", "2026-01-15T20:57:22.001+08:00", "2026-01-15T12:57:22.001Z"],
+    ["America/New_York", "2026-01-15T07:57:22.000-05:00", "2026-01-15T12:57:22.000Z"],
+  ])("sends unambiguous UTC timestamps when the backend uses %s", async (zone, timestamp, expected) => {
+    Settings.defaultZone = zone;
+    await pageviewQueue.add(makePayload({ timestamp }));
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        format: "JSONEachRow",
+        clickhouse_settings: { date_time_input_format: "best_effort" },
+        values: [expect.objectContaining({ timestamp: expected, timestamp_ms: expected })],
+      })
+    );
+  });
+
+  it("keeps the repeated daylight-saving hour distinct", async () => {
+    Settings.defaultZone = "Europe/Berlin";
+    await pageviewQueue.add(makePayload({ timestamp: "2026-10-25T02:30:00.999+02:00" }));
+    await pageviewQueue.add(makePayload({ timestamp: "2026-10-25T02:30:00.999+01:00" }));
+    await vi.advanceTimersByTimeAsync(1000);
+
+    const rows = mocks.insert.mock.calls[0][0].values;
+    expect(rows.map((row: { timestamp_ms: string }) => row.timestamp_ms)).toEqual([
+      "2026-10-25T00:30:00.999Z",
+      "2026-10-25T01:30:00.999Z",
+    ]);
   });
 });
