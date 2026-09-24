@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Plus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useRef, useState, Suspense } from "react";
 import { useGetSite, useGetSitesFromOrg } from "../../../../api/admin/hooks/useSites";
 import { Favicon } from "../../../../components/Favicon";
 import { Button } from "../../../../components/ui/button";
@@ -14,6 +14,7 @@ import { cn, formatter } from "../../../../lib/utils";
 import { AddSite } from "../../../components/AddSite";
 import { useEmbedablePage } from "../../utils";
 import { DEMO_HOSTNAME } from "../../../../lib/const";
+import { OrganizationPicker } from "./OrganizationPicker";
 
 // Show the search field once the list is long enough to scan slowly.
 const SEARCH_THRESHOLD = 10;
@@ -25,8 +26,7 @@ type SiteOption = {
   sessions?: number;
 };
 
-const rowClass =
-  "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors cursor-pointer";
+const rowClass = "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors cursor-pointer";
 
 function SiteRow({ site, isSelected }: { site: SiteOption; isSelected: boolean }) {
   const t = useExtracted();
@@ -75,7 +75,13 @@ function SiteSkeletonRow() {
   );
 }
 
-function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
+function SiteSelectorContent({
+  onSiteSelect,
+  onOrganizationChange,
+}: {
+  onSiteSelect: () => void;
+  onOrganizationChange: (organizationId: string) => void;
+}) {
   const t = useExtracted();
   const { data: activeOrganization } = authClient.useActiveOrganization();
   const { data: sites } = useGetSitesFromOrg(activeOrganization?.id);
@@ -122,7 +128,31 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
   const showSearch = (siteOptions?.length ?? 0) >= SEARCH_THRESHOLD;
 
   return (
-    <PopoverContent align="start" className="w-80 p-0 overflow-hidden">
+    <PopoverContent
+      align="start"
+      className="w-80 p-0 overflow-hidden"
+      // The organization flyout renders in its own portal; don't let pointer or
+      // focus events inside it dismiss this popover.
+      onPointerDownOutside={event => {
+        if ((event.target as HTMLElement | null)?.closest?.("[data-org-picker]")) event.preventDefault();
+      }}
+      onFocusOutside={event => {
+        if ((event.target as HTMLElement | null)?.closest?.("[data-org-picker]")) event.preventDefault();
+      }}
+    >
+      {!isDemo && (
+        <div className="border-b border-neutral-200 dark:border-neutral-800 p-1">
+          <OrganizationPicker
+            onOrganizationChange={onOrganizationChange}
+            onOrganizationCreated={() => {
+              // A fresh organization has no sites, so the current site page is
+              // no longer valid; land on the organization home instead.
+              router.push("/");
+              onSiteSelect();
+            }}
+          />
+        </div>
+      )}
       {isLoading ? (
         <div className="p-1">
           {Array.from({ length: 3 }).map((_, index) => (
@@ -193,9 +223,34 @@ function SiteSelectorWrapper() {
   const { data: site } = useGetSite(currentSite);
   const [open, setOpen] = useState(false);
   const embed = useEmbedablePage();
+  const router = useRouter();
+  const { data: activeOrganization } = authClient.useActiveOrganization();
+
+  // Tracks an organization switch made from inside the picker so closing the
+  // popover without picking a site doesn't leave the user on a site page that
+  // belongs to the previous organization.
+  const orgIdAtOpenRef = useRef<string | undefined>(undefined);
+  const lastOrgSelectionRef = useRef<string | null>(null);
+  const navigatedRef = useRef(false);
+
+  const isDemo = typeof window !== "undefined" && globalThis.location.hostname === DEMO_HOSTNAME;
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      orgIdAtOpenRef.current = activeOrganization?.id;
+      lastOrgSelectionRef.current = null;
+      navigatedRef.current = false;
+    } else if (!navigatedRef.current && !isDemo) {
+      const effectiveOrgId = lastOrgSelectionRef.current ?? activeOrganization?.id;
+      if (orgIdAtOpenRef.current && effectiveOrgId && effectiveOrgId !== orgIdAtOpenRef.current) {
+        router.push("/");
+      }
+    }
+    setOpen(nextOpen);
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         {site ? (
           <button className="flex gap-2 items-center border border-neutral-200 dark:border-neutral-800 rounded-lg py-1.5 px-3 justify-start cursor-pointer hover:bg-neutral-150 dark:hover:bg-neutral-800/50 data-[state=open]:bg-neutral-150 dark:data-[state=open]:bg-neutral-800/50 transition-colors h-[36px] w-full">
@@ -219,7 +274,15 @@ function SiteSelectorWrapper() {
         )}
       </PopoverTrigger>
       <Suspense fallback={null}>
-        <SiteSelectorContent onSiteSelect={() => setOpen(false)} />
+        <SiteSelectorContent
+          onSiteSelect={() => {
+            navigatedRef.current = true;
+            setOpen(false);
+          }}
+          onOrganizationChange={organizationId => {
+            lastOrgSelectionRef.current = organizationId;
+          }}
+        />
       </Suspense>
     </Popover>
   );
