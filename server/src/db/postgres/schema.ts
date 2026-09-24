@@ -847,7 +847,7 @@ export const cancellationFeedback = pgTable("cancellation_feedback", {
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
 });
 
-export const importPlatforms = ["umami", "simple_analytics", "plausible"] as const;
+export const importPlatforms = ["umami", "simple_analytics", "plausible", "matomo"] as const;
 
 export const importPlatformEnum = pgEnum("import_platform_enum", importPlatforms);
 

@@ -42,6 +42,33 @@ interface SimpleAnalyticsEvent {
   uuid: string;
 }
 
+interface MatomoEvent {
+  visitorId: string;
+  fingerprint: string;
+  siteName: string;
+
+  type: string;
+  url: string;
+  pageTitle: string;
+  timestamp: string;
+
+  referrerUrl: string;
+
+  browserName: string;
+  browserVersion: string;
+  operatingSystemName: string;
+  operatingSystemVersion: string;
+  deviceType: string;
+
+  languageCode: string;
+  countryCode: string;
+  regionCode: string;
+  city: string;
+  latitude: string;
+  longitude: string;
+  resolution: string;
+}
+
 export class CsvParser {
   private cancelled: boolean = false;
   private readonly siteId: number;
@@ -97,12 +124,26 @@ export class CsvParser {
             if (validEvents.length > 0) {
               await this.uploadChunk(validEvents, false);
             }
-          } else {
+          } else if (this.platform === "simple_analytics") {
             const validEvents: SimpleAnalyticsEvent[] = [];
             for (const row of results.data) {
               const event = this.transformRow(row);
               if (event && this.isDateInRange((event as SimpleAnalyticsEvent).added_iso)) {
                 validEvents.push(event as SimpleAnalyticsEvent);
+              }
+            }
+            if (validEvents.length > 0) {
+              await this.uploadChunk(validEvents, false);
+            }
+          } else if (this.platform === "matomo") {
+            const validEvents: MatomoEvent[] = [];
+            for (const row of results.data) {
+              // Unroll visit into individual events
+              const events = this.unrollMatomoVisit(row as Record<string, string>);
+              for (const event of events) {
+                if (this.isDateInRange(event.timestamp, true)) {
+                  validEvents.push(event);
+                }
               }
             }
             if (validEvents.length > 0) {
@@ -132,12 +173,19 @@ export class CsvParser {
     });
   }
 
-  private isDateInRange(dateStr: string): boolean {
-    // Handle both formats: "yyyy-MM-dd HH:mm:ss" (Umami) and ISO (Simple Analytics)
-    let createdAt = DateTime.fromFormat(dateStr, "yyyy-MM-dd HH:mm:ss", { zone: "utc" });
-    if (!createdAt.isValid) {
-      createdAt = DateTime.fromISO(dateStr, { zone: "utc" });
+  private isDateInRange(dateStr: string, isUnixTimestamp: boolean = false): boolean {
+    // Handle Unix timestamp (Matomo), "yyyy-MM-dd HH:mm:ss" (Umami), and ISO (Simple Analytics)
+    let createdAt: DateTime;
+
+    if (isUnixTimestamp) {
+      createdAt = DateTime.fromSeconds(parseInt(dateStr, 10), { zone: "utc" });
+    } else {
+      createdAt = DateTime.fromFormat(dateStr, "yyyy-MM-dd HH:mm:ss", { zone: "utc" });
+      if (!createdAt.isValid) {
+        createdAt = DateTime.fromISO(dateStr, { zone: "utc" });
+      }
     }
+
     if (!createdAt.isValid) {
       return false;
     }
@@ -153,7 +201,7 @@ export class CsvParser {
     return true;
   }
 
-  private transformRow(row: unknown): UmamiEvent | SimpleAnalyticsEvent | null {
+  private transformRow(row: unknown): UmamiEvent | SimpleAnalyticsEvent | MatomoEvent | null {
     const rawEvent = row as Record<string, string>;
 
     if (this.platform === "umami") {
@@ -184,7 +232,7 @@ export class CsvParser {
       }
 
       return umamiEvent;
-    } else {
+    } else if (this.platform === "simple_analytics") {
       const simpleAnalyticsEvent: SimpleAnalyticsEvent = {
         added_iso: rawEvent.added_iso,
         country_code: rawEvent.country_code,
@@ -208,9 +256,93 @@ export class CsvParser {
 
       return simpleAnalyticsEvent;
     }
+
+    return null;
   }
 
-  private async uploadChunk(events: UmamiEvent[] | SimpleAnalyticsEvent[], isLastBatch: boolean): Promise<void> {
+  private unrollMatomoVisit(rawEvent: Record<string, string>): MatomoEvent[] {
+    const events: MatomoEvent[] = [];
+
+    // Extract visit-level metadata
+    const visitMetadata = {
+      visitorId: rawEvent.visitorId || "",
+      fingerprint: rawEvent.fingerprint || "",
+      siteName: rawEvent.siteName || "",
+      referrerUrl: rawEvent.referrerUrl || "",
+      browserName: rawEvent.browserName || "",
+      browserVersion: rawEvent.browserVersion || "",
+      operatingSystemName: rawEvent.operatingSystemName || "",
+      operatingSystemVersion: rawEvent.operatingSystemVersion || "",
+      deviceType: rawEvent.deviceType || "",
+      languageCode: rawEvent.languageCode || "",
+      countryCode: rawEvent.countryCode || "",
+      regionCode: rawEvent.regionCode || "",
+      city: rawEvent.city || "",
+      latitude: rawEvent.latitude || "",
+      longitude: rawEvent.longitude || "",
+      resolution: rawEvent.resolution || "",
+    };
+
+    // Find all action indices by scanning for actionDetails_N_* columns
+    const actionIndices = new Set<number>();
+    for (const key of Object.keys(rawEvent)) {
+      const match = key.match(/^actionDetails_(\d+)_/);
+      if (match) {
+        actionIndices.add(parseInt(match[1], 10));
+      }
+    }
+
+    // Track most recent "action" type's url and pageTitle for outlinks
+    let lastActionUrl = "";
+    let lastActionPageTitle = "";
+
+    // Create one MatomoEvent per action (sorted by index)
+    for (const index of Array.from(actionIndices).sort((a, b) => a - b)) {
+      const type = rawEvent[`actionDetails_${index}_type`] || "";
+      const timestamp = rawEvent[`actionDetails_${index}_timestamp`] || "";
+
+      // Only process "action" and "outlink" types
+      if ((type !== "action" && type !== "outlink") || !timestamp) {
+        continue;
+      }
+
+      const actionUrl = rawEvent[`actionDetails_${index}_url`] || "";
+      const actionPageTitle = rawEvent[`actionDetails_${index}_pageTitle`] || "";
+
+      // For "action" type, update tracking and use its own url/pageTitle
+      // For "outlink" type, use the most recent "action"'s url/pageTitle
+      let url: string;
+      let pageTitle: string;
+
+      if (type === "action") {
+        lastActionUrl = actionUrl;
+        lastActionPageTitle = actionPageTitle;
+        url = actionUrl;
+        pageTitle = actionPageTitle;
+      } else {
+        // outlink - use last action's url/pageTitle
+        url = lastActionUrl;
+        pageTitle = lastActionPageTitle;
+      }
+
+      const event: MatomoEvent = {
+        ...visitMetadata,
+        type,
+        url,
+        pageTitle,
+        timestamp,
+      };
+
+      events.push(event);
+    }
+
+    return events;
+  }
+
+  private async uploadChunk(
+    events: UmamiEvent[] | SimpleAnalyticsEvent[] | MatomoEvent[],
+    isLastBatch: boolean
+  ): Promise<void> {
     // Skip empty chunks unless it's the last one (needed for finalization)
     if (events.length === 0 && !isLastBatch) {
       return;
