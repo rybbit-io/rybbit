@@ -4,7 +4,6 @@ const state = vi.hoisted(() => ({
   existingSessionHourlyView: undefined as string | undefined,
   existingColumns: {} as Record<string, { name: string; type: string }[]>,
   timezone: "UTC",
-  misplaced: 0,
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -38,7 +37,6 @@ vi.mock("../../lib/logger/logger.js", () => ({
 }));
 
 import { initializeClickhouse } from "./clickhouse.js";
-import { resetServerTimezoneCache } from "./initUtils.js";
 
 function executedQueries() {
   return mocks.exec.mock.calls.map(([args]) => args.query as string);
@@ -54,8 +52,6 @@ describe("session hourly materialized view initialization", () => {
     state.existingSessionHourlyView = undefined;
     state.existingColumns = {};
     state.timezone = "UTC";
-    state.misplaced = 0;
-    resetServerTimezoneCache();
     mocks.exec.mockResolvedValue(undefined);
     mocks.query.mockImplementation(
       async ({ query, query_params }: { query: string; query_params?: { table?: string } }) => {
@@ -64,9 +60,6 @@ describe("session hourly materialized view initialization", () => {
         }
         if (query.includes("timezone()")) {
           return { json: async () => [{ timezone: state.timezone }] };
-        }
-        if (query.includes("AS misplaced")) {
-          return { json: async () => [{ misplaced: state.misplaced }] };
         }
 
         if (query.includes("FROM system.tables")) {
@@ -146,8 +139,6 @@ describe("UTC time columns", () => {
     state.existingSessionHourlyView = undefined;
     state.existingColumns = {};
     state.timezone = "UTC";
-    state.misplaced = 0;
-    resetServerTimezoneCache();
     mocks.exec.mockResolvedValue(undefined);
     mocks.query.mockImplementation(
       async ({ query, query_params }: { query: string; query_params?: { table?: string } }) => {
@@ -156,9 +147,6 @@ describe("UTC time columns", () => {
         }
         if (query.includes("timezone()")) {
           return { json: async () => [{ timezone: state.timezone }] };
-        }
-        if (query.includes("AS misplaced")) {
-          return { json: async () => [{ misplaced: state.misplaced }] };
         }
         if (query.includes("FROM system.tables")) {
           return { json: async () => [] };
@@ -224,42 +212,20 @@ describe("UTC time columns", () => {
     expect(executedQueries().some(query => /MODIFY COLUMN/.test(query))).toBe(false);
   });
 
-  it("does not scan for misplaced partition rows on a UTC server", async () => {
-    state.existingColumns = { events: [{ name: "timestamp", type: "DateTime" }] };
-
+  it("stays quiet about the server timezone when it is UTC", async () => {
     await initializeClickhouse();
 
-    const queries = mocks.query.mock.calls.map(([args]) => args.query as string);
-    expect(queries.some(query => query.includes("AS misplaced"))).toBe(false);
     expect(mocks.logger.warn).not.toHaveBeenCalled();
   });
 
-  it("warns about a non-UTC server and reports rows left in old-timezone partitions", async () => {
+  it("warns about a non-UTC server", async () => {
     state.timezone = "Europe/Berlin";
-    state.misplaced = 42;
-    state.existingColumns = {
-      events: [
-        { name: "timestamp", type: "DateTime" },
-        { name: "timestamp_ms", type: "DateTime64(3)" },
-      ],
-      // Not a partition-key column: converted, but never scanned.
-      session_replay_metadata: [{ name: "created_at", type: "DateTime" }],
-    };
 
     await initializeClickhouse();
 
     expect(mocks.logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ timezone: "Europe/Berlin" }),
       expect.stringContaining("not UTC")
-    );
-    const scans = mocks.query.mock.calls
-      .map(([args]) => args.query as string)
-      .filter(query => query.includes("AS misplaced"));
-    expect(scans).toHaveLength(1);
-    expect(scans[0]).toContain("FROM events WHERE _partition_id != toString(toYYYYMM(timestamp, 'UTC'))");
-    expect(mocks.logger.error).toHaveBeenCalledWith(
-      expect.objectContaining({ table: "events", column: "timestamp", misplaced: 42 }),
-      expect.stringContaining("repair:utc-partitions")
     );
   });
 
