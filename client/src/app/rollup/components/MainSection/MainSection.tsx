@@ -31,7 +31,8 @@ const Stat = ({
   decimals?: number;
   postfix?: string;
 }) => {
-  const { selectedStat, setSelectedStat } = useStore();
+  const selectedStat = useStore((state) => state.selectedStat);
+  const setSelectedStat = useStore((state) => state.setSelectedStat);
   return (
     <div
       className={cn(
@@ -75,7 +76,9 @@ export function MainSection({
   lite?: boolean;
 }) {
   const t = useExtracted();
-  const { selectedStat, bucket, time } = useStore();
+  const selectedStat = useStore((state) => state.selectedStat);
+  const bucket = useStore((state) => state.bucket);
+  const time = useStore((state) => state.time);
 
   const { series, isFetching, isLoading } = useRollupBucketed({
     siteIds,
