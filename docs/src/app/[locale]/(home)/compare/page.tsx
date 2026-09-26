@@ -84,6 +84,24 @@ const competitors = [
   },
 ];
 
+const guides = [
+  {
+    title: "Best Google Analytics alternatives",
+    href: "/blog/best-google-analytics-alternatives",
+    description: "Nine GA4 alternatives compared on price, privacy, and features",
+  },
+  {
+    title: "Best web analytics tools",
+    href: "/blog/best-web-analytics-tools",
+    description: "Ten tools compared by use case",
+  },
+  {
+    title: "Best session replay tools",
+    href: "/blog/best-session-replay-tools",
+    description: "Ten replay tools, including free and open-source options",
+  },
+];
+
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "ItemList",
@@ -142,6 +160,34 @@ export default function ComparePage() {
                 </div>
               </Link>
             ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="comparison-guides-title">
+          <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+              <div className="lg:sticky lg:top-24">
+                <h2 id="comparison-guides-title" className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+                  Buying guides
+                </h2>
+                <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
+                  Weighing more than two tools? These roundups compare the wider field, Rybbit included.
+                </p>
+              </div>
+            </div>
+            <div className="lg:col-span-8">
+              {guides.map((guide) => (
+                <Link
+                  key={guide.href}
+                  href={guide.href}
+                  className="group grid border-b border-neutral-200 px-5 py-7 last:border-b-0 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:border-neutral-800 dark:hover:bg-neutral-900/60 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
+                >
+                  <span className="font-semibold">{guide.title}</span>
+                  <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">{guide.description}</span>
+                  <ArrowRight className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 sm:mt-0" aria-hidden="true" />
+                </Link>
+              ))}
             </div>
           </div>
         </section>

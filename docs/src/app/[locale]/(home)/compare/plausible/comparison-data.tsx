@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ComparisonSection, DeepDive, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
+import {
+  ComparisonSection,
+  DeepDive,
+  FAQItem,
+  OtherAlternatives,
+  PricingInfo,
+  RelatedResource,
+} from "../components/ComparisonPage";
+import { pickAlternatives } from "../components/competitorSummaries";
 
 export const plausibleComparisonData: ComparisonSection[] = [
   {
@@ -8,7 +16,7 @@ export const plausibleComparisonData: ComparisonSection[] = [
       { name: "Real-time analytics", rybbitValue: true, competitorValue: true },
       { name: "Custom events", rybbitValue: "With attributes", competitorValue: "Basic" },
       { name: "Funnels", rybbitValue: "All plans", competitorValue: "Business plan only" },
-      { name: "User journeys (Sankey)", rybbitValue: true, competitorValue: false },
+      { name: "User journeys (Sankey)", rybbitValue: "All plans", competitorValue: "Business plan only" },
       { name: "Conversion goals", rybbitValue: true, competitorValue: true },
       { name: "Saved segments", rybbitValue: true, competitorValue: true },
       { name: "UTM tracking", rybbitValue: true, competitorValue: true },
@@ -41,25 +49,25 @@ export const plausibleComparisonData: ComparisonSection[] = [
     features: [
       { name: "Script size", rybbitValue: "18KB", competitorValue: "~5KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: true },
-      { name: "API access", rybbitValue: true, competitorValue: true },
+      { name: "API access", rybbitValue: true, competitorValue: "Business plan only" },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "$9/mo" },
     ],
   },
 ];
 
 export const plausibleExtendedData = {
-  subtitle: "Both are privacy-first, but Rybbit offers session replay, funnels, and user journeys that Plausible doesn't.",
+  subtitle: "Both are privacy-first, but Rybbit adds session replay, error tracking, and Web Vitals, and includes funnels and journeys on every plan.",
 
   introHeading: "Why consider Rybbit over Plausible?",
   introParagraphs: [
-    "Plausible is a well-respected privacy-first analytics tool known for its clean dashboard and lightweight script. It's a great choice for websites that want simple traffic metrics without cookies or consent banners. But Plausible is intentionally limited to basic web analytics: no session replay, no funnel analysis, no user journey visualization, and no error tracking.",
-    "Rybbit shares Plausible's commitment to privacy and simplicity but goes significantly further. You get advanced analytics features including session replay, funnel analysis, user journey visualization with Sankey diagrams, Web Vitals monitoring, and error tracking. Beyond visit counts, you can see how people navigate your site, where they drop off, and what errors they encounter.",
+    "Plausible is a well-respected privacy-first analytics tool known for its clean dashboard and lightweight script. It's a great choice for websites that want simple traffic metrics without cookies or consent banners. But Plausible stays close to basic web analytics: there's no session replay, error tracking, or Web Vitals monitoring, and funnels and user journeys are reserved for its Business plan.",
+    "Rybbit shares Plausible's commitment to privacy and simplicity but goes significantly further. You get funnels and user journeys on every plan, plus Web Vitals monitoring, error tracking, and session replay on the Pro plan. Beyond visit counts, you can see how people navigate your site, where they drop off, and what errors they encounter.",
     "Both platforms are open source and self-hostable, and both run on ClickHouse; Rybbit's stack is TypeScript, Plausible's is Elixir. Rybbit uses events-based pricing that includes all interaction types, while Plausible charges by pageviews only. If you like Plausible's privacy-first approach but need deeper analytics to grow your product, Rybbit gives you that depth without giving up simplicity.",
   ],
 
   chooseRybbit: [
-    "You need advanced features like session replay and funnels",
-    "You want user journey visualization (Sankey diagrams)",
+    "You need session replay alongside your traffic stats",
+    "You want funnels and user journeys without moving to a higher tier",
     "You need error tracking and Web Vitals monitoring",
     "You want events-based pricing instead of pageview-based",
     "You need organization support with team roles",
@@ -70,7 +78,7 @@ export const plausibleExtendedData = {
     "You want the simplest possible analytics dashboard",
     "You prefer a more established product with a longer track record",
     "You only need basic pageview and source tracking",
-    "You want unlimited data retention on all plans",
+    "You want to import your Google Analytics history (Plausible has a GA importer)",
     "You prefer Elixir/Phoenix over TypeScript for self-hosting",
   ],
 
@@ -82,7 +90,7 @@ export const plausibleExtendedData = {
       "7-day free trial, card charged after the trial",
       "Session replay available on Pro plan",
       "Funnels, user journeys, and error tracking included",
-      "Unlimited team members and websites",
+      "Up to 5 sites and 3 team members on Standard; unlimited on Pro",
     ],
   } satisfies PricingInfo,
 
@@ -93,7 +101,7 @@ export const plausibleExtendedData = {
     highlights: [
       "30-day free trial available",
       "Starts at 10k monthly pageviews",
-      "All features included on every plan",
+      "Funnels, journeys, and the Stats API need the $19/mo Business plan",
       "Self-hosted Community Edition is free",
     ],
   } satisfies PricingInfo,
@@ -133,9 +141,9 @@ export const plausibleExtendedData = {
             past a site or seat cap means a plan change even if your traffic hasn&apos;t moved.
           </>,
           <>
-            Rybbit prices by events (from $19/month for 100k events), and every plan includes every
-            feature, with session replay available on Pro. There are no per-site or per-seat tiers to outgrow; paying
-            more buys volume, not features. At low traffic Plausible is the cheaper bill; once you&apos;d otherwise be
+            Rybbit prices by events (from $19/month for 100k events). Funnels, journeys, error tracking, and Web
+            Vitals are on every plan, so you never upgrade just to unlock funnels; session replay and unlimited sites
+            and seats come with Pro. At low traffic Plausible is the cheaper bill; once you&apos;d otherwise be
             paying for replay, funnels, and error tracking as separate tools, the math flips. Full details are on the{" "}
             <Link href="/pricing">pricing page</Link>. And both products keep an honest exit: Plausible&apos;s
             Community Edition and Rybbit&apos;s open-source version are each free to self-host.
@@ -155,7 +163,7 @@ export const plausibleExtendedData = {
               in parallel for a while costs nothing but a few kilobytes.
             </li>
             <li>
-              Import your Plausible history with the <Link href="/docs">data importer</Link>, so year-over-year
+              Import your Plausible history with the <Link href="/docs/data-import">data importer</Link>, so year-over-year
               comparisons keep working from day one.
             </li>
             <li>Recreate your goals as Rybbit goals and custom events; the setup is similarly simple.</li>
@@ -174,8 +182,9 @@ export const plausibleExtendedData = {
             at being exactly that. It has the longest track record in the category, an EU-owned and EU-hosted cloud, a
             famously tiny script (Plausible advertises it as 54&times; smaller than Google Analytics; Rybbit&apos;s is
             around 18KB), and a 30-day trial with no card required versus Rybbit&apos;s 7 days. Choosing it means
-            deliberately not having session replay, funnels, or error tracking, and for plenty of content sites
-            and blogs, that&apos;s the right call. If you&apos;re weighing more options than these two, our roundup of
+            going without session replay and error tracking (and paying for its Business plan to get funnels), and
+            for plenty of content sites and blogs, that&apos;s the right call. If you&apos;re weighing more options
+            than these two, our roundup of
             the <Link href="/blog/best-google-analytics-alternatives">best Google Analytics alternatives</Link> covers
             the wider field.
           </>,
@@ -184,10 +193,17 @@ export const plausibleExtendedData = {
     ],
   } satisfies DeepDive,
 
+  otherAlternatives: {
+    title: "Other Plausible alternatives",
+    intro:
+      "If Plausible feels too basic, or its plan tiers don't fit, these are the other Plausible alternatives people compare most often, with the main trade-off of each and a link to the full comparison.",
+    items: pickAlternatives(["umami", "fathom", "simpleanalytics", "matomo", "posthog", "cloudflare-analytics"]),
+  } satisfies OtherAlternatives,
+
   faqItems: [
     {
       question: "How is Rybbit different from Plausible?",
-      answer: "Both are privacy-first and open source, but Rybbit includes advanced features that Plausible doesn't offer: session replay, funnel analysis, user journey visualization (Sankey diagrams), Web Vitals monitoring, error tracking, and user profiles.",
+      answer: "Both are privacy-first and open source. Rybbit adds session replay, Web Vitals monitoring, error tracking, and user profiles, and includes funnels and user journeys on every plan, while Plausible reserves those for its Business plan.",
     },
     {
       question: "Is Rybbit as easy to use as Plausible?",
@@ -195,7 +211,7 @@ export const plausibleExtendedData = {
     },
     {
       question: "How does pricing compare between Rybbit and Plausible?",
-      answer: "Plausible starts at $9/month for 10k pageviews, while Rybbit starts at $19/month. The key difference is that Rybbit uses events-based pricing (which includes pageviews, custom events, and more) and includes advanced features like session replay, funnels, and error tracking that Plausible doesn't offer at any price.",
+      answer: "Plausible starts at $9/month for 10k pageviews, while Rybbit starts at $19/month for 100k events (pageviews, custom events, and more). Rybbit includes funnels, journeys, and error tracking on every plan; Plausible reserves funnels and journeys for its $19/month Business plan and doesn't offer session replay or error tracking at any price.",
     },
     {
       question: "Can I self-host Rybbit like Plausible?",
@@ -214,19 +230,14 @@ export const plausibleExtendedData = {
       description: "The privacy-first alternative to GA4",
     },
     {
-      title: "Rybbit vs PostHog",
-      href: "/compare/posthog",
-      description: "Focused analytics vs a full product suite",
+      title: "Import your Plausible data",
+      href: "/docs/data-import",
+      description: "Bring your Plausible history over from its ZIP export",
     },
     {
-      title: "Rybbit vs Fathom",
-      href: "/compare/fathom",
-      description: "Compare two privacy-focused analytics tools",
-    },
-    {
-      title: "Rybbit vs Simple Analytics",
-      href: "/compare/simpleanalytics",
-      description: "Feature-rich vs minimal analytics",
+      title: "Best Google Analytics alternatives",
+      href: "/blog/best-google-analytics-alternatives",
+      description: "Nine GA4 alternatives compared on price, privacy, and features",
     },
     {
       title: "Getting started with Rybbit",

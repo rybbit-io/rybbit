@@ -103,6 +103,7 @@ export default function Matomo() {
         rybbitPricing={matomoExtendedData.rybbitPricing}
         competitorPricing={matomoExtendedData.competitorPricing}
         deepDive={matomoExtendedData.deepDive}
+        otherAlternatives={matomoExtendedData.otherAlternatives}
         faqItems={matomoExtendedData.faqItems}
         relatedResources={matomoExtendedData.relatedResources}
       />
