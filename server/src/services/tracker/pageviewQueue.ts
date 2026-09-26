@@ -1,5 +1,5 @@
-import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
+import { toClickHouseDateTime } from "../../db/clickhouse/dateTime.js";
 import { lookupAsn } from "../../db/geolocation/asn.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
@@ -79,15 +79,17 @@ class PageviewQueue {
 
           // Get all URL parameters for the url_parameters map
           const allUrlParams = getAllUrlParams(pv.querystring || "");
-          const receivedAt = DateTime.fromISO(pv.timestamp).toUTC();
+          const receivedAt = toClickHouseDateTime(pv.timestamp);
 
           return {
             site_id: pv.site_id,
             // Keep the original DateTime column for the MergeTree key and
             // whole-second time filters; timestamp_ms preserves arrival order
             // for funnels and entry/exit attribution.
-            timestamp: receivedAt.toFormat("yyyy-MM-dd HH:mm:ss"),
-            timestamp_ms: receivedAt.toFormat("yyyy-MM-dd HH:mm:ss.SSS"),
+            // Both get the same explicit-UTC instant; the DateTime column
+            // truncates to the second on its own.
+            timestamp: receivedAt,
+            timestamp_ms: receivedAt,
             session_id: pv.sessionId,
             user_id: pv.userId, // Always the device fingerprint
             identified_user_id: pv.identifiedUserId || "", // Custom user ID when identified

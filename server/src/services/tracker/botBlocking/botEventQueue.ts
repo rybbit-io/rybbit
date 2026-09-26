@@ -1,5 +1,5 @@
-import { DateTime } from "luxon";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
+import { toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
 import { getLocation } from "../../../db/geolocation/geolocation.js";
 import { createServiceLogger } from "../../../lib/logger/logger.js";
 import { getDeviceType } from "../../../utils.js";
@@ -50,7 +50,7 @@ class BotEventQueue {
 
         return {
           site_id: event.site_id,
-          timestamp: DateTime.fromISO(event.timestamp).toFormat("yyyy-MM-dd HH:mm:ss"),
+          timestamp: toClickHouseDateTime(event.timestamp),
           session_id: event.sessionId,
           user_id: event.userId,
           hostname: event.hostname || "",

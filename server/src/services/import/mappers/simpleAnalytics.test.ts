@@ -54,7 +54,7 @@ describe("SimpleAnalyticsImportMapper", () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         site_id: 1,
-        timestamp: "2024-06-15 14:30:00",
+        timestamp: "2024-06-15T14:30:00.000Z",
         session_id: TEST_SESSION_ID,
         user_id: TEST_UUID,
         hostname: "example.com",
@@ -94,23 +94,36 @@ describe("SimpleAnalyticsImportMapper", () => {
     });
 
     describe("timestamp reformatting", () => {
-      it("should reformat the ISO timestamp to ClickHouse format", () => {
+      it("should normalise the ISO timestamp to the explicit-UTC form ClickHouse is given", () => {
         const result = SimpleAnalyticsImportMapper.transform(
           [makeEvent({ added_iso: "2023-01-05T09:07:03Z" })],
           1,
           "i"
         );
-        expect(result[0].timestamp).toBe("2023-01-05 09:07:03");
+        expect(result[0].timestamp).toBe("2023-01-05T09:07:03.000Z");
       });
 
-      it("should drop fractional seconds", () => {
+      it("should keep fractional seconds", () => {
         const result = SimpleAnalyticsImportMapper.transform(
           [makeEvent({ added_iso: "2024-06-15T14:30:00.123Z" })],
           1,
           "i"
         );
         expect(result).toHaveLength(1);
-        expect(result[0].timestamp).toBe("2024-06-15 14:30:00");
+        expect(result[0].timestamp).toBe("2024-06-15T14:30:00.123Z");
+      });
+
+      it("drops a well-shaped impossible date without losing the rest of the batch", () => {
+        const result = SimpleAnalyticsImportMapper.transform(
+          [
+            makeEvent({ added_iso: "2024-06-15T14:30:00Z" }),
+            makeEvent({ added_iso: "2024-02-31T12:00:00Z" }),
+            makeEvent({ added_iso: "2024-06-16T09:00:00Z" }),
+          ],
+          1,
+          "i"
+        );
+        expect(result.map(row => row.timestamp)).toEqual(["2024-06-15T14:30:00.000Z", "2024-06-16T09:00:00.000Z"]);
       });
 
       it("should drop rows with non-ISO timestamps", () => {

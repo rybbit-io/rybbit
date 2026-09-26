@@ -92,7 +92,7 @@ export const buildEventsQuery = (query: GetEventsRequest["Querystring"], siteId:
         WHERE
           site_id = {siteId:Int32}
           ${EVENT_TYPE_FILTER}
-          AND timestamp > toDateTime64({sinceTimestamp:String}, 3)
+          AND timestamp > toDateTime64({sinceTimestamp:String}, 3, 'UTC')
           ${filterStatement}
         ORDER BY timestamp DESC
         LIMIT 500
@@ -114,7 +114,9 @@ export const buildEventsQuery = (query: GetEventsRequest["Querystring"], siteId:
   };
 
   if (before_timestamp) {
-    cursorCondition = `AND timestamp < toDateTime64({beforeTimestamp:String}, 3)`;
+    // The API renders timestamps in UTC and the client echoes them back;
+    // parse in UTC too, not in the server timezone.
+    cursorCondition = `AND timestamp < toDateTime64({beforeTimestamp:String}, 3, 'UTC')`;
     queryParams.beforeTimestamp = before_timestamp;
   }
 
