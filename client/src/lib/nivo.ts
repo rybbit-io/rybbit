@@ -2,6 +2,7 @@
 
 import { PartialTheme } from "@nivo/theming";
 import { useTheme } from "next-themes";
+import { useMemo } from "react";
 
 export const getNivoTheme = (isDark: boolean = true): PartialTheme => ({
   axis: {
@@ -52,5 +53,7 @@ export const getNivoTheme = (isDark: boolean = true): PartialTheme => ({
 // Custom hook that automatically uses the resolved theme
 export const useNivoTheme = (): PartialTheme => {
   const { resolvedTheme } = useTheme();
-  return getNivoTheme(resolvedTheme === "dark");
+  const isDark = resolvedTheme === "dark";
+  // Stable per theme so memoised charts don't re-render on every parent render.
+  return useMemo(() => getNivoTheme(isDark), [isDark]);
 };

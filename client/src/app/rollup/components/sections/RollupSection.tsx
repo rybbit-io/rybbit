@@ -10,7 +10,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import round from "lodash/round";
 import { StandardSkeleton } from "@/app/[site]/components/shared/StandardSection/Skeleton";
 import { MetricResponse } from "@/api/analytics/endpoints";
+import { cn } from "@/lib/utils";
 import { useRollupMetric } from "../../hooks/useRollupMetric";
+import { toggleRollupFilter } from "../../lib/rollupFilters";
 import { RollupSectionDialog } from "./RollupSectionDialog";
 
 export function RollupSection({
@@ -80,7 +82,16 @@ export function RollupSection({
             items.map((item) => (
               <div
                 key={getKey(item)}
-                className="relative h-6 flex items-center group"
+                className={cn(
+                  "relative h-6 flex items-center group",
+                  !lite &&
+                    "cursor-pointer hover:bg-neutral-150/50 dark:hover:bg-neutral-850 rounded-md"
+                )}
+                onClick={
+                  lite
+                    ? undefined
+                    : () => toggleRollupFilter(filterParameter, getValue(item))
+                }
               >
                 <div
                   className="absolute inset-0 bg-dataviz py-2 opacity-25 rounded-md"

@@ -3,7 +3,7 @@ import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { buildAnalyticsRequest, fetchAnalytics } from "@/api/analytics/analyticsRequest";
 import { MetricResponse } from "@/api/analytics/endpoints";
-import { useAnalyticsContext } from "@/api/analytics/useAnalyticsQuery";
+import { querySignature, useRollupQueryContext, useSettledSnapshot } from "./useRollupQueryContext";
 
 export type RollupMetricRow = MetricResponse;
 
@@ -25,7 +25,7 @@ export function useRollupMetric({
   limit?: number;
   lite?: boolean;
 }): UseRollupMetricResult {
-  const { context } = useAnalyticsContext({ useFilters: !lite });
+  const context = useRollupQueryContext(lite);
   const request = buildAnalyticsRequest(
     { path: lite ? "metric-lite" : "metric", params: { parameter, limit, page: 1 } },
     context
@@ -39,6 +39,7 @@ export function useRollupMetric({
     })),
   });
 
+  const signature = querySignature(siteIds, queries);
   const merged = useMemo(() => {
     // Per-value accumulator. Sums sessions/pageviews and tracks weighted-sum
     // numerators + denominators for averages so we can recompute correctly
@@ -128,11 +129,12 @@ export function useRollupMetric({
 
     rows.sort((a, b) => b.count - a.count);
     return rows;
-  }, [queries.map((q) => q.dataUpdatedAt).join(",")]);
+  }, [signature]);
+  const settled = useSettledSnapshot(merged, queries);
 
   return {
-    data: merged,
-    isLoading: queries.some((q) => q.isLoading),
+    data: settled.data ?? [],
+    isLoading: settled.isLoading,
     isFetching: queries.some((q) => q.isFetching),
     error: (queries.find((q) => q.error)?.error as Error) ?? null,
   };

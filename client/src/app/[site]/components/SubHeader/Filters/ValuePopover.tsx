@@ -4,7 +4,6 @@ import { Filter } from "@rybbit/shared";
 import { HelpCircle, Plus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
-import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { Checkbox } from "../../../../../components/ui/checkbox";
 import {
   Command,
@@ -21,6 +20,7 @@ import { useGetRegionName } from "../../../../../lib/geo";
 import { cn, getCountryName, getLanguageName } from "../../../../../lib/utils";
 import { isNumericParameter } from "./const";
 import { validateRegex } from "./labels";
+import { useFilterValueOptions } from "./useFilterValueOptions";
 
 function RegexExamples() {
   const t = useExtracted();
@@ -81,11 +81,7 @@ export function ValuePopover({
     filter.type === "less_than_or_equal";
   const needsTextInput = isNumeric || isRegex || isNumericComparison;
 
-  const { data, isFetching } = useMetric({
-    parameter: filter.parameter,
-    limit: 1000,
-    useFilters: false,
-  });
+  const { data, isFetching } = useFilterValueOptions(filter.parameter);
 
   const getValueLabel = (val: string | number) => {
     if (filter.parameter === "country") return getCountryName(val as string);
