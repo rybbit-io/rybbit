@@ -134,6 +134,15 @@ Any other MCP client that supports Streamable HTTP works with the generic config
 | `list_segments`           | Saved segments: named, reusable filter sets for a site or the whole organization        |
 | `apply_segment`           | Overview KPIs for visitors matching a saved segment, with its filters for reuse         |
 
+### Search Console (read)
+
+| Tool                        | Returns                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `get_search_console_status` | Whether Google Search Console is connected for the site, and which property                      |
+| `get_search_console_data`   | Clicks, impressions, CTR, and average position grouped by query, page, country, device, or date  |
+
+Search Console tools read the Google Search Console property connected to the site under **Site settings > Integrations** (Rybbit Cloud); no Google Cloud project or separate MCP server is needed. `get_search_console_data` groups by up to three dimensions (`query`, `page`, `country`, `device`, `date`), accepts ANDed filters such as `{"dimension": "page", "operator": "contains", "expression": "/pricing"}`, and returns 100 rows by default (up to 25,000, paged with `start_row`). Google's numbers lag about two days; pass `data_state: "all"` to include fresh, still-changing data.
+
 ### Sites
 
 | Tool                 | Does                                                                                    |
@@ -223,6 +232,7 @@ OAuth clients request scopes through the standard grant. Rybbit advertises the s
 - **403 in tool results:** The key's user lacks access to that site or organization — or the tool requires an org admin/owner role. Check the `role` field in `list_sites`.
 - **403 "Insufficient scope":** The credential was created without the `resource:action` scope this tool needs (the `required` field names it). Use a key or OAuth grant that includes it.
 - **429 Too Many Requests:** The API key exceeded its plan's rate limit.
+- **404 "GSC not connected" from Search Console tools:** Connect Google Search Console for that site under Site settings > Integrations, then retry.
 - **503 Service Unavailable:** Rybbit could not verify the key. Retry the request; do not replace a known-valid key based on this response.
 - **405 Method Not Allowed on GET:** This is expected. The stateless endpoint accepts MCP messages over `POST`.
 - **Site access error:** Call `list_sites` again. Membership or site permissions may have changed.
