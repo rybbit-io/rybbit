@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ComparisonSection, DeepDive, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
+import {
+  ComparisonSection,
+  DeepDive,
+  FAQItem,
+  OtherAlternatives,
+  PricingInfo,
+  RelatedResource,
+} from "../components/ComparisonPage";
+import { pickAlternatives } from "../components/competitorSummaries";
 
 export const matomoComparisonData: ComparisonSection[] = [
   {
@@ -185,6 +193,13 @@ export const matomoExtendedData = {
     ],
   } satisfies DeepDive,
 
+  otherAlternatives: {
+    title: "Other Matomo alternatives",
+    intro:
+      "Most teams leaving Matomo want less server upkeep or a simpler interface. These are the other Matomo alternatives worth a look, with the main trade-off of each and a link to the full comparison.",
+    items: pickAlternatives(["google-analytics", "plausible", "posthog", "umami", "fathom", "simpleanalytics"]),
+  } satisfies OtherAlternatives,
+
   faqItems: [
     {
       question: "Is Rybbit really simpler than Matomo?",
@@ -210,19 +225,14 @@ export const matomoExtendedData = {
 
   relatedResources: [
     {
-      title: "Rybbit vs Google Analytics",
-      href: "/compare/google-analytics",
-      description: "The privacy-first alternative to GA4",
+      title: "Best Google Analytics alternatives",
+      href: "/blog/best-google-analytics-alternatives",
+      description: "Nine GA4 alternatives compared on price, privacy, and features",
     },
     {
-      title: "Rybbit vs PostHog",
-      href: "/compare/posthog",
-      description: "Focused analytics vs a full product suite",
-    },
-    {
-      title: "Rybbit vs Umami",
-      href: "/compare/umami",
-      description: "Two open-source analytics tools compared",
+      title: "Best web analytics tools",
+      href: "/blog/best-web-analytics-tools",
+      description: "Ten tools compared by use case",
     },
     {
       title: "Getting started with Rybbit",

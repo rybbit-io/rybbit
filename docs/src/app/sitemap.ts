@@ -10,8 +10,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://rybbit.com";
 
   // hreflang alternates for routes whose content is actually localized
-  // (rendered through translated templates). Docs/blog content is en-only and
-  // non-en /tools pages are noindexed, so those routes get no alternates.
+  // (rendered through translated templates). Docs/blog content is en-only, and
+  // non-en /tools and /compare pages are noindexed, so those routes get no alternates.
   const localeUrl = (locale: string, path: string) =>
     locale === routing.defaultLocale ? `${baseUrl}${path}` : `${baseUrl}/${locale}${path}`;
   const localeAlternates = (path: string) => ({
@@ -96,14 +96,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: "monthly" as const,
       priority: 0.8,
-      alternates: localeAlternates("/compare"),
     },
     ...competitors.map(slug => ({
       url: `${baseUrl}/compare/${slug}`,
       lastModified: new Date(),
       changeFrequency: "monthly" as const,
       priority: 0.8,
-      alternates: localeAlternates(`/compare/${slug}`),
     })),
   ];
 

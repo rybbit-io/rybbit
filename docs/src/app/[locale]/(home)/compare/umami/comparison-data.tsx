@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ComparisonSection, DeepDive, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
+import {
+  ComparisonSection,
+  DeepDive,
+  FAQItem,
+  OtherAlternatives,
+  PricingInfo,
+  RelatedResource,
+} from "../components/ComparisonPage";
+import { pickAlternatives } from "../components/competitorSummaries";
 
 export const umamiComparisonData: ComparisonSection[] = [
   {
@@ -48,12 +56,12 @@ export const umamiComparisonData: ComparisonSection[] = [
 ];
 
 export const umamiExtendedData = {
-  subtitle: "Both are open source and privacy-first, but Rybbit offers session replay, funnels, and user journeys that Umami doesn't.",
+  subtitle: "Both are open source and privacy-first, but Rybbit adds session replay, error tracking, and Web Vitals monitoring that Umami doesn't have.",
 
   introHeading: "Why consider Rybbit over Umami?",
   introParagraphs: [
     "Umami is a popular open-source analytics tool known for its tiny 2KB script and simple, clean interface. It's a solid choice for personal blogs and small sites that just need basic traffic metrics. But Umami's simplicity comes at the cost of advanced features: no session replay, no error tracking, no Web Vitals monitoring, and limited organization support for teams.",
-    "Rybbit shares Umami's open-source DNA and privacy-first values but offers a much deeper feature set. You get session replay to watch how users interact with your site, funnel analysis to find conversion bottlenecks, user journey visualization with Sankey diagrams, and error tracking to catch issues before your users report them, without giving up the clean dashboard that draws people to simpler tools.",
+    "Rybbit shares Umami's open-source DNA and privacy-first values but goes further when a number raises a question. Both tools chart funnels and user journeys; Rybbit adds session replay so you can watch the sessions behind a drop-off, error tracking to catch issues before your users report them, and Web Vitals monitoring, without giving up the clean dashboard that draws people to simpler tools.",
     "On the technical side, Rybbit uses ClickHouse for analytics queries, delivering fast performance even at high traffic volumes. Umami supports PostgreSQL and MySQL for self-hosting, which may be more familiar but can struggle with large datasets. Rybbit also offers a mature managed cloud service, so you don't have to maintain infrastructure if you'd rather not. If you've outgrown Umami's basic metrics and need analytics that can grow with your product, Rybbit is the natural next step.",
   ],
 
@@ -159,7 +167,7 @@ export const umamiExtendedData = {
             </li>
             <li>
               Import your Umami history with the built-in importer (see the{" "}
-              <Link href="/docs">docs</Link> for the walkthrough) so your Rybbit dashboard starts with
+              <Link href="/docs/data-import">import guide</Link> for the walkthrough) so your Rybbit dashboard starts with
               continuity instead of a blank chart.
             </li>
             <li>
@@ -191,6 +199,13 @@ export const umamiExtendedData = {
     ],
   } satisfies DeepDive,
 
+  otherAlternatives: {
+    title: "Other Umami alternatives",
+    intro:
+      "Rybbit isn't the only step up from Umami. These are the other Umami alternatives people weigh most often, with the main trade-off of each and a link to the full comparison.",
+    items: pickAlternatives(["plausible", "posthog", "matomo", "fathom", "simpleanalytics", "cloudflare-analytics"]),
+  } satisfies OtherAlternatives,
+
   faqItems: [
     {
       question: "How is Rybbit different from Umami?",
@@ -198,7 +213,7 @@ export const umamiExtendedData = {
     },
     {
       question: "Can I migrate from Umami to Rybbit?",
-      answer: "Yes. Just add Rybbit's script tag to your site and data starts flowing immediately. You can run both tools in parallel during the transition. Historical Umami data won't transfer, but new data collection begins instantly.",
+      answer: "Yes, history included. Export your Umami data as CSV and load it with Rybbit's built-in importer, then add the Rybbit script and run both tools in parallel until the numbers line up.",
     },
     {
       question: "Which is easier to self-host?",
@@ -221,14 +236,14 @@ export const umamiExtendedData = {
       description: "The privacy-first alternative to GA4",
     },
     {
-      title: "Rybbit vs Plausible",
-      href: "/compare/plausible",
-      description: "Compare two privacy-first analytics platforms",
+      title: "Import your Umami data",
+      href: "/docs/data-import",
+      description: "Bring your Umami history over from a CSV export",
     },
     {
-      title: "Rybbit vs Fathom",
-      href: "/compare/fathom",
-      description: "Open source vs proprietary privacy analytics",
+      title: "Best web analytics tools",
+      href: "/blog/best-web-analytics-tools",
+      description: "Ten tools compared by use case",
     },
     {
       title: "Getting started with Rybbit",

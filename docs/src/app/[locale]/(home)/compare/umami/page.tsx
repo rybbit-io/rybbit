@@ -6,7 +6,7 @@ import { createOGImageUrl } from "@/lib/metadata";
 export const metadata: Metadata = {
   title: "Rybbit vs Umami: The Full-Featured Umami Alternative",
   description:
-    "Looking for an Umami alternative? Both are open-source and privacy-focused, but Rybbit adds session replay, funnels, and a managed cloud option.",
+    "Looking for an Umami alternative? Rybbit is open source and cookieless too, and adds session replay, error tracking, and Web Vitals monitoring.",
   openGraph: {
     title: "Rybbit vs Umami: Open-Source Analytics Head-to-Head",
     description: "Two open-source analytics platforms compared. See which offers more features and flexibility.",
@@ -56,7 +56,7 @@ const structuredData = {
           name: "Can I migrate from Umami to Rybbit?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. Just add Rybbit's script tag to your site and data starts flowing immediately. You can run both tools in parallel during the transition. Historical Umami data won't transfer, but new data collection begins instantly.",
+            text: "Yes, history included. Export your Umami data as CSV and load it with Rybbit's built-in importer, then add the Rybbit script and run both tools in parallel until the numbers line up.",
           },
         },
         {
@@ -103,6 +103,7 @@ export default function Umami() {
         rybbitPricing={umamiExtendedData.rybbitPricing}
         competitorPricing={umamiExtendedData.competitorPricing}
         deepDive={umamiExtendedData.deepDive}
+        otherAlternatives={umamiExtendedData.otherAlternatives}
         faqItems={umamiExtendedData.faqItems}
         relatedResources={umamiExtendedData.relatedResources}
       />

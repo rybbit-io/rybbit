@@ -162,7 +162,7 @@ export const simpleAnalyticsExtendedData = {
           <>
             Unusually for an analytics migration, you don&apos;t have to start from zero: Rybbit ships a data importer
             for Simple Analytics, and your historical stats come with you. See the{" "}
-            <Link href="/docs">docs</Link> for the import walkthrough.
+            <Link href="/docs/data-import">import guide</Link> for the walkthrough.
           </>,
           <ol>
             <li>
