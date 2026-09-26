@@ -6,6 +6,7 @@ import { registerFunnelTools } from "./funnels.js";
 import { registerGoalTools } from "./goals.js";
 import { registerOrganizationTools } from "./organizations.js";
 import { registerRawDataTools } from "./rawData.js";
+import { registerSearchConsoleTools } from "./searchConsole.js";
 import { registerSegmentTools } from "./segments.js";
 import { createGuard, createScopeCheck, type ToolRegistrationConfig } from "./shared.js";
 import { registerSiteTools } from "./sites.js";
@@ -25,4 +26,5 @@ export function registerTools(server: McpServer, api: RybbitApiClient, config: T
   registerOrganizationTools(server, api, guard, allowed);
   registerRawDataTools(server, api, guard, allowed);
   registerAnnotationTools(server, api, guard, allowed);
+  registerSearchConsoleTools(server, api, guard, allowed);
 }
