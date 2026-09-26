@@ -22,16 +22,22 @@ export const querySignature = (siteIds: number[], queries: UseQueryResult[]) =>
 /**
  * Each site is its own request, so results land one at a time. Rendering them
  * as they land makes the chart and totals climb site by site. Instead hold the
- * last fully-settled result until every site in the current set has answered,
- * then swap it in at once. `value` must be memoised on the query results.
+ * last fully-settled result until every site in the current set has answered
+ * (including background refetches), then swap it in at once. `value` must be memoised on the query results.
  */
 export function useSettledSnapshot<T>(
   value: T,
   queries: UseQueryResult[]
 ): { data: T | undefined; isLoading: boolean } {
-  const settled = queries.every(q => !q.isPending);
+  const hasAllData = queries.every(q => !q.isPending);
+  // Background refetches land one site at a time too, so wait for them as well.
+  const settled = hasAllData && queries.every(q => !q.isFetching);
   const [snapshot, setSnapshot] = useState<{ value: T } | null>(null);
-  if (settled && snapshot?.value !== value) setSnapshot({ value });
+  // Cached data that is refetching on mount is still a complete first frame.
+  if ((settled || (hasAllData && snapshot === null)) && snapshot?.value !== value) {
+    setSnapshot({ value });
+  }
   if (settled) return { data: value, isLoading: false };
-  return { data: snapshot?.value, isLoading: snapshot === null };
+  if (snapshot) return { data: snapshot.value, isLoading: false };
+  return { data: hasAllData ? value : undefined, isLoading: !hasAllData };
 }

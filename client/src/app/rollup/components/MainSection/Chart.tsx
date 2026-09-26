@@ -98,6 +98,9 @@ export function Chart({
   // Each site becomes a stacked/grouped key in every time-bucket row. Pivoting
   // is memoised: the hover tooltip re-renders this component on every mouse
   // move, and re-pivoting (and re-laying-out every bar) each time is the lag.
+  // Future buckets are dropped; re-pivot when the minute turns so one that has
+  // become current appears on the next render (hover, refetch), as before.
+  const nowMinute = DateTime.now().startOf("minute").toMillis();
   const { keys, colors, chartData } = useMemo(() => {
     const labelForSeries = (s: RollupSeries) => {
       const meta = siteMetaById.get(s.siteId);
@@ -110,7 +113,7 @@ export function Chart({
     );
 
     // Pivot series → one row per time bucket with a value per site key.
-    const now = DateTime.now();
+    const now = DateTime.fromMillis(nowMinute).endOf("minute");
     const buckets = new Map<string, Record<string, string | number>>();
     series.forEach((s) => {
       const key = labelForSeries(s);
@@ -134,7 +137,7 @@ export function Chart({
       String(a.time).localeCompare(String(b.time))
     );
     return { keys, colors, chartData };
-  }, [series, siteMetaById, siteColorMap, selectedStat, timezone]);
+  }, [series, siteMetaById, siteColorMap, selectedStat, timezone, nowMinute]);
 
   const groupMode: "grouped" | "stacked" = ADDITIVE_STATS.includes(selectedStat)
     ? "stacked"

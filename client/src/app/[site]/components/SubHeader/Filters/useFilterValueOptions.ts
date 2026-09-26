@@ -46,7 +46,9 @@ export function useFilterValueOptions(parameter: FilterParameter): {
     })),
   });
 
-  const signature = queries.map(q => q.dataUpdatedAt).join(",");
+  // Site ids too: a new set of not-yet-loaded sites has the same all-zero
+  // timestamps as the last one and must not reuse its merged values.
+  const signature = `${parameter}|${(siteIds ?? []).join(",")}|${queries.map(q => q.dataUpdatedAt).join(",")}`;
   const merged = useMemo(() => {
     const counts = new Map<string, MetricResponse>();
     for (const q of queries) {
