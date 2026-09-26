@@ -1,5 +1,6 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
+import { readSessionRollups } from "../../../services/dashboardRollups/read.js";
 import { getOverview } from "../getOverview.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
@@ -101,6 +102,10 @@ export const getOverviewLite = analyticsRoute<GetOverviewLiteRequest>(
     }
 
     const filtersPresent = hasLiteFilters(req.query.filters);
+    if (!filtersPresent) {
+      const data = await readSessionRollups<GetOverviewLiteResponse>(site, req.query);
+      if (data !== null) return res.send({ data: data[0] });
+    }
 
     // Filters that touch columns the session rollup doesn't carry (pathname,
     // utm, …) fall back to the raw-events query.

@@ -7,6 +7,7 @@ import { toNodeHandler } from "better-auth/node";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { getRouteGroups } from "./api/analytics/lite/getRouteGroups.js";
 import {
   adminMoveSite,
   collectTelemetry,
@@ -442,6 +443,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/overview-lite", cachedAnalyticsRead, getOverviewLite);
   fastify.get("/sites/:siteId/overview-bucketed-lite", cachedAnalyticsRead, getOverviewBucketedLite);
   fastify.get("/sites/:siteId/metric-lite", cachedAnalyticsRead, getMetricLite);
+  fastify.get("/sites/:siteId/route-groups", cachedAnalyticsRead, getRouteGroups);
   fastify.get("/sites/:siteId/metric", cachedAnalyticsRead, getMetric);
   fastify.get("/sites/:siteId/page-titles", cachedAnalyticsRead, getPageTitles);
   fastify.get("/sites/:siteId/errors/names", publicAnalyticsRead, getErrorNames);
