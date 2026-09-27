@@ -30,16 +30,23 @@ export const buildRetentionQuery = (retentionMode: "day" | "week") => {
   const periodDiffFunc = retentionMode === "day" ? "day" : "week";
 
   return `
-WITH UserFirstPeriod AS (
+WITH UserFirstEver AS (
     SELECT
         -- Use effective user ID: identified_user_id for identified users, user_id for anonymous
         ${effectiveUserId()} AS effective_user_id,
-        ${periodFunction}(min(timestamp)${retentionMode === "week" ? ", 1" : ""}) AS cohort_period
+        min(timestamp) AS first_seen
     FROM events
     WHERE site_id = {siteId:UInt16}
-    -- Use the configurable time range
-    AND timestamp >= addDays(today(), -{timeRange:UInt16})
     GROUP BY effective_user_id
+),
+UserFirstPeriod AS (
+    SELECT
+        effective_user_id,
+        ${periodFunction}(first_seen${retentionMode === "week" ? ", 1" : ""}) AS cohort_period
+    FROM UserFirstEver
+    -- The range chooses which cohorts to show. first_seen is the real first
+    -- event, so a visitor from before the window is not counted as new.
+    WHERE first_seen >= addDays(today(), -{timeRange:UInt16})
 ),
 PeriodActivity AS (
     SELECT DISTINCT
@@ -47,7 +54,8 @@ PeriodActivity AS (
         ${periodFunction}(timestamp${retentionMode === "week" ? ", 1" : ""}) AS activity_period
     FROM events
     WHERE site_id = {siteId:UInt16}
-    -- Match the date range filter
+    -- Return visits for those cohorts. Their first event is already inside
+    -- the window, so this bound does not drop earlier history.
     AND timestamp >= addDays(today(), -{timeRange:UInt16})
 ),
 CohortRetention AS (

@@ -40,7 +40,7 @@ Returns cohort-based retention analysis data. Users are grouped into cohorts bas
       default: 'week',
     },
     range: {
-      description: 'Number of days to analyze (7-365)',
+      description: 'Number of days of cohorts to include (7-365). A user joins a cohort only when their first-ever visit falls in this window.',
       type: 'number',
       default: 90,
     },
