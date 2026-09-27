@@ -89,6 +89,7 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
   // Optional time range + dimension filters; both empty when the page is on
   // all-time with no filters, which keeps the original full-history behavior.
   const timeStatement = getTimeStatement(query);
+  const hasTimeWindow = timeStatement.trim().length > 0;
   const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
   const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
   const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
@@ -161,7 +162,17 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
         any(screen_height) AS screen_height,
         any(screen_width) AS screen_width,
         MAX(session_end) AS last_seen,
-        MIN(session_start) AS first_seen,
+        ${
+          hasTimeWindow
+            ? `(
+            SELECT min(lifetime_events.timestamp)
+            FROM events AS lifetime_events
+            WHERE
+                ${matchesUser("{userId:String}", "lifetime_events")}
+                AND lifetime_events.site_id = {site:Int32}
+        ) AS first_seen`
+            : "MIN(session_start) AS first_seen"
+        },
         SUM(pageviews) AS pageviews,
         SUM(events) AS events,
         any(ip) AS ip,
