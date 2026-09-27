@@ -37,8 +37,12 @@ describe("user queries with session-scoped filters", () => {
 
     expect(dataSql).toContain("countIf(type = 'pageview') AS pageviews");
     expect(dataSql).toContain("countIf(type = 'custom_event') AS events");
-    expect(dataSql).toContain("min(timestamp) AS first_seen");
-    expect(dataSql).not.toContain("LifetimeFirstSeen");
+    const lifetimeAt = dataSql.indexOf("LifetimeFirstSeen AS");
+    expect(lifetimeAt).toBeGreaterThan(0);
+    expect(dataSql.slice(0, lifetimeAt)).not.toContain("min(timestamp) AS first_seen");
+    expect(dataSql.slice(lifetimeAt)).toContain("min(timestamp) AS first_seen");
+    expect(dataSql.slice(lifetimeAt)).not.toContain("utm_campaign");
+    expect(countSql).not.toContain("LifetimeFirstSeen");
   });
 
   it("lets campaign and pathname filters match different rows for list and count", () => {
@@ -64,7 +68,10 @@ describe("user queries with session-scoped filters", () => {
     }
 
     expect(queries.sessionsQuery).toContain("dateDiff('second', MIN(timestamp), MAX(timestamp)) AS session_duration");
-    expect(queries.sessionsQuery).toContain("MIN(session_start) AS first_seen");
+    const firstSeenAt = queries.sessionsQuery.indexOf("SELECT min(lifetime_events.timestamp)");
+    const firstSeenEnd = queries.sessionsQuery.indexOf(") AS first_seen");
+    expect(firstSeenAt).toBeGreaterThan(0);
+    expect(queries.sessionsQuery.slice(firstSeenAt, firstSeenEnd)).not.toContain("utm_campaign");
     expect(queries.vitalsQuery).toContain("WHERE type = 'performance'");
   });
 
@@ -87,11 +94,13 @@ describe("user queries with session-scoped filters", () => {
     expect(dataSql.slice(lifetimeAt)).not.toContain("2026-09-20");
     expect(dataSql).toContain("max(timestamp) AS last_seen");
     expect(dataSql).toContain("FROM PageUsers AS page");
+    expect(dataSql).toContain("ORDER BY last_seen DESC, effective_user_id ASC");
+    expect(dataSql).toContain("ORDER BY page.last_seen DESC, page.effective_user_id ASC");
     expect(countSql).not.toContain("LifetimeFirstSeen");
 
     const sortedByFirstSeen = buildUsersQuery({ ...ranged, sort_by: "first_seen", sort_order: "asc" }, 1, null, false);
     expect(sortedByFirstSeen).toContain("FROM QualifiedUsers");
-    expect(sortedByFirstSeen).toContain("ORDER BY lifetime.first_seen ASC");
+    expect(sortedByFirstSeen).toContain("ORDER BY lifetime.first_seen ASC, page.effective_user_id ASC");
     expect(sortedByFirstSeen.indexOf("LIMIT {limit:Int32}")).toBeGreaterThan(
       sortedByFirstSeen.indexOf("LifetimeFirstSeen AS")
     );

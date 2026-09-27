@@ -71,9 +71,15 @@ export const buildUsersQuery = (
   const filteredSessionsCTE = buildFilteredSessionsCTE(filters, siteId, timeStatement);
   const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
   const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
-  // first_seen is the user's earliest event ever. The date range still decides
-  // who is listed and still scopes pageviews, sessions, events, and last_seen.
-  const hasTimeWindow = timeStatement.trim().length > 0;
+  // first_seen is the user's earliest event ever. A date range or dimension
+  // filter still decides who is listed, and still scopes pageviews, sessions,
+  // events, and last_seen. Both can hide that earliest event from the aggregate.
+  const needsLifetimeFirstSeen = timeStatement.trim().length > 0 || Boolean(filteredSessionsCTE);
+  const orderBy = `${actualSortBy} ${actualSortOrder}, effective_user_id ASC`;
+  const pageOrderBy =
+    actualSortBy === "first_seen"
+      ? `lifetime.first_seen ${actualSortOrder}, page.effective_user_id ASC`
+      : `page.${actualSortBy} ${actualSortOrder}, page.effective_user_id ASC`;
 
   // Query to get total count
   if (isCountQuery) {
@@ -131,7 +137,7 @@ AggregatedUsers AS (
         countIf(type = 'custom_event') AS events,
         count(distinct session_id) AS sessions,
         max(timestamp) AS last_seen,
-        ${hasTimeWindow ? "" : "min(timestamp) AS first_seen,"}
+        ${needsLifetimeFirstSeen ? "" : "min(timestamp) AS first_seen,"}
         argMax(tag, timestamp) AS tag
     FROM (
         SELECT *
@@ -146,7 +152,7 @@ AggregatedUsers AS (
         effective_user_id
 )
 ${
-  hasTimeWindow
+  needsLifetimeFirstSeen
     ? `,
 QualifiedUsers AS (
     SELECT
@@ -162,7 +168,7 @@ ${
     SELECT
         *
     FROM QualifiedUsers
-    ORDER BY ${actualSortBy} ${actualSortOrder}
+    ORDER BY ${orderBy}
     LIMIT {limit:Int32} OFFSET {offset:Int32}
 ),
 `
@@ -185,7 +191,7 @@ SELECT
     lifetime.first_seen AS first_seen
 FROM ${actualSortBy === "first_seen" ? "QualifiedUsers" : "PageUsers"} AS page
 INNER JOIN LifetimeFirstSeen AS lifetime USING (effective_user_id)
-ORDER BY ${actualSortBy === "first_seen" ? "lifetime.first_seen" : `page.${actualSortBy}`} ${actualSortOrder}
+ORDER BY ${pageOrderBy}
 ${actualSortBy === "first_seen" ? "LIMIT {limit:Int32} OFFSET {offset:Int32}" : ""}`
     : `
 SELECT
@@ -193,7 +199,7 @@ SELECT
 FROM AggregatedUsers
 WHERE 1 = 1
 ${filterIdentified ? "AND identified_user_id != ''" : ""}
-ORDER BY ${actualSortBy} ${actualSortOrder}
+ORDER BY ${orderBy}
 LIMIT {limit:Int32} OFFSET {offset:Int32}`
 }
   `;
