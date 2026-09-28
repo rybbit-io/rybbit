@@ -1,15 +1,26 @@
 "use client";
 
-import { Copy, Download, FileArchive, FileText, Loader2, Share } from "lucide-react";
+import { Download, FileArchive, FileText, Loader2, Share } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { CopyButton } from "@/components/interior/copy-button";
 import { toast } from "@/components/ui/sonner";
 import {
   useGeneratePrivateLinkKey,
   useGetPrivateLinkConfig,
   useRevokePrivateLinkKey,
 } from "../../../../api/admin/hooks/usePrivateLink";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../../components/ui/alert-dialog";
 import { Button } from "../../../../components/ui/button";
 import {
   DropdownMenu,
@@ -34,12 +45,29 @@ export function ShareExportButton() {
 
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const shareTriggerRef = useRef<HTMLButtonElement>(null);
   const { site, time, filters } = useStore();
   const { data: subscription } = useStripeSubscription();
 
   const { data: privateLink, isLoading: isLoadingPrivateLink } = useGetPrivateLinkConfig(canShare ? siteId : 0);
   const { mutate: generatePrivateLinkKey, isPending: isGeneratingPrivateLink } = useGeneratePrivateLinkKey();
-  const { mutate: revokePrivateLinkKey } = useRevokePrivateLinkKey();
+  const { mutateAsync: revokePrivateLinkKey, isPending: isRevokingPrivateLink } = useRevokePrivateLinkKey();
+
+  const privateLinkUrl = privateLink?.privateLinkKey
+    ? `${globalThis.location.protocol}//${globalThis.location.host}/${siteId}/${privateLink.privateLinkKey}`
+    : "";
+
+  const handleRevokePrivateLink = async () => {
+    try {
+      await revokePrivateLinkKey(siteId);
+      toast.success(t("Private link revoked"));
+      setConfirmRevoke(false);
+    } catch (error) {
+      console.error("Failed to revoke private link:", error);
+      toast.error(error instanceof Error ? error.message : t("Failed to revoke the private link"));
+    }
+  };
 
   const handleExportPdf = async () => {
     if (!site) {
@@ -89,7 +117,7 @@ export function ShareExportButton() {
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="icon" className="h-8 w-8">
+              <Button ref={shareTriggerRef} variant="secondary" size="icon" className="h-8 w-8">
                 {isExporting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : canShare ? (
@@ -112,35 +140,28 @@ export function ShareExportButton() {
                     {isGeneratingPrivateLink ? t("Generating...") : t("Generate Private Link")}
                   </Button>
                 )}
-                {privateLink?.privateLinkKey && (
+                {privateLinkUrl && (
                   <>
                     <div className="flex items-center">
-                      <Input
-                        value={`${globalThis.location.protocol}//${globalThis.location.host}/${siteId}/${privateLink?.privateLinkKey}`}
-                        readOnly
-                        className="rounded-r-none bg-white dark:bg-neutral-900"
-                      />
-                      <Button
-                        size="icon"
-                        onClick={() => {
-                          const fullUrl = `${globalThis.location.protocol}//${globalThis.location.host}/${siteId}/${privateLink?.privateLinkKey}`;
-                          navigator.clipboard.writeText(fullUrl);
-                          toast.success(t("Copied to clipboard"));
-                        }}
+                      <Input value={privateLinkUrl} readOnly className="rounded-r-none bg-white dark:bg-neutral-900" />
+                      <CopyButton
+                        iconOnly
+                        variant="default"
+                        value={privateLinkUrl}
+                        label={t("Copy link")}
                         className="w-10 rounded-l-none"
-                      >
-                        <Copy />
-                      </Button>
+                        onError={() => toast.error(t("Couldn't copy the link. Select it and copy it manually."))}
+                      />
                     </div>
-                    <div
-                      className="text-xs text-neutral-500 dark:text-neutral-500 mt-1 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-400"
-                      onClick={() => {
-                        revokePrivateLinkKey(siteId);
-                        toast.success(t("Private link revoked"));
-                      }}
+                    {/* Opens the confirmation outside the menu, which closes as focus moves to it. */}
+                    <Button
+                      variant="link"
+                      size="xs"
+                      className="mt-1 h-auto self-start px-0 font-normal text-neutral-500 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-400"
+                      onClick={() => setConfirmRevoke(true)}
                     >
                       {t("Revoke this link")}
-                    </div>
+                    </Button>
                   </>
                 )}
                 <span className="text-xs text-neutral-600 dark:text-neutral-300 mt-2">
@@ -162,6 +183,38 @@ export function ShareExportButton() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <AlertDialog open={confirmRevoke} onOpenChange={setConfirmRevoke}>
+        <AlertDialogContent
+          onCloseAutoFocus={event => {
+            // The menu that held "Revoke this link" is gone; return focus to the share button.
+            event.preventDefault();
+            shareTriggerRef.current?.focus();
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Revoke this private link?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "Anyone with the link loses access to this dashboard right away. You can generate a new link afterwards."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRevokingPrivateLink}>{t("Cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isRevokingPrivateLink}
+              onClick={event => {
+                event.preventDefault();
+                void handleRevokePrivateLink();
+              }}
+            >
+              {isRevokingPrivateLink ? t("Revoking...") : t("Revoke link")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

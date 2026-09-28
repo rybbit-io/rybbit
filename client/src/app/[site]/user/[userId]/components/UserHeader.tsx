@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, Clock, Copy } from "lucide-react";
+import { Clock } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted, useLocale } from "next-intl";
-import { useRef, useState } from "react";
 import { UserInfo } from "../../../../../api/analytics/endpoints";
 import { Avatar } from "../../../../../components/Avatar";
 import { IdentifiedBadge } from "../../../../../components/IdentifiedBadge";
+import { CopyAnnouncement, CopyStatusIcon } from "../../../../../components/interior/copy-button";
+import { useCopyToClipboard } from "../../../../../components/interior/use-copy-to-clipboard";
 import { Skeleton } from "../../../../../components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
@@ -20,38 +21,36 @@ const ONLINE_WINDOW_SECONDS = 300;
 
 function CopyUserId({ value }: { value: string }) {
   const t = useExtracted();
-  const [copied, setCopied] = useState(false);
-  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      if (resetTimer.current) clearTimeout(resetTimer.current);
-      resetTimer.current = setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard unavailable (permissions/insecure context); leave the id selectable
-    }
-  };
+  const { copy, status } = useCopyToClipboard();
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="inline-flex min-w-0 items-center gap-1 rounded-sm font-mono text-neutral-500 transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:text-neutral-400 dark:hover:text-neutral-200"
-        >
-          <span className="max-w-[160px] truncate sm:max-w-[260px]">{value}</span>
-          {copied ? (
-            <Check className="h-3 w-3 shrink-0 text-emerald-500" />
-          ) : (
-            <Copy className="h-3 w-3 shrink-0 text-neutral-400 dark:text-neutral-500" />
-          )}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>{copied ? t("Copied!") : t("Copy user ID")}</TooltipContent>
-    </Tooltip>
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => void copy(value)}
+            aria-label={t("Copy user ID {id}", { id: value })}
+            className="inline-flex min-w-0 items-center gap-1 rounded-sm font-mono text-neutral-500 transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:text-neutral-400 dark:hover:text-neutral-200"
+          >
+            <span className="max-w-[160px] truncate sm:max-w-[260px]">{value}</span>
+            <CopyStatusIcon
+              status={status}
+              className="[&_svg]:size-3"
+              idleClassName="text-neutral-400 dark:text-neutral-500"
+            />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {status === "copied"
+            ? t("Copied!")
+            : status === "error"
+              ? t("Couldn't copy to clipboard")
+              : t("Copy user ID")}
+        </TooltipContent>
+      </Tooltip>
+      <CopyAnnouncement status={status} />
+    </>
   );
 }
 

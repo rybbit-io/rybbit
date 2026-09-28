@@ -1,6 +1,5 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
 import { useExtracted } from "next-intl";
 import * as React from "react";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -17,7 +16,7 @@ import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import { vs2015, vs } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { useTheme } from "next-themes";
 
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/interior/copy-button";
 import { cn } from "@/lib/utils";
 
 // Register only the languages we need
@@ -44,16 +43,9 @@ export const CodeSnippet = React.memo(function CodeSnippet({
   showLanguageLabel = false,
   className,
 }: CodeSnippetProps) {
-  const [hasCopied, setHasCopied] = React.useState(false);
   const t = useExtracted();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-
-  const copyToClipboard = React.useCallback(async () => {
-    await navigator.clipboard.writeText(code);
-    setHasCopied(true);
-    setTimeout(() => setHasCopied(false), 2000);
-  }, [code]);
 
   return (
     <div className={cn("relative border border-neutral-150 dark:border-neutral-800 rounded-md", className)}>
@@ -73,15 +65,7 @@ export const CodeSnippet = React.memo(function CodeSnippet({
       >
         {code}
       </SyntaxHighlighter>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="absolute right-2 top-2 h-6 w-6 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-700"
-        onClick={copyToClipboard}
-      >
-        {hasCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
-        <span className="sr-only">{t("Copy code")}</span>
-      </Button>
+      <CopyButton iconOnly size="xs" value={code} label={t("Copy code")} className="absolute right-2 top-2" />
     </div>
   );
 });

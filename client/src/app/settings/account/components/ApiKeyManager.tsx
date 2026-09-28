@@ -1,10 +1,11 @@
 "use client";
 
-import { AlertTriangle, Check, Copy, KeyRound, Trash2 } from "lucide-react";
+import { AlertTriangle, KeyRound, Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
 import Link from "next/link";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
+import { CopyButton } from "@/components/interior/copy-button";
 import { toast } from "@/components/ui/sonner";
 import { useCreateOrgApiKey, useDeleteOrgApiKey, useListOrgApiKeys } from "../../../../api/admin/hooks/useOrgApiKeys";
 import { useCreateApiKey, useDeleteApiKey, useListApiKeys } from "../../../../api/admin/hooks/useUserApiKeys";
@@ -70,7 +71,10 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
   const [apiKeyName, setApiKeyName] = useState("");
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // The key is shown once. Closing the reveal dialog before it has been copied
+  // takes a second, deliberate step.
+  const [keyCopied, setKeyCopied] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
   const [restrictScopes, setRestrictScopes] = useState(false);
   const [scopes, setScopes] = useState<ScopeSelection>({});
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string | null } | null>(null);
@@ -115,7 +119,8 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
     try {
       const result = await createApiKey.mutateAsync({ name: apiKeyName, permissions });
       setCreatedApiKey(result.key);
-      setCopied(false);
+      setKeyCopied(false);
+      setConfirmClose(false);
       setShowApiKeyDialog(true);
       setApiKeyName("");
       setRestrictScopes(false);
@@ -139,15 +144,22 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
     }
   };
 
-  const handleCopy = async () => {
-    if (!createdApiKey) return;
-    try {
-      await navigator.clipboard.writeText(createdApiKey);
-      setCopied(true);
-    } catch {
-      toast.error(t("Couldn't copy to clipboard. Select the key and copy it manually."));
+  const handleApiKeyDialogOpenChange = (open: boolean) => {
+    if (!open && !keyCopied && !confirmClose) {
+      setConfirmClose(true);
+      return;
+    }
+    setShowApiKeyDialog(open);
+  };
+
+  // Selecting the key and pressing Cmd/Ctrl+C counts as copying it too.
+  const handleManualKeyCopy = () => {
+    if (createdApiKey && document.getSelection()?.toString().includes(createdApiKey)) {
+      setKeyCopied(true);
     }
   };
+
+  const showCloseWarning = confirmClose && !keyCopied;
 
   return (
     <>
@@ -293,9 +305,7 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
                           {DateTime.fromJSDate(new Date(key.createdAt)).toLocaleString(DateTime.DATE_MED)}
                         </TableCell>
                         <TableCell className="text-neutral-600 dark:text-neutral-400">
-                          {key.lastRequest
-                            ? DateTime.fromJSDate(new Date(key.lastRequest)).toRelative()
-                            : t("Never")}
+                          {key.lastRequest ? DateTime.fromJSDate(new Date(key.lastRequest)).toRelative() : t("Never")}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -326,7 +336,7 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
         </CardContent>
       </Card>
 
-      <Dialog open={showApiKeyDialog} onOpenChange={setShowApiKeyDialog}>
+      <Dialog open={showApiKeyDialog} onOpenChange={handleApiKeyDialogOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t("API Key Created")}</DialogTitle>
@@ -335,16 +345,29 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <code className="block select-all break-all rounded-lg border border-neutral-100 bg-neutral-50 p-3 font-mono text-xs leading-relaxed dark:border-neutral-800 dark:bg-neutral-900">
+            <code
+              onCopy={handleManualKeyCopy}
+              className="block select-all break-all rounded-lg border border-neutral-100 bg-neutral-50 p-3 font-mono text-xs leading-relaxed dark:border-neutral-800 dark:bg-neutral-900"
+            >
               {createdApiKey}
             </code>
+            {showCloseWarning && (
+              <p role="alert" className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {t("You haven't copied this key yet. Once you close this dialog, it can't be shown again.")}
+              </p>
+            )}
             <div className="flex gap-2">
-              <Button variant="success" className="flex-1" onClick={handleCopy}>
-                {copied ? <Check /> : <Copy />}
-                {copied ? t("Copied") : t("Copy key")}
-              </Button>
-              <Button variant="outline" onClick={() => setShowApiKeyDialog(false)}>
-                {t("Done")}
+              <CopyButton
+                variant="success"
+                className="flex-1"
+                value={createdApiKey ?? ""}
+                label={t("Copy key")}
+                onCopy={() => setKeyCopied(true)}
+                onError={() => toast.error(t("Couldn't copy to clipboard. Select the key and copy it manually."))}
+              />
+              <Button variant="outline" onClick={() => handleApiKeyDialogOpenChange(false)}>
+                {showCloseWarning ? t("Close anyway") : t("Done")}
               </Button>
             </div>
           </div>
