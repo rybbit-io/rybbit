@@ -129,18 +129,20 @@ export function buildExperimentResults(variants: string[], rows: ExperimentResul
 
   const controlVariant = getControlVariant(variants, armRows);
   const controlRow = controlVariant ? resultMap.get(controlVariant) : undefined;
-  const controlRate = controlRow && controlRow.sessions > 0 ? controlRow.conversions / controlRow.sessions : null;
+  const controlRate = controlRow && controlRow.units > 0 ? controlRow.conversions / controlRow.units : null;
 
   return variants.map(variant => {
     const row = resultMap.get(variant);
-    const sessions = row?.sessions ?? 0;
-    const exposures = row?.exposures ?? 0;
-    const conversions = row?.conversions ?? 0;
-    const conversionRate = sessions > 0 ? conversions / sessions : 0;
+    const units = Number(row?.units ?? 0);
+    const sessions = Number(row?.sessions ?? 0);
+    const exposures = Number(row?.exposures ?? 0);
+    const conversions = Number(row?.conversions ?? 0);
+    const conversionRate = units > 0 ? conversions / units : 0;
     const lift = controlRate && controlRate > 0 ? (conversionRate - controlRate) / controlRate : null;
 
     return {
       variant,
+      units,
       sessions,
       exposures,
       conversions,
@@ -149,4 +151,32 @@ export function buildExperimentResults(variants: string[], rows: ExperimentResul
       isControl: variant === controlVariant,
     };
   });
+}
+
+export function rolloutWinner(flag: FeatureFlagRecord, winner: string) {
+  const serveWinner = <T extends { key: string; rolloutPercentage: number }>(variants: T[] | null | undefined) =>
+    (variants || []).map(variant => ({ ...variant, rolloutPercentage: variant.key === winner ? 100 : 0 }));
+
+  return {
+    rolloutPercentage: 100,
+    variants: serveWinner(flag.variants),
+    conditionSets: (flag.conditionSets || []).map(conditionSet =>
+      conditionSet.variants?.length
+        ? { ...conditionSet, rolloutPercentage: 100, variants: serveWinner(conditionSet.variants) }
+        : { ...conditionSet, rolloutPercentage: 100 }
+    ),
+  };
+}
+
+export function flagUpdateForStatusChange(
+  from: ExperimentStatus,
+  to: ExperimentStatus,
+  flag: FeatureFlagRecord,
+  winner?: string
+): Partial<FeatureFlagRecord> | null {
+  if (from === to) return null;
+  if (to === "completed") return winner ? { ...rolloutWinner(flag, winner), enabled: true } : null;
+
+  const enabled = to === "paused" ? false : to === "running" ? true : undefined;
+  return enabled === undefined || flag.enabled === enabled ? null : { enabled };
 }

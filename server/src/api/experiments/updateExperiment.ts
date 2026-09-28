@@ -2,13 +2,16 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
-import { experiments } from "../../db/postgres/schema.js";
+import { experiments, featureFlags } from "../../db/postgres/schema.js";
+import { invalidateFeatureFlagDefinitions } from "../../services/featureFlags/definitions.js";
 import { experimentUpdateSchema, type ExperimentUpdate } from "./schemas.js";
 import {
   getDuplicateExperimentMessage,
+  getExperimentVariantKeys,
   getExperimentWithRelations,
   parseExperimentId,
   parseSiteId,
+  flagUpdateForStatusChange,
   serializeExperiment,
   timestampsForStatus,
   validateExperimentReferences,
@@ -62,11 +65,51 @@ export async function updateExperiment(
       Object.assign(updateData, timestampsForStatus(body.status, existing));
     }
 
-    const [updated] = await db
-      .update(experiments)
-      .set(updateData)
-      .where(and(eq(experiments.siteId, siteId), eq(experiments.experimentId, experimentId)))
-      .returning({ experimentId: experiments.experimentId });
+    const isCompleting = body.status === "completed" && existing.status !== "completed";
+
+    let flag: typeof featureFlags.$inferSelect | undefined;
+    if (body.status !== undefined && body.status !== existing.status) {
+      flag = await db.query.featureFlags.findFirst({
+        where: and(
+          eq(featureFlags.siteId, siteId),
+          eq(featureFlags.flagId, body.featureFlagId ?? existing.featureFlagId)
+        ),
+      });
+      if (!flag) {
+        return reply.status(400).send({ error: "Feature flag not found" });
+      }
+    }
+
+    const winner = body.winningVariant?.trim();
+    if (isCompleting && flag) {
+      if (!winner) {
+        return reply.status(400).send({ error: "Choose the winning variant to roll out" });
+      }
+      if (!getExperimentVariantKeys(flag).includes(winner)) {
+        return reply.status(400).send({ error: `Variant "${winner}" is not part of this experiment's flag` });
+      }
+    }
+
+    const flagUpdate = flag && body.status ? flagUpdateForStatusChange(existing.status, body.status, flag, winner) : null;
+
+    const [updated] = await db.transaction(async tx => {
+      if (flag && flagUpdate) {
+        await tx
+          .update(featureFlags)
+          .set({ ...flagUpdate, version: flag.version + 1, updatedAt: new Date().toISOString() })
+          .where(and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flag.flagId)));
+      }
+
+      return tx
+        .update(experiments)
+        .set(updateData)
+        .where(and(eq(experiments.siteId, siteId), eq(experiments.experimentId, experimentId)))
+        .returning({ experimentId: experiments.experimentId });
+    });
+
+    if (flagUpdate) {
+      await invalidateFeatureFlagDefinitions(siteId);
+    }
 
     const record = await getExperimentWithRelations(siteId, updated.experimentId);
     return reply.send({ success: true, data: record ? serializeExperiment(record) : updated });

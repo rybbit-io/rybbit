@@ -17,6 +17,51 @@ import {
   serializeExperiment,
 } from "./utils.js";
 
+export const EXPERIMENT_UNIT = "if(visitor_id != '', visitor_id, session_id)";
+
+export type ExperimentResultsQuery = FilterParams<{ window?: "experiment" | "range" }>;
+
+export type ExperimentWindow = { mode: "experiment" | "range"; start: string | null; end: string | null };
+
+type ExperimentDates = { startedAt: string | null; endedAt: string | null };
+
+function toWindowInstant(value: string | Date, roundUp = false): string {
+  const date = typeof value === "string" ? new Date(`${value.replace(" ", "T")}Z`) : value;
+  const ms = roundUp ? Math.ceil(date.getTime() / 1000) * 1000 : Math.floor(date.getTime() / 1000) * 1000;
+  return new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+}
+
+export function resolveExperimentWindow(
+  query: ExperimentResultsQuery,
+  experiment: ExperimentDates,
+  now = new Date()
+): { query: FilterParams; window: ExperimentWindow } {
+  if (query.window === "range" || !experiment.startedAt) {
+    return {
+      query,
+      window: { mode: "range", start: query.start_date || null, end: query.end_date || null },
+    };
+  }
+
+  const start = toWindowInstant(experiment.startedAt);
+  const end = experiment.endedAt
+    ? toWindowInstant(experiment.endedAt, true)
+    : toWindowInstant(new Date(now.getTime() + 1000), true);
+
+  return {
+    query: {
+      ...query,
+      start_date: "",
+      end_date: "",
+      past_minutes_start: undefined,
+      past_minutes_end: undefined,
+      start_datetime: start,
+      end_datetime: end,
+    },
+    window: { mode: "experiment", start, end: experiment.endedAt ? end : null },
+  };
+}
+
 type BuildExperimentResultQueriesParams = {
   query: FilterParams;
   siteId: number;
@@ -43,32 +88,17 @@ export function buildExperimentResultQueries({
   // Exposures also say why the value was assigned, which tells an arm apart from that "false"
   // even for a variant named "false" (no longer allowed, but older flags may have one).
   const escapedVariantKeys = variantKeys.map(key => SqlString.escape(key)).join(", ");
+  const timeZone = SqlString.escape(query.time_zone || "UTC");
 
-  // A session qualifies once, independently of which event carried the filter
-  // value. Goal, exposure, and assignment rows are then scoped to that cohort.
-  const goalSessionsCte = `
-      goal_sessions AS (
-        SELECT
-          session_id,
-          max(timestamp) AS last_goal_at
-        FROM events
-        ${filteredSessionsJoin}
-        WHERE site_id = ${escapedSiteId}
-          AND (${goalCondition})
-          ${timeStatement}
-        GROUP BY session_id
-      )`;
-
-  // The first observed exposure fixes the experiment arm for the session. A
-  // later flag refresh must not count one session in multiple variants.
-  const exposureQuery = `
-      WITH
-        ${filteredSessionsPrefix}
-        exposure_sessions AS (
+  const unitsCte = (measurement: "exposure" | "assignment") =>
+    measurement === "exposure"
+      ? `
+        experiment_units AS (
           SELECT
-            session_id,
+            ${EXPERIMENT_UNIT} AS unit,
             argMin(JSONExtractString(toString(props), 'value'), timestamp) AS variant,
             min(timestamp) AS exposed_at,
+            groupUniqArray(session_id) AS session_ids,
             count() AS exposures
           FROM events
           ${filteredSessionsJoin}
@@ -79,56 +109,99 @@ export function buildExperimentResultQueries({
             AND JSONExtractString(toString(props), 'value') IN (${escapedVariantKeys})
             AND JSONExtractString(toString(props), 'reason') IN ('variant', '')
             ${timeStatement}
-          GROUP BY session_id
-        ),
-        ${goalSessionsCte}
-      SELECT
-        e.variant AS variant,
-        uniqExact(e.session_id) AS sessions,
-        sum(e.exposures) AS exposures,
-        uniqExactIf(e.session_id, g.last_goal_at >= e.exposed_at) AS conversions
-      FROM exposure_sessions e
-      LEFT JOIN goal_sessions g ON g.session_id = e.session_id
-      GROUP BY e.variant
-      ORDER BY e.variant ASC
-    `;
-
-  // Assignment fallback follows the same one-arm-per-session rule, using the
-  // first event that carried an assignment for the flag.
-  const assignmentQuery = `
-      WITH
-        ${filteredSessionsPrefix}
-        assignment_sessions AS (
+          GROUP BY unit
+        )`
+      : `
+        experiment_units AS (
           SELECT
-            session_id,
+            ${EXPERIMENT_UNIT} AS unit,
             argMin(feature_flags[${escapedFlagKey}], timestamp) AS variant,
-            min(timestamp) AS assigned_at
+            min(timestamp) AS exposed_at,
+            groupUniqArray(session_id) AS session_ids,
+            1 AS exposures
           FROM events
           ${filteredSessionsJoin}
           WHERE site_id = ${escapedSiteId}
             AND feature_flags[${escapedFlagKey}] IN (${escapedVariantKeys})
             ${timeStatement}
-          GROUP BY session_id
-        ),
-        ${goalSessionsCte}
+          GROUP BY unit
+        )`;
+
+  const goalEventsCte = `
+        goal_events AS (
+          SELECT
+            ${EXPERIMENT_UNIT} AS unit,
+            timestamp
+          FROM events
+          ${filteredSessionsJoin}
+          WHERE site_id = ${escapedSiteId}
+            AND (${goalCondition})
+            ${timeStatement}
+        )`;
+
+  const resultsQuery = (measurement: "exposure" | "assignment") => `
+      WITH
+        ${filteredSessionsPrefix}
+        ${unitsCte(measurement)},
+        ${goalEventsCte},
+        goal_units AS (
+          SELECT unit, max(timestamp) AS last_goal_at FROM goal_events GROUP BY unit
+        )
       SELECT
-        a.variant AS variant,
-        uniqExact(a.session_id) AS sessions,
-        uniqExact(a.session_id) AS exposures,
-        uniqExactIf(a.session_id, g.last_goal_at >= a.assigned_at) AS conversions
-      FROM assignment_sessions a
-      LEFT JOIN goal_sessions g ON g.session_id = a.session_id
-      GROUP BY a.variant
-      ORDER BY a.variant ASC
+        u.variant AS variant,
+        uniqExact(u.unit) AS units,
+        uniqExactArray(u.session_ids) AS sessions,
+        sum(u.exposures) AS exposures,
+        uniqExactIf(u.unit, g.last_goal_at >= u.exposed_at) AS conversions
+      FROM experiment_units u
+      LEFT JOIN goal_units g ON g.unit = u.unit
+      GROUP BY u.variant
+      ORDER BY u.variant ASC
     `;
 
-  return { assignmentQuery, exposureQuery };
+  const timeseriesQuery = (measurement: "exposure" | "assignment") => `
+      WITH
+        ${filteredSessionsPrefix}
+        ${unitsCte(measurement)},
+        ${goalEventsCte},
+        unit_outcomes AS (
+          SELECT
+            u.unit AS unit,
+            any(u.variant) AS variant,
+            any(u.exposed_at) AS exposed_at,
+            minIf(g.timestamp, g.timestamp >= u.exposed_at) AS converted_at
+          FROM experiment_units u
+          LEFT JOIN goal_events g ON g.unit = u.unit
+          GROUP BY u.unit
+        )
+      SELECT
+        variant,
+        toString(day) AS day,
+        sum(new_units) AS units,
+        sum(new_conversions) AS conversions
+      FROM (
+        SELECT variant, toDate(exposed_at, ${timeZone}) AS day, 1 AS new_units, 0 AS new_conversions FROM unit_outcomes
+        UNION ALL
+        SELECT variant, toDate(converted_at, ${timeZone}) AS day, 0 AS new_units, 1 AS new_conversions
+        FROM unit_outcomes
+        WHERE converted_at > toDateTime(0)
+      )
+      GROUP BY variant, day
+      ORDER BY day ASC, variant ASC
+    `;
+
+  return {
+    exposureQuery: resultsQuery("exposure"),
+    assignmentQuery: resultsQuery("assignment"),
+    exposureTimeseriesQuery: timeseriesQuery("exposure"),
+    assignmentTimeseriesQuery: timeseriesQuery("assignment"),
+  };
 }
 
 export async function getExperimentResults(
   request: FastifyRequest<{
     Params: { siteId: string; experimentId: string };
-    Querystring: FilterParams;
+    Querystring: ExperimentResultsQuery;
   }>,
   reply: FastifyReply
 ) {
@@ -145,6 +218,7 @@ export async function getExperimentResults(
     }
 
     const variants = getExperimentVariantKeys(record.featureFlag);
+    const { query, window } = resolveExperimentWindow(request.query, record.experiment);
     const goalCondition = record.primaryGoal ? buildGoalCondition(record.primaryGoal) : null;
 
     if (!record.primaryGoal || !goalCondition || variants.length === 0) {
@@ -152,16 +226,18 @@ export async function getExperimentResults(
         data: {
           experiment: serializeExperiment(record),
           variants: buildExperimentResults(variants, []),
+          totalUnits: 0,
           totalExposureSessions: 0,
           totalConversions: 0,
           hasGoal: !!(record.primaryGoal && goalCondition),
           measurement: "exposure",
+          window,
         },
       });
     }
 
     const { assignmentQuery, exposureQuery } = buildExperimentResultQueries({
-      query: request.query,
+      query,
       siteId,
       flagKey: record.featureFlag.key,
       variantKeys: variants,
@@ -179,12 +255,12 @@ export async function getExperimentResults(
     // The assignment map can't tell a variant named "true"/"false" (older flags may have one)
     // from the flag being on or off for a visitor outside the rollout, so such flags only
     // report exposures.
-    const hasExposures = rows.some(row => Number(row.sessions) > 0);
+    const hasExposures = rows.some(row => Number(row.units) > 0);
     const hasReservedVariant = variants.some(variant => variant === "true" || variant === "false");
     if (!hasExposures && !hasReservedVariant) {
       const assignmentResult = await clickhouse.query({ query: assignmentQuery, format: "JSONEachRow" });
       const assignmentRows = await processResults<ExperimentResultRow>(assignmentResult);
-      if (assignmentRows.some(row => Number(row.sessions) > 0)) {
+      if (assignmentRows.some(row => Number(row.units) > 0)) {
         rows = assignmentRows;
         measurement = "assignment";
       }
@@ -196,10 +272,12 @@ export async function getExperimentResults(
       data: {
         experiment: serializeExperiment(record),
         variants: variantResults,
+        totalUnits: variantResults.reduce((sum, variant) => sum + variant.units, 0),
         totalExposureSessions: variantResults.reduce((sum, variant) => sum + variant.sessions, 0),
         totalConversions: variantResults.reduce((sum, variant) => sum + variant.conversions, 0),
         hasGoal: true,
         measurement,
+        window,
       },
     });
   } catch (error) {

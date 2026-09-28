@@ -105,6 +105,15 @@ function createId() {
 
 // Flag and variant keys must match the server's /^[A-Za-z][A-Za-z0-9_.:-]*$/ (max 100 chars), so a key
 // never starts with a digit or separator: "2026 pricing test" becomes "pricing_test".
+// While typing, a trailing separator stays so the next word can follow it.
+function slugifyWhileTyping(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^[^a-z]+/, "")
+    .slice(0, 100);
+}
+
 function slugify(value: string) {
   return value
     .trim()
@@ -569,7 +578,7 @@ export function CreateExperimentWizard({
 
   const implementationState = savedImplementationState || (isEditing ? buildImplementationState("updated") : null);
 
-  const saveNewFlag = async (): Promise<FeatureFlag> => {
+  const saveNewFlag = async (enabled: boolean): Promise<FeatureFlag> => {
     const variants: FeatureFlagVariant[] = form.variants.map(variant => ({
       key: variant.key.trim(),
       name: variant.name.trim() || undefined,
@@ -578,7 +587,7 @@ export function CreateExperimentWizard({
     const payload: FeatureFlagPayload = {
       key: form.flagKey.trim(),
       description: form.flagDescription.trim() || `Assignment flag for ${form.name.trim()}`,
-      enabled: true,
+      enabled,
       runtime: "client",
       flagType: "multivariate",
       payload: null,
@@ -640,7 +649,7 @@ export function CreateExperimentWizard({
       let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
 
       if (form.assignmentMode === "new") {
-        const createdFlag = await saveNewFlag();
+        const createdFlag = await saveNewFlag(false);
         featureFlagId = createdFlag.flagId;
         flagKey = createdFlag.key;
         variantKeys = getVariantKeys(createdFlag);
@@ -698,7 +707,7 @@ export function CreateExperimentWizard({
       let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
 
       if (form.assignmentMode === "new") {
-        const createdFlag = await saveNewFlag();
+        const createdFlag = await saveNewFlag(experiment.status === "running");
         featureFlagId = createdFlag.flagId;
         flagKey = createdFlag.key;
         variantKeys = getVariantKeys(createdFlag);
@@ -832,8 +841,9 @@ export function CreateExperimentWizard({
                     value={form.flagKey}
                     onChange={event => {
                       setFlagKeyTouched(true);
-                      updateForm("flagKey", slugify(event.target.value));
+                      updateForm("flagKey", slugifyWhileTyping(event.target.value));
                     }}
+                    onBlur={() => updateForm("flagKey", slugify(form.flagKey))}
                     placeholder="checkout_cta"
                     className="font-mono"
                   />
@@ -883,7 +893,8 @@ export function CreateExperimentWizard({
                     <div key={variant.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_2rem] gap-2">
                       <Input
                         value={variant.key}
-                        onChange={event => updateVariant(variant.id, "key", slugify(event.target.value))}
+                        onChange={event => updateVariant(variant.id, "key", slugifyWhileTyping(event.target.value))}
+                        onBlur={() => updateVariant(variant.id, "key", slugify(variant.key))}
                         placeholder="variant_a"
                         className="font-mono"
                       />
@@ -995,14 +1006,14 @@ export function CreateExperimentWizard({
                   selected={form.goalType === "path"}
                   icon={<Target className="h-4 w-4" />}
                   title={t("Page goal")}
-                  description={t("Count sessions that reach a URL path.")}
+                  description={t("Count visitors that reach a URL path.")}
                   onClick={() => updateForm("goalType", "path")}
                 />
                 <WizardChoice
                   selected={form.goalType === "event"}
                   icon={<MousePointerClick className="h-4 w-4" />}
                   title={t("Event goal")}
-                  description={t("Count sessions where your app fires a named event.")}
+                  description={t("Count visitors for whom your app fires a named event.")}
                   onClick={() => updateForm("goalType", "event")}
                 />
               </div>
@@ -1105,7 +1116,7 @@ window.rybbit.onReady((rybbit) => {
         ) : implementationState.goalType === "path" ? (
           <p className="rounded-md border border-neutral-150 bg-neutral-50 p-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
             {t(
-              "No conversion event code is needed for this path goal. Rybbit will count sessions that reach {goalLabel}.",
+              "No conversion event code is needed for this path goal. Rybbit will count visitors that reach {goalLabel}.",
               {
                 goalLabel: implementationState.goalLabel || "",
               }
