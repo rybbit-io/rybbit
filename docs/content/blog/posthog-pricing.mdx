@@ -1,0 +1,277 @@
+---
+title: "PostHog Pricing 2026: Free Tier, Rates and Worked Examples"
+description: "PostHog pricing explained: each product's free tier, per-unit rates by volume, identified vs anonymous events, and four real bills worked out step by step."
+date: 2026-09-27
+tags: ["posthog", "pricing", "comparisons"]
+author: Rybbit Team
+---
+
+PostHog pricing is usage-based and billed separately for each product. Every product has a free allowance that resets monthly (1 million analytics events, 5,000 session recordings, 1 million feature flag requests, 100,000 exceptions and 1,500 survey responses, among others), and you don't need a card to use it. Past the allowance you pay per unit on a sliding scale: analytics events start at $0.00005 each ($50 per million) and fall to $0.000009, web recordings start at $0.005 and fall to $0.0015, and flag requests start at $0.0001. There are no seats, minimums or contracts, and you can cap each product with a billing limit. Two things push real bills above the headline rate: events from identified users carry an extra person-profile charge, and each product you switch on is metered on its own.
+
+The free tier is genuinely generous. PostHog's [official pricing page](https://posthog.com/pricing) says 97% of companies using it pay nothing, and a small SaaS can run analytics, replay, feature flags and error tracking without a bill (see worked example 1).
+
+Disclosure: we build [Rybbit](/features/web-analytics), an open-source analytics tool that appears in the comparison near the end; [Rybbit vs PostHog](/compare/posthog) covers features. Every PostHog number here comes from posthog.com (the pricing page and its calculator, the per-product pricing pages, PostHog's docs and its public handbook), linked inline and checked in September 2026. Prices are as of September 2026, in US dollars, excluding tax.
+
+## PostHog pricing at a glance
+
+| Product | Billed on | Free every month | Then from |
+| --- | --- | --- | --- |
+| Product and web analytics | Events | 1,000,000 | $0.00005 per event |
+| Person profiles | Identified events | 1,000,000 | +$0.000198 per event |
+| Session replay | Web / mobile recordings | 5,000 / 2,500 | $0.005 / $0.01 per recording |
+| Feature flags and experiments | Flag requests | 1,000,000 | $0.0001 per request |
+| Error tracking | Exceptions | 100,000 | $0.00037 per exception |
+| Surveys | Responses | 1,500 | $0.10 per response |
+| AI observability and evaluations | Events | 100,000 | $0.00035 per event |
+| Data warehouse | Rows synced | 1,000,000 (historical syncs free) | $0.000015 per row |
+| Data pipelines | Trigger events / exported rows | 10,000 / 1,000,000 | $0.0005 / $0.000015 |
+| Logs and tracing | GB ingested | 10 GB | $0.25 per GB |
+| Workflows | Emails / push and other dispatches | 10,000 each | $0.003 / $0.00075 |
+| PostHog AI, Replay Vision, PostHog Desktop | Credits | 500 / 2,500 / 2,000 | $0.01 per credit |
+| Inbox (beta) | Pull requests | 3 | $15 per PR |
+
+Sources: the [pricing page](https://posthog.com/pricing) and its calculator, plus each product's pricing page linked below. Experiments are billed with feature flags and evaluations with AI observability. Platform packages (Boost $250/month, Scale $750/month, Enterprise custom) come on top.
+
+## How PostHog's usage-based pricing works
+
+- **Graduated tiers.** Each band's rate applies only to the units inside it. Five million events cost $0 for the first million, $50 for the second and $102.90 for the next three ($0.0000343 each), not the lowest rate on all five million.
+- **Allowances reset monthly** and stay the same whether or not you have a card on file. Unused allowance doesn't roll over.
+- **You pay on ingestion only.** PostHog charges when data is first received and has no storage fees.
+- **No seats, minimums or commitments.** Billing is monthly on your sign-up date, the first charge comes a month after sign-up, and cards are charged through Stripe. Paying by invoice requires buying credits up front.
+
+## Free plan vs pay-as-you-go
+
+Both self-serve plans get the same free allowances. The difference is what happens past them.
+
+| | Free | Pay-as-you-go |
+| --- | --- | --- |
+| Cost | $0, no card | $0 until you pass an allowance, then per unit |
+| Projects | 1 | 6 |
+| Event data retention | 1 year | 7 years |
+| Recording retention | 30 days | 90 days |
+| Team members | Unlimited | No per-seat charges |
+| Support | Community | Email (Slack above $2,000/month) |
+| Past the allowance | Extra events are dropped; flags return a quota-limited response | Billed per unit, up to any billing limit you set |
+
+PostHog recommends pay-as-you-go for "nearly everyone": it unlocks all features and still costs nothing within the allowances, which a billing limit can enforce.
+
+## Product analytics pricing: events
+
+Product and web analytics share one meter: PostHog bills "events captured – pageviews, clicks, custom events, and everything autocapture picks up" ([product analytics pricing](https://posthog.com/product-analytics/pricing)), and [web analytics](https://posthog.com/web-analytics/pricing) uses the same events. Heatmaps don't add to the count: PostHog's [autocapture docs](https://posthog.com/docs/product-analytics/autocapture) say heatmap capture creates no additional events.
+
+### Identified vs anonymous events
+
+Every event pays the base rate. Events from identified users (or users with custom person properties) also pay a **person profiles** rate, with its own tiers and its own first million free. From the breakdown in PostHog's calculator:
+
+| Monthly volume | Base rate (all events) | Person profiles (identified events only) |
+| --- | --- | --- |
+| First 1M | Free | Free |
+| 1M–2M | $0.0000500 | $0.0001980 |
+| 2M–15M | $0.0000343 | $0.0000697 |
+| 15M–50M | $0.0000295 | $0.0000360 |
+| 50M–100M | $0.0000218 | $0.0000146 |
+| 100M–250M | $0.0000150 | $0.0000037 |
+| 250M+ | $0.0000090 | $0.0000010 |
+
+Base tiers count all events; person-profile tiers count identified events only. In the 1M–2M band an identified event costs $0.000248 against $0.00005 for an anonymous one, about five times as much; from 2M to 15M it's about three times, and above 100M only 1.1 to 1.25 times. PostHog's own pages round this differently ("up to 4x" in the docs, "10x" on the web analytics page); the rates above are the ones its calculator uses.
+
+The JavaScript SDK defaults to `person_profiles: 'identified_only'`, so visitors stay anonymous until you call `identify()`, after which all of that user's events are identified. Backend SDKs and the API capture identified events by default ([anonymous vs identified events](https://posthog.com/docs/data/anonymous-vs-identified-events)). A marketing site with no logins can run entirely on the base rate; a logged-in SaaS app mostly can't.
+
+**Group analytics**, a paid add-on for account-level B2B analysis, is billed on every identified event in the project once you subscribe: first 1M free, then $0.000071 per event, falling to $0.0000029 above 250M ([group analytics pricing](https://posthog.com/group-analytics/pricing)).
+
+## Session replay pricing: recordings
+
+| Recordings per month | Web | Mobile |
+| --- | --- | --- |
+| Free allowance | First 5,000 | First 2,500 |
+| Up to 15,000 | $0.0050 | $0.0100 |
+| 15,000–50,000 | $0.0035 | $0.0070 |
+| 50,000–150,000 | $0.0020 | $0.0040 |
+| 150,000–500,000 | $0.0017 | $0.0034 |
+| 500,000+ | $0.0015 | $0.0030 |
+
+Web and mobile are billed separately, each with its own allowance ([session replay pricing](https://posthog.com/session-replay/pricing)). Recordings are kept up to 30 days on the free plan, 90 days on pay-as-you-go, up to 1 year with the Boost or Scale package and up to 5 years with Enterprise ([recording retention](https://posthog.com/docs/session-replay/recording-retention)). [Replay Vision](https://posthog.com/docs/replay-vision), which uses AI to watch recordings and turn what it sees into queryable data, is billed separately in credits.
+
+## Feature flags and experiments pricing: requests
+
+| Flag requests per month | Price per request |
+| --- | --- |
+| First 1M | Free |
+| 1M–2M | $0.000100 |
+| 2M–10M | $0.000045 |
+| 10M–50M | $0.000025 |
+| 50M+ | $0.000010 |
+
+A request is a call to PostHog's `/flags` endpoint, not each flag check in your code ([feature flags pricing](https://posthog.com/feature-flags/pricing)). In the browser, the SDK makes one when it initializes, when a user is identified or their properties change, when you reload flags and when you create a group. On a server, each evaluation call is a request unless you use local evaluation, where every poll for flag definitions counts as 10 requests; at the default 30-second interval that's 864,000 requests a month per server ([estimating usage and costs](https://posthog.com/docs/billing/estimating-usage-costs)). Surveys evaluate flags for targeting, so they generate requests too.
+
+## Other products: error tracking, surveys, AI observability and more
+
+Each band's price applies to usage up to the volume shown, after the free allowance.
+
+| Product (unit) | Free every month | Price per unit by volume |
+| --- | --- | --- |
+| [Error tracking](https://posthog.com/error-tracking/pricing) (exception) | 100,000 | $0.00037 to 325k · $0.00014 to 10M · $0.000115 above |
+| [Surveys](https://posthog.com/surveys/pricing) (response) | 1,500 | $0.10 to 2k · $0.035 to 10k · $0.015 to 20k · $0.01 above |
+| [AI observability](https://posthog.com/ai-observability/pricing) (event) | 100,000 | $0.00035 to 150k · $0.000175 to 250k · $0.0001 to 500k · $0.00008 to 1M · $0.00007 to 10M · $0.000065 to 50M · $0.00006 above |
+| Data warehouse (row synced) | 1,000,000 | $0.000015 to 10M · $0.00001 to 25M · $0.000008 to 50M · $0.000005 to 100M · $0.000002 to 1B · $0.000001 above |
+| Realtime destinations (trigger event) | 10,000 | $0.0005 to 50k · $0.0003 to 100k · $0.00015 to 1M · $0.0001 to 10M · $0.00005 to 100M · $0.000025 above |
+| Batch exports (row) | 1,000,000 | $0.000015 to 10M · $0.000005 to 50M · $0.0000025 to 100M · $0.00000125 above |
+| [Logs and tracing](https://posthog.com/logs/pricing) (GB) | 10 GB | $0.25 to 300 GB · $0.15 above |
+| [Workflow emails](https://posthog.com/workflows/pricing) (email) | 10,000 | $0.003 to 50k · $0.0018 to 100k · $0.001 to 1M · $0.0005 to 10M · $0.000375 to 100M · $0.00025 above |
+| Workflow push and other destinations (dispatch) | 10,000 | $0.00075 to 50k · $0.00045 to 100k · $0.000225 to 1M · $0.00015 to 10M · $0.000075 to 100M · $0.0000375 above |
+
+Data warehouse and pipeline rates come from the calculator on the [pricing page](https://posthog.com/pricing). Surveys don't limit how many surveys or questions you create, AI observability adds no markup on model tokens, a pipeline trigger event that fans out to five destinations is billed once, and logs are kept 14 days unless you pay $0.05 per GB per month for longer retention.
+
+## Platform packages and other extras
+
+| Package | Price | What it adds |
+| --- | --- | --- |
+| Boost | $250/month | Unlimited projects, white labeling, HIPAA BAA, SSO enforcement, collaboration features; recordings kept up to 1 year |
+| Scale | $750/month | Everything in Boost, plus priority support, SAML and more organization controls |
+| Enterprise | Custom | Everything in Scale, plus role-based access control, dedicated support and training; recordings kept up to 5 years |
+
+Packages are a flat monthly fee on top of usage ([platform packages](https://posthog.com/platform-packages)). PostHog also sells a 30-minute onboarding call for $80.
+
+## Billing limits, alerts and what happens when you go over
+
+On pay-as-you-go, usage past the allowance is billed until you cap it. The controls, per PostHog's [billing limits](https://posthog.com/docs/billing/limits-alerts) and [spike detection](https://posthog.com/docs/billing/spike-detection) docs:
+
+- **Billing limits per product.** At the limit PostHog stops ingesting that product's data, and the extra data is lost for good. Feature flags return a `quota_limited` response, and SDKs fall back to default values.
+- **Alert emails** go to organization owners at 80% and 100% of each limit and of each free allowance.
+- **Spike detection** runs daily and emails self-serve customers about unusual jumps or drops, at most once a week.
+- **A billable-usage dashboard template** breaks usage down by event, SDK and product.
+
+A hard limit means a traffic spike leaves a gap in your data until the billing period resets or you raise the limit, so set limits with headroom. PostHog's pricing page also says that if you get an unexpected bill, "we'll pretty much always refund it".
+
+## Discounts: startups, non-profits and prepaid credits
+
+- **Startups:** $50,000 in credits for 12 months if your company is under 2 years old, has raised less than $5 million, signed up on or after January 1, 2023, and applies from a company email domain. Since September 14, 2026, credits no longer cover PostHog's AI tools (PostHog Desktop, the Slack app, Replay Vision, PostHog AI and Inbox). Y Combinator companies get a separate deal ([startup program](https://posthog.com/startups)).
+- **Non-profits:** the pricing FAQ says there's a discount "in most cases" once you contact sales. PostHog's public sales handbook sets it at 15% on credit purchases under $25,000 and an extra 5% on purchases of $25,000–$100,000 ([contract rules](https://posthog.com/handbook/growth/sales/contract-rules)).
+- **Prepaid credits:** monthly pay-as-you-go gets no discount beyond the built-in volume tiers. Buying credits up front, usually for 12 months, does: 20% off at $25,000–$59,000 a year, 25% at $60,000–$99,000, 30% at $100,000–$249,000, 35% at $250,000–$499,000 and 40% at $500,000–$999,000. Self-serve accounts with at least three paid invoices averaging $280 or more can buy credits in the app at 10% off. Half of any unused credit rolls over if you renew at equal or higher spend ([pre-paid plans](https://posthog.com/docs/billing/pre-paid-plans)).
+
+## Worked examples: what PostHog costs at four sizes
+
+All four use pay-as-you-go rates. We ran each through the calculator on PostHog's pricing page, and the usage totals match to the dollar (the calculator rounds).
+
+### 1. Early-stage SaaS: 500k events and 5k recordings
+
+Usage: 500,000 events (400,000 from logged-in users), 5,000 web recordings, 300,000 flag requests and 20,000 exceptions.
+
+| Line item | Usage vs free allowance | Cost |
+| --- | --- | --- |
+| Events, base rate | 500,000 of 1,000,000 | $0 |
+| Person profiles | 400,000 of 1,000,000 | $0 |
+| Session replay | 5,000 of 5,000 | $0 |
+| Feature flags | 300,000 of 1,000,000 | $0 |
+| Error tracking | 20,000 of 100,000 | $0 |
+| **Total** | | **$0/month** |
+
+On the free plan that means 1 project, a year of event history and 30 days of recordings. Pay-as-you-go with billing limits at $0 keeps the bill at $0 and unlocks 6 projects, 7-year retention and 90-day recordings. Replay has the least headroom: at 6,000 recordings the extra 1,000 would cost $5.
+
+### 2. Growth-stage product: 5M events, 50k recordings, 2M flag requests
+
+Assume 2M of the 5M events come from identified users.
+
+| Line item | Calculation | Cost |
+| --- | --- | --- |
+| Events, base rate | 1M free; 1M × $0.00005 = $50.00; 3M × $0.0000343 = $102.90 | $152.90 |
+| Person profiles | 2M identified: 1M free; 1M × $0.000198 | $198.00 |
+| Session replay | 5k free; 10k × $0.005 = $50.00; 35k × $0.0035 = $122.50 | $172.50 |
+| Feature flags | 1M free; 1M × $0.0001 | $100.00 |
+| **Total** | | **$623.40/month** |
+
+The identified share swings this bill. With all 5M events anonymous, the total would be $425.40. With all 5M identified, the person-profile line would be $407.10 ($198 + 3M × $0.0000697) and the total $832.50.
+
+### 3. High-traffic content site: 20M anonymous events and 20k recordings
+
+A publisher with no logins and roughly 10M pageviews a month, which becomes about 20M events because the JavaScript SDK sends a `$pageview` and a `$pageleave` by default (click autocapture is off here). It also records 20,000 sessions.
+
+| Line item | Calculation | Cost |
+| --- | --- | --- |
+| Events, base rate | 1M free; 1M × $0.00005 = $50.00; 13M × $0.0000343 = $445.90; 5M × $0.0000295 = $147.50 | $643.40 |
+| Person profiles | No identified events | $0 |
+| Session replay | 5k free; 10k × $0.005 = $50.00; 5k × $0.0035 = $17.50 | $67.50 |
+| **Total** | | **$710.90/month** |
+
+Turning off automatic `$pageleave` capture would bring events down to about 10M: analytics falls to $324.40 ($50 + 8M × $0.0000343) and the bill to $391.90. PostHog documents the setting, with the caveat that bounce rate may stop working.
+
+### 4. Scale-up on five products plus Boost
+
+Usage: 10M events, all identified; 100,000 web recordings; 10M flag requests; 300,000 exceptions; 5,000 survey responses; and the Boost package for SSO enforcement.
+
+| Line item | Calculation | Cost |
+| --- | --- | --- |
+| Events, base rate | 1M free; 1M × $0.00005 = $50.00; 8M × $0.0000343 = $274.40 | $324.40 |
+| Person profiles | 1M free; 1M × $0.000198 = $198.00; 8M × $0.0000697 = $557.60 | $755.60 |
+| Session replay | 5k free; 10k × $0.005 = $50.00; 35k × $0.0035 = $122.50; 50k × $0.002 = $100.00 | $272.50 |
+| Feature flags | 1M free; 1M × $0.0001 = $100.00; 8M × $0.000045 = $360.00 | $460.00 |
+| Error tracking | 100k free; 200k × $0.00037 | $74.00 |
+| Surveys | 1,500 free; 500 × $0.10 = $50.00; 3,000 × $0.035 = $105.00 | $155.00 |
+| Boost package | Flat fee | $250.00 |
+| **Total** | | **$2,291.50/month** |
+
+That's about $27,500 a year, inside the $25,000–$59,000 band where PostHog's handbook offers 20% off prepaid credits: roughly $5,500 a year if usage holds. The person-profile line is the largest item; if half of those events could be sent anonymously, it would drop to $407.10.
+
+## How to keep your PostHog bill down
+
+From PostHog's own cost-cutting docs:
+
+1. **Keep events anonymous unless you need person data.** Leave the JavaScript SDK on `person_profiles: 'identified_only'`, and call `identify()` and `group()` once per session. On backend SDKs, set `$process_person_profile` to `false` for events that don't need a profile ([product analytics costs](https://posthog.com/docs/product-analytics/cutting-costs)).
+2. **Trim autocapture** with an allow or ignore list, or turn it off and send custom events for what you actually analyze.
+3. **Drop automatic events you don't use.** You can disable automatic `$pageview` and `$pageleave` capture and send them manually where they matter; bounce rate may break.
+4. **Record fewer sessions.** Replay trigger groups let you sample a percentage of sessions, start recording on a URL or event, gate recording behind a feature flag, and set a minimum duration so quick bounces aren't recorded ([recording controls](https://posthog.com/docs/session-replay/how-to-control-which-sessions-you-record)).
+5. **Cut flag requests.** Skip the first-load request (`advanced_disable_feature_flags_on_first_load`), bootstrap flags, poll for local evaluation every 5 minutes instead of 30 seconds, avoid local evaluation in edge or Lambda functions, disable flags in test and CI, and find forgotten environments still calling `/flags` ([feature flag costs](https://posthog.com/docs/feature-flags/cutting-costs)).
+6. **Set a billing limit on every product** and build the billable-usage dashboard from PostHog's template to see which events and SDKs drive the bill.
+7. **Prepay once spend is stable.** Bills above about $2,100 a month cross the $25,000-a-year prepaid threshold; smaller accounts can use the 10% self-serve credit purchase.
+
+## PostHog vs alternatives at the same volume
+
+Per-unit prices only compare cleanly if the units match, and events don't.
+
+- **PostHog** bills every event its SDKs capture. By default the JavaScript SDK sends a `$pageview` and a `$pageleave` for each page, plus autocapture events for clicks, form changes and copies. Identified events pay the person-profile rate on top.
+- **Rybbit** bills by events too, but counts fewer of them: pageviews, custom events and outbound-link clicks by default, plus Web Vitals, button clicks, copies and form interactions only if you switch those on. Error events, session replays and identify calls don't count, and logged-in users cost the same as anonymous ones. [Rybbit's pricing](/pricing) is a set of flat tiers: Standard from $19/month for 100k events, and Pro from $39/month, which adds [session replay](/features/session-replay) with a monthly quota of 10% of your event allowance (10,000 replays on the $39 tier).
+
+The table assumes two PostHog events per pageview (click autocapture off) and one Rybbit event per pageview, at monthly list prices. The cheaper option in each row is in bold.
+
+| Monthly traffic | PostHog | Rybbit |
+| --- | --- | --- |
+| 250k pageviews, anonymous | 500k events: **$0** | Standard 250k: $29 |
+| 1M pageviews, anonymous | 2M events: **$50** | Standard 1M: $69 |
+| 1M pageviews, logged-in users, 20k replays | 2M identified events ($248) plus 20k recordings ($67.50): $315.50 | Pro 1M: **$139** |
+| 10M pageviews, anonymous | 20M events: $643.40 | Standard 10M: **$249** |
+| 10M pageviews, anonymous, 20k replays | $710.90 (worked example 3) | Pro 10M: **$499** |
+
+**Where PostHog is cheaper.** Small sites: below about 500k pageviews a month PostHog costs nothing, while Rybbit Cloud is paid after a 7-day trial (the card is collected at signup). Under these assumptions PostHog stays cheaper for anonymous traffic up to about 1.7M pageviews a month, and Rybbit Standard is cheaper at every tier above about 2.5M; in between, it depends on where you land in Rybbit's tiers. Turning off `$pageleave` roughly halves PostHog's count and moves both points higher. PostHog also sells what Rybbit doesn't: surveys, a data warehouse, AI observability, logs and workflows, plus heatmaps that create no extra events (Rybbit has no click or scroll heatmaps). If you'd use several of those, PostHog puts them on one bill.
+
+**Where Rybbit is easier to predict.** Logged-in traffic costs the same as anonymous traffic, replays are included in Pro up to its quota (100,000 a month on the 1M plan), and the price only changes when you change tiers. Rybbit doesn't bill overage: past your tier it stops recording new events until you upgrade or the next month starts, much like a PostHog billing limit. On retention, Rybbit Standard keeps data 3 years and Pro 5, against 7 on PostHog's paid plan; Rybbit keeps replays 30 days, PostHog's pay-as-you-go 90.
+
+Both can be self-hosted without license fees: Rybbit under AGPL-3.0, and PostHog as an MIT-licensed Docker Compose deployment that PostHog calls "officially unsupported" and steers away from once you expect more than 300k events, 1k recordings or 300k flag requests a month ([self-host docs](https://posthog.com/docs/self-host)).
+
+For a feature-by-feature view, see [Rybbit vs PostHog](/compare/posthog). For more replay tools with verified prices, see [the best session replay tools](/blog/best-session-replay-tools).
+
+## FAQ
+
+**How much does PostHog cost per month?**
+Nothing until you pass a product's free allowance. After that it depends on volume and mix: 2 million anonymous events cost $50 a month, and 5 million events (2 million identified) plus 50,000 recordings and 2 million flag requests cost $623.40. The [calculator](https://posthog.com/pricing) on PostHog's pricing page estimates your own mix.
+
+**What does the PostHog free tier include in 2026?**
+Every month: 1M analytics events, 5,000 web and 2,500 mobile recordings, 1M flag requests, 100,000 exceptions, 1,500 survey responses, 1M warehouse rows, 100,000 AI observability events, 10 GB of logs, plus pipeline, workflow and AI-credit allowances. The free plan adds 1 project, 1-year data retention, unlimited team members and community support. It doesn't expire, and no card is needed.
+
+**Does PostHog's free allowance reset every month?**
+Yes. Allowances reset monthly, stay the same after you add a card, and don't roll over.
+
+**Why do identified events cost more?**
+PostHog creates a person profile for identified users, and querying their events needs more expensive table joins. So identified events pay a person-profile rate on top of the base rate: $0.000198 extra per event between 1M and 2M, falling to $0.000001 above 250M, with the first 1M identified events exempt.
+
+**Can I cap my PostHog bill?**
+Yes, with a billing limit on each product. At the limit PostHog stops ingesting that product's data (it's dropped, not queued) and feature flags return default values.
+
+**Does PostHog offer startup or non-profit discounts?**
+Yes. Startups under 2 years old that have raised less than $5 million can get $50,000 in credits for 12 months. Non-profits get a discount through sales; PostHog's handbook puts it at 15% on credit purchases under $25,000.
+
+**Is PostHog cheaper than FullStory?**
+FullStory doesn't publish paid prices. Its [plans page](https://www.fullstory.com/plans/) lists a free plan with 30,000 sessions a month, 12 months of data retention and up to 10 users, and quotes everything above that. On PostHog, the first 5,000 recordings each month are free and 30,000 recordings cost $102.50 on pay-as-you-go (10,000 × $0.005 plus 15,000 × $0.0035).
+
+---
+
+*Want analytics and session replay on a flat monthly price? [Start a 7-day Rybbit trial](https://app.rybbit.io/signup) or open the [live demo](https://demo.rybbit.com/81).*
