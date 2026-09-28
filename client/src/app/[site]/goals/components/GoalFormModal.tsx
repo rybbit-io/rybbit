@@ -599,8 +599,13 @@ export default function GoalFormModal({
               <Button variant="outline" type="button" onClick={onClose}>
                 {t("Cancel")}
               </Button>
-              <Button type="submit" disabled={createGoal.isPending || updateGoal.isPending} variant="success">
-                {createGoal.isPending || updateGoal.isPending ? t("Saving...") : isEditMode ? t("Update") : t("Create")}
+              <Button
+                type="submit"
+                variant="success"
+                loading={createGoal.isPending || updateGoal.isPending}
+                loadingLabel={t("Saving...")}
+              >
+                {isEditMode ? t("Update") : t("Create")}
               </Button>
             </div>
           </form>

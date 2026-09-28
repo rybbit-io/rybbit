@@ -3,6 +3,7 @@
 import { Video } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { updateSiteConfig } from "../../../../api/admin/endpoints";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
@@ -18,10 +19,26 @@ export function EnableSessionReplay() {
   const siteId = Number(params.site);
   const { data: siteMetadata, isLoading, refetch } = useGetSite(siteId);
   const { data: subscription } = useStripeSubscription();
+  const [isEnabling, setIsEnabling] = useState(false);
 
   const canEnableReplay = !IS_CLOUD || planIncludesReplay(subscription);
 
   if (isLoading || siteMetadata?.sessionReplay || !canEnableReplay) return null;
+
+  const enable = async () => {
+    setIsEnabling(true);
+    try {
+      await updateSiteConfig(siteId, { sessionReplay: true });
+      // Stay busy until the refetch hides this banner, so "Enable" never flashes back
+      await refetch();
+      toast.success(t("Session replay enabled"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(t("Failed to enable session replay: {message}", { message }));
+    } finally {
+      setIsEnabling(false);
+    }
+  };
 
   return (
     <Alert className="shrink-0 p-4">
@@ -37,15 +54,7 @@ export function EnableSessionReplay() {
               {t("and the client will send significantly more and larger payloads.")}{" "}
               <b>{t("Only enable this if you will actually use it.")}</b>
             </div>
-            <Button
-              size="sm"
-              variant="success"
-              onClick={async () => {
-                await updateSiteConfig(siteId, { sessionReplay: true });
-                toast.success(t("Session replay enabled"));
-                refetch();
-              }}
-            >
+            <Button size="sm" variant="success" loading={isEnabling} onClick={enable}>
               {t("Enable")}
             </Button>
           </AlertDescription>

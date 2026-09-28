@@ -9,6 +9,7 @@ import { EVENT_TIERS, findPriceForTier, formatEventTier } from "@/lib/subscripti
 import { usePreviewSubscriptionUpdate, useUpdateSubscription } from "@/lib/subscription/useSubscriptionMutations";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { CheckoutModal } from "./CheckoutModal";
 import { PlanChangePreviewDialog } from "./PlanChangePreviewDialog";
@@ -42,6 +43,7 @@ function parseCurrentPlan(currentPlanName?: string) {
 }
 
 export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubscription }: PlanDialogProps) {
+  const t = useExtracted();
   const defaults = useMemo(() => parseCurrentPlan(currentPlanName), [currentPlanName]);
 
   // Default to next tier up for existing subscribers
@@ -137,11 +139,17 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
     if (!activeOrg || !pendingPriceId) return;
 
     try {
+      // Resolves after the plan queries have refetched (see useUpdateSubscription),
+      // so the billing page already shows the new plan when this closes. No reload:
+      // it would wipe the success toast.
       await updateMutation.mutateAsync({
         organizationId: activeOrg.id,
         newPriceId: pendingPriceId,
       });
-      window.location.reload();
+      previewMutation.reset();
+      setPendingPriceId(null);
+      setPendingPlanName(null);
+      onOpenChange(false);
     } catch (error) {
       // Error is already handled by the mutation
     }
@@ -288,18 +296,12 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
                 className="w-full h-11"
                 variant="success"
                 onClick={handleSelectPlan}
-                disabled={isLoading || previewMutation.isPending || isCurrentSelection}
+                // Covers the preview request and, after confirming, the update itself
+                loading={isLoading || previewMutation.isPending || updateMutation.isPending}
+                disabled={isCurrentSelection}
               >
-                {isLoading || previewMutation.isPending
-                  ? "Loading..."
-                  : isCurrentSelection
-                    ? "Current Plan"
-                    : hasActiveSubscription
-                      ? "Change Plan"
-                      : "Subscribe"}
-                {!isLoading && !previewMutation.isPending && !isCurrentSelection && (
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                )}
+                {isCurrentSelection ? t("Current Plan") : hasActiveSubscription ? t("Change Plan") : t("Subscribe")}
+                {!isCurrentSelection && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             )}
 

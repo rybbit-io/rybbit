@@ -84,6 +84,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [toggles, setToggles] = useState({ ...DEFAULT_TOGGLES });
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isMobile = siteType === "mobile";
   const setToggle = (key: ToggleKey, checked: boolean) => setToggles(prev => ({ ...prev, [key]: checked }));
@@ -216,6 +217,7 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const normalizedDomain = siteType === "web" ? normalizeDomain(domain) : domain.trim();
       const siteName = name.trim() || normalizedDomain;
@@ -242,6 +244,8 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
     } catch (error) {
       setError(String(error));
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     setOpen(false);
@@ -352,96 +356,111 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2">
-            <RadioGroup
-              value={siteType}
-              onValueChange={value => setSiteType(value as SiteType)}
-              className="grid grid-cols-2 gap-3"
-            >
-              <Label
-                htmlFor="site-type-web"
-                className="flex cursor-pointer items-center gap-2 rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
+          {/* A real form, so Enter in the domain or name field submits */}
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+            className="grid gap-4"
+          >
+            <div className="grid gap-4 py-2">
+              <RadioGroup
+                value={siteType}
+                onValueChange={value => setSiteType(value as SiteType)}
+                className="grid grid-cols-2 gap-3"
               >
-                <RadioGroupItem id="site-type-web" value="web" />
-                <Globe2 className="h-4 w-4" />
-                <span>{t("Website")}</span>
-              </Label>
-              <Label
-                htmlFor="site-type-mobile"
-                className="flex cursor-pointer items-center gap-2 rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
-              >
-                <RadioGroupItem id="site-type-mobile" value="mobile" />
-                <Smartphone className="h-4 w-4" />
-                <span>{t("React Native App")}</span>
-              </Label>
-            </RadioGroup>
+                <Label
+                  htmlFor="site-type-web"
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
+                >
+                  <RadioGroupItem id="site-type-web" value="web" />
+                  <Globe2 className="h-4 w-4" />
+                  <span>{t("Website")}</span>
+                </Label>
+                <Label
+                  htmlFor="site-type-mobile"
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
+                >
+                  <RadioGroupItem id="site-type-mobile" value="mobile" />
+                  <Smartphone className="h-4 w-4" />
+                  <span>{t("React Native App")}</span>
+                </Label>
+              </RadioGroup>
 
-            <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="domain" className="text-sm font-medium">
-                {siteType === "web" ? t("Domain") : t("App Identifier")}
-              </Label>
-              <Input
-                id="domain"
-                value={domain}
-                onChange={e => {
-                  const value = e.target.value.trim();
-                  setDomain(siteType === "web" ? value.toLowerCase() : value);
-                }}
-                placeholder={siteType === "web" ? "example.com or sub.example.com" : "com.example.app"}
-              />
-            </div>
-            <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="name" className="text-sm font-medium">
-                {t("Name")}
-              </Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder={t("Display name (defaults to domain)")}
-              />
-            </div>
-
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                aria-expanded={showAdvanced}
-                className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300"
-              >
-                <ChevronRight
-                  className={`h-4 w-4 motion-safe:transition-transform ${showAdvanced ? "rotate-90" : ""}`}
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="domain" className="text-sm font-medium">
+                  {siteType === "web" ? t("Domain") : t("App Identifier")}
+                </Label>
+                <Input
+                  id="domain"
+                  value={domain}
+                  onChange={e => {
+                    const value = e.target.value.trim();
+                    setDomain(siteType === "web" ? value.toLowerCase() : value);
+                  }}
+                  placeholder={siteType === "web" ? "example.com or sub.example.com" : "com.example.app"}
                 />
-                {t("Advanced options")}
-              </button>
-              {showAdvanced && (
-                <div className="mt-3 max-h-[40vh] space-y-5 overflow-y-auto rounded-lg border border-neutral-150 p-4 dark:border-neutral-800">
-                  <p className="text-xs text-muted-foreground">
-                    {t("You can change any of these later in site settings.")}
-                  </p>
-                  {renderToggleGroup(t("Privacy & Security"), privacyToggles)}
-                  {renderToggleGroup(t("Analytics Features"), analyticsToggles)}
-                  {renderToggleGroup(t("Auto Capture"), autoCaptureToggles)}
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="name" className="text-sm font-medium">
+                  {t("Name")}
+                </Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder={t("Display name (defaults to domain)")}
+                />
+              </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>{t("Error Adding Site")}</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <DialogFooter>
-            <Button type="button" onClick={() => setOpen(false)} variant="outline">
-              {t("Cancel")}
-            </Button>
-            <Button type="submit" variant={"success"} onClick={handleSubmit} disabled={!domain}>
-              {t("Add")}
-            </Button>
-          </DialogFooter>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  aria-expanded={showAdvanced}
+                  className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300"
+                >
+                  <ChevronRight
+                    className={`h-4 w-4 motion-safe:transition-transform ${showAdvanced ? "rotate-90" : ""}`}
+                  />
+                  {t("Advanced options")}
+                </button>
+                {showAdvanced && (
+                  <div className="mt-3 max-h-[40vh] space-y-5 overflow-y-auto rounded-lg border border-neutral-150 p-4 dark:border-neutral-800">
+                    <p className="text-xs text-muted-foreground">
+                      {t("You can change any of these later in site settings.")}
+                    </p>
+                    {renderToggleGroup(t("Privacy & Security"), privacyToggles)}
+                    {renderToggleGroup(t("Analytics Features"), analyticsToggles)}
+                    {renderToggleGroup(t("Auto Capture"), autoCaptureToggles)}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>{t("Error Adding Site")}</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <DialogFooter>
+              <Button type="button" onClick={() => setOpen(false)} variant="outline">
+                {t("Cancel")}
+              </Button>
+              <Button
+                type="submit"
+                variant={"success"}
+                disabled={!domain}
+                loading={isSubmitting}
+                loadingLabel={t("Adding...")}
+              >
+                {t("Add")}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

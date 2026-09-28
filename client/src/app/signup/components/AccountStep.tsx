@@ -43,43 +43,50 @@ export function AccountStep({
       <h2 className="text-2xl font-semibold mb-4">{t("Signup")}</h2>
       <div className="space-y-4">
         <SocialButtons onError={setError} callbackURL={socialCallbackURL} mode="signup" />
-        <AuthInput
-          id="email"
-          label={t("Email")}
-          type="email"
-          placeholder="email@example.com"
-          required
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-        />
-        <AuthInput
-          id="password"
-          label={t("Password")}
-          type="password"
-          placeholder="••••••••"
-          required
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
-        {IS_CLOUD && (
-          <Turnstile
-            onSuccess={token => setTurnstileToken(token)}
-            onError={() => setTurnstileToken("")}
-            onExpire={() => setTurnstileToken("")}
-            className="flex justify-center"
-          />
-        )}
-        <AuthButton
-          isLoading={isLoading}
-          loadingText={t("Creating account...")}
-          onClick={onSubmit}
-          type="button"
-          className="mt-6 transition-all duration-300 h-11"
-          disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
+        {/* A real form, so Enter submits and the browser checks required/type/minLength first */}
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            onSubmit();
+          }}
+          className="space-y-4"
         >
-          {t("Continue")}
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </AuthButton>
+          <AuthInput
+            id="email"
+            label={t("Email")}
+            type="email"
+            placeholder="email@example.com"
+            required
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+          />
+          <AuthInput
+            id="password"
+            label={t("Password")}
+            type="password"
+            placeholder="••••••••"
+            required
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+          {IS_CLOUD && (
+            <Turnstile
+              onSuccess={token => setTurnstileToken(token)}
+              onError={() => setTurnstileToken("")}
+              onExpire={() => setTurnstileToken("")}
+              className="flex justify-center"
+            />
+          )}
+          <AuthButton
+            isLoading={isLoading}
+            loadingText={t("Creating account...")}
+            className="mt-6 transition-all duration-300 h-11"
+            disabled={IS_CLOUD && !turnstileToken}
+          >
+            {t("Continue")}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </AuthButton>
+        </form>
         <div className="text-center text-sm">
           {t("Already have an account?")}{" "}
           <Link
