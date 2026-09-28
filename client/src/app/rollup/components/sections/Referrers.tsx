@@ -10,6 +10,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/basic-tabs";
+import { TabsUnderline } from "@/components/interior/tabs-indicator";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -51,10 +52,10 @@ export function Referrers({ siteIds }: { siteIds: number[] }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild unstyled>
                   <div
-                    className={`inline-flex items-center justify-center whitespace-nowrap border-b-2 py-1 text-sm font-medium transition-all cursor-pointer ${
+                    className={`relative inline-flex items-center justify-center whitespace-nowrap border-b-2 border-transparent py-1 text-sm font-medium transition-colors cursor-pointer ${
                       tab.startsWith("utm_")
-                        ? "border-neutral-950 text-neutral-950 dark:border-neutral-100 dark:text-neutral-50"
-                        : "border-transparent text-neutral-600 dark:text-neutral-400"
+                        ? "text-neutral-950 dark:text-neutral-50"
+                        : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
                     }`}
                   >
                     {tab === "utm_source" && t("Source")}
@@ -63,6 +64,8 @@ export function Referrers({ siteIds }: { siteIds: number[] }) {
                     {tab === "utm_term" && t("Term")}
                     {tab === "utm_content" && t("Content")}
                     {!tab.startsWith("utm_") && t("UTM")}
+                    {/* The tab strip's sliding underline lands here while a UTM view is active. */}
+                    {tab.startsWith("utm_") && <TabsUnderline />}
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">

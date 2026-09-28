@@ -1,5 +1,5 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/basic-tabs";
 import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";

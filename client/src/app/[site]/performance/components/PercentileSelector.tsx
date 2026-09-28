@@ -1,6 +1,7 @@
 "use client";
 
-import { ToggleChip } from "@/components/ToggleChip";
+import { useExtracted } from "next-intl";
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { PercentileLevel, usePerformanceStore } from "../performanceStore";
 
 const PERCENTILE_OPTIONS: {
@@ -15,19 +16,25 @@ const PERCENTILE_OPTIONS: {
 ];
 
 export function PercentileSelector() {
+  const t = useExtracted();
   const { selectedPercentile, setSelectedPercentile } = usePerformanceStore();
 
   return (
-    <div className="flex items-center space-x-2">
-      {PERCENTILE_OPTIONS.map(option => (
-        <ToggleChip
-          key={option.value}
-          isSelected={selectedPercentile === option.value}
-          onClick={() => setSelectedPercentile(option.value)}
-          swatchColor={option.color}
-          label={option.label}
-        />
-      ))}
-    </div>
+    <SegmentedControl<PercentileLevel>
+      aria-label={t("Percentile")}
+      size="sm"
+      options={PERCENTILE_OPTIONS.map(option => ({
+        value: option.value,
+        // The swatch matches this percentile's line in the chart below.
+        label: (
+          <>
+            <span aria-hidden className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: option.color }} />
+            {option.label}
+          </>
+        ),
+      }))}
+      value={selectedPercentile}
+      onValueChange={setSelectedPercentile}
+    />
   );
 }

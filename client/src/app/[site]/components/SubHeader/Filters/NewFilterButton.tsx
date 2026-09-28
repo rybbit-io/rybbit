@@ -6,11 +6,11 @@ import { useExtracted } from "next-intl";
 import { useRef, useState } from "react";
 import { useUserOrganizations } from "../../../../../api/admin/hooks/useOrganizations";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Button } from "../../../../../components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
 import { authClient } from "../../../../../lib/auth";
 import { addFilter, useStore } from "../../../../../lib/store";
-import { cn } from "../../../../../lib/utils";
 import { FilterPicker } from "./FilterPicker";
 import { SegmentDialog } from "./SegmentDialog";
 import { SegmentsTab } from "./SegmentsTab";
@@ -72,23 +72,6 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
     setDialog(state);
   };
 
-  const tabButton = (value: Tab, label: string) => (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={tab === value}
-      onClick={() => selectTab(value)}
-      className={cn(
-        "flex-1 py-2 text-xs font-medium border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400",
-        tab === value
-          ? "border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-50"
-          : "border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-      )}
-    >
-      {label}
-    </button>
-  );
-
   return (
     <>
       <Popover open={open} onOpenChange={handleOpenChange}>
@@ -99,29 +82,37 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-0" align="start">
-          <div role="tablist" className="flex border-b border-neutral-200 dark:border-neutral-700">
-            {tabButton("filters", t("Filters"))}
-            {tabButton("segments", t("Segments"))}
-          </div>
-          {tab === "filters" ? (
-            <FilterPicker
-              availableFilters={availableFilters}
-              onCommit={addFilter}
-              onClose={closePopover}
-              pendingRef={pendingRef}
-              parameter={parameter}
-              setParameter={setParameter}
-            />
-          ) : (
-            <SegmentsTab
-              siteId={site}
-              canWrite={canWrite}
-              onNew={() => openDialog({})}
-              onSaveCurrent={() => openDialog({ initialFilters: filters })}
-              onEdit={segment => openDialog({ segment })}
-              onApplied={closePopover}
-            />
-          )}
+          <Tabs value={tab} onValueChange={value => selectTab(value as Tab)}>
+            {/* Full-width underline tabs; -mb-px lays the underline over the list's hairline. */}
+            <TabsList className="flex h-auto w-full space-x-0 border-b border-neutral-200 dark:border-neutral-700">
+              <TabsTrigger value="filters" className="-mb-px flex-1 py-2 text-xs">
+                {t("Filters")}
+              </TabsTrigger>
+              <TabsTrigger value="segments" className="-mb-px flex-1 py-2 text-xs">
+                {t("Segments")}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="filters" className="mt-0">
+              <FilterPicker
+                availableFilters={availableFilters}
+                onCommit={addFilter}
+                onClose={closePopover}
+                pendingRef={pendingRef}
+                parameter={parameter}
+                setParameter={setParameter}
+              />
+            </TabsContent>
+            <TabsContent value="segments" className="mt-0">
+              <SegmentsTab
+                siteId={site}
+                canWrite={canWrite}
+                onNew={() => openDialog({})}
+                onSaveCurrent={() => openDialog({ initialFilters: filters })}
+                onEdit={segment => openDialog({ segment })}
+                onApplied={closePopover}
+              />
+            </TabsContent>
+          </Tabs>
         </PopoverContent>
       </Popover>
       <SegmentDialog

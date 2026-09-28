@@ -9,7 +9,7 @@ import { useGetFunnelStepSessions } from "../../../../api/analytics/hooks/funnel
 import { EventTypeIcon } from "../../../../components/EventIcons";
 import { targetTypeToEventType } from "../../../../lib/events";
 import { SessionsList } from "../../../../components/Sessions/SessionsList";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/basic-tabs";
 import { useStore } from "../../../../lib/store";
 
 export type FunnelChartData = {
