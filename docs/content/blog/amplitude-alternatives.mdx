@@ -1,0 +1,228 @@
+---
+title: "9 Best Amplitude Alternatives for Product Teams in 2026"
+description: "Nine Amplitude alternatives for product teams, compared on price at your event volume, features and self-hosting. Vendor pricing checked September 2026."
+date: 2026-09-27
+tags: ["product analytics", "comparisons", "tools"]
+author: Rybbit Team
+---
+
+The best Amplitude alternatives for most product teams are Mixpanel and PostHog: both cover event funnels, retention, behavioral cohorts, experiments, feature flags and session replay, and both publish their prices. Heap and Pendo suit teams that want autocapture or in-app guides. OpenPanel, Rybbit, Countly and Matomo are open source and can run on your own servers, and Google Analytics 4 is the $0 fallback. This guide compares nine tools on price at your event volume, the Amplitude features each one replaces, and what each is missing.
+
+Disclosure up front: we build [Rybbit](https://rybbit.com), one of the nine, and we rank it sixth for a typical Amplitude user because it replaces less of Amplitude than the five tools above it. Every claim about the other tools comes from that vendor's own pricing or documentation pages, linked inline and checked in September 2026. Where a vendor doesn't publish a number, we say so.
+
+## Quick comparison
+
+| Tool | Best for | Free option | Paid pricing (Sept 2026) | Priced by | Open source / self-host |
+| --- | --- | --- | --- | --- | --- |
+| Amplitude (for reference) | Analytics, experiments, guides and replay in one platform | 2M events/month | Plus from $0; $94/month at 3M events | Events or MTUs | No / No |
+| [Mixpanel](#1-mixpanel) | The closest like-for-like switch | 1M events/month | Growth from $0; $140/month at 1.5M events | Events | No / No |
+| [PostHog](#2-posthog) | Analytics plus flags, experiments and surveys | 1M events and 5K recordings/month | $0.00005/event after 1M, tiered down | Events, per product | MIT core / Yes, unsupported |
+| [Heap](#3-heap-contentsquare) | Autocapture, priced by sessions | 10K sessions/month | Growth by estimate; Pro and Premier by quote | Sessions | No / No |
+| [Pendo](#4-pendo) | B2B SaaS analytics plus in-app guides | 500 MAUs | By quote | Monthly active users | No / No |
+| [OpenPanel](#5-openpanel) | Low-cost open-source event analytics | Self-hosting (cloud: 30-day trial) | $2.50/month for 5K events; $90 at 1M | Events | AGPL-3.0 / Yes |
+| [Rybbit](#6-rybbit) | Web products that also need [traffic analytics](/features/web-analytics) | Self-hosting (cloud: 7-day trial) | $19/month for 100K events | Events | AGPL-3.0 / Yes |
+| [Countly](#7-countly) | Mobile, desktop and IoT apps on your own servers | Countly Lite, self-hosted | Flex from $175/month | MAUs and data points | Lite edition / Yes |
+| [Google Analytics 4](#8-google-analytics-4) | $0 budgets and Google Ads reporting | All of it | Analytics 360 by quote | No usage fee | No / No |
+| [Matomo](#9-matomo) | Self-hosted web analytics with funnels | On-Premise, self-hosted | Cloud from $26/month for 50K hits | Hits | GPL-3.0 / Yes |
+
+## Why teams look for Amplitude alternatives
+
+Amplitude is generous where most tools are stingy. Its [pricing page](https://amplitude.com/pricing) gives the Free plan 2 million events a month, 10,000 session replays and unlimited seats with no credit card, and every plan includes unlimited feature flags plus a small allowance of experiments, guides and surveys. The reasons teams leave are in the plan comparison table further down the same page:
+
+- **Analysis depth is tiered.** Free has no behavioral cohorts and 10 saved charts per organization; Plus allows 20 behavioral cohorts. Conversion drivers and saved metrics start on Growth, and predictions, computations and cross-product analysis are limited there and complete only on Enterprise.
+- **History is tiered.** Data history is 1 year on Free, 2 years on Plus, and unlimited only on Growth and Enterprise.
+- **Growth and Enterprise are sales-priced.** Both are listed as "Custom", and SSO and project-level permissions start there. Role-based access control and SCIM are Enterprise-only.
+- **The extras are add-ons.** Account-level (group) analytics, more active experiments than the one (Free, Plus) or two (Growth, Enterprise) included, extra guides and surveys, and replay retention past 1 month cost more. Amplitude says its expanded packages are "priced as a percentage of your platform plan".
+- **It sets cookies by default.** The [Browser SDK](https://amplitude.com/docs/sdks/analytics/browser/browser-sdk-2) keeps user identity in a cookie with a 365-day expiry unless you change `identityStorage`, which usually means asking EU visitors for consent.
+
+### What the same volume costs elsewhere
+
+Price is a weaker reason than it sounds. Amplitude Plus starts at $0 for the first 2 million events, and on each vendor's own calculator it costs less than Mixpanel Growth at every volume we checked. Monthly billing, on the cheapest plan that covers the volume:
+
+| Plan | 3M events/month | 10M events/month | 20M events/month |
+| --- | --- | --- | --- |
+| Amplitude Plus | $94 | $720 | $1,575 |
+| Mixpanel Growth | $378 | $1,176 | $2,289 |
+| PostHog (analytics only) | $84 | $324 | $643 |
+| OpenPanel Cloud | $250 | $350 | $530 |
+| Rybbit Standard (no replay) | $149 | $249 | $399 |
+| Rybbit Pro (with [replay](/features/session-replay)) | $299 | $499 | $799 |
+
+Sources: the calculators on [Amplitude's](https://amplitude.com/pricing) and [Mixpanel's](https://mixpanel.com/pricing/) pricing pages, PostHog's [per-event rates](https://posthog.com/docs/product-analytics/pricing), OpenPanel's [price table](https://openpanel.dev/pricing) and our [pricing page](/pricing). Annual billing cuts most rows; Amplitude's 10M tier drops to $576 a month and Mixpanel's to $840. Replay allowances differ too: 10,000 a month on Amplitude Plus, 20,000 on Mixpanel Growth, a tenth of the event tier on Rybbit Pro (1 million at 10M events), and billed separately on PostHog. Vendors also count events differently, so treat the table as a rough guide, not a quote.
+
+Startups with under $10 million in funding and fewer than 20 employees can also get a free year of Amplitude's Growth plan. Switching makes more sense when you need what the plan gates hold back without a sales contract, want to self-host, or want tracking without cookies.
+
+## How we ranked these Amplitude alternatives
+
+We ranked by how much of a typical Amplitude setup each tool replaces: funnels, retention and cohorts first, then experiments, flags and replay, then mobile SDKs and published pricing. Mixpanel and PostHog replace nearly all of it. Heap and Pendo cover the core analytics but don't publish paid prices. OpenPanel and Rybbit cost less at volume but replace less (Rybbit has no experiments or behavioral cohorts), and Countly, GA4 and Matomo fit narrower cases. Open source gets [its own section](#open-source-amplitude-alternatives).
+
+## 1. Mixpanel
+
+**Best for:** the closest like-for-like switch.
+
+[Mixpanel](https://mixpanel.com) works the way Amplitude does: insights, funnels, retention and flows reports on an event model, for web and mobile. Its [pricing page](https://mixpanel.com/pricing/) now puts experiments and feature flags on Free and Growth (Free gets 1,000 monthly experiment users and 10 active flags), alongside session replay, heatmaps, and US or EU data residency. SAML SSO and SCIM come with self-serve Growth, while Amplitude starts SSO at its sales-priced Growth plan.
+
+Free is tighter than its event count suggests. The [pricing docs](https://docs.mixpanel.com/docs/pricing) cap it at 5 saved reports per user, let you create cohorts but not save them, and block your reports (rather than billing you) once a month passes 1 million events. On Growth the first million events are free, and the calculator shows $140 a month at 1.5 million events and $1,176 at 10 million, or $840 a month billed annually.
+
+- **Free option:** 1M events and 10K session replays a month, unlimited seats
+- **Paid:** Growth from $0; $1,176/month at 10M events
+- **Drawbacks:** costs more than Amplitude Plus at every volume we checked; group analytics is a paid add-on; anomaly detection and root cause analysis are Enterprise-only
+
+## 2. PostHog
+
+**Best for:** engineering-led teams that want analytics, flags, experiments, surveys and error tracking on one usage-based bill.
+
+[PostHog](https://posthog.com) covers trends, funnels, retention, paths, stickiness, lifecycle and SQL, with autocapture of pageviews, clicks and form submissions ([docs](https://posthog.com/docs/product-analytics)). [Cohorts](https://posthog.com/docs/data/cohorts) can be behavioral (did an event several times, completed a sequence, stopped, started again), and there are [SDKs](https://posthog.com/docs/libraries) for iOS, Android, React Native and Flutter. Replay, flags, experiments, surveys, error tracking and a data warehouse are separate products, each with its own monthly allowance on the [pricing page](https://posthog.com/pricing). Past the first million events, [analytics](https://posthog.com/docs/product-analytics/pricing) costs $0.00005 per event, falling in tiers to $0.000009 above 250 million. Events are kept for 1 year on the free plan and 7 years on pay-as-you-go.
+
+The core is MIT-licensed, but the [self-hosting docs](https://posthog.com/docs/self-host) call self-hosted deployments "officially unsupported" and keep all paid-plan features cloud-only. More in [Rybbit vs PostHog](/compare/posthog).
+
+- **Free option:** 1M events, 5K recordings, 1M flag requests, 100K exceptions and 1,500 survey responses a month, no card
+- **Paid:** per product; about $324/month at 10M events for analytics alone
+- **Drawbacks:** many meters to watch; replay, flags and surveys are billed on top; self-hosting isn't a supported path
+
+## 3. Heap (Contentsquare)
+
+**Best for:** teams that don't want to plan tracking up front and would rather pay per session than per event.
+
+Heap has been part of Contentsquare since December 2023, when the [acquisition closed](https://contentsquare.com/press/contentsquare-completes-acquisition-heap/), and it still sells its own plans. Its [autocapture](https://www.heap.io/platform/autocapture) "grabs every click, swipe, tap, pageview, and fill", so you can analyze history without deciding in advance what to track, and there are autocapture SDKs for web, iOS, Android, React Native and Flutter ([docs](https://developers.heap.io/docs)). The gap has narrowed, though: Amplitude now lists autocapture on every plan.
+
+On the [pricing page](https://www.heap.io/pricing), Free includes core charts, SSO and 6 months of history. Growth adds unlimited users and reports and 12 months of history, but shows its price only after you install the snippet. Pro adds account analytics and report alerts, and Premier adds data warehouse integration and unlimited projects; both are "Custom Session Pricing", with session replay as an add-on.
+
+- **Free option:** up to 10K sessions a month
+- **Paid:** Growth by estimate after install; Pro and Premier by quote
+- **Drawbacks:** no public paid prices; replay costs extra; 6 to 12 months of history below Pro
+
+## 4. Pendo
+
+**Best for:** B2B SaaS teams that want product analytics and in-app guides in one tool.
+
+[Pendo](https://www.pendo.io) pairs product analytics with in-app guides, a natural next step for teams that have outgrown Amplitude's Guides and Surveys (one guide or survey on Free and Plus). Its [pricing page](https://www.pendo.io/pricing/) charges by monthly active users (MAUs), says the cost per MAU falls as you add more, and advertises your complete data history from the day you install. Free includes product analytics, guides, and Pendo-branded roadmaps and NPS surveys across unlimited web and mobile apps. Base, Core and Ultimate are "Request pricing"; session replay is an add-on on Base and included on Core and Ultimate.
+
+- **Free option:** up to 500 MAUs
+- **Paid:** by quote; a 30-day trial of the full platform goes through sales
+- **Drawbacks:** no published prices; 500 MAUs is a low ceiling; no experiments or feature flags in the plan table
+
+## 5. OpenPanel
+
+**Best for:** small teams that want Mixpanel-style event analytics, open source, at low cloud prices.
+
+[OpenPanel](https://openpanel.dev) calls itself an open-source alternative to Mixpanel. Its [README](https://github.com/Openpanel-dev/openpanel) lists funnels, cohorts, user profiles, session replay, custom dashboards, alerts, revenue tracking and A/B variant breakdowns, with cookieless tracking and SDKs for web, iOS, Android, React Native and servers. [Retention](https://openpanel.dev/features/retention) is event-based: you pick an initial event and a return event. Cloud [pricing](https://openpanel.dev/pricing) is by events, with websites, users and dashboards unlimited and two months free on yearly billing. Self-hosting is free "with unlimited events" under AGPL-3.0.
+
+- **Free option:** self-hosting; the cloud has a 30-day trial with no card
+- **Paid:** $2.50/month for 5K events, $90 at 1M, $350 at 10M
+- **Drawbacks:** nothing free on the cloud after the trial; feature flags aren't in its feature list
+
+## 6. Rybbit
+
+**Best for:** web products (SaaS apps, stores, content sites) that want product and traffic analytics in one cookieless tool. If that describes you, start here.
+
+[Rybbit](https://rybbit.com) is open-source web analytics with the product-analytics reports in the same dashboard: [funnels](/features/funnels) built from page paths, [custom events](/features/custom-events) or autocaptured clicks, outbound links, form submits and copies; [retention](/features/retention); [user journeys](/features/user-journeys); [user profiles](/features/user-profiles) with `identify()` and custom traits; [sessions](/features/sessions); [error tracking](/features/error-tracking); and [Web Vitals](/features/web-vitals), next to referrers, UTM campaigns, pages and devices. Tracking is cookieless by default, so Rybbit's own tracking needs no consent banner, and the cloud is hosted in the EU.
+
+[Pricing](/pricing) is by events. Standard is $19 a month for 100,000 events (up to 5 websites and 3 team members) and includes everything above plus [goals](/features/goals), email reports, API access and 3 years of data retention, against 2 on Amplitude Plus. Pro is $39 a month for 100,000 events and adds [session replay](/features/session-replay) (10,000 replays a month at that tier, rising with the plan), unlimited websites and team members, and 5-year retention. Cloud plans start with a 7-day trial (the card is collected at signup), and self-hosting is free under AGPL-3.0.
+
+Where it falls short of Amplitude:
+
+- No experiments or feature flags.
+- No behavioral cohorts at Amplitude's depth. [Segments](/docs/segments) are saved filters on properties such as country, UTM source, page or event name, and retention groups users by the day or week of their first visit and counts any return, with no choice of start and return events.
+- Journeys are page-path Sankey diagrams, not event sequences.
+- No account-level (group) analytics and no heatmaps.
+- Mobile goes through the [React Native SDK](/docs/sdks/react-native), which tracks screens, events, errors and users in an App Analytics dashboard mode. There's no native iOS or Android SDK and no mobile session replay.
+- No Amplitude importer. [Data import](/docs/data-import) covers Plausible, Umami and Simple Analytics, so switching means running both tools side by side.
+
+Pick something else if you run experiments in Amplitude today (PostHog or Mixpanel), are mobile-first (Mixpanel, PostHog or Heap), or target users with behavioral cohorts (Mixpanel or PostHog).
+
+- **Free option:** self-hosting, replay included; the cloud has a 7-day trial
+- **Paid:** Standard from $19/month, Pro from $39/month; $249 and $499 at 10M events
+- **Drawbacks:** the list above
+
+## 7. Countly
+
+**Best for:** mobile, desktop and connected-device apps that have to run on your own infrastructure.
+
+[Countly](https://countly.com) collects data from mobile, web and desktop apps, with crash reporting, push notifications and remote config next to analytics ([README](https://github.com/Countly/countly-server)). Flex, a managed private cloud priced on MAUs and data points ([Flex page](https://countly.com/flex)), includes events, sessions, user profiles and dashboards. Per the [pricing page](https://countly.com/pricing), funnels, retention and flows are in the Intelligence add-on and A/B testing and remote config in the Adaptivity add-on, neither with a published price. Enterprise includes everything and runs on your own servers.
+
+The free Countly Lite is AGPL-3.0 with a modified Section 7 that requires keeping Countly's branding ([license](https://github.com/Countly/countly-server/blob/master/LICENSE.md)). Its README calls Lite "core analytics and essential features" under "an open-source, non-commercial license", and lists no funnels or retention.
+
+- **Free option:** Countly Lite, self-hosted
+- **Paid:** Flex from $175/month with a 14-day trial; Enterprise by quote
+- **Drawbacks:** funnels and retention cost extra on Flex; add-on prices unpublished; Lite lacks product-analytics reports
+
+## 8. Google Analytics 4
+
+**Best for:** $0 budgets and teams whose questions are mostly about acquisition and Google Ads.
+
+Google says Analytics gives you its tools "[free of charge](https://marketingplatform.google.com/about/analytics/)", and one property can hold up to 50 web and app data streams ([help center](https://support.google.com/analytics/answer/9303323)). For product questions, [explorations](https://support.google.com/analytics/answer/7579450) offer funnel, path, cohort, segment overlap, user and user-lifetime reports.
+
+The limits show up fast. Explorations are sampled once a query exceeds 10 million events, and their event-level data is kept [2 or 14 months](https://support.google.com/analytics/answer/7667196) on standard properties; longer retention needs Analytics 360, which has no public price, only a "[Talk to Sales](https://marketingplatform.google.com/about/analytics-360/)" button. Optimize, Google's testing tool, has been [unavailable since September 30, 2023](https://support.google.com/optimize/answer/12979939), and GA4's [`_ga` cookies](https://support.google.com/analytics/answer/11397207) last 2 years, which generally means asking EU visitors for consent. More in [Rybbit vs Google Analytics](/compare/google-analytics).
+
+- **Free option:** all of it; there's no usage fee
+- **Paid:** Analytics 360, by quote
+- **Drawbacks:** sampling on large queries; 14-month cap on exploration data; cookie consent in the EU; no built-in experiments
+
+## 9. Matomo
+
+**Best for:** organizations that need self-hosted, GA-style web analytics with funnels and cohorts.
+
+[Matomo](https://matomo.org) is open-source web analytics under [GPL v3](https://matomo.org/free-software/), with funnels, users flow, cohorts, A/B testing, heatmaps, session recordings and visitor profiles on top of its traffic reports. Matomo Cloud's Business plan includes all of those, with 24 months of raw data, no sampling, 30 websites, 30 team members and data stored in Frankfurt. Its [pricing page](https://matomo.org/pricing/) shows US visitors $26 a month for 50,000 hits, and the trial needs no card.
+
+Self-hosted On-Premise is free with unlimited users and hits, but the product-analytics parts are paid plugins: funnels, users flow and heatmaps in the Team bundle (€275 a month, or €230 billed annually), cohorts in Business (€1,450 a month) and A/B testing in Enterprise (€3,400 a month). Plugins can also be bought one at a time.
+
+[Rybbit vs Matomo](/compare/matomo) compares the two in detail.
+
+- **Free option:** Matomo On-Premise, self-hosted
+- **Paid:** Cloud from $26/month for 50K hits; on-premise bundles from €275/month
+- **Drawbacks:** on-premise product features are paid plugins, with cohorts and A/B tests in the pricier bundles
+
+## Open-source Amplitude alternatives
+
+If analytics data can't leave your servers, or you'd rather pay for servers than per event, these are the open-source options, and their licenses differ in ways that matter:
+
+| Tool | License | Self-hosted edition | Watch out for |
+| --- | --- | --- | --- |
+| PostHog | MIT core | Free Docker Compose deployment | "Officially unsupported"; paid-plan features are cloud-only |
+| OpenPanel | AGPL-3.0 | Free, unlimited events | Feature flags aren't in its feature list |
+| Rybbit | AGPL-3.0 | Free, all features including replay | Web-first; no experiments, flags or behavioral cohorts |
+| Countly Lite | AGPL-3.0 with branding terms | Free | README calls it a "non-commercial license"; no funnels or retention |
+| Matomo | GPL-3.0 | Free core, unlimited users and hits | Funnels, cohorts and A/B tests are paid plugins |
+| GrowthBook | MIT outside its enterprise folders | Free | Experiments and flags first; analytics reads your own warehouse |
+
+PostHog is the closest to Amplitude's feature set, but its maintainers don't support self-hosted installs. Of the rest, OpenPanel is the nearest match to Amplitude's event model, and Rybbit is the pick for websites and web apps. If what you'll miss most is Amplitude's experimentation, [GrowthBook](https://www.growthbook.io/pricing) covers feature flags and A/B tests: its cloud Starter plan costs nothing for up to 3 users, Pro is $40 per seat per month, and the self-hosted edition is free and reads from your own data warehouse (see its [license](https://github.com/growthbook/growthbook/blob/main/LICENSE)).
+
+## Names to drop from older lists
+
+Some lists of alternatives to Amplitude still recommend tools that are now part of Amplitude or on their way out:
+
+- **Statsig**, which had agreed to join OpenAI, was [acquired by Amplitude on May 5, 2026](https://www.statsig.com/blog/openai-acquisition), according to a note on Statsig's own blog. A [June 2026 update](https://www.statsig.com/blog/statsig-amplitude-phase-1) says the two products are being connected at the data layer.
+- **June** [wound down its product](https://www.june.so/blog/a-new-chapter) on August 8, 2025, and its founding team joined Amplitude.
+- **Smartlook** carries a Cisco [end-of-life notice](https://www.smartlook.com/): no new subscriptions since May 31, 2026, and the platform shuts down on September 30, 2027.
+
+## Which Amplitude alternative should you pick?
+
+- **Same workflow, different vendor:** Mixpanel.
+- **Flags, experiments, surveys and error tracking on one usage-based bill:** PostHog.
+- **Autocapture, priced by sessions:** Heap.
+- **B2B SaaS where in-app guides matter as much as charts:** Pendo.
+- **Open-source event analytics on a small budget:** OpenPanel.
+- **A website or web app that needs traffic analytics, product analytics, errors and Web Vitals in one cookieless tool:** Rybbit.
+- **Mobile, desktop or IoT apps that must stay on your servers:** Countly Enterprise.
+- **A $0 budget:** GA4, or Mixpanel and PostHog within their no-cost limits.
+- **GA-style web analytics on your own servers:** Matomo.
+
+If price is your only complaint, check Amplitude's Plus calculator first: at 3, 10 and 20 million events it came in under Mixpanel Growth. For the web-analytics side of the decision, see our guide to the [best web analytics tools](/blog/best-web-analytics-tools).
+
+## FAQ
+
+**What is the best alternative to Amplitude?**
+For most product teams, Mixpanel: the same event model (funnels, retention, flows, behavioral cohorts), with experiments, feature flags and session replay, and a public price calculator. PostHog is the better pick if you also want error tracking and surveys, or an open-source core.
+
+**Is there a free Amplitude alternative?**
+Yes. Mixpanel costs nothing up to 1 million events a month, PostHog up to 1 million events and 5,000 recordings, Heap up to 10,000 sessions and Pendo up to 500 monthly active users, and GA4 has no usage fee. Self-hosted OpenPanel, Countly Lite, Matomo and Rybbit cost only the server they run on.
+
+**Who are Amplitude's main competitors?**
+Amplitude's own [site footer](https://amplitude.com/pricing) lists ten under "Compare us": Adobe, Google Analytics, Contentsquare, Fullstory, Heap, LaunchDarkly, Mixpanel, Optimizely, Pendo and PostHog. In product analytics specifically, the direct competitors are Mixpanel, PostHog, Heap and Pendo.
+
+**Is there an open-source alternative to Amplitude?**
+Yes: PostHog (MIT core), OpenPanel and Rybbit (both AGPL-3.0), Countly Lite (AGPL-3.0 with branding terms) and Matomo (GPL-3.0), plus GrowthBook for experiments and feature flags. PostHog is the closest to Amplitude but doesn't support self-hosted installs; OpenPanel is the nearest of the rest.
+
+**Is Amplitude cheaper than Mixpanel?**
+On their own calculators, yes: $720 against $1,176 a month at 10 million events, and $94 against $378 at 3 million, both on monthly billing. Mixpanel's edge is SAML SSO on self-serve Growth, which Amplitude keeps for its sales-priced plans.
