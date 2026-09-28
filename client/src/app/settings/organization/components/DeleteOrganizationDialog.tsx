@@ -3,11 +3,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useState } from "react";
+import { useId, useState } from "react";
+import { HoldToConfirm } from "@/components/interior/hold-to-confirm";
 import { toast } from "@/components/ui/sonner";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -35,6 +35,7 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
   const [isOpen, setIsOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const queryClient = useQueryClient();
+  const confirmPromptId = useId();
 
   const hasActiveSubscription =
     subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro");
@@ -47,35 +48,42 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
 
     setIsDeleting(true);
     try {
-      await authClient.organization.delete({
+      // better-auth reports failures in the result rather than throwing.
+      const { error } = await authClient.organization.delete({
         organizationId: organization.id,
       });
-
-      toast.success(t("Organization deleted successfully"));
-      queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
-      authClient.organization.setActive({
-        organizationId: null,
-      });
-      setIsOpen(false);
-      onSuccess();
-    } catch (error: any) {
-      toast.error(error.message || t("Failed to delete organization"));
-    } finally {
+      if (error) {
+        throw new Error(error.message || t("Failed to delete organization"));
+      }
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : t("Failed to delete organization"));
       setIsDeleting(false);
+      return;
     }
-  };
 
-  const handleClose = () => {
+    // Stays pending on success: the page leaves this organization (it's keyed by organization id), so the
+    // button must not re-arm while the dialog closes.
+    toast.success(t("Organization deleted successfully"));
+    queryClient.invalidateQueries({ queryKey: [USER_ORGANIZATIONS_QUERY_KEY] });
+    authClient.organization.setActive({
+      organizationId: null,
+    });
     setIsOpen(false);
-    setConfirmText("");
+    onSuccess();
   };
 
-  const canDelete = !hasActiveSubscription && confirmText === organization.name && !isDeleting;
+  const handleOpenChange = (open: boolean) => {
+    // A running deletion can't be dismissed.
+    if (isDeleting && !open) return;
+    // Every attempt starts from an empty confirmation field.
+    if (open) setConfirmText("");
+    setIsOpen(open);
+  };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" className="w-full" onClick={() => setIsOpen(true)}>
+        <Button variant="destructive" className="w-full">
           {t("Delete Organization")}
         </Button>
       </AlertDialogTrigger>
@@ -88,38 +96,39 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
           <AlertDialogDescription>
             {hasActiveSubscription
               ? t("You have an active subscription. Please cancel your subscription before deleting your organization.")
-              : t("This action cannot be undone. This will permanently delete the organization and remove all associated data.")}
+              : t(
+                  "This action cannot be undone. This will permanently delete the organization and remove all associated data."
+                )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {!hasActiveSubscription && (
           <div className="py-4">
-            <p className="text-sm mb-2">
+            <p id={confirmPromptId} className="text-sm mb-2">
               {t("Please type {name} to confirm.", { name: organization.name })}
             </p>
             <Input
               value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
+              onChange={e => setConfirmText(e.target.value)}
               placeholder={organization.name}
+              aria-labelledby={confirmPromptId}
+              autoComplete="off"
+              disabled={isDeleting}
             />
           </div>
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleClose} disabled={isDeleting}>
-            {t("Cancel")}
-          </AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>{t("Cancel")}</AlertDialogCancel>
           {!hasActiveSubscription && (
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                handleDelete();
-              }}
-              variant="destructive"
-              disabled={!canDelete}
+            <HoldToConfirm
+              onConfirm={handleDelete}
+              pending={isDeleting}
+              pendingLabel={t("Deleting...")}
+              disabled={confirmText !== organization.name}
             >
-              {isDeleting ? t("Deleting...") : t("Delete Organization")}
-            </AlertDialogAction>
+              {t("Hold to delete organization")}
+            </HoldToConfirm>
           )}
         </AlertDialogFooter>
       </AlertDialogContent>

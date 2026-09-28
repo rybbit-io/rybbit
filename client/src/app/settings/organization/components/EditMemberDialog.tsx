@@ -6,6 +6,16 @@ import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/sonner";
 
 import { GetOrganizationMembersResponse, updateMemberSiteAccess } from "@/api/admin/endpoints/auth";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -33,13 +43,7 @@ interface EditMemberDialogProps {
   isOwner: boolean;
 }
 
-export function EditMemberDialog({
-  member,
-  open,
-  onClose,
-  onSuccess,
-  isOwner,
-}: EditMemberDialogProps) {
+export function EditMemberDialog({ member, open, onClose, onSuccess, isOwner }: EditMemberDialogProps) {
   const { data: activeOrganization } = authClient.useActiveOrganization();
   const queryClient = useQueryClient();
   const t = useExtracted();
@@ -50,6 +54,7 @@ export function EditMemberDialog({
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
   useEffect(() => {
     if (open && member) {
@@ -57,6 +62,7 @@ export function EditMemberDialog({
       setRole(member.role);
       setRestrictSiteAccess(member.siteAccess?.hasRestrictedSiteAccess ?? false);
       setSelectedSiteIds(member.siteAccess?.siteIds ?? []);
+      setConfirmRemoveOpen(false);
     }
   }, [open, member]);
 
@@ -120,16 +126,21 @@ export function EditMemberDialog({
 
     setIsRemoving(true);
     try {
-      await authClient.organization.removeMember({
+      // better-auth reports failures in the result rather than throwing.
+      const { error } = await authClient.organization.removeMember({
         memberIdOrEmail: member.id,
         organizationId: activeOrganization.id,
       });
+      if (error) {
+        throw new Error(error.message || t("Failed to remove member"));
+      }
 
       toast.success(t("Member removed successfully"));
+      setConfirmRemoveOpen(false);
       onSuccess();
       onClose();
-    } catch (error: any) {
-      toast.error(error.message || t("Failed to remove member"));
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : t("Failed to remove member"));
     } finally {
       setIsRemoving(false);
     }
@@ -222,8 +233,7 @@ export function EditMemberDialog({
             </>
           ) : (
             <p className="text-sm text-neutral-500 dark:text-neutral-300">
-              {role === "owner" ? t("Organization owners") : t("Admins")}{" "}
-              {t("automatically have access to all sites.")}
+              {role === "owner" ? t("Organization owners") : t("Admins")} {t("automatically have access to all sites.")}
             </p>
           )}
 
@@ -232,17 +242,49 @@ export function EditMemberDialog({
             <p className="text-xs text-neutral-500 dark:text-neutral-300 mt-1">
               {t("Remove this member from the organization.")}
             </p>
-            <Button variant="destructive" size="sm" className="mt-2" onClick={handleRemove} disabled={isRemoving}>
-              {isRemoving ? t("Removing...") : t("Remove Member")}
-            </Button>
+            <AlertDialog
+              open={confirmRemoveOpen}
+              onOpenChange={next => {
+                if (!isRemoving) setConfirmRemoveOpen(next);
+              }}
+            >
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="mt-2">
+                  {t("Remove Member")}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("Remove this member?")}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("{name} will immediately lose access to this organization's sites and data.", {
+                      name: member.user.name || member.user.email,
+                    })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isRemoving}>{t("Cancel")}</AlertDialogCancel>
+                  {/* A plain Button, not AlertDialogAction, so the dialog stays open until the request settles
+                      (handleRemove closes it on success). `loading` keeps its width while pending. */}
+                  <Button
+                    variant="destructive"
+                    loading={isRemoving}
+                    loadingLabel={t("Removing...")}
+                    onClick={handleRemove}
+                  >
+                    {t("Remove member")}
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             {t("Cancel")}
           </Button>
-          <Button onClick={handleSave} disabled={isSaving} variant="success">
-            {isSaving ? t("Saving...") : t("Save Changes")}
+          <Button onClick={handleSave} loading={isSaving} loadingLabel={t("Saving...")} variant="success">
+            {t("Save Changes")}
           </Button>
         </DialogFooter>
       </DialogContent>

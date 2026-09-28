@@ -4,6 +4,16 @@ import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useOrganizationInvitations } from "../../../../api/admin/hooks/useOrganizations";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../../../../components/ui/alert-dialog";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
@@ -15,9 +25,77 @@ interface InvitationsProps {
   isOwner: boolean;
 }
 
+function CancelInvitationButton({
+  invitation,
+  onCancelled,
+}: {
+  invitation: { id: string; email: string };
+  onCancelled: () => void;
+}) {
+  const t = useExtracted();
+  const [open, setOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancel = async () => {
+    setIsCancelling(true);
+    try {
+      // better-auth reports failures in the result rather than throwing.
+      const { error } = await authClient.organization.cancelInvitation({
+        invitationId: invitation.id,
+      });
+      if (error) {
+        throw new Error(error.message || t("Failed to cancel invitation"));
+      }
+      toast.success(t("Invitation cancelled"));
+      setOpen(false);
+      onCancelled();
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : t("Failed to cancel invitation"));
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={next => {
+        if (!isCancelling) setOpen(next);
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="default"
+          size="sm"
+          aria-label={t("Cancel invitation for {email}", { email: invitation.email })}
+        >
+          {t("Cancel")}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("Cancel this invitation?")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("The invitation sent to {email} will stop working. You can invite them again later.", {
+              email: invitation.email,
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isCancelling}>{t("Keep invitation")}</AlertDialogCancel>
+          {/* A plain Button, not AlertDialogAction, so the dialog stays open until the request settles
+              (handleCancel closes it on success). `loading` keeps its width while pending. */}
+          <Button variant="destructive" loading={isCancelling} loadingLabel={t("Cancelling...")} onClick={handleCancel}>
+            {t("Cancel invitation")}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export function Invitations({ organizationId, isOwner }: InvitationsProps) {
   const t = useExtracted();
-  const [loadingInvitationId, setLoadingInvitationId] = useState<string | null>(null);
 
   const {
     data: invitations,
@@ -25,21 +103,6 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
     isLoading: invitationsLoading,
   } = useOrganizationInvitations(organizationId);
   const pendingInvitations = invitations?.filter(invitation => invitation.status === "pending") ?? [];
-
-  const handleCancelInvitation = async (invitationId: string) => {
-    try {
-      setLoadingInvitationId(invitationId);
-      await authClient.organization.cancelInvitation({
-        invitationId,
-      });
-      toast.success(t("Invitation cancelled"));
-      refetchInvitations();
-    } catch (error: any) {
-      toast.error(error.message || t("Failed to cancel invitation"));
-    } finally {
-      setLoadingInvitationId(null);
-    }
-  };
 
   return (
     <Card className="w-full">
@@ -88,7 +151,11 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
                     <TableRow key={invitation.id}>
                       <TableCell>{invitation.email}</TableCell>
                       <TableCell className="capitalize">
-                        {invitation.role === "admin" ? t("Admin") : invitation.role === "owner" ? t("Owner") : t("Member")}
+                        {invitation.role === "admin"
+                          ? t("Admin")
+                          : invitation.role === "owner"
+                            ? t("Owner")
+                            : t("Member")}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{t("Pending")}</Badge>
@@ -99,14 +166,7 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
                       {isOwner && (
                         <TableCell className="text-right">
                           {invitation.status === "pending" && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              disabled={loadingInvitationId === invitation.id}
-                              onClick={() => handleCancelInvitation(invitation.id)}
-                            >
-                              {loadingInvitationId === invitation.id ? t("Processing...") : t("Cancel")}
-                            </Button>
+                            <CancelInvitationButton invitation={invitation} onCancelled={refetchInvitations} />
                           )}
                         </TableCell>
                       )}

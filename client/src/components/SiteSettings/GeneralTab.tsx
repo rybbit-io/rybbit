@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/sonner";
 
+import { HoldToConfirm } from "@/components/interior/hold-to-confirm";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -173,19 +174,20 @@ export function GeneralTab({
   };
 
   const handleDelete = async () => {
+    setIsDeleting(true);
     try {
-      setIsDeleting(true);
       await deleteSite(siteMetadata.siteId);
-      toast.success(t("Site deleted successfully"));
-      router.push("/");
-      onClose?.();
-      refreshSiteLists();
     } catch (error) {
       console.error("Error deleting site:", error);
       toast.error(t("Failed to delete site"));
-    } finally {
       setIsDeleting(false);
+      return;
     }
+    // Stays pending on success: the dialog closes and we navigate away, so the button must not re-arm meanwhile.
+    toast.success(t("Site deleted successfully"));
+    router.push("/");
+    onClose?.();
+    refreshSiteLists();
   };
 
   const handleMove = async () => {
@@ -279,9 +281,11 @@ export function GeneralTab({
             <Button
               variant="outline"
               onClick={handleNameChange}
-              disabled={isChangingName || newName === siteMetadata.name || disabled}
+              loading={isChangingName}
+              loadingLabel={t("Updating...")}
+              disabled={newName === siteMetadata.name || disabled}
             >
-              {isChangingName ? t("Updating...") : t("Update")}
+              {t("Update")}
             </Button>
           </div>
         </div>
@@ -310,9 +314,11 @@ export function GeneralTab({
             <Button
               variant="outline"
               onClick={handleDomainChange}
-              disabled={isChangingDomain || newDomain === siteMetadata.domain || disabled}
+              loading={isChangingDomain}
+              loadingLabel={t("Updating...")}
+              disabled={newDomain === siteMetadata.domain || disabled}
             >
-              {isChangingDomain ? t("Updating...") : t("Update")}
+              {t("Update")}
             </Button>
           </div>
         </div>
@@ -375,8 +381,8 @@ export function GeneralTab({
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={!targetOrgId || isMoving}>
-                  {isMoving ? t("Moving...") : t("Move")}
+                <Button variant="outline" loading={isMoving} loadingLabel={t("Moving...")} disabled={!targetOrgId}>
+                  {t("Move")}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -394,8 +400,9 @@ export function GeneralTab({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+                  {/* Closes on click; the Move button shows the request as it runs. */}
                   <AlertDialogAction onClick={handleMove} disabled={isMoving}>
-                    {isMoving ? t("Moving...") : t("Yes, move site")}
+                    {t("Yes, move site")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -419,7 +426,11 @@ export function GeneralTab({
                 {t("Delete Site")}
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent
+              onEscapeKeyDown={event => {
+                if (isDeleting) event.preventDefault();
+              }}
+            >
               <AlertDialogHeader>
                 <AlertDialogTitle>{t("Are you absolutely sure?")}</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -430,10 +441,10 @@ export function GeneralTab({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} disabled={isDeleting} variant="destructive">
-                  {isDeleting ? t("Deleting...") : t("Yes, delete site")}
-                </AlertDialogAction>
+                <AlertDialogCancel disabled={isDeleting}>{t("Cancel")}</AlertDialogCancel>
+                <HoldToConfirm onConfirm={handleDelete} pending={isDeleting} pendingLabel={t("Deleting...")}>
+                  {t("Hold to delete site")}
+                </HoldToConfirm>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

@@ -2,6 +2,15 @@
 
 import type { Experiment, ExperimentStatus } from "@/api/analytics/endpoints";
 import { useDeleteExperiment, useUpdateExperiment } from "@/api/analytics/hooks/experiments/useExperiments";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,6 +44,8 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
   const deleteMutation = useDeleteExperiment();
   const updateMutation = useUpdateExperiment();
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
   const primaryGoalName =
     experiment.primaryGoal?.name || (experiment.primaryGoalId ? t("Untitled goal") : t("No goal"));
 
@@ -51,11 +62,10 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
           : null;
 
   const handleDelete = async () => {
-    if (!window.confirm(t("Delete this experiment?"))) return;
-
     try {
       await deleteMutation.mutateAsync(experiment.experimentId);
       toast.success(t("Experiment deleted"));
+      setDeleteOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to delete experiment"));
     }
@@ -65,9 +75,15 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
     try {
       await updateMutation.mutateAsync({ experimentId: experiment.experimentId, payload: { status } });
       toast.success(t("Experiment updated"));
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to update experiment"));
+      return false;
     }
+  };
+
+  const handleComplete = async () => {
+    if (await setStatus("completed")) setCompleteOpen(false);
   };
 
   const isRunning = experiment.status === "running";
@@ -127,7 +143,7 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => setStatus("completed")}
+              onClick={() => setCompleteOpen(true)}
               disabled={updateMutation.isPending}
             >
               <Square className="h-3.5 w-3.5" />
@@ -148,7 +164,7 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={deleteMutation.isPending}
-                onSelect={handleDelete}
+                onSelect={() => setDeleteOpen(true)}
                 className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -164,6 +180,62 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
       </div>
 
       <ExperimentDialog experiment={experiment} experiments={experiments} open={editOpen} onOpenChange={setEditOpen} />
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={open => {
+          if (!deleteMutation.isPending) setDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Delete this experiment?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('This permanently deletes "{name}". Its feature flag and goal are not deleted.', {
+                name: experiment.name,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>{t("Cancel")}</AlertDialogCancel>
+            {/* Plain Buttons, not AlertDialogAction, so these dialogs stay open until the request settles (the
+                handlers close them on success). `loading` keeps their width while pending. */}
+            <Button
+              variant="destructive"
+              loading={deleteMutation.isPending}
+              loadingLabel={t("Deleting...")}
+              onClick={handleDelete}
+            >
+              {t("Delete")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={completeOpen}
+        onOpenChange={open => {
+          if (!updateMutation.isPending) setCompleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Complete this experiment?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                'This permanently ends "{name}": a completed experiment can\'t be restarted. Its feature flag keeps serving variants until you change it.',
+                { name: experiment.name }
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateMutation.isPending}>{t("Cancel")}</AlertDialogCancel>
+            <Button loading={updateMutation.isPending} loadingLabel={t("Completing...")} onClick={handleComplete}>
+              {t("Complete experiment")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
