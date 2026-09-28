@@ -1,0 +1,226 @@
+---
+title: "Mixpanel Pricing 2026: Plans, Calculator Prices and Add-ons"
+description: "Mixpanel pricing for 2026: Free up to 1M events, Growth from $0 to $2,289/month at 20M events, Enterprise by quote. Add-ons, overages and examples."
+date: 2026-09-27
+tags: ["mixpanel", "pricing", "product analytics", "comparisons"]
+author: Rybbit Team
+---
+
+Mixpanel pricing comes in three plans. **Free** costs $0 for up to 1 million events a month. **Growth** also starts at $0, because the first 1 million events each month are free; above that, Mixpanel's own calculator prices it from $140 a month for 1.5 million events to $2,289 a month for 20 million on monthly billing, or $120 to $1,635 a month billed annually. **Enterprise** is quoted by sales, and the user-based (MTU) version starts at $20,000 a year. Seats are unlimited on every plan, and add-ons such as Group Analytics and Data Pipelines have no public price.
+
+Disclosure up front: we build [Rybbit](/features/web-analytics), which appears in the comparison at the end. Every Mixpanel number here comes from Mixpanel's own [pricing page](https://mixpanel.com/pricing/) and its calculator, its [pricing documentation](https://docs.mixpanel.com/docs/pricing) and its [changelog](https://docs.mixpanel.com/changelogs). Figures for other tools come from those vendors' own pricing pages, linked inline. Prices are as of September 2026, when we checked every source.
+
+## Mixpanel pricing at a glance
+
+| | Free | Growth | Enterprise |
+| --- | --- | --- | --- |
+| Price | $0 | $0 for the first 1M events a month, then by tier: $140–$2,289/month billed monthly, $120–$1,635/month billed annually | Custom quote; MTU-based plans from $20,000/year |
+| Monthly events | Up to 1M | Up to 20M online, more through sales | Up to 1 trillion |
+| Seats | Unlimited | Unlimited | Unlimited |
+| Session replays included | 10k a month | 20k a month; buy up to 500k | 20k a month; custom volumes |
+| Saved reports | 5 per user | Unlimited | Unlimited |
+| Experiments | 1k monthly experiment users (MEU) | 5k MEU; buy up to 100k | Custom |
+| Active feature flags | 10 | 50 | Custom |
+| Support | Email, 24/5 | Email, 24/5 | 24/7, dedicated success team |
+| Payment | No card | Card required | Custom terms through sales |
+
+Sources: [mixpanel.com/pricing](https://mixpanel.com/pricing/), the [Session Replay](https://docs.mixpanel.com/docs/session-replay) and [Experiments](https://docs.mixpanel.com/docs/experiments) docs, and Mixpanel's [February 2025 pricing announcement](https://mixpanel.com/blog/mixpanel-pricing-1m-free-events-autocapture/) for the card requirement on Growth.
+
+## How Mixpanel pricing works
+
+By default, Mixpanel bills on events, not on users or seats. An event is one tracked action (a page view, a sign-up, a purchase), and the [pricing docs](https://docs.mixpanel.com/docs/pricing) count them "across all projects in your organization". A handful of system events are excluded: `$identify`, `$create_alias`, `$merge`, `$opt_in`, session recording checkpoints, and user profile creation or updates.
+
+Three rules decide how large that count gets:
+
+- **Autocapture counts.** Mixpanel's [Autocapture](https://docs.mixpanel.com/docs/tracking-methods/autocapture) records page views, scrolls, form interactions, element clicks, dead clicks and rage clicks by default, and the [heatmap docs](https://docs.mixpanel.com/docs/session-replay/heatmaps) state that autocaptured clicks are billable. Page views and heatmap clicks recorded while a session replay is running are exempt.
+- **Imports count when they arrive.** Since September 1, 2025, Mixpanel bills by ingestion time (some older accounts still bill by event timestamp), so backfilling last year's data counts toward this month's total.
+- **Warehouse syncs count updates.** With Mirror-type warehouse syncs, every update or deletion of an existing event counts as one event.
+
+Pricing by monthly tracked users (MTUs) still exists, but only as an Enterprise contract. Mixpanel's [MTU guide](https://docs.mixpanel.com/docs/pricing/legacy-mtu-billing) says MTU plans "start at $20,000 per year", can't be bought online, and are worth considering above 100k users or 5M monthly events. Anonymous visitors count as MTUs.
+
+## The Mixpanel free plan: what's included and where it stops
+
+The Free plan is "free forever" and needs no card. It includes unlimited seats, up to 1M events a month, 10k session replays, funnels and retention reports, 1k MEU for experiments, and up to 10 active feature flags.
+
+The limits, from the [pricing docs](https://docs.mixpanel.com/docs/pricing) and the plan comparison table on the pricing page:
+
+- **5 saved reports per user.** You can build cohorts but not save them.
+- **Missing features.** No custom or borrowed properties, multi-touch attribution, Query API, warehouse connectors or alerts, and lookup tables are limited.
+- **The 1M cap is hard.** Mixpanel keeps collecting data, but once you reach 1M events it blocks your reports until you upgrade or the month resets. There are no overage charges.
+- **Replays expire after 30 days**, and once the 10k allowance is used you can't view more replays until you upgrade.
+- **Data history isn't unlimited.** Mixpanel's [free-plan page](https://mixpanel.com/free-plan/) advertises "unlimited data history", but its [data retention policy](https://docs.mixpanel.com/docs/privacy/gdpr-compliance) deletes events after 2 years for projects created since September 1, 2025. Older projects keep 5 years until their plan changes or moves to Free. Only Enterprise lists a customizable retention policy.
+
+## Mixpanel Growth plan pricing, step by step
+
+Growth's first 1M events each month are free; above that you choose a monthly event tier. These are the prices the [calculator on Mixpanel's pricing page](https://mixpanel.com/pricing/) showed at every slider step on September 27, 2026:
+
+| Monthly events | Billed monthly | Billed annually (per month) | Annual plan, per year |
+| --- | --- | --- | --- |
+| 1M | $0 | Not offered | Not offered |
+| 1.5M | $140 | $120* | $1,440 |
+| 2M | $259 | $185 | $2,220 |
+| 3M | $378 | $270 | $3,240 |
+| 4M | $504 | $360 | $4,320 |
+| 5M | $613 | $438 | $5,256 |
+| 6.5M | $785 | $561 | $6,732 |
+| 8M | $952 | $680 | $8,160 |
+| 10M | $1,176 | $840 | $10,080 |
+| 12.5M | $1,466 | $1,047 | $12,564 |
+| 15M | $1,722 | $1,230 | $14,760 |
+| 17.5M | $2,003 | $1,431 | $17,172 |
+| 20M | $2,289 | $1,635 | $19,620 |
+| Over 20M | Contact sales | Contact sales | Contact sales |
+
+\*At 1.5M the calculator shows $140 and $120 but labels the saving "$480/yr", while the two prices differ by $240 a year. Confirm the figure at checkout.
+
+How to read the table:
+
+- **Annual billing is about 29% cheaper** from 2M events up: at every step from 2M to 20M, the monthly price is about 1.4 times the annual one. Annual plans require a commitment above 1M events a month, and the calculator shows their allowance as a yearly total (120M events a year at the 10M tier).
+- **The only published per-event rate is $0.00028**, which is what overage costs on the 1M plan ($0.28 per 1,000 events). Committing to a tier lowers the effective rate: on monthly billing the 10M tier works out to $1,176 ÷ 9M billable events, about $0.13 per 1,000.
+- **The calculator prices events only.** Extra replays, extra experiment users and add-ons are billed separately.
+
+What Growth adds over Free: unlimited saved reports and cohorts, custom and borrowed properties, multi-touch attribution, up to 5 alerts per project, Query API access, data warehouse connectors and, since February 24, 2026, SSO, Data Views and sensitive data classification. The pricing docs describe the typical Growth customer as a team with "fewer than 50 employees".
+
+## What happens when you go over your plan
+
+On Growth, Mixpanel keeps collecting. Overage is billed at the start of the next month at your "À La Carte" rate, which is $0.00028 per event on the 1M plan and lower on bigger tiers. If you have add-ons, the [pricing docs](https://docs.mixpanel.com/docs/pricing) add 20% of the overage for Data Pipelines and 40% for Group Analytics.
+
+There is no spending cap; the docs say "it's not possible to set a billing limit at this moment". Owners and billing admins get emails at 85%, 100%, 110%, 120%, 200%, 300% and 400% of plan volume.
+
+The other meters work differently. Experiment users beyond your allowance are billed at an overage rate Mixpanel doesn't publish. Replays beyond the included allowance can't be viewed unless you've bought the replay add-on; with it, replays beyond your purchased amount are billed at your per-unit rate. And if you decide to drop back to Free, the downgrade takes effect at the next billing date, not immediately.
+
+## Mixpanel add-ons and their prices
+
+Mixpanel's public pricing page marks add-ons without prices. Here is what the page and the docs do say:
+
+| Add-on | Plans | Published price | Notes |
+| --- | --- | --- | --- |
+| [Group Analytics](https://docs.mixpanel.com/docs/data-structure/advanced/group-analytics) | Growth, Enterprise | None | Analysis at the company or account level for B2B products; can't be applied retroactively to events already ingested; adds 40% to overage; required for group cohort targeting in feature flags |
+| [Data Pipelines](https://docs.mixpanel.com/docs/data-pipelines) | Growth, Enterprise | None; 30-day free trial | Exports events to your warehouse or a storage bucket; adds 20% to overage; the trial allows daily exports only and one pipeline per data source |
+| [Session Replay volume](https://docs.mixpanel.com/docs/session-replay) | Growth (up to 500k a month or 6M a year online), Enterprise | Shown in the in-app plan builder | Required for the in-app sampling controls; Enterprise customers can customize replay retention (the pricing page lists 7–365 days) |
+| [Experiments volume](https://docs.mixpanel.com/docs/experiments) | Growth (10k–100k MEU a month), Enterprise | None; bought in-app under Plan Details & Billing | On Growth, purchased volume also raises the limit to 500 active [feature flags](https://docs.mixpanel.com/docs/featureflags) |
+| [Metric Trees](https://docs.mixpanel.com/docs/metric_tree) | Enterprise only | None | Maps input metrics to business outcomes |
+| Slack shared channel, faster response SLAs | Enterprise only | None | Support add-ons |
+
+Budget for these separately: the calculator figure covers event volume only.
+
+## Mixpanel Enterprise pricing
+
+Enterprise has no list price; the pricing page says "Let's chat". It raises the event ceiling to 1 trillion a month and adds what Growth lacks: anomaly detection, root cause analysis, signal correlation, cross-product analytics, data standards, event owners and approval, data quality monitoring, verified data and cohorts, HIPAA compliance tools, first-party tracking domains, a customizable data retention policy, 24/7 support and a dedicated account manager. Metric Trees and the Slack and SLA support options are Enterprise add-ons. The MTU-based Enterprise plan is the only one with a published floor: $20,000 a year.
+
+## Mixpanel startup program
+
+The [startup program](https://docs.mixpanel.com/docs/pricing/startup-program) is open to companies incorporated less than five years ago that have raised no more than $8 million, haven't redeemed another Mixpanel offer, and have never been on a paid plan. They get the first year free on a Startup Plan with 1 billion events a year, 500,000 session replays, Experiments with 1.2 million MEU a year, 50 feature flags, and the Data Pipelines, Group Analytics, Warehouse Connectors and Session Replay add-ons. You must start sending data within 90 days, and there's no second free year. The FAQ on the pricing page puts the replay allowance at 1 million, so confirm which figure applies when you apply.
+
+## Mixpanel pricing changes in 2025 and 2026
+
+Dates come from Mixpanel's [changelog](https://docs.mixpanel.com/changelogs) and docs:
+
+| Date | Change |
+| --- | --- |
+| December 2, 2024 | Session Replay added to Free (10k replays a month) and Growth (20k) |
+| February 2025 | Growth starts including the first 1M events a month free. Per Mixpanel's [announcement](https://mixpanel.com/blog/mixpanel-pricing-1m-free-events-autocapture/), Growth previously "started at $24 a month", and it now requires a credit card |
+| August 18, 2025 | Growth customers can buy extra replays online, up to 500k a month or 6M a year |
+| September 1, 2025 | Billing moves to ingestion time; default event retention drops to 2 years |
+| February 24, 2026 | SSO, Data Views and sensitive data classification move into Growth |
+| August 24, 2026 | Experiments and Feature Flags added to Free (1k MEU, 10 active flags) and Growth (5k MEU and 50 flags, expandable to 100k MEU and 500 flags) |
+
+## Three worked examples
+
+### A new app under 1M events
+
+4,000 monthly active users × 120 events each = 480,000 events a month.
+
+- Free plan: **$0**, with room to double before the 1M cap.
+- If the team needs saved cohorts, alerts or more than 5 saved reports per person, Growth is also **$0** at this volume. It needs a card, and any month over 1M is billed at $0.00028 per extra event.
+
+### A consumer app at 4M events
+
+25,000 monthly active users × 160 events each = 4,000,000 events a month.
+
+- Growth, billed monthly: $504 × 12 = **$6,048 a year**.
+- Growth, billed annually: $360 × 12 = **$4,320 a year**.
+- Annual billing saves $1,728 a year, which matches the saving the calculator shows. Recording more than 20k sessions a month would add the replay add-on on top.
+
+### A B2B SaaS that never resized its plan
+
+The team signed up for the 1M-event Growth plan ($0) with Group Analytics and now sends 3M events a month.
+
+- Event overage: 2,000,000 × $0.00028 = $560.
+- Group Analytics surcharge: 40% × $560 = $224.
+- Total: **$784 a month**, plus the Group Analytics fee itself.
+- The 3M tier lists at **$378 a month** billed monthly ($270 billed annually), $182 less than the event overage alone. Mixpanel doesn't publish how the Group Analytics fee changes between tiers, so ask for both totals before switching.
+
+## Mixpanel vs alternatives at the same volume
+
+### Event counts aren't interchangeable
+
+All three tools below bill per event, but they don't count the same things:
+
+- **Mixpanel** counts every tracked event, including everything Autocapture records (page views, scrolls, clicks, form interactions), across all projects.
+- **[PostHog](/compare/posthog)** bills product analytics "on events captured – pageviews, clicks, custom events, and everything autocapture picks up", per its [pricing page](https://posthog.com/product-analytics/pricing).
+- **Rybbit** counts pageviews and outbound-link clicks (both tracked by default) plus the [custom events](/features/custom-events) you send. [Web Vitals](/features/web-vitals), button clicks, copies and form interactions count only if you switch them on.
+
+The same traffic therefore produces different totals. A site that tracks only page views sends about one event per view to each tool; turn on autocapture in Mixpanel or PostHog and every captured click adds to the count. Estimate your volume per tool before comparing prices.
+
+### Price at the same event volume
+
+| Monthly events | Mixpanel Growth (monthly / annual billing) | PostHog product analytics | Rybbit Standard | Rybbit Pro |
+| --- | --- | --- | --- | --- |
+| 1M | $0 / not offered | $0 | $69 | $139 |
+| 5M | $613 / $438 | $152.90 | $149 | $299 |
+| 10M | $1,176 / $840 | $324.40 | $249 | $499 |
+| 20M | $2,289 / $1,635 | $643.40 | $399 | $799 |
+
+PostHog's figures apply its graduated rates as its calculator shows them: the first 1M events free, then $0.00005 per event up to 2M, $0.0000343 from 2M to 15M, and $0.0000295 from 15M to 50M. Rybbit's figures are monthly billing from our [pricing page](/pricing); annual billing gives 4 months free.
+
+What the table leaves out:
+
+- **Session replay.** Mixpanel Growth includes 20k replays a month. PostHog includes [5k recordings a month](https://posthog.com/pricing) free and bills the rest separately. Rybbit includes [session replay](/features/session-replay) on Pro only, with a monthly quota of 10% of the event tier: 10,000 replays at 100k events, 100,000 at 1M and 1 million at 10M. Once the quota is used, new sessions aren't recorded until the next calendar month.
+- **Data retention.** Mixpanel keeps events for 2 years (projects created since September 2025). PostHog keeps them 1 year without a card and 7 years once you add one for pay-as-you-go. Rybbit keeps them 3 years on Standard and 5 on Pro.
+- **Seats.** Mixpanel has unlimited seats on every plan, and PostHog doesn't charge per seat. Rybbit Standard allows 3 team members and 5 websites; Pro makes both unlimited.
+- **Under 1M events, free wins.** Mixpanel and PostHog cost nothing there. Rybbit Cloud is paid after a 7-day trial, with a card collected at signup, from $19 a month for 100k events. Self-hosting Rybbit is free under the AGPL-3.0 license.
+
+### Who should stay on Mixpanel
+
+- **You run experiments and feature flags from your analytics tool.** Since August 2026 both are included on Free and Growth, with CUPED, sequential testing and sample-ratio-mismatch monitoring.
+- **You sell to businesses.** Group Analytics answers questions at the account level, such as which companies convert through a funnel.
+- **Your data team depends on governance.** Mixpanel has a data dictionary on every plan, warehouse connectors from Growth up, and event approval, data standards and verified cohorts on Enterprise.
+- **You're under 1M events a month.** Mixpanel Free costs $0 at that volume and includes 10k replays a month.
+- **You qualify for the startup program**, which covers the first year.
+
+### Where Rybbit fits
+
+Rybbit combines web analytics and product analytics: traffic sources, pages and Web Vitals alongside [funnels](/features/funnels), [retention](/features/retention), [user journeys](/features/user-journeys) and [user profiles](/features/user-profiles). It's cookieless by default, so its own tracking needs no consent banner, and the cloud version is hosted in the EU. It suits teams whose product lives on the web and who want marketing and product questions answered in one tool, at a fixed price per event tier.
+
+It doesn't match Mixpanel's depth in behavioral cohorts, experimentation or data governance. There's also no Mixpanel importer, so switching means running both tools side by side until Rybbit has built up enough history. For a wider view of the market, see our [roundup of web analytics tools](/blog/best-web-analytics-tools).
+
+## FAQ
+
+**How much does Mixpanel cost?**
+Mixpanel Free costs $0 up to 1M events a month. Growth is $0 for the first 1M events, then $140 to $2,289 a month on monthly billing (1.5M to 20M events), or $120 to $1,635 a month billed annually. Enterprise is quoted by sales, with MTU-based contracts from $20,000 a year. Prices are as of September 2026.
+
+**Is Mixpanel free?**
+Yes. The Free plan is free forever with no card: 1M events a month, 10k session replays, unlimited seats and 5 saved reports per user. Growth also costs $0 up to 1M events but requires a card.
+
+**What are Mixpanel's pricing plans?**
+Free, Growth and Enterprise, all billed on monthly events. Growth and Enterprise can add Group Analytics, Data Pipelines, extra session replays and extra experiment volume; Enterprise also offers Metric Trees and an MTU-based contract.
+
+**Is there a Mixpanel pricing calculator?**
+Yes, on [mixpanel.com/pricing](https://mixpanel.com/pricing/). It covers Growth event volumes from 1M to 20M a month, with monthly and annual prices; the full table is above. It doesn't price add-ons or extra replays.
+
+**How much does Mixpanel charge per event?**
+The published rate is $0.00028 per event above 1M on the 1M Growth plan, or $0.28 per 1,000 events. Larger tiers are cheaper per event: the 10M tier works out to about $0.13 per 1,000 billable events on monthly billing.
+
+**Does Mixpanel charge per user?**
+Not by default. Seats are unlimited on every plan, and standard pricing is per event. Pricing by monthly tracked users is available only on Enterprise contracts, from $20,000 a year.
+
+**Is Mixpanel session replay free?**
+Up to a limit: 10k replays a month on Free and 20k on Growth and Enterprise, kept for 30 days. Growth customers can buy up to 500k a month, with the price shown in the in-app plan builder.
+
+**What changed in Mixpanel pricing in 2025 and 2026?**
+In February 2025, Growth started including 1M free events a month (it previously started at $24 a month). In September 2025, billing moved to ingestion time and default retention dropped to 2 years. SSO came to Growth in February 2026, and Experiments and Feature Flags were added to Free and Growth in August 2026.
+
+---
+
+*See what your own traffic looks like in Rybbit: [start a 7-day trial](https://app.rybbit.io/signup) or open the [live demo](https://demo.rybbit.com/81).*
