@@ -34,7 +34,7 @@ Contentsquare also sells Product Analytics as a third product, free up to 10,000
 | [FullStory](#fullstory) | Yes | Yes | Paid add-on | Yes, 30k sessions | Quote only | No |
 | [PostHog](#posthog) | Yes | Yes | Yes | Yes, 5k recordings | Usage-based | Free features only |
 | [LogRocket](#logrocket) | Yes | Yes | Yes | No, 14-day trial | $176/mo at 25k sessions | Enterprise only |
-| [Rybbit](#rybbit) | No | Yes, Pro plan | No | No, 7-day trial | $39/mo (Pro) | Yes, free |
+| [Rybbit](#rybbit) | No | Pro plan, 10k/mo at 100k events | No | No, 7-day trial | $39/mo (Pro) | Yes, free |
 | [OpenReplay](#openreplay) | Yes | Yes | No | Self-hosted only | $199/mo (cloud) | Yes, free |
 | [Matomo](#matomo) | Plugin or Cloud | Plugin or Cloud | No | Self-hosted core | USD 26/mo (Cloud) | Yes |
 
@@ -120,7 +120,7 @@ Self-hosting is limited. The MIT-licensed Docker deployment is "officially unsup
 
 ### LogRocket
 
-[LogRocket](https://logrocket.com) attaches console logs and network requests to each recording and adds product analytics on top. Its [pricing page](https://logrocket.com/pricing) charges only for sessions captured; analytics events, errors, logs and network data are unlimited. The Core plan lists click maps, heatmaps and rage-click maps, path analysis, conversion funnels, alerting, SSO and surveys. Pro adds the Galileo AI layer and is "included free above 100K sessions / mo".
+[LogRocket](https://logrocket.com) records sessions along with "console and network logs, errors, warnings, crashes and performance data", per its [docs](https://docs.logrocket.com/docs/introduction), and adds product analytics on top. Its [pricing page](https://logrocket.com/pricing) charges only for sessions captured; analytics events, errors, logs and network data are unlimited. The Core plan lists click maps, heatmaps and rage-click maps, path analysis, conversion funnels, alerting, SSO and surveys. Pro adds the Galileo AI layer and is "included free above 100K sessions / mo".
 
 The pricing calculator shows $176/month at 25,000 sessions. There's no free plan, only a 14-day trial that needs no credit card, and self-hosting is an Enterprise option.
 
@@ -130,14 +130,14 @@ The pricing calculator shows $176/month at 25,000 sessions. There's no free plan
 
 ### Rybbit
 
-[Rybbit](https://rybbit.com) is the only tool on this list without heatmaps: no click or scroll maps, and no surveys or feedback widgets either. What it does have is [session replay](/features/session-replay) inside a full web and product analytics tool: [funnels](/features/funnels), [user journeys](/features/user-journeys), [goals](/features/goals), [error tracking](/features/error-tracking), [Web Vitals](/features/web-vitals), [retention](/features/retention) and [user profiles](/features/user-profiles). The replay timeline marks clicks, page navigations, typing, rage clicks and console errors, so you can jump straight to the moment a visitor got stuck or a script failed. Input values are masked by default, the analytics are cookieless, and Rybbit Cloud is hosted in the EU.
+[Rybbit](https://rybbit.com) is the only tool on this list without heatmaps: no click or scroll maps, and no surveys or feedback widgets either. What it does have is [session replay](/features/session-replay) inside a full web and product analytics tool: [funnels](/features/funnels), [user journeys](/features/user-journeys), [goals](/features/goals), [error tracking](/features/error-tracking), [Web Vitals](/features/web-vitals), [retention](/features/retention) and [user profiles](/features/user-profiles). The replay timeline marks clicks, page navigations, typing and rage clicks, so you can jump straight to the moment a visitor got stuck. Input values are masked by default, the analytics are cookieless, and Rybbit Cloud is hosted in the EU.
 
 It fits teams that mostly watched recordings in Hotjar and read them against conversion numbers. If heatmaps are why you open Hotjar, Clarity or Mouseflow will serve you better. If it's surveys, stay on Contentsquare's Voice of Customer or use Mouseflow's feedback surveys.
 
-On Rybbit Cloud, replay is a Pro feature: from $39/month for 100k events, or $26/month billed yearly. Standard, from $19/month, includes the analytics but not replay. Both start with a 7-day trial, and the card is collected at signup. Cloud replays are kept for 30 days. Rybbit is open source under AGPL-3.0, and [self-hosting](/docs/self-hosting) is free with replay included. There's no Hotjar importer; [data import](/docs/data-import) covers Plausible, Umami and Simple Analytics.
+On Rybbit Cloud, replay is a Pro feature: from $39/month for 100k events, or $26/month billed yearly. Pro's replay quota is 10% of its event allowance, so 10,000 replays a month on the 100k tier. Standard, from $19/month, includes the analytics but not replay. Both start with a 7-day trial, and the card is collected at signup. Cloud replays are kept for 30 days. Rybbit is open source under AGPL-3.0, and [self-hosting](/docs/self-hosting) is free with replay included. There's no Hotjar importer; [data import](/docs/data-import) covers Plausible, Umami and Simple Analytics.
 
-- **Covers:** recordings with rage-click and console-error markers, funnels, journeys, goals, error tracking, Web Vitals
-- **Missing or limited:** no click or scroll heatmaps, surveys or feedback widgets; replay needs the Pro plan on cloud
+- **Covers:** recordings with rage-click markers, funnels, journeys, goals, error tracking, Web Vitals
+- **Missing or limited:** no click or scroll heatmaps, surveys or feedback widgets; replay needs the Pro plan on cloud, with a monthly replay quota
 - **Pricing (September 2026):** Pro, with replay, from $39/month; self-hosting free. Source: [rybbit.com/pricing](/pricing)
 
 ## Open-source and self-hosted Hotjar alternatives
@@ -202,4 +202,4 @@ Yes. PostHog, FullStory, LogRocket, OpenReplay and Rybbit pair recordings with e
 OpenReplay (AGPL-3.0 core) self-hosts recordings and heatmaps for free. PostHog's MIT-licensed build self-hosts its free-plan features without official support. Matomo is open source too, but heatmaps and recordings are a paid plugin when self-hosted. Rybbit (AGPL-3.0) self-hosts replay and analytics, without heatmaps.
 
 **Does Rybbit have heatmaps or surveys?**
-No. Rybbit has session replay on the Pro plan, with rage clicks and console errors marked on the timeline, plus web and product analytics. It has no click or scroll heatmaps, surveys or feedback widgets. For heatmaps, use Clarity or Mouseflow; for surveys, use Contentsquare, Lucky Orange or Mouseflow.
+No. Rybbit has session replay on the Pro plan, with rage clicks marked on the timeline, plus web and product analytics. It has no click or scroll heatmaps, surveys or feedback widgets. For heatmaps, use Clarity or Mouseflow; for surveys, use Contentsquare, Lucky Orange or Mouseflow.
