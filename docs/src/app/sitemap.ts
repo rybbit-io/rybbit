@@ -1,6 +1,8 @@
 import { MetadataRoute } from "next";
 import { source } from "@/lib/source";
 import { blogSource } from "@/lib/blog-source";
+import { comparedCompetitors } from "@/app/[locale]/(home)/compare/data/competitors";
+import { vsPairs } from "@/app/[locale]/(home)/compare/data/vsPairs";
 import { socialMediaToolSlugs } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/social-tool-slugs";
 import { routing } from "@/i18n/routing";
 import { readdirSync } from "fs";
@@ -79,17 +81,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  // Comparison pages
-  const competitors = [
-    "google-analytics",
-    "plausible",
-    "posthog",
-    "umami",
-    "fathom",
-    "simpleanalytics",
-    "matomo",
-    "cloudflare-analytics",
-  ];
+  // Comparison pages: Rybbit-vs-X pages and "X vs Y" pairs, both from the compare registry
   const comparisonPages = [
     {
       url: `${baseUrl}/compare`,
@@ -97,9 +89,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly" as const,
       priority: 0.8,
     },
-    ...competitors.map(slug => ({
-      url: `${baseUrl}/compare/${slug}`,
+    ...comparedCompetitors.map(competitor => ({
+      url: `${baseUrl}${competitor.comparePath}`,
       lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+    ...vsPairs.map(pair => ({
+      url: `${baseUrl}/compare/${pair.slug}`,
+      lastModified: new Date(pair.verifiedOn),
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
