@@ -114,9 +114,9 @@ export const googleAnalyticsExtendedData = {
           <>
             On top of consent loss, GA4 applies sampling to complex reports on busy properties, holds standard-property
             event data for at most 14 months, and locks unsampled exploration behind GA360, which starts around
-            $50,000 per year. Rybbit&apos;s <Link href="/pricing">pricing</Link> is a flat, events-based subscription:
-            every feature on every plan, no sampling at any traffic level, and your data is never used for anything
-            except showing you your analytics.
+            $50,000 per year. Rybbit&apos;s <Link href="/pricing">pricing</Link> is a flat, events-based subscription
+            with no sampling at any traffic level (session replay comes with the Pro plan), and your data is never used
+            for anything except showing you your analytics.
           </>,
         ],
       },

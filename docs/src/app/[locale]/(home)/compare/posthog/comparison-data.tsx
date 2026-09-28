@@ -138,7 +138,7 @@ export const posthogExtendedData = {
             autocapture-heavy pages all show up on the bill, so teams at scale end up watching billing limits alongside
             their dashboards. Rybbit&apos;s <Link href="/pricing">pricing</Link>{" "}
             is a flat subscription from $19/mo for
-            100k events, every feature on every plan, with a 7-day trial. And if you&apos;d rather pay nothing,
+            100k events (session replay is included from the $39/mo Pro plan), with a 7-day trial. And if you&apos;d rather pay nothing,
             the open-source version is <Link href="/docs/self-hosting">free to self-host</Link>.
           </>,
         ],
