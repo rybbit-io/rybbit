@@ -62,6 +62,46 @@ const guides = [
     description: "Ten tools compared by use case",
   },
   {
+    title: "Amplitude alternatives",
+    href: "/blog/amplitude-alternatives",
+    description: "Nine product analytics tools ranked for teams leaving Amplitude",
+  },
+  {
+    title: "Mixpanel alternatives",
+    href: "/blog/mixpanel-alternatives",
+    description: "Nine options, organized by why teams switch",
+  },
+  {
+    title: "Hotjar alternatives",
+    href: "/blog/hotjar-alternatives",
+    description: "Heatmaps, replay, and surveys: what each tool replaces",
+  },
+  {
+    title: "FullStory alternatives",
+    href: "/blog/fullstory-alternatives",
+    description: "Eleven tools by use case, from enterprise DXA to open source",
+  },
+  {
+    title: "PostHog pricing, explained",
+    href: "/blog/posthog-pricing",
+    description: "Free tiers, per-unit rates, and four worked examples",
+  },
+  {
+    title: "Mixpanel pricing, explained",
+    href: "/blog/mixpanel-pricing",
+    description: "Plans, calculator prices, add-ons, and overages",
+  },
+  {
+    title: "Google Analytics pricing",
+    href: "/blog/google-analytics-pricing",
+    description: "What GA4 and GA 360 cost, and the hidden costs of free",
+  },
+  {
+    title: "Best analytics MCP servers",
+    href: "/blog/best-analytics-mcp-servers",
+    description: "GA4, PostHog, Mixpanel, Amplitude, and more, compared for AI assistants",
+  },
+  {
     title: "Best session replay tools",
     href: "/blog/best-session-replay-tools",
     description: "Ten replay tools, including free and open-source options",

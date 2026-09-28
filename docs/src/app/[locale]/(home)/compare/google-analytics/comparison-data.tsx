@@ -214,6 +214,16 @@ export const googleAnalyticsExtendedData = {
       description: "How Rybbit and 8 other GA4 alternatives compare on pricing, privacy, and features",
     },
     {
+      title: "Matomo vs Google Analytics",
+      href: "/compare/matomo-vs-google-analytics",
+      description: "The two most common options, compared feature by feature",
+    },
+    {
+      title: "Google Analytics pricing",
+      href: "/blog/google-analytics-pricing",
+      description: "What GA4 and GA 360 cost, and the hidden costs of free",
+    },
+    {
       title: "Rybbit vs Plausible",
       href: "/compare/plausible",
       description: "Compare two privacy-first analytics platforms",

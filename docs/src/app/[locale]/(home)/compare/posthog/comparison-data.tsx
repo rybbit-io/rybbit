@@ -198,6 +198,11 @@ export const posthogExtendedData = {
 
   relatedResources: [
     {
+      title: "PostHog pricing, explained",
+      href: "/blog/posthog-pricing",
+      description: "Free tiers, per-unit rates, and worked examples",
+    },
+    {
       title: "Rybbit vs Google Analytics",
       href: "/compare/google-analytics",
       description: "The privacy-first alternative to GA4",

@@ -1,5 +1,6 @@
 import { createOGImageUrl } from "@/lib/metadata";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FeaturePage } from "../components/FeaturePage";
 import {
   capabilities,
@@ -100,6 +101,12 @@ export default function McpPage() {
           <>
             Access is as controlled as the dashboard itself: connect with{" "}
             <strong className="text-neutral-900 dark:text-white">OAuth or scoped, revocable API keys</strong>, and every tool call is authorized against your role, site access, and rate limits. Rybbit runs no AI model of its own. Your data goes only to the client you configure, on cloud or self-hosted.
+          </>,
+          <>
+            Weighing your options? We compare the{" "}
+            <Link href="/blog/best-analytics-mcp-servers">best analytics MCP servers</Link>, walk through
+            setting up the <Link href="/blog/google-analytics-mcp">Google Analytics MCP server</Link>, and show how
+            to get <Link href="/blog/google-search-console-mcp">Google Search Console data over MCP</Link>.
           </>,
         ]}
         capabilities={capabilities}

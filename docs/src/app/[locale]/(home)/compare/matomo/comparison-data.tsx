@@ -225,6 +225,11 @@ export const matomoExtendedData = {
 
   relatedResources: [
     {
+      title: "Matomo vs Google Analytics",
+      href: "/compare/matomo-vs-google-analytics",
+      description: "How the two compare on privacy, features, and cost",
+    },
+    {
       title: "Best Google Analytics alternatives",
       href: "/blog/best-google-analytics-alternatives",
       description: "Nine GA4 alternatives compared on price, privacy, and features",

@@ -141,7 +141,7 @@ Any other MCP client that supports Streamable HTTP works with the generic config
 | `get_search_console_status` | Whether Google Search Console is connected for the site, and which property                      |
 | `get_search_console_data`   | Clicks, impressions, CTR, and average position grouped by query, page, country, device, or date  |
 
-Search Console tools read the Google Search Console property connected to the site under **Site settings > Integrations** (Rybbit Cloud); no Google Cloud project or separate MCP server is needed. `get_search_console_data` groups by up to three dimensions (`query`, `page`, `country`, `device`, `date`), accepts ANDed filters such as `{"dimension": "page", "operator": "contains", "expression": "/pricing"}`, and returns 100 rows by default (up to 25,000, paged with `start_row`). Google's numbers lag about two days; pass `data_state: "all"` to include fresh, still-changing data.
+Search Console tools read the Google Search Console property connected to the site under **Site settings > Integrations** (Rybbit Cloud); no Google Cloud project or separate MCP server is needed. `get_search_console_data` groups by up to three dimensions (`query`, `page`, `country`, `device`, `date`), accepts ANDed filters such as `{"dimension": "page", "operator": "contains", "expression": "/pricing"}`, and returns 100 rows by default (up to 25,000, paged with `start_row`). Google's numbers lag about two days; pass `data_state: "all"` to include fresh, still-changing data. For how this compares with self-run Search Console servers, and prompts that work well, see the [Google Search Console MCP guide](/blog/google-search-console-mcp).
 
 ### Sites
 

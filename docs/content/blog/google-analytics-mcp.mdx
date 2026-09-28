@@ -215,7 +215,7 @@ Each fix comes from Google's documentation or a Google maintainer's answer in th
 - **GA's quotas apply.** A standard property gets [200,000 core tokens a day](https://developers.google.com/analytics/devguides/reporting/data/v1/quotas), 40,000 an hour (at most 14,000 from any one Cloud project) and 10 concurrent requests, with separate, equal buckets for realtime and funnel requests. Most requests cost 10 tokens or fewer; long date ranges and high-cardinality dimensions such as `pagePath` cost more, and every reporting tool accepts `return_property_quota` to show the cost. Analytics 360 gets ten times the token quota (our [Google Analytics pricing guide](/blog/google-analytics-pricing) covers what 360 costs).
 - **GA's data caveats come along.** Results can be sampled, thresholded or folded into an "(other)" row, and each response flags these in its [metadata](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/ResponseMetaData) (`samplingMetadatas`, `subjectToThresholding`, `dataLossFromOtherRow`). Ask the assistant to check before quoting a number.
 - **Consent gaps stay in the data.** GA4 identifies visitors with a `_ga` cookie that lasts two years ([cookie docs](https://support.google.com/analytics/answer/11397207)). Where you ask for consent, visitors who decline are missing from every report, unless your property qualifies for Consent Mode's [behavioral modeling](https://support.google.com/analytics/answer/11161109), which requires, among other things, at least 1,000 denied events and 1,000 consenting users a day.
-- **Analytics only.** None of the nine tools reads Google Search Console.
+- **Analytics only.** None of the nine tools reads Google Search Console. For search data, see our [Google Search Console MCP guide](/blog/google-search-console-mcp).
 
 ## Alternatives to Google's server
 
@@ -260,6 +260,8 @@ Rybbit's [MCP server](/features/mcp) isn't a Google Analytics connector: it read
 The limits, plainly. Rybbit can't import GA history: its [importers](/docs/data-import) cover Plausible, Umami and Simple Analytics only, so switching means running both side by side for a while. If your reporting leans on GA's Google Ads data, keep GA. [Standard](/pricing) starts at $19 a month for 100k events and Pro at $39, after a 7-day trial with the card collected at signup. Rybbit is open source under AGPL-3.0, and self-hosted installs include the MCP endpoint (the Search Console tools are Cloud-only). Our [Google Analytics comparison](/compare/google-analytics) goes feature by feature, and the [best Google Analytics alternatives](/blog/best-google-analytics-alternatives) roundup covers the rest of the field.
 
 ## Which option should you use?
+
+For servers beyond GA4 (PostHog, Mixpanel, Amplitude and others), see our comparison of the [best analytics MCP servers](/blog/best-analytics-mcp-servers).
 
 - **Google's server** if you're comfortable with gcloud, want requests to go straight from your machine to Google, and only need to read.
 - **Stape** for the same nine tools on claude.ai or without a local install, if a third party in the data path is acceptable.

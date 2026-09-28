@@ -153,12 +153,14 @@ The team signed up for the 1M-event Growth plan ($0) with Group Analytics and no
 
 ## Mixpanel vs alternatives at the same volume
 
+For the full field, organized by why teams switch, see our guide to [Mixpanel alternatives](/blog/mixpanel-alternatives).
+
 ### Event counts aren't interchangeable
 
 All three tools below bill per event, but they don't count the same things:
 
 - **Mixpanel** counts every tracked event, including everything Autocapture records (page views, scrolls, clicks, form interactions), across all projects.
-- **[PostHog](/compare/posthog)** bills product analytics "on events captured – pageviews, clicks, custom events, and everything autocapture picks up", per its [pricing page](https://posthog.com/product-analytics/pricing).
+- **[PostHog](/compare/posthog)** bills product analytics "on events captured – pageviews, clicks, custom events, and everything autocapture picks up", per its [pricing page](https://posthog.com/product-analytics/pricing). Our [PostHog pricing breakdown](/blog/posthog-pricing) covers its other products.
 - **Rybbit** counts pageviews and outbound-link clicks (both tracked by default) plus the [custom events](/features/custom-events) you send. [Web Vitals](/features/web-vitals), button clicks, copies and form interactions count only if you switch them on.
 
 The same traffic therefore produces different totals. A site that tracks only page views sends about one event per view to each tool; turn on autocapture in Mixpanel or PostHog and every captured click adds to the count. Estimate your volume per tool before comparing prices.
