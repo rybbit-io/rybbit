@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
 import { parseScriptConfig } from "./config.js";
 
 // Mock fetch globally
@@ -152,8 +152,14 @@ describe("parseScriptConfig", () => {
   });
 
   describe("visitor ID storage", () => {
-    let getItemSpy: any;
-    let setItemSpy: any;
+    const fetchMock = vi.mocked(fetch);
+    let getItemSpy: MockInstance<Storage["getItem"]>;
+    let setItemSpy: MockInstance<Storage["setItem"]>;
+
+    const mockFetchResponse = (body: unknown, ok = true) =>
+      fetchMock.mockResolvedValueOnce({ ok, status: ok ? 200 : 500, json: async () => body } as Response);
+
+    const storageKeysTouched = () => [...getItemSpy.mock.calls, ...setItemSpy.mock.calls].map(([key]) => key);
 
     beforeEach(() => {
       mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
@@ -167,13 +173,8 @@ describe("parseScriptConfig", () => {
       setItemSpy.mockRestore();
     });
 
-    const storageKeysTouched = () => [...getItemSpy.mock.calls, ...setItemSpy.mock.calls].map((call: any[]) => call[0]);
-
     it("does not read or write localStorage when the site has no feature flags", async () => {
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ featureFlagsEnabled: false }),
-      });
+      mockFetchResponse({ featureFlagsEnabled: false });
 
       const config = await parseScriptConfig(mockScriptTag);
 
@@ -184,7 +185,7 @@ describe("parseScriptConfig", () => {
     });
 
     it("does not read or write localStorage when the tracking config request fails", async () => {
-      (global.fetch as any).mockResolvedValueOnce({ ok: false, status: 500 });
+      mockFetchResponse({}, false);
 
       const config = await parseScriptConfig(mockScriptTag);
 
@@ -194,7 +195,7 @@ describe("parseScriptConfig", () => {
     });
 
     it("does not read or write localStorage when the tracking config request throws", async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error("Network error"));
+      fetchMock.mockRejectedValueOnce(new Error("Network error"));
 
       const config = await parseScriptConfig(mockScriptTag);
 
@@ -204,15 +205,8 @@ describe("parseScriptConfig", () => {
     });
 
     it("persists the visitor ID once the site has feature flags", async () => {
-      (global.fetch as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ featureFlagsEnabled: true }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ featureFlagsEnabled: true, flags: {} }),
-        });
+      mockFetchResponse({ featureFlagsEnabled: true });
+      mockFetchResponse({ featureFlagsEnabled: true, flags: {} });
 
       const config = await parseScriptConfig(mockScriptTag);
 
@@ -222,35 +216,21 @@ describe("parseScriptConfig", () => {
 
     it("reuses the stored visitor ID for feature flag evaluation", async () => {
       localStorage.setItem("rybbit-visitor-id", "stored-visitor");
-      (global.fetch as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ featureFlagsEnabled: true }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ featureFlagsEnabled: true, flags: {} }),
-        });
+      mockFetchResponse({ featureFlagsEnabled: true });
+      mockFetchResponse({ featureFlagsEnabled: true, flags: {} });
 
       const config = await parseScriptConfig(mockScriptTag);
 
       expect(config?.visitorId).toBe("stored-visitor");
-      const evaluateCall = (global.fetch as any).mock.calls[1];
-      expect(evaluateCall[0]).toBe("https://analytics.example.com/site/123/feature-flags/evaluate");
-      expect(JSON.parse(evaluateCall[1].body).anonymousId).toBe("stored-visitor");
+      const [evaluateUrl, evaluateInit] = fetchMock.mock.calls[1];
+      expect(evaluateUrl).toBe("https://analytics.example.com/site/123/feature-flags/evaluate");
+      expect(JSON.parse(String(evaluateInit?.body)).anonymousId).toBe("stored-visitor");
     });
 
     it("scopes the persisted visitor ID to the configured namespace", async () => {
       mockScriptTag.setAttribute("data-namespace", "custom");
-      (global.fetch as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ featureFlagsEnabled: true }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ featureFlagsEnabled: true, flags: {} }),
-        });
+      mockFetchResponse({ featureFlagsEnabled: true });
+      mockFetchResponse({ featureFlagsEnabled: true, flags: {} });
 
       const config = await parseScriptConfig(mockScriptTag);
 
