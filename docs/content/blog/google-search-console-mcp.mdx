@@ -1,0 +1,223 @@
+---
+title: "Google Search Console MCP: Setup Guide and 5 Options Compared"
+description: "Google Search Console MCP servers compared: self-run and hosted options for Claude, Cursor and ChatGPT, with setup steps, example prompts and limits."
+date: 2026-09-27
+tags: ["mcp", "seo", "ai", "comparisons"]
+author: Rybbit Team
+---
+
+A Google Search Console MCP server lets an AI assistant such as Claude, Cursor or ChatGPT read your Search Console performance data (clicks, impressions, click-through rate and average position by query, page, country, device and date) by calling Google's Search Console API when you ask it a question. As of September 2026 Google doesn't publish one, so every option is third-party, and they come in three kinds: open-source servers you run on your own machine with your own Google Cloud credentials, hosted connectors you sign in to, and analytics tools that include Search Console in their own MCP server. This guide compares five of them on setup effort, capabilities and cost, then walks through a setup and the prompts that work.
+
+Disclosure: we build [Rybbit](https://rybbit.com), one of the five. Every claim about the other four comes from that project's own README or the vendor's own documentation and pricing pages, linked inline and checked in September 2026.
+
+## Quick comparison
+
+| Option | Type | What you set up | Beyond performance data | Other data in the same MCP | Price (Sept 2026) |
+| --- | --- | --- | --- | --- | --- |
+| [mcp-gsc](#mcp-gsc) | Self-run, open source (MIT) | Google Cloud project, OAuth client or service account, local config | URL Inspection, sitemaps | None | Free |
+| [suganthan-gsc-mcp](#suganthan-gsc-mcp) | Self-run, open source (Apache 2.0) | Google Cloud OAuth client, then a setup wizard | URL Inspection, sitemaps, Indexing API submissions | None | Free |
+| [Windsor.ai](#windsorai) | Hosted connector | Windsor account, Search Console connection, connector with OAuth | Sitemap status; computed fields such as branded vs non-branded | 350+ sources, including GA4 and Google Ads | Free plan (1 source, 30 days of history); Basic $23/mo |
+| [Coupler.io](#couplerio) | Hosted connector | Coupler account, a Search Console data flow, connector with a token | URL Inspection and index coverage data | 400+ sources | Free plan (100 rows per run); Starter $32/mo |
+| [Rybbit](#rybbit) | Web analytics with a hosted MCP server | Connect Search Console in site settings, add one URL to your client | None | Rybbit's own analytics: sessions, goals, funnels, errors | From $19/mo, 7-day trial |
+
+## What a Google Search Console MCP server can answer
+
+The Model Context Protocol (MCP) is an open standard for connecting AI assistants to outside tools. An MCP server publishes tools with descriptions; the assistant picks one, fills in the arguments and reads the result. A Search Console MCP server wraps Google's Search Console API, which has three parts that matter here:
+
+- **Search Analytics**, the data behind the Performance report: clicks, impressions, CTR and average position, grouped by query, page, country, device, date, search appearance or hour, filtered by exact, substring or regex matches, across web, image, video, news, Discover and Google News. One request returns up to 25,000 rows ([API reference](https://developers.google.com/webmaster-tools/v1/searchanalytics/query)).
+- **URL Inspection**: Google's indexing status for one URL, capped at 2,000 inspections per property per day ([usage limits](https://developers.google.com/webmaster-tools/limits)).
+- **Sitemaps**: list, submit and delete.
+
+Google says all use of the API is [free of charge](https://developers.google.com/webmaster-tools/pricing) within those limits. Requesting indexing is a separate API, the Indexing API.
+
+That covers questions like "which queries does this page rank for", "which pages lost clicks since last month" or "is this URL indexed". It won't give you search volume for keywords you don't appear for, backlinks, or competitors' rankings; Search Console only knows about your own property.
+
+## Is there an official Google Search Console MCP server?
+
+No, not as of September 2026. Google's [list of official MCP servers](https://github.com/google/mcp) covers Google Analytics, BigQuery, Maps, Firebase and a long list of Google Cloud products, but not Search Console, and the [Search Console API documentation](https://developers.google.com/webmaster-tools) doesn't mention one.
+
+What Google does publish is a [Google Analytics MCP server](https://developers.google.com/analytics/devguides/MCP), a read-only server built for GA4 data. (If GA4 itself is what you're weighing, see [Rybbit vs Google Analytics](/compare/google-analytics).) Every Search Console MCP server below is third-party code calling Google's public API, so the real choice is who holds your Google credentials and how much setup you do.
+
+## Google Search Console MCP servers compared
+
+### mcp-gsc
+
+[mcp-gsc](https://github.com/AminForou/mcp-gsc) is an MIT-licensed Python server that runs on your computer with your own Google credentials. Its README counts 20 tools: search analytics tools such as `compare_search_periods` and `get_advanced_search_analytics` (filters, sorting, and paging up to 25,000 rows per call); URL inspection with `inspect_url_enhanced` and `batch_url_inspection` (up to 10 URLs at once); `check_indexing_issues`; and tools to list, submit and delete sitemaps. Tools that add or delete properties or delete sitemaps stay off unless you set `GSC_ALLOW_DESTRUCTIVE`.
+
+Setup starts in Google Cloud: create a project, enable the Search Console API, then create either an OAuth client ID of type Desktop app (you sign in through a browser on first use) or a service account that you add as a user on your Search Console property. Then install uv, add an entry that runs `uvx mcp-search-console` to your client's config with the credentials path as an environment variable, and restart the client. Because the server runs locally, the README notes it works in the Claude Desktop app but not on claude.ai in a browser; an SSE mode and a Dockerfile are there if you want to host it. The [server code](https://github.com/AminForou/mcp-gsc/blob/main/gsc_server.py) asks Google for the full Search Console scope (`webmasters`), not the read-only one.
+
+- **Pros:** free; URL inspection and sitemap tools; a ready-made period comparison
+- **Cons:** needs a Google Cloud project and credentials; local by default; Search Console data only; full-access Google scope
+- **Price (as of September 2026):** free and open source (MIT). Source: [mcp-gsc README](https://github.com/AminForou/mcp-gsc)
+
+### suganthan-gsc-mcp
+
+[Suganthan's GSC MCP](https://github.com/Suganthan-Mohanadasan/Suganthans-GSC-MCP) (`suganthan-gsc-mcp` on npm, Apache 2.0) is a Node server whose 29 tools lean toward finished analysis rather than raw rows: `quick_wins` (queries at positions 4 to 15 with high impressions), `cannibalization_check`, `content_decay`, `traffic_drops`, an eight-tool image-search suite, and `genai_conversation_queries`, which hunts for AI Mode follow-ups that Google logs as ordinary queries. It has `inspect_url` and sitemap tools, and it is the only one of the five that submits URLs to Google's Indexing API (`submit_url`, and `submit_batch` for up to 200 a day). Google restricts that API to pages with `JobPosting` or `BroadcastEvent` structured data ([Indexing API docs](https://developers.google.com/search/apis/indexing-api/v3/quickstart)), so for most sites it isn't a general "request indexing" button.
+
+`npx -y suganthan-gsc-mcp setup` runs a wizard that signs you in, lets you pick a property and writes the config for Claude Desktop and Claude Code. You still need your own OAuth client JSON from a Google Cloud project, or a service account. The wizard defaults to read-only access and asks for full access only if you want the submission tools, and your data goes from your machine straight to Google.
+
+- **Pros:** free; ready-made SEO analyses; indexing and sitemap tools; read-only by default through the wizard
+- **Cons:** Google Cloud credentials still required; local only; Search Console data only
+- **Price (as of September 2026):** free and open source (Apache 2.0). Source: [suganthan-gsc-mcp README](https://github.com/Suganthan-Mohanadasan/Suganthans-GSC-MCP)
+
+### Windsor.ai
+
+[Windsor.ai](https://windsor.ai/connect/google-search-console-mcp/) is a data-connector service whose hosted MCP server (`https://mcp.windsor.ai/`) reaches 350+ sources, Search Console among them, alongside GA4, Google Ads and Meta Ads. You connect Search Console to a Windsor account, then add the server to your client. The [server's README](https://github.com/windsor-ai/windsor_mcp) lists OAuth 2.0 sign-in, one-click listings in Claude's connector directory and as a ChatGPT app, and API keys for clients without OAuth. The tools are generic (`get_connectors`, `get_fields`, `get_data`). For Search Console, Windsor adds computed fields the raw API lacks: branded vs non-branded queries, words per query, the results page a query landed on, and URL path levels for rolling up by directory. Its [Claude setup guide](https://windsor.ai/how-to-send-google-search-console-data-to-claude/) says it pulls Search Analytics and sitemap status (submitted vs indexed counts, errors and warnings) but not the URL Inspection API.
+
+[Pricing](https://windsor.ai/pricing/) is per data source. The free plan starts as a 30-day trial, then keeps 1 user, 1 data source and 1 account, and on it "you can access and retrieve data from the past 30 days only", a real limit when Search Console holds 16 months. Basic is $23/month, or $19/month billed annually, for 3 data sources; Standard is $118/month. Every plan includes the MCP server.
+
+- **Pros:** no Google Cloud setup; OAuth in Claude and ChatGPT; Search Console next to GA4 and ad platforms
+- **Cons:** free plan reaches back 30 days; no URL Inspection; generic tools; priced per data source
+- **Price (as of September 2026):** free plan; Basic $23/month ($19/month billed annually). Source: [windsor.ai/pricing](https://windsor.ai/pricing/)
+
+### Coupler.io
+
+[Coupler.io](https://www.coupler.io/mcp/google-search-console) syncs 400+ sources into spreadsheets, BI tools and AI clients, and its MCP sits on top of those syncs. You build a data flow from Search Console with an AI tool as the destination, then connect Claude, ChatGPT, Cursor, Gemini, Copilot or Perplexity, authenticated with a personal access token. Coupler's [post on its MCP endpoint](https://blog.coupler.io/custom-mcp-server/) says the endpoint exposes your data flow and that you "automate data refresh on a schedule", so the assistant queries the data your flow last pulled rather than asking Google on demand. The Search Console MCP page lists search performance, performance by search appearance, Discover and Google News data, URL Inspection data and page-indexing coverage.
+
+Coupler's pages disagree on the plan you need. The Search Console MCP page says "at least the Professional plan"; the [Claude integration page](https://www.coupler.io/claude-integrations) says any active plan, "starting from free-forever"; and the [pricing page](https://www.coupler.io/pricing) has no Professional tier. It lists Free (1 account, manual refresh, 100 rows per run), Starter at $32/month or $24/month billed annually (daily refresh, 5,000 rows per run), Active at $132/month and Pro at $259/month (hourly refresh). New accounts get 7 days of full access.
+
+- **Pros:** no Google Cloud setup; URL Inspection and index coverage data; many other sources
+- **Cons:** scheduled snapshots, not live queries; row caps on Free and Starter; conflicting plan requirements
+- **Price (as of September 2026):** free plan; Starter $32/month ($24/month billed annually). Source: [coupler.io/pricing](https://www.coupler.io/pricing)
+
+### Rybbit
+
+[Rybbit](/features/mcp) is privacy-first web analytics with a hosted MCP server of 44 tools, two of which read Search Console. A site admin connects Search Console once under **Site settings > Integrations** on Rybbit Cloud, signing in with Google and picking the property. Rybbit asks Google for read-only Search Console access and keeps that grant for the site, so any teammate with access to the site can query the property from the dashboard or their own assistant, with no Google Cloud project, service account or Search Console access of their own.
+
+`get_search_console_status` reports whether a property is connected and which one. `get_search_console_data` returns clicks, impressions, CTR and average position grouped by up to three of `query`, `page`, `country`, `device` and `date`, with up to 10 filters on query, page, country or device (`equals`, `notEquals`, `contains`, `notContains`, `includingRegex`, `excludingRegex`) across the `web`, `image`, `video`, `news`, `discover` and `googleNews` search types. It returns 100 rows by default and up to 25,000 per call, paged with `start_row`, and `data_state: "all"` adds fresh, still-changing numbers.
+
+The difference from the other four is what sits next to those two tools: [sessions](/features/sessions), [goals](/features/goals), [funnels](/features/funnels), [user journeys](/features/user-journeys), [errors](/features/error-tracking) and [Web Vitals](/features/web-vitals) for the visitors Google sent, plus read-only SQL over your raw events. "Which Google landing pages turn clicks into signups" becomes one conversation instead of two tools and a spreadsheet. OAuth sign-in works in Claude Code, Claude Desktop and claude.ai, Codex and opencode; other clients, including Cursor and VS Code, use an API key, which you can limit to scopes such as Search Console read and Analytics read. Rybbit is open source (AGPL-3.0) and self-hostable, but the Search Console connection is a Rybbit Cloud feature.
+
+- **Pros:** no Google Cloud project; read-only Google access; Search Console and on-site conversions in one assistant; one connection serves the whole team
+- **Cons:** a paid analytics product rather than a standalone connector; no URL Inspection, sitemaps or indexing; one property per site; no built-in period comparison (the assistant makes two calls)
+- **Price (as of September 2026):** Standard from $19/month for 100k events, Pro from $39/month; 7-day free trial with a card collected at signup. Source: [rybbit.com/pricing](/pricing)
+
+## How to set up a Search Console MCP with Rybbit
+
+You need a site on Rybbit Cloud with the tracking script installed, and a Google account that can see the site's Search Console property.
+
+### 1. Connect Search Console to your site
+
+1. Open your site's **Site settings**, go to **Integrations** and click **Connect Google Search Console**. This needs admin access to the site.
+2. Sign in with Google and approve read-only access to Search Console.
+3. Pick the property, either a domain property (`sc-domain:example.com`) or a URL-prefix property, and click **Connect Property**.
+
+Rybbit sends you back to the dashboard, where a Search Console card now shows top queries, pages, countries and devices.
+
+### 2. Add the MCP endpoint to your client
+
+The endpoint for Rybbit Cloud is `https://app.rybbit.io/api/mcp`. In **Claude Code**, add it:
+
+```bash
+claude mcp add --transport http rybbit https://app.rybbit.io/api/mcp
+```
+
+Then run `/mcp`, select **rybbit** and choose **Authenticate**. A browser window opens for you to log in to Rybbit, and the connection acts with your user's role.
+
+In **Claude Desktop or claude.ai**, open **Settings > Connectors**, click **Add custom connector**, name it Rybbit, paste the URL and click **Connect**. Anthropic offers custom connectors on every Claude plan, with Free users [limited to one](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+
+In **Codex**:
+
+```bash
+codex mcp add rybbit --url https://app.rybbit.io/api/mcp
+codex mcp login rybbit
+```
+
+In **Cursor**, create an API key in Rybbit under **Settings > Account > Personal API Keys**, then add it to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "rybbit": {
+      "url": "https://app.rybbit.io/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <RYBBIT_API_KEY>"
+      }
+    }
+  }
+}
+```
+
+Any other client that speaks Streamable HTTP takes the same URL and header. The [MCP docs](/docs/mcp) have walkthroughs for [Claude Code](/docs/mcp/claude-code), [Claude Desktop](/docs/mcp/claude-desktop), [Cursor](/docs/mcp/cursor), [Codex](/docs/mcp/codex), VS Code and opencode.
+
+### 3. Check the connection
+
+Ask: "Is Search Console connected for my Rybbit site, and which property?" The assistant calls `list_sites` to find the site ID, then `get_search_console_status`. If a later call returns a 404 saying GSC isn't connected, step 1 didn't finish.
+
+## Example prompts that work
+
+Each prompt below maps to calls the tools can make. Give the assistant a date range, and remember Search Console only covers the last 16 months.
+
+1. **"Which queries does /pricing rank for over the last 28 days, with clicks, impressions and average position?"** One call grouped by query, filtered to pages containing `/pricing`.
+2. **"Find pages with more than 1,000 impressions and a CTR under 1% in the last three months, and suggest new titles for the worst five."** One call grouped by page. Google sorts rows by clicks, so ask for a few thousand rows; low-CTR pages sit further down the list.
+3. **"Compare clicks by query for the last 28 days against the 28 days before. Which queries lost the most?"** Two calls, one per date range; the assistant does the diff.
+4. **"Show daily clicks and impressions for the last 90 days, and flag any drop that lines up with our annotations."** One call grouped by date, plus `get_annotations` for the launches and deploys your team pinned to the traffic chart.
+5. **"For our top 20 queries in the US, compare CTR and position on mobile and desktop."** One call grouped by query and device, filtered to country `US`.
+6. **"How is the post we published on Monday doing in Google? Include fresh data."** A page filter with `data_state: "all"`, which adds the recent days Google hasn't finalized yet.
+7. **"Which of our top Google landing pages bring organic-search visitors who complete the Signup goal?"** Search Console grouped by page, then `get_goals` filtered to the Organic Search channel and to each landing page.
+8. **"Build a funnel for organic-search visitors: any blog post, then /pricing, then /signup, over the last 30 days. Where do they drop off?"** `analyze_funnel` with a channel filter; page steps accept wildcards, so `/blog/**` matches every post.
+
+For the first prompt, the call the assistant makes looks like this:
+
+```json
+{
+  "site_id": 1,
+  "start_date": "2026-08-27",
+  "end_date": "2026-09-23",
+  "dimensions": ["query"],
+  "filters": [{ "dimension": "page", "operator": "contains", "expression": "/pricing" }],
+  "row_limit": 100
+}
+```
+
+## Limitations
+
+### Limits that come from Google
+
+Every server on this list reads the same API, so these apply to all of them.
+
+- **16 months of history.** Google suggests pulling anything you want to keep longer through the API or the bulk data export and [storing it yourself](https://developers.google.com/search/docs/monitor-debug/debugging-search-traffic-drops).
+- **Two to three days of lag.** Google says data is [typically available after 2–3 days](https://developers.google.com/webmaster-tools/v1/how-tos/all-your-data). Fresher, still-changing numbers need the `all` data state, which mcp-gsc and suganthan-gsc-mcp use by default and Rybbit exposes as `data_state: "all"`.
+- **Missing rows.** Rare queries are [anonymized and left out](https://support.google.com/webmasters/answer/17011259) of query tables, and the API returns [top rows rather than every row](https://developers.google.com/webmaster-tools/v1/searchanalytics/query), [at most 50,000](https://developers.google.com/webmaster-tools/v1/how-tos/all-your-data) per day per search type. Query rows won't add up to the property total.
+- **Pacific Time.** API dates are in [Pacific Time](https://developers.google.com/webmaster-tools/v1/searchanalytics/query), so daily figures won't line up exactly with analytics that report in your time zone.
+- **AI Overviews and AI Mode are inside web search.** Google [reports them](https://developers.google.com/search/docs/appearance/ai-features) within the Performance report's Web search type, and the API reference has no search type for the separate Generative AI report added in June 2026, so no MCP server can read that report's numbers. Visits from ChatGPT, Perplexity or Claude never appear in Search Console at all; see [how to track AI referral traffic](/blog/track-chatgpt-traffic).
+
+### Limits of Rybbit's Search Console tools
+
+- **Search Analytics only.** No URL Inspection, sitemaps or indexing requests. For URL Inspection and sitemap management use mcp-gsc; to submit URLs to the Indexing API, suganthan-gsc-mcp.
+- **One property per site.** Each Rybbit site connects to one Search Console property, and the assistant can't browse other properties in your Google account.
+- **A subset of the API.** Five dimensions (no search appearance or hour), final or all data (no hourly data), and no comparison tool, so the assistant calls once per date range. Discover and Google News don't support the query dimension.
+- **Clicks aren't sessions.** Search Console counts clicks on Google results; Rybbit's Organic Search channel counts sessions from every search engine, Bing and DuckDuckGo included. Expect the numbers to differ, and filter Rybbit by a Google referrer for a closer match.
+- **Queries join through landing pages.** Search Console reports queries in aggregate, not per visit, so the assistant connects queries to conversions through the pages they land on. Treat query-level conversion figures as estimates.
+- **Not an SEO suite.** No rank tracking beyond Search Console's average position, no keyword volumes, no backlinks.
+
+## Which GSC MCP server to pick
+
+- **You want it free and can set up a Google Cloud project:** mcp-gsc for raw access plus URL Inspection and sitemaps, or suganthan-gsc-mcp for ready-made SEO analyses and Indexing API submissions.
+- **You want Search Console in claude.ai or ChatGPT without running a server, next to GA4 and ad platforms:** Windsor.ai, keeping in mind its free plan reaches back only 30 days.
+- **You already move data into sheets and dashboards with Coupler:** Coupler.io, knowing the assistant reads scheduled snapshots.
+- **You want to connect search data to what visitors did after the click, and give teammates access without Google Cloud credentials:** Rybbit.
+- **You need URL Inspection, sitemap management or indexing requests:** not Rybbit. Use mcp-gsc or suganthan-gsc-mcp.
+
+## FAQ
+
+**What is a Google Search Console MCP server?**
+A program that exposes Search Console data to AI assistants through the Model Context Protocol. The assistant calls the server's tools, and the server queries Google's Search Console API with credentials you authorized.
+
+**Is there an official Google Search Console MCP server?**
+Not as of September 2026. Google's list of official MCP servers includes one for Google Analytics but none for Search Console.
+
+**Is there a free Google Search Console MCP?**
+Yes. mcp-gsc and suganthan-gsc-mcp are free and open source, and Google doesn't charge for the Search Console API; you supply the Google Cloud project and credentials. Windsor.ai's free plan also includes its MCP server, with 30 days of history.
+
+**Which GSC MCP server is easiest to set up?**
+The hosted ones. Windsor.ai, Coupler.io and Rybbit need no Google Cloud project: you sign in with Google, connect the property and add a URL or token to your client (Coupler also has you build a data flow first). Among self-run servers, suganthan-gsc-mcp's wizard is the shortest path, but it still needs an OAuth client JSON from Google Cloud.
+
+**Does a Google Search Console MCP work with Claude?**
+Yes. Remote servers such as Rybbit's are added as custom connectors, which Anthropic offers on every Claude plan (Free users get one), and Windsor.ai is listed in Claude's connector directory. Local servers such as mcp-gsc run through the Claude Desktop app's config file, not claude.ai in a browser.
+
+**Can ChatGPT use a Search Console MCP server?**
+Yes, in [developer mode](https://developers.openai.com/api/docs/guides/developer-mode), which is available to Plus, Pro, Business, Enterprise and Education accounts on the web and connects to remote servers over SSE or streaming HTTP. Local servers have to be hosted somewhere reachable first. Windsor.ai publishes a ChatGPT app. Rybbit's endpoint uses OAuth, which developer mode supports, but Rybbit's docs don't have a ChatGPT walkthrough yet, so treat that path as untested.
+
+**Can a Search Console MCP server request indexing?**
+Only servers that call Google's Indexing API, such as suganthan-gsc-mcp, and Google limits that API to pages with JobPosting or BroadcastEvent structured data. Rybbit's Search Console tools are read-only.
