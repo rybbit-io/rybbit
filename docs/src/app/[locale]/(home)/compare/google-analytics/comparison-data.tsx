@@ -39,7 +39,8 @@ export const googleAnalyticsComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "18KB", competitorValue: "371KB" },
+      // Compressed transfer sizes of app.rybbit.io/api/script.js and googletagmanager.com/gtag/js, measured 2026-09-28.
+      { name: "Script size (compressed)", rybbitValue: "~11KB", competitorValue: "~150KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: false },
       { name: "API access", rybbitValue: true, competitorValue: true },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "Free" },

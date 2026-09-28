@@ -139,7 +139,7 @@ export const competitors = {
       dailyRotatingSalt: false,
       openSource: false,
       selfHostable: false,
-      scriptSize: "371KB",
+      scriptSize: "~150KB",
       bypassesAdBlockers: false,
       apiAccess: true,
       dataImportIntoRybbit: false,
@@ -530,7 +530,7 @@ export const competitors = {
       dailyRotatingSalt: "Optional",
       openSource: true,
       selfHostable: true,
-      scriptSize: "~18KB",
+      scriptSize: "~11KB",
       // The script can be proxied through your own domain (/docs/proxy-guide).
       bypassesAdBlockers: "With proxy",
       apiAccess: true,

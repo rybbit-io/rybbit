@@ -11,7 +11,7 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 export const homepageMarkdown = `# Rybbit
 
-Rybbit is an open-source, cookieless web and product analytics platform. It replaces Google Analytics with one readable dashboard and a lightweight 18 KB tracking script. Rybbit is designed for privacy-conscious teams: no cookies, no consent banner, GDPR and CCPA compliant, and available as managed EU-hosted cloud or a self-hosted deployment.
+Rybbit is an open-source, cookieless web and product analytics platform. It replaces Google Analytics with one readable dashboard and a lightweight 11 KB tracking script. Rybbit is designed for privacy-conscious teams: no cookies, no consent banner, GDPR and CCPA compliant, and available as managed EU-hosted cloud or a self-hosted deployment.
 
 ## What Rybbit helps you understand
 

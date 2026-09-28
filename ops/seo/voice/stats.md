@@ -10,6 +10,7 @@ All rows checked 2026-09-28 against `origin/master` at `63e8198c` unless the sou
 | Fact | Value | Source | Checked |
 | --- | --- | --- | --- |
 | Script size, as served | 11,177 bytes gzipped (about 11 KB); 34,006 bytes uncompressed | `curl https://app.rybbit.io/api/script.js` with and without `Accept-Encoding: gzip` | 2026-09-28 |
+| GA4 script, for comparison | ~153 KB gzipped (434 KB uncompressed) for `gtag.js`; quote as "about 150 KB, both compressed" next to Rybbit's 11 KB | `curl https://www.googletagmanager.com/gtag/js?id=<GA4 id>` with and without `Accept-Encoding: gzip` | 2026-09-28 |
 | On by default | Initial pageview, SPA navigations, URL parameters, outbound link clicks | `server/src/db/postgres/schema.ts:96-99` | 2026-09-28 |
 | Off by default | Web Vitals, error tracking, button clicks, copy events, form interactions, session replay, storing IP addresses | `server/src/db/postgres/schema.ts:93-95,100-103` | 2026-09-28 |
 | Visitor ID | SHA-256 of IP address + user agent (version numbers stripped), first 12 hex characters. Datacenter egress IPs are bucketed so rotating proxies don't split one visitor | `server/src/services/userId/userIdService.ts:96-116` | 2026-09-28 |
@@ -87,7 +88,6 @@ That post calls the hosted version "freemium". That's no longer accurate; don't 
 
 Claims live on rybbit.com that the code contradicts. Don't copy them into posts; fix the pages separately.
 
-- **"18 KB" script.** The real figure is about 11 KB gzipped (see above). Appears in `docs/src/app/[locale]/(home)/page.tsx:7` (homepage meta), the homepage FAQ JSON-LD (`docs/src/components/LandingPageTemplate.tsx:51`), web-analytics feature page, seven compare pages, `compare/data/competitors.ts`, `docs/src/lib/agent-markdown.ts` and `proxy-guide/get-started.mdx`.
 - **Daily salt described as the default.** The code default is off. Wrong on: homepage FAQ (`LandingPageTemplate.tsx:43`, "We salt user IDs daily"), `features/page.tsx:293`, `for-european-companies/page.tsx:40,77`, compare pages for Plausible (`comparison-data.tsx:123`), Simple Analytics (`:137`) and Cloudflare (`:139`), and `blog/best-google-analytics-alternatives.mdx:46`. Stated correctly on `compare/umami/comparison-data.tsx:288` and `features/retention/feature-data.tsx:136`.
 - **"Capture every interaction automatically"** (`LandingPageTemplate.tsx:219`). Button, copy and form capture are off by default.
 - **AI operator table** in `blog/track-chatgpt-traffic.mdx` lists 10 operators; the registry now has 11 (Cohere).
@@ -99,7 +99,6 @@ Claims used on the site that couldn't be verified from the repo. Don't use them 
 - "Trusted by 10,000+ organizations worldwide" (`docs/src/app/[locale]/(home)/enterprise/page.tsx:133`).
 - Naming logo-bar customers (Bosch, GOV.UK, Royal Caribbean, OP.GG and others) in articles: is there permission beyond the logo bar?
 - "Most sites are collecting data in under 5 minutes" (`LandingPageTemplate.tsx:67`).
-- GA4's script is "371KB" (`LandingPageTemplate.tsx:51`): needs a fresh measurement with a date.
 - "No sampling at any traffic level" (`blog/best-google-analytics-alternatives.mdx:46`): plausible given raw ClickHouse queries, but no code or doc states it.
 - "Fully compliant with GDPR, CCPA" (`LandingPageTemplate.tsx:43`): a legal claim. Safer wording until confirmed: "designed so analytics runs without cookies or a consent banner".
 - The dashboard's unpaid 3,000-event state (`DEFAULT_EVENT_LIMIT`, `server/src/lib/const.ts:17`) is labeled "Free plan" in the app, while marketing says there is no free tier. Until Bill decides, posts say "7-day trial" and "free to self-host", never "free plan".

@@ -43,7 +43,7 @@ All entries below are `status: candidate`, drafted 2026-09-28 for Bill's review.
 ### A small script is a feature
 - status: candidate
 - Why: the tracker loads on every page of every customer site; about 11 KB gzipped (stats.md) is part of the product's performance promise.
-- Where the site says it: many pages, but with the outdated "18 KB" figure. Approve only together with fixing that drift.
+- Where the site says it: homepage meta, the web-analytics feature page and every compare table (about 11 KB compressed since 2026-09-28).
 
 ## Open source and business
 
