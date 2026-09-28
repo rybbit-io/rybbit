@@ -3,7 +3,7 @@
 import { useExtracted } from "next-intl";
 import { useParams } from "next/navigation";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useGetSite } from "../../../api/admin/hooks/useSites";
 import { useGenerateCustomQuery, useRunCustomQuery } from "../../../api/analytics/hooks/useCustomQuery";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
@@ -12,7 +12,9 @@ import { QueryPromptForm } from "./components/QueryPromptForm";
 import { QueryTabs } from "./components/QueryTabs";
 import { ResultsPanel } from "./components/ResultsPanel";
 import type { QueryTab } from "./types";
-import { createQueryTab, formatQuery, getColumns, getErrorMessage, isAbortError, sortRows } from "./utils";
+import { useHiddenTabTitle } from "./useHiddenTabTitle";
+import { getRunningKeys, useRunTracker } from "./useRunTracker";
+import { createQueryTab, formatQuery, getColumns, getErrorMessage, sortRows } from "./utils";
 
 export default function QueryPage() {
   useSetPageTitle("Query");
@@ -24,9 +26,10 @@ export default function QueryPage() {
 
   const [tabs, setTabs] = useState<QueryTab[]>(() => [createQueryTab(1)]);
   const [activeTabId, setActiveTabId] = useState(() => tabs[0]?.id);
-  const [runningTabIds, setRunningTabIds] = useState<Set<string>>(() => new Set());
-  const [generatingTabIds, setGeneratingTabIds] = useState<Set<string>>(() => new Set());
-  const generateAbortControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const queryRuns = useRunTracker();
+  const generations = useRunTracker();
+  const notifyIfHidden = useHiddenTabTitle();
+  const editorRef = useRef<HTMLTextAreaElement>(null);
 
   const runMutation = useRunCustomQuery();
   const generateMutation = useGenerateCustomQuery();
@@ -34,8 +37,12 @@ export default function QueryPage() {
   const columns = useMemo(() => getColumns(activeTab?.rows ?? []), [activeTab?.rows]);
   const activeSort = activeTab?.sort && columns.includes(activeTab.sort.column) ? activeTab.sort : null;
   const sortedRows = useMemo(() => sortRows(activeTab?.rows ?? [], activeSort), [activeTab?.rows, activeSort]);
-  const activeTabIsRunning = activeTab ? runningTabIds.has(activeTab.id) : false;
-  const activeTabIsGenerating = activeTab ? generatingTabIds.has(activeTab.id) : false;
+  const runningTabIds = useMemo(() => getRunningKeys(queryRuns.runs), [queryRuns.runs]);
+  const generatingTabIds = useMemo(() => getRunningKeys(generations.runs), [generations.runs]);
+  const activeRun = activeTab ? queryRuns.runs[activeTab.id] : undefined;
+  const activeGeneration = activeTab ? generations.runs[activeTab.id] : undefined;
+  const activeTabIsRunning = activeRun?.status === "running";
+  const activeTabIsGenerating = activeGeneration?.status === "running";
   const activeTabIsBusy = activeTabIsRunning || activeTabIsGenerating;
 
   const updateTab = (tabId: string, updates: Partial<QueryTab>) => {
@@ -47,30 +54,6 @@ export default function QueryPage() {
     updateTab(activeTab.id, updates);
   };
 
-  const setTabRunning = (tabId: string, isRunning: boolean) => {
-    setRunningTabIds(currentIds => {
-      const nextIds = new Set(currentIds);
-      if (isRunning) {
-        nextIds.add(tabId);
-      } else {
-        nextIds.delete(tabId);
-      }
-      return nextIds;
-    });
-  };
-
-  const setTabGenerating = (tabId: string, isGenerating: boolean) => {
-    setGeneratingTabIds(currentIds => {
-      const nextIds = new Set(currentIds);
-      if (isGenerating) {
-        nextIds.add(tabId);
-      } else {
-        nextIds.delete(tabId);
-      }
-      return nextIds;
-    });
-  };
-
   const addTab = () => {
     setTabs(currentTabs => {
       const nextTab = createQueryTab(currentTabs.length + 1);
@@ -80,10 +63,8 @@ export default function QueryPage() {
   };
 
   const closeTab = (tabId: string) => {
-    generateAbortControllersRef.current.get(tabId)?.abort();
-    generateAbortControllersRef.current.delete(tabId);
-    setTabGenerating(tabId, false);
-    setTabRunning(tabId, false);
+    generations.remove(tabId);
+    queryRuns.remove(tabId);
 
     setTabs(currentTabs => {
       if (currentTabs.length === 1) return currentTabs;
@@ -96,89 +77,80 @@ export default function QueryPage() {
     });
   };
 
-  useEffect(() => {
-    return () => {
-      generateAbortControllersRef.current.forEach(controller => controller.abort());
-      generateAbortControllersRef.current.clear();
-    };
-  }, []);
-
-  const abortActiveGeneration = () => {
-    if (!activeTab) return;
-    generateAbortControllersRef.current.get(activeTab.id)?.abort();
-    generateAbortControllersRef.current.delete(activeTab.id);
-    setTabGenerating(activeTab.id, false);
-  };
-
-  const handleGenerate = async (event: FormEvent<HTMLFormElement>) => {
+  const handleGenerate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const prompt = activeTab?.prompt.trim();
-    if (!organizationId || !activeTab || !prompt) return;
+    if (!organizationId || !activeTab || !prompt || generations.isRunning(activeTab.id)) return;
 
     const tab = activeTab;
-    generateAbortControllersRef.current.get(tab.id)?.abort();
-    const abortController = new AbortController();
-    generateAbortControllersRef.current.set(tab.id, abortController);
-    setTabGenerating(tab.id, true);
     updateTab(tab.id, { resultError: null });
 
-    try {
-      const result = await generateMutation.mutateAsync({
-        organizationId,
-        prompt,
-        currentSiteId: Number.isFinite(siteId) ? siteId : undefined,
-        currentQuery: tab.query,
-        history: tab.generationHistory,
-        signal: abortController.signal,
-      });
-      const formattedQuery = formatQuery(result.query);
-      const newGenerationMessages: QueryTab["generationHistory"] = [
-        { role: "user", content: prompt },
-        { role: "assistant", content: formattedQuery },
-      ];
-      const generationHistory = [...tab.generationHistory, ...newGenerationMessages].slice(-12);
+    void generations.start(
+      tab.id,
+      signal =>
+        generateMutation.mutateAsync({
+          organizationId,
+          prompt,
+          currentSiteId: Number.isFinite(siteId) ? siteId : undefined,
+          currentQuery: tab.query,
+          history: tab.generationHistory,
+          signal,
+        }),
+      {
+        onDone: result => {
+          const formattedQuery = formatQuery(result.query);
+          const newGenerationMessages: QueryTab["generationHistory"] = [
+            { role: "user", content: prompt },
+            { role: "assistant", content: formattedQuery },
+          ];
+          const generationHistory = [...tab.generationHistory, ...newGenerationMessages].slice(-12);
 
-      updateTab(tab.id, {
-        query: formattedQuery,
-        generationHistory,
-        resultError: null,
-      });
-    } catch (error) {
-      if (isAbortError(error)) return;
-      updateTab(tab.id, {
-        resultError: getErrorMessage(error, t("Failed to generate query")),
-      });
-    } finally {
-      if (generateAbortControllersRef.current.get(tab.id) === abortController) {
-        generateAbortControllersRef.current.delete(tab.id);
+          updateTab(tab.id, {
+            query: formattedQuery,
+            generationHistory,
+            resultError: null,
+          });
+        },
+        onFailed: error => {
+          updateTab(tab.id, {
+            resultError: getErrorMessage(error, t("Failed to generate query")),
+          });
+        },
       }
-      setTabGenerating(tab.id, false);
-    }
+    );
   };
 
-  const handleRun = async () => {
-    if (!organizationId || !activeTab?.query.trim()) return;
+  // Results, errors and the previous run's rows stay untouched until the run settles, so a
+  // cancelled run falls back to exactly what the tab showed before.
+  const handleRun = () => {
+    if (!organizationId || !activeTab?.query.trim() || queryRuns.isRunning(activeTab.id)) return;
 
     const tab = activeTab;
-    setTabRunning(tab.id, true);
-    updateTab(tab.id, { resultError: null });
 
-    try {
-      const result = await runMutation.mutateAsync({
-        organizationId,
-        query: tab.query,
-        siteId: Number.isFinite(siteId) ? siteId : undefined,
-      });
-      updateTab(tab.id, { rows: result.data, hasRun: true, resultError: null });
-    } catch (error) {
-      updateTab(tab.id, {
-        rows: [],
-        hasRun: true,
-        resultError: getErrorMessage(error, t("Failed to run query")),
-      });
-    } finally {
-      setTabRunning(tab.id, false);
-    }
+    void queryRuns.start(
+      tab.id,
+      signal =>
+        runMutation.mutateAsync({
+          organizationId,
+          query: tab.query,
+          siteId: Number.isFinite(siteId) ? siteId : undefined,
+          signal,
+        }),
+      {
+        onDone: result => {
+          updateTab(tab.id, { rows: result.data, hasRun: true, resultError: null });
+          notifyIfHidden(`✓ ${t("Query done")}`);
+        },
+        onFailed: error => {
+          updateTab(tab.id, {
+            rows: [],
+            hasRun: true,
+            resultError: getErrorMessage(error, t("Failed to run query")),
+          });
+          notifyIfHidden(t("Query failed"));
+        },
+      }
+    );
   };
 
   const canUseQuery = !!organizationId && !isLoadingSite;
@@ -200,14 +172,19 @@ export default function QueryPage() {
         canUseQuery={canUseQuery}
         isBusy={activeTabIsBusy}
         isGenerating={activeTabIsGenerating}
+        generationStartedAt={activeGeneration?.status === "running" ? activeGeneration.startedAt : null}
         onPromptChange={prompt => updateActiveTab({ prompt })}
         onGenerate={handleGenerate}
-        onCancelGenerate={abortActiveGeneration}
+        onCancelGenerate={() => {
+          if (activeTab) generations.cancel(activeTab.id);
+        }}
       />
 
       <QueryEditor
         value={activeTab?.query ?? ""}
-        disabled={!canUseQuery || activeTabIsBusy}
+        disabled={!canUseQuery || activeTabIsGenerating}
+        readOnly={activeTabIsRunning}
+        textareaRef={editorRef}
         isRunning={activeTabIsRunning}
         onChange={query => updateActiveTab({ query })}
         onFormat={() => updateActiveTab({ query: formatQuery(activeTab?.query ?? "") })}
@@ -216,10 +193,17 @@ export default function QueryPage() {
 
       <ResultsPanel
         activeTab={activeTab}
+        run={activeRun}
         columns={columns}
         rows={sortedRows}
         sort={activeSort}
         onSortChange={sort => updateActiveTab({ sort })}
+        onCancelRun={() => {
+          if (!activeTab) return;
+          queryRuns.cancel(activeTab.id);
+          // The Cancel button unmounts with the loader; hand focus back to the SQL being tuned.
+          editorRef.current?.focus();
+        }}
       />
     </div>
   );

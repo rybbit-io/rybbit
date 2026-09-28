@@ -38,7 +38,7 @@ export function QueryTabs({
             className={cn(
               "group flex h-8 min-w-[120px] items-center justify-between gap-2 rounded-md border px-2 text-left text-xs transition-colors",
               isActive
-                ? "border-neutral-200 bg-white text-neutral-900 shadow-sm dark:border-neutral-750 dark:bg-neutral-900 dark:text-neutral-100"
+                ? "border-neutral-200 bg-white text-neutral-900 dark:border-neutral-750 dark:bg-neutral-900 dark:text-neutral-100"
                 : "border-transparent text-neutral-600 hover:bg-white/70 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900/70 dark:hover:text-neutral-100"
             )}
           >
@@ -64,7 +64,14 @@ export function QueryTabs({
           </button>
         );
       })}
-      <Button type="button" size="smIcon" variant="ghost" onClick={onAddTab} className="shrink-0" aria-label="New query">
+      <Button
+        type="button"
+        size="smIcon"
+        variant="ghost"
+        onClick={onAddTab}
+        className="shrink-0"
+        aria-label="New query"
+      >
         <Plus className="h-4 w-4" />
       </Button>
     </div>
