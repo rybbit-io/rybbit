@@ -13,6 +13,7 @@ import { buildCumulativeSeries } from "./getExperimentTimeseries.js";
 import {
   buildExperimentResults,
   experimentFlagError,
+  experimentUpdateError,
   flagUpdateForStatusChange,
   rolloutWinner,
   SERVER_ONLY_FLAG_ERROR,
@@ -336,5 +337,33 @@ describe("experimentFlagError", () => {
     expect(experimentFlagError({ flagType: "boolean", runtime: "client" })).toBe(
       "Experiments require a multivariate feature flag"
     );
+  });
+});
+
+describe("experimentUpdateError", () => {
+  const running = { status: "running" as const, featureFlagId: 7, winningVariant: null };
+  const completed = { status: "completed" as const, featureFlagId: 7, winningVariant: "variant_a" };
+
+  it("allows the usual lifecycle and edits that keep the flag", () => {
+    expect(experimentUpdateError({ ...running, status: "draft" }, { status: "running", featureFlagId: 9 })).toBeNull();
+    expect(experimentUpdateError(running, { status: "paused" })).toBeNull();
+    expect(experimentUpdateError(running, { featureFlagId: 7 })).toBeNull();
+    expect(experimentUpdateError(running, { status: "completed", winningVariant: "variant_a" })).toBeNull();
+    expect(experimentUpdateError(completed, { winningVariant: "variant_a" })).toBeNull();
+  });
+
+  it("keeps a completed experiment completed", () => {
+    expect(experimentUpdateError(completed, { status: "running" })).toMatch(/can't be reopened/);
+    expect(experimentUpdateError(completed, { status: "completed" })).toBeNull();
+  });
+
+  it("keeps the flag once the experiment has started", () => {
+    expect(experimentUpdateError(running, { featureFlagId: 9 })).toMatch(/flag can't change/);
+    expect(experimentUpdateError({ ...running, status: "paused" }, { featureFlagId: 9 })).toMatch(/flag can't change/);
+  });
+
+  it("only sets the winner while completing", () => {
+    expect(experimentUpdateError(completed, { winningVariant: "control" })).toMatch(/chosen when completing/);
+    expect(experimentUpdateError(running, { winningVariant: "variant_a" })).toMatch(/chosen when completing/);
   });
 });

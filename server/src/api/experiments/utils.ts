@@ -72,6 +72,28 @@ export async function validateExperimentReferences(
   return { flag, goal };
 }
 
+/**
+ * Changes an update may not make once an experiment is under way: its flag's
+ * assignment and the rollout are only kept in step at the status transitions.
+ */
+export function experimentUpdateError(
+  existing: Pick<ExperimentRecord, "status" | "featureFlagId" | "winningVariant">,
+  body: Partial<Pick<ExperimentBody, "status" | "featureFlagId" | "winningVariant">>
+) {
+  if (existing.status === "completed" && body.status !== undefined && body.status !== "completed") {
+    return "A completed experiment can't be reopened: its flag now serves the rolled-out variant. Start a new experiment to test again.";
+  }
+  if (existing.status !== "draft" && body.featureFlagId !== undefined && body.featureFlagId !== existing.featureFlagId) {
+    return "The flag can't change once the experiment has started, because visitors are already assigned. Start a new experiment to test a different flag.";
+  }
+  const isCompleting = body.status === "completed" && existing.status !== "completed";
+  const winner = body.winningVariant === undefined ? undefined : body.winningVariant?.trim() || null;
+  if (!isCompleting && winner !== undefined && winner !== existing.winningVariant) {
+    return "The winning variant is chosen when completing the experiment.";
+  }
+  return null;
+}
+
 export function timestampsForStatus(status: ExperimentStatus, existing?: ExperimentRecord) {
   const now = new Date().toISOString();
   return {
@@ -141,7 +163,8 @@ export function buildExperimentResults(variants: string[], rows: ExperimentResul
 
   const controlVariant = getControlVariant(variants, armRows);
   const controlRow = controlVariant ? resultMap.get(controlVariant) : undefined;
-  const controlRate = controlRow && controlRow.units > 0 ? controlRow.conversions / controlRow.units : null;
+  const controlUnits = Number(controlRow?.units ?? 0);
+  const controlRate = controlUnits > 0 ? Number(controlRow?.conversions ?? 0) / controlUnits : null;
 
   return variants.map(variant => {
     const row = resultMap.get(variant);

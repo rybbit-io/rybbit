@@ -386,6 +386,8 @@ export function CreateExperimentWizard({
   // instead of creating duplicates: a second flag with the same key is a 409, a second goal an orphan.
   const createdRef = useRef<CreatedResources>({});
   const isEditing = !!experiment;
+  // Visitors are already assigned by this flag, so the server keeps it once started.
+  const assignmentLocked = !!experiment && experiment.status !== "draft";
 
   const usedFlagIds = useMemo(
     () =>
@@ -710,8 +712,8 @@ export function CreateExperimentWizard({
       let flagKey = selectedFlag?.key || form.flagKey.trim();
       let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
 
-      if (form.assignmentMode === "new") {
-        const createdFlag = await saveNewFlag(experiment.status === "running");
+      if (form.assignmentMode === "new" && !assignmentLocked) {
+        const createdFlag = await saveNewFlag(false);
         featureFlagId = createdFlag.flagId;
         flagKey = createdFlag.key;
         variantKeys = getVariantKeys(createdFlag);
@@ -788,6 +790,20 @@ export function CreateExperimentWizard({
               placeholder={t("Optional notes for this experiment")}
             />
           </div>
+        </div>
+      );
+    }
+
+    if (step === "assignment" && assignmentLocked && experiment) {
+      return (
+        <div className="grid gap-1.5">
+          <Label>{t("Assignment flag")}</Label>
+          <div className="rounded-md border border-neutral-150 bg-neutral-50 px-3 py-2 font-mono text-sm text-neutral-800 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-100">
+            {experiment.featureFlag.key}
+          </div>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            {t("The flag can't change once the experiment has started, because visitors are already assigned.")}
+          </p>
         </div>
       );
     }

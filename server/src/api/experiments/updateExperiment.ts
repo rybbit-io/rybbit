@@ -11,6 +11,7 @@ import {
   getExperimentWithRelations,
   parseExperimentId,
   parseSiteId,
+  experimentUpdateError,
   flagUpdateForStatusChange,
   serializeExperiment,
   timestampsForStatus,
@@ -40,6 +41,11 @@ export async function updateExperiment(
     }
 
     const body = experimentUpdateSchema.parse(request.body);
+
+    const updateError = experimentUpdateError(existing, body);
+    if (updateError) {
+      return reply.status(400).send({ error: updateError });
+    }
 
     if (body.featureFlagId !== undefined || body.primaryGoalId !== undefined) {
       const references = await validateExperimentReferences(siteId, {
