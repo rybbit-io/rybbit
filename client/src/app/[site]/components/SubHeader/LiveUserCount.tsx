@@ -1,8 +1,9 @@
-import NumberFlow from "@number-flow/react";
 import { useIntersectionObserver } from "@uidotdev/usehooks";
 import { Rewind } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useEffect, useMemo } from "react";
+import { FlashNumber } from "@/components/interior/value-flash";
+import { useStore } from "@/lib/store";
 import { useGetLiveUserCount } from "../../../../api/analytics/hooks/useGetLiveUserCount";
 import { useGetSessionsInfinite } from "../../../../api/analytics/hooks/useGetUserSessions";
 import { NothingFound } from "../../../../components/NothingFound";
@@ -15,7 +16,8 @@ import { ScrollArea } from "../../../../components/ui/scroll-area";
 
 export function LiveUserCount() {
   const t = useExtracted();
-  const { data } = useGetLiveUserCount(5);
+  const site = useStore(state => state.site);
+  const { data, isFetching } = useGetLiveUserCount(5);
 
   const {
     data: sessionsData,
@@ -63,8 +65,14 @@ export function LiveUserCount() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
                 </span>
-                <span className="text-sm text-neutral-700 dark:text-neutral-200 ml-1 font-medium">
-                  {<NumberFlow value={data?.count ?? 0} />}
+                <span className="text-sm text-neutral-700 dark:text-neutral-200 ml-1 font-medium tabular-nums">
+                  {data ? (
+                    // Flashes when a poll moves the count; never on first paint or when the site changes.
+                    <FlashNumber value={data.count} resetKey={site} fetching={isFetching} />
+                  ) : (
+                    // Not "0": nothing is known yet (loading, or the request failed).
+                    <span className="text-neutral-400 dark:text-neutral-500">–</span>
+                  )}
                 </span>
               </div>
             </Button>
