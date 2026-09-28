@@ -76,11 +76,7 @@ const Stat = ({
           ) : (
             <>
               <span className={getMetricColor(id, value)}>
-                <NumberFlow
-                  respectMotionPreference={false}
-                  value={Number(formatMetricValue(id, value))}
-                  format={{ notation: "compact" }}
-                />
+                <NumberFlow value={Number(formatMetricValue(id, value))} format={{ notation: "compact" }} />
                 <span className="text-sm ml-1">{getMetricUnit(id, value)}</span>
               </span>
               <ChangePercentage current={value} previous={previous} />

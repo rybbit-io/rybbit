@@ -134,7 +134,7 @@ function SiteCardView({
     <Link href={`/${siteId}`}>
       <div
         ref={cardRef}
-        className="flex flex-col md:flex-row md:justify-between gap-3 rounded-lg bg-white dark:bg-neutral-900/70 px-3 py-2 border border-neutral-100 dark:border-neutral-850 transition-all duration-300 hover:translate-y-[-2px] w-full"
+        className="flex flex-col md:flex-row md:justify-between gap-3 rounded-lg bg-white dark:bg-neutral-900/70 px-3 py-2 border border-neutral-100 dark:border-neutral-850 transition-all duration-300 motion-safe:hover:translate-y-[-2px] w-full"
       >
         {showSkeleton ? (
           <>

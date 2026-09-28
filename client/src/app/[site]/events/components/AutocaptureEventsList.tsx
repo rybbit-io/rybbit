@@ -118,7 +118,7 @@ export function AutocaptureEventsList({ events, isLoading, size = "small" }: Aut
                   <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400 text-xs">
                     {Math.round(percentage * 10) / 10}%
                   </div>
-                  <NumberFlow respectMotionPreference={false} value={event.count} format={{ notation: "compact" }} />
+                  <NumberFlow value={event.count} format={{ notation: "compact" }} />
                 </div>
               </div>
             </div>

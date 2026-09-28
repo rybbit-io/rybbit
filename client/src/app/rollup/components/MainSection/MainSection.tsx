@@ -50,11 +50,7 @@ const Stat = ({
             <span>{valueFormatter(value)}</span>
           ) : (
             <span>
-              <NumberFlow
-                respectMotionPreference={false}
-                value={decimals ? Number(value.toFixed(decimals)) : value}
-                format={{ notation: "compact" }}
-              />
+              <NumberFlow value={decimals ? Number(value.toFixed(decimals)) : value} format={{ notation: "compact" }} />
               {postfix && <span>{postfix}</span>}
             </span>
           )}

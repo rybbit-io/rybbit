@@ -9,6 +9,7 @@ import { IS_CLOUD } from "@/lib/const";
 import { getStoredDashboardDefaultTime } from "@/lib/defaultTimeRange";
 import { getTimezone, useStore } from "@/lib/store";
 import QueryProvider from "@/providers/QueryProvider";
+import { MotionConfig } from "framer-motion";
 import { ThemeProvider } from "next-themes";
 import Script from "next/script";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -58,25 +59,28 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <NuqsAdapter>
-      <ThemeProvider
-        key={themeStorageKey}
-        attribute="class"
-        enableSystem={true}
-        defaultTheme={embedTheme ?? "system"}
-        storageKey={themeStorageKey}
-        disableTransitionOnChange
-      >
-        <TooltipProvider>
-          <QueryProvider>
-            <DashboardTimeInitializer />
-            <OrganizationInitializer />
-            <AuthenticationGuard />
-            {children}
-            <VersionCheck />
-          </QueryProvider>
-          <Toaster />
-        </TooltipProvider>
-      </ThemeProvider>
+      {/* Honors the OS "reduce motion" setting for every framer animation in the app. */}
+      <MotionConfig reducedMotion="user">
+        <ThemeProvider
+          key={themeStorageKey}
+          attribute="class"
+          enableSystem={true}
+          defaultTheme={embedTheme ?? "system"}
+          storageKey={themeStorageKey}
+          disableTransitionOnChange
+        >
+          <TooltipProvider>
+            <QueryProvider>
+              <DashboardTimeInitializer />
+              <OrganizationInitializer />
+              <AuthenticationGuard />
+              {children}
+              <VersionCheck />
+            </QueryProvider>
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </MotionConfig>
       {appEnv === "prod" && (
         <Script src="https://demo.rybbit.com/api/script.js" data-site-id="21" strategy="afterInteractive" />
       )}

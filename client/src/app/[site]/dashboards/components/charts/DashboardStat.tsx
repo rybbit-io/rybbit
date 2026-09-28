@@ -48,11 +48,7 @@ export function DashboardStat({ rows, mapping }: DashboardStatProps) {
         style={{ fontSize }}
         aria-label={stat.label ? `${stat.label}: ${text}` : text}
       >
-        {format === "number" ? (
-          <NumberFlow respectMotionPreference={false} value={stat.value} format={{ notation: "compact" }} />
-        ) : (
-          text
-        )}
+        {format === "number" ? <NumberFlow value={stat.value} format={{ notation: "compact" }} /> : text}
       </div>
       {stat.label && (
         <span className="max-w-full truncate text-xs text-neutral-500 dark:text-neutral-400">{stat.label}</span>

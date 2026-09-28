@@ -119,11 +119,7 @@ export function RollupSection({
                     <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400">
                       {round(item.percentage, 1)}%
                     </div>
-                    <NumberFlow
-                      respectMotionPreference={false}
-                      value={item.count}
-                      format={{ notation: "compact" }}
-                    />
+                    <NumberFlow value={item.count} format={{ notation: "compact" }} />
                   </div>
                 </div>
               </div>

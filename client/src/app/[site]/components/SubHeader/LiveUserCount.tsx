@@ -64,7 +64,7 @@ export function LiveUserCount() {
                   <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
                 </span>
                 <span className="text-sm text-neutral-700 dark:text-neutral-200 ml-1 font-medium">
-                  {<NumberFlow respectMotionPreference={false} value={data?.count ?? 0} />}
+                  {<NumberFlow value={data?.count ?? 0} />}
                 </span>
               </div>
             </Button>
