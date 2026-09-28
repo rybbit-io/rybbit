@@ -1,0 +1,201 @@
+---
+title: "Best FullStory Alternatives in 2026: 11 Tools by Use Case"
+description: "FullStory alternatives for enterprise, developer and product teams: 11 tools compared on replay, heatmaps, analytics, self-hosting and verified prices."
+date: 2026-09-27
+tags: ["session replay", "comparisons", "product analytics"]
+author: Rybbit Team
+---
+
+FullStory is an enterprise digital experience platform: session replay, heatmaps, frustration signals and product analytics, bought through a sales conversation because none of its paid plans has a public price. Which of the FullStory alternatives fits depends on why you're leaving. For the same enterprise depth from another vendor, look at Contentsquare and Quantum Metric. If your engineers mainly use replay to debug, look at LogRocket, Sentry and OpenReplay. Product teams that want analytics with replay attached should compare PostHog, Amplitude and Heap. Microsoft Clarity and Mouseflow cover small budgets, and OpenReplay and Rybbit let you keep recordings on your own servers.
+
+Disclosure up front: we build [Rybbit](https://rybbit.com), one of the eleven tools below. Every claim about FullStory and the other ten tools comes from that vendor's own pricing or documentation pages, linked inline and checked in September 2026. Where a vendor doesn't publish a number, we say so rather than guess.
+
+## FullStory alternatives at a glance
+
+| Tool | Session replay | Heatmaps | Product analytics | Dev tools | Entry pricing (Sept 2026) | Self-host |
+| --- | --- | --- | --- | --- | --- | --- |
+| FullStory (for reference) | Web; mobile is an add-on | Yes | Yes | Console, network | Free: 30k sessions/mo; paid plans by quote | No |
+| [Contentsquare](#contentsquare) | Web and apps; fixed replay allowance | Yes | Separate app for now | JS errors, network waterfall | Free: 200k sessions; Growth from $49/mo | No |
+| [Quantum Metric](#quantum-metric) | Web and native apps | Yes | Yes | Errors, performance | Quote only | No |
+| [LogRocket](#logrocket) | Web and mobile | Yes | Funnels, paths | Console, network, errors, performance | Free: 1k sessions; $176/mo for 25k | Enterprise plan |
+| [Sentry Session Replay](#sentry-session-replay) | Web and mobile | — | — | Errors, traces, console, network | Free: 50 replays, 1 user; Team $26/mo billed annually | Yes (FSL) |
+| [OpenReplay](#openreplay) | Web and mobile | Yes | Funnels, journeys | Console, network, performance, state | Self-host free; cloud from $199/mo | Yes (AGPL-3.0 core) |
+| [PostHog](#posthog) | Web and mobile; 5k/mo free | Yes | Yes | Console, network | Free tier, then per recording | Hobby deploy, unsupported |
+| [Amplitude](#amplitude) | Web and mobile; 10k/mo free | Plus plan and up | Yes | — | Free: 2M events; Plus usage-based | No |
+| [Heap](#heap) | Add-on (Pro, Premier) | Add-on (Pro, Premier) | Yes | Add-on (Pro, Premier) | Free: 10k sessions; paid by estimate or quote | No |
+| [Microsoft Clarity](#microsoft-clarity) | Web and mobile; no traffic limits | Yes | Funnels | — | Free | No |
+| [Mouseflow](#mouseflow) | Yes | Yes | Funnels, journeys, forms | JS error detection | Free: 500 sessions; $25/mo for 5k | No |
+| [Rybbit](#rybbit) | Web, on the Pro plan | No | Funnels, journeys, retention | Error tracking, outside replay | Pro from $39/mo; 7-day trial | Yes, free (AGPL-3.0) |
+
+"No" in the self-host column means the vendor's pricing and documentation pages we checked list no self-hosted or on-premises option. A dash in the other columns means those pages don't list the feature. If you only need replay, not FullStory's analytics, our [session replay tools comparison](/blog/best-session-replay-tools) goes deeper on replay pricing, masking defaults and retention, and [what is session replay](/blog/what-is-session-replay) covers the basics.
+
+## What FullStory includes and what it costs
+
+FullStory's [pricing page](https://www.fullstory.com/pricing/) lists three analytics plans, Business, Advanced and Enterprise, and each one says "Request pricing & demo". None has a public price.
+
+The published part is the free plan. FullstoryFree is "a permanent version of our platform designed for individuals and small teams": 30,000 sessions a month, 12 months of data retention, "Session Replay, basic analytics, and debugging tools for up to 10 users", and no credit card. Dashboards, StoryAI (FullStory's AI agents) and anything above 30,000 sessions need a paid plan. The paid plans' comparison table lists heatmaps, click and scroll maps, funnels, journeys, retention analysis, sentiment signals, co-browsing and retroactive data history, with mobile analytics and Guides and Surveys as add-ons on all three.
+
+Three things make FullStory hard to replace one for one:
+
+- **Sentiment signals.** FullStory flags rage clicks, error clicks, dead clicks and thrashed cursors ([developer docs](https://developer.fullstory.com/browser/rage-clicks/)) and says these signals "are automatically prioritized by business impact" ([sentiment signals](https://www.fullstory.com/platform/sentiment-signals/)).
+- **Dev Tools in the player.** A [Console and a Network view](https://help.fullstory.com/hc/en-us/articles/360020828313-Guide-to-Dev-Tools) open beside any replay, on every plan including Free.
+- **Mobile coverage.** The [mobile SDKs](https://www.fullstory.com/platform/mobile-apps/) cover iOS, Android, Flutter, React Native and Cordova/Capacitor.
+
+If 30,000 sessions a month covers you, FullstoryFree may be all you need.
+
+## Why teams look for alternatives to FullStory
+
+- **Price opacity and sales-led buying.** Past 30,000 sessions, every route runs through a demo and a quote. Teams that budget from a price list, or pay by card, need a vendor that publishes one.
+- **Where the data lives.** [Private by Default](https://help.fullstory.com/hc/en-us/articles/360044349073-FullStory-Private-by-Default) is strict ("no text is captured or sent outside the user's browser unless it is explicitly allowlisted as safe to capture"), but you turn it on by asking FullStory's support team. [Fullstory Relay](https://help.fullstory.com/hc/en-us/articles/360046112593-How-to-send-captured-traffic-to-your-First-Party-Domain-using-Fullstory-Relay) routes capture through your own domain, yet the traffic is still "relayed immediately to the Fullstory servers for processing". Recordings that must stay on your infrastructure need a self-hosted tool.
+- **Debugging depth.** Teams that mostly use replay to fix bugs want it inside the tool that already holds their errors, traces and logs.
+- **Paying for more than you use.** Watching replays and running a few funnels doesn't need an enterprise contract.
+
+## Enterprise digital experience analytics
+
+These two cover most of what FullStory does, and both sell their top tiers through sales, as FullStory does.
+
+### Contentsquare
+
+[Contentsquare](https://contentsquare.com) is the closest like-for-like replacement: replay, heatmaps, funnels, journey analysis, JavaScript error and performance monitoring, surveys and an AI assistant called Sense, for "sites and mobile apps". Unlike FullStory, its lower tiers are self-serve. From the [pricing page](https://contentsquare.com/pricing/):
+
+- **Free:** 200,000 monthly sessions, replays for 5% of them (up to 10,000), 1 project.
+- **Growth:** from $49/month for 7,000 sessions to $409/month at 100,000, with 13 months of session data, 2 months of replays, 3 projects and zone-based heatmaps.
+- **Pro** (from 1 million monthly sessions) and **Enterprise:** no published price.
+
+Replay volume is the limit to understand. The replay allowance is "a fixed amount per month — it can't be increased", and on Growth every session is replayable up to 20,000 a month; above that, 15% of sessions are, with a floor of 20,000. Growth has a 15-day trial without payment details and 20% off when paid annually by card. Product analytics is still "a separate application for the next few months", and Contentsquare also owns Heap, which it [acquired](https://contentsquare.com/press/contentsquare-completes-acquisition-heap/) in December 2023.
+
+**Pick it if** you want FullStory-level experience analytics with a free tier and public prices up to 200,000 sessions. **Skip it if** you need any session on demand: past 20,000 a month, most replays are sampled.
+
+### Quantum Metric
+
+[Quantum Metric](https://www.quantummetric.com) is the other enterprise platform in this category, and FullStory's own [alternatives article](https://www.fullstory.com/blog/fullstory-alternatives/) groups it with Contentsquare. There's no self-serve tier: the [pricing page](https://www.quantummetric.com/pricing) offers "Enterprise plans built around your business", priced on "your annual session volume, the digital properties where we are deployed, product add-ons and other things like the amount of professional services you're looking for".
+
+Every plan includes the Felix AI analyst, analytics with anomaly detection and Core Web Vitals monitoring, journeys, and replay with AI summaries, plus implementation and PII remediation; contact center, data streaming and voice of customer are among the add-ons. Replay covers "web or native mobile applications", [interaction heatmaps](https://www.quantummetric.com/platform/session-replay) show "page-level clicks, scrolls, and attention", and Quantum Metric says "Everything is encrypted at the client device and exposed personal information is never sent across the network."
+
+**Pick it if** you're a large company replacing FullStory with a peer and want onboarding and PII cleanup in the contract. **Skip it if** sales-led pricing is why you're leaving: the buying process is the same.
+
+## Developer debugging: replay tied to errors, console and network
+
+These three suit teams whose main use of FullStory is Dev Tools: reproducing bugs from real sessions.
+
+### LogRocket
+
+[LogRocket](https://logrocket.com) pairs replay with debugging data. Each session carries "logs, network requests, JavaScript exceptions and performance data, as well as user and device metadata" ([session replay for developers](https://logrocket.com/products/session-replay-developers)), and the [mobile SDKs](https://logrocket.com/products/mobile) run on Android, iOS, React Native, Flutter, Ionic and Expo. Core also includes clickmaps, heatmaps, rage-click maps, path analysis, funnels and surveys.
+
+The [pricing page](https://logrocket.com/pricing) charges for sessions; analytics, error and log events are unlimited. Its calculator runs from a free tier at 1,000 sessions a month to $83/month for 10,000, $176/month for 25,000 and $717/month for 100,000 on Core, and the page notes that the final price also depends on seats, retention and add-ons. Pro adds Galileo AI (session summaries, issue detection) and is "included free above 100K sessions / mo"; Enterprise adds unlimited seats and a self-hosted option. The trial is 14 days with no card.
+
+**Pick it if** engineers own replay and you need mobile apps covered. **Skip it if** you want a flat price: costs climb quickly past 25,000 sessions.
+
+### Sentry Session Replay
+
+If you already use [Sentry](https://sentry.io) for errors, its replay covers the debugging half of FullStory. "Errors, traces, network requests, and console logs are all connected to the replay timeline", and rage clicks and dead clicks are linked to replays too, per the [Session Replay docs](https://docs.sentry.io/product/explore/session-replay/). It records the web plus Android, iOS, React Native and Flutter.
+
+The [pricing page](https://sentry.io/pricing/) lists Developer free for one user, Team at $26/month and Business at $80/month billed annually, each with 50 replays a month; new users get 5,000 free replays a month for their first 3 months. Extra replays start at $0.00375 each pay-as-you-go and get cheaper with volume ([pricing docs](https://docs.sentry.io/pricing/)), so 100,000 replays a month on Team comes to about $383 including the plan. Self-hosted Sentry is "Fair Source under the FSL (Functional Source License)" and needs 4 CPU cores and 16 GB of RAM plus 16 GB of swap ([self-hosted docs](https://develop.sentry.dev/self-hosted/)).
+
+**Pick it if** you want replays of the sessions that broke, next to the stack trace. **Skip it if** UX research is the main job: Sentry is an error-monitoring tool first.
+
+### OpenReplay
+
+[OpenReplay](https://openreplay.com) is open-source, developer-first replay. Its [DevTools](https://openreplay.com/product/feature/developer-tools) show "JavaScript errors with full stack traces and sourcemaps", let you "Inspect API calls, track failing requests, and analyze response payloads with sensitive data sanitized", and track CPU, memory and application state through a session. The [pricing page](https://openreplay.com/pricing.html) also lists co-browsing, heatmaps, funnels, journeys, product analytics and mobile.
+
+The code defaults to AGPL-3.0, with the `ee/` directory under its own license ([LICENSE](https://github.com/openreplay/openreplay/blob/main/LICENSE)). "Open-Source is free — you host it on your own infrastructure", on at least 2 vCPUs, 8 GB of RAM and 50 GB of storage ([Docker guide](https://docs.openreplay.com/en/deployment/deploy-docker/)). The managed Dedicated plan starts at $199/month, billed hourly: a dedicated VM "with no limits on users, recordings, or retention", with a 7-day trial and no card. The page also lists a usage-based Serverless option and a self-hosted Enterprise tier.
+
+**Pick it if** recordings must stay on your servers and developers are the main users. **Skip it if** you'd rather not run the infrastructure and $199/month is too much for a managed instance.
+
+## FullStory alternatives for product teams
+
+These three put product analytics first and attach replay to it, which suits teams that use FullStory mostly for funnels, retention and cohort questions.
+
+### PostHog
+
+[PostHog](https://posthog.com) is the broadest product-team option: product analytics, replay, heatmaps, feature flags, experiments, surveys and error tracking on one usage-based bill. [Rybbit vs PostHog](/compare/posthog) compares it with our product in detail.
+
+Each month the [pricing page](https://posthog.com/pricing) gives 1 million analytics events, 5,000 recordings, 1 million feature-flag requests, 100,000 exceptions and 1,500 survey responses free, with no card. [Replay pricing](https://posthog.com/docs/session-replay/pricing) then runs from $0.0050 per web recording down to $0.0015 above 500,000, so 100,000 web recordings a month cost $272.50; mobile gets 2,500 free, then $0.0100 each. Replays can [include console logs and the network waterfall](https://posthog.com/docs/session-replay), and recording works in React Native, iOS, Android and Flutter apps as well as on the web. [Heatmap data](https://posthog.com/docs/toolbar/heatmaps), per PostHog, "is captured along with other events, so it doesn't contribute to your bill".
+
+PostHog offers "a free Docker Compose deployment under an MIT license", but its [self-host page](https://posthog.com/docs/self-host) calls self-hosted deployments "officially unsupported" and says it has no guarantees for self-hosted instances.
+
+**Pick it if** your product team wants flags, experiments and replay in one tool. **Skip it if** you need supported self-hosting or a narrower tool.
+
+### Amplitude
+
+[Amplitude](https://amplitude.com) is product analytics first, with replay, heatmaps, experimentation, and guides and surveys in one platform; its [pricing page](https://amplitude.com/pricing) says "Every plan includes the full platform and unlimited seats". Free gives 2 million events and 10,000 session replays a month with no card. Plus "Starts at $0", keeps the first 2 million events free, scales to 70 million, and adds heatmaps and 2-year data retention; it needs a card. Growth and Enterprise are custom and include 20,000 and 50,000 monthly replays. Replays cover web and mobile but are kept for 1 month on every plan, with more retention sold as an add-on on Growth and Enterprise.
+
+**Pick it if** analytics is the main job and replay is for spot checks. **Skip it if** you watch replays at volume or need more than a month of them.
+
+### Heap
+
+[Heap](https://www.heap.io) is autocapture product analytics, owned by Contentsquare since December 2023. On its [pricing page](https://www.heap.io/pricing), Free covers up to 10,000 monthly sessions with 6 months of data history and SSO. Growth adds Contentsquare's Sense AI assistant, unlimited users and reports and 12 months of history, priced by estimate once you install the snippet; Pro and Premier have "Custom Session Pricing". Session replay, heatmaps and error analysis aren't available on Free or Growth; they're add-ons on Pro and Premier.
+
+**Pick it if** you want autocapture analytics and already buy from Contentsquare. **Skip it if** replay is why you're shopping: here it's an add-on to an enterprise plan.
+
+## Free and low-cost options
+
+### Microsoft Clarity
+
+[Clarity](https://clarity.microsoft.com) is the zero-cost answer. Microsoft's [FAQ](https://learn.microsoft.com/en-us/clarity/faq) says "Clarity is a free service forever. You never encounter traffic limits or are compelled to upgrade to a paid version", with no sampling. You get recordings, heatmaps and insights, and [mobile SDKs](https://learn.microsoft.com/en-us/clarity/mobile-sdk/) cover Android, iOS, React Native, Flutter and Cordova/Ionic.
+
+The trade-offs are retention and control. Data "is retained for the webmaster's consumption up to 30 days from the time of recording", the FAQ states that Microsoft has access to it, and for visitors in the EEA, UK and Switzerland you must pass a consent signal; without valid consent, Clarity "limits data collection in those regions".
+
+**Pick it if** the budget is zero and 30 days of history is enough. **Skip it if** you need longer retention, or a large European audience would leave you with thin data.
+
+### Mouseflow
+
+[Mouseflow](https://mouseflow.com) publishes its prices and bundles session replay; click, scroll and geo heatmaps; friction and JavaScript error detection; funnels; journey and form analytics; and feedback surveys. Per the [pricing page](https://mouseflow.com/pricing/), Free covers 500 sessions a month with 1 month of retention. Essential is $25/month for 5,000 sessions and 3 months, Advanced $109/month for 25,000 and 6 months, and Premium $319/month for 100,000 and 12 months, adding API access, an MCP connection and SSO. Every plan has unlimited users, annual billing saves up to 35%, and paid plans start with a 14-day trial.
+
+**Pick it if** you want heatmaps and 12 months of history at a published price. **Skip it if** you need product analytics or debugging depth: Mouseflow is built for UX and conversion work.
+
+## Privacy-first and self-hosted options
+
+OpenReplay, above, is the self-hosted pick for developer replay, and PostHog and Sentry self-host with the caveats in their sections. Rybbit fits if you want replay inside privacy-first web analytics.
+
+### Rybbit
+
+[Rybbit](https://rybbit.com) is open-source web and product analytics with [session replay](/features/session-replay) on the Pro plan. The player's timeline marks page navigations, clicks, typing and rage clicks, so you can jump to where a visitor got stuck. Around it sit [funnels](/features/funnels), [user journeys](/features/user-journeys), [goals](/features/goals), [retention](/features/retention), [user profiles](/features/user-profiles), [Web Vitals](/features/web-vitals) and [error tracking](/features/error-tracking), which groups uncaught JavaScript errors and unhandled promise rejections with stack traces and affected-session counts.
+
+Input values are masked by default, and [script attributes](/docs/script) mask or block elements by class or selector. Analytics tracking is cookieless and needs no consent banner. The cloud is hosted in the EU, and you can [self-host](/docs/self-hosting) everything, replay included, free under AGPL-3.0.
+
+Standard starts at $19/month for 100,000 events with funnels, journeys, error tracking and Web Vitals, but no replay. Pro starts at $39/month for 100,000 events and adds replay, unlimited sites and team members, and 5-year data retention; billed annually, it's $26/month ([pricing](/pricing)). Both start with a 7-day trial, and a card is collected at signup. Replays are stored for 30 days.
+
+Where it falls short of FullStory:
+
+- No heatmaps, click maps or scroll maps.
+- Rage clicks are marked in each replay, but there are no aggregated frustration reports and no error-click, dead-click or thrashed-cursor signals.
+- Replays don't capture console output or network requests; errors live in the separate error tracking view.
+- Web only: the [React Native SDK](/docs/sdks/react-native) tracks screens, events and errors, but session replay doesn't apply to mobile apps.
+- No surveys, no AI session summaries and no FullStory importer; [data import](/docs/data-import) covers Plausible, Umami and Simple Analytics only.
+
+**Pick it if** you want replay next to privacy-first analytics, at a published price, with the option to self-host. **Skip it if** heatmaps, mobile replay, frustration dashboards or console and network capture are why you use FullStory; LogRocket, Contentsquare or PostHog fit those better.
+
+## Switching from FullStory: what to plan for
+
+- **History doesn't move.** Rybbit has no FullStory importer, and none of the pages we checked for this article advertise one. Run both tools until the new one has enough history for your reports.
+- **Replay retention varies.** FullstoryFree keeps 12 months of data. Clarity keeps 30 days, Amplitude 1 month, Contentsquare Growth 2 months of replays, Mouseflow 1 to 12 months by plan and Rybbit 30 days; OpenReplay's Dedicated plan sets no limit.
+- **Know what's capped.** Contentsquare and Amplitude cap replays separately from sessions or events. Sentry, PostHog and LogRocket bill per replay or session past the free allowance.
+- **Rebuild privacy rules.** FullStory's `.fs-exclude`, `.fs-mask` and `.fs-unmask` classes are FullStory's own. Map each to the new tool's equivalent before you record; in Rybbit, that's the block and mask options in the [script docs](/docs/script).
+- **Mobile narrows the list.** Contentsquare, Quantum Metric, LogRocket, Sentry, OpenReplay, PostHog, Amplitude and Clarity document mobile app replay; Rybbit records the web only.
+
+## Which FullStory alternative should you choose?
+
+- **Same enterprise depth, different vendor:** Contentsquare for a free tier and a price list to start with; Quantum Metric for implementation and PII remediation in the contract.
+- **Engineers debugging production issues:** LogRocket for web and mobile; Sentry Session Replay if you already run Sentry; OpenReplay if recordings must stay on your servers.
+- **Product teams:** PostHog for analytics, flags, experiments and replay together; Amplitude if analytics comes first; Heap if you already buy from Contentsquare.
+- **No budget:** Microsoft Clarity, if 30 days of data and an EU consent signal are acceptable, or FullstoryFree, if 30,000 sessions a month is enough.
+- **Heatmaps and a year of history at a published price:** Mouseflow Premium, $319/month for 100,000 sessions.
+- **Privacy-first analytics with replay and a self-hosted option:** Rybbit, unless heatmaps or mobile replay are requirements.
+
+## FAQ
+
+**What is the best free FullStory alternative?**
+Microsoft Clarity is free with no traffic limits, but keeps data for 30 days. PostHog (5,000 recordings and 1 million events a month), Amplitude (10,000 replays and 2 million events) and Contentsquare (200,000 sessions, up to 10,000 replays) also have free plans, and OpenReplay and Rybbit are free to self-host.
+
+**How much does FullStory cost?**
+FullstoryFree costs nothing for 30,000 sessions a month, 12 months of data and up to 10 users. Business, Advanced and Enterprise have no public price; the pricing page says "Request pricing & demo" for each.
+
+**Who are FullStory's main competitors?**
+Contentsquare and Quantum Metric in enterprise experience analytics; LogRocket, Sentry and OpenReplay in developer-focused replay; Amplitude, Heap and PostHog in product analytics. FullStory's own alternatives article also names Adobe Analytics, Mixpanel, Pendo, Datadog and Dynatrace.
+
+**Is there an open-source alternative to FullStory?**
+Yes. OpenReplay (AGPL-3.0 by default, with a separately licensed `ee/` directory) and Rybbit (AGPL-3.0) self-host with replay included. PostHog's Docker Compose deployment is MIT-licensed but officially unsupported, and Sentry self-hosts under a license it calls Fair Source rather than open source.
+
+**Which FullStory alternatives have heatmaps?**
+Contentsquare, Quantum Metric, LogRocket, OpenReplay, PostHog, Microsoft Clarity and Mouseflow; Amplitude from its Plus plan; Heap as an add-on on Pro and Premier. Rybbit has none, and Sentry's pages we checked don't list them.
