@@ -395,7 +395,11 @@ export function CreateExperimentWizard({
     [experiment?.experimentId, experiments]
   );
   const availableFlags = useMemo(
-    () => (flags || []).filter(flag => flag.flagType === "multivariate" && !usedFlagIds.has(flag.flagId)),
+    // Server-only flags never reach the tracking script, so they can't record exposures.
+    () =>
+      (flags || []).filter(
+        flag => flag.flagType === "multivariate" && flag.runtime !== "server" && !usedFlagIds.has(flag.flagId)
+      ),
     [flags, usedFlagIds]
   );
   const selectedFlag =

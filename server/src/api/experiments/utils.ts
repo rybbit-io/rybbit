@@ -30,6 +30,17 @@ export function getDuplicateExperimentMessage(error: unknown) {
   return null;
 }
 
+// Exposures, event tags and visitor ids all come from the tracking script,
+// which only receives client-evaluated flags.
+export const SERVER_ONLY_FLAG_ERROR =
+  "Experiments need a flag evaluated on the client. Server-only flags aren't sent to the tracking script, so no exposures would be recorded.";
+
+export function experimentFlagError(flag: Pick<FeatureFlagRecord, "flagType" | "runtime">) {
+  if (flag.flagType !== "multivariate") return "Experiments require a multivariate feature flag";
+  if (flag.runtime === "server") return SERVER_ONLY_FLAG_ERROR;
+  return null;
+}
+
 export async function validateExperimentReferences(
   siteId: number,
   body: Pick<ExperimentBody, "featureFlagId" | "primaryGoalId">
@@ -49,8 +60,9 @@ export async function validateExperimentReferences(
     return { error: "Feature flag not found" as const };
   }
 
-  if (flag.flagType !== "multivariate") {
-    return { error: "Experiments require a multivariate feature flag" as const };
+  const flagError = experimentFlagError(flag);
+  if (flagError) {
+    return { error: flagError };
   }
 
   if (body.primaryGoalId && !goal) {

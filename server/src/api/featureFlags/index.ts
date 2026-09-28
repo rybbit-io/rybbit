@@ -201,6 +201,18 @@ export async function updateFeatureFlag(
     if (body.rules === undefined) delete updateData.rules;
     if (body.conditionSets === undefined) delete updateData.conditionSets;
 
+    if (body.runtime === "server") {
+      const experiment = await db.query.experiments.findFirst({
+        columns: { name: true },
+        where: and(eq(experiments.siteId, siteId), eq(experiments.featureFlagId, flagId)),
+      });
+      if (experiment) {
+        return reply.status(400).send({
+          error: `This flag runs the experiment "${experiment.name}", which needs it evaluated on the client. Use "Client" or "Both".`,
+        });
+      }
+    }
+
     const flagWhere = and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flagId));
     // Lock the row so the patch is validated against the flag it actually updates.
     const updated = await db.transaction(async tx => {
