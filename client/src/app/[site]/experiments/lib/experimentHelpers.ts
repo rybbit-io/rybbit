@@ -16,6 +16,16 @@ export const STATUS_OPTIONS: ExperimentStatus[] = ["draft", "running", "paused",
 
 export const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
 
+// A posterior is never certain, so near-0 and near-100 values keep a bound
+// instead of rounding to a claim of certainty.
+export function formatBoundedPercent(value: number, digits: number) {
+  const floor = 10 ** -digits;
+  const percent = value * 100;
+  if (percent > 0 && percent < floor) return `<${floor.toFixed(digits)}`;
+  if (percent > 100 - floor) return `>${(100 - floor).toFixed(digits)}`;
+  return percent.toFixed(digits);
+}
+
 export function getVariantKeys(experiment: Experiment) {
   const keys: string[] = [];
 

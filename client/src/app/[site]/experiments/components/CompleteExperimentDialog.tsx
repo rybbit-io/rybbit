@@ -17,7 +17,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { formatPercent, getExperimentVerdict, getVariantKeys } from "../lib/experimentHelpers";
+import { formatBoundedPercent, formatPercent, getExperimentVerdict, getVariantKeys } from "../lib/experimentHelpers";
 
 export function CompleteExperimentDialog({
   experiment,
@@ -95,7 +95,7 @@ export function CompleteExperimentDialog({
                       {formatPercent(result.conversionRate)}
                       {stats &&
                         ` · ${t("{chance}% chance to beat control", {
-                          chance: (stats.chanceToBeatControl * 100).toFixed(1),
+                          chance: formatBoundedPercent(stats.chanceToBeatControl, 1),
                         })}`}
                     </span>
                   )}

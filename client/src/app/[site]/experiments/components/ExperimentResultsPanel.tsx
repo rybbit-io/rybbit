@@ -11,6 +11,7 @@ import { useExperimentResults, useExperimentTimeseries } from "@/api/analytics/h
 import { useTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
+  formatBoundedPercent,
   formatCompactNumber,
   formatPercent,
   getExperimentVerdict,
@@ -21,14 +22,6 @@ import {
 import { ExperimentConversionChart, hasTrend } from "./ExperimentConversionChart";
 
 const formatSignedPercent = (value: number) => `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
-
-function formatBoundedPercent(value: number, digits: number) {
-  const floor = 10 ** -digits;
-  const percent = value * 100;
-  if (percent > 0 && percent < floor) return `<${floor.toFixed(digits)}`;
-  if (percent < 100 && percent > 100 - floor) return `>${(100 - floor).toFixed(digits)}`;
-  return percent.toFixed(digits);
-}
 
 function LiftIntervalBar({ interval, lift, domain }: { interval: [number, number]; lift: number; domain: number }) {
   const toPercent = (value: number) => ((Math.max(-domain, Math.min(domain, value)) + domain) / (2 * domain)) * 100;
