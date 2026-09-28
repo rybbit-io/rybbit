@@ -151,6 +151,114 @@ describe("parseScriptConfig", () => {
     expect(config?.featureFlags).toEqual({});
   });
 
+  describe("visitor ID storage", () => {
+    let getItemSpy: any;
+    let setItemSpy: any;
+
+    beforeEach(() => {
+      mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
+      mockScriptTag.setAttribute("data-site-id", "123");
+      getItemSpy = vi.spyOn(Storage.prototype, "getItem");
+      setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+    });
+
+    afterEach(() => {
+      getItemSpy.mockRestore();
+      setItemSpy.mockRestore();
+    });
+
+    const storageKeysTouched = () => [...getItemSpy.mock.calls, ...setItemSpy.mock.calls].map((call: any[]) => call[0]);
+
+    it("does not read or write localStorage when the site has no feature flags", async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ featureFlagsEnabled: false }),
+      });
+
+      const config = await parseScriptConfig(mockScriptTag);
+
+      expect(config?.visitorId).toEqual(expect.any(String));
+      expect(storageKeysTouched()).not.toContain("rybbit-visitor-id");
+      expect(setItemSpy).not.toHaveBeenCalled();
+      expect(localStorage.getItem("rybbit-visitor-id")).toBeNull();
+    });
+
+    it("does not read or write localStorage when the tracking config request fails", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ ok: false, status: 500 });
+
+      const config = await parseScriptConfig(mockScriptTag);
+
+      expect(config?.visitorId).toEqual(expect.any(String));
+      expect(storageKeysTouched()).not.toContain("rybbit-visitor-id");
+      expect(setItemSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not read or write localStorage when the tracking config request throws", async () => {
+      (global.fetch as any).mockRejectedValueOnce(new Error("Network error"));
+
+      const config = await parseScriptConfig(mockScriptTag);
+
+      expect(config?.visitorId).toEqual(expect.any(String));
+      expect(storageKeysTouched()).not.toContain("rybbit-visitor-id");
+      expect(setItemSpy).not.toHaveBeenCalled();
+    });
+
+    it("persists the visitor ID once the site has feature flags", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ featureFlagsEnabled: true }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ featureFlagsEnabled: true, flags: {} }),
+        });
+
+      const config = await parseScriptConfig(mockScriptTag);
+
+      expect(config?.visitorId).toEqual(expect.any(String));
+      expect(localStorage.getItem("rybbit-visitor-id")).toBe(config?.visitorId);
+    });
+
+    it("reuses the stored visitor ID for feature flag evaluation", async () => {
+      localStorage.setItem("rybbit-visitor-id", "stored-visitor");
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ featureFlagsEnabled: true }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ featureFlagsEnabled: true, flags: {} }),
+        });
+
+      const config = await parseScriptConfig(mockScriptTag);
+
+      expect(config?.visitorId).toBe("stored-visitor");
+      const evaluateCall = (global.fetch as any).mock.calls[1];
+      expect(evaluateCall[0]).toBe("https://analytics.example.com/site/123/feature-flags/evaluate");
+      expect(JSON.parse(evaluateCall[1].body).anonymousId).toBe("stored-visitor");
+    });
+
+    it("scopes the persisted visitor ID to the configured namespace", async () => {
+      mockScriptTag.setAttribute("data-namespace", "custom");
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ featureFlagsEnabled: true }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ featureFlagsEnabled: true, flags: {} }),
+        });
+
+      const config = await parseScriptConfig(mockScriptTag);
+
+      expect(localStorage.getItem("custom-visitor-id")).toBe(config?.visitorId);
+      expect(localStorage.getItem("rybbit-visitor-id")).toBeNull();
+    });
+  });
+
   it("should use defaults when API call fails", async () => {
     mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
     mockScriptTag.setAttribute("data-site-id", "123");

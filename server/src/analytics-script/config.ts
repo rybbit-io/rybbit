@@ -137,7 +137,12 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
   }
 
   const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
-  const visitorId = getOrCreateVisitorId(namespace);
+  // The visitor ID is only used as the anonymous ID for feature flag
+  // evaluation. Start with an in-memory ID and touch localStorage only once
+  // the tracking config confirms the site uses feature flags, so plain
+  // analytics installs never read or write device storage (which needs
+  // consent under Art. 5(3) ePrivacy / § 25 TDDDG).
+  const visitorId = createVisitorId();
 
   // These can be overridden via data attributes for testing/debugging
   const skipPatterns = parseJsonSafely<string[]>(scriptTag.getAttribute("data-skip-patterns"), []);
@@ -270,7 +275,10 @@ export async function parseScriptConfig(scriptTag: HTMLScriptElement): Promise<S
   }
 
   if (resolvedConfig.featureFlagsEnabled) {
-    const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+    // Percentage rollouts bucket on the anonymous ID, so it has to survive
+    // page loads. Persist it only for sites that actually have flags.
+    resolvedConfig.visitorId = getOrCreateVisitorId(namespace);
+    const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, resolvedConfig.visitorId);
     resolvedConfig.featureFlagsEnabled = result.enabled;
     resolvedConfig.featureFlags = result.flags;
   }
