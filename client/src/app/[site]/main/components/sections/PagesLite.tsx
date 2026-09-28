@@ -1,6 +1,11 @@
 "use client";
 
 import { useExtracted } from "next-intl";
+import { useConfigs } from "../../../../../lib/configs";
+import { defaultToRouteGroups } from "../../../../../lib/routeGroups";
+import { useStore, useTimezone } from "../../../../../lib/store";
+import { Card } from "../../../../../components/ui/card";
+import { RouteGroups } from "./RouteGroups";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { truncateString } from "../../../../../lib/utils";
 import {
@@ -13,8 +18,13 @@ import {
 export function PagesLite() {
   const { data: siteMetadata } = useGetSite();
   const t = useExtracted();
+  const { configs, isLoading } = useConfigs();
+  const time = useStore(state => state.time);
+  const site = useStore(state => state.site);
+  const zone = useTimezone();
+  const defaultValue = configs?.routeGroups && defaultToRouteGroups(time, zone) ? "routes" : "pages";
 
-  const tabs: StandardSectionTab<"pages">[] = [
+  const tabs: StandardSectionTab<"pages" | "routes">[] = [
     {
       value: "pages",
       label: t("Pages"),
@@ -33,5 +43,15 @@ export function PagesLite() {
     },
   ];
 
-  return <StandardSectionTabs defaultValue="pages" tabs={tabs} />;
+  if (configs?.routeGroups)
+    tabs.unshift({
+      value: "routes",
+      label: t("Route groups"),
+      content: <RouteGroups />,
+      dialogContent: <RouteGroups expanded />,
+    });
+  // Wait for configuration before mounting a tab: otherwise the expensive URL
+  // query starts before the long-range default switches to route groups.
+  if (isLoading) return <Card className="h-[405px]" aria-busy="true" />;
+  return <StandardSectionTabs key={`${site}:${defaultValue}`} defaultValue={defaultValue} tabs={tabs} />;
 }

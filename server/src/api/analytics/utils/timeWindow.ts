@@ -1,4 +1,5 @@
 import { FilterParams, TimeBucket } from "@rybbit/shared";
+import { DateTime } from "luxon";
 import SqlString from "sqlstring";
 import { z } from "zod";
 
@@ -150,8 +151,9 @@ const pastMinutesWindowSchema = z
 
 /**
  * A window that has been validated and reduced to one of four shapes. The
- * `date` shape stays symbolic because its bounds mean "midnight in `timeZone`",
- * which only ClickHouse can resolve; the instant shapes are already absolute.
+ * `date` shape stays symbolic for the SQL builders because its bounds mean
+ * "midnight in timeZone"; the rollup planner resolves those with Luxon too.
+ * The instant shapes are already absolute.
  */
 type ResolvedWindow =
   | { kind: "all" }
@@ -215,6 +217,8 @@ function resolve(params: TimeWindowParams, now: number): ResolvedWindow {
 
 /** A resolved window, ready to render either SQL fragment. */
 export interface TimeWindow {
+  /** Eligible UTC hour timestamps, as a half-open interval. Null means all time. */
+  hourRange(): { start: number; end: number } | null;
   /**
    * True when the request named no usable window. Both fragments are empty:
    * the query spans the Site's whole history and there is nothing to fill
@@ -318,8 +322,8 @@ function fillClause(window: ResolvedWindow, bucket: TimeBucket): string {
   if (window.kind === "date") {
     const { startDate, endDate, timeZone } = window;
     const tz = SqlString.escape(timeZone);
-    // A date bound means midnight in `timeZone`, which only ClickHouse can
-    // resolve, so the bound stays symbolic and gets truncated in SQL.
+    // Keep date bounds symbolic here so ClickHouse handles the current day
+    // and truncates the fill in the same timezone as the selected buckets.
     const midnight = (date: string) => truncate(`toDateTime(${SqlString.escape(date)}, ${tz})`, bucket, timeZone);
     return `WITH FILL FROM toTimeZone(${midnight(startDate)}, 'UTC')
       TO if(
@@ -362,6 +366,25 @@ export function resolveTimeWindow(params: TimeWindowParams, now = Date.now()): T
   const timeZone = window.kind === "all" ? params.time_zone || "UTC" : window.timeZone;
   return {
     isAllTime: window.kind === "all",
+    hourRange: () => {
+      if (window.kind === "all") return null;
+      if (window.kind === "date") {
+        const start = DateTime.fromISO(window.startDate, { zone: window.timeZone }).toSeconds();
+        const today = DateTime.fromMillis(now, { zone: window.timeZone }).toISODate();
+        const end =
+          window.endDate === today
+            ? Math.floor(now / 1000 / 3600) * 3600 + 3600
+            : Math.ceil(
+                DateTime.fromISO(window.endDate, { zone: window.timeZone }).plus({ days: 1 }).toSeconds() / 3600
+              ) * 3600;
+        return { start: Math.ceil(start / 3600) * 3600, end };
+      }
+      const start = parseDateTimeMs(window.start) / 1000;
+      const end = parseDateTimeMs(window.end) / 1000;
+      return window.kind === "pastMinutes"
+        ? { start: Math.floor(start / 3600) * 3600 + 3600, end: Math.floor(end / 3600) * 3600 + 3600 }
+        : { start: Math.ceil(start / 3600) * 3600, end: Math.ceil(end / 3600) * 3600 };
+    },
     where: (column = "timestamp") => whereClause(window, column),
     bucketed: (column: string, bucket: TimeBucket) =>
       truncate(column, bucket, isValidTimeZone(timeZone) ? timeZone : "UTC"),

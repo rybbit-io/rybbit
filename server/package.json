@@ -36,6 +36,7 @@
     "knip": "knip",
     "format": "prettier --write \"src/**/*.{js,ts,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,json,md}\"",
+    "prepare:dashboard-rollups": "tsc && node dist/scripts/prepareDashboardRollups.js",
     "backfill:lite-mvs": "tsc && node dist/scripts/backfillLiteDashboardMVs.js",
     "replays:disable-unentitled": "tsc && node dist/scripts/disableUnentitledReplays.js"
   },
