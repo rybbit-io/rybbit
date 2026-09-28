@@ -10,9 +10,9 @@ const twitterTitle = "Rybbit vs Umami Comparison";
 const twitterDescription = "Rybbit and Umami compared feature by feature, with current plan limits and prices.";
 
 export const metadata: Metadata = {
-  title: "Rybbit vs Umami: The Full-Featured Umami Alternative",
+  title: "Umami Alternative With Error Tracking & $39 Replay",
   description:
-    "Looking for an Umami alternative? Rybbit is also open source and cookieless, adds error tracking and a read-write MCP server, and has replay from $39/mo.",
+    "Looking for an Umami alternative? Rybbit is also open source and cookieless, and adds error tracking, five-layer bot filtering and replay from $39/mo.",
   openGraph: {
     title: ogTitle,
     description: ogDescription,
