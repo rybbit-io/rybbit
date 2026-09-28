@@ -23,6 +23,7 @@ import { useExtracted } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
+import { CommandPaletteTrigger } from "../../../../components/command-palette/CommandPaletteTrigger";
 import { Sidebar as SidebarComponents } from "../../../../components/sidebar/Sidebar";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
 import { useAppEnv } from "../../../../hooks/useIsProduction";
@@ -71,6 +72,8 @@ function SidebarContent() {
     <div className="w-56 bg-neutral-50 border-r border-neutral-150 dark:bg-neutral-900 dark:border-neutral-850 flex flex-col h-dvh">
       <div className="flex flex-col p-3 border-b border-neutral-200 dark:border-neutral-800">
         <SiteSelector />
+        {/* Keyboard-first, so desktop only (this sidebar also renders in the mobile sheet). */}
+        {!embed && <CommandPaletteTrigger className="mt-2 hidden md:flex" />}
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pt-1">
         <div className="mt-2">
