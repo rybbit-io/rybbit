@@ -3,6 +3,8 @@
 import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { DateTime } from "luxon";
+import { useRef } from "react";
+import { useArrivalHighlight } from "@/components/interior/use-arrival-highlight";
 import { Event } from "../../../../../api/analytics/endpoints";
 import { Avatar } from "../../../../../components/Avatar";
 import { EventTypeIcon } from "../../../../../components/EventIcons";
@@ -21,16 +23,18 @@ interface EventRowProps {
   event: Event;
   site: string;
   onClick: (event: Event) => void;
+  /** performance.now() when the row arrived from a poll; it gets a brief neutral highlight. */
+  arrivedAt?: number;
 }
 
-export function EventRow({ event, site, onClick }: EventRowProps) {
+export function EventRow({ event, site, onClick, arrivedAt }: EventRowProps) {
   const t = useExtracted();
+  const rowRef = useRef<HTMLDivElement>(null);
+  useArrivalHighlight(rowRef, arrivedAt);
   const getEventDisplayName = useEventDisplayName();
   const { locale, hour12, formatRelative } = useDateTimeFormat();
   const eventProperties = parseEventProperties(event);
-  const eventTime = DateTime.fromSQL(event.timestamp, { zone: "utc" })
-    .setLocale(locale)
-    .setZone(getTimezone());
+  const eventTime = DateTime.fromSQL(event.timestamp, { zone: "utc" }).setLocale(locale).setZone(getTimezone());
   const pagePath = buildEventPath(event);
   const pageUrl = `https://${event.hostname}${pagePath}`;
   const isPageview = event.type === "pageview";
@@ -44,7 +48,8 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
 
   return (
     <div
-      className="grid grid-cols-[28px_145px_180px_100px_1fr_1fr] border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50/60 dark:hover:bg-neutral-800/40 cursor-pointer"
+      ref={rowRef}
+      className="grid grid-cols-[28px_145px_180px_100px_1fr_1fr] border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50/60 dark:hover:bg-neutral-800/40 cursor-pointer [--arrival-bg:hsl(var(--neutral-100))] dark:[--arrival-bg:hsl(var(--neutral-800))]"
       onClick={() => onClick(event)}
     >
       <div className="flex items-center justify-center py-1">
@@ -78,7 +83,9 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
           className="flex items-center gap-2"
         >
           <Avatar size={18} id={event.user_id} lastActiveTime={eventTime} />
-          <div className="text-neutral-700 dark:text-neutral-200 truncate max-w-[160px] hover:underline">{displayName}</div>
+          <div className="text-neutral-700 dark:text-neutral-200 truncate max-w-[160px] hover:underline">
+            {displayName}
+          </div>
         </Link>
       </div>
 
@@ -141,8 +148,8 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
       </div>
 
       <div className="text-neutral-600 dark:text-neutral-300 px-2 py-1 truncate">
-        {eventData && (
-          eventData.url ? (
+        {eventData &&
+          (eventData.url ? (
             <Link
               href={eventData.url}
               target="_blank"
@@ -154,11 +161,8 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
               {truncateString(eventData.label, 60)}
             </Link>
           ) : (
-            <span title={eventData.label}>
-              {truncateString(eventData.label, 60)}
-            </span>
-          )
-        )}
+            <span title={eventData.label}>{truncateString(eventData.label, 60)}</span>
+          ))}
       </div>
     </div>
   );

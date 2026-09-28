@@ -4,6 +4,7 @@ import { useExtracted } from "next-intl";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { NewItemsPill } from "@/components/interior/new-items-pill";
 import { Event } from "../../../../../api/analytics/endpoints";
 import { EVENT_TYPE_CONFIG } from "../../../../../lib/events";
 import { EventTypeFilter } from "../../../../../components/EventTypeFilter";
@@ -11,11 +12,12 @@ import { NothingFound } from "../../../../../components/NothingFound";
 import { ErrorState } from "../../../../../components/ErrorState";
 import { ScrollArea } from "../../../../../components/ui/scroll-area";
 import { EventDetailsSheet } from "./EventDetailsSheet";
+import { getEventKey } from "./eventLogUtils";
 import { EventRow } from "./EventRow";
 import { RealtimeToggle } from "./RealtimeToggle";
 import { useEventLogState } from "./useEventLogState";
 
-const ALL_EVENT_TYPES = new Set(EVENT_TYPE_CONFIG.map((c) => c.value as string));
+const ALL_EVENT_TYPES = new Set(EVENT_TYPE_CONFIG.map(c => c.value as string));
 
 export function EventLog() {
   const t = useExtracted();
@@ -25,7 +27,7 @@ export function EventLog() {
   const [visibleTypes, setVisibleTypes] = useState<Set<string>>(ALL_EVENT_TYPES);
 
   const handleToggleType = useCallback((type: string) => {
-    setVisibleTypes((prev) => {
+    setVisibleTypes(prev => {
       const next = new Set(prev);
       if (next.has(type)) {
         next.delete(type);
@@ -52,7 +54,14 @@ export function EventLog() {
     isLive,
     bufferedCount,
     flushAndScrollToTop,
+    arrivals,
   } = useEventLogState({ visibleTypes });
+
+  const jumpToNewEvents = () => {
+    flushAndScrollToTop();
+    // The pill unmounts with the click; keep keyboard focus in the list instead of dropping it on <body>.
+    scrollElement?.focus({ preventScroll: true });
+  };
 
   const rowVirtualizer = useVirtualizer({
     count: allEvents.length,
@@ -65,13 +74,7 @@ export function EventLog() {
 
   // --- Infinite scroll trigger ---
   const lastItem = virtualItems[virtualItems.length - 1];
-  if (
-    lastItem &&
-    lastItem.index >= allEvents.length - 5 &&
-    hasNextPage &&
-    !isFetchingNextPage &&
-    !isLoading
-  ) {
+  if (lastItem && lastItem.index >= allEvents.length - 5 && hasNextPage && !isFetchingNextPage && !isLoading) {
     fetchNextPage();
   }
 
@@ -87,15 +90,19 @@ export function EventLog() {
       </div>
 
       <div className="relative">
-        {/* New events indicator */}
-        {isRealtime && !isLive && bufferedCount > 0 && (
-          <button
-            onClick={flushAndScrollToTop}
-            className="absolute top-12 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full bg-accent-400 dark:bg-accent-600 text-white text-xs font-medium shadow-lg hover:bg-accent-300 dark:hover:bg-accent-500 transition-colors cursor-pointer"
-          >
-            {t("{bufferedCount} new events", { bufferedCount: String(bufferedCount) })}
-          </button>
-        )}
+        {/* Events that arrived while scrolled away from the top wait in a buffer; the pill brings them in. */}
+        <NewItemsPill
+          className="top-10"
+          count={isRealtime && !isLive ? bufferedCount : 0}
+          onJump={jumpToNewEvents}
+          describe={count => t("{count, plural, one {# new event} other {# new events}}", { count })}
+          label={(count, ticker) =>
+            t.rich("{count, plural, one {<ticker>#</ticker> new event} other {<ticker>#</ticker> new events}}", {
+              count,
+              ticker: () => ticker,
+            })
+          }
+        />
 
         <ScrollArea
           className="h-[90vh] border border-neutral-100 dark:border-neutral-800 rounded-lg"
@@ -129,10 +136,7 @@ export function EventLog() {
             )}
 
             {isFetched && !isError && allEvents.length === 0 && (
-              <NothingFound
-                title={t("No events found")}
-                description={t("Try a different date range or filter")}
-              />
+              <NothingFound title={t("No events found")} description={t("Try a different date range or filter")} />
             )}
 
             {showBody && (
@@ -144,7 +148,7 @@ export function EventLog() {
                       position: "relative",
                     }}
                   >
-                    {virtualItems.map((virtualRow) => {
+                    {virtualItems.map(virtualRow => {
                       const event = allEvents[virtualRow.index];
                       if (!event) return null;
 
@@ -162,7 +166,8 @@ export function EventLog() {
                           <EventRow
                             event={event}
                             site={site as string}
-                            onClick={(selected) => {
+                            arrivedAt={arrivals.size ? arrivals.get(getEventKey(event)) : undefined}
+                            onClick={selected => {
                               setSelectedEvent(selected);
                               setSheetOpen(true);
                             }}
@@ -188,7 +193,7 @@ export function EventLog() {
 
       <EventDetailsSheet
         open={sheetOpen}
-        onOpenChange={(open) => {
+        onOpenChange={open => {
           setSheetOpen(open);
           if (!open) setSelectedEvent(null);
         }}
@@ -221,9 +226,7 @@ function EventLogItemSkeleton({ showProperties }: { showProperties?: boolean }) 
         <div className="h-3 w-28 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
       </div>
       <div className="flex items-center px-2">
-        {showProperties && (
-          <div className="h-3 w-32 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
-        )}
+        {showProperties && <div className="h-3 w-32 rounded bg-neutral-200 dark:bg-neutral-700 animate-pulse" />}
       </div>
     </div>
   );
