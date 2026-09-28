@@ -53,8 +53,8 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
       : undefined
   );
 
-  // Delete funnel mutation
-  const { mutate: deleteFunnel, isPending: isDeleting } = useDeleteFunnel();
+  // Delete funnel mutation. mutateAsync so the modal waits for the server and shows its errors.
+  const { mutateAsync: deleteFunnel, isPending: isDeleting } = useDeleteFunnel();
 
   // Handle expansion
   const handleExpand = () => {
@@ -210,6 +210,7 @@ export function FunnelRow({ funnel, index }: FunnelRowProps) {
         primaryAction={{
           children: isDeleting ? t("Deleting...") : t("Delete"),
           variant: "destructive",
+          disabled: isDeleting,
         }}
       />
 
