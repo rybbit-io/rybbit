@@ -1225,5 +1225,12 @@ export function isPaidTraffic(medium: string, source: string): boolean {
     "pinterest ads",
   ];
 
-  return paidMediums.some(pm => lowerMedium.includes(pm)) || paidSources.some(ps => lowerSource.includes(ps));
+  // Match paid keywords as whole words so "readme" or "download" don't count as
+  // "ad", while "paid_social" and "display-ads" still do.
+  const mediumWords = `-${lowerMedium
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .join("-")}-`;
+
+  return paidMediums.some(pm => mediumWords.includes(`-${pm}-`)) || paidSources.some(ps => lowerSource.includes(ps));
 }
