@@ -90,7 +90,10 @@ export function accessBySite<T extends AccessTeam, M extends AccessMember>(
       const grants: { source: AccessSource; role: string | null }[] = [];
       // Direct grants only count while the member is restricted to specific sites, as on the server.
       if (member.siteAccess.hasRestrictedSiteAccess && member.siteAccess.siteIds.includes(site.siteId)) {
-        grants.push({ source: { type: "direct" }, role: member.siteAccess.siteRole });
+        // siteRole is only the role all of a member's grants share (null when they differ), so read this
+        // site's own grant when the members endpoint lists them.
+        const grant = member.siteAccess.siteGrants?.find(siteGrant => siteGrant.siteId === site.siteId);
+        grants.push({ source: { type: "direct" }, role: grant ? grant.role : member.siteAccess.siteRole });
       }
       for (const team of siteTeams) {
         if (team.members.some(teamMember => teamMember.userId === member.userId)) {

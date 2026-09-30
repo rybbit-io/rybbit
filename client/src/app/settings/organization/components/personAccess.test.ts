@@ -99,6 +99,25 @@ describe("accessForPeople", () => {
     });
   });
 
+  it("puts an invitation to several teams in each of them", () => {
+    // better-auth stores the team ids of a multi-team invitation comma-separated.
+    const invitation = {
+      id: "inv-2",
+      email: "ops@example.com",
+      role: "viewer",
+      teamId: "growth,platform",
+      hasRestrictedSiteAccess: false,
+      siteIds: [],
+    } as unknown as Parameters<typeof accessForPeople>[2][number];
+    const teams = [team("growth", [], [1]), team("platform", [], [2]), team("docs", [], [3, 4])];
+    const access = accessForPeople(sites, [], [invitation], teams);
+    expect(access.get(invitationAccessKey(invitation))).toMatchObject({ reached: 2, total: 4 });
+    expect(access.get(invitationAccessKey(invitation))?.sources).toEqual([
+      { type: "team", teamId: "growth", teamName: "growth" },
+      { type: "team", teamId: "platform", teamName: "platform" },
+    ]);
+  });
+
   it("keeps an invitation restricted to specific sites to those sites", () => {
     const invitation = {
       id: "inv-2",
