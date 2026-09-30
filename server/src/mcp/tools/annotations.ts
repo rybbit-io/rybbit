@@ -38,8 +38,8 @@ export function registerAnnotationTools(
         outputSchema: annotationsOutput,
         annotations: readOnly,
       },
-      guard(async ({ site_id, start_date, end_date, time_zone }) =>
-        ok(await api.call("GET", `/sites/${site_id}/annotations`, { query: { start_date, end_date, time_zone } }))
+      guard(async ({ site_id, start_date, end_date, time_zone: timeZone }) =>
+        ok(await api.call("GET", `/sites/${site_id}/annotations`, { query: { start_date, end_date, time_zone: timeZone } }))
       )
     );
 }

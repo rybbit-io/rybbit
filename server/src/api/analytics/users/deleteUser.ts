@@ -3,6 +3,7 @@ import { and, eq, or } from "drizzle-orm";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
 import { db } from "../../../db/postgres/postgres.js";
 import { userAliases, userProfiles } from "../../../db/postgres/schema.js";
+import { deleteReplayMetadata } from "../../../services/replay/deleteReplayMetadata.js";
 import { r2Storage } from "../../../services/storage/r2StorageService.js";
 import { processResults } from "../utils/utils.js";
 
@@ -63,13 +64,14 @@ export async function deleteUser(req: FastifyRequest<DeleteUserRequest>, res: Fa
     }
 
     await Promise.all(
-      ["events", "session_replay_events", "session_replay_metadata_v2"].map(table =>
+      ["events", "session_replay_events"].map(table =>
         clickhouse.command({
           query: `DELETE FROM ${table} WHERE ${userCondition}`,
           query_params: queryParams,
         })
       )
     );
+    await deleteReplayMetadata(userCondition, queryParams);
 
     await Promise.all([
       db.delete(userProfiles).where(and(eq(userProfiles.siteId, siteId), eq(userProfiles.userId, userId))),

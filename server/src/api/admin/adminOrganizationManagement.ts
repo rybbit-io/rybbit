@@ -247,12 +247,9 @@ export async function updateAdminOrganizationMember(
 
     const restricted = !isAdminRole(value.role) && value.hasRestrictedSiteAccess;
     const requestedSiteIds = restricted ? [...new Set(value.siteIds)] : [];
-    const validSiteIds = new Set(await siteIdsInOrganization(requestedSiteIds, found.organizationId));
-    if (requestedSiteIds.some(siteId => !validSiteIds.has(siteId))) {
-      return reply.status(400).send({ error: "All selected sites must belong to this organization" });
-    }
-
-    await db.transaction(async tx => {
+    const updated = await db.transaction(async tx => {
+      const validSiteIds = new Set(await siteIdsInOrganization(requestedSiteIds, found.organizationId, tx, true));
+      if (requestedSiteIds.some(siteId => !validSiteIds.has(siteId))) return false;
       const roleFor = await grantRoleForRewrite(tx, found.memberId, value.siteRole);
 
       await tx
@@ -260,7 +257,7 @@ export async function updateAdminOrganizationMember(
         .set({ role: value.role, hasRestrictedSiteAccess: restricted })
         .where(eq(member.id, found.memberId));
       await tx.delete(memberSiteAccess).where(eq(memberSiteAccess.memberId, found.memberId));
-      if (restricted) {
+      if (restricted && requestedSiteIds.length > 0) {
         await tx.insert(memberSiteAccess).values(
           requestedSiteIds.map(siteId => ({
             memberId: found.memberId,
@@ -270,7 +267,9 @@ export async function updateAdminOrganizationMember(
           }))
         );
       }
+      return true;
     });
+    if (!updated) return reply.status(400).send({ error: "All selected sites must belong to this organization" });
 
     invalidateSitesAccessCache(found.userId);
     return reply.send({ success: true });

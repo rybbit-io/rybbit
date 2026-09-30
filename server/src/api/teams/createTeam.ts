@@ -5,6 +5,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { team, teamMember, teamSiteAccess, member, sites } from "../../db/postgres/schema.js";
 import { teamMembershipKey } from "../../lib/teamMembership.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { siteIdsInOrganization } from "../../lib/access.js";
 
 interface CreateTeamBody {
   name: string;
@@ -68,7 +69,10 @@ export async function createTeam(
     const teamId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    await db.transaction(async tx => {
+    const created = await db.transaction(async tx => {
+      const requestedSites = siteIds ?? [];
+      const ownedSites = new Set(await siteIdsInOrganization(requestedSites, organizationId, tx, true));
+      if (requestedSites.some(siteId => !ownedSites.has(siteId))) return false;
       // Insert team
       await tx.insert(team).values({
         id: teamId,
@@ -102,7 +106,9 @@ export async function createTeam(
           }))
         );
       }
+      return true;
     });
+    if (!created) return reply.status(400).send({ error: "Sites must belong to this organization" });
 
     // Invalidate cache for affected users
     if (memberUserIds) {

@@ -1,3 +1,4 @@
+import { Address6 } from "ip-address";
 import { apiRateLimitConsume, apiRateLimitRedis } from "../db/redis/redis.js";
 import {
   API_BURST_LIMIT,
@@ -246,5 +247,17 @@ export async function consumeApiRateLimit(ownerId: string, dailyLimit: number): 
       logger.warn({ err: error, ownerId }, "Redis rate limit failing; using in-process counters until it recovers");
     }
     return consumeInProcess(ownerId, dailyLimit, now);
+  }
+}
+
+export function apiRateLimitKey(userId: string | undefined, ip: string): string {
+  if (userId) return `user:${userId}`;
+  try {
+    const address = new Address6(ip);
+    if (address.isMapped4()) return `ip:${address.to4().correctForm()}`;
+    // Privacy addresses rotate within a subnet; charge them to one bucket.
+    return `ip:${new Address6(`${address.correctForm()}/64`).startAddress().correctForm()}/64`;
+  } catch {
+    return `ip:${ip}`;
   }
 }

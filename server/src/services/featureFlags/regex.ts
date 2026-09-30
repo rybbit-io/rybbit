@@ -8,6 +8,25 @@ const MAX_REGEX_CACHE_SIZE = 1000;
 const compiledRegexCache = new Map<string, RegExp>();
 const invalidRegexCache = new Set<string>();
 
+function hasQuantifiedAlternation(pattern: string): boolean {
+  const groups: boolean[] = [];
+  let inClass = false;
+  for (let index = 0; index < pattern.length; index++) {
+    const character = pattern[index];
+    if (character === "\\") { index++; continue; }
+    if (character === "[") { inClass = true; continue; }
+    if (character === "]") { inClass = false; continue; }
+    if (inClass) continue;
+    if (character === "(") groups.push(false);
+    if (character === "|") groups.fill(true);
+    if (character === ")") {
+      const alternation = groups.pop();
+      if (alternation && /[+*{]/.test(pattern[index + 1] ?? "")) return true;
+    }
+  }
+  return false;
+}
+
 export function validateFeatureFlagRegexPattern(pattern: string): string | null {
   if (!pattern) {
     return "Regex pattern cannot be empty";
@@ -24,7 +43,8 @@ export function validateFeatureFlagRegexPattern(pattern: string): string | null 
     return `Invalid regex pattern: ${message}`;
   }
 
-  if (!safeRegex(pattern, { limit: MAX_REGEX_REPETITIONS })) {
+  // safe-regex2 misses ambiguous alternatives such as (a|a)* and (a|aa)+.
+  if (hasQuantifiedAlternation(pattern) || !safeRegex(pattern, { limit: MAX_REGEX_REPETITIONS })) {
     return "Regex pattern is too complex";
   }
 

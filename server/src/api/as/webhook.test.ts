@@ -9,7 +9,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../db/postgres/postgres.js", () => ({
-  db: { execute: mocks.execute },
+  db: {
+    execute: mocks.execute,
+    transaction: async (run: (tx: { execute: typeof mocks.execute }) => Promise<unknown>) =>
+      run({ execute: mocks.execute }),
+  },
 }));
 
 vi.mock("../../lib/const.js", () => ({
@@ -90,41 +94,27 @@ describe("handleAppSumoWebhook — test webhooks", () => {
 });
 
 describe("handleAppSumoWebhook — payload validation", () => {
-  // PINNED: validation failures are still acknowledged with HTTP 200 (with
-  // success: false in the body) rather than a 4xx — the handler always acks.
   it("rejects a payload with a missing license_key before any db write", async () => {
     const reply = await invoke({ event: "purchase" });
 
-    expect(reply.statusCode).toBe(200);
-    expect(reply.payload).toEqual({
-      event: "purchase",
-      success: false,
-      error: "Missing license_key in webhook payload",
-    });
+    expect(reply.statusCode).toBe(400);
+    expect(reply.payload.success).toBe(false);
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
   it("rejects a payload with a missing event before any db write", async () => {
     const reply = await invoke({ license_key: "lic_1" });
 
-    expect(reply.statusCode).toBe(200);
-    expect(reply.payload).toEqual({
-      event: "unknown",
-      success: false,
-      error: "Missing event in webhook payload",
-    });
+    expect(reply.statusCode).toBe(400);
+    expect(reply.payload.success).toBe(false);
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
   it("rejects an unknown event type before any db write", async () => {
     const reply = await invoke({ event: "refund", license_key: "lic_1" });
 
-    expect(reply.statusCode).toBe(200);
-    expect(reply.payload).toEqual({
-      event: "refund",
-      success: false,
-      error: "Invalid AppSumo event type",
-    });
+    expect(reply.statusCode).toBe(400);
+    expect(reply.payload.success).toBe(false);
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 });
@@ -139,18 +129,16 @@ describe("handleAppSumoWebhook — audit trail", () => {
     expect(audit.params).toEqual(["lic_audit", "deactivate", JSON.stringify(body)]);
   });
 
-  it("acks with 200 + success:false when the db throws mid-processing", async () => {
-    // PINNED: db failures are swallowed and acknowledged (200) so AppSumo will
-    // not retry — the event is effectively lost apart from the error log.
+  it("returns a retryable failure without database details when processing fails", async () => {
     mocks.execute.mockRejectedValueOnce(new Error("connection refused"));
 
     const reply = await invoke({ event: "deactivate", license_key: "lic_err" });
 
-    expect(reply.statusCode).toBe(200);
+    expect(reply.statusCode).toBe(500);
     expect(reply.payload).toEqual({
       event: "deactivate",
       success: false,
-      error: "connection refused",
+      error: "Failed to process AppSumo webhook",
     });
   });
 
@@ -231,22 +219,17 @@ describe("handleAppSumoWebhook — activate", () => {
     expect(update.params).toEqual(["2", "lic_act"]);
   });
 
-  // PINNED current behavior of `tier?.toString() || "1"` — a suspected weakness:
-  // - missing/null/"" tier silently defaults to tier "1"
-  // - numeric 0 does NOT default: (0).toString() === "0" is a truthy string, so
-  //   a `tier: 0` payload writes the (presumably invalid) tier "0" to the db.
-  // The defaulting also means a malformed upgrade payload can silently demote a
-  // license to tier 1.
   it.each([
-    ["missing", undefined, "1"],
-    ["null", null, "1"],
-    ["empty string", "", "1"],
-    ["numeric zero", 0, "0"],
-  ])("tier defaulting: %s tier is written as %s", async (_label, tier, expected) => {
-    await invoke({ event: "activate", license_key: "lic_tier", tier: tier as any });
-
-    const update = executedQuery(1);
-    expect(update.params).toEqual([expected, "lic_tier"]);
+    ["missing", undefined],
+    ["null", null],
+    ["empty string", ""],
+    ["numeric zero", 0],
+    ["out of range", 6],
+    ["object", {}],
+  ])("rejects %s tier without writing", async (_label, tier) => {
+    const reply = await invoke({ event: "activate", license_key: "lic_tier", tier });
+    expect(reply.statusCode).toBe(400);
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 });
 
@@ -297,59 +280,31 @@ describe("handleAppSumoWebhook — upgrade", () => {
     expect(deactivate.params).toEqual(["lic_old"]);
   });
 
-  it("PINNED: missing prev_license_key is silently ignored after the audit log, still acked as success", async () => {
+  it("rejects an upgrade with no previous license before writing", async () => {
     const reply = await invoke({ event: "upgrade", license_key: "lic_new", tier: 4 });
 
-    // Only the audit-trail insert ran — no license was created or mutated,
-    // yet AppSumo is told the upgrade succeeded.
-    expect(mocks.execute).toHaveBeenCalledTimes(1);
-    expect(executedQuery(0).sql).toContain("INSERT INTO appsumo.webhook_events");
-    expect(reply.statusCode).toBe(200);
-    expect(reply.payload).toEqual({ event: "upgrade", success: true });
+    expect(mocks.execute).not.toHaveBeenCalled();
+    expect(reply.statusCode).toBe(400);
   });
 
-  it("PINNED (suspected bug): unknown prev_license_key falls back to ANY license with an org and transfers that org", async () => {
-    // If the previous license is not found, the handler grabs the most
-    // recently updated license belonging to ANY organization and attaches the
-    // new license to it. On this public, unauthenticated endpoint that means a
-    // fabricated upgrade payload with an unknown prev_license_key can mint an
-    // active license attached to another customer's organization.
-    mocks.execute
-      .mockResolvedValueOnce([]) // audit insert
-      .mockResolvedValueOnce([]) // old license lookup: not found
-      .mockResolvedValueOnce([{ organization_id: "org_someone_else" }]) // fallback lookup
-      .mockResolvedValueOnce([]) // insert new active license
-      .mockResolvedValueOnce([]); // deactivate (nonexistent) old license
-
+  it("never falls back to another customer's organization for an unknown previous license", async () => {
+    mocks.execute.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     const reply = await invoke({
       event: "upgrade",
       license_key: "lic_forged",
       prev_license_key: "lic_unknown",
       tier: 5,
     });
-
-    const fallback = executedQuery(2);
-    expect(fallback.sql).toContain("WHERE organization_id IS NOT NULL");
-    expect(fallback.sql).toContain("ORDER BY updated_at DESC");
-
-    const insert = executedQuery(3);
-    expect(insert.sql).toContain("'active'");
-    expect(insert.params).toEqual(["org_someone_else", "lic_forged", "5", "org_someone_else", "5"]);
-
-    expect(reply.payload).toEqual({ event: "upgrade", success: true });
+    expect(mocks.execute).toHaveBeenCalledTimes(2);
+    expect(executedQuery(1).sql).toContain("FOR UPDATE");
+    expect(reply.statusCode).toBe(500);
+    expect(reply.payload.success).toBe(false);
   });
 
-  it("gives up when neither the previous license nor any fallback license exists", async () => {
-    mocks.execute
-      .mockResolvedValueOnce([]) // audit insert
-      .mockResolvedValueOnce([]) // old license lookup: not found
-      .mockResolvedValueOnce([]); // fallback lookup: nothing
-
-    const reply = await invoke({ event: "upgrade", license_key: "lic_new", prev_license_key: "lic_gone", tier: 2 });
-
-    expect(mocks.execute).toHaveBeenCalledTimes(3);
-    // Still acked as success despite doing nothing.
-    expect(reply.payload).toEqual({ event: "upgrade", success: true });
+  it("rejects a transition to the same key", async () => {
+    const reply = await invoke({ event: "upgrade", license_key: "lic_old", prev_license_key: "lic_old", tier: 2 });
+    expect(reply.statusCode).toBe(400);
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 });
 
@@ -376,11 +331,11 @@ describe("handleAppSumoWebhook — downgrade", () => {
     expect(reply.payload).toEqual({ event: "downgrade", success: true });
   });
 
-  it("PINNED: missing prev_license_key on downgrade is also silently ignored but acked as success", async () => {
+  it("rejects a downgrade with no previous license before writing", async () => {
     const reply = await invoke({ event: "downgrade", license_key: "lic_down", tier: 1 });
 
-    expect(mocks.execute).toHaveBeenCalledTimes(1); // audit insert only
-    expect(reply.payload).toEqual({ event: "downgrade", success: true });
+    expect(mocks.execute).not.toHaveBeenCalled();
+    expect(reply.statusCode).toBe(400);
   });
 });
 
@@ -418,11 +373,9 @@ describe("handleAppSumoWebhook — migrate", () => {
     expect(update.params).toEqual(["2", "lic_new_parent", "lic_addon"]);
   });
 
-  it("nulls the parent when parent_license_key is missing", async () => {
-    await invoke({ event: "migrate", license_key: "lic_addon" });
-
-    const update = executedQuery(1);
-    // Tier also defaults to "1" here (same pinned defaulting as activate).
-    expect(update.params).toEqual(["1", null, "lic_addon"]);
+  it("rejects migration without a parent instead of clearing the relationship", async () => {
+    const reply = await invoke({ event: "migrate", license_key: "lic_addon", tier: 1 });
+    expect(reply.statusCode).toBe(400);
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 });

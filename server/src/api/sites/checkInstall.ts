@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
 import { verifyExpiringPayload } from "../../lib/signedToken.js";
 import { fetchHomepage, hasRybbitScript } from "../../services/lifecycleEmails/platformDetect.js";
 
@@ -13,6 +14,16 @@ import { fetchHomepage, hasRybbitScript } from "../../services/lifecycleEmails/p
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 5;
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+const installQuerySchema = z.object({
+  siteId: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .transform(Number)
+    .refine(Number.isSafeInteger),
+  domain: z.string().min(1),
+  exp: z.string().regex(/^\d+$/).transform(Number).refine(Number.isSafeInteger),
+  sig: z.string().min(1),
+});
 
 const isRateLimited = (ip: string): boolean => {
   const nowMs = Date.now();
@@ -35,17 +46,19 @@ export const checkInstall = async (
   request: FastifyRequest<{ Querystring: { siteId?: string; domain?: string; exp?: string; sig?: string } }>,
   reply: FastifyReply
 ) => {
-  const { siteId, domain, exp, sig } = request.query;
-  const siteIdNum = Number(siteId);
-
-  if (
-    !domain ||
-    !sig ||
-    !exp ||
-    !Number.isInteger(siteIdNum) ||
-    !verifyExpiringPayload(`check-install:${siteIdNum}:${domain}`, exp, sig)
-  ) {
-    return reply.status(400).type("text/html").send(page("Invalid link", "This install-check link is invalid or expired."));
+  const parsed = installQuerySchema.safeParse(request.query);
+  if (!parsed.success) {
+    return reply
+      .status(400)
+      .type("text/html")
+      .send(page("Invalid link", "This install-check link is invalid or expired."));
+  }
+  const { siteId: siteIdNum, domain, exp, sig } = parsed.data;
+  if (!verifyExpiringPayload(`check-install:${siteIdNum}:${domain}`, exp, sig)) {
+    return reply
+      .status(400)
+      .type("text/html")
+      .send(page("Invalid link", "This install-check link is invalid or expired."));
   }
 
   if (isRateLimited(request.ip)) {

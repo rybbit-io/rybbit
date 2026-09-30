@@ -324,7 +324,7 @@ function fillClause(window: ResolvedWindow, bucket: TimeBucket): string {
     return `WITH FILL FROM toTimeZone(${midnight(startDate)}, 'UTC')
       TO if(
         toDate(${SqlString.escape(endDate)}) = toDate(now(), ${tz}),
-        toTimeZone(now(), 'UTC'),
+        toTimeZone(now(), 'UTC') + INTERVAL 1 SECOND,
         toTimeZone(${midnight(endDate)} + INTERVAL 1 DAY, 'UTC')
       ) STEP INTERVAL ${step}`;
   }

@@ -49,6 +49,38 @@ describe("SessionReplayRecorder identity", () => {
   afterEach(() => {
     recorder.cleanup();
     delete window.rrweb;
+    vi.restoreAllMocks();
+  });
+
+  it("uploads events captured during an upload even below the batch size", async () => {
+    let release!: () => void;
+    sendBatch.mockReturnValueOnce(new Promise<void>(resolve => (release = resolve)));
+    emit({ type: 2, data: { order: 0 }, timestamp: 1_700_000_000_000 });
+    recorder.onPageChange();
+    emit({ type: 3, data: { order: 1 }, timestamp: 1_700_000_000_001 });
+    release();
+    await vi.waitFor(() => expect(sendBatch).toHaveBeenCalledTimes(2));
+    expect(sendBatch.mock.calls[1][0].events).toHaveLength(1);
+  });
+
+  it("bounds failed batches and waits before retrying an unavailable endpoint", async () => {
+    let clock = 10_000;
+    vi.spyOn(Date, "now").mockImplementation(() => clock);
+    sendBatch.mockRejectedValueOnce(new Error("offline"));
+    for (let order = 0; order < 31; order++) {
+      emit({ type: 3, data: { order }, timestamp: 1_700_000_000_000 + order });
+      recorder.onPageChange();
+      await Promise.resolve();
+    }
+    expect(sendBatch).toHaveBeenCalledOnce();
+    clock += 999;
+    recorder.onPageChange();
+    expect(sendBatch).toHaveBeenCalledOnce();
+    clock += 1;
+    recorder.onPageChange();
+    await vi.waitFor(() => expect(sendBatch).toHaveBeenCalledTimes(21));
+    expect(sendBatch.mock.calls[1][0].events[0].data).toEqual({ order: 11 });
+    expect(sendBatch.mock.calls[20][0].events[0].data).toEqual({ order: 30 });
   });
 
   it("flushes buffered events before changing the identified user", async () => {

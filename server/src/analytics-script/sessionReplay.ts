@@ -1,6 +1,8 @@
 import { ScriptConfig, SessionReplayEvent, SessionReplayBatch } from "./types.js";
 
 const SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+const MAX_PENDING_BATCHES = 20;
+const MAX_BUFFERED_EVENTS = 10_000;
 
 /**
  * Determines if this session should have replay enabled based on sample rate.
@@ -60,6 +62,11 @@ export class SessionReplayRecorder {
   private stopRecordingFn?: () => void;
   private userId: string;
   private eventBuffer: SessionReplayEvent[] = [];
+  private pendingBatches: SessionReplayBatch[] = [];
+  private flushing = false;
+  private flushRequested = false;
+  private retryAfter = 0;
+  private retryAttempts = 0;
   private batchTimer?: number;
   private sendBatch: (batch: SessionReplayBatch) => Promise<void>;
 
@@ -206,6 +213,8 @@ export class SessionReplayRecorder {
 
   private addEvent(event: SessionReplayEvent): void {
     this.eventBuffer.push(event);
+    if (this.eventBuffer.length > MAX_BUFFERED_EVENTS) this.eventBuffer.shift();
+    if (this.flushing) this.flushRequested = true;
 
     // Auto-flush if buffer is full
     if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
@@ -216,7 +225,7 @@ export class SessionReplayRecorder {
   private setupBatchTimer(): void {
     this.clearBatchTimer();
     this.batchTimer = window.setInterval(() => {
-      if (this.eventBuffer.length > 0) {
+      if (this.eventBuffer.length > 0 || this.pendingBatches.length > 0) {
         this.flushEvents();
       }
     }, this.config.sessionReplayBatchInterval);
@@ -230,9 +239,32 @@ export class SessionReplayRecorder {
   }
 
   private async flushEvents(): Promise<void> {
-    if (this.eventBuffer.length === 0) {
-      return;
+    this.enqueueBufferedEvents();
+    if (this.flushing || this.pendingBatches.length === 0 || Date.now() < this.retryAfter) return;
+    this.flushing = true;
+    try {
+      while (this.pendingBatches.length > 0) {
+        try {
+          await this.sendBatch(this.pendingBatches[0]);
+          this.pendingBatches.shift();
+          this.retryAttempts = 0;
+          this.retryAfter = 0;
+        } catch {
+          this.retryAfter = Date.now() + Math.min(60_000, 1000 * 2 ** Math.min(this.retryAttempts++, 6));
+          return;
+        }
+        if (this.flushRequested) {
+          this.flushRequested = false;
+          this.enqueueBufferedEvents();
+        }
+      }
+    } finally {
+      this.flushing = false;
     }
+  }
+
+  private enqueueBufferedEvents(): void {
+    if (this.eventBuffer.length === 0) return;
 
     const events = [...this.eventBuffer];
     this.eventBuffer = [];
@@ -248,11 +280,10 @@ export class SessionReplayRecorder {
       },
     };
 
-    try {
-      await this.sendBatch(batch);
-    } catch (error) {
-      // Re-queue the events for retry since this batch failed
-      this.eventBuffer.unshift(...events);
+    this.pendingBatches.push(batch);
+    if (this.pendingBatches.length > MAX_PENDING_BATCHES) {
+      // Keep the batch currently being sent; discard the oldest waiting batch.
+      this.pendingBatches.splice(this.flushing ? 1 : 0, 1);
     }
   }
 

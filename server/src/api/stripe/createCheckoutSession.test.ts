@@ -2,13 +2,14 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   customersCreate: vi.fn(),
+  customersUpdate: vi.fn(),
   checkoutSessionsCreate: vi.fn(),
   subscriptionsList: vi.fn(),
 }));
 
 vi.mock("../../lib/stripe.js", () => ({
   stripe: {
-    customers: { create: mocks.customersCreate },
+    customers: { create: mocks.customersCreate, update: mocks.customersUpdate },
     checkout: { sessions: { create: mocks.checkoutSessionsCreate } },
     subscriptions: { list: mocks.subscriptionsList },
   },
@@ -49,7 +50,7 @@ function replyStub() {
 }
 
 function requestStub(userId: string | undefined, body: Record<string, unknown>) {
-  return { user: userId ? { id: userId } : undefined, body } as any;
+  return { user: userId ? { id: userId } : undefined, body, log: { error: vi.fn(), warn: vi.fn() } } as any;
 }
 
 async function orgCustomerId(orgId: string): Promise<string | null> {
@@ -80,9 +81,11 @@ beforeEach(async () => {
       ('m_outsider','org_2','u_outsider','owner');
   `);
   mocks.customersCreate.mockResolvedValue({ id: "cus_new" });
+  mocks.customersUpdate.mockResolvedValue({ id: "cus_new" });
   mocks.checkoutSessionsCreate.mockResolvedValue({ client_secret: "cs_secret_123" });
   mocks.subscriptionsList.mockResolvedValue({ data: [] });
   invalidateStripeSubscriptionCache("cus_1");
+  invalidateStripeSubscriptionCache("cus_new");
 });
 
 describe("createCheckoutSession — one trial per organization", () => {
@@ -203,10 +206,16 @@ describe("createCheckoutSession — customer creation and referral wiring", () =
     await createCheckoutSession(requestStub("u_owner", validBody), reply);
 
     expect(reply.statusCode).toBe(200);
-    expect(mocks.customersCreate).toHaveBeenCalledWith({
+    expect(mocks.customersCreate).toHaveBeenCalledWith(
+      {
+        metadata: { organizationId: "org_1" },
+      },
+      { idempotencyKey: "organization-customer:org_1" }
+    );
+    expect(mocks.customersUpdate).toHaveBeenCalledWith("cus_new", {
       email: "owner@acme.com",
       name: "Acme",
-      metadata: { organizationId: "org_1", createdByUserId: "u_owner" },
+      metadata: { createdByUserId: "u_owner" },
     });
     expect(await orgCustomerId("org_1")).toBe("cus_new");
     expect(mocks.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_new" }));
@@ -218,7 +227,8 @@ describe("createCheckoutSession — customer creation and referral wiring", () =
 
     await createCheckoutSession(requestStub("u_owner", { ...validBody, referral: "ref_abc" }), reply);
 
-    expect(mocks.customersCreate).toHaveBeenCalledWith(
+    expect(mocks.customersUpdate).toHaveBeenCalledWith(
+      "cus_new",
       expect.objectContaining({ metadata: expect.objectContaining({ referral: "ref_abc" }) })
     );
     expect(mocks.checkoutSessionsCreate).toHaveBeenCalledWith(
@@ -237,5 +247,63 @@ describe("createCheckoutSession — customer creation and referral wiring", () =
 
     expect(reply.statusCode).toBe(404);
     expect(mocks.checkoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("serializes concurrent customer creation and checks history against the canonical customer", async () => {
+    await (sql as any).exec(`UPDATE "organization" SET "stripeCustomerId" = NULL WHERE "id" = 'org_1'`);
+    mocks.subscriptionsList.mockResolvedValue({ data: [{ id: "sub_old", status: "canceled" }] });
+    const replies = [replyStub(), replyStub()];
+    await Promise.all(replies.map(reply => createCheckoutSession(requestStub("u_owner", validBody), reply)));
+    expect(replies.map(reply => reply.statusCode)).toEqual([200, 200]);
+    expect(mocks.customersCreate).toHaveBeenCalledTimes(1);
+    expect(await orgCustomerId("org_1")).toBe("cus_new");
+    expect(mocks.subscriptionsList).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_new" }));
+    expect(mocks.checkoutSessionsCreate).toHaveBeenCalledTimes(2);
+    for (const [session] of mocks.checkoutSessionsCreate.mock.calls) {
+      expect(session.customer).toBe("cus_new");
+      expect(session).not.toHaveProperty("subscription_data");
+    }
+  });
+
+  it("recovers after failed persistence even when mutable customer details change", async () => {
+    await (sql as any).exec(`
+      UPDATE organization SET "stripeCustomerId" = NULL WHERE id = 'org_1';
+      CREATE FUNCTION reject_customer_link() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'link failed'; END; $$;
+      CREATE TRIGGER reject_customer_link BEFORE UPDATE ON organization
+      FOR EACH ROW EXECUTE FUNCTION reject_customer_link();
+    `);
+    try {
+      const failedReply = replyStub();
+      await createCheckoutSession(requestStub("u_owner", { ...validBody, referral: "ref_old" }), failedReply);
+      expect(failedReply.statusCode).toBe(500);
+      expect(await orgCustomerId("org_1")).toBeNull();
+      expect(mocks.customersUpdate).not.toHaveBeenCalled();
+    } finally {
+      await (sql as any).exec(
+        "DROP TRIGGER reject_customer_link ON organization; DROP FUNCTION reject_customer_link()"
+      );
+    }
+    await (sql as any).exec(`UPDATE organization SET name = 'Renamed' WHERE id = 'org_1'`);
+    const reply = replyStub();
+    await createCheckoutSession(requestStub("u_owner", { ...validBody, referral: "ref_new" }), reply);
+    expect(reply.statusCode).toBe(200);
+    expect(mocks.customersCreate.mock.calls[1]).toEqual(mocks.customersCreate.mock.calls[0]);
+    expect(mocks.customersUpdate).toHaveBeenCalledWith(
+      "cus_new",
+      expect.objectContaining({
+        name: "Renamed",
+        metadata: { createdByUserId: "u_owner", referral: "ref_new" },
+      })
+    );
+  });
+
+  it("keeps the persisted canonical customer when optional enrichment fails", async () => {
+    await (sql as any).exec(`UPDATE organization SET "stripeCustomerId" = NULL WHERE id = 'org_1'`);
+    mocks.customersUpdate.mockRejectedValueOnce(new Error("metadata unavailable"));
+    const reply = replyStub();
+    await createCheckoutSession(requestStub("u_owner", validBody), reply);
+    expect(reply.statusCode).toBe(200);
+    expect(await orgCustomerId("org_1")).toBe("cus_new");
   });
 });

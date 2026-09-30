@@ -99,15 +99,21 @@ export function isOrgOwner(membership: OrgMembership | null | undefined): boolea
  * organization no longer owns is not a grant anybody authorized. Callers that
  * report the rejects derive them from the complement.
  */
-export async function siteIdsInOrganization(siteIds: number[], organizationId: string): Promise<number[]> {
+export async function siteIdsInOrganization(
+  siteIds: number[],
+  organizationId: string,
+  executor: Pick<typeof db, "select"> = db,
+  lock = false
+): Promise<number[]> {
   if (siteIds.length === 0) {
     return [];
   }
 
-  const rows = await db
+  const query = executor
     .select({ siteId: sites.siteId })
     .from(sites)
     .where(and(eq(sites.organizationId, organizationId), inArray(sites.siteId, siteIds)));
+  const rows = await (lock ? query.for("share") : query);
 
   return rows.map(row => row.siteId);
 }

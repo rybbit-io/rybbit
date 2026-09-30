@@ -24,10 +24,13 @@ vi.mock("../../lib/access.js", async importOriginal => {
     ...actual,
     // The target check, and the re-check against the site's current (source)
     // organization under the site lock.
-    getOrgMembership: vi.fn(async (_userId: string, organizationId: string) =>
-      organizationId === "org_source"
-        ? state.sourceRole && { role: state.sourceRole, hasRestrictedSiteAccess: false }
-        : (state.targetMembership as any)
+    getOrgMembership: vi.fn(
+      async (userId: string, organizationId: string): Promise<import("../../lib/access.js").OrgMembership | null> => {
+        const role = organizationId === "org_source" ? state.sourceRole : state.targetMembership?.role;
+        return role
+          ? { id: `membership-${organizationId}`, userId, organizationId, role, hasRestrictedSiteAccess: false }
+          : null;
+      }
     ),
   };
 });

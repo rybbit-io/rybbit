@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildQueryUserStatements } from "./queryUser.js";
+import { ClickHouseError } from "@clickhouse/client";
+import { buildQueryUserStatements, classifyClickHouseFailure } from "./queryUser.js";
+
+it("classifies failures without logging credential-bearing SQL messages", () => {
+  expect(
+    classifyClickHouseFailure(new ClickHouseError({ code: "497", type: "ACCESS_DENIED", message: "SQL with secret" }))
+  ).toEqual({ kind: "clickhouse", code: "497", type: "ACCESS_DENIED" });
+  expect(classifyClickHouseFailure(new Error("URL with secret"))).toEqual({ kind: "transport", name: "Error" });
+  expect(classifyClickHouseFailure("secret")).toEqual({ kind: "unknown" });
+});
 
 describe("buildQueryUserStatements", () => {
   it("escapes the password and pins every limit as READONLY", () => {
@@ -19,7 +28,10 @@ describe("buildQueryUserStatements", () => {
     ]) {
       expect(profile).toContain(`${setting} READONLY`);
     }
-    expect(statements[statements.length - 2]).toBe("REVOKE ALL ON *.* FROM rybbit_query");
+    expect(profile).toContain("max_memory_usage_for_user = 8000000000 READONLY");
+    expect(statements).toContain("REVOKE ALL ON *.* FROM rybbit_query");
+    expect(statements).toContain("REVOKE ALL FROM rybbit_query");
+    expect(statements).toContain("ALTER USER rybbit_query DEFAULT ROLE NONE");
     expect(statements[statements.length - 1]).toBe("GRANT SELECT ON analytics.events TO rybbit_query");
   });
 

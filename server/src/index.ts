@@ -11,6 +11,7 @@ import { apiRateLimitRedis } from "./db/redis/redis.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
 import { mapHeaders } from "./lib/auth-utils.js";
 import { registerApiErrorResponses } from "./lib/api-errors.js";
+import { apiRateLimitKey } from "./lib/apiRateLimit.js";
 import { apiRoutes } from "./api/routes.js";
 import type { OrgRole, ScopeStatements } from "@rybbit/shared";
 import { auth } from "./lib/auth.js";
@@ -62,11 +63,10 @@ declare module "fastify" {
 server.register(rateLimit, {
   global: false,
   hook: "preHandler",
-  keyGenerator: (request: FastifyRequest) => request.user?.id ?? request.ip,
-  // Shared store so the limit holds across cluster workers; fall open if Redis
-  // is unreachable rather than blocking the request.
+  keyGenerator: (request: FastifyRequest) => apiRateLimitKey(request.user?.id, request.ip),
+  // Shared across workers; a store outage must not remove expensive-route caps.
   redis: apiRateLimitRedis,
-  skipOnError: true,
+  skipOnError: false,
 });
 
 // Serve static files
@@ -205,6 +205,9 @@ const shutdown = async (signal: string) => {
     await server.close();
     server.log.info("Server closed");
 
+    // The connection timeout must not discard the queued backfills. Their
+    // individual ClickHouse requests already have bounded timeouts.
+    clearTimeout(forceExitTimeout);
     // Identity backfills are buffered for several minutes to keep mutation
     // submissions rare; without this, a deploy drops whatever is still pending.
     await identityBackfillQueue.drainCompletely();

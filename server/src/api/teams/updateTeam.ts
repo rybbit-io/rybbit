@@ -5,6 +5,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { team, teamMember, teamSiteAccess, member, sites } from "../../db/postgres/schema.js";
 import { teamMembershipKey } from "../../lib/teamMembership.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { siteIdsInOrganization } from "../../lib/access.js";
 
 interface UpdateTeamBody {
   name?: string;
@@ -80,7 +81,10 @@ export async function updateTeam(
 
     const now = new Date().toISOString();
 
-    await db.transaction(async tx => {
+    const updated = await db.transaction(async tx => {
+      const requestedSites = siteIds ?? [];
+      const ownedSites = new Set(await siteIdsInOrganization(requestedSites, organizationId, tx, true));
+      if (requestedSites.some(siteId => !ownedSites.has(siteId))) return false;
       // Update team name
       const updates: Record<string, string | number> = { updatedAt: now };
       if (name !== undefined) {
@@ -130,7 +134,9 @@ export async function updateTeam(
       } else if (siteRole !== undefined) {
         await tx.update(teamSiteAccess).set({ role: siteRole }).where(eq(teamSiteAccess.teamId, teamId));
       }
+      return true;
     });
+    if (!updated) return reply.status(400).send({ error: "Sites must belong to this organization" });
 
     // Invalidate cache for all affected users (old + new members)
     const allAffectedUserIds = new Set([...existingUserIds, ...(memberUserIds || [])]);

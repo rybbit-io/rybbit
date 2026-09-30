@@ -42,6 +42,18 @@ describe("getBotScore", () => {
     expect(getBotSignalMask()).toBe(0);
   });
 
+  it("reports unexpected browser-access failures", () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const error = new Error("unexpected failure");
+      Object.defineProperty(navigator, "webdriver", { configurable: true, get: () => { throw error; } });
+      getBotScore();
+      expect(warning).toHaveBeenCalledWith("Failed to collect browser bot signals:", error);
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
   it("weights automation APIs as blocking-strength signals", () => {
     setNavigatorProperty("webdriver", true);
 

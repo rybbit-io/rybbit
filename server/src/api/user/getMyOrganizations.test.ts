@@ -1,3 +1,5 @@
+import type { PGlite } from "@electric-sql/pglite";
+import type { FastifyReply } from "fastify";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -35,31 +37,44 @@ CREATE TABLE "member" ("id" text PRIMARY KEY, "organizationId" text NOT NULL, "u
 CREATE TABLE "sites" ("id" text, "site_id" serial PRIMARY KEY, "name" text, "domain" text, "organization_id" text, "created_by" text, "public" boolean DEFAULT false, "saltUserIds" boolean DEFAULT false, "blockBots" boolean DEFAULT true, "created_at" timestamp DEFAULT now());
 `;
 
+type HandlerRequest = Parameters<typeof getMyOrganizations>[0];
+interface OrganizationResponse {
+  id: string;
+  role: string;
+  members: { user: { email: string | null } }[];
+  sites: { domain: string }[];
+}
+const testPg = sql as unknown as Pick<PGlite, "exec">;
+
 function replyStub() {
-  const reply: any = { statusCode: 200, headers: {} };
-  reply.status = (code: number) => {
-    reply.statusCode = code;
-    return reply;
+  const reply = {
+    statusCode: 200,
+    headers: {} as Record<string, unknown>,
+    body: [] as OrganizationResponse[],
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    send(body: unknown) {
+      this.body = body as OrganizationResponse[];
+      return this;
+    },
+    header(name: string, value: unknown) {
+      this.headers[name] = value;
+      return this;
+    },
   };
-  reply.send = (body: unknown) => {
-    reply.body = body;
-    return reply;
-  };
-  reply.header = (name: string, value: unknown) => {
-    reply.headers[name] = value;
-    return reply;
-  };
-  return reply;
+  return reply as typeof reply & FastifyReply;
 }
 
 beforeAll(async () => {
-  await (sql as any).exec(DDL);
+  await testPg.exec(DDL);
 });
 
 beforeEach(async () => {
   vi.clearAllMocks();
-  await (sql as any).exec(`TRUNCATE "organization", "user", "member", "sites"`);
-  await (sql as any).exec(`
+  await testPg.exec(`TRUNCATE "organization", "user", "member", "sites"`);
+  await testPg.exec(`
     INSERT INTO "organization" ("id","name","slug") VALUES ('org_1','Acme','acme'),('org_2','Beta','beta');
     INSERT INTO "user" ("id","name","email") VALUES ('u_caller','Owner','owner@acme.com'),('u_peer','Peer','peer@acme.com');
     INSERT INTO "member" ("id","organizationId","userId","role") VALUES ('m_caller','org_1','u_caller','owner'),('m_peer','org_1','u_peer','member');
@@ -75,11 +90,11 @@ describe("getMyOrganizations — member roster exposure", () => {
     mocks.getSessionFromReq.mockResolvedValue({ user: { id: "u_caller" } });
     const reply = replyStub();
 
-    await getMyOrganizations({ headers: {} } as any, reply);
+    await getMyOrganizations({ headers: {} } as HandlerRequest, reply);
 
     const [org] = reply.body;
     expect(org.members).toHaveLength(2);
-    expect(org.members.map((m: any) => m.user.email)).toContain("peer@acme.com");
+    expect(org.members.map(m => m.user.email)).toContain("peer@acme.com");
     expect(org.sites).toHaveLength(1);
   });
 
@@ -87,7 +102,7 @@ describe("getMyOrganizations — member roster exposure", () => {
     mocks.getSessionFromReq.mockResolvedValue(null); // API key / OAuth token
     const reply = replyStub();
 
-    await getMyOrganizations({ headers: { authorization: "Bearer rb_key" } } as any, reply);
+    await getMyOrganizations({ headers: { authorization: "Bearer rb_key" } } as HandlerRequest, reply);
 
     const [org] = reply.body;
     expect(org.members).toEqual([]);
@@ -106,14 +121,14 @@ describe("getMyOrganizations — organization-owned API keys", () => {
     mocks.getRequestIdentity.mockResolvedValue({ userId: null, organizationId: "org_2" });
     const reply = replyStub();
 
-    await getMyOrganizations({ headers: { authorization: "Bearer rb_org_key" } } as any, reply);
+    await getMyOrganizations({ headers: { authorization: "Bearer rb_org_key" } } as HandlerRequest, reply);
 
     expect(reply.body).toHaveLength(1);
     const [org] = reply.body;
     expect(org.id).toBe("org_2");
     expect(org.role).toBe("admin");
     expect(org.members).toEqual([]);
-    expect(org.sites.map((s: any) => s.domain).sort()).toEqual(["beta1.com", "beta2.com"]);
+    expect(org.sites.map(s => s.domain).sort()).toEqual(["beta1.com", "beta2.com"]);
     expect(JSON.stringify(reply.body)).not.toContain("peer@acme.com");
     expect(JSON.stringify(reply.body)).not.toContain("owner@acme.com");
   });
@@ -122,12 +137,12 @@ describe("getMyOrganizations — organization-owned API keys", () => {
     mocks.getRequestIdentity.mockResolvedValue({ userId: null, organizationId: "org_1" });
     const reply = replyStub();
 
-    await getMyOrganizations({ headers: { authorization: "Bearer rb_org_key" } } as any, reply);
+    await getMyOrganizations({ headers: { authorization: "Bearer rb_org_key" } } as HandlerRequest, reply);
 
     expect(reply.body).toHaveLength(1);
     const [org] = reply.body;
     expect(org.id).toBe("org_1");
-    expect(org.sites.map((s: any) => s.domain)).toEqual(["acme.com"]);
+    expect(org.sites.map(s => s.domain)).toEqual(["acme.com"]);
     // Only org_1's data is present anywhere in the payload — org_2 never leaks in.
     expect(JSON.stringify(reply.body)).not.toContain("org_2");
     expect(JSON.stringify(reply.body)).not.toContain("beta1.com");
@@ -138,7 +153,7 @@ describe("getMyOrganizations — organization-owned API keys", () => {
     mocks.getRequestIdentity.mockResolvedValue({ userId: null, organizationId: null });
     const reply = replyStub();
 
-    await getMyOrganizations({ headers: {} } as any, reply);
+    await getMyOrganizations({ headers: {} } as HandlerRequest, reply);
 
     expect(reply.statusCode).toBe(401);
   });
@@ -148,7 +163,7 @@ describe("getMyOrganizations — organization-owned API keys", () => {
     mocks.wasRateLimited.mockReturnValue({ retryAfterSeconds: 30, scope: "org" });
     const reply = replyStub();
 
-    await getMyOrganizations({ headers: { authorization: "Bearer rb_org_key" } } as any, reply);
+    await getMyOrganizations({ headers: { authorization: "Bearer rb_org_key" } } as HandlerRequest, reply);
 
     expect(reply.statusCode).toBe(429);
   });

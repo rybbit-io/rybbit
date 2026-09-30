@@ -539,28 +539,30 @@ export const auth = betterAuth({
           // into unaccepted invitations). Re-check against the organization as
           // it stands now, so acceptance can only grant sites it still owns.
           const invitedSiteIds = (siteIds || []) as number[];
-          const grantableSiteIds = await siteIdsInOrganization(invitedSiteIds, organizationId);
+          await db.transaction(async tx => {
+            const grantableSiteIds = await siteIdsInOrganization(invitedSiteIds, organizationId, tx, true);
 
-          if (grantableSiteIds.length !== invitedSiteIds.length) {
-            authLogger.warn(
-              {
-                organizationId,
-                memberId,
-                droppedSiteIds: invitedSiteIds.filter(siteId => !grantableSiteIds.includes(siteId)),
-              },
-              "Invitation named sites the organization no longer owns; those grants were dropped"
-            );
-          }
+            if (grantableSiteIds.length !== invitedSiteIds.length) {
+              authLogger.warn(
+                {
+                  organizationId,
+                  memberId,
+                  droppedSiteIds: invitedSiteIds.filter(siteId => !grantableSiteIds.includes(siteId)),
+                },
+                "Invitation named sites the organization no longer owns; those grants were dropped"
+              );
+            }
 
-          if (grantableSiteIds.length > 0) {
-            await db.insert(memberSiteAccess).values(
-              grantableSiteIds.map(siteId => ({
-                memberId,
-                siteId,
-                role: isSiteGrantRole(siteRole) ? siteRole : null,
-              }))
-            );
-          }
+            if (grantableSiteIds.length > 0) {
+              await tx.insert(memberSiteAccess).values(
+                grantableSiteIds.map(siteId => ({
+                  memberId,
+                  siteId,
+                  role: isSiteGrantRole(siteRole) ? siteRole : null,
+                }))
+              );
+            }
+          });
 
           invalidateSitesAccessCache(userRecord[0].id);
         } catch (error) {

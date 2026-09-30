@@ -99,28 +99,36 @@ export async function mcpRoutes(fastify: FastifyInstance, options: McpRouteOptio
       const handoffToken = extractBearerToken(authorization);
       const handoffNonce = handoffToken ? registerBearerHandoff(handoffToken, authContext.identity) : undefined;
 
-      const server = buildMcpServer(fastify, authorization, handoffNonce, {
-        log: message => request.log.error(message),
-        scopes: authContext.scopes,
-      });
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-        enableJsonResponse: true,
-      });
-
-      // The transport writes directly to the raw response; keep Fastify out of it.
-      reply.hijack();
-      reply.raw.on("close", () => {
-        releaseBearerHandoff(handoffNonce);
-        transport.close();
-        server.close();
-      });
-
       try {
+        const server = buildMcpServer(fastify, authorization, handoffNonce, {
+          log: message => request.log.error(message),
+          scopes: authContext.scopes,
+        });
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+          enableJsonResponse: true,
+        });
+
+        // The transport writes directly to the raw response; keep Fastify out of it.
+        reply.hijack();
+        reply.raw.on("close", () => {
+          releaseBearerHandoff(handoffNonce);
+          transport.close();
+          server.close();
+        });
+
         await server.connect(transport);
         await transport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {
+        releaseBearerHandoff(handoffNonce);
         request.log.error(error, "MCP request failed");
+        if (!reply.sent) {
+          return reply.status(500).send({
+            jsonrpc: "2.0",
+            error: { code: -32603, message: "Internal server error" },
+            id: null,
+          });
+        }
         if (!reply.raw.headersSent) {
           reply.raw.writeHead(500, { "content-type": "application/json" });
           reply.raw.end(

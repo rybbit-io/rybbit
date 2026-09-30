@@ -73,6 +73,17 @@ beforeEach(async () => {
 });
 
 describe("createPortalSession — authorization", () => {
+  it.each([
+    { ...validBody, organizationId: ["org_1"] },
+    { ...validBody, returnUrl: "javascript:alert(1)" },
+    { ...validBody, flowType: "unknown" },
+    null,
+  ])("rejects malformed input before creating a portal session: %j", async body => {
+    const reply = replyStub();
+    await createPortalSession(requestStub("u_owner", body as unknown as Record<string, unknown>), reply);
+    expect(reply.statusCode).toBe(400);
+    expect(mocks.portalSessionsCreate).not.toHaveBeenCalled();
+  });
   it("creates a plain portal session for the org owner with the requested return URL", async () => {
     const reply = replyStub();
 

@@ -1,3 +1,5 @@
+import type { PGlite } from "@electric-sql/pglite";
+import type { FastifyReply } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -56,46 +58,60 @@ CREATE TABLE "member_site_access" (
 );
 `;
 
+type HandlerRequest = Parameters<typeof updateMemberSiteAccess>[0];
+type RequestOverrides = Partial<Pick<HandlerRequest, "params" | "body">> & { user?: { id: string } };
+interface AccessResponse {
+  error?: string;
+  memberId?: string;
+  hasRestrictedSiteAccess?: boolean;
+  siteAccess?: { siteId: number; role: string | null; name: string; domain: string }[];
+}
+const testPg = pgClient as unknown as Pick<PGlite, "exec" | "query" | "close">;
+
 function replyStub() {
-  const reply: any = { statusCode: 200 };
-  reply.status = (code: number) => {
-    reply.statusCode = code;
-    return reply;
+  const reply = {
+    statusCode: 200,
+    body: {} as AccessResponse,
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    send(body: unknown) {
+      this.body = body as AccessResponse;
+      return this;
+    },
   };
-  reply.send = (body: unknown) => {
-    reply.body = body;
-    return reply;
-  };
-  return reply;
+  return reply as typeof reply & FastifyReply;
 }
 
-function requestStub(overrides: Record<string, unknown> = {}) {
-  return {
+function requestStub(overrides: RequestOverrides = {}) {
+  const request = {
     params: { organizationId: "org_1", memberId: "membership_member" },
     body: { hasRestrictedSiteAccess: true, siteIds: [1] },
     user: { id: "admin" },
     log: { error: vi.fn() },
     ...overrides,
-  } as any;
+  };
+  return request as unknown as HandlerRequest;
 }
 
 async function rows(query: string) {
-  return (await (pgClient as any).query(query)).rows;
+  return (await testPg.query<Record<string, unknown>>(query)).rows;
 }
 
 beforeAll(async () => {
-  await (pgClient as any).exec(DDL);
+  await testPg.exec(DDL);
 });
 
 afterAll(async () => {
-  await (pgClient as any).close();
+  await testPg.close();
 });
 
 beforeEach(async () => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
 
-  await (pgClient as any).exec(`
+  await testPg.exec(`
     TRUNCATE "member_site_access", "member", "sites", "user", "organization" RESTART IDENTITY;
     INSERT INTO "organization" ("id", "name", "slug", "createdAt") VALUES
       ('org_1', 'One', 'one', '2026-01-01'),
@@ -122,6 +138,20 @@ beforeEach(async () => {
 });
 
 describe("updateMemberSiteAccess", () => {
+  it("rejects a site moved to another organization before the grant transaction begins", async () => {
+    const transaction = db.transaction.bind(db) as typeof db.transaction;
+    vi.spyOn(db, "transaction").mockImplementationOnce(async (operation, config) => {
+      await testPg.exec(`UPDATE sites SET organization_id = 'org_2' WHERE site_id = 2`);
+      return transaction(operation, config);
+    });
+    const reply = replyStub();
+    await updateMemberSiteAccess(requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [2] } }), reply);
+    expect(reply.statusCode).toBe(400);
+    expect(await rows(`SELECT site_id FROM member_site_access WHERE member_id = 'membership_member'`)).toEqual([
+      { site_id: 1 },
+    ]);
+    expect(mocks.invalidateSitesAccessCache).not.toHaveBeenCalled();
+  });
   it("replaces grants, records the acting user, and returns site metadata", async () => {
     const reply = replyStub();
 
@@ -172,7 +202,7 @@ describe("updateMemberSiteAccess", () => {
   });
 
   it("keeps the role the grants carry when the request doesn't mention it", async () => {
-    await (pgClient as any).exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'membership_member'`);
+    await testPg.exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'membership_member'`);
     const reply = replyStub();
 
     // Site 1 stays, site 2 is new: both carry the member's existing site role.
@@ -186,7 +216,7 @@ describe("updateMemberSiteAccess", () => {
   });
 
   it("clears the site role when the request sends null", async () => {
-    await (pgClient as any).exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'membership_member'`);
+    await testPg.exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'membership_member'`);
     const reply = replyStub();
 
     await updateMemberSiteAccess(
@@ -286,7 +316,7 @@ describe("updateMemberSiteAccess", () => {
   });
 
   it("clears a restriction left over from before a promotion", async () => {
-    await (pgClient as any).exec(`
+    await testPg.exec(`
       UPDATE member SET role = 'admin' WHERE id = 'membership_member';
     `);
     const reply = replyStub();
@@ -302,7 +332,7 @@ describe("updateMemberSiteAccess", () => {
 
   it("rejects foreign and nonexistent site IDs without changing existing access", async () => {
     const reply = replyStub();
-    await (pgClient as any).exec(`UPDATE member SET has_restricted_site_access = false WHERE id = 'membership_member'`);
+    await testPg.exec(`UPDATE member SET has_restricted_site_access = false WHERE id = 'membership_member'`);
 
     await updateMemberSiteAccess(requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [1, 3, 99] } }), reply);
 
@@ -323,7 +353,7 @@ describe("updateMemberSiteAccess", () => {
       body: { hasRestrictedSiteAccess: true, siteIds: [2] },
     });
     const reply = replyStub();
-    await (pgClient as any).exec(`UPDATE member SET has_restricted_site_access = false WHERE id = 'membership_member'`);
+    await testPg.exec(`UPDATE member SET has_restricted_site_access = false WHERE id = 'membership_member'`);
 
     await updateMemberSiteAccess(request, reply);
 
@@ -350,7 +380,7 @@ describe("updateMemberSiteAccess", () => {
   it("returns 500 and logs database failures", async () => {
     const request = requestStub();
     const reply = replyStub();
-    vi.spyOn(db, "select").mockImplementationOnce(() => {
+    vi.spyOn(db, "transaction").mockImplementationOnce(() => {
       throw new Error("database offline");
     });
 

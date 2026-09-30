@@ -201,7 +201,7 @@ describe("fill()", () => {
       expect(fillOf(DATE_RANGE, "day")).toBe(
         "WITH FILL FROM toTimeZone(toDateTime(toStartOfDay(toTimeZone(toDateTime('2024-01-01', 'America/New_York'), " +
           "'America/New_York'))), 'UTC') " +
-          "TO if( toDate('2024-01-31') = toDate(now(), 'America/New_York'), toTimeZone(now(), 'UTC'), " +
+          "TO if( toDate('2024-01-31') = toDate(now(), 'America/New_York'), toTimeZone(now(), 'UTC') + INTERVAL 1 SECOND, " +
           "toTimeZone(toDateTime(toStartOfDay(toTimeZone(toDateTime('2024-01-31', 'America/New_York'), " +
           "'America/New_York'))) + INTERVAL 1 DAY, 'UTC') ) " +
           "STEP INTERVAL 1 DAY"

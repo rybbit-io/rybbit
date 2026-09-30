@@ -1,12 +1,14 @@
 import { randomBytes } from "node:crypto";
+import { roleHasPermission } from "@rybbit/shared";
 import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { getSubscriptionInner } from "../../api/stripe/getSubscription.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
+import { member, sites } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { validateIPPattern } from "../../lib/ipUtils.js";
 import { detectPlatform } from "../lifecycleEmails/platformDetect.js";
+import { deleteReplayMetadata } from "../replay/deleteReplayMetadata.js";
 import { usageService } from "../usageService.js";
 import { siteConfig, type SiteConfigData } from "../../lib/siteConfig.js";
 
@@ -87,7 +89,8 @@ export type SiteLifecycleErrorCode =
   | "domain_conflict"
   | "site_already_claimed"
   | "invalid_claim_key"
-  | "site_expired";
+  | "site_expired"
+  | "claim_forbidden";
 
 export class SiteLifecycleError extends Error {
   constructor(
@@ -351,6 +354,12 @@ class SiteConfigurationLifecycle {
   async claim(input: ClaimSiteInput): Promise<SiteRow> {
     validateSiteId(input.siteId);
     const claimedSite = await withOrganizationSiteLock(input.organizationId, async tx => {
+      const [membership] = await tx.select({ role: member.role }).from(member)
+        .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)))
+        .for("update");
+      if (!roleHasPermission(membership?.role, "sites:create")) {
+        throw new SiteLifecycleError("claim_forbidden", 403, "You must be an admin of the organization to claim a site into it");
+      }
       const site = await tx.query.sites.findFirst({ where: eq(sites.siteId, input.siteId) });
       if (!site) {
         throw new SiteLifecycleError("site_not_found", 404, "Site not found");
@@ -430,7 +439,7 @@ class SiteConfigurationLifecycle {
     void detectPlatform(site.domain)
       .then(platform =>
         platform
-          ? db.update(sites).set({ detectedPlatform: platform.key }).where(eq(sites.siteId, site.siteId))
+          ? db.update(sites).set({ detectedPlatform: platform.key }).where(and(eq(sites.siteId, site.siteId), eq(sites.domain, site.domain)))
           : undefined
       )
       .catch(() => {});
@@ -477,6 +486,7 @@ class SiteConfigurationLifecycle {
     }
     if (input.domain !== undefined) {
       updateData.domain = domain;
+      if (domain !== site.domain) updateData.detectedPlatform = null;
     }
     if (nextSiteType === "mobile") {
       updateData.sessionReplay = false;
@@ -542,10 +552,7 @@ class SiteConfigurationLifecycle {
         query: "DELETE FROM session_replay_events WHERE site_id = {id:UInt32}",
         query_params: { id: siteId },
       }),
-      clickhouse.command({
-        query: "DELETE FROM session_replay_metadata_v2 WHERE site_id = {id:UInt32}",
-        query_params: { id: siteId },
-      }),
+      deleteReplayMetadata("site_id = {id:UInt32}", { id: siteId }),
     ]);
   }
 

@@ -108,14 +108,14 @@ export function hasLiteDatetimeRange(params: Pick<FilterParams, "start_datetime"
   return Boolean(params.start_datetime && params.end_datetime);
 }
 
-// Match the dashboard's minute-resolution rolling windows (up to two hours).
+// Minute-resolution rolling windows have sub-hour edges regardless of length.
 // Hourly timestamps can all fall before the cutoff, and the refreshable
 // summary can omit the current hour entirely. Read exact events for these
-// windows, including shifted comparison periods; keep long ranges on the MVs.
+// windows, including shifted comparison periods.
 export function hasLiteRealtimeRange(params: {
   past_minutes_start?: number | string;
   past_minutes_end?: number | string;
 }): boolean {
   const minutes = Number(params.past_minutes_start) - Number(params.past_minutes_end);
-  return minutes > 0 && minutes <= 120;
+  return Number.isFinite(minutes) && minutes > 0;
 }

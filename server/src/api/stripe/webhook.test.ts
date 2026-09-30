@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => {
   const selectFrom = vi.fn(() => ({ where: selectWhere }));
   const select = vi.fn(() => ({ from: selectFrom }));
 
-  const updateWhere = vi.fn(async (_where: unknown) => undefined);
+  const updateReturning = vi.fn(async (): Promise<{ id: string }[]> => [{ id: "org_1" }]);
+  const updateWhere = vi.fn((_where: unknown) => ({ returning: updateReturning }));
   const updateSet = vi.fn(() => ({ where: updateWhere }));
   const update = vi.fn(() => ({ set: updateSet }));
 
@@ -29,6 +30,7 @@ const mocks = vi.hoisted(() => {
     update,
     updateSet,
     updateWhere,
+    updateReturning,
   };
 });
 
@@ -102,7 +104,8 @@ function expectNoDbWrites() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.selectLimit.mockResolvedValue([]);
-  mocks.updateWhere.mockResolvedValue(undefined);
+  mocks.updateWhere.mockImplementation(() => ({ returning: mocks.updateReturning }));
+  mocks.updateReturning.mockResolvedValue([{ id: "org_1" }]);
 });
 
 afterAll(() => {
@@ -213,7 +216,8 @@ describe("handleWebhook — checkout.session.completed", () => {
     // Then wrote the customer id onto the org named in the session metadata.
     expect(mocks.updateSet).toHaveBeenCalledWith({ stripeCustomerId: "cus_123" });
     const updateWhere = dialect.sqlToQuery(mocks.updateWhere.mock.calls[0][0] as SQL);
-    expect(updateWhere.params).toEqual(["org_1"]);
+    expect(updateWhere.params).toEqual(["org_1", "cus_123"]);
+    expect(updateWhere.sql).toContain('"stripeCustomerId" is null');
 
     // And turned the org's sites on without waiting for the usage cron.
     expect(mocks.requestOrganizationRefresh).toHaveBeenCalledWith("org_1");
@@ -223,7 +227,7 @@ describe("handleWebhook — checkout.session.completed", () => {
   });
 
   it("does not overwrite when an org already has this stripe customer id", async () => {
-    mocks.selectLimit.mockResolvedValue([{ id: "org_existing" }]);
+    mocks.selectLimit.mockResolvedValue([{ id: "org_1" }]);
     mocks.constructEvent.mockReturnValue(
       stripeEvent("checkout.session.completed", {
         id: "cs_2",
@@ -238,7 +242,7 @@ describe("handleWebhook — checkout.session.completed", () => {
 
     expect(mocks.select).toHaveBeenCalledTimes(1);
     expect(mocks.update).not.toHaveBeenCalled();
-    expect(mocks.requestOrganizationRefresh).toHaveBeenCalledWith("org_existing");
+    expect(mocks.requestOrganizationRefresh).toHaveBeenCalledWith("org_1");
     expect(reply.payload).toEqual({ received: true });
   });
 
@@ -262,7 +266,7 @@ describe("handleWebhook — checkout.session.completed", () => {
   });
 
   it("returns 500 (retriable) when writing the customer id fails, so Stripe retries", async () => {
-    mocks.updateWhere.mockRejectedValue(new Error("write failed"));
+    mocks.updateReturning.mockRejectedValue(new Error("write failed"));
     mocks.constructEvent.mockReturnValue(
       stripeEvent("checkout.session.completed", {
         id: "cs_err_write",
@@ -277,6 +281,39 @@ describe("handleWebhook — checkout.session.completed", () => {
 
     expect(reply.statusCode).toBe(500);
     expect(reply.payload).toEqual({ error: "Failed to link organization to Stripe customer." });
+  });
+
+  it("ignores a late completion instead of replacing a newer canonical customer", async () => {
+    mocks.updateReturning.mockResolvedValue([]);
+    mocks.constructEvent.mockReturnValue(
+      stripeEvent("checkout.session.completed", {
+        mode: "subscription",
+        customer: "cus_old",
+        metadata: { organizationId: "org_1" },
+      })
+    );
+    const reply = createReply();
+    await handleWebhook(createRequest(), reply);
+    expect(reply.statusCode).toBe(200);
+    expect(mocks.requestOrganizationRefresh).not.toHaveBeenCalled();
+    expect(requestLogger.warn).toHaveBeenCalledWith(
+      expect.any(Object),
+      "Ignoring checkout for a noncanonical Stripe customer"
+    );
+  });
+
+  it("does not use mismatched metadata to refresh a different customer's organization", async () => {
+    mocks.selectLimit.mockResolvedValue([{ id: "org_other" }]);
+    mocks.constructEvent.mockReturnValue(
+      stripeEvent("checkout.session.completed", {
+        mode: "subscription",
+        customer: "cus_123",
+        metadata: { organizationId: "org_1" },
+      })
+    );
+    await handleWebhook(createRequest(), createReply());
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.requestOrganizationRefresh).not.toHaveBeenCalled();
   });
 
   // Non-retriable: a Stripe retry would redeliver the same metadata-less

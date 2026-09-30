@@ -6,6 +6,12 @@ import { organization } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getOrgMembership } from "../../lib/access.js";
 import Stripe from "stripe";
+import { z } from "zod";
+
+const previewSchema = z.object({
+  organizationId: z.string().trim().min(1),
+  newPriceId: z.string().trim().min(1),
+});
 
 interface PreviewSubscriptionBody {
   organizationId: string;
@@ -16,18 +22,19 @@ export async function previewSubscriptionUpdate(
   request: FastifyRequest<{ Body: PreviewSubscriptionBody }>,
   reply: FastifyReply
 ) {
-  const { organizationId, newPriceId } = request.body;
   const userId = request.user?.id;
 
   if (!userId) {
     return reply.status(401).send({ error: "Unauthorized" });
   }
 
-  if (!organizationId || !newPriceId) {
+  const parsed = previewSchema.safeParse(request.body);
+  if (!parsed.success) {
     return reply.status(400).send({
       error: "Missing required parameters: organizationId, newPriceId",
     });
   }
+  const { organizationId, newPriceId } = parsed.data;
 
   try {
     // 1. Verify user has permission to manage billing for this organization

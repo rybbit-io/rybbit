@@ -314,16 +314,14 @@ describe("Tracker", () => {
 
     it("should handle fetch errors gracefully", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      vi.mocked(global.fetch).mockRejectedValue(new Error("Network error"));
-
-      tracker.trackPageview();
-
-      // Wait for async operation
-      await new Promise(resolve => setTimeout(resolve, 0));
-
-      expect(consoleSpy).toHaveBeenCalledWith("Failed to send tracking data:", expect.any(Error));
-
-      consoleSpy.mockRestore();
+      try {
+        vi.mocked(global.fetch).mockRejectedValue(new Error("Network error"));
+        tracker.trackPageview();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(consoleSpy).toHaveBeenCalledWith("Failed to send tracking data:", expect.any(Error));
+      } finally {
+        consoleSpy.mockRestore();
+      }
     });
 
     describe("error tracking", () => {

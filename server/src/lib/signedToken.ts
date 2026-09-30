@@ -6,10 +6,12 @@ import { SECRET } from "./const.js";
  * install checks) so the endpoints can't be driven with arbitrary values.
  */
 export function signPayload(payload: string): string {
-  return createHmac("sha256", SECRET || "").update(payload).digest("base64url");
+  if (!SECRET) throw new Error("BETTER_AUTH_SECRET is required to sign tokens");
+  return createHmac("sha256", SECRET).update(payload).digest("base64url");
 }
 
 export function verifySignedPayload(payload: string, signature: string): boolean {
+  if (!SECRET) return false;
   const expected = Buffer.from(signPayload(payload));
   const provided = Buffer.from(signature);
   return expected.length === provided.length && timingSafeEqual(expected, provided);

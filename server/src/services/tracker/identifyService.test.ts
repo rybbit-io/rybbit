@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { FastifyReply } from "fastify";
 
 const mocks = vi.hoisted(() => ({
   getConfig: vi.fn(),
@@ -27,10 +28,16 @@ vi.mock("../../lib/logger/logger.js", () => {
 
 import { handleIdentify } from "./identifyService.js";
 
-function replyStub() {
-  const reply: any = {};
-  reply.status = vi.fn(() => reply);
-  reply.send = vi.fn(() => reply);
+interface ReplyStub {
+  status: ReturnType<typeof vi.fn<(code: number) => ReplyStub>>;
+  send: ReturnType<typeof vi.fn<(payload?: unknown) => ReplyStub>>;
+}
+
+function replyStub(): ReplyStub {
+  const reply: ReplyStub = {
+    status: vi.fn(() => reply),
+    send: vi.fn(() => reply),
+  };
   return reply;
 }
 
@@ -48,8 +55,8 @@ describe("handleIdentify — site with no plan", () => {
       {
         body: { site_id: "7", user_id: "user_1", anonymous_id: "anon_1", is_new_identify: true, traits: { plan: "pro" } },
         headers: {},
-      } as any,
-      reply
+      } as unknown as Parameters<typeof handleIdentify>[0],
+      reply as unknown as FastifyReply
     );
 
     expect(mocks.isSiteWithoutPlan).toHaveBeenCalledWith(7);

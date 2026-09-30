@@ -70,28 +70,41 @@ export async function createCheckoutSession(
       return reply.status(404).send({ error: "User or organization not found" });
     }
 
-    let stripeCustomerId = org.stripeCustomerId;
-    // One free trial per organization. A customer created just below has no history. If the
-    // history can't be read this throws, so checkout fails and can be retried rather than
-    // handing a returning customer another trial.
-    const trialEligible = !(await hasHadStripeSubscription(stripeCustomerId, { throwOnError: true }));
-
-    // 3. If the organization doesn't have a Stripe Customer ID, create one
-    if (!stripeCustomerId) {
-      const customer = await (stripe as Stripe).customers.create({
-        email: user.email,
-        name: org.name,
-        metadata: {
-          organizationId: org.id,
-          createdByUserId: userId, // For audit trail
-          ...(referral && { referral }),
+    // Serialize customer creation across workers and re-read the canonical link under lock.
+    // Stripe idempotency also protects a retry after the API succeeded but the transaction failed.
+    let enrichCustomer = false;
+    const stripeCustomerId = await db.transaction(async tx => {
+      const [lockedOrg] = await tx
+        .select({ name: organization.name, stripeCustomerId: organization.stripeCustomerId })
+        .from(organization)
+        .where(eq(organization.id, organizationId))
+        .for("update");
+      if (!lockedOrg) throw new Error("Organization not found");
+      if (lockedOrg.stripeCustomerId) return lockedOrg.stripeCustomerId;
+      const customer = await (stripe as Stripe).customers.create(
+        {
+          metadata: { organizationId: org.id },
         },
-      });
-      stripeCustomerId = customer.id;
-
-      // 4. Update the organization with the new Stripe Customer ID
-      await db.update(organization).set({ stripeCustomerId }).where(eq(organization.id, organizationId));
+        { idempotencyKey: `organization-customer:${organizationId}` }
+      );
+      await tx.update(organization).set({ stripeCustomerId: customer.id }).where(eq(organization.id, organizationId));
+      enrichCustomer = true;
+      return customer.id;
+    });
+    if (enrichCustomer) {
+      try {
+        await (stripe as Stripe).customers.update(stripeCustomerId, {
+          email: user.email,
+          name: org.name,
+          metadata: { createdByUserId: userId, ...(referral && { referral }) },
+        });
+      } catch (error) {
+        request.log.warn({ err: error, stripeCustomerId }, "Could not enrich Stripe customer metadata");
+      }
     }
+    // Read history only after resolving the canonical customer, including an idempotently
+    // recovered customer. Fail closed when history cannot be read.
+    const trialEligible = !(await hasHadStripeSubscription(stripeCustomerId, { throwOnError: true }));
 
     // 5. Create a Stripe Checkout Session
     const session = await (stripe as Stripe).checkout.sessions.create({

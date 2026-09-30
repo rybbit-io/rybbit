@@ -229,7 +229,7 @@ class LifecycleEmailService {
 
     const detected = await detectPlatform(site.domain);
     if (detected) {
-      await db.update(sites).set({ detectedPlatform: detected.key }).where(eq(sites.siteId, site.siteId));
+      await db.update(sites).set({ detectedPlatform: detected.key }).where(and(eq(sites.siteId, site.siteId), eq(sites.domain, site.domain)));
     }
     return detected;
   }
@@ -279,12 +279,12 @@ class LifecycleEmailService {
         await rollback();
         return false;
       }
+      this.emailedThisRun.add(userId);
       const sent = await sendLifecycleEmail(email, message.subject, message.text, idempotencyKey);
       if (!sent) {
         await rollback();
         return false;
       }
-      this.emailedThisRun.add(userId);
       this.logger.info({ userId, emailKeys: claimed.map(e => e.key) }, "Sent lifecycle email");
       return true;
     } catch (error) {
@@ -450,7 +450,7 @@ class LifecycleEmailService {
           return content.siteLive(chosen, countryName(first?.country ?? null), u.name);
         }
       );
-      if (sent) return;
+      if (sent || this.emailedThisRun.has(u.id)) return;
     }
 
     // --- State: no site created ---
@@ -506,7 +506,7 @@ class LifecycleEmailService {
             return content.installSnippet(withPlatform, u.name);
           }
         );
-        if (sent) return;
+        if (sent || this.emailedThisRun.has(u.id)) return;
       }
 
       // Timed from the snippet email, not site age, so a pre-existing site
@@ -531,7 +531,7 @@ class LifecycleEmailService {
               u.name
             )
         );
-        if (sent) return;
+        if (sent || this.emailedThisRun.has(u.id)) return;
       }
 
       const finalDue = gapElapsed
@@ -554,7 +554,7 @@ class LifecycleEmailService {
               u.name
             )
         );
-        if (sent) return;
+        if (sent || this.emailedThisRun.has(u.id)) return;
       }
     }
 
@@ -574,7 +574,7 @@ class LifecycleEmailService {
           const report = await this.fetchFirstDaysStats(site.siteId);
           return report ? content.firstDays(site.domain, site.siteId, report, u.name) : null;
         });
-        if (sent) return;
+        if (sent || this.emailedThisRun.has(u.id)) return;
       }
 
       // Evidence-based nudges: only when their data shows the feature applies
@@ -585,7 +585,7 @@ class LifecycleEmailService {
           const sent = await this.sendOnce(u.id, u.email, `nudge_goals:${site.siteId}`, site.siteId, () =>
             content.nudgeGoals(site.domain, site.siteId, path, u.name)
           );
-          if (sent) return;
+          if (sent || this.emailedThisRun.has(u.id)) return;
         }
       }
 
@@ -594,7 +594,7 @@ class LifecycleEmailService {
         const sent = await this.sendOnce(u.id, u.email, `nudge_events:${site.siteId}`, site.siteId, () =>
           content.nudgeEvents(site.domain, site.siteId, u.name)
         );
-        if (sent) return;
+        if (sent || this.emailedThisRun.has(u.id)) return;
       }
     }
   }

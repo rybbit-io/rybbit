@@ -419,6 +419,9 @@ importers:
       ip-address:
         specifier: ^10.0.1
         version: 10.2.0
+      jsdom:
+        specifier: ^26.1.0
+        version: 26.1.0
       luxon:
         specifier: 3.7.2
         version: 3.7.2
@@ -516,9 +519,6 @@ importers:
       ioredis-mock:
         specifier: ^8.13.1
         version: 8.13.1(@types/ioredis-mock@8.2.7(ioredis@5.8.2))(ioredis@5.8.2)
-      jsdom:
-        specifier: ^26.1.0
-        version: 26.1.0
       knip:
         specifier: ^5.60.2
         version: 5.73.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@24.13.3)(typescript@5.9.3)

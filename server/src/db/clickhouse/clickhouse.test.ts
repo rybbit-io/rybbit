@@ -18,7 +18,8 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@clickhouse/client", () => ({
+vi.mock("@clickhouse/client", async importOriginal => ({
+  ...(await importOriginal<typeof import("@clickhouse/client")>()),
   createClient: () => ({
     exec: mocks.exec,
     insert: mocks.insert,

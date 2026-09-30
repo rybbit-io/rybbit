@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getSubscriptionInner: vi.fn(),
   invalidate: vi.fn(),
   clickhouseCommand: vi.fn(async () => undefined),
+  clickhouseQuery: vi.fn(async () => ({ json: async () => [] })),
   detectPlatform: vi.fn(async () => null),
 }));
 vi.mock("../../db/postgres/postgres.js", async () => {
@@ -15,7 +16,9 @@ vi.mock("../../db/postgres/postgres.js", async () => {
   const client = new PGlite();
   return { db: drizzle(client, { schema }), sql: client };
 });
-vi.mock("../../db/clickhouse/clickhouse.js", () => ({ clickhouse: { command: mocks.clickhouseCommand } }));
+vi.mock("../../db/clickhouse/clickhouse.js", () => ({
+  clickhouse: { command: mocks.clickhouseCommand, query: mocks.clickhouseQuery },
+}));
 vi.mock("../../lib/siteConfig.js", () => ({ siteConfig: { invalidate: mocks.invalidate } }));
 vi.mock("../../api/stripe/getSubscription.js", () => ({ getSubscriptionInner: mocks.getSubscriptionInner }));
 vi.mock("../lifecycleEmails/platformDetect.js", () => ({ detectPlatform: mocks.detectPlatform }));
@@ -27,7 +30,7 @@ vi.mock("../../lib/const.js", async importOriginal => ({
 }));
 
 import { db, sql as client } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
+import { member, sites } from "../../db/postgres/schema.js";
 import { claimExpiryIso } from "./claimExpiry.js";
 import { siteConfigurationLifecycle as lifecycle, UNCLAIMED_SITE_TTL_MS } from "./siteConfigurationLifecycle.js";
 import { unclaimedSiteCleanupService as cleanup } from "./unclaimedSiteCleanupService.js";
@@ -37,6 +40,7 @@ beforeAll(async () => {
   await (client as any).exec(`
 CREATE TABLE organization (id text PRIMARY KEY);
 INSERT INTO organization VALUES ('org_1'), ('org_2');
+CREATE TABLE member (id text PRIMARY KEY, "userId" text, "organizationId" text, role text);
 CREATE TABLE sites (
   "id" text,
   "site_id" serial PRIMARY KEY,
@@ -86,6 +90,7 @@ beforeEach(async () => {
   state.isCloud = false;
   mocks.getSubscriptionInner.mockResolvedValue({ siteLimit: 1 });
   await (client as any).exec("TRUNCATE sites RESTART IDENTITY");
+  await (client as any).exec("TRUNCATE member; INSERT INTO member VALUES ('member_1', 'user_1', 'org_1', 'admin'), ('member_2', 'user_1', 'org_2', 'admin')");
 });
 
 async function unclaimed() {
@@ -125,6 +130,12 @@ it("interprets timezone-less Postgres expiries as UTC", () => {
 });
 
 describe("claim", () => {
+  it("rechecks membership inside the transaction after a role is revoked", async () => {
+    const site = await unclaimed();
+    await db.update(member).set({ role: "viewer" }).where(eq(member.id, "member_1"));
+    await expect(lifecycle.claim(claimInput(site))).rejects.toMatchObject({ code: "claim_forbidden", statusCode: 403 });
+    expect((await readSite(site.siteId))?.organizationId).toBeNull();
+  });
   it("moves the site and revokes the anonymous credential", async () => {
     const site = await unclaimed();
     await lifecycle.claim(claimInput(site));

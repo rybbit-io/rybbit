@@ -274,6 +274,8 @@
 
   // sessionReplay.ts
   var SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+  var MAX_PENDING_BATCHES = 20;
+  var MAX_BUFFERED_EVENTS = 1e4;
   function shouldSampleSession(sampleRate) {
     if (sampleRate >= 100) return true;
     if (sampleRate <= 0) return false;
@@ -293,6 +295,11 @@
     constructor(config, userId, sendBatch) {
       this.isRecording = false;
       this.eventBuffer = [];
+      this.pendingBatches = [];
+      this.flushing = false;
+      this.flushRequested = false;
+      this.retryAfter = 0;
+      this.retryAttempts = 0;
       this.config = config;
       this.userId = userId;
       this.sendBatch = sendBatch;
@@ -417,6 +424,8 @@
     }
     addEvent(event) {
       this.eventBuffer.push(event);
+      if (this.eventBuffer.length > MAX_BUFFERED_EVENTS) this.eventBuffer.shift();
+      if (this.flushing) this.flushRequested = true;
       if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
         this.flushEvents();
       }
@@ -424,7 +433,7 @@
     setupBatchTimer() {
       this.clearBatchTimer();
       this.batchTimer = window.setInterval(() => {
-        if (this.eventBuffer.length > 0) {
+        if (this.eventBuffer.length > 0 || this.pendingBatches.length > 0) {
           this.flushEvents();
         }
       }, this.config.sessionReplayBatchInterval);
@@ -436,9 +445,31 @@
       }
     }
     async flushEvents() {
-      if (this.eventBuffer.length === 0) {
-        return;
+      this.enqueueBufferedEvents();
+      if (this.flushing || this.pendingBatches.length === 0 || Date.now() < this.retryAfter) return;
+      this.flushing = true;
+      try {
+        while (this.pendingBatches.length > 0) {
+          try {
+            await this.sendBatch(this.pendingBatches[0]);
+            this.pendingBatches.shift();
+            this.retryAttempts = 0;
+            this.retryAfter = 0;
+          } catch {
+            this.retryAfter = Date.now() + Math.min(6e4, 1e3 * 2 ** Math.min(this.retryAttempts++, 6));
+            return;
+          }
+          if (this.flushRequested) {
+            this.flushRequested = false;
+            this.enqueueBufferedEvents();
+          }
+        }
+      } finally {
+        this.flushing = false;
       }
+    }
+    enqueueBufferedEvents() {
+      if (this.eventBuffer.length === 0) return;
       const events = [...this.eventBuffer];
       this.eventBuffer = [];
       const batch = {
@@ -451,10 +482,9 @@
           language: navigator.language
         }
       };
-      try {
-        await this.sendBatch(batch);
-      } catch (error) {
-        this.eventBuffer.unshift(...events);
+      this.pendingBatches.push(batch);
+      if (this.pendingBatches.length > MAX_PENDING_BATCHES) {
+        this.pendingBatches.splice(this.flushing ? 1 : 0, 1);
       }
     }
     // Update user ID when it changes
@@ -659,6 +689,9 @@
         addSignal("pluginApiAbsence");
       }
     } catch (e2) {
+      if (!(e2 instanceof DOMException && ["SecurityError", "NotAllowedError", "NotSupportedError"].includes(e2.name))) {
+        console.warn("Failed to collect browser bot signals:", e2);
+      }
     }
     return {
       score: Math.min(score, MAX_CLIENT_BOT_SCORE),

@@ -119,7 +119,6 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
 
       return reply.send();
     } catch (insertError) {
-      const errorMessage = insertError instanceof Error ? insertError.message : "Unknown error";
       request.log.error({ err: insertError }, "Failed to insert imported events");
 
       if (isLastBatch) {
@@ -128,7 +127,7 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
       }
 
       return reply.status(500).send({
-        error: `Failed to insert events: ${errorMessage}`,
+        error: "Failed to insert events",
       });
     }
   } catch (error) {

@@ -42,6 +42,33 @@ beforeEach(async () => {
 });
 
 describe("identityBackfillQueue", () => {
+  it("waits for the interval before retrying a failed full batch", async () => {
+    mocks.command.mockRejectedValue(new Error("ClickHouse unavailable"));
+    for (let index = 0; index < 5000; index++) {
+      identityBackfillQueue.enqueue({ siteId: 7, anonymousId: `failed-${index}`, userId: "user" }, 30);
+    }
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mocks.command).toHaveBeenCalledTimes(TABLE_COUNT);
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000 - 1);
+    expect(mocks.command).toHaveBeenCalledTimes(TABLE_COUNT);
+    mocks.command.mockResolvedValue(undefined);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mocks.command).toHaveBeenCalledTimes(TABLE_COUNT * 2);
+    expect(mocks.command.mock.calls[TABLE_COUNT][0].query_params.keys).toHaveLength(5000);
+  });
+  it("coalesces size-triggered flush scheduling during a synchronous burst", async () => {
+    const flush = vi.spyOn(identityBackfillQueue, "flush");
+    try {
+      for (let index = 0; index < 10_000; index++) {
+        identityBackfillQueue.enqueue({ siteId: 7, anonymousId: `burst-${index}`, userId: "user" }, 30);
+      }
+      expect(flush).toHaveBeenCalledOnce();
+      await identityBackfillQueue.flush();
+      expect(mocks.command).toHaveBeenCalledTimes(TABLE_COUNT * 2);
+    } finally {
+      flush.mockRestore();
+    }
+  });
   it("collapses many identifies into one mutation per table", async () => {
     identityBackfillQueue.enqueue({ siteId: 7, anonymousId: "anon-a", userId: "user-a" }, 30);
     identityBackfillQueue.enqueue({ siteId: 7, anonymousId: "anon-b", userId: "user-b" }, 30);
