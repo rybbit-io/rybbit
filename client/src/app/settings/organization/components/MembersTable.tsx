@@ -10,14 +10,7 @@ import { GetOrganizationMembersResponse } from "../../../../api/admin/endpoints/
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../../../components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
 import { IS_CLOUD } from "../../../../lib/const";
 import { isAdminRole, useRoleInfo } from "../../../../lib/roles";
 import { getTimezone } from "../../../../lib/store";
@@ -126,9 +119,14 @@ export function MembersTable({
                           <div className="flex flex-wrap gap-1">
                             {member.siteAccess?.hasRestrictedSiteAccess && (
                               <Badge variant="default">
-                                {t("{count} sites", {
-                                  count: String(member.siteAccess.siteIds.length),
-                                })}
+                                {member.siteAccess.siteRole
+                                  ? t("{count} sites · {role}", {
+                                      count: String(member.siteAccess.siteIds.length),
+                                      role: roleInfo(member.siteAccess.siteRole).label,
+                                    })
+                                  : t("{count} sites", {
+                                      count: String(member.siteAccess.siteIds.length),
+                                    })}
                               </Badge>
                             )}
                             {member.teams?.map(team => (
@@ -140,10 +138,9 @@ export function MembersTable({
                                 {team.name}
                               </Badge>
                             ))}
-                            {!member.siteAccess?.hasRestrictedSiteAccess &&
-                              !member.teams?.length && (
-                                <Badge variant="secondary">{t("All sites")}</Badge>
-                              )}
+                            {!member.siteAccess?.hasRestrictedSiteAccess && !member.teams?.length && (
+                              <Badge variant="secondary">{t("All sites")}</Badge>
+                            )}
                           </div>
                         ) : (
                           <Badge variant="outline">{t("All sites")}</Badge>
@@ -157,11 +154,7 @@ export function MembersTable({
                       {canManageMembers && (
                         <TableCell className="text-right">
                           {canEditMember(member) && (
-                            <Button
-                              size="smIcon"
-                              variant="ghost"
-                              onClick={() => setSelectedMember(member)}
-                            >
+                            <Button size="smIcon" variant="ghost" onClick={() => setSelectedMember(member)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
                           )}
@@ -171,10 +164,7 @@ export function MembersTable({
                   ))}
                   {(!members?.data || members.data.length === 0) && (
                     <TableRow>
-                      <TableCell
-                        colSpan={canManageMembers ? 6 : 5}
-                        className="text-center py-6 text-muted-foreground"
-                      >
+                      <TableCell colSpan={canManageMembers ? 6 : 5} className="text-center py-6 text-muted-foreground">
                         {t("No members found")}
                       </TableCell>
                     </TableRow>

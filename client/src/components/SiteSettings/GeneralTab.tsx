@@ -34,6 +34,7 @@ import { RemoteOrganizationCombobox } from "@/app/admin/components/shared/Remote
 import { normalizeDomain } from "@/lib/utils";
 
 import { SettingRow, SettingsSection, SettingsSections } from "./SettingsSection";
+import { TransferSiteSection } from "./TransferSiteSection";
 
 interface GeneralTabProps {
   siteMetadata: SiteResponse;
@@ -418,6 +419,9 @@ export function GeneralTab({
           </div>
         </SettingsSection>
       )}
+
+      {/* A person-to-person hand-off; the admin panel moves sites directly instead. */}
+      {canTransfer && !adminMode && <TransferSiteSection siteId={siteMetadata.siteId} />}
 
       <SettingsSection>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 px-4 py-3 dark:border-red-500/25">

@@ -1,6 +1,6 @@
 "use client";
 
-import type { OrgRole } from "@rybbit/shared";
+import type { OrgRole, SiteGrantRole } from "@rybbit/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -26,10 +26,10 @@ import { Alert } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { authClient } from "@/lib/auth";
 import { IS_CLOUD } from "@/lib/const";
-import { isAdminRole } from "@/lib/roles";
+import { isAdminRole, siteRolesAbove } from "@/lib/roles";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 
-import { RoleSelect } from "./RoleSelect";
+import { RoleSelect, SiteRoleSelect } from "./RoleSelect";
 import { SiteAccessMultiSelect } from "./SiteAccessMultiSelect";
 
 interface InviteMemberDialogProps {
@@ -65,6 +65,10 @@ export function InviteMemberDialog({
   const isRestrictable = !isAdminRole(role);
   const [restrictSiteAccess, setRestrictSiteAccess] = useState(false);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [siteRole, setSiteRole] = useState<SiteGrantRole | null>(null);
+  // A site role only raises the invited role, so only roles above it are offered.
+  const siteRoleOptions = siteRolesAbove(role);
+  const effectiveSiteRole = siteRole && siteRoleOptions.includes(siteRole) ? siteRole : null;
   const [selectedTeamId, setSelectedTeamId] = useState<string>("none");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -80,6 +84,7 @@ export function InviteMemberDialog({
         ...(selectedTeamId && selectedTeamId !== "none" ? { teamId: selectedTeamId } : {}),
         hasRestrictedSiteAccess: hasSiteRestrictions,
         siteIds: hasSiteRestrictions ? selectedSiteIds : [],
+        siteRole: (hasSiteRestrictions && effectiveSiteRole) || undefined,
       });
 
       if (result.error) {
@@ -97,6 +102,7 @@ export function InviteMemberDialog({
       setRole("member");
       setRestrictSiteAccess(false);
       setSelectedSiteIds([]);
+      setSiteRole(null);
       setSelectedTeamId("none");
       setError("");
     },
@@ -133,7 +139,9 @@ export function InviteMemberDialog({
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          {t("You have reached the limit of {limit} members. Upgrade to add more members", { limit: String(memberLimit) })}
+          {t("You have reached the limit of {limit} members. Upgrade to add more members", {
+            limit: String(memberLimit),
+          })}
         </TooltipContent>
       </Tooltip>
     );
@@ -202,6 +210,21 @@ export function InviteMemberDialog({
                   <p className="text-xs text-muted-foreground mt-2">
                     {t("This member will only have access to the selected sites.")}
                   </p>
+                  {siteRoleOptions.length > 0 && (
+                    <div className="grid gap-2 mt-4">
+                      <Label htmlFor="invite-site-role">{t("Role on these sites")}</Label>
+                      <SiteRoleSelect
+                        id="invite-site-role"
+                        value={effectiveSiteRole}
+                        roles={siteRoleOptions}
+                        ownRoleLabel={t("Their organization role")}
+                        onValueChange={setSiteRole}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t("Raises their role on the selected sites only.")}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

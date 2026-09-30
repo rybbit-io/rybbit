@@ -1,5 +1,6 @@
 "use client";
 
+import type { OrgRole } from "@rybbit/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
@@ -10,6 +11,7 @@ import {
   useDeleteAdminOrganizationMember,
   useUpdateAdminOrganizationMember,
 } from "@/api/admin/hooks/useAdminOrganizations";
+import { RoleSelect } from "@/app/settings/organization/components/RoleSelect";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
 import { authClient } from "@/lib/auth";
+import { isAdminRole, ORG_ROLES } from "@/lib/roles";
 import { userStore } from "@/lib/userStore";
 
 interface EditOrganizationMemberDialogProps {
@@ -63,7 +66,7 @@ export function EditOrganizationMemberDialog({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [systemRole, setSystemRole] = useState<"user" | "admin">("user");
-  const [memberRole, setMemberRole] = useState<"owner" | "admin" | "member">("member");
+  const [memberRole, setMemberRole] = useState<OrgRole>("member");
   const [restricted, setRestricted] = useState(false);
   const [siteIds, setSiteIds] = useState<number[]>([]);
   const [banned, setBanned] = useState(false);
@@ -96,7 +99,9 @@ export function EditOrganizationMemberDialog({
       toast.error(t("Name and email are required"));
       return;
     }
-    if (memberRole === "member" && restricted && siteIds.length === 0) {
+    // Owners and admins reach every site, so only the other roles can be restricted.
+    const restrictable = !isAdminRole(memberRole);
+    if (restrictable && restricted && siteIds.length === 0) {
       toast.error(t("Select at least one site or disable site restrictions"));
       return;
     }
@@ -118,8 +123,8 @@ export function EditOrganizationMemberDialog({
 
       await updateMembership.mutateAsync({
         role: memberRole,
-        hasRestrictedSiteAccess: memberRole === "member" && restricted,
-        siteIds: memberRole === "member" && restricted ? siteIds : [],
+        hasRestrictedSiteAccess: restrictable && restricted,
+        siteIds: restrictable && restricted ? siteIds : [],
       });
 
       if (value.user.id !== currentUserId) {
@@ -213,21 +218,17 @@ export function EditOrganizationMemberDialog({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>{t("Organization role")}</Label>
-                <Select value={memberRole} onValueChange={role => setMemberRole(role as typeof memberRole)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="owner">{t("Owner")}</SelectItem>
-                    <SelectItem value="admin">{t("Admin")}</SelectItem>
-                    <SelectItem value="member">{t("Member")}</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="admin-member-org-role">{t("Organization role")}</Label>
+                <RoleSelect
+                  id="admin-member-org-role"
+                  value={memberRole}
+                  roles={ORG_ROLES}
+                  onValueChange={setMemberRole}
+                />
               </div>
             </section>
 
-            {memberRole === "member" && (
+            {!isAdminRole(memberRole) && (
               <section className="space-y-3 border-t border-neutral-150 pt-4 dark:border-neutral-800">
                 <div className="flex items-center justify-between gap-4">
                   <div>

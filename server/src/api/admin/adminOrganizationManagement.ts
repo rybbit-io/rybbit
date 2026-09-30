@@ -1,4 +1,4 @@
-import { isAdminRole, ORG_ROLES } from "@rybbit/shared";
+import { isAdminRole, ORG_ROLES, SITE_GRANT_ROLES } from "@rybbit/shared";
 import { and, count, desc, eq, ilike, ne, or } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -202,6 +202,8 @@ const updateMemberSchema = z
     role: z.enum(ORG_ROLES),
     hasRestrictedSiteAccess: z.boolean(),
     siteIds: z.array(z.number().int().positive()).max(500),
+    // Role on the granted sites; omit to keep what each grant already carries.
+    siteRole: z.enum(SITE_GRANT_ROLES).nullable().optional(),
   })
   .superRefine((value, ctx) => {
     if (!isAdminRole(value.role) && value.hasRestrictedSiteAccess && value.siteIds.length === 0) {
@@ -249,6 +251,22 @@ export async function updateAdminOrganizationMember(
     }
 
     await db.transaction(async tx => {
+      // Unless a site role is given, grants that stay keep the role they
+      // carried, and newly granted sites get the role all the old ones shared.
+      const previous = await tx
+        .select({ siteId: memberSiteAccess.siteId, role: memberSiteAccess.role })
+        .from(memberSiteAccess)
+        .where(eq(memberSiteAccess.memberId, found.memberId));
+      const previousRoles = new Map(previous.map(grant => [grant.siteId, grant.role]));
+      const sharedRoles = new Set(previous.map(grant => grant.role));
+      const sharedRole = sharedRoles.size === 1 ? [...sharedRoles][0] : null;
+      const roleFor = (siteId: number) =>
+        value.siteRole !== undefined
+          ? value.siteRole
+          : previousRoles.has(siteId)
+            ? previousRoles.get(siteId)!
+            : sharedRole;
+
       await tx
         .update(member)
         .set({ role: value.role, hasRestrictedSiteAccess: restricted })
@@ -259,6 +277,7 @@ export async function updateAdminOrganizationMember(
           requestedSiteIds.map(siteId => ({
             memberId: found.memberId,
             siteId,
+            role: roleFor(siteId),
             createdBy: request.user?.id ?? null,
           }))
         );

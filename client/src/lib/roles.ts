@@ -1,5 +1,6 @@
 "use client";
 
+import type { OrgRole, SiteGrantRole } from "@rybbit/shared";
 import { useExtracted } from "next-intl";
 
 // How organization roles are presented. What a role may do is the server's
@@ -20,6 +21,21 @@ export interface RoleInfo {
  */
 export function isAdminRole(role: string | null | undefined): boolean {
   return role === "owner" || role === "admin";
+}
+
+/** Every organization role, highest first (ORG_ROLES in @rybbit/shared, which the client imports types from only). */
+export const ORG_ROLES: readonly OrgRole[] = ["owner", "admin", "editor", "member", "viewer"];
+
+/** The roles a site grant (a member's or a team's) can carry, lowest first as site-role pickers list them. */
+export const SITE_GRANT_ROLES: readonly SiteGrantRole[] = ["viewer", "member", "editor"];
+
+/**
+ * The site roles worth offering someone with `orgRole`: a grant's role only ever
+ * raises their role on those sites, so one at or below `orgRole` would change nothing.
+ */
+export function siteRolesAbove(orgRole: string): SiteGrantRole[] {
+  const rank = ORG_ROLES.indexOf(orgRole as OrgRole);
+  return rank === -1 ? [] : SITE_GRANT_ROLES.filter(role => ORG_ROLES.indexOf(role) < rank);
 }
 
 /** A role's label and one-line description, for role pickers and member lists. Unknown roles show as-is. */

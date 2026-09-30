@@ -1,6 +1,6 @@
 "use client";
 
-import type { OrgRole } from "@rybbit/shared";
+import type { OrgRole, SiteGrantRole } from "@rybbit/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
@@ -30,9 +30,9 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth";
-import { isAdminRole } from "@/lib/roles";
+import { isAdminRole, siteRolesAbove } from "@/lib/roles";
 
-import { RoleSelect } from "./RoleSelect";
+import { RoleSelect, SiteRoleSelect } from "./RoleSelect";
 import { SiteAccessMultiSelect } from "./SiteAccessMultiSelect";
 
 type Member = GetOrganizationMembersResponse["data"][0];
@@ -60,9 +60,15 @@ export function EditMemberDialog({ member, open, onClose, onSuccess, assignableR
   const [role, setRole] = useState<string>("member");
   const [restrictSiteAccess, setRestrictSiteAccess] = useState(false);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [siteRole, setSiteRole] = useState<SiteGrantRole | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+
+  // A site role only raises the organization role, so only roles above it are offered, and a
+  // chosen one the organization role has since caught up with no longer counts.
+  const siteRoleOptions = siteRolesAbove(role);
+  const effectiveSiteRole = siteRole && siteRoleOptions.includes(siteRole) ? siteRole : null;
 
   useEffect(() => {
     if (open && member) {
@@ -70,6 +76,7 @@ export function EditMemberDialog({ member, open, onClose, onSuccess, assignableR
       setRole(member.role);
       setRestrictSiteAccess(member.siteAccess?.hasRestrictedSiteAccess ?? false);
       setSelectedSiteIds(member.siteAccess?.siteIds ?? []);
+      setSiteRole(member.siteAccess?.siteRole ?? null);
       setConfirmRemoveOpen(false);
     }
   }, [open, member]);
@@ -112,6 +119,7 @@ export function EditMemberDialog({ member, open, onClose, onSuccess, assignableR
         await updateMemberSiteAccess(activeOrganization.id, member.id, {
           hasRestrictedSiteAccess: restrictSiteAccess,
           siteIds: selectedSiteIds,
+          siteRole: restrictSiteAccess ? effectiveSiteRole : null,
         });
       } else if (roleChanged && !isAdminRole(member.role) && member.siteAccess?.hasRestrictedSiteAccess) {
         // Promoted to admin or owner: drop the restrictions they no longer need. Admins and owners reach
@@ -229,6 +237,21 @@ export function EditMemberDialog({ member, open, onClose, onSuccess, assignableR
                         )
                       : t("This member will only have access to the selected sites.")}
                   </p>
+                  {siteRoleOptions.length > 0 && (
+                    <div className="grid gap-2 mt-4">
+                      <Label htmlFor="site-role">{t("Role on these sites")}</Label>
+                      <SiteRoleSelect
+                        id="site-role"
+                        value={effectiveSiteRole}
+                        roles={siteRoleOptions}
+                        ownRoleLabel={t("Their organization role")}
+                        onValueChange={setSiteRole}
+                      />
+                      <p className="text-xs text-neutral-500 dark:text-neutral-300">
+                        {t("Raises their role on the selected sites only.")}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-neutral-500 dark:text-neutral-300 pl-6">

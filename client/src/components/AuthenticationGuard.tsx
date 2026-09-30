@@ -6,6 +6,8 @@ import { userStore } from "../lib/userStore";
 import { useGetSiteIsPublic } from "../api/admin/hooks/useSites";
 
 const PUBLIC_ROUTES = ["/login", "/signup", "/try", "/invitation", "/reset-password", "/as/callback", "/auth/consent"];
+// Pages under these prefixes show their own sign-in form, e.g. /transfer/<id>.
+const PUBLIC_ROUTE_PREFIXES = ["/transfer/"];
 
 export function AuthenticationGuard() {
   const { user, isPending } = userStore();
@@ -33,6 +35,7 @@ export function AuthenticationGuard() {
       !isCheckingPublic &&
       !user &&
       !PUBLIC_ROUTES.includes(pathname) &&
+      !PUBLIC_ROUTE_PREFIXES.some(prefix => pathname.startsWith(prefix)) &&
       !isPublicSite &&
       !hasPrivateKey
     ) {
