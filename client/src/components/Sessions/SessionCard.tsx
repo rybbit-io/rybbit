@@ -14,7 +14,7 @@ import { formatShortDuration } from "../../lib/dateTimeUtils";
 import { cn, formatter, getUserDisplayName, truncateString } from "../../lib/utils";
 import { Avatar } from "../Avatar";
 import { Channel } from "../Channel";
-import { EventIcon, PageviewIcon } from "../EventIcons";
+import { EventTypeIcon } from "../EventIcons";
 import { IdentifiedBadge } from "../IdentifiedBadge";
 import {
   BrowserTooltipIcon,
@@ -153,7 +153,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-                  <PageviewIcon />
+                  <EventTypeIcon type="pageview" />
                   <span>{formatter(session.pageviews)}</span>
                 </Badge>
               </TooltipTrigger>
@@ -162,7 +162,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-                  <EventIcon />
+                  <EventTypeIcon type="custom_event" />
                   <span>{formatter(session.events + (session.button_clicks || 0) + (session.copies || 0) + (session.form_submits || 0) + (session.input_changes || 0))}</span>
                 </Badge>
               </TooltipTrigger>
@@ -243,7 +243,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-                  <PageviewIcon />
+                  <EventTypeIcon type="pageview" />
                   <span>{formatter(session.pageviews)}</span>
                 </Badge>
               </TooltipTrigger>
@@ -252,7 +252,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-                  <EventIcon />
+                  <EventTypeIcon type="custom_event" />
                   <span>{formatter(session.events + (session.button_clicks || 0) + (session.copies || 0) + (session.form_submits || 0) + (session.input_changes || 0))}</span>
                 </Badge>
               </TooltipTrigger>

@@ -69,12 +69,3 @@ export function EventTypeIcon({ type, className, tooltip = true }: EventTypeIcon
     </Tooltip>
   );
 }
-
-// Backwards-compatible aliases
-export function PageviewIcon({ className }: { className?: string }) {
-  return <EventTypeIcon type="pageview" className={className} />;
-}
-
-export function EventIcon({ className }: { className?: string }) {
-  return <EventTypeIcon type="custom_event" className={className} />;
-}
