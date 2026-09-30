@@ -16,6 +16,7 @@ import { invitation, member, memberSiteAccess, sites, user } from "../db/postgre
 import { isAdminRole } from "@rybbit/shared";
 import { siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
+import { getMemberLimitError } from "./memberLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
 import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
 import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
@@ -447,22 +448,9 @@ export const auth = betterAuth({
         const organizationId = body?.organizationId;
 
         if (organizationId) {
-          // Lazy import to avoid circular dependency
-          const { getSubscriptionInner } = await import("../api/stripe/getSubscription.js");
-          const subscription = await getSubscriptionInner(organizationId);
-          const memberLimit = subscription?.memberLimit ?? null;
-
-          if (memberLimit !== null) {
-            const members = await db
-              .select({ id: member.id })
-              .from(member)
-              .where(eq(member.organizationId, organizationId));
-
-            if (members.length >= memberLimit) {
-              throw new APIError("FORBIDDEN", {
-                message: `You have reached the limit of ${memberLimit} member${memberLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`,
-              });
-            }
+          const memberLimitError = await getMemberLimitError(organizationId);
+          if (memberLimitError) {
+            throw new APIError("FORBIDDEN", { message: memberLimitError });
           }
         }
       }

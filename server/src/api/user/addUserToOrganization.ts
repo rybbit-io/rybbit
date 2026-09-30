@@ -5,6 +5,7 @@ import { member, user } from "../../db/postgres/schema.js";
 import { randomBytes } from "crypto";
 import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission } from "@rybbit/shared";
 import { getOrgMembership } from "../../lib/access.js";
+import { getMemberLimitError } from "../../lib/memberLimits.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
@@ -81,6 +82,11 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
 
     if (existingMember) {
       return reply.status(400).send({ error: "User is already a member of this organization" });
+    }
+
+    const memberLimitError = await getMemberLimitError(organizationId);
+    if (memberLimitError) {
+      return reply.status(403).send({ error: memberLimitError });
     }
 
     await db.insert(member).values([

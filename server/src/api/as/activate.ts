@@ -1,3 +1,4 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { eq, sql } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
@@ -106,7 +107,8 @@ export async function activateAppSumoLicense(
       });
     }
 
-    // Verify user is a member of the organization
+    // A license changes the organization's plan: the same owner-only
+    // permission as every other billing action.
     const member = await db.query.member.findFirst({
       where: (member, { and, eq }) =>
         and(eq(member.userId, session.user.id), eq(member.organizationId, organizationId)),
@@ -115,6 +117,12 @@ export async function activateAppSumoLicense(
     if (!member) {
       return reply.status(403).send({
         error: "You are not a member of this organization",
+      });
+    }
+
+    if (!roleHasPermission(member.role, "billing:manage")) {
+      return reply.status(403).send({
+        error: "Only an organization owner can activate a license",
       });
     }
 

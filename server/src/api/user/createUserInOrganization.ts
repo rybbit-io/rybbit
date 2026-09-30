@@ -6,6 +6,7 @@ import { member } from "../../db/postgres/schema.js";
 import { auth } from "../../lib/auth.js";
 import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission } from "@rybbit/shared";
 import { getOrgMembership } from "../../lib/access.js";
+import { getMemberLimitError } from "../../lib/memberLimits.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
@@ -84,6 +85,13 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
 
     if (await ctx.internalAdapter.findUserByEmail(email)) {
       return reply.status(400).send({ error: "A user with this email already exists" });
+    }
+
+    // Checked before the account is created, so a full organization never
+    // leaves behind a user who belongs nowhere.
+    const memberLimitError = await getMemberLimitError(organizationId);
+    if (memberLimitError) {
+      return reply.status(403).send({ error: memberLimitError });
     }
 
     // Create the user + credential account (mirrors better-auth's admin createUser)
