@@ -3,9 +3,10 @@ import type { Transition } from "framer-motion";
 // Shared motion presets. The values follow interior.dev's conventions (MIT, see
 // components/interior/THIRD_PARTY_LICENSES.md) so every animated component in
 // the app moves the same way. Reduced motion is handled once, by the
-// <MotionConfig reducedMotion="user"> in Providers: framer animations become
-// instant, so components only branch *styles* on useReducedMotion(), never DOM
-// structure (it returns null during SSR).
+// <MotionConfig reducedMotion="user"> in Providers for transform and layout
+// animations. Opacity, color and other non-transform animations still run:
+// components use useReducedMotion() and INSTANT when those must be suppressed.
+// Only branch styles, never DOM structure (useReducedMotion returns null during SSR).
 
 // Enters decelerate hard; exits accelerate and are shorter.
 export const EASE_OUT = [0.23, 1, 0.32, 1] as const;

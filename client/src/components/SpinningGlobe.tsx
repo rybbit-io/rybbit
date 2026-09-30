@@ -229,6 +229,11 @@ export function SpinningGlobe() {
       spinGlobe();
     };
 
+    const handleMotionPreferenceChange = () => {
+      if (reducedMotion.matches) map.stop();
+      else spinGlobe();
+    };
+
     const handleStyleLoad = () => {
       // Apply custom styling
       try {
@@ -324,12 +329,14 @@ export function SpinningGlobe() {
       setMapLoaded(true);
 
       // Start spinning
+      reducedMotion.addEventListener("change", handleMotionPreferenceChange);
       spinGlobe();
     };
 
     map.on("style.load", handleStyleLoad);
 
     return () => {
+      reducedMotion.removeEventListener("change", handleMotionPreferenceChange);
       map.off("style.load", handleStyleLoad);
       map.off("click", CLUSTER_LAYER_ID, handleClusterClick);
       map.off("mouseenter", CLUSTER_LAYER_ID, handleClusterMouseEnter);

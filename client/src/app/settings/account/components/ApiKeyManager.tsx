@@ -183,7 +183,7 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
   };
 
   const handleApiKeyDialogOpenChange = (open: boolean) => {
-    if (!open && !keyCopied && !confirmClose) {
+    if (!open && !keyCopied) {
       setConfirmClose(true);
       return;
     }
@@ -433,7 +433,10 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
                 onCopy={() => setKeyCopied(true)}
                 onError={() => toast.error(t("Couldn't copy to clipboard. Select the key and copy it manually."))}
               />
-              <Button variant="outline" onClick={() => handleApiKeyDialogOpenChange(false)}>
+              <Button
+                variant="outline"
+                onClick={() => (showCloseWarning ? setShowApiKeyDialog(false) : handleApiKeyDialogOpenChange(false))}
+              >
                 {showCloseWarning ? t("Close anyway") : t("Done")}
               </Button>
             </div>

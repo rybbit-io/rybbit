@@ -26,7 +26,7 @@ export function EnableErrorTracking() {
     try {
       await updateSiteConfig(siteId, { trackErrors: true });
       // Stay busy until the refetch hides this banner, so "Enable" never flashes back
-      await refetch();
+      await refetch({ throwOnError: true });
       toast.success(t("Error tracking enabled"));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

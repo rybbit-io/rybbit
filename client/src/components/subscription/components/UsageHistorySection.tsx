@@ -12,7 +12,7 @@ export function UsageHistorySection({ organizationId }: { organizationId: string
   const locale = useLocale();
   const [period, setPeriod] = useState<PeriodValue>("30");
 
-  const { startDate, endDate } = getPeriodDates(period);
+  const { startDate, endDate } = getPeriodDates(period, "UTC");
   const { data, isLoading, error } = useGetOrgEventCount({
     organizationId,
     startDate,

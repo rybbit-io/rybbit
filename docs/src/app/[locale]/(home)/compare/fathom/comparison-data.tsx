@@ -39,7 +39,6 @@ export const fathomComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "~11KB", competitorValue: "~2KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: true },
       { name: "API access", rybbitValue: true, competitorValue: true },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "$15/mo" },
@@ -67,7 +66,6 @@ export const fathomExtendedData = {
   ],
 
   chooseCompetitor: [
-    "You want the smallest possible tracking script (2KB)",
     "You prefer a more established product with a longer track record",
     "You only need basic pageview and conversion tracking",
     "You don't want to worry about self-hosting or infrastructure",
@@ -124,15 +122,15 @@ export const fathomExtendedData = {
         paragraphs: [
           <>
             Fathom&apos;s simplicity is a feature, not a gap: pageviews, referrers, UTM tracking, and
-            conversion goals on a single screen, with a tracking script around 2KB. If that&apos;s the whole job,
+            conversion goals on a single screen. If that&apos;s the whole job,
             Fathom does it very well.
           </>,
           <>
             Rybbit covers the same dashboard basics, then adds the layer Fathom deliberately leaves out:{" "}
             <Link href="/features/session-replay">session replay</Link> to watch real sessions, funnels to find where
             signups stall, user journey (Sankey) visualization, <Link href="/features/error-tracking">error
-            tracking</Link>, Web Vitals monitoring, and user profiles. Rybbit&apos;s script is bigger (~11KB compressed) because
-            it does more. That&apos;s the honest trade. There&apos;s also an ownership difference with no
+            tracking</Link>, Web Vitals monitoring, and user profiles, with a script around 11KB compressed.
+            There&apos;s also an ownership difference with no
             trade-off attached: Rybbit is open source and can be{" "}
             <Link href="/docs/self-hosting">self-hosted for free</Link>, while Fathom is closed-source and
             SaaS-only: there is no way to run it on your own infrastructure.

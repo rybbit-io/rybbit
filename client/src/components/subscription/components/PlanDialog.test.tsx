@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlanDialog } from "./PlanDialog";
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   onOpenChange: vi.fn(),
+  organizationId: "org_1",
 }));
 
 vi.mock("next-intl", () => ({
@@ -15,7 +16,7 @@ vi.mock("next-intl", () => ({
     message.replace(/\{(\w+)\}/g, (_, key: string) => values?.[key] ?? ""),
 }));
 vi.mock("@/lib/auth", () => ({
-  authClient: { useActiveOrganization: () => ({ data: { id: "org_1" } }) },
+  authClient: { useActiveOrganization: () => ({ data: { id: mocks.organizationId } }) },
 }));
 vi.mock("@/components/ui/sonner", () => ({
   toast: { success: mocks.toastSuccess, error: mocks.toastError },
@@ -57,6 +58,7 @@ function BillingPage({ fetchPlan }: { fetchPlan: () => Promise<string> }) {
 let update: ReturnType<typeof deferred<Response>>;
 
 beforeEach(() => {
+  mocks.organizationId = "org_1";
   // Radix Slider measures its thumbs.
   vi.stubGlobal(
     "ResizeObserver",
@@ -79,6 +81,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  onlineManager.setOnline(true);
   vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
@@ -103,6 +106,80 @@ async function confirmPlanChange(fetchPlan: () => Promise<string>) {
 }
 
 describe("PlanDialog", () => {
+  it("keeps an offline-paused refresh pending for a read-only retry", async () => {
+    const fetchPlan = vi.fn().mockResolvedValueOnce("standard100k").mockResolvedValue("standard250k");
+    await confirmPlanChange(fetchPlan);
+    await act(async () => {
+      onlineManager.setOnline(false);
+      update.resolve(jsonResponse({ success: true, subscription: {} }));
+    });
+
+    const retry = await screen.findByRole("button", { name: "Retry refreshing" });
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Your subscription was updated, but refreshing billing data failed: Billing refresh is paused while offline."
+    );
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.onOpenChange).not.toHaveBeenCalled();
+    expect(fetchPlan).toHaveBeenCalledOnce();
+
+    fireEvent.click(retry);
+    await waitFor(() => expect(retry.hasAttribute("aria-busy")).toBe(false));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.onOpenChange).not.toHaveBeenCalled();
+
+    await act(async () => onlineManager.setOnline(true));
+    await screen.findByText("Plan: standard250k");
+    fireEvent.click(retry);
+    await waitFor(() => expect(mocks.onOpenChange).toHaveBeenCalledWith(false));
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/stripe/update-subscription"))).toHaveLength(1);
+  });
+
+  it("does not apply one organization's refresh failure to another organization", async () => {
+    await confirmPlanChange(vi.fn().mockResolvedValueOnce("standard100k").mockRejectedValue(new Error("Offline")));
+    await act(async () => update.resolve(jsonResponse({ success: true, subscription: {} })));
+    await screen.findByRole("button", { name: "Retry refreshing" });
+
+    mocks.organizationId = "org_2";
+    fireEvent.click(screen.getByRole("button", { name: "Annual" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change Plan" }));
+    await screen.findByRole("button", { name: "Confirm Change" });
+    const previewCalls = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/stripe/preview-subscription-update"));
+    expect(JSON.parse(previewCalls.at(-1)![1]!.body as string).organizationId).toBe("org_2");
+  });
+
+  it("reports a refresh failure after an accepted update and retries only the reads", async () => {
+    const fetchPlan = vi.fn()
+      .mockResolvedValueOnce("standard100k")
+      .mockRejectedValueOnce(new Error("Network offline"))
+      .mockRejectedValueOnce(new Error("Still offline"))
+      .mockResolvedValueOnce("standard250k");
+    await confirmPlanChange(fetchPlan);
+    await act(async () => update.resolve(jsonResponse({ success: true, subscription: {} })));
+
+    const retry = await screen.findByRole("button", { name: "Retry refreshing" });
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Your subscription was updated, but refreshing billing data failed: Network offline"
+    );
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toContain("Your plan changed successfully");
+
+    fireEvent.click(retry);
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
+      "Your subscription was updated, but refreshing billing data failed: Still offline"
+    ));
+    await waitFor(() => expect(retry.hasAttribute("aria-busy")).toBe(false));
+    expect(mocks.onOpenChange).not.toHaveBeenCalled();
+
+    fireEvent.click(retry);
+    await waitFor(() => expect(mocks.onOpenChange).toHaveBeenCalledWith(false));
+    expect(screen.getByText("Plan: standard250k")).toBeTruthy();
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Subscription updated");
+    const updateCalls = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/stripe/update-subscription"));
+    expect(updateCalls).toHaveLength(1);
+  });
+
   it("updates the plan in place: stays busy until the plan refetch lands, then closes and toasts", async () => {
     const refetch = deferred<string>();
     const fetchPlan = vi.fn().mockResolvedValueOnce("standard100k").mockReturnValueOnce(refetch.promise);

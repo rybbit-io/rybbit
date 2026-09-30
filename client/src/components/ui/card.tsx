@@ -24,7 +24,10 @@ const CardLoader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("mt-[-15px] absolute top-0 left-0 w-full text-neutral-200 dark:text-neutral-400", className)}
+      className={cn(
+        "mt-[-15px] motion-reduce:mt-0 absolute top-0 left-0 w-full text-neutral-200 dark:text-neutral-400",
+        className
+      )}
       {...props}
     >
       <span className="motion-reduce:hidden">

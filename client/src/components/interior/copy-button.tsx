@@ -89,12 +89,31 @@ export function CopyStatusIcon({ status, tone = "color", className, idleClassNam
 // Polite announcement of the outcome. Render it as a sibling of the button, not
 // inside it: WebKit drops a button's descendants from the accessibility tree, so a
 // live region inside one is never announced by VoiceOver.
-export function CopyAnnouncement({ status, copiedLabel }: { status: CopyStatus; copiedLabel?: string }) {
+export function CopyAnnouncement({
+  status,
+  copiedLabel,
+  copyCount = 0,
+}: {
+  status: CopyStatus;
+  copiedLabel?: string;
+  copyCount?: number;
+}) {
   const t = useExtracted();
+  const message =
+    status === "copied" ? (copiedLabel ?? t("Copied")) : status === "error" ? t("Couldn't copy to clipboard") : "";
+  const [announcement, setAnnouncement] = React.useState({ message: "", copyCount: 0 });
+
+  React.useEffect(() => {
+    if (!message) return;
+    // Clear the live region on every outcome, then restore it in a separate task
+    // so assistive technology announces consecutive identical results too.
+    const timer = setTimeout(() => setAnnouncement({ message, copyCount }), 0);
+    return () => clearTimeout(timer);
+  }, [message, copyCount]);
 
   return (
     <span role="status" aria-live="polite" className="sr-only">
-      {status === "copied" ? (copiedLabel ?? t("Copied")) : status === "error" ? t("Couldn't copy to clipboard") : ""}
+      {announcement.copyCount === copyCount && announcement.message === message ? message : ""}
     </span>
   );
 }
@@ -189,7 +208,7 @@ export const CopyButton = React.forwardRef<HTMLButtonElement, CopyButtonProps>(f
   ref
 ) {
   const t = useExtracted();
-  const { copy, status } = useCopyToClipboard({ timeout, onCopy, onError });
+  const { copy, status, copyCount } = useCopyToClipboard({ timeout, onCopy, onError });
 
   // Radix closes a tooltip when its trigger is pressed (pointerdown, the content's
   // outside-press check, click), which hid "Copied" after ~100 ms. So the tooltip
@@ -274,7 +293,7 @@ export const CopyButton = React.forwardRef<HTMLButtonElement, CopyButtonProps>(f
       ) : (
         button
       )}
-      <CopyAnnouncement status={status} copiedLabel={labels.copied} />
+      <CopyAnnouncement status={status} copiedLabel={labels.copied} copyCount={copyCount} />
     </>
   );
 });

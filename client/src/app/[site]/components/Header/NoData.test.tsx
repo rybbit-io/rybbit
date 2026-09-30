@@ -248,4 +248,36 @@ describe("NoData", () => {
 
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Now tracking acme.dev" })).toBeNull());
   });
+
+  it("moves focus to the dashboard when dismissing the focused confirmation", async () => {
+    show(
+      <main id="dashboard-content" tabIndex={-1}>
+        Dashboard
+      </main>
+    );
+    await waitingHeading();
+    await firstPageviewLands();
+    await arrivedHeading();
+    const button = screen.getByRole("button", { name: "Explore your dashboard" });
+    button.focus();
+
+    fireEvent.click(button);
+
+    expect(document.activeElement).toBe(screen.getByRole("main"));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Now tracking acme.dev" })).toBeNull());
+    expect(document.activeElement).toBe(screen.getByRole("main"));
+  });
+
+  it("keeps focus outside the confirmation when it is dismissed", async () => {
+    show(<button>Dashboard action</button>);
+    await waitingHeading();
+    await firstPageviewLands();
+    await arrivedHeading();
+    const external = screen.getByRole("button", { name: "Dashboard action" });
+    external.focus();
+
+    fireEvent.click(screen.getByRole("button", { name: "Explore your dashboard" }));
+
+    expect(document.activeElement).toBe(external);
+  });
 });

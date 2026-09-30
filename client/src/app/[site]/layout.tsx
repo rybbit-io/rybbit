@@ -47,7 +47,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     return (
       <div>
         <Header />
-        <div>{children}</div>
+        <main id="dashboard-content" tabIndex={-1}>
+          {children}
+        </main>
       </div>
     );
   }
@@ -65,7 +67,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           <div className="min-h-full flex flex-col">
             {/* <div className="px-4 py-2 max-w-[1400px] mx-auto w-full mb-4"> */}
             <Header />
-            <div className="flex-1">{children}</div>
+            <main id="dashboard-content" tabIndex={-1} className="flex-1">
+              {children}
+            </main>
             {!pathname.includes("/map") &&
               !pathname.includes("/realtime") &&
               !pathname.includes("/replay") &&

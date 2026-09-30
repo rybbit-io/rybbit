@@ -4,7 +4,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type Handler = (event: unknown) => void;
-type FakeMapInstance = { fire: (event: string) => void; easeTo: ReturnType<typeof vi.fn> };
+type FakeMapInstance = {
+  fire: (event: string) => void;
+  easeTo: ReturnType<typeof vi.fn>;
+  stop: ReturnType<typeof vi.fn>;
+};
 
 const mocks = vi.hoisted(() => ({ reducedMotion: false, maps: [] as FakeMapInstance[] }));
 
@@ -16,6 +20,7 @@ vi.mock("mapbox-gl", () => {
     easeTo = vi.fn(() => {
       if (mocks.reducedMotion) this.fire("moveend");
     });
+    stop = vi.fn(() => this.fire("moveend"));
     constructor() {
       mocks.maps.push(this);
     }
@@ -64,6 +69,7 @@ function renderGlobe() {
 
 beforeEach(() => {
   mocks.maps = [];
+  mocks.reducedMotion = false;
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({} as RenderingContext);
   vi.stubGlobal(
     "fetch",
@@ -72,7 +78,11 @@ beforeEach(() => {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     writable: true,
-    value: (query: string) => ({ matches: mocks.reducedMotion, media: query }),
+    value: (query: string) => {
+      const preference = Object.assign(new EventTarget(), { media: query });
+      Object.defineProperty(preference, "matches", { get: () => mocks.reducedMotion });
+      return preference;
+    },
   });
 });
 afterEach(() => {
@@ -95,5 +105,28 @@ describe("SpinningGlobe", () => {
     act(() => map.fire("mouseup"));
     act(() => map.fire("dragend"));
     expect(map.easeTo).not.toHaveBeenCalled();
+  });
+
+  it("resumes and stops idle spin when the motion preference changes", () => {
+    mocks.reducedMotion = true;
+    const preference = new EventTarget();
+    Object.defineProperty(preference, "matches", { get: () => mocks.reducedMotion });
+    vi.spyOn(window, "matchMedia").mockReturnValue(preference as MediaQueryList);
+    const map = renderGlobe();
+    expect(map.easeTo).not.toHaveBeenCalled();
+
+    mocks.reducedMotion = false;
+    act(() => preference.dispatchEvent(new Event("change")));
+    expect(map.easeTo).toHaveBeenCalledTimes(1);
+
+    mocks.reducedMotion = true;
+    act(() => preference.dispatchEvent(new Event("change")));
+    expect(map.stop).toHaveBeenCalledOnce();
+    expect(map.easeTo).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    mocks.reducedMotion = false;
+    act(() => preference.dispatchEvent(new Event("change")));
+    expect(map.easeTo).toHaveBeenCalledTimes(1);
   });
 });

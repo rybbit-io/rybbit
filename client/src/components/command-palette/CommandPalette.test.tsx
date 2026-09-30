@@ -27,6 +27,7 @@ vi.mock("next-intl", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ push: mocks.push }),
 }));
 
@@ -393,6 +394,28 @@ describe("CommandPalette", () => {
     pressCtrlK();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
+
+  it.each(["palette", "shortcuts"] as const)("closes the %s when navigation enables embedding", async overlay => {
+    const view = render(<CommandPalette />);
+    if (overlay === "palette") await openPalette();
+    else {
+      fireEvent.keyDown(document.body, { key: "?", shiftKey: true });
+      await screen.findByRole("dialog");
+    }
+
+    window.history.replaceState(null, "", "/12/main?embed=true");
+    view.rerender(<CommandPalette />);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(usePaletteOverlay.getState().overlay).toBeNull();
+    pressCtrlK();
+    fireEvent.keyDown(document.body, { key: "?", shiftKey: true });
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    window.history.replaceState(null, "", "/12/main");
+    view.rerender(<CommandPalette />);
+    expect(await openPalette()).toBeTruthy();
+  });
 });
 
 describe("CommandPaletteTrigger", () => {
@@ -415,6 +438,16 @@ describe("CommandPaletteTrigger", () => {
   it("renders nothing for signed-out visitors", () => {
     mocks.signedIn = false;
     render(<CommandPaletteTrigger />);
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("hides the trigger when navigation enables embedding", () => {
+    const view = render(<CommandPaletteTrigger />);
+    expect(screen.getByRole("button", { name: /Search/ })).toBeTruthy();
+
+    window.history.replaceState(null, "", "/12/main?embed=true");
+    view.rerender(<CommandPaletteTrigger />);
+
     expect(screen.queryByRole("button")).toBeNull();
   });
 });

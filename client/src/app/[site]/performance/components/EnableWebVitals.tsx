@@ -26,7 +26,7 @@ export function EnableWebVitals() {
     try {
       await updateSiteConfig(siteId, { webVitals: true });
       // Stay busy until the refetch hides this banner, so "Enable" never flashes back
-      await refetch();
+      await refetch({ throwOnError: true });
       toast.success(t("Web Vitals collection enabled"));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

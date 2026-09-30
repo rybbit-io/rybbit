@@ -21,7 +21,7 @@ const ONLINE_WINDOW_SECONDS = 300;
 
 function CopyUserId({ value }: { value: string }) {
   const t = useExtracted();
-  const { copy, status } = useCopyToClipboard();
+  const { copy, status, copyCount } = useCopyToClipboard();
 
   return (
     <>
@@ -49,7 +49,7 @@ function CopyUserId({ value }: { value: string }) {
               : t("Copy user ID")}
         </TooltipContent>
       </Tooltip>
-      <CopyAnnouncement status={status} />
+      <CopyAnnouncement status={status} copyCount={copyCount} />
     </>
   );
 }

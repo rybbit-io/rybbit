@@ -12,6 +12,7 @@ export function useEventLogState(
     visibleTypes: Set<string>;
   } = { visibleTypes: new Set() }
 ) {
+  const { visibleTypes } = options;
   // --- Mode state ---
   const [isRealtime, setIsRealtime] = useState(true);
 
@@ -31,11 +32,14 @@ export function useEventLogState(
 
   // --- Rows that just entered the list (event key → arrival time), for a brief highlight ---
   const [arrivals, setArrivals] = useState<Arrivals>(NO_ARRIVALS);
-  const markArrived = useCallback((events: Event[]) => {
-    const now = performance.now();
-    const keys = events.map(getEventKey);
-    setArrivals(prev => recordArrivals(prev, keys, now));
-  }, []);
+  const markArrived = useCallback(
+    (events: Event[]) => {
+      const now = performance.now();
+      const keys = events.filter(ev => visibleTypes.size === 0 || visibleTypes.has(ev.type)).map(getEventKey);
+      setArrivals(prev => recordArrivals(prev, keys, now));
+    },
+    [visibleTypes]
+  );
 
   // --- Scroll refs ---
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
@@ -62,7 +66,6 @@ export function useEventLogState(
   }, [prependedEvents, cursorEvents]);
 
   // --- Client-side type filter ---
-  const { visibleTypes } = options;
   const allEvents = useMemo(() => {
     if (visibleTypes.size === 0) return mergedEvents;
     return mergedEvents.filter(ev => visibleTypes.has(ev.type));
@@ -178,7 +181,7 @@ export function useEventLogState(
     return () => {
       viewport.removeEventListener("scroll", handleScroll);
     };
-  }, [scrollElement]);
+  }, [scrollElement, markArrived]);
 
   // --- Flush buffer + scroll to top ---
   const flushAndScrollToTop = useCallback(() => {
