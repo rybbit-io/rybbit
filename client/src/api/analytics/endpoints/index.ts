@@ -45,13 +45,9 @@ export type {
 export type {
   ErrorNameItem,
   ErrorNamesPaginatedResponse,
-  ErrorNamesStandardResponse,
   ErrorEvent,
   ErrorEventsPaginatedResponse,
-  ErrorEventsStandardResponse,
   GetErrorBucketedResponse,
-  ErrorNamesParams,
-  ErrorEventsParams,
   ErrorBucketedParams,
 } from "./errors";
 
@@ -155,7 +151,7 @@ export type {
 } from "./sessions";
 
 // Users endpoints
-export { fetchUsers, identifyUser, updateUserTraits, deleteUser } from "./users";
+export { identifyUser, updateUserTraits, deleteUser } from "./users";
 export type {
   UsersResponse,
   UserInfo,
@@ -164,9 +160,6 @@ export type {
   UserDeviceBreakdown,
   LinkedDevice,
   UserSessionCountResponse,
-  UsersParams,
-  UserSessionsParams,
-  UserSessionCountParams,
   UsersListResponse,
   IdentifyUserPayload,
 } from "./users";
@@ -182,7 +175,6 @@ export type {
   JourneysParams,
   PageTitleItem,
   PageTitlesPaginatedResponse,
-  PageTitlesStandardResponse,
   PageTitlesParams,
   OrgEventCountResponse,
   GetOrgEventCountResponse,

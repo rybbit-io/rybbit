@@ -38,8 +38,6 @@ export type PageTitlesPaginatedResponse = {
   totalCount: number;
 };
 
-export type PageTitlesStandardResponse = PageTitleItem[];
-
 // Org event count types
 export type OrgEventCountResponse = {
   event_date: string;

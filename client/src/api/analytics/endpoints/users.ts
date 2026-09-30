@@ -1,6 +1,4 @@
-import { Filter } from "@rybbit/shared";
 import { authedFetch } from "../../utils";
-import { CommonApiParams, PaginationParams, SortParams, toQueryParams } from "./types";
 
 // User response type
 export type UsersResponse = {
@@ -108,48 +106,11 @@ export interface UserSessionCountResponse {
   sessions: number;
 }
 
-export interface UsersParams extends CommonApiParams, PaginationParams, SortParams {
-  pageSize?: number;
-  identifiedOnly?: boolean;
-  search?: string;
-  searchField?: string;
-}
-
-export interface UserSessionsParams extends CommonApiParams {
-  userId: string;
-}
-
-export interface UserSessionCountParams {
-  userId: string;
-  timeZone: string;
-  filters?: Filter[];
-}
-
 export interface UsersListResponse {
   data: UsersResponse[];
   totalCount: number;
   page: number;
   pageSize: number;
-}
-
-/**
- * Fetch users list with pagination
- * GET /api/users/:site
- */
-export async function fetchUsers(site: string | number, params: UsersParams): Promise<UsersListResponse> {
-  const queryParams = {
-    ...toQueryParams(params),
-    page: params.page,
-    page_size: params.pageSize ?? params.limit,
-    sort_by: params.sortBy,
-    sort_order: params.sortOrder,
-    identified_only: params.identifiedOnly,
-    search: params.search || undefined,
-    search_field: params.searchField || undefined,
-  };
-
-  const response = await authedFetch<UsersListResponse>(`/sites/${site}/users`, queryParams);
-  return response;
 }
 
 export interface IdentifyUserPayload {
