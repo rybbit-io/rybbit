@@ -119,7 +119,8 @@ export function accessForPeople(
     members: [
       ...team.members,
       ...invitations
-        .filter(invitation => invitation.teamId === team.id)
+        // better-auth stores an invitation to several teams as comma-separated ids.
+        .filter(invitation => invitation.teamId?.split(",").includes(team.id))
         .map(invitation => ({ userId: invitationAccessKey(invitation), userName: null, userEmail: invitation.email })),
     ],
   }));

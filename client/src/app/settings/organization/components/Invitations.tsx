@@ -107,20 +107,28 @@ function ResendInvitationButton({ invitation, onResent }: { invitation: Invitati
   const handleResend = async () => {
     setIsResending(true);
     try {
-      // better-auth emails the existing invitation again with a fresh expiry; its role, sites and team
-      // stay as they were (the site fields are required by the client types, and ignored on a resend).
-      // It reports failures in the result rather than throwing.
+      // better-auth only finds unexpired invitations to resend; for an expired one it creates a new
+      // invitation from the fields sent here. So send every field the original carries, and retire the
+      // expired row once its replacement exists. It reports failures in the result rather than throwing.
+      const isExpired = new Date(invitation.expiresAt) < new Date();
+      const teamIds = invitation.teamId?.split(",").filter(Boolean) ?? [];
+      const hasRestrictedSiteAccess = invitation.hasRestrictedSiteAccess ?? false;
       const { error } = await authClient.organization.inviteMember({
         email: invitation.email,
         // better-auth's client types only know its default roles; the server's access control defines ours.
         role: invitation.role as "owner" | "admin" | "member",
         organizationId: invitation.organizationId,
-        hasRestrictedSiteAccess: invitation.hasRestrictedSiteAccess ?? false,
+        hasRestrictedSiteAccess,
         siteIds: invitation.siteIds ?? [],
+        ...(hasRestrictedSiteAccess && invitation.siteRole ? { siteRole: invitation.siteRole } : {}),
+        ...(teamIds.length > 0 ? { teamId: teamIds.length === 1 ? teamIds[0] : teamIds } : {}),
         resend: true,
       });
       if (error) {
         throw new Error(error.message || t("Failed to resend invitation"));
+      }
+      if (isExpired) {
+        await authClient.organization.cancelInvitation({ invitationId: invitation.id });
       }
       toast.success(t("Invitation sent to {email}", { email: invitation.email }));
       onResent();

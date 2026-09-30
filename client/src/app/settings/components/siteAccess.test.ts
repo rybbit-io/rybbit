@@ -94,6 +94,19 @@ describe("accessBySite", () => {
     expect(scoped(access, 1)).toEqual([]);
   });
 
+  it("reads each direct grant's own role when a member's grants carry different roles", () => {
+    const sam = member("sam", "viewer", { siteIds: [1, 2] });
+    // The members endpoint reports siteRole null when grants differ, and lists each grant separately.
+    sam.siteAccess.siteGrants = [
+      { siteId: 1, role: "editor" },
+      { siteId: 2, role: "member" },
+    ];
+    const access = accessBySite(sites, [sam], []);
+
+    expect(scoped(access, 1)).toEqual([{ userId: "sam", role: "editor", sources: [{ type: "direct" }] }]);
+    expect(scoped(access, 2)).toEqual([{ userId: "sam", role: "member", sources: [{ type: "direct" }] }]);
+  });
+
   it("ignores direct grants left on a member who is no longer restricted", () => {
     const unrestricted = {
       ...member("sam", "viewer"),

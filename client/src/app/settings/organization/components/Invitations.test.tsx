@@ -173,6 +173,41 @@ describe("InvitationRow", () => {
     expect(mocks.refetch).toHaveBeenCalledTimes(1);
   });
 
+  it("recreates an expired invitation with its team and site role, then cancels the expired one", async () => {
+    const expired = {
+      ...invitation,
+      expiresAt: new Date("2020-01-01T00:00:00.000Z"),
+      teamId: "team-1,team-2",
+      hasRestrictedSiteAccess: true,
+      siteIds: [3, 4],
+      siteRole: "editor",
+    } as Invitation;
+    renderRow({ invitation: expired });
+    fireEvent.click(screen.getByRole("button", { name: "Resend invitation to ada@example.com" }));
+
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith("Invitation sent to ada@example.com"));
+    expect(mocks.inviteMember).toHaveBeenCalledWith({
+      email: "ada@example.com",
+      role: "member",
+      organizationId: "org-1",
+      hasRestrictedSiteAccess: true,
+      siteIds: [3, 4],
+      siteRole: "editor",
+      teamId: ["team-1", "team-2"],
+      resend: true,
+    });
+    expect(mocks.cancelInvitation).toHaveBeenCalledWith({ invitationId: "inv-1" });
+    expect(mocks.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves an unexpired invitation in place when resending it", async () => {
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Resend invitation to ada@example.com" }));
+
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalled());
+    expect(mocks.cancelInvitation).not.toHaveBeenCalled();
+  });
+
   it("reports a failed resend instead of claiming success", async () => {
     mocks.inviteMember.mockResolvedValue({ data: null, error: { message: "Member limit reached" } });
     renderRow();

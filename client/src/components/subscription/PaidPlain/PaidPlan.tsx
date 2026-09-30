@@ -128,8 +128,16 @@ export function PaidPlan() {
   };
 
   const getCancelConsequence = () => {
+    // Without another plan the organization drops to the legacy free tier, which only sites created
+    // before the free plan closed still get (FREE_PLAN_CUTOFF_DATE and DEFAULT_EVENT_LIMIT on the server).
     const after = t(
-      "After that this organization has no plan, and its sites stop collecting new events. Data already collected is kept."
+      "After that, unless the organization has another plan such as an AppSumo license, sites added since {cutoff} stop collecting new events and older sites drop to {limit} events a month. Data already collected is kept.",
+      {
+        cutoff: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
+          new Date("2026-02-13T00:00:00Z")
+        ),
+        limit: (3000).toLocaleString(locale),
+      }
     );
     if (!periodEnd) return after;
     if (activeSubscription.cancelAtPeriodEnd) {
