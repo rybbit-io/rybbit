@@ -77,16 +77,28 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
         member_id: z.string().min(1).describe("Membership record id from list_members (not the user id)"),
         has_restricted_site_access: z.boolean().describe("true = member sees only site_ids; false = member sees all org sites"),
         site_ids: z.array(z.number().int().positive()).describe("Sites the member may access when restricted"),
+        // Inlined like the other enums here (SITE_GRANT_ROLES in @rybbit/shared).
+        site_role: z
+          .enum(["editor", "member", "viewer"])
+          .nullable()
+          .optional()
+          .describe("Raises the member's role on site_ids only (never lowers it). null clears it; omit to keep what the member's grants already carry."),
       },
       outputSchema: memberSiteAccessOutput,
       annotations: idempotentWrite,
     },
-    guard(async ({ organization_id, member_id, has_restricted_site_access, site_ids }) =>
+    guard(async ({ organization_id, member_id, has_restricted_site_access, site_ids, site_role }) =>
       ok(
         await api.call(
           "PUT",
           `/organizations/${encodeURIComponent(organization_id)}/members/${encodeURIComponent(member_id)}/sites`,
-          { body: { hasRestrictedSiteAccess: has_restricted_site_access, siteIds: site_ids } }
+          {
+            body: {
+              hasRestrictedSiteAccess: has_restricted_site_access,
+              siteIds: site_ids,
+              ...(site_role !== undefined ? { siteRole: site_role } : {}),
+            },
+          }
         )
       )
     )

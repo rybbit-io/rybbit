@@ -351,7 +351,11 @@ export type AccessibleSite = SiteRow & { accessRole: OrgRole };
  * System-admin authority is not a membership and is not applied here; the
  * session layer adds it.
  */
-export async function resolveUserSites(userId: string): Promise<AccessibleSite[]> {
+export async function resolveUserSites(
+  userId: string,
+  // Only this organization's sites (and only the membership in it).
+  { organizationId }: { organizationId?: string } = {}
+): Promise<AccessibleSite[]> {
   const memberRecords = await db
     .select({
       id: member.id,
@@ -360,7 +364,11 @@ export async function resolveUserSites(userId: string): Promise<AccessibleSite[]
       hasRestrictedSiteAccess: member.hasRestrictedSiteAccess,
     })
     .from(member)
-    .where(eq(member.userId, userId));
+    .where(
+      organizationId
+        ? and(eq(member.userId, userId), eq(member.organizationId, organizationId))
+        : eq(member.userId, userId)
+    );
 
   const roleByOrgId = new Map<string, OrgRole>();
   const fullAccessOrgIds: string[] = [];
@@ -452,4 +460,95 @@ export async function resolveUserSites(userId: string): Promise<AccessibleSite[]
   }
 
   return accessible;
+}
+
+/**
+ * The role a user holds on one site through their membership in its
+ * organization, or null — the same answer {@link resolveUserSites} gives for
+ * that site, computed from that site alone: its organization, the one
+ * membership there, and the grants that name the site. For checks that must
+ * not trust a cached list (every permission above viewer) and so can't afford
+ * to rebuild the whole list per request.
+ *
+ */
+export async function resolveUserSiteRole(userId: string, siteId: number): Promise<OrgRole | null> {
+  const [site] = await db
+    .select({ organizationId: sites.organizationId })
+    .from(sites)
+    .where(eq(sites.siteId, siteId))
+    .limit(1);
+  if (!site?.organizationId) {
+    return null;
+  }
+  const organizationId = site.organizationId;
+
+  const membership = await getOrgMembership(userId, organizationId);
+  if (!membership || !isOrgRole(membership.role)) {
+    return null;
+  }
+  if (isAdminRole(membership.role)) {
+    return membership.role;
+  }
+
+  // The grants that concern this site: the member's own (recorded only while
+  // restricted), whether any of the organization's teams gates it, and the
+  // teams of this user that grant it.
+  const [explicit, gated, viaTeams] = await Promise.all([
+    membership.hasRestrictedSiteAccess
+      ? db
+          .select({ role: memberSiteAccess.role })
+          .from(memberSiteAccess)
+          .where(and(eq(memberSiteAccess.memberId, membership.id), eq(memberSiteAccess.siteId, siteId)))
+      : Promise.resolve([]),
+    db
+      .select({ teamId: teamSiteAccess.teamId })
+      .from(teamSiteAccess)
+      .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
+      .where(and(eq(teamSiteAccess.siteId, siteId), eq(team.organizationId, organizationId)))
+      .limit(1),
+    db
+      .select({ role: teamSiteAccess.role })
+      .from(teamSiteAccess)
+      .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
+      .innerJoin(teamMember, eq(teamMember.teamId, team.id))
+      .where(
+        and(eq(teamSiteAccess.siteId, siteId), eq(team.organizationId, organizationId), eq(teamMember.userId, userId))
+      ),
+  ]);
+
+  const grants = emptyGrants();
+  for (const grant of explicit) addGrant(grants.explicitSiteIds, siteId, grant.role);
+  for (const grant of viaTeams) addGrant(grants.userTeamSiteIds, siteId, grant.role);
+  if (gated.length > 0) grants.teamGatedSiteIds.add(siteId);
+
+  return memberSiteRole(grants, siteId, {
+    role: membership.role,
+    hasRestrictedSiteAccess: membership.hasRestrictedSiteAccess,
+  });
+}
+
+/**
+ * The role each grant gets when a member's site grants are rewritten. With a
+ * role requested (null included, meaning "no raise"), every grant gets it.
+ * With none requested, grants that stay keep the role they carried, and newly
+ * granted sites get the role all the old grants shared — so a caller that only
+ * changes which sites a member has never silently drops their site role.
+ * Read the old grants before deleting them, inside the same transaction.
+ */
+export async function grantRoleForRewrite(
+  executor: Pick<typeof db, "select">,
+  memberId: string,
+  requested: string | null | undefined
+): Promise<(siteId: number) => string | null> {
+  if (requested !== undefined) {
+    return () => requested;
+  }
+  const previous = await executor
+    .select({ siteId: memberSiteAccess.siteId, role: memberSiteAccess.role })
+    .from(memberSiteAccess)
+    .where(eq(memberSiteAccess.memberId, memberId));
+  const previousRoles = new Map(previous.map(grant => [grant.siteId, grant.role]));
+  const sharedRoles = new Set(previous.map(grant => grant.role));
+  const sharedRole = sharedRoles.size === 1 ? [...sharedRoles][0] : null;
+  return siteId => (previousRoles.has(siteId) ? previousRoles.get(siteId)! : sharedRole);
 }

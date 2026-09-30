@@ -5,7 +5,7 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, team, teamSiteAccess } from "../../db/postgres/schema.js";
 import { DEFAULT_EVENT_LIMIT, IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
-import { getSitesUserHasAccessTo } from "../../lib/auth-utils.js";
+import { getOrganizationSitesForCaller } from "../../lib/auth-utils.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { siteRequiresPlan } from "../../lib/subscriptionUtils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
@@ -24,11 +24,10 @@ export async function getSitesFromOrg(
 
     // The organization's sites the caller can reach, each with their role on
     // it — member and team restrictions already applied.
-    const [accessibleSites, orgInfo] = await Promise.all([
-      getSitesUserHasAccessTo(req, false, { fresh: true }),
+    const [sitesData, orgInfo] = await Promise.all([
+      getOrganizationSitesForCaller(req, organizationId),
       db.select().from(organization).where(eq(organization.id, organizationId)).limit(1),
     ]);
-    const sitesData = accessibleSites.filter(site => site.organizationId === organizationId);
 
     // Query session counts for the sites
     const sessionCountMap = new Map<number, number>();

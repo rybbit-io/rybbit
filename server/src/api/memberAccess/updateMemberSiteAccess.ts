@@ -4,7 +4,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 
 import { db } from "../../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, user } from "../../db/postgres/schema.js";
-import { siteIdsInOrganization } from "../../lib/access.js";
+import { grantRoleForRewrite, siteIdsInOrganization } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 interface UpdateMemberSiteAccessParams {
@@ -15,7 +15,7 @@ interface UpdateMemberSiteAccessParams {
 interface UpdateMemberSiteAccessBody {
   hasRestrictedSiteAccess: boolean;
   siteIds: number[];
-  /** Role on the granted sites (editor, member or viewer); omit or null for the member's organization role. */
+  /** Role on the granted sites (editor, member or viewer); null for none; omit to keep what the grants carry. */
   siteRole?: string | null;
 }
 
@@ -28,10 +28,10 @@ export async function updateMemberSiteAccess(
 ) {
   const { organizationId, memberId } = request.params;
   const { hasRestrictedSiteAccess, siteIds } = request.body;
-  const siteRole = request.body.siteRole ?? null;
+  const requestedSiteRole = request.body.siteRole;
   const currentUserId = request.user?.id;
 
-  if (siteRole !== null && !isSiteGrantRole(siteRole)) {
+  if (requestedSiteRole != null && !isSiteGrantRole(requestedSiteRole)) {
     return reply.status(400).send({ error: `siteRole must be one of: ${SITE_GRANT_ROLES.join(", ")}` });
   }
 
@@ -75,6 +75,7 @@ export async function updateMemberSiteAccess(
     }
 
     await db.transaction(async tx => {
+      const roleFor = await grantRoleForRewrite(tx, memberId, requestedSiteRole);
       await tx.update(member).set({ hasRestrictedSiteAccess }).where(eq(member.id, memberId));
       await tx.delete(memberSiteAccess).where(eq(memberSiteAccess.memberId, memberId));
 
@@ -83,7 +84,7 @@ export async function updateMemberSiteAccess(
           siteIds.map(siteId => ({
             memberId,
             siteId,
-            role: siteRole,
+            role: roleFor(siteId),
             createdBy: currentUserId || null,
           }))
         );

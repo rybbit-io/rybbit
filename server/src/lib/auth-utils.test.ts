@@ -53,6 +53,7 @@ import {
   getUserHasAdminAccessToSite,
   getRequestIdentity,
   getUserIdFromRequest,
+  getOrganizationSitesForCaller,
   getUserHasSitePermission,
   getUserOrgRole,
   getUserSiteRole,
@@ -66,6 +67,7 @@ import {
   isOrgOwner,
   memberCanAccessSite,
   resolveMemberSiteGrants,
+  resolveUserSiteRole,
   restrictedMemberSiteIds,
   siteIdsInOrganization,
 } from "./access.js";
@@ -798,6 +800,68 @@ describe("getUserHasSitePermission", () => {
 
     expect(await getUserHasSitePermission(reqFor("user_owner"), 13, "gsc:write")).toBe(false);
     expect(await getUserHasSitePermission(reqFor("user_owner"), 13, "analytics:read")).toBe(true);
+  });
+});
+
+describe("resolving one site agrees with resolving the list", () => {
+  it("gives every user the same role on every site either way", async () => {
+    // A spread of shapes: owner, unrestricted member on a team (team role
+    // raised to editor), restricted viewer with a raised and a plain grant, an
+    // unknown role, a stale grant from an organization the site has left.
+    await db.update(teamSiteAccess).set({ role: "editor" }).where(eq(teamSiteAccess.teamId, "team_bbc"));
+    await db.insert(member).values([
+      {
+        id: "m_v",
+        organizationId: ORG,
+        userId: "user_v",
+        role: "viewer",
+        createdAt: NOW,
+        hasRestrictedSiteAccess: true,
+      },
+      { id: "m_odd", organizationId: ORG, userId: "user_odd2", role: "superuser", createdAt: NOW },
+      { id: "m_other", organizationId: "org_other", userId: "user_v", role: "viewer", createdAt: NOW },
+    ]);
+    await db.insert(memberSiteAccess).values([
+      { memberId: "m_v", siteId: 3, role: "editor" },
+      { memberId: "m_v", siteId: 13, role: null },
+      { memberId: "m_other", siteId: 4, role: "editor" },
+    ]);
+
+    for (const userId of ["user_owner", "user_peer", "user_v", "user_odd2", "user_nobody"]) {
+      invalidateSitesAccessCache(userId);
+      const listed = await getSitesUserHasAccessTo(reqFor(userId));
+      for (let siteId = 1; siteId <= 13; siteId++) {
+        const fromList = listed.find(site => site.siteId === siteId)?.accessRole ?? null;
+        expect(await resolveUserSiteRole(userId, siteId), `${userId} on site ${siteId}`).toBe(fromList);
+      }
+    }
+  });
+});
+
+describe("getOrganizationSitesForCaller", () => {
+  it("returns only that organization's sites the caller reaches, with their roles", async () => {
+    await db.insert(sites).values({
+      id: "hex_other_org",
+      siteId: 700,
+      name: "other",
+      domain: "other.example.com",
+      organizationId: "org_other",
+    });
+    await db
+      .insert(member)
+      .values({
+        id: "m_owner_other",
+        organizationId: "org_other",
+        userId: "user_owner",
+        role: "owner",
+        createdAt: NOW,
+      });
+
+    const peerSites = await getOrganizationSitesForCaller(reqFor("user_peer"), ORG);
+    expect(peerSites.map(site => site.siteId).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13]);
+    const ownerSites = await getOrganizationSitesForCaller(reqFor("user_owner"), ORG);
+    expect(ownerSites).toHaveLength(13);
+    expect(ownerSites.every(site => site.organizationId === ORG && site.accessRole === "owner")).toBe(true);
   });
 });
 

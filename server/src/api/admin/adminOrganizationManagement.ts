@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { db } from "../../db/postgres/postgres.js";
 import { member, memberSiteAccess, organization, sites, user } from "../../db/postgres/schema.js";
-import { siteIdsInOrganization } from "../../lib/access.js";
+import { grantRoleForRewrite, siteIdsInOrganization } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 import { APPSUMO_TIER_LIMITS, getStripePrices } from "../../lib/const.js";
 import { usageService } from "../../services/usageService.js";
@@ -253,21 +253,7 @@ export async function updateAdminOrganizationMember(
     }
 
     await db.transaction(async tx => {
-      // Unless a site role is given, grants that stay keep the role they
-      // carried, and newly granted sites get the role all the old ones shared.
-      const previous = await tx
-        .select({ siteId: memberSiteAccess.siteId, role: memberSiteAccess.role })
-        .from(memberSiteAccess)
-        .where(eq(memberSiteAccess.memberId, found.memberId));
-      const previousRoles = new Map(previous.map(grant => [grant.siteId, grant.role]));
-      const sharedRoles = new Set(previous.map(grant => grant.role));
-      const sharedRole = sharedRoles.size === 1 ? [...sharedRoles][0] : null;
-      const roleFor = (siteId: number) =>
-        value.siteRole !== undefined
-          ? value.siteRole
-          : previousRoles.has(siteId)
-            ? previousRoles.get(siteId)!
-            : sharedRole;
+      const roleFor = await grantRoleForRewrite(tx, found.memberId, value.siteRole);
 
       await tx
         .update(member)

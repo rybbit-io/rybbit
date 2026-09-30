@@ -29,7 +29,7 @@ export async function deleteSegment(
       return reply.status(404).send({ error: "Segment not found" });
     }
 
-    const actor = await resolveSegmentActor(request, siteId, loaded.organizationId);
+    const actor = await resolveSegmentActor(request, siteId, loaded.organizationId, { forWrite: true });
     if (!canReadSegment(loaded.segment, actor)) {
       return reply.status(404).send({ error: "Segment not found" });
     }

@@ -4,7 +4,14 @@ import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { sites, user } from "../db/postgres/schema.js";
 import { higherRole, isAdminRole, PERMISSIONS, roleHasPermission, type OrgRole, type Permission } from "@rybbit/shared";
-import { effectiveOrgRole, getOrgMembership, resolveUserSites, type AccessibleSite } from "./access.js";
+import {
+  effectiveOrgRole,
+  getOrgMembership,
+  resolveUserSites,
+  resolveUserSiteRole,
+  siteIdsInOrganization,
+  type AccessibleSite,
+} from "./access.js";
 import type { RateLimitDecision } from "./apiRateLimit.js";
 import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
@@ -204,16 +211,11 @@ function getSessionUserSites(req: FastifyRequest, userId: string): Promise<Acces
  * skips this worker's short-lived cache — for listings, where a site created,
  * deleted or granted moments ago (possibly through another worker) must show.
  */
-export async function getSitesUserHasAccessTo(
-  req: FastifyRequest,
-  adminOnly = false,
-  { fresh = false }: { fresh?: boolean } = {}
-): Promise<AccessibleSite[]> {
+export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = false): Promise<AccessibleSite[]> {
   let accessible: AccessibleSite[];
 
   // Organization-owned API key (attached by the auth guards).
   if (!req.user?.id && req.apiKeyOrganizationId) {
-    if (fresh) sitesAccessCache.del(`org:${req.apiKeyOrganizationId}`);
     accessible = await getSitesForOrganization(req.apiKeyOrganizationId);
   } else {
     const session = req.user?.id ? null : await getSessionFromReq(req);
@@ -221,7 +223,6 @@ export async function getSitesUserHasAccessTo(
     if (!userId) {
       return [];
     }
-    if (fresh) invalidateSitesAccessCache(userId);
     accessible = req.bearerAuth ? await getBearerUserSites(userId) : await getSessionUserSites(req, userId);
   }
 
@@ -279,14 +280,22 @@ async function resolveBearerUserRole(
   options: { organizationId?: string; siteId?: string | number; fresh?: boolean }
 ): Promise<{ valid: boolean; role: string | null; userId?: string }> {
   const denied = { valid: false, role: null };
-  if (options.fresh) {
-    invalidateSitesAccessCache(userId);
-  }
 
   if (options.siteId !== undefined && options.siteId !== null && options.siteId !== "") {
     const siteId = Number(options.siteId);
     if (!Number.isInteger(siteId)) {
       return denied;
+    }
+    if (options.fresh) {
+      // Decided on this one site, straight from the database.
+      const [role, inOrganization] = await Promise.all([
+        resolveUserSiteRole(userId, siteId),
+        options.organizationId ? siteIdsInOrganization([siteId], options.organizationId) : null,
+      ]);
+      if (!role || (inOrganization && inOrganization.length === 0)) {
+        return denied;
+      }
+      return { valid: true, role, userId };
     }
     const findSite = (list: AccessibleSite[]) => list.find(site => site.siteId === siteId);
     let site = findSite(await getBearerUserSites(userId));
@@ -447,20 +456,88 @@ export async function getSiteIsPubliclyReadable(req: FastifyRequest, siteId: str
 }
 
 /**
+ * One organization's sites the caller can reach, each with their role on it,
+ * read straight from the database (no cache) — for listings, where a site
+ * created, deleted, moved or granted moments ago, possibly through another
+ * worker, must show correctly, and for raw-data access that must not outlive
+ * a revoked grant. Loads only that organization.
+ */
+export async function getOrganizationSitesForCaller(
+  req: FastifyRequest,
+  organizationId: string
+): Promise<AccessibleSite[]> {
+  if (!req.user?.id && req.apiKeyOrganizationId) {
+    if (req.apiKeyOrganizationId !== organizationId) {
+      return [];
+    }
+    invalidateOrganizationSitesCache(organizationId);
+    return getSitesForOrganization(organizationId);
+  }
+
+  const userId = req.user?.id ?? (await getSessionFromReq(req))?.user.id;
+  if (!userId) {
+    return [];
+  }
+  const [memberSites, isSystemAdmin] = await Promise.all([
+    resolveUserSites(userId, { organizationId }),
+    req.bearerAuth ? false : getIsUserAdmin(req),
+  ]);
+  if (!isSystemAdmin) {
+    return memberSites;
+  }
+  const memberRoleBySite = new Map(memberSites.map(site => [site.siteId, site.accessRole]));
+  const orgSites = await db.select().from(sites).where(eq(sites.organizationId, organizationId));
+  return orgSites.map(site => ({
+    ...site,
+    accessRole: higherRole(memberRoleBySite.get(site.siteId), "admin") ?? "admin",
+  }));
+}
+
+/**
+ * The role the caller holds on one site, straight from the database: the
+ * `fresh` path of {@link getUserSiteRole}. Reads only that site's
+ * organization, membership and grants.
+ */
+async function resolveCallerSiteRole(req: FastifyRequest, siteId: number): Promise<OrgRole | null> {
+  if (!req.user?.id && req.apiKeyOrganizationId) {
+    const [inOrganization] = await siteIdsInOrganization([siteId], req.apiKeyOrganizationId);
+    return inOrganization === undefined ? null : "admin";
+  }
+
+  const userId = req.user?.id ?? (await getSessionFromReq(req))?.user.id;
+  if (!userId) {
+    return null;
+  }
+  const [role, isSystemAdmin] = await Promise.all([
+    resolveUserSiteRole(userId, siteId),
+    req.bearerAuth ? false : getIsUserAdmin(req),
+  ]);
+  if (!isSystemAdmin) {
+    return role;
+  }
+  // System admins act as admin on every existing site.
+  const [site] = await db.select({ siteId: sites.siteId }).from(sites).where(eq(sites.siteId, siteId)).limit(1);
+  return site ? (higherRole(role, "admin") ?? "admin") : null;
+}
+
+/**
  * The role the caller holds on a site, or null when they cannot reach it.
  * `fresh` reads it from the database instead of this worker's short-lived
  * cache, so a demotion, removal or site move made moments ago (possibly on
- * another worker) already applies.
+ * another worker) already applies; it looks at that one site only.
  */
 export async function getUserSiteRole(
   req: FastifyRequest,
   siteId: string | number,
   { fresh = false }: { fresh?: boolean } = {}
 ): Promise<OrgRole | null> {
+  if (fresh) {
+    const id = Number(siteId);
+    return Number.isInteger(id) ? resolveCallerSiteRole(req, id) : null;
+  }
   const find = (accessible: AccessibleSite[]) =>
     accessible.find(site => site.siteId === Number(siteId))?.accessRole ?? null;
-  const role = find(await getSitesUserHasAccessTo(req, false, { fresh }));
-  if (fresh) return role;
+  const role = find(await getSitesUserHasAccessTo(req));
   if (role) return role;
 
   // A claim may have committed in another worker while this one still holds

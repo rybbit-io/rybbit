@@ -171,6 +171,32 @@ describe("updateMemberSiteAccess", () => {
     expect(await rows(`SELECT site_id, role FROM member_site_access`)).toEqual([{ site_id: 2, role: "editor" }]);
   });
 
+  it("keeps the role the grants carry when the request doesn't mention it", async () => {
+    await (pgClient as any).exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'membership_member'`);
+    const reply = replyStub();
+
+    // Site 1 stays, site 2 is new: both carry the member's existing site role.
+    await updateMemberSiteAccess(requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [1, 2] } }), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(await rows(`SELECT site_id, role FROM member_site_access ORDER BY site_id`)).toEqual([
+      { site_id: 1, role: "editor" },
+      { site_id: 2, role: "editor" },
+    ]);
+  });
+
+  it("clears the site role when the request sends null", async () => {
+    await (pgClient as any).exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'membership_member'`);
+    const reply = replyStub();
+
+    await updateMemberSiteAccess(
+      requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [1], siteRole: null } }),
+      reply
+    );
+
+    expect(await rows(`SELECT site_id, role FROM member_site_access`)).toEqual([{ site_id: 1, role: null }]);
+  });
+
   it("refuses a grant role above editor", async () => {
     const reply = replyStub();
 

@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { getSitesUserHasAccessTo } from "../../lib/auth-utils.js";
+import { getOrganizationSitesForCaller } from "../../lib/auth-utils.js";
 import { OpenRouterError, callOpenRouterWithMetadata, getOpenRouterModel } from "../../lib/openrouter.js";
 import { MAX_CUSTOM_QUERY_LENGTH, normalizeCustomQuery, validateScopedQuery } from "./utils/customQueryValidation.js";
 import { EVENT_SCHEMA } from "./utils/eventSchema.js";
@@ -68,7 +68,7 @@ export async function generateCustomQuery(
 
   // Read fresh: raw event access must not outlive a site move or a revoked
   // grant by even the few seconds the per-worker cache holds.
-  const userSites = await getSitesUserHasAccessTo(request, false, { fresh: true });
+  const userSites = await getOrganizationSitesForCaller(request, request.params.organizationId);
   const siteIds = userSites
     .filter(site => site.organizationId === request.params.organizationId)
     .map(site => site.siteId);

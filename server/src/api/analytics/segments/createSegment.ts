@@ -24,7 +24,7 @@ export async function createSegment(
 
     // The route guard requires segments:write on the site; the actor is still
     // resolved because org-wide scope needs segments:manage in the organization.
-    const actor = await resolveSegmentActor(request, siteId, organizationId);
+    const actor = await resolveSegmentActor(request, siteId, organizationId, { forWrite: true });
     if (!actor.hasSiteAccess) {
       return reply.status(403).send({ error: "Forbidden" });
     }

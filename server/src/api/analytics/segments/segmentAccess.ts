@@ -40,7 +40,9 @@ export async function getSiteOrganizationId(siteId: number): Promise<string | nu
 export async function resolveSegmentActor(
   request: FastifyRequest,
   siteId: number,
-  organizationId: string
+  organizationId: string,
+  // Writes decide on the role as it stands now, not this worker's cached copy.
+  { forWrite = false }: { forWrite?: boolean } = {}
 ): Promise<SegmentActor> {
   // Organization-owned API keys carry org-admin authority over their own
   // organization's sites and nothing else (see getSitesUserHasAccessTo).
@@ -55,7 +57,7 @@ export async function resolveSegmentActor(
   }
 
   const [siteRole, orgRole] = await Promise.all([
-    getUserSiteRole(request, siteId),
+    getUserSiteRole(request, siteId, { fresh: forWrite }),
     getUserOrgRole(request, organizationId),
   ]);
 
