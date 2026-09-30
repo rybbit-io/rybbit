@@ -1,5 +1,6 @@
 "use client";
 
+import type { OrgRole } from "@rybbit/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -25,17 +26,26 @@ import { Alert } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { authClient } from "@/lib/auth";
 import { IS_CLOUD } from "@/lib/const";
+import { isAdminRole } from "@/lib/roles";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 
+import { RoleSelect } from "./RoleSelect";
 import { SiteAccessMultiSelect } from "./SiteAccessMultiSelect";
 
 interface InviteMemberDialogProps {
   organizationId: string;
   onSuccess: () => void;
   memberCount: number;
+  /** Roles the current user may give, from the server. */
+  assignableRoles: OrgRole[];
 }
 
-export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: InviteMemberDialogProps) {
+export function InviteMemberDialog({
+  organizationId,
+  onSuccess,
+  memberCount,
+  assignableRoles,
+}: InviteMemberDialogProps) {
   const { data: subscription } = useStripeSubscription();
   const queryClient = useQueryClient();
   const t = useExtracted();
@@ -51,7 +61,8 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
   const teams = teamsData?.teams || [];
 
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "member" | "owner">("member");
+  const [role, setRole] = useState<OrgRole>("member");
+  const isRestrictable = !isAdminRole(role);
   const [restrictSiteAccess, setRestrictSiteAccess] = useState(false);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("none");
@@ -60,10 +71,11 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
 
   const inviteMutation = useMutation({
     mutationFn: async () => {
-      const hasSiteRestrictions = role === "member" && restrictSiteAccess;
+      const hasSiteRestrictions = isRestrictable && restrictSiteAccess;
       const result = await authClient.organization.inviteMember({
         email,
-        role,
+        // better-auth's client types only know its default roles; the server's access control defines ours.
+        role: role as "owner" | "admin" | "member",
         organizationId,
         ...(selectedTeamId && selectedTeamId !== "none" ? { teamId: selectedTeamId } : {}),
         hasRestrictedSiteAccess: hasSiteRestrictions,
@@ -101,7 +113,7 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
       return;
     }
 
-    if (role === "member" && restrictSiteAccess && selectedSiteIds.length === 0) {
+    if (isRestrictable && restrictSiteAccess && selectedSiteIds.length === 0) {
       setError(t("Please select at least one site or disable site restrictions"));
       return;
     }
@@ -153,28 +165,21 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
           </div>
           <div className="grid gap-2">
             <Label htmlFor="role">{t("Role")}</Label>
-            <Select
+            <RoleSelect
+              id="role"
               value={role}
+              roles={assignableRoles}
               onValueChange={value => {
-                setRole(value as "admin" | "member" | "owner");
-                if (value !== "member") {
+                setRole(value);
+                if (isAdminRole(value)) {
                   setRestrictSiteAccess(false);
                   setSelectedSiteIds([]);
                 }
               }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("Select a role")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">{t("Owner")}</SelectItem>
-                <SelectItem value="admin">{t("Admin")}</SelectItem>
-                <SelectItem value="member">{t("Member")}</SelectItem>
-              </SelectContent>
-            </Select>
+            />
           </div>
 
-          {role === "member" && (
+          {isRestrictable && (
             <div className="grid gap-3">
               <div className="flex items-center space-x-2">
                 <Checkbox

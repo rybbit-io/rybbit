@@ -10,8 +10,8 @@ import { UserInfo, UserSessionCountResponse } from "../../../../../api/analytics
 import { ChannelIcon, extractDomain, getDisplayName } from "../../../../../components/Channel";
 import { Favicon } from "../../../../../components/Favicon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
+import { useCanOnSite } from "../../../../../hooks/usePermissions";
 import { useConfigs } from "../../../../../lib/configs";
-import { userStore } from "../../../../../lib/userStore";
 import { PerformanceMetric } from "../../../performance/performanceStore";
 import {
   formatMetricValue,
@@ -38,7 +38,7 @@ const VITALS_ORDER: PerformanceMetric[] = ["lcp", "cls", "inp", "fcp", "ttfb"];
 export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, getRegionName }: UserSidebarProps) {
   const t = useExtracted();
   const { configs } = useConfigs();
-  const { user } = userStore();
+  const canEditTraits = useCanOnSite("users:write");
   const [traitsOpen, setTraitsOpen] = useState(false);
   const isIdentified = !!data?.identified_user_id;
 
@@ -194,12 +194,12 @@ export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, 
       )}
 
       {/* User Traits (identified users only) */}
-      {isIdentified && data && (customTraits.length > 0 || !!user) && (
+      {isIdentified && data && (customTraits.length > 0 || canEditTraits) && (
         <SidebarCard>
           <SidebarHeader
             title={t("User Traits")}
             right={
-              user ? (
+              canEditTraits ? (
                 <Button
                   variant="ghost"
                   size="smIcon"

@@ -51,10 +51,10 @@ const flag: FeatureFlag = {
   stats: [],
 };
 
-function renderTable() {
+function renderTable(canWrite = true) {
   render(
     <TooltipProvider>
-      <FeatureFlagTable flags={[flag]} />
+      <FeatureFlagTable flags={[flag]} canWrite={canWrite} />
     </TooltipProvider>
   );
 }
@@ -84,6 +84,15 @@ afterEach(() => {
 });
 
 describe("FeatureFlagTable", () => {
+  it("is read-only without flags:write: no switch and no actions, but the state still shows", () => {
+    renderTable(false);
+
+    expect(screen.getByText("new-checkout")).toBeTruthy();
+    expect(screen.getByText("On")).toBeTruthy();
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Actions" })).toBeNull();
+  });
+
   it("copies a flag's key from its row", async () => {
     mocks.writeText.mockResolvedValue(undefined);
     renderTable();

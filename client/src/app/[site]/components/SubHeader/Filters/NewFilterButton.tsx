@@ -4,12 +4,10 @@ import { Filter, FilterParameter, Segment } from "@rybbit/shared";
 import { ListFilterPlus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useRef, useState } from "react";
-import { useUserOrganizations } from "../../../../../api/admin/hooks/useOrganizations";
-import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Button } from "../../../../../components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
-import { authClient } from "../../../../../lib/auth";
+import { useCanOnSite } from "../../../../../hooks/usePermissions";
 import { addFilter, useStore } from "../../../../../lib/store";
 import { FilterPicker } from "./FilterPicker";
 import { SegmentDialog } from "./SegmentDialog";
@@ -25,10 +23,8 @@ type DialogState = { segment?: Segment; initialFilters?: Filter[] } | null;
  */
 export function NewFilterButton({ availableFilters }: { availableFilters?: FilterParameter[] }) {
   const t = useExtracted();
-  const session = authClient.useSession();
   const { site, privateKey, filters } = useStore();
-  const { data: siteInfo } = useGetSite(site, { enabled: !!session.data });
-  const { data: organizations } = useUserOrganizations();
+  const canWriteSegments = useCanOnSite("segments:write", site);
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("filters");
@@ -36,10 +32,9 @@ export function NewFilterButton({ availableFilters }: { availableFilters?: Filte
   const pendingRef = useRef<() => Filter | null>(() => null);
   const [dialog, setDialog] = useState<DialogState>(null);
 
-  // A signed-in visitor on someone else's public site is not a member; the
-  // private-link view is read-only by design even for members.
-  const isMember = !!siteInfo?.organizationId && !!organizations?.some(org => org.id === siteInfo.organizationId);
-  const canWrite = !!session.data && !privateKey && isMember;
+  // Public viewers get no permissions from the server; the private-link view
+  // is read-only by design even for members.
+  const canWrite = !privateKey && canWriteSegments;
 
   const resetPicker = () => {
     pendingRef.current = () => null;

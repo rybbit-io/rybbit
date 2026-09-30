@@ -25,6 +25,7 @@ import { Button } from "../../../../components/ui/button";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { toast } from "../../../../components/ui/sonner";
 import { cn } from "../../../../lib/utils";
+import { useCanOnSite } from "../../../../hooks/usePermissions";
 import { useSetPageTitle } from "../../../../hooks/useSetPageTitle";
 import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../../../lib/store";
 import { DashboardCardEditor } from "../components/DashboardCardEditor";
@@ -47,6 +48,7 @@ export default function DashboardDetailPage() {
   const { time, setTime } = useStore();
   const { data: dashboard, isLoading } = useGetDashboard(siteId, dashboardId);
   const updateDashboard = useUpdateDashboard();
+  const canWrite = useCanOnSite("dashboards:write", siteId);
 
   const [editMode, setEditMode] = useState(false);
   const [name, setName] = useState<string | null>(null);
@@ -393,12 +395,12 @@ export default function DashboardDetailPage() {
                 Save
               </Button>
             </>
-          ) : (
+          ) : canWrite ? (
             <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
               <Pencil className="h-4 w-4" />
               Edit
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -411,10 +413,12 @@ export default function DashboardDetailPage() {
               range above and can be dragged and resized.
             </p>
           </div>
-          <Button variant="outline" onClick={handleAddCard}>
-            <Plus className="h-4 w-4" />
-            Add a card
-          </Button>
+          {canWrite && (
+            <Button variant="outline" onClick={handleAddCard}>
+              <Plus className="h-4 w-4" />
+              Add a card
+            </Button>
+          )}
         </div>
       ) : (
         <div

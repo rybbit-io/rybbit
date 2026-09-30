@@ -19,10 +19,12 @@ import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
 import { authClient } from "../../../../lib/auth";
+import { useRoleInfo } from "../../../../lib/roles";
 
 interface InvitationsProps {
   organizationId: string;
-  isOwner: boolean;
+  /** Cancel pending invitations (members:manage). */
+  canManage: boolean;
 }
 
 function CancelInvitationButton({
@@ -94,8 +96,9 @@ function CancelInvitationButton({
   );
 }
 
-export function Invitations({ organizationId, isOwner }: InvitationsProps) {
+export function Invitations({ organizationId, canManage }: InvitationsProps) {
   const t = useExtracted();
+  const roleInfo = useRoleInfo();
 
   const {
     data: invitations,
@@ -117,7 +120,7 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
               <TableHead>{t("Role")}</TableHead>
               <TableHead>{t("Status")}</TableHead>
               <TableHead>{t("Expires")}</TableHead>
-              {isOwner && <TableHead className="w-12">{t("Actions")}</TableHead>}
+              {canManage && <TableHead className="w-12">{t("Actions")}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -137,7 +140,7 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
                   <TableCell>
                     <div className="h-4 bg-muted animate-pulse rounded w-20"></div>
                   </TableCell>
-                  {isOwner && (
+                  {canManage && (
                     <TableCell>
                       <div className="h-8 bg-muted animate-pulse rounded w-16 ml-auto"></div>
                     </TableCell>
@@ -150,20 +153,14 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
                   pendingInvitations.map(invitation => (
                     <TableRow key={invitation.id}>
                       <TableCell>{invitation.email}</TableCell>
-                      <TableCell className="capitalize">
-                        {invitation.role === "admin"
-                          ? t("Admin")
-                          : invitation.role === "owner"
-                            ? t("Owner")
-                            : t("Member")}
-                      </TableCell>
+                      <TableCell className="capitalize">{roleInfo(invitation.role).label}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{t("Pending")}</Badge>
                       </TableCell>
                       <TableCell>
                         {DateTime.fromJSDate(new Date(invitation.expiresAt)).toLocaleString(DateTime.DATE_SHORT)}
                       </TableCell>
-                      {isOwner && (
+                      {canManage && (
                         <TableCell className="text-right">
                           {invitation.status === "pending" && (
                             <CancelInvitationButton invitation={invitation} onCancelled={refetchInvitations} />
@@ -174,7 +171,7 @@ export function Invitations({ organizationId, isOwner }: InvitationsProps) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={isOwner ? 5 : 4} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={canManage ? 5 : 4} className="text-center py-6 text-muted-foreground">
                       {t("No pending invitations")}
                     </TableCell>
                   </TableRow>

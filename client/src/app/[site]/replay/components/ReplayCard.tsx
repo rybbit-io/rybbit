@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
+import { useCanOnSite } from "../../../../hooks/usePermissions";
 import { useDeleteSessionReplay } from "../../../../api/analytics/hooks/sessionReplay/useDeleteSessionReplay";
 import { Avatar } from "../../../../components/Avatar";
 import { IdentifiedBadge } from "../../../../components/IdentifiedBadge";
@@ -74,6 +75,7 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const deleteSessionReplay = useDeleteSessionReplay();
+  const canDelete = useCanOnSite("replay:delete");
   const startTime = DateTime.fromSQL(replay.start_time, { zone: "utc" }).setZone(getTimezone());
   const duration = replay.duration_ms ? Math.ceil(replay.duration_ms / 1000) : null;
   const isSelected = sessionId === replay.session_id;
@@ -130,45 +132,47 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
         </span>
         {replay.identified_user_id && <IdentifiedBadge traits={replay.traits} userId={replay.identified_user_id} />}
 
-        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={t("Delete Session Replay")}
-              className="ml-auto -mr-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-6 w-6 p-0 text-neutral-500 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
-              onClick={e => {
-                e.stopPropagation();
-                setIsDialogOpen(true);
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent onClick={e => e.stopPropagation()}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{t("Delete Session Replay")}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {t(
-                  "Are you sure you want to delete this session replay? This action cannot be undone and will permanently remove the replay data."
-                )}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={e => e.stopPropagation()}>{t("Cancel")}</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
+        {canDelete && (
+          <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t("Delete Session Replay")}
+                className="ml-auto -mr-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-6 w-6 p-0 text-neutral-500 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
                 onClick={e => {
                   e.stopPropagation();
-                  handleDelete();
+                  setIsDialogOpen(true);
                 }}
-                disabled={deleteSessionReplay.isPending}
               >
-                {deleteSessionReplay.isPending ? t("Deleting...") : t("Delete")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent onClick={e => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("Delete Session Replay")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t(
+                    "Are you sure you want to delete this session replay? This action cannot be undone and will permanently remove the replay data."
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={e => e.stopPropagation()}>{t("Cancel")}</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleDelete();
+                  }}
+                  disabled={deleteSessionReplay.isPending}
+                >
+                  {deleteSessionReplay.isPending ? t("Deleting...") : t("Delete")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* Page path */}

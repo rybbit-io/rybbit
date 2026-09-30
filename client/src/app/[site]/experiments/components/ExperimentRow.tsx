@@ -39,7 +39,16 @@ function MetaChip({ icon, children }: { icon: ReactNode; children: ReactNode }) 
   );
 }
 
-export function ExperimentRow({ experiment, experiments }: { experiment: Experiment; experiments: Experiment[] }) {
+export function ExperimentRow({
+  experiment,
+  experiments,
+  canWrite,
+}: {
+  experiment: Experiment;
+  experiments: Experiment[];
+  /** experiments:write: start, pause, complete, edit and delete. Without it the row is read-only. */
+  canWrite: boolean;
+}) {
   const t = useExtracted();
   const deleteMutation = useDeleteExperiment();
   const updateMutation = useUpdateExperiment();
@@ -121,58 +130,60 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {experiment.status !== "running" && experiment.status !== "completed" && (
-            <Button size="sm" onClick={() => setStatus("running")} disabled={updateMutation.isPending}>
-              <Play className="h-3.5 w-3.5" />
-              {t("Start")}
-            </Button>
-          )}
-          {experiment.status === "running" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setStatus("paused")}
-              disabled={updateMutation.isPending}
-            >
-              <Pause className="h-3.5 w-3.5" />
-              {t("Pause")}
-            </Button>
-          )}
-          {experiment.status !== "completed" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setCompleteOpen(true)}
-              disabled={updateMutation.isPending}
-            >
-              <Square className="h-3.5 w-3.5" />
-              {t("Complete")}
-            </Button>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="smIcon" variant="ghost" aria-label={t("Actions")}>
-                <MoreHorizontal className="h-4 w-4" />
+        {canWrite && (
+          <div className="flex shrink-0 items-center gap-2">
+            {experiment.status !== "running" && experiment.status !== "completed" && (
+              <Button size="sm" onClick={() => setStatus("running")} disabled={updateMutation.isPending}>
+                <Play className="h-3.5 w-3.5" />
+                {t("Start")}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onSelect={() => setEditOpen(true)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                {t("Edit")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={deleteMutation.isPending}
-                onSelect={() => setDeleteOpen(true)}
-                className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+            )}
+            {experiment.status === "running" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setStatus("paused")}
+                disabled={updateMutation.isPending}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t("Delete")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                <Pause className="h-3.5 w-3.5" />
+                {t("Pause")}
+              </Button>
+            )}
+            {experiment.status !== "completed" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setCompleteOpen(true)}
+                disabled={updateMutation.isPending}
+              >
+                <Square className="h-3.5 w-3.5" />
+                {t("Complete")}
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="smIcon" variant="ghost" aria-label={t("Actions")}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {t("Edit")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={deleteMutation.isPending}
+                  onSelect={() => setDeleteOpen(true)}
+                  className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t("Delete")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       <div className="p-4">

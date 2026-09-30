@@ -9,6 +9,7 @@ import { updateSiteConfig } from "../../../../api/admin/endpoints";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Alert, AlertDescription, AlertTitle } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
+import { useCanOnSite } from "../../../../hooks/usePermissions";
 
 export function EnableWebVitals() {
   const t = useExtracted();
@@ -16,6 +17,7 @@ export function EnableWebVitals() {
   const siteId = Number(params.site);
   const { data: siteMetadata, refetch } = useGetSite(siteId);
   const [isEnabling, setIsEnabling] = useState(false);
+  const canConfigure = useCanOnSite("sites:configure", siteId);
 
   if (siteMetadata?.webVitals) return null;
 
@@ -47,9 +49,13 @@ export function EnableWebVitals() {
               {t("Web Vitals collection provides Core Web Vitals metrics like LCP, CLS, and INP.")} <b>{t("Note:")}</b>{" "}
               {t("Enabling Web Vitals will increase your event usage.")}
             </div>
-            <Button size="sm" variant="success" loading={isEnabling} onClick={enable}>
-              {t("Enable")}
-            </Button>
+            {canConfigure ? (
+              <Button size="sm" variant="success" loading={isEnabling} onClick={enable}>
+                {t("Enable")}
+              </Button>
+            ) : (
+              <p>{t("Ask a site admin to enable it.")}</p>
+            )}
           </AlertDescription>
         </div>
       </div>

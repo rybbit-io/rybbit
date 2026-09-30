@@ -9,6 +9,7 @@ import { BucketSelection } from "../../../components/BucketSelection";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { NothingFound } from "../../../components/NothingFound";
 import { Pagination } from "../../../components/pagination";
+import { useCanOnSite } from "../../../hooks/usePermissions";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { useStore } from "../../../lib/store";
 import { GOALS_PAGE_FILTERS } from "../../../lib/filterGroups";
@@ -71,6 +72,7 @@ export default function GoalsPage() {
   useSetPageTitle("Goals");
 
   const { site } = useStore();
+  const canWrite = useCanOnSite("goals:write");
   const [searchQuery, setSearchQuery] = useState("");
   const [pagination, setPagination] = useState({
     pageIndex: 0, // TablePagination uses 0-based indexing
@@ -181,7 +183,7 @@ export default function GoalsPage() {
             />
             <BucketSelection size="default" />
           </div>
-          <CreateGoalButton siteId={Number(site)} />
+          {canWrite && <CreateGoalButton siteId={Number(site)} />}
         </div>
         {/* if site is not loaded, show skeleton */}
         {isLoading || !site ? (
@@ -202,7 +204,7 @@ export default function GoalsPage() {
                 <ExternalLink href="https://rybbit.com/docs/goals">{t("Learn more")}</ExternalLink>
               </span>
             }
-            action={<CreateGoalButton siteId={Number(site)} />}
+            action={canWrite ? <CreateGoalButton siteId={Number(site)} /> : undefined}
           />
         ) : filteredGoals.length === 0 ? (
           <NothingFound
@@ -215,6 +217,7 @@ export default function GoalsPage() {
             <GoalsList
               goals={filteredGoals}
               siteId={Number(site)}
+              canWrite={canWrite}
               timeSeriesByGoal={timeSeriesByGoal}
               isLoadingTimeSeries={isLoadingGoalTimeSeries}
             />

@@ -8,6 +8,7 @@ import { NoOrganization } from "../../../components/NoOrganization";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
+import { useOrgPermissions } from "../../../hooks/usePermissions";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { authClient } from "../../../lib/auth";
 import { ApiKeyManager } from "../account/components/ApiKeyManager";
@@ -61,10 +62,9 @@ function Organization({
 
   const { data: members, refetch, isLoading: membersLoading } = useOrganizationMembers(org.id);
   const { refetch: refetchInvitations } = useOrganizationInvitations(org.id);
-  const { data } = authClient.useSession();
-
-  const isOwner = !!members?.data.find(member => member.role === "owner" && member.userId === data?.user?.id);
-  const isAdmin = !!members?.data.find(member => member.role === "admin" && member.userId === data?.user?.id) || isOwner;
+  const { can, assignableRoles } = useOrgPermissions(org.id);
+  const canRename = can("org:rename");
+  const canDelete = can("org:delete");
 
   const handleRefresh = () => {
     refetch();
@@ -102,29 +102,33 @@ function Organization({
 
   return (
     <>
-      {isOwner && (
+      {(canRename || canDelete) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">{t("Organization")}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">{t("Organization Name")}</h4>
-              <p className="text-xs text-neutral-500">{t("Update your organization name")}</p>
-              <div className="flex space-x-2">
-                <Input id="name" value={name} onChange={({ target }) => setName(target.value)} placeholder="name" />
-                <Button variant="outline" onClick={handleOrganizationNameUpdate} disabled={name === org.name}>
-                  {isUpdating ? t("Updating...") : t("Update")}
-                </Button>
+          <CardContent className="space-y-4">
+            {canRename && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">{t("Organization Name")}</h4>
+                <p className="text-xs text-neutral-500">{t("Update your organization name")}</p>
+                <div className="flex space-x-2">
+                  <Input id="name" value={name} onChange={({ target }) => setName(target.value)} placeholder="name" />
+                  <Button variant="outline" onClick={handleOrganizationNameUpdate} disabled={name === org.name}>
+                    {isUpdating ? t("Updating...") : t("Update")}
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="pt-4 border-t mt-4 space-y-2">
-              <h4 className="text-sm font-medium">{t("Delete Organization")}</h4>
-              <p className="text-xs text-neutral-500">{t("Permanently delete this organization and all its data")}</p>
-              <div className="w-[200px]">
-                <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} />
+            )}
+            {canDelete && (
+              <div className={canRename ? "pt-4 border-t space-y-2" : "space-y-2"}>
+                <h4 className="text-sm font-medium">{t("Delete Organization")}</h4>
+                <p className="text-xs text-neutral-500">{t("Permanently delete this organization and all its data")}</p>
+                <div className="w-[200px]">
+                  <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} />
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -133,14 +137,14 @@ function Organization({
         org={org}
         members={members}
         membersLoading={membersLoading}
-        isOwner={isOwner}
-        isAdmin={isAdmin}
+        canManageMembers={can("members:manage")}
+        assignableRoles={assignableRoles}
         onRefresh={handleRefresh}
       />
 
-      <Invitations organizationId={org.id} isOwner={isOwner} />
+      <Invitations organizationId={org.id} canManage={can("members:manage")} />
 
-      {isAdmin && <ApiKeyManager organizationId={org.id} />}
+      {can("apikeys:manage") && <ApiKeyManager organizationId={org.id} />}
     </>
   );
 }

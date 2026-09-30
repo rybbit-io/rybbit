@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useExtracted } from "next-intl";
 import React, { ReactNode, useMemo, useRef, useEffect, useState } from "react";
 import { useCurrentSite } from "../api/admin/hooks/useSites";
+import { useCanInOrg } from "../hooks/usePermissions";
 import { DEFAULT_EVENT_LIMIT } from "../lib/subscription/constants";
 import { Button } from "./ui/button";
 import { authClient } from "../lib/auth";
@@ -89,6 +90,8 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
   requiredPlan = "standard",
 }) => {
   const { subscription, site } = useCurrentSite();
+  // Upgrading is a billing action for the site's organization.
+  const canUpgrade = useCanInOrg("billing:manage", site?.organizationId ?? undefined);
 
   const { data } = authClient.useSession();
 
@@ -209,7 +212,7 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
       >
         {showMessage && (
           <div className="flex items-center justify-center">
-            {site?.isOwner ? <OwnerMessage message={message} featurePath={featurePath} requiredPlan={requiredPlan} /> : <UserMessage message={message} featurePath={featurePath} />}
+            {canUpgrade ? <OwnerMessage message={message} featurePath={featurePath} requiredPlan={requiredPlan} /> : <UserMessage message={message} featurePath={featurePath} />}
           </div>
         )}
       </div>

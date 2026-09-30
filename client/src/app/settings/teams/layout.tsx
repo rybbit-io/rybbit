@@ -3,18 +3,16 @@
 import { Plus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Button } from "../../../components/ui/button";
+import { useOrgPermissions } from "../../../hooks/usePermissions";
 import { authClient } from "../../../lib/auth";
+import { OrgPermissionGate } from "../components/OrgPermissionGate";
 import { CreateEditTeamDialog } from "./components/CreateEditTeamDialog";
 import { ExternalLink } from "../../../components/ExternalLink";
 
 export default function TeamsLayout({ children }: { children: React.ReactNode }) {
   const t = useExtracted();
-  const { data: session } = authClient.useSession();
   const { data: activeOrg } = authClient.useActiveOrganization();
-  const currentMember = activeOrg?.members?.find(
-    (m) => m.userId === session?.user?.id
-  );
-  const isMember = currentMember?.role === "member";
+  const { can } = useOrgPermissions();
 
   return (
     <div className="space-y-5">
@@ -28,7 +26,7 @@ export default function TeamsLayout({ children }: { children: React.ReactNode })
             </ExternalLink>
           </p>
         </div>
-        {activeOrg?.id && !isMember && (
+        {activeOrg?.id && can("teams:manage") && (
           <CreateEditTeamDialog
             trigger={
               <Button size="sm">
@@ -40,13 +38,12 @@ export default function TeamsLayout({ children }: { children: React.ReactNode })
         )}
       </div>
 
-      {isMember ? (
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-6 text-center text-neutral-500 dark:text-neutral-400">
-          {t("You don't have permission to view team settings.")}
-        </div>
-      ) : (
+      <OrgPermissionGate
+        permission="teams:manage"
+        deniedMessage={t("You don't have permission to view team settings.")}
+      >
         <div className="mt-6">{children}</div>
-      )}
+      </OrgPermissionGate>
     </div>
   );
 }

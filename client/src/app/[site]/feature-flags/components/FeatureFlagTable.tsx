@@ -277,7 +277,8 @@ function RowActionsCell({ row }: CellContext<FeatureFlag, unknown>) {
   );
 }
 
-export function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
+/** `canWrite` (flags:write) shows the on/off switch and the edit and delete actions; without it the table is read-only. */
+export function FeatureFlagTable({ flags, canWrite }: { flags: FeatureFlag[]; canWrite: boolean }) {
   const t = useExtracted();
   const getRuntimeLabel = useRuntimeLabel();
   const updateMutation = useUpdateFeatureFlag();
@@ -322,11 +323,13 @@ export function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
         const flag = info.row.original;
         return (
           <div className="flex items-center gap-2">
-            <Switch
-              checked={flag.enabled}
-              disabled={updateMutation.isPending}
-              onCheckedChange={enabled => updateMutation.mutate({ flagId: flag.flagId, payload: { enabled } })}
-            />
+            {canWrite && (
+              <Switch
+                checked={flag.enabled}
+                disabled={updateMutation.isPending}
+                onCheckedChange={enabled => updateMutation.mutate({ flagId: flag.flagId, payload: { enabled } })}
+              />
+            )}
             <Badge variant={flag.enabled ? "success" : "secondary"}>{flag.enabled ? t("On") : t("Off")}</Badge>
             <Badge variant="outline">{getRuntimeLabel(flag.runtime)}</Badge>
           </div>
@@ -371,11 +374,15 @@ export function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
       header: ({ column }) => <SortHeader column={column}>{t("Updated")}</SortHeader>,
       cell: info => renderTimeCell(info.getValue()),
     }),
-    columnHelper.display({
-      id: "actions",
-      header: () => <span className="sr-only">{t("Actions")}</span>,
-      cell: RowActionsCell,
-    }),
+    ...(canWrite
+      ? [
+          columnHelper.display({
+            id: "actions",
+            header: () => <span className="sr-only">{t("Actions")}</span>,
+            cell: RowActionsCell,
+          }),
+        ]
+      : []),
   ];
 
   const table = useReactTable({

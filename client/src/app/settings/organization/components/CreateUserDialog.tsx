@@ -1,5 +1,6 @@
 "use client";
 
+import type { OrgRole } from "@rybbit/shared";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
@@ -20,18 +20,21 @@ import { toast } from "@/components/ui/sonner";
 import { Alert } from "../../../../components/ui/alert";
 import { validateEmail } from "../../../../lib/auth-utils";
 import { useCreateUserInOrganization } from "../../../../api/admin/hooks/useOrganizations";
+import { RoleSelect } from "./RoleSelect";
 
 interface CreateUserDialogProps {
   organizationId: string;
   onSuccess: () => void;
+  /** Roles the current user may give, from the server. */
+  assignableRoles: OrgRole[];
 }
 
-export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialogProps) {
+export function CreateUserDialog({ organizationId, onSuccess, assignableRoles }: CreateUserDialogProps) {
   const t = useExtracted();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "member" | "owner">("member");
+  const [role, setRole] = useState<OrgRole>("member");
 
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -126,16 +129,7 @@ export function CreateUserDialog({ organizationId, onSuccess }: CreateUserDialog
           </div>
           <div className="grid gap-2">
             <Label htmlFor="role">{t("Role")}</Label>
-            <Select value={role} onValueChange={value => setRole(value as "admin" | "member" | "owner")}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("Select a role")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">{t("Owner")}</SelectItem>
-                <SelectItem value="admin">{t("Admin")}</SelectItem>
-                <SelectItem value="member">{t("Member")}</SelectItem>
-              </SelectContent>
-            </Select>
+            <RoleSelect id="role" value={role} roles={assignableRoles} onValueChange={setRole} />
           </div>
           {error && <Alert variant="destructive">{error}</Alert>}
         </div>

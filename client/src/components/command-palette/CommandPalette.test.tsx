@@ -36,7 +36,10 @@ vi.mock("@uidotdev/usehooks", () => ({ useWindowSize: () => ({ width: 1280, heig
 
 vi.mock("@/lib/auth", () => ({
   authClient: {
-    useSession: () => ({ data: mocks.signedIn ? { user: { id: "user-1" } } : null }),
+    useSession: () => ({
+      data: mocks.signedIn ? { user: { id: "user-1" }, session: { activeOrganizationId: "org-1" } } : null,
+      isPending: false,
+    }),
     useActiveOrganization: () => ({ data: { id: "org-1" } }),
   },
 }));
@@ -58,7 +61,10 @@ vi.mock("@/api/admin/hooks/useSites", () => ({
 }));
 
 vi.mock("@/api/admin/hooks/useOrganizations", () => ({
-  useUserOrganizations: () => ({ data: [{ id: "org-1", role: "owner" }] }),
+  useUserOrganizations: () => ({
+    data: [{ id: "org-1", role: "owner", permissions: ["members:manage", "teams:manage", "billing:manage"] }],
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/api/analytics/hooks/goals/useGetGoals", () => ({

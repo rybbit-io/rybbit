@@ -9,6 +9,7 @@ import { updateSiteConfig } from "../../../../api/admin/endpoints";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Alert, AlertDescription, AlertTitle } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
+import { useCanOnSite } from "../../../../hooks/usePermissions";
 import { planIncludesReplay } from "../../../../lib/subscription/planUtils";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
 import { IS_CLOUD } from "../../../../lib/const";
@@ -20,6 +21,7 @@ export function EnableSessionReplay() {
   const { data: siteMetadata, isLoading, refetch } = useGetSite(siteId);
   const { data: subscription } = useStripeSubscription();
   const [isEnabling, setIsEnabling] = useState(false);
+  const canConfigure = useCanOnSite("sites:configure", siteId);
 
   const canEnableReplay = !IS_CLOUD || planIncludesReplay(subscription);
 
@@ -54,9 +56,13 @@ export function EnableSessionReplay() {
               {t("and the client will send significantly more and larger payloads.")}{" "}
               <b>{t("Only enable this if you will actually use it.")}</b>
             </div>
-            <Button size="sm" variant="success" loading={isEnabling} onClick={enable}>
-              {t("Enable")}
-            </Button>
+            {canConfigure ? (
+              <Button size="sm" variant="success" loading={isEnabling} onClick={enable}>
+                {t("Enable")}
+              </Button>
+            ) : (
+              <p>{t("Ask a site admin to enable it.")}</p>
+            )}
           </AlertDescription>
         </div>
       </div>

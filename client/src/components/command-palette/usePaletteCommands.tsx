@@ -33,7 +33,6 @@ import { useExtracted } from "next-intl";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useUserOrganizations } from "@/api/admin/hooks/useOrganizations";
 import { useGetSite, useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
 import { useGetFunnels } from "@/api/analytics/hooks/funnels/useGetFunnels";
 import { useGetGoals } from "@/api/analytics/hooks/goals/useGetGoals";
@@ -41,6 +40,7 @@ import { useGetDashboards } from "@/api/analytics/hooks/useDashboards";
 import { HOTKEY_FOR_PRESET, PRESET_GROUPS, usePresetLabels } from "@/components/DateSelector/presets";
 import { Favicon } from "@/components/Favicon";
 import { useAppEnv } from "@/hooks/useIsProduction";
+import { useOrgPermissions } from "@/hooks/usePermissions";
 import { authClient } from "@/lib/auth";
 import { DEPLOYMENT, IS_CLOUD } from "@/lib/const";
 import { getDashboardTimeForRange, setStoredDashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
@@ -108,9 +108,7 @@ export function usePaletteCommands(entityCommands: PaletteCommand[]): {
 
   const { data: activeOrganization } = authClient.useActiveOrganization();
   const { data: orgSites } = useGetSitesFromOrg(activeOrganization?.id);
-  const { data: userOrganizations } = useUserOrganizations();
-  const role = userOrganizations?.find(org => org.id === activeOrganization?.id)?.role;
-  const isAdminOrOwner = role === "admin" || role === "owner";
+  const { can } = useOrgPermissions(activeOrganization?.id);
 
   const time = useStore(state => state.time);
   const setTime = useStore(state => state.setTime);
@@ -233,38 +231,38 @@ export function usePaletteCommands(entityCommands: PaletteCommand[]): {
       run: () => go("/settings/account"),
     },
   ];
-  // Same rule as the settings navigation: members can't manage the organization.
-  if (isAdminOrOwner) {
-    navigateCommands.push(
-      {
-        id: "nav:organization",
-        group: "navigate",
-        label: t("Organization"),
-        keywords: t("settings members invitations"),
-        icon: <Building2 />,
-        current: pathname.startsWith("/settings/organization"),
-        run: () => go("/settings/organization"),
-      },
-      {
-        id: "nav:teams",
-        group: "navigate",
-        label: t("Teams"),
-        icon: <Users />,
-        current: pathname.startsWith("/settings/teams"),
-        run: () => go("/settings/teams"),
-      }
-    );
-    if (IS_CLOUD) {
-      navigateCommands.push({
-        id: "nav:billing",
-        group: "navigate",
-        label: t("Billing"),
-        keywords: t("subscription plan invoices"),
-        icon: <CreditCard />,
-        current: pathname.startsWith("/settings/billing"),
-        run: () => go("/settings/billing"),
-      });
-    }
+  // Same rules as the settings navigation.
+  if (can("members:manage")) {
+    navigateCommands.push({
+      id: "nav:organization",
+      group: "navigate",
+      label: t("Organization"),
+      keywords: t("settings members invitations"),
+      icon: <Building2 />,
+      current: pathname.startsWith("/settings/organization"),
+      run: () => go("/settings/organization"),
+    });
+  }
+  if (can("teams:manage")) {
+    navigateCommands.push({
+      id: "nav:teams",
+      group: "navigate",
+      label: t("Teams"),
+      icon: <Users />,
+      current: pathname.startsWith("/settings/teams"),
+      run: () => go("/settings/teams"),
+    });
+  }
+  if (IS_CLOUD && can("billing:manage")) {
+    navigateCommands.push({
+      id: "nav:billing",
+      group: "navigate",
+      label: t("Billing"),
+      keywords: t("subscription plan invoices"),
+      icon: <CreditCard />,
+      current: pathname.startsWith("/settings/billing"),
+      run: () => go("/settings/billing"),
+    });
   }
 
   const themeKeyword = t("Theme");

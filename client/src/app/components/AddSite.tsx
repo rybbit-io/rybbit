@@ -63,7 +63,16 @@ interface CreateToggle {
   hidden?: boolean;
 }
 
-export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disabled?: boolean }) {
+export function AddSite({
+  trigger,
+  disabled,
+  disabledReason,
+}: {
+  trigger?: React.ReactNode;
+  disabled?: boolean;
+  /** Shown in a tooltip while `disabled`, e.g. when the user can't add sites to this organization. */
+  disabledReason?: string;
+}) {
   const { setSite } = useStore();
   const router = useRouter();
   const t = useExtracted();
@@ -288,6 +297,25 @@ export function AddSite({ trigger, disabled }: { trigger?: React.ReactNode; disa
       </div>
     );
   };
+
+  if (disabled && disabledReason) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* A disabled button gets no pointer events, so the tooltip hangs off this wrapper. */}
+          <span tabIndex={0} className="inline-flex">
+            {trigger || (
+              <Button disabled>
+                <Plus className="h-4 w-4" />
+                {t("Add Site")}
+              </Button>
+            )}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{disabledReason}</TooltipContent>
+      </Tooltip>
+    );
+  }
 
   if (subscription?.status !== "active" && subscription?.status !== "trialing" && IS_CLOUD) {
     return (

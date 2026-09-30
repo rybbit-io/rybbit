@@ -1,5 +1,6 @@
 "use client";
 
+import type { OrgRole } from "@rybbit/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
@@ -28,9 +29,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { authClient } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 
+import { RoleSelect } from "./RoleSelect";
 import { SiteAccessMultiSelect } from "./SiteAccessMultiSelect";
 
 type Member = GetOrganizationMembersResponse["data"][0];
@@ -40,13 +42,19 @@ interface EditMemberDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  isOwner: boolean;
+  /** Roles the current user may give, from the server; empty when they can't change roles. */
+  assignableRoles: OrgRole[];
 }
 
-export function EditMemberDialog({ member, open, onClose, onSuccess, isOwner }: EditMemberDialogProps) {
+export function EditMemberDialog({ member, open, onClose, onSuccess, assignableRoles }: EditMemberDialogProps) {
   const { data: activeOrganization } = authClient.useActiveOrganization();
+  const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
   const t = useExtracted();
+
+  // Renaming goes through better-auth's system-admin endpoint, so only system admins may do it.
+  const canRename = session?.user.role === "admin";
+  const canChangeRole = assignableRoles.length > 0;
 
   const [name, setName] = useState("");
   const [role, setRole] = useState<string>("member");
@@ -69,45 +77,54 @@ export function EditMemberDialog({ member, open, onClose, onSuccess, isOwner }: 
   const handleSave = async () => {
     if (!member || !activeOrganization?.id) return;
 
-    if (role === "member" && restrictSiteAccess && selectedSiteIds.length === 0) {
+    if (!isAdminRole(role) && restrictSiteAccess && selectedSiteIds.length === 0) {
       toast.error(t("Please select at least one site or disable site restrictions"));
       return;
     }
 
     setIsSaving(true);
     try {
-      // Update name if changed
-      if (name !== (member.user.name || "")) {
-        await authClient.admin.updateUser({
+      // better-auth reports failures in the result rather than throwing.
+      if (canRename && name !== (member.user.name || "")) {
+        const { error } = await authClient.admin.updateUser({
           userId: member.userId,
           data: { name },
         });
+        if (error) {
+          throw new Error(error.message || t("Failed to update member"));
+        }
       }
 
-      // If promoting from member to admin/owner, clear site restrictions first
-      // (must happen while still a member, since the API rejects updates for non-members)
-      if (member.role === "member" && role !== "member" && member.siteAccess?.hasRestrictedSiteAccess) {
-        await updateMemberSiteAccess(activeOrganization.id, member.id, {
-          hasRestrictedSiteAccess: false,
-          siteIds: [],
-        });
-      }
-
-      // Update role if changed
-      if (role !== member.role && isOwner) {
-        await authClient.organization.updateMemberRole({
+      // The role goes first: if it fails, the member keeps their site restrictions.
+      const roleChanged = canChangeRole && role !== member.role;
+      if (roleChanged) {
+        const { error } = await authClient.organization.updateMemberRole({
           memberId: member.id,
           organizationId: activeOrganization.id,
-          role: role as "admin" | "member" | "owner",
+          role,
         });
+        if (error) {
+          throw new Error(error.message || t("Failed to update member"));
+        }
       }
 
-      // Update site access for members
-      if (role === "member") {
+      if (!isAdminRole(role)) {
         await updateMemberSiteAccess(activeOrganization.id, member.id, {
           hasRestrictedSiteAccess: restrictSiteAccess,
           siteIds: selectedSiteIds,
         });
+      } else if (roleChanged && !isAdminRole(member.role) && member.siteAccess?.hasRestrictedSiteAccess) {
+        // Promoted to admin or owner: drop the restrictions they no longer need. Admins and owners reach
+        // every site whatever is stored, so if the server refuses this, access is already right and the
+        // role change still stands; the old list only matters if they are demoted again.
+        try {
+          await updateMemberSiteAccess(activeOrganization.id, member.id, {
+            hasRestrictedSiteAccess: false,
+            siteIds: [],
+          });
+        } catch (error) {
+          console.warn("Couldn't clear site restrictions after promotion:", error);
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ["organization-members"] });
@@ -148,7 +165,7 @@ export function EditMemberDialog({ member, open, onClose, onSuccess, isOwner }: 
 
   if (!member) return null;
 
-  const isRestrictable = role === "member";
+  const isRestrictable = !isAdminRole(role);
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
@@ -165,29 +182,22 @@ export function EditMemberDialog({ member, open, onClose, onSuccess, isOwner }: 
             <div className="text-sm text-neutral-500 dark:text-neutral-300">{member.user.email}</div>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="name">{t("Name")}</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-              placeholder={t("Name")}
-            />
-          </div>
+          {canRename && (
+            <div className="grid gap-2">
+              <Label htmlFor="name">{t("Name")}</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                placeholder={t("Name")}
+              />
+            </div>
+          )}
 
-          {isOwner && (
+          {canChangeRole && (
             <div className="grid gap-2">
               <Label htmlFor="role">{t("Role")}</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("Select a role")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="owner">{t("Owner")}</SelectItem>
-                  <SelectItem value="admin">{t("Admin")}</SelectItem>
-                  <SelectItem value="member">{t("Member")}</SelectItem>
-                </SelectContent>
-              </Select>
+              <RoleSelect id="role" value={role} roles={assignableRoles} onValueChange={setRole} />
             </div>
           )}
 
@@ -233,7 +243,7 @@ export function EditMemberDialog({ member, open, onClose, onSuccess, isOwner }: 
             </>
           ) : (
             <p className="text-sm text-neutral-500 dark:text-neutral-300">
-              {role === "owner" ? t("Organization owners") : t("Admins")} {t("automatically have access to all sites.")}
+              {t("Owners and admins automatically have access to all sites.")}
             </p>
           )}
 

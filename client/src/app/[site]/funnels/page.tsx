@@ -12,6 +12,7 @@ import { SavedFunnel } from "../../../api/analytics/endpoints";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { ErrorState } from "../../../components/ErrorState";
 import { NothingFound } from "../../../components/NothingFound";
+import { useCanOnSite } from "../../../hooks/usePermissions";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { CreateFunnelDialog } from "./components/CreateFunnel";
@@ -65,6 +66,7 @@ export default function FunnelsPage() {
 
   const { site } = useStore();
   const { data: funnels, isLoading, error } = useGetFunnels(site);
+  const canWrite = useCanOnSite("funnels:write");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filter funnels based on search query
@@ -96,7 +98,7 @@ export default function FunnelsPage() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
-          <CreateFunnelDialog />
+          {canWrite && <CreateFunnelDialog />}
         </div>
 
         {isLoading || !funnels ? (
@@ -113,7 +115,7 @@ export default function FunnelsPage() {
         ) : filteredFunnels?.length ? (
           <div className="space-y-4">
             {filteredFunnels.map((funnel: SavedFunnel, index: number) => (
-              <FunnelRow key={funnel.id} funnel={funnel} index={index} />
+              <FunnelRow key={funnel.id} funnel={funnel} index={index} canWrite={canWrite} />
             ))}
           </div>
         ) : funnels?.length ? (
@@ -127,7 +129,7 @@ export default function FunnelsPage() {
             icon={<Funnel className="w-10 h-10" />}
             title={t("No funnels yet")}
             description={<span>{t("Create your first funnel to track conversions through your site's user journey.")} <ExternalLink href="https://rybbit.com/docs/funnels">{t("Learn more")}</ExternalLink></span>}
-            action={<CreateFunnelDialog />}
+            action={canWrite ? <CreateFunnelDialog /> : undefined}
           />
         )}
       </div>

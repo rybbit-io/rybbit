@@ -37,6 +37,8 @@ import { GoalBarChartSkeleton } from "./skeleton";
 interface GoalCardProps {
   goal: Goal;
   siteId: number;
+  /** goals:write: edit, clone and delete. */
+  canWrite: boolean;
   timeSeries?: GoalTimeSeriesPoint[];
   isLoadingTimeSeries: boolean;
 }
@@ -154,7 +156,7 @@ function GoalMetricBarChart({
   );
 }
 
-export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries }: GoalCardProps) {
+export default function GoalCard({ goal, siteId, canWrite, timeSeries, isLoadingTimeSeries }: GoalCardProps) {
   const t = useExtracted();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -252,33 +254,35 @@ export default function GoalCard({ goal, siteId, timeSeries, isLoadingTimeSeries
           </div>
           {/* Right section - Actions */}
           <div className="flex shrink-0 justify-end gap-1 md:pl-4">
-            <div onClick={e => e.stopPropagation()}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="smIcon" aria-label={t("Goal actions")}>
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
-                    <Edit className="h-4 w-4" />
-                    {t("Edit Goal")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsCloneModalOpen(true)}>
-                    <Copy className="h-4 w-4" />
-                    {t("Clone Goal")}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setIsDeleteDialogOpen(true)}
-                    className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t("Delete Goal")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            {canWrite && (
+              <div onClick={e => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="smIcon" aria-label={t("Goal actions")}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
+                      <Edit className="h-4 w-4" />
+                      {t("Edit Goal")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsCloneModalOpen(true)}>
+                      <Copy className="h-4 w-4" />
+                      {t("Clone Goal")}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {t("Delete Goal")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="smIcon">

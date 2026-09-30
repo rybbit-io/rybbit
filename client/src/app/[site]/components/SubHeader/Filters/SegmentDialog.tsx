@@ -8,6 +8,7 @@ import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
+import { useCanInOrg } from "../../../../../hooks/usePermissions";
 import {
   useCreateSegment,
   useDeleteSegment,
@@ -164,9 +165,10 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
     setPickerOpen(isOpen);
   };
 
-  // Org-wide scope is an admin decision on the server; only offer it when the
-  // toggle can succeed, or when the segment is already org-wide.
-  const canChooseScope = !!site?.isOwner || segment?.siteId === null;
+  // Org-wide scope needs segments:manage in the organization; only offer it
+  // when the toggle can succeed, or when the segment is already org-wide.
+  const canManageSegments = useCanInOrg("segments:manage", site?.organizationId ?? undefined);
+  const canChooseScope = (!!site?.organizationId && canManageSegments) || segment?.siteId === null;
   const organizationName = activeOrganization?.name;
   const isSaving = isCreating || isUpdating;
 

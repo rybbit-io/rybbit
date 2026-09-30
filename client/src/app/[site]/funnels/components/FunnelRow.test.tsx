@@ -45,7 +45,7 @@ function renderRow() {
   return render(
     <QueryClientProvider client={client}>
       <TooltipProvider>
-        <FunnelRow funnel={funnel} index={1} />
+        <FunnelRow funnel={funnel} index={1} canWrite />
       </TooltipProvider>
     </QueryClientProvider>
   );

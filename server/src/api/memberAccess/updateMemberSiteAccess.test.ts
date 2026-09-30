@@ -259,6 +259,21 @@ describe("updateMemberSiteAccess", () => {
     expect(mocks.invalidateSitesAccessCache).not.toHaveBeenCalled();
   });
 
+  it("clears a restriction left over from before a promotion", async () => {
+    await (pgClient as any).exec(`
+      UPDATE member SET role = 'admin' WHERE id = 'membership_member';
+    `);
+    const reply = replyStub();
+
+    await updateMemberSiteAccess(requestStub({ body: { hasRestrictedSiteAccess: false, siteIds: [] } }), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(await rows(`SELECT has_restricted_site_access FROM member WHERE id = 'membership_member'`)).toEqual([
+      { has_restricted_site_access: false },
+    ]);
+    expect(await rows(`SELECT * FROM member_site_access`)).toEqual([]);
+  });
+
   it("rejects foreign and nonexistent site IDs without changing existing access", async () => {
     const reply = replyStub();
     await (pgClient as any).exec(`UPDATE member SET has_restricted_site_access = false WHERE id = 'membership_member'`);

@@ -40,7 +40,7 @@ vi.mock("@/components/ui/sonner", () => ({
 }));
 
 function openConfirmation() {
-  render(<Invitations organizationId="org-1" isOwner />);
+  render(<Invitations organizationId="org-1" canManage />);
   fireEvent.click(screen.getByRole("button", { name: "Cancel invitation for ada@example.com" }));
   return screen.getByRole("alertdialog");
 }
@@ -55,6 +55,12 @@ afterEach(() => {
 });
 
 describe("Invitations", () => {
+  it("offers no cancel action without permission to manage members", () => {
+    render(<Invitations organizationId="org-1" canManage={false} />);
+    expect(screen.getByText("ada@example.com")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cancel invitation for ada@example.com" })).toBeNull();
+  });
+
   it("asks before cancelling, and keeping the invitation does nothing", () => {
     const dialog = openConfirmation();
     expect(dialog.textContent).toContain("The invitation sent to ada@example.com will stop working.");

@@ -1,5 +1,6 @@
 "use client";
 
+import type { OrgRole } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { Pencil } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -18,6 +19,7 @@ import {
   TableRow,
 } from "../../../../components/ui/table";
 import { IS_CLOUD } from "../../../../lib/const";
+import { isAdminRole, useRoleInfo } from "../../../../lib/roles";
 import { getTimezone } from "../../../../lib/store";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { EditMemberDialog } from "./EditMemberDialog";
@@ -29,8 +31,10 @@ interface MembersTableProps {
   org: { id: string; name: string; slug: string; createdAt: Date };
   members: GetOrganizationMembersResponse | undefined;
   membersLoading: boolean;
-  isOwner: boolean;
-  isAdmin: boolean;
+  /** Invite, edit and remove members. */
+  canManageMembers: boolean;
+  /** Roles the current user may give; a member is editable only when their current role is one of them. */
+  assignableRoles: OrgRole[];
   onRefresh: () => void;
 }
 
@@ -38,12 +42,14 @@ export function MembersTable({
   org,
   members,
   membersLoading,
-  isOwner,
-  isAdmin,
+  canManageMembers,
+  assignableRoles,
   onRefresh,
 }: MembersTableProps) {
   const t = useExtracted();
+  const roleInfo = useRoleInfo();
   const [selectedMember, setSelectedMember] = useState<MemberData | null>(null);
+  const canEditMember = (member: MemberData) => assignableRoles.some(role => role === member.role);
 
   return (
     <>
@@ -53,16 +59,17 @@ export function MembersTable({
             <CardTitle className="text-xl">{t("Members")}</CardTitle>
 
             <div className="flex items-center gap-2">
-              {isOwner && (
+              {canManageMembers && (
                 <>
                   {IS_CLOUD ? (
                     <InviteMemberDialog
                       organizationId={org.id}
                       onSuccess={onRefresh}
                       memberCount={members?.data?.length || 0}
+                      assignableRoles={assignableRoles}
                     />
                   ) : (
-                    <CreateUserDialog organizationId={org.id} onSuccess={onRefresh} />
+                    <CreateUserDialog organizationId={org.id} onSuccess={onRefresh} assignableRoles={assignableRoles} />
                   )}
                 </>
               )}
@@ -78,7 +85,7 @@ export function MembersTable({
                 <TableHead>{t("Role")}</TableHead>
                 <TableHead>{t("Site Access")}</TableHead>
                 <TableHead>{t("Joined")}</TableHead>
-                {isAdmin && <TableHead className="w-12">{t("Actions")}</TableHead>}
+                {canManageMembers && <TableHead className="w-12">{t("Actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -100,7 +107,7 @@ export function MembersTable({
                     <TableCell>
                       <div className="h-4 bg-muted animate-pulse rounded w-20"></div>
                     </TableCell>
-                    {isAdmin && (
+                    {canManageMembers && (
                       <TableCell>
                         <div className="h-8 bg-muted animate-pulse rounded w-16 ml-auto"></div>
                       </TableCell>
@@ -113,15 +120,9 @@ export function MembersTable({
                     <TableRow key={member.id}>
                       <TableCell>{member.user?.name || "—"}</TableCell>
                       <TableCell>{member.user?.email}</TableCell>
-                      <TableCell className="capitalize">
-                        {member.role === "admin"
-                          ? t("Admin")
-                          : member.role === "owner"
-                            ? t("Owner")
-                            : t("Member")}
-                      </TableCell>
+                      <TableCell className="capitalize">{roleInfo(member.role).label}</TableCell>
                       <TableCell>
-                        {member.role === "member" ? (
+                        {!isAdminRole(member.role) ? (
                           <div className="flex flex-wrap gap-1">
                             {member.siteAccess?.hasRestrictedSiteAccess && (
                               <Badge variant="default">
@@ -153,9 +154,9 @@ export function MembersTable({
                           .setZone(getTimezone())
                           .toLocaleString(DateTime.DATE_SHORT)}
                       </TableCell>
-                      {isAdmin && (
+                      {canManageMembers && (
                         <TableCell className="text-right">
-                          {(isOwner || member.role !== "owner") && (
+                          {canEditMember(member) && (
                             <Button
                               size="smIcon"
                               variant="ghost"
@@ -171,7 +172,7 @@ export function MembersTable({
                   {(!members?.data || members.data.length === 0) && (
                     <TableRow>
                       <TableCell
-                        colSpan={isAdmin ? 6 : 5}
+                        colSpan={canManageMembers ? 6 : 5}
                         className="text-center py-6 text-muted-foreground"
                       >
                         {t("No members found")}
@@ -190,7 +191,7 @@ export function MembersTable({
         open={!!selectedMember}
         onClose={() => setSelectedMember(null)}
         onSuccess={onRefresh}
-        isOwner={isOwner}
+        assignableRoles={assignableRoles}
       />
     </>
   );

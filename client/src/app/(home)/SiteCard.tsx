@@ -23,6 +23,8 @@ export interface SiteCardProps {
   name: string;
   domain: string;
   tags?: string[];
+  /** The viewer may edit this site's tags (sites:configure on it). */
+  canEditTags?: boolean;
   allTags?: string[];
   onTagsUpdated?: () => void;
   selectedTags?: string[];
@@ -111,6 +113,7 @@ function SiteCardView({
   name,
   domain,
   tags = [],
+  canEditTags = false,
   allTags = [],
   onTagsUpdated,
   onTagClick,
@@ -196,7 +199,7 @@ function SiteCardView({
                     +{tags.length - 3}
                   </Badge>
                 )}
-                {onTagsUpdated && (
+                {canEditTags && onTagsUpdated && (
                   <Tooltip>
                     <TagEditor
                       siteId={siteId}

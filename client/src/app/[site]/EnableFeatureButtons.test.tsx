@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   refetch: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
-  site: {} as Record<string, boolean>,
+  site: {} as Record<string, unknown>,
 }));
 
 vi.mock("next-intl", () => ({
@@ -37,7 +37,7 @@ function deferred() {
 }
 
 beforeEach(() => {
-  mocks.site = {};
+  mocks.site = { permissions: ["sites:configure"] };
 });
 
 afterEach(() => {
@@ -81,6 +81,14 @@ describe.each([
     await act(async () => refetch.resolve());
     expect(mocks.toastSuccess).toHaveBeenCalledWith(done);
     expect(button.hasAttribute("aria-busy")).toBe(false);
+  });
+
+  it("asks for an admin instead of offering Enable without sites:configure", () => {
+    mocks.site = { permissions: ["analytics:read"] };
+    render(<Banner />);
+
+    expect(screen.queryByRole("button", { name: "Enable" })).toBeNull();
+    expect(screen.getByText("Ask a site admin to enable it.")).toBeTruthy();
   });
 
   it("reports a failure and lets the user try again", async () => {

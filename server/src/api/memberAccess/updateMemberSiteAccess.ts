@@ -54,8 +54,9 @@ export async function updateMemberSiteAccess(
 
     const memberData = memberRecord[0];
 
-    // Don't allow restricting admin or owner roles
-    if (isAdminRole(memberData.role)) {
+    // Admins and owners reach every site: they can't be restricted, but a
+    // restriction left over from before a promotion can be cleared.
+    if (isAdminRole(memberData.role) && hasRestrictedSiteAccess) {
       return reply.status(400).send({
         error: "Cannot restrict site access for admin or owner roles",
       });
