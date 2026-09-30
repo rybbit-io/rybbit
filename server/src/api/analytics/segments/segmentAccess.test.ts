@@ -37,7 +37,9 @@ vi.mock("../../../db/postgres/postgres.js", () => {
       update: () => ({
         set: (values: unknown) => {
           state.writes.push({ op: "update", values });
-          return { where: () => ({ returning: () => Promise.resolve([{ ...state.segments[0], ...(values as object) }]) }) };
+          return {
+            where: () => ({ returning: () => Promise.resolve([{ ...state.segments[0], ...(values as object) }]) }),
+          };
         },
       }),
       delete: () => ({
@@ -50,14 +52,10 @@ vi.mock("../../../db/postgres/postgres.js", () => {
   };
 });
 
+// getUserOrgRole folds system-admin authority into the org role; mirror that.
 vi.mock("../../../lib/auth-utils.js", () => ({
   getUserHasAccessToSite: async () => state.siteAccess,
-  getIsUserAdmin: async () => state.systemAdmin,
-}));
-
-vi.mock("../../../lib/access.js", () => ({
-  getOrgMembership: async () => state.membership,
-  isOrgAdmin: (m: { role: string } | null) => m?.role === "admin" || m?.role === "owner",
+  getUserOrgRole: async () => (state.systemAdmin ? "admin" : (state.membership?.role ?? null)),
 }));
 
 import { createSegment } from "./createSegment.js";
@@ -136,37 +134,37 @@ beforeEach(() => {
 describe("resolveSegmentActor", () => {
   it("treats an organization API key as an admin of its own org only", async () => {
     const own = await resolveSegmentActor(fakeRequest({ apiKeyOrganizationId: "org_1" }), 1, "org_1");
-    expect(own).toEqual({ userId: null, hasSiteAccess: true, isAdmin: true });
+    expect(own).toEqual({ userId: null, hasSiteAccess: true, canManage: true });
 
     const other = await resolveSegmentActor(fakeRequest({ apiKeyOrganizationId: "org_2" }), 1, "org_1");
-    expect(other).toEqual({ userId: null, hasSiteAccess: false, isAdmin: false });
+    expect(other).toEqual({ userId: null, hasSiteAccess: false, canManage: false });
   });
 
   it("gives an anonymous viewer no access at all", async () => {
     expect(await resolveSegmentActor(fakeRequest(), 1, "org_1")).toEqual({
       userId: null,
       hasSiteAccess: false,
-      isAdmin: false,
+      canManage: false,
     });
   });
 
   it("marks org owners, org admins, and system admins as admins", async () => {
     state.siteAccess = true;
     state.membership = { role: "owner" };
-    expect((await resolveSegmentActor(fakeRequest({ user: { id: "u" } }), 1, "org_1")).isAdmin).toBe(true);
+    expect((await resolveSegmentActor(fakeRequest({ user: { id: "u" } }), 1, "org_1")).canManage).toBe(true);
 
     state.membership = { role: "member" };
-    expect((await resolveSegmentActor(fakeRequest({ user: { id: "u" } }), 1, "org_1")).isAdmin).toBe(false);
+    expect((await resolveSegmentActor(fakeRequest({ user: { id: "u" } }), 1, "org_1")).canManage).toBe(false);
 
     state.systemAdmin = true;
-    expect((await resolveSegmentActor(fakeRequest({ user: { id: "u" } }), 1, "org_1")).isAdmin).toBe(true);
+    expect((await resolveSegmentActor(fakeRequest({ user: { id: "u" } }), 1, "org_1")).canManage).toBe(true);
   });
 });
 
 describe("rule predicates", () => {
-  const admin = { userId: "a", hasSiteAccess: true, isAdmin: true };
-  const member = { userId: "member_1", hasSiteAccess: true, isAdmin: false };
-  const viewer = { userId: null, hasSiteAccess: false, isAdmin: false };
+  const admin = { userId: "a", hasSiteAccess: true, canManage: true };
+  const member = { userId: "member_1", hasSiteAccess: true, canManage: false };
+  const viewer = { userId: null, hasSiteAccess: false, canManage: false };
 
   it("reads: site access sees everything, viewers see public only", () => {
     expect(canReadSegment({ isPublic: false }, member)).toBe(true);

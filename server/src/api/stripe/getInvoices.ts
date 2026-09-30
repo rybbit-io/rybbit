@@ -1,8 +1,9 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { organization } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
+import { getOrgMembership } from "../../lib/access.js";
 import { stripe } from "../../lib/stripe.js";
 
 export async function getInvoices(
@@ -32,7 +33,7 @@ export async function getInvoices(
     // Verify user has permission to manage billing for this organization
     const membership = await getOrgMembership(userId, organizationId);
 
-    if (!isOrgOwner(membership)) {
+    if (!roleHasPermission(membership?.role, "billing:manage")) {
       return reply.status(403).send({ error: "Only organization owners can manage billing" });
     }
 

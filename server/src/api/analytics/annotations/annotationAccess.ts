@@ -2,7 +2,7 @@ import { and, eq, isNull, or, SQL } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { annotations, sites } from "../../../db/postgres/schema.js";
-import { getUserHasAdminAccessToSite } from "../../../lib/auth-utils.js";
+import { getUserHasOrgPermission } from "../../../lib/auth-utils.js";
 
 export type AnnotationRow = typeof annotations.$inferSelect;
 
@@ -37,15 +37,12 @@ export function annotationBelongsToSite(row: AnnotationRow, siteId: number, orga
 }
 
 /**
- * Admins and owners manage every annotation on their sites. Members may only
- * change what they created, and never organization-wide annotations.
+ * Holders of annotations:manage in the organization manage every annotation on
+ * its sites. Others may only change what they created, and never
+ * organization-wide annotations.
  */
-export async function canManageAnnotation(
-  request: FastifyRequest,
-  siteId: number,
-  row: AnnotationRow
-): Promise<boolean> {
-  if (await getUserHasAdminAccessToSite(request, siteId)) return true;
+export async function canManageAnnotation(request: FastifyRequest, row: AnnotationRow): Promise<boolean> {
+  if (await getUserHasOrgPermission(request, row.organizationId, "annotations:manage")) return true;
   if (row.siteId === null) return false;
   const userId = request.user?.id;
   return Boolean(userId) && row.userId === userId;

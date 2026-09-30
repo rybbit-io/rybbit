@@ -1,10 +1,9 @@
-import type { Segment } from "@rybbit/shared";
+import { roleHasPermission, type Segment } from "@rybbit/shared";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { segments, sites } from "../../../db/postgres/schema.js";
-import { getOrgMembership, isOrgAdmin } from "../../../lib/access.js";
-import { getIsUserAdmin, getUserHasAccessToSite } from "../../../lib/auth-utils.js";
+import { getUserHasAccessToSite, getUserOrgRole } from "../../../lib/auth-utils.js";
 
 export type SegmentRow = typeof segments.$inferSelect;
 
@@ -17,11 +16,11 @@ export interface SegmentActor {
   userId: string | null;
   /** Session member of the site's org, a user API key with site access, or the org's own key. */
   hasSiteAccess: boolean;
-  /** Org admin/owner, system admin, or an organization-owned API key. */
-  isAdmin: boolean;
+  /** Holds segments:manage in the organization: edits any segment and creates org-wide ones. */
+  canManage: boolean;
 }
 
-export const NO_ACCESS_ACTOR: SegmentActor = { userId: null, hasSiteAccess: false, isAdmin: false };
+export const NO_ACCESS_ACTOR: SegmentActor = { userId: null, hasSiteAccess: false, canManage: false };
 
 export async function getSiteOrganizationId(siteId: number): Promise<string | null> {
   const site = await db.query.sites.findFirst({
@@ -40,7 +39,7 @@ export async function resolveSegmentActor(
   // organization's sites and nothing else (see getSitesUserHasAccessTo).
   if (!request.user?.id && request.apiKeyOrganizationId) {
     const ownsSite = request.apiKeyOrganizationId === organizationId;
-    return { userId: null, hasSiteAccess: ownsSite, isAdmin: ownsSite };
+    return { userId: null, hasSiteAccess: ownsSite, canManage: ownsSite };
   }
 
   const userId: string | null = request.user?.id ?? null;
@@ -48,13 +47,12 @@ export async function resolveSegmentActor(
     return NO_ACCESS_ACTOR;
   }
 
-  const [hasSiteAccess, membership, isSystemAdmin] = await Promise.all([
+  const [hasSiteAccess, orgRole] = await Promise.all([
     getUserHasAccessToSite(request, siteId),
-    getOrgMembership(userId, organizationId),
-    getIsUserAdmin(request),
+    getUserOrgRole(request, organizationId),
   ]);
 
-  return { userId, hasSiteAccess, isAdmin: isSystemAdmin || isOrgAdmin(membership) };
+  return { userId, hasSiteAccess, canManage: roleHasPermission(orgRole, "segments:manage") };
 }
 
 /** Anyone with site access reads every segment; everyone else reads public ones. */
@@ -62,9 +60,9 @@ export function canReadSegment(segment: Pick<SegmentRow, "isPublic">, actor: Seg
   return actor.hasSiteAccess || segment.isPublic;
 }
 
-/** Admins and owners edit any segment; members edit the ones they created. */
+/** Holders of segments:manage edit any segment; others edit the ones they created. */
 export function canEditSegment(segment: Pick<SegmentRow, "userId">, actor: SegmentActor): boolean {
-  if (actor.isAdmin) {
+  if (actor.canManage) {
     return true;
   }
   return actor.hasSiteAccess && actor.userId !== null && segment.userId === actor.userId;

@@ -43,7 +43,7 @@ export async function updateSegment(
     }
 
     const becomesOrgWide = body.scope === "organization" && loaded.segment.siteId !== null;
-    if (becomesOrgWide && !actor.isAdmin) {
+    if (becomesOrgWide && !actor.canManage) {
       return reply.status(403).send({ error: "Only organization admins can share a segment with every site" });
     }
 

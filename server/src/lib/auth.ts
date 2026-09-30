@@ -8,11 +8,12 @@ import dotenv from "dotenv";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import pg from "pg";
 import { dash } from "@better-auth/infra";
-import { apiKey } from "@better-auth/api-key"
+import { apiKey } from "@better-auth/api-key";
 
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
+import { isAdminRole } from "@rybbit/shared";
 import { siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
@@ -118,9 +119,9 @@ const pluginList = [
           };
         }
 
-        if (invite.role !== "member") {
+        if (isAdminRole(invite.role)) {
           throw new APIError("BAD_REQUEST", {
-            message: "Site access restrictions can only be applied to member invitations",
+            message: "Site access restrictions cannot be applied to admin or owner invitations",
           });
         }
 
@@ -227,11 +228,11 @@ const pluginList = [
   // Add Cloudflare Turnstile captcha (cloud only)
   ...(IS_CLOUD && process.env.TURNSTILE_SECRET_KEY && process.env.NODE_ENV === "production"
     ? [
-      captcha({
-        provider: "cloudflare-turnstile",
-        secretKey: process.env.TURNSTILE_SECRET_KEY,
-      }),
-    ]
+        captcha({
+          provider: "cloudflare-turnstile",
+          secretKey: process.env.TURNSTILE_SECRET_KEY,
+        }),
+      ]
     : []),
 ];
 
@@ -260,14 +261,7 @@ export const auth = betterAuth({
     disableSignUp: DISABLE_SIGNUP,
   },
   emailVerification: {
-    sendVerificationEmail: async ({
-      user,
-      url,
-    }: {
-      user: { email: string };
-      url: string;
-      token: string;
-    }) => {
+    sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string; token: string }) => {
       await sendEmailVerificationLink(user.email, url);
     },
   },
@@ -378,7 +372,7 @@ export const auth = betterAuth({
     },
   },
   hooks: {
-    before: createAuthMiddleware(async (ctx) => {
+    before: createAuthMiddleware(async ctx => {
       // Gate API key creation on better-auth's own /api-key/create route. This
       // is the only choke point that covers direct client calls — the Fastify
       // endpoints (createUserApiKey / createOrgApiKey) do richer plan checks

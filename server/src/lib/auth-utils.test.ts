@@ -53,6 +53,8 @@ import {
   getUserHasAdminAccessToSite,
   getRequestIdentity,
   getUserIdFromRequest,
+  getUserOrgRole,
+  getUserSiteRole,
   invalidateSitesAccessCache,
 } from "./auth-utils.js";
 import {
@@ -627,6 +629,59 @@ describe("checkApiKey — organization-owned keys", () => {
     expect(result.role).toBe("member");
     expect(result.userId).toBe("user_default");
     expect(result.organizationId).toBeUndefined();
+  });
+});
+
+describe("per-site roles", () => {
+  it("attaches the caller's role to every site they can reach", async () => {
+    invalidateSitesAccessCache("user_peer");
+    invalidateSitesAccessCache("user_owner");
+    const peerSites = await getSitesUserHasAccessTo(reqFor("user_peer"));
+    const ownerSites = await getSitesUserHasAccessTo(reqFor("user_owner"));
+
+    expect(new Set(peerSites.map(site => site.accessRole))).toEqual(new Set(["member"]));
+    expect(new Set(ownerSites.map(site => site.accessRole))).toEqual(new Set(["owner"]));
+  });
+
+  it("answers a site role for reachable sites and null otherwise", async () => {
+    invalidateSitesAccessCache("user_peer");
+    expect(await getUserSiteRole(reqFor("user_peer"), 1)).toBe("member");
+    expect(await getUserSiteRole(reqFor("user_peer"), 12)).toBeNull();
+    expect(await getUserSiteRole(reqFor("user_owner"), 12)).toBe("owner");
+  });
+
+  it("gives a membership with an unknown role no access at all", async () => {
+    await db.insert(member).values({
+      id: "member_odd",
+      organizationId: ORG,
+      userId: "user_odd",
+      role: "superuser",
+      createdAt: NOW,
+    });
+
+    expect(await siteIdsFor("user_odd")).toEqual([]);
+  });
+
+  it("filters to admin-role sites when asked", async () => {
+    invalidateSitesAccessCache("user_peer");
+    expect(await getSitesUserHasAccessTo(reqFor("user_peer"), true)).toEqual([]);
+    expect((await getSitesUserHasAccessTo(reqFor("user_owner"), true)).length).toBe(13);
+  });
+});
+
+describe("getUserOrgRole", () => {
+  it("reads the membership role", async () => {
+    expect(await getUserOrgRole(reqFor("user_peer"), ORG)).toBe("member");
+    expect(await getUserOrgRole(reqFor("user_owner"), ORG)).toBe("owner");
+    expect(await getUserOrgRole(reqFor("user_nobody"), ORG)).toBeNull();
+  });
+
+  it("treats an organization key as admin of its own organization only", async () => {
+    const orgKey = (organizationId: string) =>
+      ({ headers: {}, query: {}, apiKeyOrganizationId: organizationId }) as any;
+
+    expect(await getUserOrgRole(orgKey(ORG), ORG)).toBe("admin");
+    expect(await getUserOrgRole(orgKey("org_other"), ORG)).toBeNull();
   });
 });
 

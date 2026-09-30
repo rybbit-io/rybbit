@@ -1,3 +1,4 @@
+import { isAdminRole } from "@rybbit/shared";
 import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { eq } from "drizzle-orm";
@@ -206,7 +207,7 @@ class WeeklyReportService {
 
         // Only report on sites the member can actually access
         let allowedSites = report.sites;
-        if (memberData.role === "member") {
+        if (!isAdminRole(memberData.role)) {
           allowedSites = await filterSitesByMemberAccess(
             report.sites,
             report.organizationId,

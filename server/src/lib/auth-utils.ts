@@ -1,16 +1,10 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
-import { member, sites, user } from "../db/postgres/schema.js";
-import {
-  getOrgMembership,
-  isOrgAdmin,
-  memberCanAccessSite,
-  resolveMemberSiteGrants,
-  restrictedMemberSiteIds,
-  siteIdsInOrganization,
-} from "./access.js";
+import { sites, user } from "../db/postgres/schema.js";
+import { higherRole, isAdminRole, isOrgRole, roleHasPermission, type OrgRole, type Permission } from "@rybbit/shared";
+import { getOrgMembership, resolveUserSites, type AccessibleSite } from "./access.js";
 import type { RateLimitDecision } from "./apiRateLimit.js";
 import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
@@ -22,7 +16,7 @@ import {
   resolveBearerIdentity,
   type BearerResolverDeps,
 } from "./bearerAuth.js";
-import { hasScope, type ScopeRequirement, type ScopeStatements } from "./scopes.js";
+import { type ScopeStatements } from "./scopes.js";
 import { siteConfig } from "./siteConfig.js";
 import { logger } from "./logger/logger.js";
 
@@ -127,19 +121,21 @@ const sitesAccessCache = new NodeCache({
   useClones: false, // Don't clone objects for better performance with promises
 });
 
-// All sites of an organization, for org-owned API keys. Cached under an
-// "org:"-prefixed key (org and user ids never collide, the prefix is hygiene).
-async function getSitesForOrganization(organizationId: string) {
+// All sites of an organization, for org-owned API keys, which act with admin
+// authority over exactly that organization. Cached under an "org:"-prefixed
+// key (org and user ids never collide, the prefix is hygiene).
+async function getSitesForOrganization(organizationId: string): Promise<AccessibleSite[]> {
   const cacheKey = `org:${organizationId}`;
 
-  const cached = sitesAccessCache.get<Promise<any[]>>(cacheKey);
+  const cached = sitesAccessCache.get<Promise<AccessibleSite[]>>(cacheKey);
   if (cached) {
     return cached;
   }
 
   const promise = (async () => {
     try {
-      return await db.select().from(sites).where(eq(sites.organizationId, organizationId));
+      const orgSites = await db.select().from(sites).where(eq(sites.organizationId, organizationId));
+      return orgSites.map(site => ({ ...site, accessRole: "admin" as const }));
     } catch (error) {
       console.error("Error getting sites for organization:", error);
       sitesAccessCache.del(cacheKey);
@@ -151,134 +147,21 @@ async function getSitesForOrganization(organizationId: string) {
   return promise;
 }
 
-export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = false) {
-  // Organization-owned API key (attached by the auth guards): org-admin
-  // authority over exactly its organization's sites, so member/team
-  // restrictions and the adminOnly flag don't apply.
-  if (!req.user?.id && req.apiKeyOrganizationId) {
-    return getSitesForOrganization(req.apiKeyOrganizationId);
-  }
+// Cache keys for one user's site list. A browser session may carry
+// system-admin authority; a bearer credential for the same user never does,
+// so the two are cached apart.
+const sessionSitesKey = (userId: string) => `${userId}:session`;
+const bearerSitesKey = (userId: string) => `${userId}:bearer`;
 
-  const session = req.user?.id ? null : await getSessionFromReq(req);
-  const userId = req.user?.id ?? session?.user.id;
-
-  if (!userId) {
-    return [];
-  }
-
-  // Create cache key
-  const cacheKey = `${userId}:${adminOnly}`;
-
-  // Check if we have a cached promise
-  const cached = sitesAccessCache.get<Promise<any[]>>(cacheKey);
+function cachedSites(cacheKey: string, load: () => Promise<AccessibleSite[]>): Promise<AccessibleSite[]> {
+  const cached = sitesAccessCache.get<Promise<AccessibleSite[]>>(cacheKey);
   if (cached) {
     return cached;
   }
 
-  // Create new promise and cache it
   const promise = (async () => {
     try {
-      const [isAdmin, memberRecords] = await Promise.all([
-        getIsUserAdmin(req),
-        db
-          .select({
-            id: member.id,
-            organizationId: member.organizationId,
-            role: member.role,
-            hasRestrictedSiteAccess: member.hasRestrictedSiteAccess,
-          })
-          .from(member)
-          .where(eq(member.userId, userId)),
-      ]);
-
-      if (isAdmin) {
-        const allSites = await db.select().from(sites);
-        return allSites;
-      }
-
-      if (!memberRecords || memberRecords.length === 0) {
-        return [];
-      }
-
-      // Two kinds of membership:
-      //  - admin/owner (and any non-"member" role): every site of the org, no
-      //    team gating
-      //  - "member": the org's sites filtered by the shared Site Access rule
-      const fullAccessOrgIds: string[] = [];
-      const memberRowByOrgId = new Map<string, (typeof memberRecords)[0]>();
-
-      for (const record of memberRecords) {
-        // If adminOnly is true, skip members with "member" role
-        if (adminOnly && record.role === "member") {
-          continue;
-        }
-
-        if (record.role === "member") {
-          memberRowByOrgId.set(record.organizationId, record);
-        } else {
-          fullAccessOrgIds.push(record.organizationId);
-        }
-      }
-
-      const memberOrgIds = Array.from(memberRowByOrgId.keys());
-      const restrictedMembers = Array.from(memberRowByOrgId.values()).filter(record => record.hasRestrictedSiteAccess);
-      const restrictedOrgIds = restrictedMembers.map(record => record.organizationId);
-
-      // A restricted membership reaches a closed set of sites, so its
-      // organization is loaded by id below rather than read in full and
-      // discarded — an org can hold far more sites than one member is granted.
-      const restrictedOrgIdSet = new Set(restrictedOrgIds);
-      const eagerOrgIds = Array.from(
-        new Set([...fullAccessOrgIds, ...memberOrgIds.filter(id => !restrictedOrgIdSet.has(id))])
-      );
-
-      if (eagerOrgIds.length === 0 && restrictedOrgIds.length === 0) {
-        return [];
-      }
-
-      const [eagerSites, grants] = await Promise.all([
-        eagerOrgIds.length > 0
-          ? db.select().from(sites).where(inArray(sites.organizationId, eagerOrgIds))
-          : Promise.resolve([]),
-        memberOrgIds.length > 0
-          ? resolveMemberSiteGrants({
-              userId,
-              organizationIds: memberOrgIds,
-              grantedMemberIds: restrictedMembers.map(record => record.id),
-            })
-          : null,
-      ]);
-
-      if (!grants) {
-        return eagerSites;
-      }
-
-      const accessible = eagerSites.filter(site => {
-        const memberRow = site.organizationId ? memberRowByOrgId.get(site.organizationId) : undefined;
-        // No member row for the org means admin/owner authority over it.
-        if (!memberRow) {
-          return true;
-        }
-        return memberCanAccessSite(grants, site.siteId, memberRow.hasRestrictedSiteAccess);
-      });
-
-      if (restrictedOrgIds.length > 0) {
-        const candidateSiteIds = restrictedMemberSiteIds(grants);
-        if (candidateSiteIds.length > 0) {
-          const grantedSites = await db
-            .select()
-            .from(sites)
-            .where(and(inArray(sites.siteId, candidateSiteIds), inArray(sites.organizationId, restrictedOrgIds)));
-          const seen = new Set(accessible.map(site => site.siteId));
-          for (const site of grantedSites) {
-            if (!seen.has(site.siteId)) {
-              accessible.push(site);
-            }
-          }
-        }
-      }
-
-      return accessible;
+      return await load();
     } catch (error) {
       console.error("Error getting sites user has access to:", error);
       // Remove from cache on error so it can be retried
@@ -287,16 +170,60 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
     }
   })();
 
-  // Cache the promise
   sitesAccessCache.set(cacheKey, promise);
-
   return promise;
+}
+
+/** The sites a user reaches through a bearer credential: memberships only. */
+function getBearerUserSites(userId: string): Promise<AccessibleSite[]> {
+  return cachedSites(bearerSitesKey(userId), () => resolveUserSites(userId));
+}
+
+/**
+ * The sites a browser session reaches: its memberships, plus admin authority
+ * over every site when the user is a Better Auth system admin.
+ */
+function getSessionUserSites(req: FastifyRequest, userId: string): Promise<AccessibleSite[]> {
+  return cachedSites(sessionSitesKey(userId), async () => {
+    const [isSystemAdmin, memberSites] = await Promise.all([getIsUserAdmin(req), resolveUserSites(userId)]);
+    if (!isSystemAdmin) {
+      return memberSites;
+    }
+    const memberRoleBySite = new Map(memberSites.map(site => [site.siteId, site.accessRole]));
+    const allSites = await db.select().from(sites);
+    return allSites.map(site => ({
+      ...site,
+      accessRole: higherRole(memberRoleBySite.get(site.siteId), "admin") ?? "admin",
+    }));
+  });
+}
+
+/**
+ * Every site the caller can reach, each with the role they hold on it.
+ * `adminOnly` narrows to sites where that role is admin or owner.
+ */
+export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = false): Promise<AccessibleSite[]> {
+  let accessible: AccessibleSite[];
+
+  // Organization-owned API key (attached by the auth guards).
+  if (!req.user?.id && req.apiKeyOrganizationId) {
+    accessible = await getSitesForOrganization(req.apiKeyOrganizationId);
+  } else {
+    const session = req.user?.id ? null : await getSessionFromReq(req);
+    const userId = req.user?.id ?? session?.user.id;
+    if (!userId) {
+      return [];
+    }
+    accessible = req.bearerAuth ? await getBearerUserSites(userId) : await getSessionUserSites(req, userId);
+  }
+
+  return adminOnly ? accessible.filter(site => isAdminRole(site.accessRole)) : accessible;
 }
 
 // Cache invalidation helper - call this when member site access changes
 export function invalidateSitesAccessCache(userId: string) {
-  sitesAccessCache.del(`${userId}:true`);
-  sitesAccessCache.del(`${userId}:false`);
+  sitesAccessCache.del(sessionSitesKey(userId));
+  sitesAccessCache.del(bearerSitesKey(userId));
 }
 
 /**
@@ -329,49 +256,43 @@ async function resolveTargetOrganizationId(options: {
 }
 
 /**
- * Resolve the org membership role for a bearer-authenticated user, scoped to
- * either an explicit organization or the organization owning a site.
- *
- * When a site is named, the user must also be able to reach that site: a
- * member-role user's personal key or OAuth token is held to the same member
- * and team site restrictions as their browser session.
+ * Resolve the role a bearer-authenticated user holds for a request: on the
+ * named site (the same per-site rule as their browser session, so a personal
+ * key or OAuth token is held to member and team site restrictions), or else in
+ * the named organization.
  */
-async function resolveBearerUserOrgRole(
+async function resolveBearerUserRole(
   userId: string,
   options: { organizationId?: string; siteId?: string | number }
 ): Promise<{ valid: boolean; role: string | null; userId?: string }> {
-  const organizationId = await resolveTargetOrganizationId(options);
-  if (!organizationId) {
-    return { valid: false, role: null };
-  }
-
-  const membership = await getOrgMembership(userId, organizationId);
-  if (!membership) {
-    return { valid: false, role: null };
-  }
+  const denied = { valid: false, role: null };
 
   if (options.siteId !== undefined && options.siteId !== null && options.siteId !== "") {
     const siteId = Number(options.siteId);
     if (!Number.isInteger(siteId)) {
-      return { valid: false, role: null };
+      return denied;
     }
-    const [siteInOrg] = await siteIdsInOrganization([siteId], organizationId);
-    if (siteInOrg === undefined) {
-      return { valid: false, role: null };
+    const findSite = (list: AccessibleSite[]) => list.find(site => site.siteId === siteId);
+    let site = findSite(await getBearerUserSites(userId));
+    if (!site) {
+      // Never let a cached miss deny a grant made in the last few seconds.
+      invalidateSitesAccessCache(userId);
+      site = findSite(await getBearerUserSites(userId));
     }
-    if (!isOrgAdmin(membership)) {
-      const grants = await resolveMemberSiteGrants({
-        userId,
-        organizationIds: [organizationId],
-        grantedMemberIds: membership.hasRestrictedSiteAccess ? [membership.id] : [],
-      });
-      if (!memberCanAccessSite(grants, siteId, membership.hasRestrictedSiteAccess)) {
-        return { valid: false, role: null };
-      }
+    if (!site || (options.organizationId && site.organizationId !== options.organizationId)) {
+      return denied;
+    }
+    return { valid: true, role: site.accessRole, userId };
+  }
+
+  if (options.organizationId) {
+    const membership = await getOrgMembership(userId, options.organizationId);
+    if (membership && isOrgRole(membership.role)) {
+      return { valid: true, role: membership.role, userId };
     }
   }
 
-  return { valid: true, role: membership.role, userId };
+  return denied;
 }
 
 export interface BearerAuthResult {
@@ -435,7 +356,7 @@ export async function checkApiKey(
     return { valid: false, role: null, rateLimit: identity.rateLimit, statements: null };
   }
   if (identity.status === "valid" && identity.userId) {
-    const membership = await resolveBearerUserOrgRole(identity.userId, options);
+    const membership = await resolveBearerUserRole(identity.userId, options);
     return { ...membership, rateLimit: identity.rateLimit, statements: identity.statements };
   }
   return { valid: false, role: null, statements: null };
@@ -486,65 +407,84 @@ export async function getUserIdFromRequest(req: FastifyRequest): Promise<string 
   return (await getRequestIdentity(req)).userId;
 }
 
-// for routes that are potentially public
-export async function getUserHasAccessToSitePublic(
-  req: FastifyRequest,
-  siteId: string | number,
-  requiredScope?: ScopeRequirement
-) {
-  const [hasDirectAccess, config] = await Promise.all([
-    getUserHasAccessToSite(req, siteId),
-    siteConfig.getConfig(siteId),
-  ]);
+/**
+ * Whether anyone may read the site without a role on it: it is public, or the
+ * request carries its current private link key.
+ */
+export async function getSiteIsPubliclyReadable(req: FastifyRequest, siteId: string | number): Promise<boolean> {
+  const config = await siteConfig.getConfig(siteId);
 
-  // Check if user has direct access to the site
-  if (hasDirectAccess) {
-    return true;
-  }
-
-  // Check if site is public
   if (config?.public) {
     return true;
   }
 
-  // Check if a valid private key was provided in the header
   const privateKey = req.headers["x-private-key"];
   if (privateKey && typeof privateKey === "string" && config?.privateLinkKey === privateKey) {
+    // Another worker may have revoked the key since this one cached it.
     const fresh = await siteConfig.reload(siteId);
     return fresh?.privateLinkKey === privateKey;
-  }
-
-  // Bearer-credential fallback. Scopes apply here too — without this check a
-  // scoped key could reach any public-guard route on a private site.
-  const result = await checkApiKey(req, { siteId });
-  if (result.valid && (!requiredScope || hasScope(result.statements, requiredScope))) {
-    return true;
   }
 
   return false;
 }
 
-async function hasSiteAccess(req: FastifyRequest, siteId: string | number, adminOnly: boolean): Promise<boolean> {
-  const matches = (accessible: { siteId: number }[]) => accessible.some(site => site.siteId === Number(siteId));
-  if (matches(await getSitesUserHasAccessTo(req, adminOnly))) return true;
+/** The role the caller holds on a site, or null when they cannot reach it. */
+export async function getUserSiteRole(req: FastifyRequest, siteId: string | number): Promise<OrgRole | null> {
+  const find = (accessible: AccessibleSite[]) =>
+    accessible.find(site => site.siteId === Number(siteId))?.accessRole ?? null;
+  const role = find(await getSitesUserHasAccessTo(req));
+  if (role) return role;
 
   // A claim may have committed in another worker while this one still holds
   // the user's pre-claim site list. Never let a cached miss deny a new grant.
   const userId = req.user?.id ?? (await getSessionFromReq(req))?.user.id;
-  if (!userId) return false;
+  if (!userId) return null;
   invalidateSitesAccessCache(userId);
-  return matches(await getSitesUserHasAccessTo(req, adminOnly));
+  return find(await getSitesUserHasAccessTo(req));
+}
+
+/** Whether the caller's role on the site holds the permission (roles only; scopes are the guards' job). */
+export async function getUserHasSitePermission(
+  req: FastifyRequest,
+  siteId: string | number,
+  permission: Permission
+): Promise<boolean> {
+  return roleHasPermission(await getUserSiteRole(req, siteId), permission);
 }
 
 export async function getUserHasAccessToSite(req: FastifyRequest, siteId: string | number) {
-  return hasSiteAccess(req, siteId, false);
+  return (await getUserSiteRole(req, siteId)) !== null;
 }
 
 export async function getUserHasAdminAccessToSite(req: FastifyRequest, siteId: string | number) {
-  return hasSiteAccess(req, siteId, true);
+  return isAdminRole(await getUserSiteRole(req, siteId));
 }
 
-export async function getUserIsInOrg(req: FastifyRequest, organizationId: string): Promise<boolean> {
+/**
+ * The role the caller holds in an organization: their membership role, admin
+ * for a system-admin browser session, admin for the organization's own API
+ * key. Null when they are not in it.
+ */
+export async function getUserOrgRole(req: FastifyRequest, organizationId: string): Promise<OrgRole | null> {
+  if (!req.user?.id && req.apiKeyOrganizationId) {
+    return req.apiKeyOrganizationId === organizationId ? "admin" : null;
+  }
   const userId = req.user?.id ?? (await getSessionFromReq(req))?.user.id;
-  return (await getOrgMembership(userId, organizationId)) !== null;
+  if (!userId) {
+    return null;
+  }
+  const [membership, isSystemAdmin] = await Promise.all([
+    getOrgMembership(userId, organizationId),
+    req.bearerAuth ? false : getIsUserAdmin(req),
+  ]);
+  return higherRole(membership?.role, isSystemAdmin ? "admin" : null);
+}
+
+/** Whether the caller's organization role holds the permission (roles only; scopes are the guards' job). */
+export async function getUserHasOrgPermission(
+  req: FastifyRequest,
+  organizationId: string,
+  permission: Permission
+): Promise<boolean> {
+  return roleHasPermission(await getUserOrgRole(req, organizationId), permission);
 }

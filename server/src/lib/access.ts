@@ -1,3 +1,4 @@
+import { isAdminRole, isOrgRole, type OrgRole } from "@rybbit/shared";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
@@ -59,7 +60,7 @@ export async function getOrgMembership(
 
 /** Admin or owner of the organization — the two roles that bypass site gating. */
 export function isOrgAdmin(membership: OrgMembership | null | undefined): boolean {
-  return membership?.role === "admin" || membership?.role === "owner";
+  return isAdminRole(membership?.role);
 }
 
 /** Owner of the organization — the only role that may manage billing. */
@@ -232,4 +233,113 @@ export async function filterSitesByMemberAccess<T extends { siteId: number }>(
   });
 
   return orgSites.filter(site => memberCanAccessSite(grants, site.siteId, hasRestrictedSiteAccess));
+}
+
+export type SiteRow = typeof sites.$inferSelect;
+
+/** A site the caller can reach, with the role they hold on it. */
+export type AccessibleSite = SiteRow & { accessRole: OrgRole };
+
+/**
+ * Every site a user reaches through their organization memberships, each with
+ * the role they hold on it — the single computation behind both the session
+ * and the bearer-credential paths, so a personal API key reaches exactly what
+ * its user's browser session reaches.
+ *
+ * Admin/owner memberships reach every site of the organization. Any other
+ * role reaches the sites the Site Access rule ({@link memberCanAccessSite})
+ * admits. A membership whose role is not a known role reaches nothing.
+ *
+ * System-admin authority is not a membership and is not applied here; the
+ * session layer adds it.
+ */
+export async function resolveUserSites(userId: string): Promise<AccessibleSite[]> {
+  const memberRecords = await db
+    .select({
+      id: member.id,
+      organizationId: member.organizationId,
+      role: member.role,
+      hasRestrictedSiteAccess: member.hasRestrictedSiteAccess,
+    })
+    .from(member)
+    .where(eq(member.userId, userId));
+
+  const roleByOrgId = new Map<string, OrgRole>();
+  const fullAccessOrgIds: string[] = [];
+  const gatedMembers: typeof memberRecords = [];
+
+  for (const record of memberRecords) {
+    if (!isOrgRole(record.role)) {
+      continue;
+    }
+    roleByOrgId.set(record.organizationId, record.role);
+    if (isAdminRole(record.role)) {
+      fullAccessOrgIds.push(record.organizationId);
+    } else {
+      gatedMembers.push(record);
+    }
+  }
+
+  const gatedRowByOrgId = new Map(gatedMembers.map(record => [record.organizationId, record]));
+  const gatedOrgIds = Array.from(gatedRowByOrgId.keys());
+  const restrictedMembers = gatedMembers.filter(record => record.hasRestrictedSiteAccess);
+  const restrictedOrgIds = restrictedMembers.map(record => record.organizationId);
+
+  // A restricted membership reaches a closed set of sites, so its
+  // organization is loaded by id below rather than read in full and
+  // discarded — an org can hold far more sites than one member is granted.
+  const restrictedOrgIdSet = new Set(restrictedOrgIds);
+  const eagerOrgIds = Array.from(
+    new Set([...fullAccessOrgIds, ...gatedOrgIds.filter(id => !restrictedOrgIdSet.has(id))])
+  );
+
+  if (eagerOrgIds.length === 0 && restrictedOrgIds.length === 0) {
+    return [];
+  }
+
+  const [eagerSites, grants] = await Promise.all([
+    eagerOrgIds.length > 0
+      ? db.select().from(sites).where(inArray(sites.organizationId, eagerOrgIds))
+      : Promise.resolve([]),
+    gatedOrgIds.length > 0
+      ? resolveMemberSiteGrants({
+          userId,
+          organizationIds: gatedOrgIds,
+          grantedMemberIds: restrictedMembers.map(record => record.id),
+        })
+      : null,
+  ]);
+
+  const withRole = (site: SiteRow): AccessibleSite | null => {
+    const role = site.organizationId ? roleByOrgId.get(site.organizationId) : undefined;
+    return role ? { ...site, accessRole: role } : null;
+  };
+
+  const accessible: AccessibleSite[] = [];
+  for (const site of eagerSites) {
+    const gatedRow = site.organizationId ? gatedRowByOrgId.get(site.organizationId) : undefined;
+    if (gatedRow && grants && !memberCanAccessSite(grants, site.siteId, gatedRow.hasRestrictedSiteAccess)) {
+      continue;
+    }
+    const entry = withRole(site);
+    if (entry) accessible.push(entry);
+  }
+
+  if (grants && restrictedOrgIds.length > 0) {
+    const candidateSiteIds = restrictedMemberSiteIds(grants);
+    if (candidateSiteIds.length > 0) {
+      const grantedSites = await db
+        .select()
+        .from(sites)
+        .where(and(inArray(sites.siteId, candidateSiteIds), inArray(sites.organizationId, restrictedOrgIds)));
+      const seen = new Set(accessible.map(site => site.siteId));
+      for (const site of grantedSites) {
+        if (seen.has(site.siteId)) continue;
+        const entry = withRole(site);
+        if (entry) accessible.push(entry);
+      }
+    }
+  }
+
+  return accessible;
 }

@@ -4,7 +4,8 @@ import { randomBytes } from "crypto";
 import { db } from "../../db/postgres/postgres.js";
 import { member } from "../../db/postgres/schema.js";
 import { auth } from "../../lib/auth.js";
-import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
+import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission } from "@rybbit/shared";
+import { getOrgMembership } from "../../lib/access.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
@@ -52,7 +53,7 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
         return reply.status(401).send({ error: "Unauthorized" });
       }
       callerMembership = await getOrgMembership(userId, organizationId);
-      if (!isOrgAdmin(callerMembership)) {
+      if (!roleHasPermission(callerMembership?.role, "members:manage")) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
     }
@@ -64,15 +65,15 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
 
     const email = rawEmail.toLowerCase();
 
-    if (role !== "admin" && role !== "member" && role !== "owner") {
-      return reply.status(400).send({ error: "Role must be either admin, member, or owner" });
+    if (!isOrgRole(role)) {
+      return reply.status(400).send({ error: `Role must be one of: ${ORG_ROLES.join(", ")}` });
     }
 
-    // Only an organization owner (or a system admin) may create an owner — minting
-    // an account with higher privileges than an org admin's own is a
-    // privilege-escalation path.
-    if (role === "owner" && !isAdmin && callerMembership?.role !== "owner") {
-      return reply.status(403).send({ error: "Only an organization owner can assign the owner role" });
+    // Nobody but a system admin creates a user with a role above their own (only
+    // owners make owners) — minting an account with higher privileges than an
+    // org admin's own is a privilege-escalation path.
+    if (!isAdmin && !canAssignRole(callerMembership?.role, role)) {
+      return reply.status(403).send({ error: "You cannot assign a role above your own" });
     }
 
     if (password.length < 8) {

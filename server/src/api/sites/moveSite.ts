@@ -1,9 +1,10 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
+import { getOrgMembership } from "../../lib/access.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
@@ -58,7 +59,7 @@ export async function moveSite(
     if (!targetMembership) {
       return reply.status(403).send({ error: "You are not a member of the target organization" });
     }
-    if (!isOrgAdmin(targetMembership)) {
+    if (!roleHasPermission(targetMembership.role, "sites:create")) {
       return reply.status(403).send({ error: "You must be an admin or owner of the target organization" });
     }
 

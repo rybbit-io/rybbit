@@ -1,8 +1,9 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { eq, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { team, teamMember, teamSiteAccess, sites, user } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
+import { getOrgMembership } from "../../lib/access.js";
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
 
 export async function listTeams(
@@ -15,8 +16,8 @@ export async function listTeams(
     const { organizationId } = request.params;
     const userId = request.user?.id ?? (await getUserIdFromRequest(request));
 
-    // Get user's membership in this org
-    const isAdminOrOwner = isOrgAdmin(await getOrgMembership(userId, organizationId));
+    // Team managers see every team; everyone else sees the teams they are on.
+    const isAdminOrOwner = roleHasPermission((await getOrgMembership(userId, organizationId))?.role, "teams:manage");
 
     // Get all teams in the org
     let teamsData = await db.select().from(team).where(eq(team.organizationId, organizationId));

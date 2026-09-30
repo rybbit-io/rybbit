@@ -1,3 +1,4 @@
+import { isAdminRole } from "@rybbit/shared";
 import { and, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 
@@ -47,7 +48,7 @@ export async function updateMemberSiteAccess(
     const memberData = memberRecord[0];
 
     // Don't allow restricting admin or owner roles
-    if (memberData.role === "admin" || memberData.role === "owner") {
+    if (isAdminRole(memberData.role)) {
       return reply.status(400).send({
         error: "Cannot restrict site access for admin or owner roles",
       });

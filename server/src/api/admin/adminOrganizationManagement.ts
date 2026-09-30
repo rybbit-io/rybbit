@@ -1,3 +1,4 @@
+import { isAdminRole, ORG_ROLES } from "@rybbit/shared";
 import { and, count, desc, eq, ilike, ne, or } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -198,12 +199,12 @@ export async function getAdminOrganizationMember(
 
 const updateMemberSchema = z
   .object({
-    role: z.enum(["owner", "admin", "member"]),
+    role: z.enum(ORG_ROLES),
     hasRestrictedSiteAccess: z.boolean(),
     siteIds: z.array(z.number().int().positive()).max(500),
   })
   .superRefine((value, ctx) => {
-    if (value.role === "member" && value.hasRestrictedSiteAccess && value.siteIds.length === 0) {
+    if (!isAdminRole(value.role) && value.hasRestrictedSiteAccess && value.siteIds.length === 0) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["siteIds"], message: "Select at least one site" });
     }
   });
@@ -240,7 +241,7 @@ export async function updateAdminOrganizationMember(
       return reply.status(400).send({ error: "An organization must have at least one owner" });
     }
 
-    const restricted = value.role === "member" && value.hasRestrictedSiteAccess;
+    const restricted = !isAdminRole(value.role) && value.hasRestrictedSiteAccess;
     const requestedSiteIds = restricted ? [...new Set(value.siteIds)] : [];
     const validSiteIds = new Set(await siteIdsInOrganization(requestedSiteIds, found.organizationId));
     if (requestedSiteIds.some(siteId => !validSiteIds.has(siteId))) {

@@ -1,3 +1,4 @@
+import { isAdminRole } from "@rybbit/shared";
 import { eq } from "drizzle-orm";
 import { FastifyRequest, FastifyReply } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
@@ -34,7 +35,7 @@ export async function getSitesFromOrg(
     // Filter sites based on member's access restrictions and teams
     let sitesData = allSitesData;
 
-    if (memberRecord?.role === "member" && userId) {
+    if (memberRecord && !isAdminRole(memberRecord.role) && userId) {
       sitesData = await filterSitesByMemberAccess(
         allSitesData,
         organizationId,
@@ -107,7 +108,8 @@ export async function getSitesFromOrg(
       type: site.type || "web",
       domain: site.domain || "",
       sessionsLast24Hours: sessionCountMap.get(site.siteId) || 0,
-      isOwner: memberRecord?.role !== "member",
+      // The organization role the route guard admitted the caller with.
+      isOwner: isAdminRole(req.accessRole),
       teams: siteTeamMap.get(site.siteId) || [],
     }));
 
