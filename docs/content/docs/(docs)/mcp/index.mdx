@@ -150,7 +150,7 @@ Search Console tools read the Google Search Console property connected to the si
 | `list_sites`         | List organizations and sites the key can access (call this first)                       |
 | `get_site`           | One site's full configuration                                                           |
 | `create_site`        | Add a new site to an organization *(admin)*                                             |
-| `update_site_config` | Change site settings: name, domain, tracking features, exclusions, tags *(admin)*       |
+| `update_site_config` | Change site settings: name, domain, tracking features, exclusions, tags *(editor)*      |
 | `delete_site`        | Permanently delete a site and its data *(admin, destructive)*                           |
 
 ### Goals & funnels
@@ -174,7 +174,7 @@ Search Console tools read the Google Search Console property connected to the si
 | `get_user`           | One person's profile: traits, linked devices, vitals, locations                  |
 | `identify_user`      | Link an anonymous device to your user ID and merge traits                        |
 | `update_user_traits` | Replace a person's traits wholesale                                              |
-| `delete_user`        | GDPR erasure of one person's analytics data *(admin, destructive)*               |
+| `delete_user`        | GDPR erasure of one person's analytics data *(editor, destructive)*              |
 
 ### Organization & teams
 
@@ -204,11 +204,14 @@ Analytics tools accept optional time inputs (`start_date`/`end_date` with an IAN
 
 The MCP surface mirrors the REST API's permission model:
 
-- **Read tools** work for any member with access to the site.
-- **Write tools** need at least member-level site access (goals, funnels, `identify_user`, `update_user_traits`, `save_funnel`).
-- **Tools marked *(admin)*** require the API key's user to hold the **admin or owner** role in the organization; `add_member` can grant the `owner` role only from an owner's key. The REST layer enforces all of this — an underprivileged key gets a 403 with an explanatory message.
+- **Read tools** work for any role with access to the site, including viewers.
+- **Write tools** need the member role or above on the site (goals, funnels, `identify_user`, `update_user_traits`, `save_funnel`).
+- **Tools marked *(editor)*** need the editor role or above on the site.
+- **Tools marked *(admin)*** require the API key's user to hold the **admin or owner** role in the organization. `add_member` can't grant a role above the key's own, so only an owner's key can grant `owner`.
 
-To give an assistant a read-only or read-mostly view, create a **scoped** API key (see step 1): grant only the `resource:action` scopes it needs — e.g. `{"analytics": ["read"], "sessions": ["read"]}` for a reporting agent. The MCP tool list is filtered to those scopes, and any out-of-scope call returns `403 { "error": "Insufficient scope", "required": "goals:write" }`. Alternatively, connecting with a member-role user's key hides nothing but refuses every call requiring the admin/owner role.
+A key acts with its user's role on each site, including [site-specific roles](/docs/organization-settings#member-roles) from site restrictions and teams, and it reaches exactly the sites that user can see. The REST layer enforces all of this: an underprivileged key gets a 403 `"Insufficient role"` naming the role required.
+
+To give an assistant a read-only or read-mostly view, create a **scoped** API key (see step 1): grant only the `resource:action` scopes it needs — e.g. `{"analytics": ["read"], "sessions": ["read"]}` for a reporting agent. The MCP tool list is filtered to those scopes, and any out-of-scope call returns `403 { "error": "Insufficient scope", "required": "goals:write" }`. Alternatively, connect with a viewer's key: it hides nothing but refuses every write.
 
 OAuth clients request scopes through the standard grant. Rybbit advertises the same `resource:action` scopes in its discovery metadata; a grant carrying no custom scopes (or only the standard OIDC scopes) is treated as full access, for backward compatibility.
 
@@ -229,7 +232,7 @@ OAuth clients request scopes through the standard grant. Rybbit advertises the s
 
 - **401 Unauthorized:** The client did not send a Bearer credential, or the key/token is invalid, expired, or revoked. OAuth-capable clients re-authenticate automatically via the `WWW-Authenticate` challenge.
 - **OAuth login loop or "table does not exist" (self-hosted):** Run `npm run db:push` in `server/` to create the OAuth tables, then retry.
-- **403 in tool results:** The key's user lacks access to that site or organization — or the tool requires an org admin/owner role. Check the `role` field in `list_sites`.
+- **403 in tool results:** The key's user lacks access to that site or organization, or holds too low a role for the tool (`"Insufficient role"` names the role required). Check the `role` field in `list_sites`.
 - **403 "Insufficient scope":** The credential was created without the `resource:action` scope this tool needs (the `required` field names it). Use a key or OAuth grant that includes it.
 - **429 Too Many Requests:** The API key exceeded its plan's rate limit.
 - **404 "GSC not connected" from Search Console tools:** Connect Google Search Console for that site under Site settings > Integrations, then retry.

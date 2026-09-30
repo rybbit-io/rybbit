@@ -48,6 +48,12 @@ Creates a team in an organization. Requires admin/owner role.
       type: 'number[]',
       required: false,
     },
+    siteRole: {
+      description: "Raises the team members' role on the team's sites. Never lowers it; omit or null to leave each member's own role.",
+      type: 'string',
+      typeDescription: '"editor" | "member" | "viewer" | null',
+      required: false,
+    },
   }}
 />
 

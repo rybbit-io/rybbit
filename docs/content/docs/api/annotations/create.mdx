@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/sites/:site/annotations
 ```
 
-Creates an annotation. Any member with access to the site can create site annotations; organization-wide annotations (`scope: "organization"`) require an admin or owner role.
+Creates an annotation. Members and above can create site annotations; organization-wide annotations (`scope: "organization"`) need the editor role or above in the organization.
 
 ### Path Parameters
 

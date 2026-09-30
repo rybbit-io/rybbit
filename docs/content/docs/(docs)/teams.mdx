@@ -13,16 +13,17 @@ Access teams by clicking on "Teams" or going to [app.rybbit.io/settings/teams](h
 
 ## How Teams Work
 
-A team has three things:
+A team has four things:
 
 - **A name** — identifies the team (e.g. "Marketing Sites", "Client Projects")
 - **Members** — organization members assigned to the team
 - **Sites** — the sites that belong to the team
+- **Role on the team's sites** (optional) — raises the members' role on the team's sites, e.g. to **Editor**. Left empty, each member keeps their own organization role there. It never lowers anyone's role.
 
 When a member is assigned to a team, they can access all sites within that team. Admins and owners always have access to all sites regardless of team assignments.
 
 <Callout type="info">
-  Teams are an organizational tool for admins and owners. Members with the "Member" role can only see sites that belong to their assigned teams (unless they have unrestricted access).
+  A site that belongs to a team is only visible to that team's members (plus admins and owners, and anyone explicitly granted the site). Sites in no team are visible to every unrestricted member.
 </Callout>
 
 ## Creating a Team
@@ -32,7 +33,8 @@ When a member is assigned to a team, they can access all sites within that team.
 3. Enter a team name
 4. Select which members should belong to the team
 5. Select which sites the team should have access to
-6. Click **Create Team**
+6. Optionally pick a role the team's members get on those sites
+7. Click **Create Team**
 
 You can also create a team directly from the team filter on the home page.
 
@@ -64,8 +66,8 @@ When [inviting a new member](/docs/inviting-users), you can optionally assign th
 
 ## Permissions
 
-| Role | Can create teams | Can edit/delete teams | Can view team-restricted sites |
-|------|-----------------|----------------------|-------------------------------|
-| **Owner** | Yes | Yes | All sites |
-| **Admin** | Yes | Yes | All sites |
-| **Member** | No | No | Only sites in their assigned teams |
+| Role | Can create, edit and delete teams | Can view team-restricted sites |
+|------|----------------------------------|-------------------------------|
+| **Owner** | Yes | All sites |
+| **Admin** | Yes | All sites |
+| **Editor, Member, Viewer** | No | Only sites in their assigned teams |
