@@ -17,6 +17,11 @@ was derived from `0020_snapshot.json`, with only the retired table and four user
 columns removed and the snapshot IDs advanced. This keeps a later unrelated
 Drizzle generation from silently inheriting these drops.
 
+The migration uses `IF EXISTS` for both tables and columns, so it can be reapplied
+when the retired objects are partially or entirely absent. Regression tests run
+the actual migration SQL twice in an in-memory PGlite database and verify that
+retained user data and organization billing fields remain unchanged.
+
 ## Checks required before deployment
 
 1. Ship the onboarding-tip cancellation cleanup first. Confirm every cloud
