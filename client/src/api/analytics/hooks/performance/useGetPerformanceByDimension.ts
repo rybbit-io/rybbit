@@ -1,13 +1,8 @@
 import { Filter } from "@rybbit/shared";
 import { UseQueryResult } from "@tanstack/react-query";
 import { usePerformanceStore } from "../../../../app/[site]/performance/performanceStore";
-import { PaginatedPerformanceResponse, PerformanceByDimensionItem } from "../../endpoints";
+import { PaginatedPerformanceResponse } from "../../endpoints";
 import { useAnalyticsQuery } from "../../useAnalyticsQuery";
-
-// Keep the old type for backward compatibility
-export type PerformanceByPathItem = PerformanceByDimensionItem & {
-  pathname: string;
-};
 
 type UseGetPerformanceByDimensionOptions = {
   site: number | string;

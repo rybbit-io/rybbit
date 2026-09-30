@@ -16,12 +16,3 @@ export type PerformanceTimeSeriesPoint = {
 } & {
   [K in WebVitalMetric as `${K}_${PercentileLevel}`]: number | null;
 };
-
-export type PerformanceByPathItem = {
-  pathname: string;
-  event_count: number;
-} & {
-  [K in WebVitalMetric as `${K}_avg`]: number | null;
-} & {
-  [K in WebVitalMetric as `${K}_${PercentileLevel}`]: number | null;
-};
