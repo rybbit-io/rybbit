@@ -7,6 +7,7 @@ import { organization, team, teamSiteAccess } from "../../db/postgres/schema.js"
 import { DEFAULT_EVENT_LIMIT, IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
 import { getSitesUserHasAccessTo } from "../../lib/auth-utils.js";
 import { processResults } from "../analytics/utils/utils.js";
+import { siteRequiresPlan } from "../../lib/subscriptionUtils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 import { buildSiteSessionCountsQuery } from "./siteSessionCountsQuery.js";
 
@@ -98,6 +99,7 @@ export async function getSitesFromOrg(
       role: accessRole,
       permissions: permissionsForRole(accessRole),
       teams: siteTeamMap.get(site.siteId) || [],
+      requiresPlan: siteRequiresPlan(subscription, site.createdAt),
     }));
 
     // Sort by sessions descending

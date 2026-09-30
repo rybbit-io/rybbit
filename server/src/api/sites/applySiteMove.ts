@@ -11,6 +11,7 @@ import {
 } from "../../db/postgres/schema.js";
 import type { SiteTransaction } from "../../services/sites/withOrganizationSiteLock.js";
 import { invalidateOrganizationSitesCache, invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { usageService } from "../../services/usageService.js";
 
 /**
  * Lock a site's row for the rest of the transaction and read the organization
@@ -104,4 +105,9 @@ export async function invalidateSiteMoveAccess(sourceOrganizationId: string | nu
   for (const { userId } of affectedMembers) {
     invalidateSitesAccessCache(userId);
   }
+  // The moved site now follows the target organization's plan. Refreshing the source too marks
+  // it as newer than any cron run already holding the old ownership, which would otherwise
+  // re-apply the source organization's blocks to the moved site.
+  usageService.requestOrganizationRefresh(targetOrganizationId);
+  usageService.requestOrganizationRefresh(sourceOrganizationId);
 }

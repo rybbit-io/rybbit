@@ -20,6 +20,7 @@ type MatchedExclusion = Extract<SiteExclusionDecision, { excluded: true }>;
 export type IngestOutcome =
   | { status: "excluded"; exclusion: MatchedExclusion }
   | { status: "over_limit" }
+  | { status: "no_plan" }
   | { status: "bot" }
   | { status: "tracked"; sessionId: string };
 
@@ -34,8 +35,8 @@ export type IngestOutcome =
  *      (their own office IP, a staging hostname) leaves no trace at all. It
  *      used to run third, after bot detection, which meant an excluded visitor
  *      still moved every anomaly counter for the Site.
- *   2. Over-limit — before any Redis or ClickHouse work, since the event is
- *      going to be dropped regardless.
+ *   2. Over-limit or no plan — before any Redis or ClickHouse work, since the
+ *      event is going to be dropped regardless.
  *   3. Bot detection — needs a real event; charges a Redis round-trip. It runs
  *      for every Site, whether or not the Site blocks bots; `blockBots` decides
  *      only where a detection is sent, at stage 5.
@@ -64,6 +65,10 @@ export async function ingestEvent(trackingRequest: TrackingRequest): Promise<Ing
   if (usageService.isSiteOverLimit(site.siteId)) {
     logger.info({ siteId: payload.site_id }, "Skipping event - site over monthly limit");
     return { status: "over_limit" };
+  }
+
+  if (usageService.isSiteWithoutPlan(site.siteId)) {
+    return { status: "no_plan" };
   }
 
   const botDetectionResult = await checkBotBlocking({

@@ -14,7 +14,6 @@ const daysAgo = (d: number) => now().minus({ days: d }).toSQL({ includeOffset: f
 
 const state = vi.hoisted(() => ({
   users: [] as Array<{ id: string; email: string; name: string; createdAt: string }>,
-  legacyTipUsers: [] as Array<{ id: string; scheduledTipEmailIds: string[] }>,
   memberships: [] as Array<{ userId: string; organizationId: string; role: string }>,
   sites: [] as Array<{
     siteId: number;
@@ -44,13 +43,11 @@ const state = vi.hoisted(() => ({
   establishedSites: [] as Array<{ site_id: number; total: number }>,
   /** unique-key guard mirroring the DB constraint */
   sentKeys: new Set<string>(),
-  clearedTipUsers: [] as string[],
 }));
 
 const mocks = vi.hoisted(() => ({
   sendLifecycleEmail: vi.fn(async (_email: string, _subject: string, _text: string, _idempotencyKey?: string) => true),
   isContactUnsubscribed: vi.fn(async (_email: string) => false),
-  cancelScheduledEmail: vi.fn(async (_id: string) => undefined),
   detectPlatform: vi.fn(async () => null),
 }));
 
@@ -73,7 +70,6 @@ vi.mock("../../db/postgres/postgres.js", () => {
       // Reads are told apart by the columns each one selects.
       select: (fields: Record<string, unknown>) =>
         chain(() => {
-          if ("scheduledTipEmailIds" in fields) return state.legacyTipUsers;
           if ("siteId" in fields && "userId" in fields && "sentAt" in fields) return state.recentQuietLogs;
           if ("emailKey" in fields && "userId" in fields) return state.logs;
           if ("role" in fields) return state.memberships;
@@ -105,10 +101,8 @@ vi.mock("../../db/postgres/postgres.js", () => {
         }),
       }),
       update: () => ({
-        set: (values: Record<string, unknown>) => ({
-          where: async () => {
-            if ("scheduledTipEmailIds" in values) state.clearedTipUsers.push("cleared");
-          },
+        set: () => ({
+          where: async () => {},
         }),
       }),
       // The service only deletes the rows it just inserted (send-failure
@@ -151,7 +145,6 @@ vi.mock("../../db/clickhouse/clickhouse.js", () => ({
 vi.mock("../../lib/email/email.js", () => ({
   sendLifecycleEmail: mocks.sendLifecycleEmail,
   isContactUnsubscribed: mocks.isContactUnsubscribed,
-  cancelScheduledEmail: mocks.cancelScheduledEmail,
 }));
 
 vi.mock("../../lib/const.js", () => ({ IS_CLOUD: true, SECRET: "test-secret" }));
@@ -193,7 +186,6 @@ beforeEach(() => {
   insertedStack.length = 0;
   // Reset singleton run-state between tests
   (lifecycleEmailService as any).lastWentQuietAt = null;
-  (lifecycleEmailService as any).legacyTipsCancelled = true;
   (lifecycleEmailService as any).negativeCache.clear();
 });
 
@@ -607,16 +599,5 @@ describe("multi-site owners", () => {
     addUser("u1", hoursAgo(4));
     await run();
     expect(mocks.sendLifecycleEmail.mock.calls[0][3]).toBe("lifecycle:u1:no_site_1");
-  });
-});
-
-describe("rollout", () => {
-  it("cancels tips the retired drip already scheduled in Resend", async () => {
-    (lifecycleEmailService as any).legacyTipsCancelled = false;
-    state.legacyTipUsers.push({ id: "u9", scheduledTipEmailIds: ["re_1", "re_2", "re_3"] });
-    await run();
-    expect(mocks.cancelScheduledEmail).toHaveBeenCalledTimes(3);
-    expect(mocks.cancelScheduledEmail).toHaveBeenCalledWith("re_1");
-    expect(state.clearedTipUsers.length).toBe(1);
   });
 });

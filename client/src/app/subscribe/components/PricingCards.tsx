@@ -21,6 +21,7 @@ import {
 } from "./utils";
 
 import { CheckoutModal } from "@/components/subscription/components/CheckoutModal";
+import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 
@@ -35,6 +36,9 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [showTestPlan, setShowTestPlan] = useState(false);
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
   const { data: activeOrg } = authClient.useActiveOrganization();
+  const { data: subscription } = useStripeSubscription();
+  // Checkout skips the trial for an organization that already had a subscription.
+  const subscribeLabel = subscription?.trialEligible === false ? t("Subscribe") : t("Start free trial");
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -246,7 +250,7 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
             annualPrice={standardAnnualPrice}
             isAnnual={isAnnual}
             isCustomTier={isCustomTier}
-            buttonText={isLoading ? t("Processing...") : isCustomTier ? t("Contact us") : t("Start free trial")}
+            buttonText={isLoading ? t("Processing...") : isCustomTier ? t("Contact us") : subscribeLabel}
             features={STANDARD_FEATURES}
             onClick={() => handleSubscribe("standard")}
             disabled={isLoading}
@@ -258,7 +262,7 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
             monthlyPrice={proMonthlyPrice}
             annualPrice={proAnnualPrice}
             isAnnual={isAnnual}
-            buttonText={isLoading ? t("Processing...") : isCustomTier ? t("Contact us") : t("Start free trial")}
+            buttonText={isLoading ? t("Processing...") : isCustomTier ? t("Contact us") : subscribeLabel}
             features={PRO_FEATURES}
             recommended={true}
             onClick={() => handleSubscribe("pro")}

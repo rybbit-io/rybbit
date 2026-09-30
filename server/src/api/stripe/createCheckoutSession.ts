@@ -6,6 +6,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { organization, user as userSchema } from "../../db/postgres/schema.js";
 import { getOrgMembership } from "../../lib/access.js";
 import { stripe } from "../../lib/stripe.js";
+import { hasHadStripeSubscription } from "../../lib/subscriptionUtils.js";
 
 interface CheckoutRequestBody {
   priceId: string;
@@ -70,6 +71,10 @@ export async function createCheckoutSession(
     }
 
     let stripeCustomerId = org.stripeCustomerId;
+    // One free trial per organization. A customer created just below has no history. If the
+    // history can't be read this throws, so checkout fails and can be retried rather than
+    // handing a returning customer another trial.
+    const trialEligible = !(await hasHadStripeSubscription(stripeCustomerId, { throwOnError: true }));
 
     // 3. If the organization doesn't have a Stripe Customer ID, create one
     if (!stripeCustomerId) {
@@ -106,8 +111,8 @@ export async function createCheckoutSession(
       metadata: {
         organizationId: organizationId,
       },
-      // 7-day free trial before charging
-      subscription_data: { trial_period_days: 7 },
+      // 7-day free trial before charging, unless this organization already had one
+      ...(trialEligible && { subscription_data: { trial_period_days: 7 } }),
       // Allow promotion codes
       allow_promotion_codes: true,
       // Enable automatic tax calculation if configured in Stripe Tax settings

@@ -18,7 +18,18 @@ const state = vi.hoisted(() => ({
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   stripeEnabled: true,
+  isCloud: true,
 }));
+
+vi.mock("./const.js", async importOriginal => {
+  const actual = await importOriginal<typeof import("./const.js")>();
+  return {
+    ...actual,
+    get IS_CLOUD() {
+      return mocks.isCloud;
+    },
+  };
+});
 
 vi.mock("../db/postgres/postgres.js", () => {
   // Drizzle builders are thenable; both org lookups await `.limit(1)`.
@@ -73,11 +84,13 @@ import {
   getOverrideSubscription,
   getReplayLimit,
   getStripeSubscription,
+  hasHadStripeSubscription,
   invalidateAllStripeSubscriptionsCache,
   invalidateStripeSubscriptionCache,
   OverrideSubscriptionInfo,
   StripeSubscriptionInfo,
   stripeSubscriptionInfoFromSnapshot,
+  siteRequiresPlan,
   subscriptionIncludesReplay,
 } from "./subscriptionUtils.js";
 
@@ -257,6 +270,7 @@ beforeEach(() => {
   state.orgSelectError = null;
   state.appsumoError = null;
   mocks.stripeEnabled = true;
+  mocks.isCloud = true;
   mocks.list.mockReset();
   listReturns([]);
   invalidateAllStripeSubscriptionsCache();
@@ -865,5 +879,95 @@ describe("getBestSubscriptionFromStripeSub", () => {
     await expect(getBestSubscriptionFromStripeSub("org_1", null)).resolves.toMatchObject({ source: "free" });
 
     expect(mocks.list).not.toHaveBeenCalled();
+  });
+});
+
+describe("siteRequiresPlan", () => {
+  const free = { status: "free" };
+
+  it("switches off a site created on or after the free plan ended in an org with no plan", () => {
+    expect(siteRequiresPlan(free, "2026-02-13 00:00:00")).toBe(true);
+    expect(siteRequiresPlan(free, "2026-09-29 12:34:56.789")).toBe(true);
+  });
+
+  it("keeps sites from the free-plan era on the legacy free tier", () => {
+    expect(siteRequiresPlan(free, "2026-02-12 23:59:59")).toBe(false);
+    expect(siteRequiresPlan(free, "2025-06-01 08:00:00")).toBe(false);
+  });
+
+  it("never switches off a site whose org has a plan", () => {
+    for (const status of ["active", "trialing"]) {
+      expect(siteRequiresPlan({ status }, "2026-09-29 12:00:00")).toBe(false);
+    }
+  });
+
+  it("treats a missing creation date or subscription as not requiring a plan", () => {
+    expect(siteRequiresPlan(free, null)).toBe(false);
+    expect(siteRequiresPlan(null, "2026-09-29 12:00:00")).toBe(false);
+  });
+
+  it("never applies to self-hosted instances", () => {
+    mocks.isCloud = false;
+    expect(siteRequiresPlan(free, "2026-09-29 12:00:00")).toBe(false);
+  });
+});
+
+describe("hasHadStripeSubscription", () => {
+  beforeEach(() => {
+    invalidateStripeSubscriptionCache("cus_history");
+  });
+
+  it("is false for an org that never reached checkout", async () => {
+    await expect(hasHadStripeSubscription(null)).resolves.toBe(false);
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
+
+  it("is false when checkouts were only ever abandoned", async () => {
+    listReturns([stripeSub({ customer: "cus_history", status: "incomplete_expired" })]);
+    await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(false);
+  });
+
+  it.each(["canceled", "past_due", "trialing", "active", "unpaid"])("is true once a %s subscription exists", async status => {
+    listReturns([stripeSub({ customer: "cus_history", status })]);
+    await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(true);
+  });
+
+  it("caches per customer until the subscription cache is invalidated", async () => {
+    listReturns([stripeSub({ customer: "cus_history", status: "canceled" })]);
+    await hasHadStripeSubscription("cus_history");
+    await hasHadStripeSubscription("cus_history");
+    expect(mocks.list).toHaveBeenCalledTimes(1);
+
+    invalidateStripeSubscriptionCache("cus_history");
+    await hasHadStripeSubscription("cus_history");
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not trust an expired 'never subscribed' answer when the caller needs certainty", async () => {
+    listReturns([]);
+    await hasHadStripeSubscription("cus_history");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 61_000);
+    mocks.list.mockRejectedValue(new Error("stripe down"));
+
+    await expect(hasHadStripeSubscription("cus_history", { throwOnError: true })).rejects.toThrow("stripe down");
+    await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("keeps an expired 'had a subscription' answer when Stripe cannot be reached", async () => {
+    listReturns([stripeSub({ customer: "cus_history", status: "canceled" })]);
+    await hasHadStripeSubscription("cus_history");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 61_000);
+    mocks.list.mockRejectedValue(new Error("stripe down"));
+
+    await expect(hasHadStripeSubscription("cus_history", { throwOnError: true })).resolves.toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("offers the trial when Stripe cannot be reached", async () => {
+    mocks.list.mockRejectedValue(new Error("stripe down"));
+    await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(false);
   });
 });

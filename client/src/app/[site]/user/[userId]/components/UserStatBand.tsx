@@ -5,7 +5,7 @@ import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { ReactNode } from "react";
 import { UserInfo } from "../../../../../api/analytics/endpoints";
-import { EventIcon, PageviewIcon } from "../../../../../components/EventIcons";
+import { EventTypeIcon } from "../../../../../components/EventIcons";
 import { Skeleton } from "../../../../../components/ui/skeleton";
 import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
 import { formatDuration } from "../../../../../lib/dateTimeUtils";
@@ -85,14 +85,14 @@ export function UserStatBand({ data, isLoading }: { data: UserInfo | undefined; 
           isLoading={isLoading}
         />
         <StatCell
-          icon={<PageviewIcon className="h-3 w-3" />}
+          icon={<EventTypeIcon type="pageview" className="h-3 w-3" />}
           label={t("Pageviews")}
           value={count(data?.pageviews)}
           title={countTitle(data?.pageviews)}
           isLoading={isLoading}
         />
         <StatCell
-          icon={<EventIcon className="h-3 w-3" />}
+          icon={<EventTypeIcon type="custom_event" className="h-3 w-3" />}
           label={t("Events")}
           value={count(data?.events)}
           title={countTitle(data?.events)}

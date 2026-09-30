@@ -5,7 +5,7 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { goals, lifecycleEmailLog, member, sites, user } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
-import { cancelScheduledEmail, isContactUnsubscribed, sendLifecycleEmail } from "../../lib/email/email.js";
+import { isContactUnsubscribed, sendLifecycleEmail } from "../../lib/email/email.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { signExpiringPayload } from "../../lib/signedToken.js";
 import * as content from "./lifecycleContent.js";
@@ -85,7 +85,6 @@ class LifecycleEmailService {
   private cronTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("lifecycle-emails");
   private running = false;
-  private legacyTipsCancelled = false;
   private lastWentQuietAt: DateTime | null = null;
   /** cacheKey -> epoch ms until which a known-negative ClickHouse probe is not repeated */
   private negativeCache = new Map<string, number>();
@@ -314,38 +313,6 @@ class LifecycleEmailService {
     build: () => Promise<content.LifecycleEmail | null> | content.LifecycleEmail | null
   ): Promise<boolean> {
     return this.sendBundle(userId, email, [{ key: emailKey, siteId }], `lifecycle:${userId}:${emailKey}`, build);
-  }
-
-  // -------------------------------------------------------------------------
-  // Rollout: cancel tips the retired drip already scheduled in Resend
-  // -------------------------------------------------------------------------
-
-  private async cancelLegacyScheduledTips(): Promise<void> {
-    if (this.legacyTipsCancelled) return;
-    this.legacyTipsCancelled = true;
-
-    try {
-      // The old drip scheduled at most 5 days out, so only recent signups can
-      // still have pending sends worth cancelling.
-      const cutoff = DateTime.utc().minus({ days: 10 }).toSQL({ includeOffset: false })!;
-      const users = await db
-        .select({ id: user.id, scheduledTipEmailIds: user.scheduledTipEmailIds })
-        .from(user)
-        .where(gt(user.createdAt, cutoff));
-
-      for (const u of users) {
-        const ids = (u.scheduledTipEmailIds as string[]) || [];
-        if (ids.length === 0) continue;
-        for (const emailId of ids) {
-          await cancelScheduledEmail(emailId);
-        }
-        await db.update(user).set({ scheduledTipEmailIds: [] }).where(eq(user.id, u.id));
-        this.logger.info({ userId: u.id, cancelled: ids.length }, "Cancelled legacy scheduled tip emails");
-      }
-    } catch (error) {
-      this.legacyTipsCancelled = false; // retry next run
-      this.logger.error({ err: error }, "Error cancelling legacy scheduled tips");
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -768,7 +735,6 @@ class LifecycleEmailService {
     this.emailedThisRun = new Set();
     const now = DateTime.utc();
     try {
-      await this.cancelLegacyScheduledTips();
       await this.processOnboarding(now);
       // The went-quiet scan covers the whole events table (bounded to 7 days);
       // hourly is plenty for a 48h-silence alert.

@@ -5,6 +5,7 @@ import { organization } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
+import { usageService } from "../../services/usageService.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -70,6 +71,8 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
                 "Organization already linked to Stripe customer"
               );
             }
+            // Turn the organization's sites on now rather than at the next usage check.
+            usageService.requestOrganizationRefresh(existingOrg[0]?.id ?? organizationId);
           } catch (dbError: any) {
             request.log.error({ err: dbError, stripeCustomerId }, "Failed to link organization to Stripe customer");
             // Retriable failure: the org is still not linked to its Stripe customer.
@@ -95,10 +98,24 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
     // Note: invalidateStripeSubscriptionCache is a synchronous in-process Map delete —
     // it cannot fail, so there is no swallowed-error path here to convert to a 5xx.
     case "customer.subscription.updated":
-    case "customer.subscription.deleted":
+    case "customer.subscription.deleted": {
       const changedSubscription = event.data.object as Stripe.Subscription;
-      invalidateStripeSubscriptionCache(changedSubscription.customer as string);
+      const changedCustomerId = changedSubscription.customer as string;
+      invalidateStripeSubscriptionCache(changedCustomerId);
+      try {
+        // A lapsed or canceled plan switches off sites that need one; a renewed plan switches
+        // them back on. The usage cron would get there too, up to 30 minutes later.
+        const [changedOrg] = await db
+          .select({ id: organization.id })
+          .from(organization)
+          .where(eq(organization.stripeCustomerId, changedCustomerId))
+          .limit(1);
+        usageService.requestOrganizationRefresh(changedOrg?.id);
+      } catch (dbError) {
+        request.log.warn({ err: dbError, stripeCustomerId: changedCustomerId }, "Could not refresh organization usage");
+      }
       break;
+    }
 
     // ... handle other event types as needed
 

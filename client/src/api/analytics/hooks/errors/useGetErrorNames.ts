@@ -22,17 +22,3 @@ export function useGetErrorNamesPaginated({
     staleTime: Infinity,
   });
 }
-
-// Hook for standard (non-paginated) fetching
-export function useGetErrorNames({
-  limit = 10,
-  useFilters = true,
-}: Omit<UseGetErrorNamesOptions, "page">): UseQueryResult<ErrorNamesPaginatedResponse> {
-  return useAnalyticsQuery<ErrorNamesPaginatedResponse>({
-    key: "error-names",
-    path: "errors/names",
-    useFilters,
-    params: { limit },
-    staleTime: Infinity,
-  });
-}
