@@ -36,16 +36,7 @@ export const user = pgTable(
     banned: boolean(),
     banReason: text(),
     banExpires: timestamp({ mode: "string" }),
-    // deprecated
-    stripeCustomerId: text(),
-    // deprecated
-    overMonthlyLimit: boolean().default(false),
-    // deprecated
-    monthlyEventCount: integer().default(0),
     sendAutoEmailReports: boolean().default(true),
-    // deprecated - Resend IDs from the retired tip sequence; retained until the
-    // separate contract migration audits and drops the legacy data
-    scheduledTipEmailIds: jsonb("scheduled_tip_email_ids").$type<string[]>().default([]),
   },
   table => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)]
 );
@@ -113,19 +104,6 @@ export const sites = pgTable(
   },
   table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
 );
-
-// Active sessions table.
-// DEPRECATED: session tracking moved to Redis (see services/sessions/sessionsService.ts).
-// No longer read or written by the app; kept so existing deployments stay drift-free.
-// Drop it once Redis-backed sessions are verified in production:
-//   DROP TABLE IF EXISTS active_sessions;
-export const activeSessions = pgTable("active_sessions", {
-  sessionId: text("session_id").primaryKey().notNull(),
-  siteId: integer("site_id"),
-  userId: text("user_id"),
-  startTime: timestamp("start_time").defaultNow(),
-  lastActivity: timestamp("last_activity").defaultNow(),
-});
 
 export const funnels = pgTable("funnels", {
   reportId: serial("report_id").primaryKey().notNull(),

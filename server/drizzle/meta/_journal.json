@@ -148,6 +148,13 @@
       "when": 1789189000176,
       "tag": "0020_unclaimed_sites",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790739305978,
+      "tag": "0021_retire_legacy_user_data",
+      "breakpoints": true
     }
   ]
 }
