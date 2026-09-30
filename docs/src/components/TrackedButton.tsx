@@ -18,7 +18,7 @@ export function TrackedButton({ href, eventName, eventProps, className, children
       href={href}
       className={className}
       data-rybbit-event={eventName}
-      data-rybbit-prop-location={eventProps.location}
+      {...Object.fromEntries(Object.entries(eventProps).map(([key, value]) => [`data-rybbit-prop-${key}`, value]))}
       target={target}
       rel={rel}
     >

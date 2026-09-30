@@ -9,7 +9,7 @@ import { Menu, X } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Site header. Default register is the marketing pages' instrument sheet
@@ -18,17 +18,29 @@ import { useState } from "react";
 export function CustomHeader() {
   const t = useExtracted();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      setMobileMenuOpen(false);
+      toggleRef.current?.focus();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [mobileMenuOpen]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-white/95 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/95">
       <nav
         className="mx-auto flex h-14 max-w-[1200px] items-center justify-between border-x border-neutral-200 px-5 dark:border-neutral-800 sm:px-8 lg:px-10"
-        aria-label="Global"
+        aria-label={t("Global")}
       >
         <Link
           href="/"
           className="flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
-          aria-label="Rybbit home"
+          aria-label={t("Rybbit home")}
         >
           <Image
             src="/rybbit/horizontal_white.svg"
@@ -75,6 +87,7 @@ export function CustomHeader() {
         </div>
 
         <button
+          ref={toggleRef}
           type="button"
           className="inline-flex size-10 items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white lg:hidden"
           onClick={() => setMobileMenuOpen(open => !open)}

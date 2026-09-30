@@ -45,7 +45,7 @@ Published prices at two volumes (tools count events differently, so treat this a
 | Rybbit Standard / Pro | $69 / $139 | $249 / $499 |
 | Heap | Priced by sessions, not published | Not published |
 
-Best fits: [PostHog](#2-posthog) keeps the breadth for less, [OpenPanel](#5-openpanel) and [Rybbit](#1-rybbit) have flat published tiers, and the [open-source options](#open-source-mixpanel-alternatives) cost only the server.
+Best fits: [PostHog](#2-posthog) keeps the breadth for less, [OpenPanel](#5-openpanel) and [Rybbit](#1-rybbit) have flat published tiers, and the [open-source options](#open-source-mixpanel-alternatives) cost only the server for their free capabilities; Matomo's premium reports require paid plugins.
 
 ### It's more tool than a small team needs
 
@@ -77,7 +77,7 @@ Best fits: [Rybbit](#1-rybbit), [PostHog](#2-posthog) and [Matomo](#8-matomo).
 
 [Rybbit](https://rybbit.com) covers the marketing site and the product in one dashboard. Pageviews, sources, campaigns and sessions come from the script, and [custom events](/features/custom-events) with properties are one function call. Standard includes [funnels](/features/funnels) from pages or events, [user journeys](/features/user-journeys), cohort [retention](/features/retention), [goals](/features/goals), [Web Vitals](/features/web-vitals) and [error tracking](/features/error-tracking). [User profiles](/features/user-profiles) come from `identify()`, which links a visitor's earlier anonymous activity to their account and stores traits like plan or company ([docs](/docs/identify-users)). [Session replay](/features/session-replay) is on Pro.
 
-Tracking is cookieless by default, so Rybbit's own tracking needs no consent banner (identifying logged-in users is opt-in and needs its own lawful basis), and the cloud is hosted in the EU. An [MCP server](/features/mcp) with 44 tools lets Claude, Codex and other MCP clients query your data, including read-only SQL, and create goals and funnels.
+Tracking is cookieless by default, and the cloud is hosted in the EU. Consent requirements depend on jurisdiction and configuration; identifying logged-in users is opt-in and requires an appropriate lawful basis. Assess your deployment before collecting visitor data. An [MCP server](/features/mcp) with 44 tools lets Claude, Codex and other MCP clients query your data, including read-only SQL, and create goals and funnels.
 
 - **Pricing (as of September 2026):** Standard from $19/month for 100k events, with 5 websites, 3 team members and 3-year retention; Pro from $39/month adds session replay (10,000 replays a month on the 100k-event tier), unlimited websites and members, and 5-year retention. 7-day trial, card collected at signup. Source: [rybbit.com/pricing](/pricing)
 - **Open source / self-host:** AGPL-3.0, free to [self-host](/docs/self-hosting), replay included
@@ -225,7 +225,7 @@ PostHog has the most features, but self-hosting it is officially unsupported. Op
 The most direct alternatives to Mixpanel are Amplitude and Heap in hosted product analytics and PostHog in open-source product analytics. Google Analytics 4 competes for teams that mostly need marketing analytics.
 
 **Is there a free Mixpanel alternative?**
-Yes. Amplitude includes 2M events a month at no cost, PostHog 1M events and 5K recordings, Heap 10k sessions and TelemetryDeck 50K events, and GA4 is free. The open-source tools cost only the server when you self-host.
+Yes. Amplitude includes 2M events a month at no cost, PostHog 1M events and 5K recordings, Heap 10k sessions and TelemetryDeck 50K events, and GA4 is free. The open-source tools cost only the server for their free self-hosted capabilities; Matomo's premium reports require paid plugins.
 
 **Which Mixpanel alternatives have affordable pricing?**
 OpenPanel starts at $2.50 a month for 5K events and charges $90 at 1M. Rybbit Standard is $19 a month for 100k events and $69 at 1M. TelemetryDeck starts at €9 and Matomo Cloud at €29, and PostHog is free until 1M events.

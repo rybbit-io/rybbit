@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { Palette, Download, AlertCircle, Loader2, RefreshCw } from "lucide-react";
-import type { LogoGeneratorPlatformConfig } from "./logo-generator-platform-configs";
+import { useExtracted } from "next-intl";
+import { useState } from "react";
+import type { LogoGeneratorPlatformConfig } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/logo-generator-platform-configs";
 
 interface LogoGeneratorProps {
   platform: LogoGeneratorPlatformConfig;
@@ -20,6 +21,7 @@ const DESIGN_STYLES = [
 ];
 
 export function LogoGenerator({ platform }: LogoGeneratorProps) {
+  const t = useExtracted();
   const [brandName, setBrandName] = useState("");
   const [industry, setIndustry] = useState("");
   const [style, setStyle] = useState(platform.recommendedStyles[0]?.toLowerCase() || "modern");
@@ -35,7 +37,7 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
 
   const handleGenerate = async () => {
     if (!brandName.trim()) {
-      setError("Please provide a brand or company name");
+      setError(t("Please provide a brand or company name"));
       return;
     }
 
@@ -72,12 +74,12 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to generate logo");
+        throw new Error(data.error || t("Failed to generate logo"));
       }
 
       setImageUrl(data.imageUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("An error occurred"));
     } finally {
       setLoading(false);
     }
@@ -111,7 +113,7 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
       }
     } catch (err) {
       console.error("Download failed:", err);
-      setError("Failed to download logo. Try right-clicking and saving the image.");
+      setError(t("Failed to download logo. Try right-clicking and saving the image."));
     }
   };
 
@@ -125,7 +127,7 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
           </div>
           <div>
             <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-1">
-              {platform.name} Logo Guidelines
+              {platform.name} {t(" Logo Guidelines")}
             </h3>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">{platform.contextGuidelines}</p>
           </div>
@@ -137,13 +139,15 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
         {/* Brand Name Input */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Brand or Company Name *
+            {t("Brand or Company Name *")}
           </label>
           <input
+            required
+            aria-label={t("Brand or Company Name")}
             type="text"
             value={brandName}
             onChange={e => setBrandName(e.target.value)}
-            placeholder="Enter your brand or company name"
+            placeholder={t("Enter your brand or company name")}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
         </div>
@@ -151,20 +155,22 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
         {/* Industry Input */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Industry or Niche (Optional)
+            {t("Industry or Niche (Optional)")}
           </label>
           <input
             type="text"
             value={industry}
             onChange={e => setIndustry(e.target.value)}
-            placeholder="e.g., Technology, Food & Beverage, Fashion, Fitness"
+            placeholder={t("e.g., Technology, Food & Beverage, Fashion, Fitness")}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
         </div>
 
         {/* Style Selector */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">Design Style</label>
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
+            {t("Design Style")}
+          </label>
           <select
             value={style}
             onChange={e => setStyle(e.target.value)}
@@ -181,13 +187,13 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
         {/* Colors Input */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Color Preferences (Optional)
+            {t("Color Preferences (Optional)")}
           </label>
           <input
             type="text"
             value={colors}
             onChange={e => setColors(e.target.value)}
-            placeholder="e.g., Blue and white, Earth tones, Vibrant colors"
+            placeholder={t("e.g., Blue and white, Earth tones, Vibrant colors")}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
         </div>
@@ -201,12 +207,12 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Generating Logo...
+              {t("Generating Logo...")}
             </>
           ) : (
             <>
               <Palette className="w-5 h-5" />
-              Generate Logo
+              {t("Generate Logo")}
             </>
           )}
         </button>
@@ -216,14 +222,19 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
       {rateLimit && (
         <div className="mb-6 p-4 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Rate limit: {rateLimit.remaining} of {rateLimit.limit} requests remaining
+            {t("Rate limit: ")}
+            {rateLimit.remaining} {t(" of ")}
+            {rateLimit.limit} {t(" requests remaining")}
           </p>
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
+        <div
+          role="alert"
+          className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3"
+        >
           <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
@@ -232,7 +243,7 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
       {/* Generated Logo */}
       {imageUrl && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Your Generated Logo</h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{t("Your Generated Logo")}</h3>
 
           <div className="p-6 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg">
             {/* Logo Display */}
@@ -241,7 +252,7 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
-                  alt={`Generated logo for ${brandName}`}
+                  alt={t("Generated logo for {brandName}", { brandName: brandName })}
                   className="max-w-full max-h-[400px] object-contain rounded-lg"
                 />
               </div>
@@ -254,7 +265,7 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
                 className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                Download PNG
+                {t("Download PNG")}
               </button>
               <button
                 onClick={handleGenerate}
@@ -262,7 +273,7 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
                 className="px-6 py-2.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
-                Regenerate
+                {t("Regenerate")}
               </button>
             </div>
           </div>
@@ -270,8 +281,10 @@ export function LogoGenerator({ platform }: LogoGeneratorProps) {
           {/* Tips */}
           <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              <strong>Tip:</strong> Not quite right? Try adjusting your style or color preferences and regenerate. Each
-              generation creates a unique design.
+              <strong>{t("Tip:")}</strong>{" "}
+              {t(
+                " Not quite right? Try adjusting your style or color preferences and regenerate. Each generation creates a unique design."
+              )}
             </p>
           </div>
         </div>

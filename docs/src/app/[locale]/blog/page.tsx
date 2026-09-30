@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { GridCrosses } from "@/components/GridCrosses";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
-import { isGeneratedImage, postImageUrl, readingTimeMinutes, sortedPosts, type BlogPost } from "@/lib/blog";
+import { shouldUnoptimizeBlogImage, postImageUrl, readingTimeMinutes, sortedPosts, type BlogPost } from "@/lib/blog";
 
 export const metadata: Metadata = {
   title: "Blog — Web Analytics, Privacy & Open Source",
@@ -39,7 +39,7 @@ function PostThumbnail({ post, priority = false, sizes }: { post: BlogPost; prio
       width={1200}
       height={630}
       priority={priority}
-      unoptimized={isGeneratedImage(image)}
+      unoptimized={shouldUnoptimizeBlogImage(image)}
       sizes={sizes}
       className="aspect-[1200/630] w-full rounded-md border border-neutral-200 object-cover dark:border-neutral-800"
     />
@@ -84,7 +84,10 @@ export default function BlogPage() {
                     <article className="relative grid gap-6 lg:grid-cols-12 lg:gap-8">
                       <div className="flex flex-col justify-between gap-4 text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-2">
                         <p className="flex items-center gap-2.5 font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
-                          <span aria-hidden="true" className="size-2 rounded-[1px] bg-emerald-600 dark:bg-emerald-400" />
+                          <span
+                            aria-hidden="true"
+                            className="size-2 rounded-[1px] bg-emerald-600 dark:bg-emerald-400"
+                          />
                           Latest post
                         </p>
                         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 lg:flex-col lg:gap-1.5">

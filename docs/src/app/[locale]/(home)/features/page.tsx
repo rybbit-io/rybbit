@@ -1,6 +1,3 @@
-import { CTASection } from "@/components/CTASection";
-import { InteriorPageHero } from "@/components/InteriorPageHero";
-import { useExtracted } from "next-intl";
 import {
   Activity,
   AlertTriangle,
@@ -41,7 +38,10 @@ import {
   Zap,
 } from "lucide-react";
 import type { Metadata } from "next";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
+import { CTASection } from "@/components/CTASection";
+import { InteriorPageHero } from "@/components/InteriorPageHero";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
 export const metadata: Metadata = createMetadata({
@@ -49,13 +49,24 @@ export const metadata: Metadata = createMetadata({
   description:
     "Privacy-friendly analytics from one cookieless script: real-time traffic, session replay, funnels, web vitals, error tracking, and more.",
   openGraph: {
-    images: [createOGImageUrl("Features - Rybbit Analytics", "Real-time traffic, session replay, funnels, web vitals, and error tracking, from one cookieless script.", "Features")],
+    images: [
+      createOGImageUrl(
+        "Features - Rybbit Analytics",
+        "Real-time traffic, session replay, funnels, web vitals, and error tracking, from one cookieless script.",
+        "Features"
+      ),
+    ],
   },
   twitter: {
-    images: [createOGImageUrl("Features - Rybbit Analytics", "Real-time traffic, session replay, funnels, web vitals, and error tracking, from one cookieless script.", "Features")],
+    images: [
+      createOGImageUrl(
+        "Features - Rybbit Analytics",
+        "Real-time traffic, session replay, funnels, web vitals, and error tracking, from one cookieless script.",
+        "Features"
+      ),
+    ],
   },
 });
-
 
 interface FeatureGridProps {
   title: string;
@@ -79,7 +90,7 @@ function FeatureGrid({ title, description, features }: FeatureGridProps) {
           </div>
         </div>
         <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2 md:[&>article:last-child:nth-child(odd)]:col-span-2">
-          {features.map((feature) => (
+          {features.map(feature => (
             <article key={feature.title} className="bg-white px-5 py-9 dark:bg-neutral-950 sm:px-8 lg:px-10">
               <div className="mb-5 text-neutral-500 dark:text-neutral-400">{feature.icon}</div>
               <h3 className="font-semibold tracking-tight">
@@ -98,7 +109,9 @@ function FeatureGrid({ title, description, features }: FeatureGridProps) {
                   feature.title
                 )}
               </h3>
-              <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+                {feature.description}
+              </p>
             </article>
           ))}
         </div>
@@ -247,7 +260,9 @@ export default function FeaturesPage() {
       icon: <Users className="w-5 h-5" />,
       title: t("User profiles"),
       href: "/features/user-profiles",
-      description: t("View complete user histories including all sessions, events, and interactions across their lifetime."),
+      description: t(
+        "View complete user histories including all sessions, events, and interactions across their lifetime."
+      ),
     },
     {
       icon: <UserCheck className="w-5 h-5" />,
@@ -290,7 +305,9 @@ export default function FeaturesPage() {
     {
       icon: <UserX className="w-5 h-5" />,
       title: t("Data anonymization"),
-      description: t("Every visitor is anonymous by default, and IDs are re-salted daily so no one is tracked across days."),
+      description: t(
+        "Every visitor is anonymous by default, and IDs are re-salted daily so no one is tracked across days."
+      ),
     },
     {
       icon: <Cookie className="w-5 h-5" />,
@@ -354,13 +371,17 @@ export default function FeaturesPage() {
 
       <FeatureGrid
         title={t("Core Web Analytics")}
-        description={t("The metrics you check first (visitors, pages, sources, devices) in real time and clickable to filter.")}
+        description={t(
+          "The metrics you check first (visitors, pages, sources, devices) in real time and clickable to filter."
+        )}
         features={coreWebAnalyticsFeatures}
       />
 
       <FeatureGrid
         title={t("Advanced Analytics")}
-        description={t("Go past the top-line numbers: replay sessions, chart funnels, and follow the paths users actually take.")}
+        description={t(
+          "Go past the top-line numbers: replay sessions, chart funnels, and follow the paths users actually take."
+        )}
         features={advancedAnalyticsFeatures}
       />
 

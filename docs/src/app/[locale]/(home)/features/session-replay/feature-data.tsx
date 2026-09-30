@@ -42,14 +42,12 @@ export const capabilities: FeatureCapability[] = [
   {
     icon: <EyeOff className="w-5 h-5" />,
     title: "Privacy controls",
-    description:
-      "Automatically mask sensitive inputs and text. You control what gets recorded and what stays private.",
+    description: "Automatically mask sensitive inputs and text. You control what gets recorded and what stays private.",
   },
   {
     icon: <Zap className="w-5 h-5" />,
     title: "Zero performance impact",
-    description:
-      "The replay script loads asynchronously and has no impact on your page load times or Core Web Vitals.",
+    description: "The replay script loads asynchronously and has no impact on your page load times or Core Web Vitals.",
   },
   {
     icon: <Route className="w-5 h-5" />,
@@ -115,7 +113,7 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Code className="w-6 h-6" />,
     title: "Developers",
     description:
-      "Debug user-reported issues without \"works on my machine\" guesswork. See the exact browser, device, and interaction sequence.",
+      'Debug user-reported issues without "works on my machine" guesswork. See the exact browser, device, and interaction sequence.',
   },
   {
     icon: <Package className="w-6 h-6" />,
@@ -149,7 +147,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "How long are replays stored?",
     answer:
-      "Replays are kept for 30 days, on Rybbit Cloud and in self-hosted installs.",
+      "Rybbit Cloud keeps replays for 30 days. Self-hosted installs default to 30 days, and administrators can change the retention period.",
   },
   {
     question: "Can I block specific parts of my UI from being recorded?",
@@ -167,20 +165,17 @@ export const relatedFeatures: RelatedFeature[] = [
   {
     title: "Custom Events",
     href: "/features/custom-events",
-    description:
-      "Track specific interactions and see them in your replay timeline.",
+    description: "Track specific interactions and see them in your replay timeline.",
   },
   {
     title: "Funnels",
     href: "/features/funnels",
-    description:
-      "Find where users drop off, then watch their sessions to understand why.",
+    description: "Find where users drop off, then watch their sessions to understand why.",
   },
   {
     title: "Error Tracking",
     href: "/features/error-tracking",
-    description:
-      "Pair error reports with session replays for instant debugging.",
+    description: "Pair error reports with session replays for instant debugging.",
   },
   {
     title: "User Profiles",

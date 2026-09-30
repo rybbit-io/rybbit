@@ -1,12 +1,13 @@
+import { ArrowRight } from "lucide-react";
+import { useExtracted } from "next-intl";
+import Link from "next/link";
 import { CTASection } from "@/components/CTASection";
+import { SectionKicker } from "@/components/deco/SectionKicker";
 import { GridCrosses } from "@/components/GridCrosses";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
 import { PersonaCrossLinks } from "@/components/persona/PersonaCrossLinks";
 import { PersonaFaqSection } from "@/components/persona/PersonaFaqSection";
-import { SectionKicker } from "@/components/deco/SectionKicker";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
 
 const pageTitle = "Rybbit for European Companies | EU-Hosted, Cookieless Analytics";
 const pageDescription =
@@ -33,62 +34,72 @@ export const metadata = createMetadata({
   },
 });
 
-const faqItems = [
-  {
-    question: "Is Rybbit GDPR and CCPA compliant?",
-    answer:
-      "Yes. Rybbit doesn't use cookies or collect personal data that could identify visitors, and user IDs are salted daily so nobody can be fingerprinted. You won't need to show a cookie consent banner for analytics.",
-  },
-  {
-    question: "Where is the cloud hosted?",
-    answer:
-      "Rybbit's cloud is EU-hosted. If your requirements go further than that, you can self-host the entire product on infrastructure you control, in any region you choose.",
-  },
-  {
-    question: "Do you offer a Data Processing Agreement?",
-    answer:
-      "Yes. Rybbit provides a DPA (see rybbit.com/dpa). Dedicated isolated instances and on-premise installation are available on the Enterprise plan for stricter setups.",
-  },
-  {
-    question: "Do visitors need to consent before Rybbit runs?",
-    answer:
-      "Analytics that doesn't collect personal data doesn't sit behind a consent choice. That's also an accuracy point: you measure all of your visitors, not the subset who click accept.",
-  },
-  {
-    question: "Can we keep the data entirely on our own infrastructure?",
-    answer:
-      "Yes. Rybbit is open source under AGPL v3. The full product self-hosts with Docker on your own servers, which is the strongest data-residency answer there is.",
-  },
-];
-
-const complianceRows = [
-  {
-    title: "EU-hosted cloud",
-    description: "Rybbit's managed cloud is EU-hosted, so the default option is already the compliant one.",
-  },
-  {
-    title: "No cookies, no banner",
-    description:
-      "Rybbit collects no personal data and sets no cookies, so analytics doesn't trigger a consent requirement on your sites.",
-  },
-  {
-    title: "No fingerprinting, by construction",
-    description:
-      "Visitor IDs are salted daily, so they can't be used to fingerprint or follow a person over time. That's a design property, not a policy promise.",
-  },
-  {
-    title: "DPA ready to sign",
-    description: "A Data Processing Agreement is available for your records, along with a public security page.",
-  },
-];
-
 export default function ForEuropeanCompaniesPage() {
+  const t = useExtracted();
+  const faqItems = [
+    {
+      question: t("Is Rybbit GDPR and CCPA compliant?"),
+      answer: t(
+        "Yes. Rybbit doesn't use cookies or collect personal data that could identify visitors, and user IDs are salted daily so nobody can be fingerprinted. You won't need to show a cookie consent banner for analytics."
+      ),
+    },
+    {
+      question: t("Where is the cloud hosted?"),
+      answer: t(
+        "Rybbit's cloud is EU-hosted. If your requirements go further than that, you can self-host the entire product on infrastructure you control, in any region you choose."
+      ),
+    },
+    {
+      question: t("Do you offer a Data Processing Agreement?"),
+      answer: t(
+        "Yes. Rybbit provides a DPA (see rybbit.com/dpa). Dedicated isolated instances and on-premise installation are available on the Enterprise plan for stricter setups."
+      ),
+    },
+    {
+      question: t("Do visitors need to consent before Rybbit runs?"),
+      answer: t(
+        "Analytics that doesn't collect personal data doesn't sit behind a consent choice. That's also an accuracy point: you measure all of your visitors, not the subset who click accept."
+      ),
+    },
+    {
+      question: t("Can we keep the data entirely on our own infrastructure?"),
+      answer: t(
+        "Yes. Rybbit is open source under AGPL v3. The full product self-hosts with Docker on your own servers, which is the strongest data-residency answer there is."
+      ),
+    },
+  ];
+
+  const complianceRows = [
+    {
+      title: t("EU-hosted cloud"),
+      description: t("Rybbit's managed cloud is EU-hosted, so the default option is already the compliant one."),
+    },
+    {
+      title: t("No cookies, no banner"),
+      description: t(
+        "Rybbit collects no personal data and sets no cookies, so analytics doesn't trigger a consent requirement on your sites."
+      ),
+    },
+    {
+      title: t("No fingerprinting, by construction"),
+      description: t(
+        "Visitor IDs are salted daily, so they can't be used to fingerprint or follow a person over time. That's a design property, not a policy promise."
+      ),
+    },
+    {
+      title: t("DPA ready to sign"),
+      description: t("A Data Processing Agreement is available for your records, along with a public security page."),
+    },
+  ];
+
   return (
     <div className="overflow-x-clip">
       <InteriorPageHero
-        eyebrow="Rybbit for European companies"
-        title="Analytics that doesn't need a legal review."
-        description="EU-hosted cloud, no cookies, no consent banner, and a DPA ready to sign, plus a self-host option when residency has to go all the way down to the server."
+        eyebrow={t("Rybbit for European companies")}
+        title={t("Analytics that doesn't need a legal review.")}
+        description={t(
+          "EU-hosted cloud, no cookies, no consent banner, and a DPA ready to sign, plus a self-host option when residency has to go all the way down to the server."
+        )}
         eventLocation="for_european_companies_hero"
       />
 
@@ -102,20 +113,20 @@ export default function ForEuropeanCompaniesPage() {
                 className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
               />
               <div className="relative">
-                <SectionKicker>Compliance is an accuracy feature</SectionKicker>
+                <SectionKicker>{t("Compliance is an accuracy feature")}</SectionKicker>
                 <h2
                   id="eu-accuracy-title"
                   className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] text-balance md:text-5xl"
                 >
-                  No cookies means no banner. No banner means all of your traffic.
+                  {t("No cookies means no banner. No banner means all of your traffic.")}
                 </h2>
               </div>
             </div>
             <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
               <p className="max-w-md text-lg leading-8 text-neutral-600 text-pretty dark:text-neutral-400">
-                Consent-gated analytics only measures the visitors who click accept, so every report starts from a
-                partial number. Analytics that never touches personal data doesn&apos;t have that gap. Compliance and
-                accurate data stop being a trade-off.
+                {t(
+                  "Consent-gated analytics only measures the visitors who click accept, so every report starts from a partial number. Analytics that never touches personal data doesn't have that gap. Compliance and accurate data stop being a trade-off."
+                )}
               </p>
             </div>
           </div>
@@ -131,17 +142,17 @@ export default function ForEuropeanCompaniesPage() {
                 id="eu-compliance-title"
                 className="max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
               >
-                What your DPO will ask. In order.
+                {t("What your DPO will ask. In order.")}
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                The short version of the review, in one place, with the documents linked below it.
+                {t("The short version of the review, in one place, with the documents linked below it.")}
               </p>
               <div className="mt-8 flex flex-col gap-4">
                 <Link
                   href="/dpa"
                   className="group inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
-                  Data Processing Agreement
+                  {t("Data Processing Agreement")}
                   <ArrowRight
                     className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                     aria-hidden="true"
@@ -151,7 +162,7 @@ export default function ForEuropeanCompaniesPage() {
                   href="/security"
                   className="group inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-neutral-600 transition-colors duration-200 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
                 >
-                  Security overview
+                  {t("Security overview")}
                   <ArrowRight
                     className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                     aria-hidden="true"
@@ -161,7 +172,7 @@ export default function ForEuropeanCompaniesPage() {
                   href="/privacy"
                   className="group inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-neutral-600 transition-colors duration-200 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
                 >
-                  Privacy policy
+                  {t("Privacy policy")}
                   <ArrowRight
                     className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                     aria-hidden="true"
@@ -194,12 +205,12 @@ export default function ForEuropeanCompaniesPage() {
               id="eu-selfhost-title"
               className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] text-balance md:text-5xl"
             >
-              When "EU-hosted" isn&apos;t strict enough, host it yourself.
+              {t('When "EU-hosted" isn\'t strict enough, host it yourself.')}
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
-              Rybbit is 100% open source under AGPL v3 and self-hosts with Docker. For regulated setups, Enterprise adds
-              dedicated isolated instances and on-premise installation. The residency conversation ends at your own
-              rack.
+              {t(
+                "Rybbit is 100% open source under AGPL v3 and self-hosts with Docker. For regulated setups, Enterprise adds dedicated isolated instances and on-premise installation. The residency conversation ends at your own rack."
+              )}
             </p>
           </div>
           <div className="flex flex-col justify-center gap-4 px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
@@ -207,7 +218,7 @@ export default function ForEuropeanCompaniesPage() {
               href="/docs/self-hosting"
               className="group inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
             >
-              Self-hosting guide
+              {t("Self-hosting guide")}
               <ArrowRight
                 className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                 aria-hidden="true"
@@ -217,7 +228,7 @@ export default function ForEuropeanCompaniesPage() {
               href="/enterprise"
               className="group inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-neutral-600 transition-colors duration-200 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
             >
-              Rybbit for enterprise
+              {t("Rybbit for enterprise")}
               <ArrowRight
                 className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                 aria-hidden="true"
@@ -227,12 +238,14 @@ export default function ForEuropeanCompaniesPage() {
         </div>
       </section>
 
-      <PersonaFaqSection heading="European-company FAQ" items={faqItems} />
+      <PersonaFaqSection heading={t("European-company FAQ")} items={faqItems} />
       <PersonaCrossLinks current="for-european-companies" />
 
       <CTASection
-        title="Compliant by default. Accurate because of it."
-        description="EU-hosted, cookieless, and banner-free, with self-hosting when the answer has to be your own servers."
+        title={t("Compliant by default. Accurate because of it.")}
+        description={t(
+          "EU-hosted, cookieless, and banner-free, with self-hosting when the answer has to be your own servers."
+        )}
         eventLocation="for_european_companies_bottom_cta"
       />
     </div>

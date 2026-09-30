@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { ComparisonSection } from "@/app/[locale]/(home)/pricing/components/ComparisonSection";
 import { CTASection } from "@/components/CTASection";
 import { PricingSection } from "@/components/PricingSection";
-import { ComparisonSection } from "./ComparisonSection";
 
 export function PricingPageClient() {
   const [isAnnual, setIsAnnual] = useState(true);

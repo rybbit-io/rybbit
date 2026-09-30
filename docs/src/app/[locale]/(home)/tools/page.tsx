@@ -1,39 +1,3 @@
-import Link from "next/link";
-import {
-  Activity,
-  ArrowRight,
-  Calculator,
-  DollarSign,
-  Eye,
-  FileText,
-  Gauge,
-  Link as LinkIcon,
-  MousePointerClick,
-  Palette,
-  PlayCircle,
-  Search,
-  Share2,
-  Target,
-  TrendingDown,
-  TrendingUp,
-  Type,
-  UserCheck,
-  Users,
-  MessageCircle,
-  Briefcase,
-  Zap,
-} from "lucide-react";
-import { CTASection } from "@/components/CTASection";
-import { GridCrosses } from "@/components/GridCrosses";
-import { InteriorPageHero } from "@/components/InteriorPageHero";
-import { platformList } from "./(social-media-tools)/components/platform-configs";
-import { commentPlatformList } from "./(social-media-tools)/components/comment-platform-configs";
-import { pageNamePlatformList } from "./(social-media-tools)/components/page-name-platform-configs";
-import { postGeneratorPlatformList } from "./(social-media-tools)/components/post-generator-platform-configs";
-import { usernameGeneratorPlatformList } from "./(social-media-tools)/components/username-generator-platform-configs";
-import { characterCounterPlatformList } from "./(social-media-tools)/components/character-counter-platform-configs";
-import { bioGeneratorPlatformList } from "./(social-media-tools)/components/bio-generator-platform-configs";
-import { imageResizerPlatformList } from "./(social-media-tools)/components/image-resizer-platform-configs";
 import {
   SiDiscord,
   SiX,
@@ -61,230 +25,49 @@ import {
   SiTumblr,
   SiWhatsapp,
 } from "@icons-pack/react-simple-icons";
+import {
+  Activity,
+  ArrowRight,
+  Calculator,
+  DollarSign,
+  Eye,
+  FileText,
+  Gauge,
+  Link as LinkIcon,
+  MousePointerClick,
+  Palette,
+  PlayCircle,
+  Search,
+  Share2,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Type,
+  UserCheck,
+  Users,
+  MessageCircle,
+  Briefcase,
+  Zap,
+} from "lucide-react";
+import { useExtracted } from "next-intl";
+import Link from "next/link";
+import { bioGeneratorPlatformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/bio-generator-platform-configs";
+import { characterCounterPlatformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/character-counter-platform-configs";
+import { commentPlatformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/comment-platform-configs";
+import { imageResizerPlatformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/image-resizer-platform-configs";
+import { pageNamePlatformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/page-name-platform-configs";
+import { platformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/platform-configs";
+import { postGeneratorPlatformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/post-generator-platform-configs";
+import { usernameGeneratorPlatformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/username-generator-platform-configs";
+import { CTASection } from "@/components/CTASection";
+import { GridCrosses } from "@/components/GridCrosses";
+import { InteriorPageHero } from "@/components/InteriorPageHero";
 
 export const metadata = {
   title: "Free Marketing Tools | Rybbit",
   description:
     "Free calculators, site checks, and generators for marketers. Measure growth, inspect tracking, test performance, and build campaign assets.",
 };
-
-const calculators = [
-  {
-    href: "/tools/ctr-calculator",
-    icon: MousePointerClick,
-    title: "CTR Calculator",
-    description:
-      "Calculate your click-through rate and compare it to industry benchmarks. See how your campaigns perform against the competition.",
-  },
-  {
-    href: "/tools/marketing-roi-calculator",
-    icon: Calculator,
-    title: "Marketing ROI Calculator",
-    description:
-      "Calculate ROI, ROAS, and profit margins for your marketing campaigns. Make data-driven decisions about your ad spend.",
-  },
-  {
-    href: "/tools/bounce-rate-calculator",
-    icon: TrendingDown,
-    title: "Bounce Rate Calculator",
-    description:
-      "Calculate your website's bounce rate and compare it to industry benchmarks. See how well you're keeping visitors engaged.",
-  },
-  {
-    href: "/tools/sample-size-calculator",
-    icon: Users,
-    title: "A/B Test Sample Size Calculator",
-    description:
-      "Calculate how many visitors you need for statistically significant A/B test results. Never run underpowered tests again.",
-  },
-  {
-    href: "/tools/traffic-value-calculator",
-    icon: DollarSign,
-    title: "Traffic Value Calculator",
-    description:
-      "Estimate the monetary value of your website traffic. Understand what each visitor is worth to your business.",
-  },
-  {
-    href: "/tools/page-speed-calculator",
-    icon: Gauge,
-    title: "Page Speed Impact Calculator",
-    description:
-      "Calculate how page load time affects your conversions and revenue. See the real cost of a slow website.",
-  },
-  {
-    href: "/tools/cost-per-acquisition-calculator",
-    icon: Target,
-    title: "Cost Per Acquisition (CPA) Calculator",
-    description:
-      "Calculate your customer acquisition costs and compare against industry benchmarks to optimize your marketing ROI.",
-  },
-  {
-    href: "/tools/retention-rate-calculator",
-    icon: UserCheck,
-    title: "Retention Rate Calculator",
-    description:
-      "Calculate customer retention rates and compare against industry benchmarks to improve customer loyalty and reduce churn.",
-  },
-  {
-    href: "/tools/conversion-rate-calculator",
-    icon: TrendingUp,
-    title: "Conversion Rate Calculator",
-    description:
-      "Calculate conversion rates and compare against industry benchmarks to optimize your marketing funnel and maximize ROI.",
-  },
-  {
-    href: "/tools/cost-per-mille-calculator",
-    icon: Eye,
-    title: "CPM Calculator (Cost Per Mille)",
-    description:
-      "Calculate cost per thousand impressions and compare across advertising platforms to optimize your media spend.",
-  },
-  {
-    href: "/tools/customer-lifetime-value-calculator",
-    icon: DollarSign,
-    title: "Customer Lifetime Value (CLV) Calculator",
-    description:
-      "Calculate customer lifetime value with retention analysis and profit margins to optimize acquisition spending and maximize long-term revenue.",
-  },
-  {
-    href: "/tools/cost-per-lead-calculator",
-    icon: Users,
-    title: "Cost Per Lead (CPL) Calculator",
-    description:
-      "Calculate cost per lead and compare across marketing channels to optimize your lead generation strategy and maximize ROI.",
-  },
-  {
-    href: "/tools/cost-per-view-calculator",
-    icon: PlayCircle,
-    title: "Cost Per View (CPV) Calculator",
-    description:
-      "Calculate cost per view for video ads and compare across platforms to optimize your video advertising strategy and maximize engagement.",
-  },
-  {
-    href: "/tools/nps-calculator",
-    icon: MessageCircle,
-    title: "NPS Calculator",
-    description: "Calculate Net Promoter Score from promoter, passive, and detractor responses.",
-  },
-  {
-    href: "/tools/engagement-rate-calculator",
-    icon: Activity,
-    title: "Engagement Rate Calculator",
-    description: "Measure engagement by followers, reach, or impressions across social platforms.",
-  },
-  {
-    href: "/tools/roas-calculator",
-    icon: TrendingUp,
-    title: "ROAS Calculator",
-    description: "Calculate return on ad spend, profit after ad costs, and break-even ROAS.",
-  },
-  {
-    href: "/tools/payback-period-calculator",
-    icon: Gauge,
-    title: "Payback Period Calculator",
-    description: "Estimate how many months it takes to recover customer acquisition costs.",
-  },
-  {
-    href: "/tools/cac-calculator",
-    icon: Target,
-    title: "CAC Calculator",
-    description: "Calculate customer acquisition cost from sales and marketing spend.",
-  },
-  {
-    href: "/tools/churn-rate-calculator",
-    icon: TrendingDown,
-    title: "Churn Rate Calculator",
-    description: "Measure customer or revenue churn and see the corresponding retention rate.",
-  },
-  {
-    href: "/tools/mrr-arr-calculator",
-    icon: DollarSign,
-    title: "MRR / ARR Calculator",
-    description: "Convert recurring revenue into monthly and annual run-rate metrics.",
-  },
-];
-
-const siteCheckTools = [
-  {
-    href: "/tools/cookie-tracker-scanner",
-    icon: Search,
-    title: "Cookie / Tracker Scanner",
-    description: "Inspect a public page for response cookies and recognizable tracking scripts.",
-  },
-  {
-    href: "/tools/core-web-vitals-checker",
-    icon: Gauge,
-    title: "Core Web Vitals Checker",
-    description: "Check field and lab performance data for LCP, INP, CLS, and supporting metrics.",
-  },
-];
-
-const aiPoweredTools = [
-  {
-    href: "/tools/analytics-detector",
-    icon: Search,
-    title: "Analytics Platform Detector",
-    description:
-      "Discover what analytics and tracking tools any website is using. Analyze privacy implications and data collection practices.",
-  },
-  {
-    href: "/tools/seo-title-generator",
-    icon: Type,
-    title: "SEO Title Generator",
-    description:
-      "Generate optimized, click-worthy title tags for your pages using AI. Get multiple variations tailored to your topic and keywords.",
-  },
-  {
-    href: "/tools/meta-description-generator",
-    icon: FileText,
-    title: "Meta Description Generator",
-    description:
-      "Create compelling meta descriptions that boost click-through rates. AI-powered variations optimized for search engines.",
-  },
-  {
-    href: "/tools/og-tag-generator",
-    icon: Share2,
-    title: "Open Graph Tag Generator",
-    description:
-      "Generate optimized Open Graph tags for social media sharing. Get perfect previews on Facebook, Twitter, and LinkedIn.",
-  },
-  {
-    href: "/tools/privacy-policy-builder",
-    icon: FileText,
-    title: "Privacy Policy Builder",
-    description:
-      "Generate a customized privacy policy for your website. Answer a few questions and get a compliant privacy policy instantly.",
-  },
-];
-
-const utilityTools = [
-  {
-    href: "/tools/utm-builder",
-    icon: LinkIcon,
-    title: "UTM Builder",
-    description:
-      "Create trackable campaign URLs with UTM parameters. Perfect for tracking your marketing campaigns across different channels.",
-  },
-  {
-    href: "/tools/funnel-visualizer",
-    icon: Activity,
-    title: "Funnel Visualizer",
-    description:
-      "Visualize your conversion funnel step-by-step. Input visitor counts at each stage and see where you're losing customers.",
-  },
-  {
-    href: "/tools/tracking-pixel-generator",
-    icon: Eye,
-    title: "Tracking Pixel Generator",
-    description: "Build a consent-conscious 1×1 image pixel snippet with campaign parameters.",
-  },
-  {
-    href: "/tools/color-picker",
-    icon: Palette,
-    title: "Color Picker",
-    description: "Pick colors, convert HEX, RGB, and HSL values, and check text contrast.",
-  },
-];
 
 // Map platform IDs to Simple Icons components (with Lucide fallbacks)
 const platformIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -331,61 +114,6 @@ interface SocialToolGroup {
   platforms: SocialPlatform[];
 }
 
-const socialToolGroups: SocialToolGroup[] = [
-  {
-    title: "Font generators",
-    description: "Unicode text styling for posts, bios, and comments.",
-    suffix: "font-generator",
-    platforms: platformList,
-  },
-  {
-    title: "Comment generators",
-    description: "AI-written, contextual replies for busy feeds.",
-    suffix: "comment-generator",
-    platforms: commentPlatformList,
-  },
-  {
-    title: "Page name generators",
-    description: "Creative names for pages, servers, and channels.",
-    suffix: "page-name-generator",
-    platforms: pageNamePlatformList,
-  },
-  {
-    title: "Post generators",
-    description: "AI-drafted posts tuned to each platform's voice.",
-    suffix: "post-generator",
-    platforms: postGeneratorPlatformList,
-  },
-  {
-    title: "Username generators",
-    description: "Available-sounding handles that fit your brand.",
-    suffix: "username-generator",
-    platforms: usernameGeneratorPlatformList,
-  },
-  {
-    title: "Character counters",
-    description: "Stay inside every platform's post limits.",
-    suffix: "character-counter",
-    platforms: characterCounterPlatformList,
-  },
-  {
-    title: "Bio generators",
-    description: "Profile bios written to convert visitors into followers.",
-    suffix: "bio-generator",
-    platforms: bioGeneratorPlatformList,
-  },
-  {
-    title: "Image resizers",
-    description: "Crop to exact profile, cover, and post dimensions.",
-    suffix: "photo-resizer",
-    platforms: imageResizerPlatformList,
-  },
-];
-
-const socialToolCount = socialToolGroups.reduce((sum, group) => sum + group.platforms.length, 0);
-const totalToolCount =
-  calculators.length + siteCheckTools.length + aiPoweredTools.length + utilityTools.length + socialToolCount;
-
 interface Tool {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -410,7 +138,7 @@ function ToolCell({ tool }: { tool: Tool }) {
         {tool.description}
       </p>
       <ArrowRight
-        className="row-span-2 size-3.5 self-center text-neutral-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none dark:text-neutral-600 sm:row-span-1"
+        className="col-start-3 row-start-1 row-span-2 size-3.5 self-center text-neutral-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none dark:text-neutral-600 sm:col-start-auto sm:row-start-auto sm:row-span-1"
         aria-hidden="true"
       />
     </Link>
@@ -450,27 +178,324 @@ function ToolSection({
   );
 }
 
-const directoryLinks = [
-  { href: "#calculators-title", label: "Calculators", count: calculators.length },
-  { href: "#site-checks-title", label: "Site checks", count: siteCheckTools.length },
-  { href: "#ai-tools-title", label: "AI tools", count: aiPoweredTools.length },
-  { href: "#utilities-title", label: "Utilities", count: utilityTools.length },
-  { href: "#social-tools-title", label: "Social media", count: socialToolCount },
-];
-
 export default function ToolsPage() {
+  const t = useExtracted();
+  const calculators = [
+    {
+      href: "/tools/ctr-calculator",
+      icon: MousePointerClick,
+      title: t("CTR Calculator"),
+      description: t(
+        "Calculate your click-through rate and compare it to industry benchmarks. See how your campaigns perform against the competition."
+      ),
+    },
+    {
+      href: "/tools/marketing-roi-calculator",
+      icon: Calculator,
+      title: t("Marketing ROI Calculator"),
+      description: t(
+        "Calculate ROI, ROAS, and profit margins for your marketing campaigns. Make data-driven decisions about your ad spend."
+      ),
+    },
+    {
+      href: "/tools/bounce-rate-calculator",
+      icon: TrendingDown,
+      title: t("Bounce Rate Calculator"),
+      description: t(
+        "Calculate your website's bounce rate and compare it to industry benchmarks. See how well you're keeping visitors engaged."
+      ),
+    },
+    {
+      href: "/tools/sample-size-calculator",
+      icon: Users,
+      title: t("A/B Test Sample Size Calculator"),
+      description: t(
+        "Calculate how many visitors you need for statistically significant A/B test results. Never run underpowered tests again."
+      ),
+    },
+    {
+      href: "/tools/traffic-value-calculator",
+      icon: DollarSign,
+      title: t("Traffic Value Calculator"),
+      description: t(
+        "Estimate the monetary value of your website traffic. Understand what each visitor is worth to your business."
+      ),
+    },
+    {
+      href: "/tools/page-speed-calculator",
+      icon: Gauge,
+      title: t("Page Speed Impact Calculator"),
+      description: t(
+        "Calculate how page load time affects your conversions and revenue. See the real cost of a slow website."
+      ),
+    },
+    {
+      href: "/tools/cost-per-acquisition-calculator",
+      icon: Target,
+      title: t("Cost Per Acquisition (CPA) Calculator"),
+      description: t(
+        "Calculate your customer acquisition costs and compare against industry benchmarks to optimize your marketing ROI."
+      ),
+    },
+    {
+      href: "/tools/retention-rate-calculator",
+      icon: UserCheck,
+      title: t("Retention Rate Calculator"),
+      description: t(
+        "Calculate customer retention rates and compare against industry benchmarks to improve customer loyalty and reduce churn."
+      ),
+    },
+    {
+      href: "/tools/conversion-rate-calculator",
+      icon: TrendingUp,
+      title: t("Conversion Rate Calculator"),
+      description: t(
+        "Calculate conversion rates and compare against industry benchmarks to optimize your marketing funnel and maximize ROI."
+      ),
+    },
+    {
+      href: "/tools/cost-per-mille-calculator",
+      icon: Eye,
+      title: t("CPM Calculator (Cost Per Mille)"),
+      description: t(
+        "Calculate cost per thousand impressions and compare across advertising platforms to optimize your media spend."
+      ),
+    },
+    {
+      href: "/tools/customer-lifetime-value-calculator",
+      icon: DollarSign,
+      title: t("Customer Lifetime Value (CLV) Calculator"),
+      description: t(
+        "Calculate customer lifetime value with retention analysis and profit margins to optimize acquisition spending and maximize long-term revenue."
+      ),
+    },
+    {
+      href: "/tools/cost-per-lead-calculator",
+      icon: Users,
+      title: t("Cost Per Lead (CPL) Calculator"),
+      description: t(
+        "Calculate cost per lead and compare across marketing channels to optimize your lead generation strategy and maximize ROI."
+      ),
+    },
+    {
+      href: "/tools/cost-per-view-calculator",
+      icon: PlayCircle,
+      title: t("Cost Per View (CPV) Calculator"),
+      description: t(
+        "Calculate cost per view for video ads and compare across platforms to optimize your video advertising strategy and maximize engagement."
+      ),
+    },
+    {
+      href: "/tools/nps-calculator",
+      icon: MessageCircle,
+      title: t("NPS Calculator"),
+      description: t("Calculate Net Promoter Score from promoter, passive, and detractor responses."),
+    },
+    {
+      href: "/tools/engagement-rate-calculator",
+      icon: Activity,
+      title: t("Engagement Rate Calculator"),
+      description: t("Measure engagement by followers, reach, or impressions across social platforms."),
+    },
+    {
+      href: "/tools/roas-calculator",
+      icon: TrendingUp,
+      title: t("ROAS Calculator"),
+      description: t("Calculate return on ad spend, profit after ad costs, and break-even ROAS."),
+    },
+    {
+      href: "/tools/payback-period-calculator",
+      icon: Gauge,
+      title: t("Payback Period Calculator"),
+      description: t("Estimate how many months it takes to recover customer acquisition costs."),
+    },
+    {
+      href: "/tools/cac-calculator",
+      icon: Target,
+      title: t("CAC Calculator"),
+      description: t("Calculate customer acquisition cost from sales and marketing spend."),
+    },
+    {
+      href: "/tools/churn-rate-calculator",
+      icon: TrendingDown,
+      title: t("Churn Rate Calculator"),
+      description: t("Measure customer or revenue churn and see the corresponding retention rate."),
+    },
+    {
+      href: "/tools/mrr-arr-calculator",
+      icon: DollarSign,
+      title: t("MRR / ARR Calculator"),
+      description: t("Convert recurring revenue into monthly and annual run-rate metrics."),
+    },
+  ];
+
+  const siteCheckTools = [
+    {
+      href: "/tools/cookie-tracker-scanner",
+      icon: Search,
+      title: t("Cookie / Tracker Scanner"),
+      description: t("Inspect a public page for response cookies and recognizable tracking scripts."),
+    },
+    {
+      href: "/tools/core-web-vitals-checker",
+      icon: Gauge,
+      title: t("Core Web Vitals Checker"),
+      description: t("Check field and lab performance data for LCP, INP, CLS, and supporting metrics."),
+    },
+  ];
+
+  const aiPoweredTools = [
+    {
+      href: "/tools/analytics-detector",
+      icon: Search,
+      title: t("Analytics Platform Detector"),
+      description: t(
+        "Discover what analytics and tracking tools any website is using. Analyze privacy implications and data collection practices."
+      ),
+    },
+    {
+      href: "/tools/seo-title-generator",
+      icon: Type,
+      title: t("SEO Title Generator"),
+      description: t(
+        "Generate optimized, click-worthy title tags for your pages using AI. Get multiple variations tailored to your topic and keywords."
+      ),
+    },
+    {
+      href: "/tools/meta-description-generator",
+      icon: FileText,
+      title: t("Meta Description Generator"),
+      description: t(
+        "Create compelling meta descriptions that boost click-through rates. AI-powered variations optimized for search engines."
+      ),
+    },
+    {
+      href: "/tools/og-tag-generator",
+      icon: Share2,
+      title: t("Open Graph Tag Generator"),
+      description: t(
+        "Generate optimized Open Graph tags for social media sharing. Get perfect previews on Facebook, Twitter, and LinkedIn."
+      ),
+    },
+    {
+      href: "/tools/privacy-policy-builder",
+      icon: FileText,
+      title: t("Privacy Policy Builder"),
+      description: t(
+        "Generate a customized privacy policy for your website. Answer a few questions and get a compliant privacy policy instantly."
+      ),
+    },
+  ];
+
+  const utilityTools = [
+    {
+      href: "/tools/utm-builder",
+      icon: LinkIcon,
+      title: t("UTM Builder"),
+      description: t(
+        "Create trackable campaign URLs with UTM parameters. Perfect for tracking your marketing campaigns across different channels."
+      ),
+    },
+    {
+      href: "/tools/funnel-visualizer",
+      icon: Activity,
+      title: t("Funnel Visualizer"),
+      description: t(
+        "Visualize your conversion funnel step-by-step. Input visitor counts at each stage and see where you're losing customers."
+      ),
+    },
+    {
+      href: "/tools/tracking-pixel-generator",
+      icon: Eye,
+      title: t("Tracking Pixel Generator"),
+      description: t("Build a consent-conscious 1×1 image pixel snippet with campaign parameters."),
+    },
+    {
+      href: "/tools/color-picker",
+      icon: Palette,
+      title: t("Color Picker"),
+      description: t("Pick colors, convert HEX, RGB, and HSL values, and check text contrast."),
+    },
+  ];
+
+  const socialToolGroups: SocialToolGroup[] = [
+    {
+      title: t("Font generators"),
+      description: t("Unicode text styling for posts, bios, and comments."),
+      suffix: "font-generator",
+      platforms: platformList,
+    },
+    {
+      title: t("Comment generators"),
+      description: t("AI-written, contextual replies for busy feeds."),
+      suffix: "comment-generator",
+      platforms: commentPlatformList,
+    },
+    {
+      title: t("Page name generators"),
+      description: t("Creative names for pages, servers, and channels."),
+      suffix: "page-name-generator",
+      platforms: pageNamePlatformList,
+    },
+    {
+      title: t("Post generators"),
+      description: t("AI-drafted posts tuned to each platform's voice."),
+      suffix: "post-generator",
+      platforms: postGeneratorPlatformList,
+    },
+    {
+      title: t("Username generators"),
+      description: t("Available-sounding handles that fit your brand."),
+      suffix: "username-generator",
+      platforms: usernameGeneratorPlatformList,
+    },
+    {
+      title: t("Character counters"),
+      description: t("Stay inside every platform's post limits."),
+      suffix: "character-counter",
+      platforms: characterCounterPlatformList,
+    },
+    {
+      title: t("Bio generators"),
+      description: t("Profile bios written to convert visitors into followers."),
+      suffix: "bio-generator",
+      platforms: bioGeneratorPlatformList,
+    },
+    {
+      title: t("Image resizers"),
+      description: t("Crop to exact profile, cover, and post dimensions."),
+      suffix: "photo-resizer",
+      platforms: imageResizerPlatformList,
+    },
+  ];
+
+  const socialToolCount = socialToolGroups.reduce((sum, group) => sum + group.platforms.length, 0);
+
+  const totalToolCount =
+    calculators.length + siteCheckTools.length + aiPoweredTools.length + utilityTools.length + socialToolCount;
+
+  const directoryLinks = [
+    { href: "#calculators-title", label: t("Calculators"), count: calculators.length },
+    { href: "#site-checks-title", label: t("Site checks"), count: siteCheckTools.length },
+    { href: "#ai-tools-title", label: t("AI tools"), count: aiPoweredTools.length },
+    { href: "#utilities-title", label: t("Utilities"), count: utilityTools.length },
+    { href: "#social-tools-title", label: t("Social media"), count: socialToolCount },
+  ];
+
   return (
     <div className="overflow-x-clip">
       <InteriorPageHero
-        title={`${totalToolCount} free marketing tools`}
-        description="Calculators, generators, and utilities for data-driven marketing decisions. Every tool is free, no account required."
+        title={t("{count} free marketing tools", { count: String(totalToolCount) })}
+        description={t(
+          "Calculators, generators, and utilities for data-driven marketing decisions. Every tool is free, no account required."
+        )}
         eventLocation="tools_hero"
         primaryAction={null}
         secondaryAction={null}
-        note="No signup. Free to use."
+        note={t("No signup. Free to use.")}
       />
 
-      <nav aria-label="Tool categories" className="border-b border-neutral-200 dark:border-neutral-800">
+      <nav aria-label={t("Tool categories")} className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 sm:grid-cols-2 lg:grid-cols-5">
           {directoryLinks.map((item, index) => (
             <Link
@@ -489,29 +514,35 @@ export default function ToolsPage() {
 
       <ToolSection
         id="calculators-title"
-        title="Calculators"
-        description="Work through funnel and business math: engagement, ROAS, CAC, retention, recurring revenue, and more."
+        title={t("Calculators")}
+        description={t(
+          "Work through funnel and business math: engagement, ROAS, CAC, retention, recurring revenue, and more."
+        )}
         tools={calculators}
       />
 
       <ToolSection
         id="site-checks-title"
-        title="Site checks"
-        description="Inspect the public signals a page exposes, from browser performance data to cookies and recognizable trackers."
+        title={t("Site checks")}
+        description={t(
+          "Inspect the public signals a page exposes, from browser performance data to cookies and recognizable trackers."
+        )}
         tools={siteCheckTools}
       />
 
       <ToolSection
         id="ai-tools-title"
-        title="AI-powered tools"
-        description="Generators and detectors that do the drafting for you: titles, meta descriptions, OG tags, and a privacy policy builder."
+        title={t("AI-powered tools")}
+        description={t(
+          "Generators and detectors that do the drafting for you: titles, meta descriptions, OG tags, and a privacy policy builder."
+        )}
         tools={aiPoweredTools}
       />
 
       <ToolSection
         id="utilities-title"
-        title="Utilities"
-        description="Small, focused tools for everyday campaign work."
+        title={t("Utilities")}
+        description={t("Small, focused tools for everyday campaign work.")}
         tools={utilityTools}
       />
 
@@ -521,11 +552,13 @@ export default function ToolsPage() {
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
             <div className="lg:sticky lg:top-24">
               <h2 id="social-tools-title" className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
-                Social media tools
+                {t("Social media tools")}
               </h2>
               <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                {socialToolCount} generators, counters, and resizers covering every major platform. Pick a tool, then
-                pick your platform.
+                {socialToolCount}{" "}
+                {t(
+                  " generators, counters, and resizers covering every major platform. Pick a tool, then pick your platform."
+                )}
               </p>
             </div>
           </div>

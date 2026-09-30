@@ -119,7 +119,7 @@ Pixels run in a sandbox with no access to `window.rybbit`, so the pixel posts th
 
 1. In Shopify admin, go to **Settings > Customer events**.
 2. Click **Add custom pixel**, name it `Rybbit`, and click **Add pixel**.
-3. Paste the code below, replace `YOUR_SITE_ID`, then **Save** and **Connect** the pixel.
+3. Paste the code below, replace `YOUR_SITE_ID`, then **Save** and **Connect** the pixel. If you self-host, also replace `https://app.rybbit.io/api/track` with your instance's `/api/track` URL; the pixel cannot read the host from your storefront script.
 
 ```javascript
 analytics.subscribe("checkout_completed", (event) => {

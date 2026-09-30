@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { AlertCircle, CheckCircle, Copy, Check } from "lucide-react";
-import type { CharacterCounterPlatformConfig } from "./character-counter-platform-configs";
+import { useExtracted } from "next-intl";
+import { useState } from "react";
+import type { CharacterCounterPlatformConfig } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/character-counter-platform-configs";
 
 interface CharacterCounterProps {
   platform: CharacterCounterPlatformConfig;
 }
 
 export function CharacterCounter({ platform }: CharacterCounterProps) {
+  const t = useExtracted();
   const [text, setText] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -20,8 +22,7 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
   // Determine status
   const isOverLimit = characterCount > platform.characterLimit;
   const isNearLimit = percentage >= 90 && !isOverLimit;
-  const isAtRecommended =
-    platform.recommendedLimit && characterCount > platform.recommendedLimit;
+  const isAtRecommended = platform.recommendedLimit && characterCount > platform.recommendedLimit;
 
   const getStatusColor = () => {
     if (isOverLimit) return "text-red-600 dark:text-red-400";
@@ -59,19 +60,18 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
-              {platform.name} {platform.contentType} Limit
+              {platform.name} {platform.contentType} {t(" Limit")}
             </h3>
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-2">
-              <strong>Character limit:</strong> {platform.characterLimit.toLocaleString()} characters
+              <strong>{t("Character limit:")}</strong> {platform.characterLimit.toLocaleString()} {t(" characters")}
               {platform.recommendedLimit && (
                 <span className="ml-2 text-neutral-500">
-                  (recommended: {platform.recommendedLimit} characters)
+                  {t("(recommended: ")}
+                  {platform.recommendedLimit} {t(" characters)")}
                 </span>
               )}
             </p>
-            <p className="text-sm text-neutral-600 dark:text-neutral-300">
-              {platform.countingRules}
-            </p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-300">{platform.countingRules}</p>
           </div>
         </div>
       </div>
@@ -81,8 +81,8 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
         <div className="relative">
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={`Type or paste your ${platform.contentType} here...`}
+            onChange={e => setText(e.target.value)}
+            placeholder={t("Type or paste your {contentType} here...", { contentType: platform.contentType })}
             rows={10}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent resize-none text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
@@ -94,12 +94,12 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
               {copied ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  Copied
+                  {t("Copied")}
                 </>
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  Copy
+                  {t("Copy")}
                 </>
               )}
             </button>
@@ -113,12 +113,8 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div>
-              <p className={`text-3xl font-bold ${getStatusColor()}`}>
-                {characterCount.toLocaleString()}
-              </p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                characters
-              </p>
+              <p className={`text-3xl font-bold ${getStatusColor()}`}>{characterCount.toLocaleString()}</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("characters")}</p>
             </div>
             <div className="h-12 w-px bg-neutral-200 dark:bg-neutral-800" />
             <div>
@@ -126,17 +122,18 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
                 {remaining >= 0 ? remaining.toLocaleString() : `+${Math.abs(remaining).toLocaleString()}`}
               </p>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                {remaining >= 0 ? "remaining" : "over limit"}
+                {remaining >= 0 ? t("remaining") : t("over limit")}
               </p>
             </div>
           </div>
 
           <div className="text-right">
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-1">
-              <strong>Without spaces:</strong> {characterCountNoSpaces.toLocaleString()}
+              <strong>{t("Without spaces:")}</strong> {characterCountNoSpaces.toLocaleString()}
             </p>
             <p className="text-sm text-neutral-600 dark:text-neutral-300">
-              <strong>Progress:</strong> {percentage.toFixed(1)}%
+              <strong>{t("Progress:")}</strong> {percentage.toFixed(1)}
+              {t("%")}
             </p>
           </div>
         </div>
@@ -154,12 +151,15 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
           <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">
-                Over Character Limit
-              </p>
+              <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">{t("Over Character Limit")}</p>
               <p className="text-sm text-red-600 dark:text-red-400">
-                Your {platform.contentType} exceeds {platform.name}'s {platform.characterLimit.toLocaleString()}-character
-                limit by {Math.abs(remaining).toLocaleString()} characters. Please shorten your text.
+                {t("Your ")}
+                {platform.contentType} {t(" exceeds ")}
+                {platform.name}
+                {t("'s ")}
+                {platform.characterLimit.toLocaleString()}
+                {t("-character limit by ")}
+                {Math.abs(remaining).toLocaleString()} {t(" characters. Please shorten your text.")}
               </p>
             </div>
           </div>
@@ -170,40 +170,42 @@ export function CharacterCounter({ platform }: CharacterCounterProps) {
             <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-semibold text-orange-600 dark:text-orange-400 mb-1">
-                Approaching Character Limit
+                {t("Approaching Character Limit")}
               </p>
               <p className="text-sm text-orange-600 dark:text-orange-400">
-                You're using {percentage.toFixed(1)}% of {platform.name}'s character limit. Only{" "}
-                {remaining.toLocaleString()} characters remaining.
+                {t("You're using ")}
+                {percentage.toFixed(1)}
+                {t("% of ")}
+                {platform.name}
+                {t("'s character limit. Only")} {remaining.toLocaleString()} {t(" characters remaining.")}
               </p>
             </div>
           </div>
         )}
 
-        {!isOverLimit &&
-          !isNearLimit &&
-          platform.recommendedLimit &&
-          isAtRecommended && (
-            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                  Above Recommended Length
-                </p>
-                <p className="text-sm text-blue-600 dark:text-blue-400">
-                  While you're within the limit, posts under {platform.recommendedLimit} characters
-                  typically perform better on {platform.name}.
-                </p>
-              </div>
+        {!isOverLimit && !isNearLimit && platform.recommendedLimit && isAtRecommended && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                {t("Above Recommended Length")}
+              </p>
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                {t("While you're within the limit, posts under ")}
+                {platform.recommendedLimit} {t(" characters typically perform better on ")}
+                {platform.name}.
+              </p>
             </div>
-          )}
+          </div>
+        )}
       </div>
 
       {/* Best Practices */}
       {platform.bestPractices.length > 0 && (
         <div className="p-6 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
           <h3 className="font-semibold text-neutral-900 dark:text-white mb-3">
-            Best Practices for {platform.name}
+            {t("Best Practices for ")}
+            {platform.name}
           </h3>
           <ul className="space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
             {platform.bestPractices.map((practice, index) => (

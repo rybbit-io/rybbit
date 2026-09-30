@@ -64,7 +64,7 @@ export function Analytics() {
 
 ```javascript
 // Vanilla JS example
-if (process.env.NODE_ENV === 'production') {
+if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(window.location.hostname)) {
   const script = document.createElement('script');
   script.defer = true;
   script.src = 'https://app.rybbit.io/api/script.js';

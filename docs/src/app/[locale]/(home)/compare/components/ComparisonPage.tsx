@@ -1,11 +1,6 @@
 import { CTASection } from "@/components/CTASection";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ArrowRight, CheckCircle, CircleMinus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Image from "next/image";
@@ -117,8 +112,7 @@ export function ComparisonPage({
         eyebrow={t("Comparison")}
         title={t("Rybbit vs {competitor}", { competitor: competitorName })}
         description={
-          subtitle ||
-          t("Compare the key features of Rybbit and {competitor}.", { competitor: competitorName })
+          subtitle || t("Compare the key features of Rybbit and {competitor}.", { competitor: competitorName })
         }
         eventLocation={`compare_${competitorName.toLowerCase().replaceAll(" ", "_")}_hero`}
       />
@@ -130,8 +124,11 @@ export function ComparisonPage({
               <h2 className="max-w-sm text-3xl font-semibold tracking-[-0.03em] md:text-4xl">{introHeading}</h2>
             </div>
             <div className="space-y-5 px-5 py-12 sm:px-8 lg:col-span-8 lg:px-10 lg:py-16">
-              {introParagraphs.map((paragraph) => (
-                <p key={paragraph} className="max-w-3xl text-base leading-7 text-neutral-600 dark:text-neutral-300 md:text-lg md:leading-8">
+              {introParagraphs.map(paragraph => (
+                <p
+                  key={paragraph}
+                  className="max-w-3xl text-base leading-7 text-neutral-600 dark:text-neutral-300 md:text-lg md:leading-8"
+                >
                   {paragraph}
                 </p>
               ))}
@@ -155,8 +152,11 @@ export function ComparisonPage({
                   {t("Choose Rybbit if...")}
                 </h3>
                 <ul className="mt-6 space-y-4">
-                  {chooseRybbit.map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
+                  {chooseRybbit.map(item => (
+                    <li
+                      key={item}
+                      className="flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300"
+                    >
                       <CheckCircle className="mt-0.5 size-4 shrink-0 text-emerald-500" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
@@ -168,8 +168,11 @@ export function ComparisonPage({
                   {t("Choose {competitor} if...", { competitor: competitorName })}
                 </h3>
                 <ul className="mt-6 space-y-4">
-                  {chooseCompetitor.map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
+                  {chooseCompetitor.map(item => (
+                    <li
+                      key={item}
+                      className="flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300"
+                    >
                       <CheckCircle className="mt-0.5 size-4 shrink-0 text-neutral-400" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
@@ -185,7 +188,10 @@ export function ComparisonPage({
         <div className="mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
           <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:px-10 lg:py-16">
             <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Feature by feature")}</p>
-            <h2 id="comparison-table-title" className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+            <h2
+              id="comparison-table-title"
+              className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.03em] md:text-4xl"
+            >
               {t("Why choose Rybbit over {competitor}?", { competitor: competitorName })}
             </h2>
           </div>
@@ -209,16 +215,24 @@ export function ComparisonPage({
                 </tr>
               </thead>
               <tbody>
-                {sections.map((section) => (
+                {sections.map(section => (
                   <React.Fragment key={section.title}>
                     <tr className="border-b border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60">
-                      <th colSpan={3} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500 lg:px-10">
+                      <th
+                        colSpan={3}
+                        className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500 lg:px-10"
+                      >
                         {section.title}
                       </th>
                     </tr>
-                    {section.features.map((feature) => (
-                      <tr key={`${section.title}-${feature.name}`} className="border-b border-neutral-200 last:border-b-0 dark:border-neutral-800">
-                        <th className="px-6 py-4 text-left font-medium text-neutral-700 dark:text-neutral-300 lg:px-10">{feature.name}</th>
+                    {section.features.map(feature => (
+                      <tr
+                        key={`${section.title}-${feature.name}`}
+                        className="border-b border-neutral-200 last:border-b-0 dark:border-neutral-800"
+                      >
+                        <th className="px-6 py-4 text-left font-medium text-neutral-700 dark:text-neutral-300 lg:px-10">
+                          {feature.name}
+                        </th>
                         <td className="border-l border-neutral-200 px-6 py-4 text-center dark:border-neutral-800">
                           <div className="flex justify-center">{renderFeatureValue(feature.rybbitValue)}</div>
                         </td>
@@ -236,7 +250,10 @@ export function ComparisonPage({
       </section>
 
       {rybbitPricing && competitorPricing && (
-        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="pricing-comparison-title">
+        <section
+          className="border-b border-neutral-200 dark:border-neutral-800"
+          aria-labelledby="pricing-comparison-title"
+        >
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
               <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Pricing")}</p>
@@ -252,13 +269,21 @@ export function ComparisonPage({
                 >
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">{pricing.model}</p>
                   <h3 className="mt-2 text-xl font-semibold">{pricing.name}</h3>
-                  <p className={`mt-6 text-3xl font-semibold tracking-tight ${pricingIndex === 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
+                  <p
+                    className={`mt-6 text-3xl font-semibold tracking-tight ${pricingIndex === 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}
+                  >
                     {pricing.startingPrice}
                   </p>
                   <ul className="mt-7 space-y-3">
-                    {pricing.highlights.map((highlight) => (
-                      <li key={highlight} className="flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300">
-                        <CheckCircle className={`mt-0.5 size-4 shrink-0 ${pricingIndex === 0 ? "text-emerald-500" : "text-neutral-400"}`} aria-hidden="true" />
+                    {pricing.highlights.map(highlight => (
+                      <li
+                        key={highlight}
+                        className="flex items-start gap-3 text-sm leading-6 text-neutral-700 dark:text-neutral-300"
+                      >
+                        <CheckCircle
+                          className={`mt-0.5 size-4 shrink-0 ${pricingIndex === 0 ? "text-emerald-500" : "text-neutral-400"}`}
+                          aria-hidden="true"
+                        />
                         <span>{highlight}</span>
                       </li>
                     ))}
@@ -281,7 +306,7 @@ export function ComparisonPage({
               </div>
             </div>
             <div className="lg:col-span-8">
-              {deepDive.sections.map((section) => (
+              {deepDive.sections.map(section => (
                 <div
                   key={section.heading}
                   className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 lg:px-10"
@@ -305,7 +330,10 @@ export function ComparisonPage({
       )}
 
       {otherAlternatives && otherAlternatives.items.length > 0 && (
-        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="other-alternatives-title">
+        <section
+          className="border-b border-neutral-200 dark:border-neutral-800"
+          aria-labelledby="other-alternatives-title"
+        >
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
               <div className="lg:sticky lg:top-24">
@@ -318,15 +346,20 @@ export function ComparisonPage({
               </div>
             </div>
             <div className="lg:col-span-8">
-              {otherAlternatives.items.map((alternative) => (
+              {otherAlternatives.items.map(alternative => (
                 <Link
                   key={alternative.href}
                   href={alternative.href}
                   className="group grid border-b border-neutral-200 px-5 py-7 last:border-b-0 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:border-neutral-800 dark:hover:bg-neutral-900/60 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
                 >
                   <span className="font-semibold">{alternative.name}</span>
-                  <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">{alternative.summary}</span>
-                  <ArrowRight className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 sm:mt-0" aria-hidden="true" />
+                  <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">
+                    {alternative.summary}
+                  </span>
+                  <ArrowRight
+                    className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 sm:mt-0"
+                    aria-hidden="true"
+                  />
                 </Link>
               ))}
             </div>
@@ -364,7 +397,10 @@ export function ComparisonPage({
       )}
 
       {relatedResources && relatedResources.length > 0 && (
-        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="related-resources-title">
+        <section
+          className="border-b border-neutral-200 dark:border-neutral-800"
+          aria-labelledby="related-resources-title"
+        >
           <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
             <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
               <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t("Resources")}</p>
@@ -373,15 +409,20 @@ export function ComparisonPage({
               </h2>
             </div>
             <div className="lg:col-span-8">
-              {relatedResources.map((resource) => (
+              {relatedResources.map(resource => (
                 <Link
                   key={resource.href}
                   href={resource.href}
                   className="group grid border-b border-neutral-200 px-5 py-7 last:border-b-0 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:border-neutral-800 dark:hover:bg-neutral-900/60 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
                 >
                   <span className="font-semibold">{resource.title}</span>
-                  <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">{resource.description}</span>
-                  <ArrowRight className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 sm:mt-0" aria-hidden="true" />
+                  <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">
+                    {resource.description}
+                  </span>
+                  <ArrowRight
+                    className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 sm:mt-0"
+                    aria-hidden="true"
+                  />
                 </Link>
               ))}
             </div>
@@ -389,7 +430,7 @@ export function ComparisonPage({
         </section>
       )}
 
-      <CTASection title="Switch to analytics that's made for you" eventLocation="comparison_bottom_cta" />
+      <CTASection title={t("Switch to analytics that's made for you")} eventLocation="comparison_bottom_cta" />
     </div>
   );
 }

@@ -77,10 +77,35 @@ aggregate columns sum, so the two halves combine to the correct total.
 
 ## 2. Backfill
 
-Run once, after the deploy:
+Use a maintenance window after the deploy. Pause all replay writers, including
+other backend replicas and queued work, and wait for in-flight inserts to finish.
+Take a recoverable backup of both metadata tables before proceeding. Do not
+backfill directly into the live v2 table: it already contains post-deploy
+increments that the legacy table cannot reconstruct.
+
+Before copying the legacy table, apply every applicable user/site deletion since
+the cutover to it as well. Current application deletion paths cover v2 and any
+existing `session_replay_metadata` and `session_replay_metadata_v2_backfill`
+tables, but earlier deployments may have left deleted data in the legacy table.
+If you cannot establish that the legacy rows are
+still permitted to be retained, do not backfill or restore them.
+
+Build a new staging table while both sources are frozen. Use the exact unused
+name below so application privacy deletions also cover it, and the same
+schema/engine as v2:
 
 ```sql
-INSERT INTO session_replay_metadata_v2
+CREATE TABLE session_replay_metadata_v2_backfill AS session_replay_metadata_v2;
+
+-- Preserve all live post-deploy increments before adding historical totals.
+INSERT INTO session_replay_metadata_v2_backfill
+SELECT * FROM session_replay_metadata_v2;
+```
+
+Then copy the historical totals into that staging table once:
+
+```sql
+INSERT INTO session_replay_metadata_v2_backfill
 SELECT
   site_id, session_id, user_id, identified_user_id,
   start_time,
@@ -109,23 +134,42 @@ and because the new engine **sums** `event_count` rather than replacing it,
 every session would be inflated by its own history.
 
 For the same reason this statement is **not idempotent**. Running it twice
-doubles `event_count` and `compressed_size_bytes` for every session. If it is
-interrupted, clear the table before retrying:
+doubles historical `event_count` and `compressed_size_bytes`. If a staging copy
+is interrupted **before the exchange**, the two frozen source tables remain
+unchanged. Recreate only the staging table, then repeat both copies into the
+empty staging table. Never truncate the live v2 table, even immediately after
+deployment: it may already contain increments that exist nowhere in the legacy
+metadata table.
+
+Verify the staging totals against the sum of the two frozen sources, inspect
+real sessions, and ensure the database supports `EXCHANGE TABLES` (Atomic
+database engine). Only after validation, with writers still paused, publish it:
 
 ```sql
-TRUNCATE TABLE session_replay_metadata_v2;
+EXCHANGE TABLES session_replay_metadata_v2 AND session_replay_metadata_v2_backfill;
 ```
 
-That is safe only while the deploy is fresh — it also discards post-deploy
-increments, which the backfill cannot recover.
+After the exchange the staging name holds the original post-deploy-only table.
+Retain that backup until verification is complete, then resume writers. Do not
+repeat the historical insert or the exchange after a successful cutover.
+
+If a previous direct-to-live backfill was interrupted or repeated, stop writers
+and preserve the affected table before investigating. Its additive totals do
+not identify which rows came from the historical copy, so there is no generic
+safe truncate-and-retry recovery. Reconcile from a known pre-backfill backup
+and recoverable replay batches, or build and validate a replacement from the
+retained raw events and legacy snapshot. Do not replace the live table until
+all post-deploy increments and applicable deletions have been accounted for.
 
 The 30-day bound matches the table's TTL; older rows would be deleted on the
 next TTL pass anyway.
 
 ## 3. Verify
 
-Totals should agree, modulo sessions that received events between the two
-reads:
+With writers paused, staging totals should equal historical totals plus the
+original v2 post-deploy increments. After publication, v2 therefore need not
+equal the legacy table alone. Once writers resume, account for newly ingested
+sessions when comparing totals:
 
 ```sql
 SELECT count() AS sessions, sum(event_count) AS events
@@ -158,8 +202,16 @@ lose the ability to roll back:
 DROP TABLE session_replay_metadata;
 ```
 
-Nothing in the application references it after the deploy; it is kept only as
-the rollback path.
+The application no longer inserts into or reads it for analytics after the
+deploy, but privacy deletion paths still erase matching legacy rows. Keeping it
+is not a complete rollback plan: it lacks post-deploy batches. While it is
+retained, verify deletions have completed in it and the named staging table.
+Any differently named copies or external backups need separate deletion and
+retention handling; the application cannot discover arbitrary copies. Drop the
+legacy table promptly once validation allows. A rollback must
+reconcile post-deploy data and apply all applicable deletions before any legacy
+rows are made readable again; if that cannot be established, do not roll back
+to the legacy table.
 
 ---
 

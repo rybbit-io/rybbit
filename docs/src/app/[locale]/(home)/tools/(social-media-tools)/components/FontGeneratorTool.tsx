@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle, Copy } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 interface FontStyle {
@@ -890,7 +891,7 @@ const fontStyles: FontStyle[] = [
         "=": "＝",
         "+": "＋",
         "-": "－",
-        "\"": "＂",
+        '"': "＂",
         "'": "＇",
         ":": "：",
         ";": "；",
@@ -909,12 +910,12 @@ const fontStyles: FontStyle[] = [
         "!": "！",
         "@": "＠",
         "#": "＃",
-        "$": "＄",
+        $: "＄",
         "%": "％",
         "^": "＾",
         "&": "＆",
         "*": "＊",
-        "_": "＿",
+        _: "＿",
         "?": "？",
         ",": "，",
         " ": "　",
@@ -1479,9 +1480,7 @@ const fontStyles: FontStyle[] = [
         .split("")
         .map(char => {
           if (char === " ") return char;
-          const randomMarks = zalgoMarks
-            .sort(() => Math.random() - 0.5)
-            .slice(0, 2);
+          const randomMarks = zalgoMarks.sort(() => Math.random() - 0.5).slice(0, 2);
           return char + randomMarks.join("");
         })
         .join("");
@@ -1647,6 +1646,7 @@ interface FontGeneratorToolProps {
 }
 
 export function FontGeneratorTool({ platformName, characterLimit }: FontGeneratorToolProps) {
+  const t = useExtracted();
   const [inputText, setInputText] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
@@ -1670,12 +1670,13 @@ export function FontGeneratorTool({ platformName, characterLimit }: FontGenerato
     <div className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Enter your text {platformName && `for ${platformName}`}
+          {t("Enter your text ")}
+          {platformName && `for ${platformName}`}
         </label>
         <textarea
           value={inputText}
           onChange={e => setInputText(e.target.value)}
-          placeholder="Type your text here..."
+          placeholder={t("Type your text here...")}
           rows={3}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
         />
@@ -1687,7 +1688,8 @@ export function FontGeneratorTool({ platformName, characterLimit }: FontGenerato
                 : "text-neutral-500 dark:text-neutral-400"
             }`}
           >
-            {inputText.length} / {characterLimit} characters
+            {inputText.length} {t(" / ")}
+            {characterLimit} {t(" characters")}
             {inputText.length > characterLimit && ` (${inputText.length - characterLimit} over limit)`}
           </p>
         )}
@@ -1695,7 +1697,7 @@ export function FontGeneratorTool({ platformName, characterLimit }: FontGenerato
 
       {inputText && (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Font Styles</h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("Font Styles")}</h3>
           <div className="grid gap-3">
             {transformedTexts.map((style, index) => (
               <div
@@ -1714,12 +1716,12 @@ export function FontGeneratorTool({ platformName, characterLimit }: FontGenerato
                     {copiedIndex === index ? (
                       <>
                         <CheckCircle className="w-4 h-4" />
-                        Copied
+                        {t("Copied")}
                       </>
                     ) : (
                       <>
                         <Copy className="w-4 h-4" />
-                        Copy
+                        {t("Copy")}
                       </>
                     )}
                   </button>
@@ -1732,7 +1734,7 @@ export function FontGeneratorTool({ platformName, characterLimit }: FontGenerato
 
       {!inputText && (
         <div className="text-center py-12 text-neutral-500 dark:text-neutral-400">
-          Enter text above to see it transformed into different font styles
+          {t("Enter text above to see it transformed into different font styles")}
         </div>
       )}
     </div>

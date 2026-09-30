@@ -31,61 +31,6 @@ const mcpClients = [
   { name: "opencode", path: "/docs/mcp/opencode" },
 ];
 
-const faqSchema = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "Is Rybbit GDPR and CCPA compliant?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How does Rybbit compare to Google Analytics?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Rybbit is far less bloated than Google Analytics, both in the tracking script and the dashboard. It's one dashboard instead of 150+ reports, and the script is about 11KB against GA4's 150KB, both compressed.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Can I self-host Rybbit?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Yes. You can run Rybbit on your own server with Docker and keep full control of your data, or use the managed cloud if you'd rather not host it yourself.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How easy is it to set up Rybbit?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Add one script tag to your site, or install @rybbit/js from npm. Most sites are collecting data in under 5 minutes.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "What platforms does Rybbit support?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "The script tag works anywhere you can add HTML: WordPress, Shopify, Next.js, React, Vue, and the rest. For apps, install @rybbit/js from npm.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Is Rybbit truly open source?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Yes, Rybbit is 100% open source. Every single line of code, including for our cloud/enterprise offerings, is available on GitHub under the AGPL 3.0 license.",
-      },
-    },
-  ],
-};
-
 interface LandingPageTemplateProps {
   title: React.ReactNode;
   subtitle: React.ReactNode;
@@ -154,7 +99,6 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <ConsoleGreeting />
       <div className="overflow-clip">
         <HeroSection

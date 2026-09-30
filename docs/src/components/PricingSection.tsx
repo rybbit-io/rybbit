@@ -276,6 +276,7 @@ export function PricingSection({
                 <div className="mb-2 flex rounded-md border border-neutral-300 bg-neutral-100 p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900">
                   <button
                     onClick={() => setIsAnnual(false)}
+                    aria-pressed={!isAnnual}
                     className={cn(
                       "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
                       !isAnnual
@@ -287,6 +288,7 @@ export function PricingSection({
                   </button>
                   <button
                     onClick={() => setIsAnnual(true)}
+                    aria-pressed={isAnnual}
                     className={cn(
                       "cursor-pointer rounded-sm px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500",
                       isAnnual
@@ -357,6 +359,7 @@ export function PricingSection({
               <button
                 key={i}
                 onClick={() => carouselApi?.scrollTo(i)}
+                aria-pressed={currentSlide === i}
                 aria-label={t("Go to pricing option {number}", { number: String(i + 1) })}
                 className={cn(
                   "size-2 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",

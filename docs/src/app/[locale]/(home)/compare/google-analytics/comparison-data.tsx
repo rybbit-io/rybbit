@@ -81,7 +81,7 @@ export const googleAnalyticsExtendedData = {
     startingPrice: "$19/mo",
     highlights: [
       "7-day free trial, card charged after the trial",
-      "All features included on every plan",
+      "Core analytics features included on every plan",
       "Session replay available on Pro plan",
       "Unlimited team members",
     ],
@@ -108,16 +108,16 @@ export const googleAnalyticsExtendedData = {
           <>
             GA4 is free because your visitors&apos; data feeds Google&apos;s advertising business. The practical costs
             show up elsewhere. Because GA4 relies on cookies, GDPR and ePrivacy require a consent banner in most of the
-            world, and a large share of visitors decline or ignore it, so the sessions they represent never reach
-            your reports. Teams switching to cookieless analytics routinely discover their real traffic is 30&ndash;60%
+            world, and a large share of visitors decline or ignore it, so the sessions they represent never reach your
+            reports. Teams switching to cookieless analytics routinely discover their real traffic is 30&ndash;60%
             higher than GA4 showed.
           </>,
           <>
             On top of consent loss, GA4 applies sampling to complex reports on busy properties, holds standard-property
-            event data for at most 14 months, and locks unsampled exploration behind GA360, which starts around
-            $50,000 per year. Rybbit&apos;s <Link href="/pricing">pricing</Link> is a flat, events-based subscription
-            with no sampling at any traffic level (session replay comes with the Pro plan), and your data is never used
-            for anything except showing you your analytics.
+            event data for at most 14 months, and locks unsampled exploration behind GA360, which starts around $50,000
+            per year. Rybbit&apos;s <Link href="/pricing">pricing</Link> is a flat, events-based subscription with no
+            sampling at any traffic level (session replay comes with the Pro plan), and your data is never used for
+            anything except showing you your analytics.
           </>,
         ],
       },
@@ -125,8 +125,8 @@ export const googleAnalyticsExtendedData = {
         heading: "Feature depth is closer than you'd think",
         paragraphs: [
           <>
-            The common objection to leaving Google Analytics is losing capability. In 2026 the gap mostly runs the
-            other way for product and marketing teams: Rybbit ships{" "}
+            The common objection to leaving Google Analytics is losing capability. In 2026 the gap mostly runs the other
+            way for product and marketing teams: Rybbit ships{" "}
             <Link href="/features/session-replay">session replay</Link>, <Link href="/features/funnels">funnels</Link>,{" "}
             <Link href="/features/user-journeys">user journey (Sankey) visualization</Link>,{" "}
             <Link href="/features/error-tracking">error tracking</Link>, and{" "}
@@ -136,8 +136,8 @@ export const googleAnalyticsExtendedData = {
           <>
             What GA4 genuinely does better is the Google ecosystem: bidirectional Google Ads integration, BigQuery
             export, and advanced attribution modeling for paid campaigns. If your team lives in Google Ads, keeping GA4
-            for ad attribution while running Rybbit as your source of truth for real traffic is a reasonable setup;
-            the two scripts don&apos;t conflict.
+            for ad attribution while running Rybbit as your source of truth for real traffic is a reasonable setup; the
+            two scripts don&apos;t conflict.
           </>,
         ],
       },
@@ -150,8 +150,8 @@ export const googleAnalyticsExtendedData = {
           </>,
           <ol>
             <li>
-              Add the Rybbit <Link href="/docs/script">tracking script</Link>: one tag, and data appears in
-              minutes. Keep GA4 running alongside it.
+              Add the Rybbit <Link href="/docs/script">tracking script</Link>: one tag, and data appears in minutes.
+              Keep GA4 running alongside it.
             </li>
             <li>
               Recreate your conversions as Rybbit <Link href="/docs/goals">goals</Link> and{" "}
@@ -175,10 +175,10 @@ export const googleAnalyticsExtendedData = {
           <>
             Multiple EU data-protection authorities (Austria, France, and Italy among them) have ruled that Google
             Analytics transfers violated GDPR, and enforcement keeps tightening. Rybbit sidesteps the whole category of
-            risk: no cookies, no persistent identifiers, no personal data collection, with visitor hashes rotated
-            daily. You can run it with no consent banner at all, or go further and{" "}
-            <Link href="/docs/self-hosting">self-host the open-source version</Link> so analytics data never leaves
-            your own infrastructure.
+            risk: no cookies, no persistent identifiers, no personal data collection, with visitor hashes rotated daily.
+            You can run it with no consent banner at all, or go further and{" "}
+            <Link href="/docs/self-hosting">self-host the open-source version</Link> so analytics data never leaves your
+            own infrastructure.
           </>,
         ],
       },
@@ -188,23 +188,28 @@ export const googleAnalyticsExtendedData = {
   faqItems: [
     {
       question: "Is it hard to migrate from Google Analytics to Rybbit?",
-      answer: "Rybbit uses a single script tag, so add it to your site and you'll start collecting data immediately. There's no need to remove GA4 right away; you can run both in parallel to compare.",
+      answer:
+        "Rybbit uses a single script tag, so add it to your site and you'll start collecting data immediately. There's no need to remove GA4 right away; you can run both in parallel to compare.",
     },
     {
       question: "Will I lose historical data if I switch?",
-      answer: "Rybbit starts collecting data from the moment you install it, so there's no migration of historical GA data. Many teams run both tools in parallel for a transition period before fully switching.",
+      answer:
+        "Rybbit starts collecting data from the moment you install it, so there's no migration of historical GA data. Many teams run both tools in parallel for a transition period before fully switching.",
     },
     {
       question: "Does Rybbit work without cookies like GA4's consent mode?",
-      answer: "Yes, but differently. Rybbit is cookie-free by default, so no consent mode is needed. You never need to show a cookie banner for Rybbit, which means you capture 100% of your visitors without any consent friction.",
+      answer:
+        "Yes, but differently. Rybbit is cookie-free by default, so no consent mode is needed. You never need to show a cookie banner for Rybbit, which means you capture 100% of your visitors without any consent friction.",
     },
     {
       question: "Can Rybbit track conversions and goals like GA4?",
-      answer: "Yes. Rybbit supports conversion goals, funnels, and custom events with attributes. While the setup is simpler than GA4's event configuration, you get the same core conversion tracking capabilities.",
+      answer:
+        "Yes. Rybbit supports conversion goals, funnels, and custom events with attributes. While the setup is simpler than GA4's event configuration, you get the same core conversion tracking capabilities.",
     },
     {
       question: "Does Rybbit offer real-time analytics?",
-      answer: "Yes, Rybbit provides real-time data with no sampling. Unlike GA4 which may sample data on high-traffic properties, Rybbit shows every event as it happens.",
+      answer:
+        "Yes, Rybbit provides real-time data with no sampling. Unlike GA4 which may sample data on high-traffic properties, Rybbit shows every event as it happens.",
     },
   ] satisfies FAQItem[],
 

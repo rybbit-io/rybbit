@@ -3,6 +3,7 @@ title: "10 Best Session Replay Tools in 2026 (Free & Open Source)"
 description: "Compare 10 session replay tools for 2026: free options like Clarity, open source picks like Rybbit and OpenReplay, plus verified prices and limits."
 keyword: "session replay tools"
 date: 2026-09-13
+image: /blog/best-session-replay-tools/rybbit-session-replay.webp
 updated: 2026-09-27
 tags: ["session replay", "comparisons", "tools"]
 author: Rybbit Team
@@ -20,7 +21,7 @@ Disclosure up front: we build [Rybbit](https://rybbit.com), one of the tools on 
 | [Microsoft Clarity](#microsoft-clarity) | Free, unlimited recordings | Yes, unlimited | $0 | No | No |
 | [Hotjar / Contentsquare](#hotjar-contentsquare) | Heatmaps, replay and surveys | Yes, 10k replays/mo | Growth from $49/mo | No | No |
 | [FullStory](#fullstory) | Enterprise experience analytics | Yes, 30k sessions/mo | Quote only | No | No |
-| [LogRocket](#logrocket) | Front-end debugging | Yes, 1k sessions/mo | Core from $83/mo (10k sessions) | Enterprise only | No |
+| [LogRocket](#logrocket) | Front-end debugging | No (14-day trial) | Core from $83/mo (10k sessions) | Enterprise only | No |
 | [PostHog](#posthog) | Product analytics suite | Yes, 5k recordings/mo | $0.005 per recording after | Yes, with caveats | Yes, MIT core |
 | [OpenReplay](#openreplay) | Self-hosted replay for developers | Self-hosted only | Cloud from $199/mo | Yes, free | Yes, AGPL-3.0 core |
 | [Lucky Orange](#lucky-orange) | Small-business CRO bundle | No (7-day trial) | $39/mo (3,500 sessions) | No | No |
@@ -110,13 +111,13 @@ For more options by use case, see our [FullStory alternatives](/blog/fullstory-a
 
 [LogRocket](https://logrocket.com) is replay for engineers. Recordings include console logs, network requests and exceptions, and the [mobile SDKs](https://logrocket.com/products/mobile) cover Android, iOS, React Native, Flutter, Ionic and Expo. Analytics, error and log events are unlimited on every plan; you pay for sessions captured.
 
-The [pricing page](https://logrocket.com/pricing) calculator starts with a Free plan for 1,000 sessions a month, then Core at $83/month for 10,000 sessions and $176/month for 25,000; paid features also come with a 14-day trial. A Conditional Recording option captures roughly a quarter of sessions, and Pro features are "included free above 100K sessions/mo". Self-hosting is an Enterprise option for regulated industries.
+The [pricing page](https://logrocket.com/pricing) calculator includes 1,000 sessions as a volume option, but there is no recurring Free plan. Core starts at $83/month for 10,000 sessions and $176/month for 25,000; paid features also come with a 14-day trial. A Conditional Recording option captures roughly a quarter of sessions, and Pro features are "included free above 100K sessions/mo". Self-hosting is an Enterprise option for regulated industries.
 
 On privacy, LogRocket's [documentation](https://docs.logrocket.com/docs/privacy) states that password fields are never recorded; masking anything else uses a `data-private` attribute or the SDK's sanitizers, so the safe default is your responsibility.
 
 - **Pros:** deep debugging context per session; broad mobile coverage; unlimited non-session events
-- **Cons:** the Free plan stops at 1k sessions, and 25k sessions costs $176/month; masking beyond passwords is opt-in; self-host is Enterprise only
-- **Pricing (as of September 2026):** Free for 1k sessions/month; Core from $83/month for 10k sessions; 14-day trial. Source: [logrocket.com/pricing](https://logrocket.com/pricing)
+- **Cons:** no recurring free plan; 25k sessions costs $176/month; masking beyond passwords is opt-in; self-host is Enterprise only
+- **Pricing (as of September 2026):** 14-day trial; Core from $83/month for 10k sessions; 14-day trial. Source: [logrocket.com/pricing](https://logrocket.com/pricing)
 
 ## PostHog
 
@@ -192,7 +193,7 @@ For the analytics side of the decision, see our guides to the [best web analytic
 
 ### Is there a free session replay tool?
 
-Yes, several. Microsoft Clarity is free with no traffic limits. Contentsquare's Free plan includes 10,000 replay captures a month, PostHog gives 5,000 web recordings a month, LogRocket's Free plan covers 1,000 sessions a month, and FullStory's free plan covers 30,000 sessions with 12-month retention. Rybbit and OpenReplay are free if you self-host; Rybbit Cloud has a 7-day trial rather than a free tier.
+Yes, several. Microsoft Clarity is free with no traffic limits. Contentsquare's Free plan includes 10,000 replay captures a month, PostHog gives 5,000 web recordings a month, LogRocket offers a 14-day trial rather than a recurring free plan, and FullStory's free plan covers 30,000 sessions with 12-month retention. Rybbit and OpenReplay are free if you self-host; Rybbit Cloud has a 7-day trial rather than a free tier.
 
 ### Is session replay software the same as session recording software?
 
@@ -200,7 +201,7 @@ Yes. Vendors use "session recording", "session replay" and "visitor recordings" 
 
 ### Is session replay GDPR compliant?
 
-It can be, but your configuration makes it so, not the tool. Mask inputs and personal text before data leaves the browser, record only with a lawful basis, honor consent where you rely on it, keep retention short, and sign a processing agreement with the vendor. Self-hosting (Rybbit, OpenReplay, PostHog, Sentry) removes the vendor-transfer question entirely.
+It can be, but your configuration makes it so, not the tool. Mask inputs and personal text before data leaves the browser, record only with a lawful basis, honor consent where you rely on it, keep retention short, and sign a processing agreement with the vendor. Self-hosting (Rybbit, OpenReplay, PostHog, Sentry) can remove the replay vendor from the processing path when data stays in infrastructure you control, but you must still assess hosting providers and configured external services.
 
 ### Which session replay tools are open source?
 

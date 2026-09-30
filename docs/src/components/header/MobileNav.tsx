@@ -37,11 +37,7 @@ export function MobileNav({ onNavigate }: MobileNavProps) {
     {
       value: "solutions",
       label: nav.labels.solutions,
-      links: [
-        ...nav.useCases.links,
-        ...nav.compare.links,
-        { href: "/compare", label: nav.labels.allComparisons },
-      ],
+      links: [...nav.useCases.links, ...nav.compare.links, { href: "/compare", label: nav.labels.allComparisons }],
     },
     {
       value: "resources",
@@ -57,13 +53,17 @@ export function MobileNav({ onNavigate }: MobileNavProps) {
     >
       <div className="mx-auto max-w-[1200px] border-x border-neutral-200 px-5 py-2 dark:border-neutral-800 sm:px-8">
         <Accordion type="multiple">
-          {sections.map((section) => (
-            <AccordionItem key={section.value} value={section.value} className="border-neutral-200 dark:border-neutral-800">
+          {sections.map(section => (
+            <AccordionItem
+              key={section.value}
+              value={section.value}
+              className="border-neutral-200 dark:border-neutral-800"
+            >
               <AccordionTrigger className="px-3 py-3 text-base font-medium text-neutral-700 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-300 dark:hover:text-white">
                 {section.label}
               </AccordionTrigger>
               <AccordionContent className="pb-2">
-                {section.links.map((link) => (
+                {section.links.map(link => (
                   <MobileLink key={link.href} link={link} onNavigate={onNavigate} />
                 ))}
               </AccordionContent>
@@ -93,6 +93,8 @@ export function MobileNav({ onNavigate }: MobileNavProps) {
           <div className="flex items-center gap-2">
             <AppLink
               href="https://app.rybbit.io"
+              data-rybbit-event="login"
+              data-rybbit-prop-location="header"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => {
@@ -105,6 +107,8 @@ export function MobileNav({ onNavigate }: MobileNavProps) {
             </AppLink>
             <AppLink
               href="https://app.rybbit.io/signup"
+              data-rybbit-event="signup"
+              data-rybbit-prop-location="header"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => {

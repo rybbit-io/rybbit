@@ -1,8 +1,9 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
-import { useState } from "react";
 import { round } from "lodash";
+import { Plus, X } from "lucide-react";
+import { useExtracted } from "next-intl";
+import { useState } from "react";
 
 interface FunnelStep {
   name: string;
@@ -18,6 +19,7 @@ interface FunnelChartData {
 }
 
 export function FunnelVisualizerForm() {
+  const t = useExtracted();
   const [steps, setSteps] = useState<FunnelStep[]>([
     { name: "Landing Page", visitors: "" },
     { name: "Product Page", visitors: "" },
@@ -92,20 +94,23 @@ export function FunnelVisualizerForm() {
                 type="text"
                 value={step.name}
                 onChange={e => updateStep(index, "name", e.target.value)}
-                placeholder={`Step ${index + 1} name`}
+                placeholder={t("Step {number} name", { number: String(index + 1) })}
+                aria-label={t("Step {number} name", { number: String(index + 1) })}
                 className="px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <input
                 type="number"
                 value={step.visitors}
                 onChange={e => updateStep(index, "visitors", e.target.value)}
-                placeholder="Visitors"
+                placeholder={t("Visitors")}
+                aria-label={t("Step {number} visitors", { number: String(index + 1) })}
                 className="px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             {steps.length > 2 && (
               <button
                 onClick={() => removeStep(index)}
+                aria-label={t("Remove step {number}", { number: String(index + 1) })}
                 className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -120,7 +125,7 @@ export function FunnelVisualizerForm() {
         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg transition-colors"
       >
         <Plus className="w-4 h-4" />
-        Add Step
+        {t("Add Step")}
       </button>
 
       {/* Funnel Visualization */}
@@ -150,11 +155,11 @@ export function FunnelVisualizerForm() {
                     <div className="flex-shrink-0 min-w-[130px] mr-4 space-y-1">
                       <div className="flex items-baseline">
                         <span className="text-base font-semibold">{step.visitors.toLocaleString()}</span>
-                        <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">visitors</span>
+                        <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">{t("visitors")}</span>
                       </div>
                       {index !== 0 && (
                         <div className="flex items-baseline text-orange-500 text-xs font-medium">
-                          {droppedFromPrevious.toLocaleString()} dropped
+                          {droppedFromPrevious.toLocaleString()} {t(" dropped")}
                         </div>
                       )}
                     </div>
@@ -183,7 +188,10 @@ export function FunnelVisualizerForm() {
                         style={{ width: `${barWidth}%` }}
                       ></div>
                       <div className="absolute top-2 right-2 z-20">
-                        <div className="text-base font-semibold">{round(step.conversionRate, 2)}%</div>
+                        <div className="text-base font-semibold">
+                          {round(step.conversionRate, 2)}
+                          {t("%")}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -195,7 +203,7 @@ export function FunnelVisualizerForm() {
           <div className="flex items-center gap-4 mt-6 ml-4 text-xs text-neutral-500 dark:text-neutral-400">
             <div className="flex items-center">
               <div className="w-3 h-3 bg-emerald-500/70 rounded-sm mr-1"></div>
-              <span>Overall conversion</span>
+              <span>{t("Overall conversion")}</span>
             </div>
             <div className="flex items-center">
               <div
@@ -210,7 +218,7 @@ export function FunnelVisualizerForm() {
                   )`,
                 }}
               ></div>
-              <span>Conversion from previous step</span>
+              <span>{t("Conversion from previous step")}</span>
             </div>
           </div>
         </div>
@@ -222,7 +230,7 @@ export function FunnelVisualizerForm() {
           onClick={clearForm}
           className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
         >
-          Clear
+          {t("Clear")}
         </button>
       </div>
     </div>

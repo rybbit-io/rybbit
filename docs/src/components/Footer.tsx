@@ -223,6 +223,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Tomato.gg"
+                aria-label={t("Visit Tomato.gg")}
                 className="group/frogs inline-flex min-h-11 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 sm:min-h-8"
               >
                 <span className="inline-block group-hover/frogs:[animation:frog-hop_0.45s_cubic-bezier(0.22,1,0.36,1)] motion-reduce:group-hover/frogs:animate-none">

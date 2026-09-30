@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle, Copy, Loader2 } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 interface TitleOption {
@@ -10,6 +11,7 @@ interface TitleOption {
 }
 
 export function SEOTitleForm() {
+  const t = useExtracted();
   const [topic, setTopic] = useState("");
   const [keywords, setKeywords] = useState("");
   const [titles, setTitles] = useState<TitleOption[]>([]);
@@ -20,7 +22,7 @@ export function SEOTitleForm() {
 
   const generateTitles = async () => {
     if (!topic) {
-      setError("Please enter a topic");
+      setError(t("Please enter a topic"));
       return;
     }
 
@@ -40,13 +42,13 @@ export function SEOTitleForm() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to generate titles");
+        throw new Error(data.error || t("Failed to generate titles"));
       }
 
       const data = await response.json();
       setTitles(data.titles);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("An error occurred"));
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +70,7 @@ export function SEOTitleForm() {
     <>
       {remainingRequests !== null && (
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-          {remainingRequests} requests remaining this minute
+          {remainingRequests} {t(" requests remaining this minute")}
         </p>
       )}
 
@@ -76,13 +78,14 @@ export function SEOTitleForm() {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Page Topic <span className="text-red-500">*</span>
+              {t("Page Topic ")}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={topic}
               onChange={e => setTopic(e.target.value)}
-              placeholder="e.g., Best Project Management Software for Teams"
+              placeholder={t("e.g., Best Project Management Software for Teams")}
               disabled={isLoading}
               className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
             />
@@ -90,21 +93,26 @@ export function SEOTitleForm() {
 
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Target Keywords (Optional)
+              {t("Target Keywords (Optional)")}
             </label>
             <input
               type="text"
               value={keywords}
               onChange={e => setKeywords(e.target.value)}
-              placeholder="e.g., project management, team collaboration, productivity"
+              placeholder={t("e.g., project management, team collaboration, productivity")}
               disabled={isLoading}
               className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Comma-separated keywords to include</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {t("Comma-separated keywords to include")}
+            </p>
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg">
+            <div
+              role="alert"
+              className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg"
+            >
               <p className="text-sm text-red-900 dark:text-red-200">{error}</p>
             </div>
           )}
@@ -117,7 +125,7 @@ export function SEOTitleForm() {
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Generating Titles...
+                {t("Generating Titles...")}
               </>
             ) : (
               "Generate SEO Titles"
@@ -126,7 +134,7 @@ export function SEOTitleForm() {
 
           {titles.length > 0 && (
             <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-3">
-              <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Generated Titles</h3>
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("Generated Titles")}</h3>
               {titles.map((option, index) => (
                 <div
                   key={index}
@@ -141,18 +149,20 @@ export function SEOTitleForm() {
                       {copiedIndex === index ? (
                         <>
                           <CheckCircle className="w-4 h-4" />
-                          Copied
+                          {t("Copied")}
                         </>
                       ) : (
                         <>
                           <Copy className="w-4 h-4" />
-                          Copy
+                          {t("Copy")}
                         </>
                       )}
                     </button>
                   </div>
                   <div className="flex items-center gap-4 text-xs">
-                    <span className={`font-medium ${getLengthColor(option.length)}`}>{option.length} characters</span>
+                    <span className={`font-medium ${getLengthColor(option.length)}`}>
+                      {option.length} {t(" characters")}
+                    </span>
 
                     <span className="text-neutral-600 dark:text-neutral-400">{option.approach}</span>
                   </div>
@@ -160,8 +170,8 @@ export function SEOTitleForm() {
               ))}
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg">
                 <p className="text-sm text-blue-900 dark:text-blue-200">
-                  <strong>Tip:</strong> Optimal title length is 50-60 characters. Longer titles may be truncated in
-                  search results.
+                  <strong>{t("Tip:")}</strong>{" "}
+                  {t(" Optimal title length is 50-60 characters. Longer titles may be truncated in search results.")}
                 </p>
               </div>
             </div>

@@ -1,8 +1,10 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 export function CustomerLifetimeValueForm() {
+  const t = useExtracted();
   const [averageValue, setAverageValue] = useState("");
   const [purchaseFrequency, setPurchaseFrequency] = useState("");
   const [customerLifespan, setCustomerLifespan] = useState("");
@@ -12,12 +14,12 @@ export function CustomerLifetimeValueForm() {
   const [clv, setClv] = useState<number | null>(null);
 
   const industryBenchmarks: Record<string, number> = {
-    "SaaS": 1200,
+    SaaS: 1200,
     "E-commerce": 168,
     "Subscription Box": 420,
     "Financial Services": 5000,
-    "Telecommunications": 3600,
-    "Insurance": 7200,
+    Telecommunications: 3600,
+    Insurance: 7200,
     "Fitness/Gym": 1800,
     "Streaming Services": 850,
   };
@@ -29,13 +31,7 @@ export function CustomerLifetimeValueForm() {
     const marginNum = parseFloat(profitMargin) / 100;
     const retentionNum = parseFloat(retentionRate) / 100;
 
-    if (
-      isNaN(valueNum) ||
-      isNaN(frequencyNum) ||
-      isNaN(lifespanNum) ||
-      isNaN(marginNum) ||
-      isNaN(retentionNum)
-    ) {
+    if (isNaN(valueNum) || isNaN(frequencyNum) || isNaN(lifespanNum) || isNaN(marginNum) || isNaN(retentionNum)) {
       setClv(null);
       return;
     }
@@ -75,108 +71,119 @@ export function CustomerLifetimeValueForm() {
     <div className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Average Purchase Value ($) <span className="text-red-500">*</span>
+          {t("Average Purchase Value ($) ")}
+          <span className="text-red-500">*</span>
         </label>
         <input
+          required
+          aria-label={t("Average Purchase Value ($)")}
           type="number"
           value={averageValue}
-          onChange={(e) => setAverageValue(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
-          placeholder="100"
+          onChange={e => setAverageValue(e.target.value)}
+          onKeyPress={e => e.key === "Enter" && calculateCLV()}
+          placeholder={t("100")}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Average amount a customer spends per purchase
+          {t("Average amount a customer spends per purchase")}
         </p>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Purchase Frequency (per year) <span className="text-red-500">*</span>
+          {t("Purchase Frequency (per year) ")}
+          <span className="text-red-500">*</span>
         </label>
         <input
+          required
+          aria-label={t("Purchase Frequency (per year)")}
           type="number"
           value={purchaseFrequency}
-          onChange={(e) => setPurchaseFrequency(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
-          placeholder="12"
+          onChange={e => setPurchaseFrequency(e.target.value)}
+          onKeyPress={e => e.key === "Enter" && calculateCLV()}
+          placeholder={t("12")}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Number of purchases per customer per year
+          {t("Number of purchases per customer per year")}
         </p>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Customer Lifespan (years) <span className="text-red-500">*</span>
+          {t("Customer Lifespan (years) ")}
+          <span className="text-red-500">*</span>
         </label>
         <input
+          required
+          aria-label={t("Customer Lifespan (years)")}
           type="number"
           value={customerLifespan}
-          onChange={(e) => setCustomerLifespan(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
-          placeholder="3"
+          onChange={e => setCustomerLifespan(e.target.value)}
+          onKeyPress={e => e.key === "Enter" && calculateCLV()}
+          placeholder={t("3")}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Average number of years a customer stays with you
+          {t("Average number of years a customer stays with you")}
         </p>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Profit Margin (%) <span className="text-red-500">*</span>
+          {t("Profit Margin (%) ")}
+          <span className="text-red-500">*</span>
         </label>
         <input
+          required
+          aria-label={t("Profit Margin (%)")}
           type="number"
           value={profitMargin}
-          onChange={(e) => setProfitMargin(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
-          placeholder="20"
+          onChange={e => setProfitMargin(e.target.value)}
+          onKeyPress={e => e.key === "Enter" && calculateCLV()}
+          placeholder={t("20")}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Average profit margin percentage
-        </p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t("Average profit margin percentage")}</p>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Retention Rate (%) <span className="text-red-500">*</span>
+          {t("Retention Rate (%) ")}
+          <span className="text-red-500">*</span>
         </label>
         <input
+          required
+          aria-label={t("Retention Rate (%)")}
           type="number"
           value={retentionRate}
-          onChange={(e) => setRetentionRate(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && calculateCLV()}
-          placeholder="85"
+          onChange={e => setRetentionRate(e.target.value)}
+          onKeyPress={e => e.key === "Enter" && calculateCLV()}
+          placeholder={t("85")}
           max="100"
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Percentage of customers retained annually
+          {t("Percentage of customers retained annually")}
           {churnRate && ` (Churn rate: ${churnRate}%)`}
         </p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Industry
-        </label>
+        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">{t("Industry")}</label>
         <select
           value={selectedIndustry}
-          onChange={(e) => setSelectedIndustry(e.target.value)}
+          onChange={e => setSelectedIndustry(e.target.value)}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
-          {Object.keys(industryBenchmarks).map((industry) => (
+          {Object.keys(industryBenchmarks).map(industry => (
             <option key={industry} value={industry}>
               {industry}
             </option>
           ))}
         </select>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Select your industry to compare against benchmarks
+          {t("Select your industry to compare against benchmarks")}
         </p>
       </div>
 
@@ -184,10 +191,11 @@ export function CustomerLifetimeValueForm() {
         <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
           <div className="px-4 py-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-lg text-center">
             <div className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-2">
-              Customer Lifetime Value
+              {t("Customer Lifetime Value")}
             </div>
             <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-              ${clv.toFixed(2)}
+              {t("$")}
+              {clv.toFixed(2)}
             </div>
           </div>
 
@@ -197,32 +205,36 @@ export function CustomerLifetimeValueForm() {
                 comparison.difference >= 0
                   ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800"
                   : comparison.difference >= -20
-                  ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900"
-                  : "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900"
+                    ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900"
+                    : "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900"
               }`}
             >
               <div className="text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                Industry Benchmark: {selectedIndustry}
+                {t("Industry Benchmark: ")}
+                {selectedIndustry}
               </div>
               <div className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                ${comparison.benchmark.toLocaleString()}
+                {t("$")}
+                {comparison.benchmark.toLocaleString()}
               </div>
               <div className="text-sm text-neutral-700 dark:text-neutral-300">
                 {comparison.difference >= 0 ? (
                   <>
-                    Your CLV is{" "}
+                    {t("Your CLV is")}{" "}
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      {comparison.difference.toFixed(1)}% above
+                      {comparison.difference.toFixed(1)}
+                      {t("% above")}
                     </span>{" "}
-                    the industry average
+                    {t("the industry average")}
                   </>
                 ) : (
                   <>
-                    Your CLV is{" "}
+                    {t("Your CLV is")}{" "}
                     <span className="font-semibold text-orange-600 dark:text-orange-400">
-                      {Math.abs(comparison.difference).toFixed(1)}% below
+                      {Math.abs(comparison.difference).toFixed(1)}
+                      {t("% below")}
                     </span>{" "}
-                    the industry average
+                    {t("the industry average")}
                   </>
                 )}
               </div>
@@ -231,41 +243,37 @@ export function CustomerLifetimeValueForm() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Annual Customer Value
-              </div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t("Annual Customer Value")}</div>
               <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                $
-                {(
-                  parseFloat(averageValue) *
-                  parseFloat(purchaseFrequency) *
-                  (parseFloat(profitMargin) / 100)
-                ).toFixed(2)}
+                {t("$")}
+                {(parseFloat(averageValue) * parseFloat(purchaseFrequency) * (parseFloat(profitMargin) / 100)).toFixed(
+                  2
+                )}
               </div>
             </div>
             <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                Total Revenue Potential
-              </div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t("Total Revenue Potential")}</div>
               <div className="text-lg font-semibold text-neutral-900 dark:text-white">
-                $
-                {(
-                  parseFloat(averageValue) *
-                  parseFloat(purchaseFrequency) *
-                  parseFloat(customerLifespan)
-                ).toFixed(2)}
+                {t("$")}
+                {(parseFloat(averageValue) * parseFloat(purchaseFrequency) * parseFloat(customerLifespan)).toFixed(2)}
               </div>
             </div>
           </div>
 
           <div className="px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg">
             <div className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">
-              CLV:CAC Ratio Guidance
+              {t("CLV:CAC Ratio Guidance")}
             </div>
             <div className="text-xs text-blue-700 dark:text-blue-300">
-              A healthy business should have a CLV that's at least <strong>3x</strong> your
-              Customer Acquisition Cost (CAC). With a CLV of ${clv.toFixed(2)}, your maximum
-              sustainable CAC is approximately <strong>${(clv / 3).toFixed(2)}</strong>.
+              {t("A healthy business should have a CLV that's at least ")}
+              <strong>{t("3x")}</strong> {t(" your Customer Acquisition Cost (CAC). With a CLV of $")}
+              {clv.toFixed(2)}
+              {t(", your maximum sustainable CAC is approximately ")}
+              <strong>
+                {t("$")}
+                {(clv / 3).toFixed(2)}
+              </strong>
+              .
             </div>
           </div>
         </div>
@@ -276,13 +284,13 @@ export function CustomerLifetimeValueForm() {
           onClick={calculateCLV}
           className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors"
         >
-          Calculate CLV
+          {t("Calculate CLV")}
         </button>
         <button
           onClick={clearForm}
           className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
         >
-          Clear
+          {t("Clear")}
         </button>
       </div>
     </div>
