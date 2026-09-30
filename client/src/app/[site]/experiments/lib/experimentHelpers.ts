@@ -1,5 +1,7 @@
-import type { Experiment, ExperimentStatus, ExperimentVariantResult } from "@/api/analytics/endpoints";
+import { compareToControl, projectedScaleToDecide, sampleRatioMismatch, type VariantStats } from "@rybbit/shared";
 import { DateTime } from "luxon";
+
+import type { Experiment, ExperimentStatus, ExperimentVariantResult } from "@/api/analytics/endpoints";
 
 export type ExperimentFormState = {
   name: string;
@@ -13,6 +15,16 @@ export type ExperimentFormState = {
 export const STATUS_OPTIONS: ExperimentStatus[] = ["draft", "running", "paused", "completed"];
 
 export const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
+
+// A posterior is never certain, so near-0 and near-100 values keep a bound
+// instead of rounding to a claim of certainty.
+export function formatBoundedPercent(value: number, digits: number) {
+  const floor = 10 ** -digits;
+  const percent = value * 100;
+  if (percent > 0 && percent < floor) return `<${floor.toFixed(digits)}`;
+  if (percent > 100 - floor) return `>${(100 - floor).toFixed(digits)}`;
+  return percent.toFixed(digits);
+}
 
 export function getVariantKeys(experiment: Experiment) {
   const keys: string[] = [];
@@ -67,58 +79,96 @@ export function getControlResult(results: ExperimentVariantResult[]): Experiment
   return results.find(result => result.isControl) || results[0];
 }
 
-export function getLeadingResult(results: ExperimentVariantResult[]): ExperimentVariantResult | undefined {
-  return results.reduce<ExperimentVariantResult | undefined>((leader, result) => {
-    if (result.conversionRate <= 0) return leader;
-    if (!leader || result.conversionRate > leader.conversionRate) return result;
-    return leader;
-  }, undefined);
-}
-
-// Standard normal CDF (Zelen & Severo approximation), accurate to ~7 decimals.
-function normalCdf(z: number): number {
-  const t = 1 / (1 + 0.2316419 * Math.abs(z));
-  const d = 0.3989422804014327 * Math.exp(-(z * z) / 2);
-  const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-  return z >= 0 ? 1 - p : p;
-}
-
-// Derive the denominator consistent with the displayed conversion rate so the
-// z-test never contradicts the rate shown to the user.
-function effectiveSampleSize(result: ExperimentVariantResult): number {
-  if (result.conversionRate > 0) {
-    const derived = Math.round(result.conversions / result.conversionRate);
-    if (Number.isFinite(derived) && derived >= result.conversions) return derived;
-  }
-  return result.exposures;
-}
-
-export type VariantConfidence = {
-  confidence: number; // two-sided, 0..1
-  isSignificant: boolean; // >= 0.95
-};
-
-const MIN_SAMPLE_FOR_STATS = 30;
-
-// Two-proportion z-test of a variant against control. Returns null when there
-// isn't enough data to say anything meaningful yet.
-export function getVariantConfidence(
+export function getVariantStats(
   control: ExperimentVariantResult | undefined,
   variant: ExperimentVariantResult
-): VariantConfidence | null {
+): VariantStats | null {
   if (!control || control.variant === variant.variant) return null;
+  return compareToControl(
+    { units: control.units, conversions: control.conversions },
+    { units: variant.units, conversions: variant.conversions }
+  );
+}
 
-  const nControl = effectiveSampleSize(control);
-  const nVariant = effectiveSampleSize(variant);
-  if (nControl < MIN_SAMPLE_FOR_STATS || nVariant < MIN_SAMPLE_FOR_STATS) return null;
+type VariantSplit = { key: string; rolloutPercentage: number }[];
 
-  const pControl = control.conversions / nControl;
-  const pVariant = variant.conversions / nVariant;
-  const pPooled = (control.conversions + variant.conversions) / (nControl + nVariant);
-  const standardError = Math.sqrt(pPooled * (1 - pPooled) * (1 / nControl + 1 / nVariant));
-  if (standardError === 0) return null;
+function getVariantSplits(experiment: Experiment): VariantSplit[] {
+  const flagVariants = experiment.featureFlag.variants || [];
+  const conditionSets = experiment.featureFlag.conditionSets || [];
+  const splits = conditionSets.map(conditionSet =>
+    conditionSet.variants?.length ? conditionSet.variants : flagVariants
+  );
+  if (conditionSets.length === 0) splits.push(flagVariants);
+  return splits.filter(split => split.length > 0);
+}
 
-  const z = (pVariant - pControl) / standardError;
-  const confidence = 2 * normalCdf(Math.abs(z)) - 1;
-  return { confidence, isSignificant: confidence >= 0.95 };
+export function getVariantWeights(experiment: Experiment): Record<string, number> | null {
+  const splits = getVariantSplits(experiment);
+  if (splits.length === 0) return null;
+
+  const toWeights = (variants: VariantSplit) =>
+    Object.fromEntries(variants.map(variant => [variant.key, Number(variant.rolloutPercentage) || 0]));
+  const [first, ...rest] = splits.map(toWeights);
+  const sameSplit = rest.every(
+    weights =>
+      Object.keys(weights).length === Object.keys(first).length &&
+      Object.entries(weights).every(([key, weight]) => first[key] === weight)
+  );
+  return sameSplit ? first : null;
+}
+
+export function getServedVariants(experiment: Experiment): Set<string> {
+  return new Set(
+    getVariantSplits(experiment).flatMap(split =>
+      split.filter(variant => (Number(variant.rolloutPercentage) || 0) > 0).map(variant => variant.key)
+    )
+  );
+}
+
+export const MIN_UNITS_PER_VARIANT = 100;
+export const MIN_CONVERSIONS = 10;
+
+export function hasEnoughData(results: ExperimentVariantResult[], servedVariants?: Set<string>) {
+  const served = servedVariants?.size ? results.filter(result => servedVariants.has(result.variant)) : results;
+  return (
+    served.length > 1 &&
+    served.every(result => result.units >= MIN_UNITS_PER_VARIANT) &&
+    results.reduce((sum, result) => sum + result.conversions, 0) >= MIN_CONVERSIONS
+  );
+}
+
+export function getExperimentVerdict(experiment: Experiment, results: ExperimentVariantResult[]) {
+  const control = getControlResult(results);
+  const enoughData = hasEnoughData(
+    results,
+    experiment.status === "completed" ? undefined : getServedVariants(experiment)
+  );
+  const statsByVariant = new Map(
+    results.map(result => [result.variant, enoughData ? getVariantStats(control, result) : null])
+  );
+  const comparisons = results.flatMap(result => {
+    const stats = statsByVariant.get(result.variant);
+    return stats ? [{ result, stats }] : [];
+  });
+  const winning = comparisons
+    .filter(comparison => comparison.stats.decision === "winning")
+    .sort((a, b) => b.stats.chanceToBeatControl - a.stats.chanceToBeatControl)[0];
+  const controlWinning =
+    !!control && comparisons.length > 0 && comparisons.every(comparison => comparison.stats.decision === "losing");
+
+  const weights = getVariantWeights(experiment);
+  const srm = weights
+    ? sampleRatioMismatch(
+        results.map(result => result.units),
+        results.map(result => weights[result.variant] ?? 0)
+      )
+    : null;
+  const leader = srm?.mismatch ? undefined : (winning?.result ?? (controlWinning ? control : undefined));
+
+  const totalUnits = results.reduce((sum, result) => sum + result.units, 0);
+  const scales = leader || !control ? [] : comparisons.map(({ result }) => projectedScaleToDecide(control, result));
+  const nearestScale = Math.min(...scales.filter((scale): scale is number => scale !== null));
+  const remainingUnits = Number.isFinite(nearestScale) ? Math.ceil(totalUnits * (nearestScale - 1)) : null;
+
+  return { control, enoughData, statsByVariant, comparisons, weights, srm, leader, remainingUnits };
 }

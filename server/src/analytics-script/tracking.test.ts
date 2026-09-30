@@ -207,6 +207,55 @@ describe("Tracker", () => {
       expect(payload?.feature_flags).toEqual({ new_checkout: "true" });
       expect(tracker.getFeatureFlagPayload("new_checkout")).toEqual({ copy: "Try it now" });
     });
+
+    it("should treat an unassigned multivariate flag as absent", () => {
+      config.featureFlags = {
+        checkout_test: {
+          key: "checkout_test",
+          value: false,
+          flagType: "multivariate",
+          version: 2,
+          reason: "disabled",
+          matched: false,
+          rolloutPercentage: 100,
+        },
+      };
+      tracker = new Tracker(config);
+
+      expect(tracker.getFeatureFlag("checkout_test", "control")).toBe("control");
+      expect(tracker.createBasePayload()?.feature_flags).toBeUndefined();
+      expect(global.fetch).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ body: expect.stringContaining("feature_flag_exposure") })
+      );
+    });
+
+    it("should keep false as a real value for boolean flags", () => {
+      config.featureFlags = {
+        dark_mode: {
+          key: "dark_mode",
+          value: false,
+          flagType: "boolean",
+          version: 1,
+          reason: "fallthrough",
+          matched: false,
+          rolloutPercentage: 50,
+        },
+      };
+      tracker = new Tracker(config);
+
+      expect(tracker.getFeatureFlag("dark_mode", true)).toBe(false);
+      expect(tracker.createBasePayload()?.feature_flags).toEqual({ dark_mode: "false" });
+    });
+
+    it("should send the visitor id only when feature flags are enabled", () => {
+      expect(tracker.createBasePayload()?.visitor_id).toBeUndefined();
+
+      config.featureFlagsEnabled = true;
+      tracker = new Tracker(config);
+
+      expect(tracker.createBasePayload()?.visitor_id).toBe("visitor-123");
+    });
   });
 
   describe("tracking methods", () => {

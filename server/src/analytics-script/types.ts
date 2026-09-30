@@ -62,6 +62,7 @@ export interface BasePayload {
   user_id?: string;
   tag?: string;
   feature_flags?: Record<string, string>;
+  visitor_id?: string;
   _bs?: number; // Client-side weighted bot detection score
   _bsm?: number; // Client-side bot detection signal bitmask
 }

@@ -96,6 +96,7 @@ import {
   createExperiment,
   deleteExperiment,
   getExperimentResults,
+  getExperimentTimeseries,
   getExperiments,
   updateExperiment,
 } from "./experiments/index.js";
@@ -369,6 +370,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.put("/sites/:siteId/experiments/:experimentId", site("experiments:write"), updateExperiment);
   fastify.delete("/sites/:siteId/experiments/:experimentId", site("experiments:write"), deleteExperiment);
   fastify.get("/sites/:siteId/experiments/:experimentId/results", site("experiments:read"), getExperimentResults);
+  fastify.get("/sites/:siteId/experiments/:experimentId/timeseries", site("experiments:read"), getExperimentTimeseries);
   fastify.get("/sites/:siteId/events/names", cachedEventsRead, getEventNames);
   fastify.get("/sites/:siteId/events/properties", publicEventsRead, getEventProperties);
   fastify.get("/sites/:siteId/events/autocapture", cachedEventsRead, getAutocaptureEvents);

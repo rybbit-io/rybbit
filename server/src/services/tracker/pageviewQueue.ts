@@ -128,6 +128,7 @@ class PageviewQueue {
             timezone: timezone,
             tag: pv.tag || "",
             feature_flags: pv.feature_flags || {},
+            visitor_id: pv.visitor_id || "",
             import_id: null,
             asn: asnInfo?.asn ?? null,
             asn_org: asnInfo?.organization || "",

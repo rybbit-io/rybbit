@@ -22,6 +22,7 @@ export type TotalTrackingPayload = TrackingPayload & {
   ttfb?: number;
   tag?: string;
   feature_flags?: Record<string, string>;
+  visitor_id?: string;
 };
 
 // ua-parser-js is regex-heavy and runs on every event. User-agent strings repeat

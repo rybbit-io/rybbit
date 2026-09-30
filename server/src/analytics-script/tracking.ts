@@ -1,5 +1,6 @@
 import {
   BasePayload,
+  FeatureFlagAssignment,
   ScriptConfig,
   TrackingPayload,
   WebVitalsData,
@@ -43,10 +44,15 @@ export class Tracker {
     }
   }
 
+  private isUnassignedVariant(assignment: FeatureFlagAssignment): boolean {
+    return assignment.flagType === "multivariate" && typeof assignment.value !== "string";
+  }
+
   private getFeatureFlagEventPayload(): Record<string, string> {
     const payload: Record<string, string> = {};
 
     for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+      if (this.isUnassignedVariant(assignment)) continue;
       payload[key] = this.serializeFeatureFlagValue(assignment.value);
     }
 
@@ -191,6 +197,10 @@ export class Tracker {
       payload.feature_flags = featureFlagPayload;
     }
 
+    if (this.config.featureFlagsEnabled) {
+      payload.visitor_id = this.config.visitorId;
+    }
+
     return payload;
   }
 
@@ -251,7 +261,7 @@ export class Tracker {
   getFeatureFlag<T = unknown>(key: string, fallback?: T): T {
     const assignment = this.config.featureFlags?.[key];
 
-    if (!assignment) {
+    if (!assignment || this.isUnassignedVariant(assignment)) {
       return fallback as T;
     }
 
