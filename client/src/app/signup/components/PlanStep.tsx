@@ -17,6 +17,8 @@ interface PlanStepProps {
   setSelectedPlan: (v: "standard" | "pro") => void;
   onSubscribe: () => void;
   isLoading: boolean;
+  // False for an organization that already had a subscription: checkout charges straight away.
+  trialEligible?: boolean;
 }
 
 export function PlanStep({
@@ -28,6 +30,7 @@ export function PlanStep({
   setSelectedPlan,
   onSubscribe,
   isLoading,
+  trialEligible = true,
 }: PlanStepProps) {
   const t = useExtracted();
   const eventLimit = EVENT_TIERS[eventLimitIndex];
@@ -132,7 +135,7 @@ export function PlanStep({
               disabled={isLoading}
               variant="success"
             >
-              {isLoading ? t("Loading...") : t("Start free trial")}
+              {isLoading ? t("Loading...") : trialEligible ? t("Start free trial") : t("Continue to checkout")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
@@ -140,7 +143,9 @@ export function PlanStep({
           {/* Footer text */}
           {eventLimit !== "Custom" && (
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("Your card won't be charged until your 7-day trial has ended. You can cancel anytime.")}
+              {trialEligible
+                ? t("Your card won't be charged until your 7-day trial has ended. You can cancel anytime.")
+                : t("You'll be charged when you subscribe. You can cancel anytime.")}
             </p>
           )}
         </div>

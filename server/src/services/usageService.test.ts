@@ -9,7 +9,8 @@ import type { SubscriptionInfo } from "../lib/subscriptionUtils.js";
  * subject under test.
  */
 const state = vi.hoisted(() => ({
-  sites: [] as Array<{ siteId: number; organizationId: string | null }>,
+  isCloud: false,
+  sites: [] as Array<{ siteId: number; organizationId: string | null; createdAt?: string | null }>,
   organizations: [] as Array<{
     id: string;
     name: string;
@@ -40,6 +41,7 @@ vi.mock("../db/postgres/postgres.js", () => {
       from: () => builder,
       innerJoin: () => builder,
       where: () => builder,
+      limit: () => builder,
       then: (resolve: any, reject: any) => Promise.resolve(rows()).then(resolve, reject),
     };
     return builder;
@@ -102,6 +104,7 @@ vi.mock("../lib/subscriptionUtils.js", async importOriginal => {
     ...actual,
     getAllStripeSubscriptionsByCustomer: mocks.getAllStripeSubscriptionsByCustomer,
     stripeSubscriptionInfoFromSnapshot: () => null,
+    getBestSubscription: async (organizationId: string) => state.subscriptions.get(organizationId) ?? freeSub(),
     getBestSubscriptionFromStripeSub: async (organizationId: string) => {
       const subscription = state.subscriptions.get(organizationId);
       if (subscription instanceof Error) {
@@ -113,6 +116,16 @@ vi.mock("../lib/subscriptionUtils.js", async importOriginal => {
 });
 
 vi.mock("../lib/stripe.js", () => ({ stripe: null }));
+
+vi.mock("../lib/const.js", async importOriginal => {
+  const actual = await importOriginal<typeof import("../lib/const.js")>();
+  return {
+    ...actual,
+    get IS_CLOUD() {
+      return state.isCloud;
+    },
+  };
+});
 
 import { usageService } from "./usageService.js";
 
@@ -182,6 +195,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(2026, 7, 3, 12, 0, 0));
 
+  state.isCloud = false;
   state.sites = [];
   state.organizations = [];
   state.owners = [{ email: "owner@example.com" }];
@@ -562,5 +576,62 @@ describe("updateOrganizationsMonthlyUsage — resilience and notification", () =
     await usageService.updateOrganizationsMonthlyUsage();
 
     expect(callback).not.toHaveBeenCalled();
+  });
+});
+
+describe("sites that need a plan (cloud, free plan ended 2026-02-13)", () => {
+  beforeEach(() => {
+    state.isCloud = true;
+    state.organizations = [org("org_1", { stripeCustomerId: null })];
+    state.sites = [
+      { siteId: 1, organizationId: "org_1", createdAt: "2025-11-02 10:00:00" },
+      { siteId: 2, organizationId: "org_1", createdAt: "2026-09-01 10:00:00" },
+    ];
+  });
+
+  it("blocks sites created after the cutoff in an org with no plan, and keeps legacy sites on the free tier", async () => {
+    await usageService.updateOrganizationsMonthlyUsage();
+
+    expect(usageService.isSiteOverLimit(1)).toBe(false);
+    expect(usageService.isSiteOverLimit(2)).toBe(true);
+    // Needing a plan is not exceeding a limit: no flag, no email.
+    expect(state.updates[0]).toMatchObject({ overMonthlyLimit: false });
+    expect(mocks.sendLimitExceededEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not block any site once the org has a trial", async () => {
+    state.subscriptions.set("org_1", stripeSub({ status: "trialing" }));
+
+    await usageService.updateOrganizationsMonthlyUsage();
+
+    expect(usageService.getSitesOverLimit().size).toBe(0);
+  });
+
+  it("refreshOrganization unblocks the org's sites as soon as a trial starts", async () => {
+    await usageService.updateOrganizationsMonthlyUsage();
+    expect(usageService.isSiteOverLimit(2)).toBe(true);
+
+    state.subscriptions.set("org_1", stripeSub({ status: "trialing" }));
+    await usageService.refreshOrganization("org_1");
+
+    expect(usageService.isSiteOverLimit(2)).toBe(false);
+    // Pro includes replays, so the plan block on replays lifts too.
+    expect(usageService.isSiteWithoutReplay(2)).toBe(false);
+  });
+
+  it("refreshOrganization blocks a new site in an org with no plan before the next cron run", async () => {
+    await usageService.refreshOrganization("org_1");
+
+    expect(usageService.isSiteOverLimit(1)).toBe(false);
+    expect(usageService.isSiteOverLimit(2)).toBe(true);
+    expect(usageService.isSiteWithoutReplay(2)).toBe(true);
+  });
+
+  it("never blocks sites for needing a plan when self-hosted", async () => {
+    state.isCloud = false;
+
+    await usageService.updateOrganizationsMonthlyUsage();
+
+    expect(usageService.getSitesOverLimit().size).toBe(0);
   });
 });

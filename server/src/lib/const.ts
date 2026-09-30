@@ -16,6 +16,12 @@ export const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN;
 
 export const DEFAULT_EVENT_LIMIT = 3_000;
 
+// Rybbit Cloud stopped offering the free plan on this date. Sites created before it keep
+// the legacy free tier (DEFAULT_EVENT_LIMIT); sites created on or after it collect nothing
+// until their organization starts a trial or paid plan. Compared against the "YYYY-MM-DD"
+// prefix of sites.created_at.
+export const FREE_PLAN_CUTOFF_DATE = "2026-02-13";
+
 // Event types that count toward an organization's monthly usage limit.
 // Keep in sync with billing/usage docs; used by the usage cron and per-site usage endpoint.
 export const USAGE_COUNTED_EVENT_TYPES = [

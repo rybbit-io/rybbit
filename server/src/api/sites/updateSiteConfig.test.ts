@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   getConfig: vi.fn(async () => ({ siteId: 1 })),
 }));
 
+vi.mock("../../services/usageService.js", () => ({
+  usageService: { requestOrganizationRefresh: vi.fn() },
+}));
+
 vi.mock("../../db/postgres/postgres.js", () => ({
   db: {
     query: {

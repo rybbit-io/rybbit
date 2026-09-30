@@ -7,7 +7,7 @@ import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmail
 import { sessionsService } from "./services/sessions/sessionsService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { unclaimedSiteCleanupService } from "./services/sites/unclaimedSiteCleanupService.js";
-import { usageService } from "./services/usageService.js";
+import { REFRESH_ORGANIZATION_USAGE_MESSAGE, usageService } from "./services/usageService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 
 const logger = createServiceLogger("cluster");
@@ -63,6 +63,16 @@ if (workerCount === 0) {
   for (let i = 0; i < workerCount; i++) {
     cluster.fork();
   }
+
+  // Workers ask the primary to re-evaluate an organization's blocked sites when a trial
+  // starts or a site is added, so the change reaches every worker without waiting for the cron
+  cluster.on("message", (_worker, message: { type?: string; organizationId?: unknown }) => {
+    if (message?.type === REFRESH_ORGANIZATION_USAGE_MESSAGE && typeof message.organizationId === "string") {
+      usageService.refreshOrganization(message.organizationId).catch(error => {
+        logger.error({ err: error, organizationId: message.organizationId }, "Error refreshing organization usage");
+      });
+    }
+  });
 
   // Send current usage state to a worker when it comes online
   cluster.on("online", worker => {

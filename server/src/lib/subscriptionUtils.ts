@@ -7,7 +7,9 @@ import {
   APPSUMO_REPLAY_LIMITS,
   APPSUMO_TIER_LIMITS,
   DEFAULT_EVENT_LIMIT,
+  FREE_PLAN_CUTOFF_DATE,
   getStripePrices,
+  IS_CLOUD,
   StripePlan,
 } from "./const.js";
 import { stripe } from "./stripe.js";
@@ -199,6 +201,7 @@ const stripeSubscriptionCache = new Map<string, { value: StripeSubscriptionInfo 
 export function invalidateStripeSubscriptionCache(stripeCustomerId: string | null): void {
   if (stripeCustomerId) {
     stripeSubscriptionCache.delete(stripeCustomerId);
+    subscriptionHistoryCache.delete(stripeCustomerId);
   }
   // Also drop the account-wide snapshot so admin/cron reads pick up the change promptly.
   allStripeSubscriptionsCache = null;
@@ -341,6 +344,39 @@ export async function getStripeSubscription(
       throw error;
     }
     return null;
+  }
+}
+
+const subscriptionHistoryCache = new Map<string, { value: boolean; expiresAt: number }>();
+
+/**
+ * Whether a customer has ever had a subscription, in any state. Organizations get one free
+ * trial: once they have had a subscription, checkout charges straight away and the app says
+ * "Choose a plan" instead of "Start free trial". Abandoned checkouts leave no subscription
+ * (or only an incomplete one), so they do not use up the trial.
+ */
+export async function hasHadStripeSubscription(stripeCustomerId: string | null): Promise<boolean> {
+  if (!stripe || !stripeCustomerId) {
+    return false;
+  }
+
+  const cached = subscriptionHistoryCache.get(stripeCustomerId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  try {
+    const subs = await (stripe as Stripe).subscriptions.list({ customer: stripeCustomerId, status: "all", limit: 100 });
+    const value = subs.data.some(sub => sub.status !== "incomplete" && sub.status !== "incomplete_expired");
+    subscriptionHistoryCache.set(stripeCustomerId, {
+      value,
+      expiresAt: Date.now() + STRIPE_SUBSCRIPTION_CACHE_TTL_MS,
+    });
+    return value;
+  } catch (error) {
+    logger.error({ err: error, stripeCustomerId }, "Error fetching Stripe subscription history");
+    // Unknown history: fall back to offering the trial rather than blocking checkout.
+    return cached?.value ?? false;
   }
 }
 
@@ -587,6 +623,22 @@ export function getReplayLimit(subscription: SubscriptionInfo): number {
     case "free":
       return 0;
   }
+}
+
+/**
+ * Whether a site is switched off because its organization has no plan. Only sites created
+ * after the free plan ended are affected; older ones keep the legacy free tier. Accepts either
+ * a SubscriptionInfo or the getSubscriptionInner payload — both report status "free" exactly
+ * when there is no custom plan, override, Stripe subscription or AppSumo license.
+ */
+export function siteRequiresPlan(
+  subscription: { status: string } | null | undefined,
+  siteCreatedAt: string | null | undefined
+): boolean {
+  if (!IS_CLOUD || subscription?.status !== "free" || !siteCreatedAt) {
+    return false;
+  }
+  return siteCreatedAt.slice(0, 10) >= FREE_PLAN_CUTOFF_DATE;
 }
 
 function freeSubscription(): FreeSubscriptionInfo {

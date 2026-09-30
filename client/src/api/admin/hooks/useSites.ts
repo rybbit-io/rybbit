@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { Query, useQuery } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import { authClient } from "../../../lib/auth";
 import { useStore } from "../../../lib/store";
@@ -9,6 +9,7 @@ import {
   fetchSitesFromOrg,
   fetchSiteUsage,
   GetSitesFromOrgResponse,
+  SiteResponse,
 } from "../endpoints";
 
 export function useGetSitesFromOrg(organizationId?: string, options?: { enabled?: boolean }) {
@@ -45,7 +46,13 @@ export function useSiteHasData(siteId: string) {
   });
 }
 
-export function useGetSite(siteId?: string | number, options?: { enabled?: boolean }) {
+export function useGetSite(
+  siteId?: string | number,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number | false | ((query: Query<SiteResponse | null>) => number | false | undefined);
+  }
+) {
   const { site: storeSelectedSite } = useStore();
 
   const siteIdToUse = siteId ?? storeSelectedSite;
@@ -62,6 +69,7 @@ export function useGetSite(siteId?: string | number, options?: { enabled?: boole
     },
     staleTime: 60000,
     enabled: !!siteIdToUse && options?.enabled !== false,
+    refetchInterval: options?.refetchInterval,
   });
 }
 

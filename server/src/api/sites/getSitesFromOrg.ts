@@ -7,6 +7,7 @@ import { DEFAULT_EVENT_LIMIT, IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.j
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
 import { filterSitesByMemberAccess, getOrgMembership } from "../../lib/access.js";
 import { processResults } from "../analytics/utils/utils.js";
+import { siteRequiresPlan } from "../../lib/subscriptionUtils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 import { buildSiteSessionCountsQuery } from "./siteSessionCountsQuery.js";
 
@@ -109,6 +110,7 @@ export async function getSitesFromOrg(
       sessionsLast24Hours: sessionCountMap.get(site.siteId) || 0,
       isOwner: memberRecord?.role !== "member",
       teams: siteTeamMap.get(site.siteId) || [],
+      requiresPlan: siteRequiresPlan(subscription, site.createdAt),
     }));
 
     // Sort by sessions descending

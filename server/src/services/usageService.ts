@@ -1,3 +1,4 @@
+import cluster from "node:cluster";
 import { and, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import * as cron from "node-cron";
@@ -11,8 +12,11 @@ import { sendApproachingLimitEmail, sendLimitExceededEmail } from "../lib/email/
 import { createServiceLogger } from "../lib/logger/logger.js";
 import {
   getAllStripeSubscriptionsByCustomer,
+  getBestSubscription,
   getBestSubscriptionFromStripeSub,
   getReplayLimit,
+  invalidateStripeSubscriptionCache,
+  siteRequiresPlan,
   stripeSubscriptionInfoFromSnapshot,
   subscriptionIncludesReplay,
   SubscriptionInfo,
@@ -20,7 +24,15 @@ import {
 
 type UsageUpdateCallback = () => void;
 
+type OrgSite = { siteId: number; createdAt: string | null };
+
+// IPC message a worker sends the cluster primary, which owns the blocked-site sets.
+export const REFRESH_ORGANIZATION_USAGE_MESSAGE = "refresh-organization-usage";
+
 class UsageService {
+  // Sites whose events are dropped at ingestion: their organization is over its monthly
+  // event limit, or the site needs a plan (see siteRequiresPlan) because the organization
+  // never started a trial. Named for the first reason, which came first.
   private sitesOverLimit = new Set<number>();
   // Sites that should not record session replays right now: their organization's plan
   // doesn't include replays, or its monthly replay quota is exhausted. Empty until the
@@ -57,8 +69,12 @@ class UsageService {
   /**
    * Initialize the cron job for checking monthly usage
    */
+  private isUsageCheckEnabled(): boolean {
+    return IS_CLOUD && process.env.NODE_ENV !== "development";
+  }
+
   private initializeUsageCheckCron() {
-    if (IS_CLOUD && process.env.NODE_ENV !== "development") {
+    if (this.isUsageCheckEnabled()) {
       // Schedule the monthly usage checker to run every 30 minutes
       this.usageCheckTask = cron.schedule(
         "*/30 * * * *",
@@ -134,17 +150,18 @@ class UsageService {
   /**
    * Gets all sites with their organization IDs (excludes sites without an organization)
    */
-  private async getAllSites(): Promise<Array<{ siteId: number; organizationId: string }>> {
+  private async getAllSites(): Promise<Array<OrgSite & { organizationId: string }>> {
     try {
       const allSites = await db
         .select({
           siteId: sites.siteId,
           organizationId: sites.organizationId,
+          createdAt: sites.createdAt,
         })
         .from(sites);
 
       // Filter out sites without an organization ID
-      return allSites.filter(site => site.organizationId !== null) as Array<{ siteId: number; organizationId: string }>;
+      return allSites.filter(site => site.organizationId !== null) as Array<OrgSite & { organizationId: string }>;
     } catch (error) {
       this.logger.error(error as Error, `Error getting all sites`);
       return [];
@@ -290,11 +307,11 @@ class UsageService {
         this.getAllSiteReplayCounts(),
       ]);
 
-      // Step 3: Build a map of organizationId -> { siteIds, eventCount, replayCount }
-      const orgDataMap = new Map<string, { siteIds: number[]; eventCount: number; replayCount: number }>();
+      // Step 3: Build a map of organizationId -> { sites, eventCount, replayCount }
+      const orgDataMap = new Map<string, { sites: OrgSite[]; eventCount: number; replayCount: number }>();
       for (const site of allSites) {
-        const orgData = orgDataMap.get(site.organizationId) || { siteIds: [], eventCount: 0, replayCount: 0 };
-        orgData.siteIds.push(site.siteId);
+        const orgData = orgDataMap.get(site.organizationId) || { sites: [], eventCount: 0, replayCount: 0 };
+        orgData.sites.push({ siteId: site.siteId, createdAt: site.createdAt });
         orgData.eventCount += eventCountMap.get(site.siteId) || 0;
         orgData.replayCount += replayCountMap.get(site.siteId) || 0;
         orgDataMap.set(site.organizationId, orgData);
@@ -323,7 +340,7 @@ class UsageService {
         try {
           const orgStats = orgDataMap.get(orgData.id);
           const eventCount = orgStats?.eventCount || 0;
-          const siteIds = orgStats?.siteIds || [];
+          const orgSites = orgStats?.sites || [];
 
           const wasOverLimit = orgData.overMonthlyLimit ?? false;
           const alreadyNotifiedApproaching = orgData.approachingLimitNotifiedPeriodStart === monthStart;
@@ -404,24 +421,19 @@ class UsageService {
             }
           }
 
-          // If over the limit, add all this organization's sites to the global set
+          const blockedCount = this.applySiteBlocks(orgSites, subscription, isOverLimit);
           if (isOverLimit) {
-            for (const siteId of siteIds) {
-              this.sitesOverLimit.add(siteId);
-            }
             this.logger.info(
-              `Organization ${orgData.name} is over limit. Added ${siteIds.length} sites to blocked list.`
+              `Organization ${orgData.name} is over limit. Added ${blockedCount} sites to blocked list.`
             );
-          } else {
-            for (const siteId of siteIds) {
-              this.sitesOverLimit.delete(siteId);
-            }
+          } else if (blockedCount > 0) {
+            this.logger.info(`Organization ${orgData.name} has no plan. Blocked ${blockedCount} sites until it starts one.`);
           }
 
           // Track sites that shouldn't record session replays — plan doesn't include
           // them (e.g. after a downgrade from Pro) or the monthly quota is exhausted —
           // so ingest/config endpoints can stop recording for them
-          for (const siteId of siteIds) {
+          for (const { siteId } of orgSites) {
             if (replayBlocked) {
               this.sitesWithoutReplay.add(siteId);
             } else {
@@ -449,6 +461,85 @@ class UsageService {
     } catch (error) {
       this.logger.error(error as Error, "Error updating monthly usage");
     }
+  }
+
+  /**
+   * Blocks or unblocks each of an organization's sites for ingestion. Returns how many are
+   * blocked.
+   */
+  private applySiteBlocks(orgSites: OrgSite[], subscription: SubscriptionInfo, isOverLimit: boolean): number {
+    let blockedCount = 0;
+    for (const site of orgSites) {
+      if (isOverLimit || siteRequiresPlan(subscription, site.createdAt)) {
+        this.sitesOverLimit.add(site.siteId);
+        blockedCount++;
+      } else {
+        this.sitesOverLimit.delete(site.siteId);
+      }
+    }
+    return blockedCount;
+  }
+
+  /**
+   * Re-evaluates one organization's blocked sites now instead of at the next cron run (up to
+   * 30 minutes away): a new site in an organization with no plan must stop collecting
+   * straight away, and a trial that just started must start it. Uses the organization's
+   * event count from the last cron run.
+   */
+  public async refreshOrganization(organizationId: string): Promise<void> {
+    const [org] = await db
+      .select({ stripeCustomerId: organization.stripeCustomerId, monthlyEventCount: organization.monthlyEventCount })
+      .from(organization)
+      .where(eq(organization.id, organizationId))
+      .limit(1);
+    if (!org) return;
+
+    // This process's cached subscription may predate the checkout or cancellation that
+    // triggered the refresh.
+    invalidateStripeSubscriptionCache(org.stripeCustomerId);
+    const subscription = await getBestSubscription(organizationId, org.stripeCustomerId, { throwOnStripeError: true });
+
+    const orgSites = await db
+      .select({ siteId: sites.siteId, createdAt: sites.createdAt })
+      .from(sites)
+      .where(eq(sites.organizationId, organizationId));
+
+    const isOverLimit = (org.monthlyEventCount ?? 0) > subscription.eventLimit;
+    this.applySiteBlocks(orgSites, subscription, isOverLimit);
+
+    // The replay quota needs a ClickHouse count, so leave quota blocks to the cron and only
+    // lift the plan block here (a trial that includes replays).
+    if (subscriptionIncludesReplay(subscription)) {
+      for (const { siteId } of orgSites) {
+        this.sitesWithoutReplay.delete(siteId);
+      }
+    } else {
+      for (const { siteId } of orgSites) {
+        this.sitesWithoutReplay.add(siteId);
+      }
+    }
+
+    for (const callback of this.onUsageUpdatedCallbacks) {
+      callback();
+    }
+  }
+
+  /**
+   * Asks the process that owns the blocked-site sets to refresh an organization: the cluster
+   * primary when this is a worker, otherwise this process. Never throws, so callers can fire
+   * it after a request has already succeeded.
+   */
+  public requestOrganizationRefresh(organizationId: string | null | undefined): void {
+    if (!organizationId || !this.isUsageCheckEnabled()) return;
+
+    if (cluster.isWorker) {
+      process.send?.({ type: REFRESH_ORGANIZATION_USAGE_MESSAGE, organizationId });
+      return;
+    }
+
+    this.refreshOrganization(organizationId).catch(error => {
+      this.logger.error({ err: error, organizationId }, "Error refreshing organization usage");
+    });
   }
 
   /**

@@ -2,8 +2,26 @@ import { claimExpiryIso } from "../../services/sites/claimExpiry.js";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
+import { organization, sites } from "../../db/postgres/schema.js";
 import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
+import { getBestSubscription, siteRequiresPlan } from "../../lib/subscriptionUtils.js";
+
+/**
+ * Whether the site is switched off until its organization starts a plan. Sites from before
+ * the free plan ended never need one, so only newer sites pay for the subscription lookup.
+ */
+async function getSiteRequiresPlan(site: { organizationId: string | null; createdAt: string | null }) {
+  if (!site.organizationId || !siteRequiresPlan({ status: "free" }, site.createdAt)) {
+    return false;
+  }
+  const [org] = await db
+    .select({ stripeCustomerId: organization.stripeCustomerId })
+    .from(organization)
+    .where(eq(organization.id, site.organizationId))
+    .limit(1);
+  const subscription = await getBestSubscription(site.organizationId, org?.stripeCustomerId ?? null);
+  return siteRequiresPlan(subscription, site.createdAt);
+}
 
 interface GetSiteParams {
   Params: {
@@ -24,8 +42,10 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       return reply.status(404).send({ error: "Site not found" });
     }
 
-    // Check if user has admin access
-    const isOwner = await getUserHasAdminAccessToSite(request, site.siteId);
+    const [isOwner, requiresPlan] = await Promise.all([
+      getUserHasAdminAccessToSite(request, site.siteId),
+      getSiteRequiresPlan(site),
+    ]);
 
     return reply.status(200).send({
       id: site.id,
@@ -45,6 +65,7 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       firstPartyProxy: site.firstPartyProxy,
       trackIp: site.trackIp,
       isOwner: isOwner,
+      requiresPlan,
       // Analytics features
       sessionReplay: site.sessionReplay,
       webVitals: site.webVitals,

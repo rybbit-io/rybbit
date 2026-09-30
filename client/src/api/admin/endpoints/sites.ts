@@ -19,6 +19,8 @@ export type SiteResponse = {
   blockBots: boolean;
   firstPartyProxy?: boolean;
   isOwner: boolean;
+  // Cloud only: the site collects nothing until its organization starts a trial or plan.
+  requiresPlan?: boolean;
   // Analytics features
   sessionReplay?: boolean;
   webVitals?: boolean;
@@ -63,6 +65,8 @@ export type GetSitesFromOrgResponse = {
     isOwner: boolean;
     tags?: string[] | null;
     teams?: { id: string; name: string }[];
+    // Cloud only: the site collects nothing until its organization starts a trial or plan.
+    requiresPlan?: boolean;
   }>;
   subscription: {
     monthlyEventCount: number;

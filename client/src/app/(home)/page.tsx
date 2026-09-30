@@ -22,10 +22,14 @@ import { MultiSelect } from "../../components/ui/multi-select";
 import { Pagination } from "../../components/pagination";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
+import { IS_CLOUD } from "../../lib/const";
 import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../lib/store";
+import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { useSyncStateWithUrl } from "../../lib/urlParams";
 import { AddSite } from "../components/AddSite";
+import { PlanRequiredNotice } from "../components/PlanRequired";
 import { SiteCards } from "./SiteCards";
+import { StartTrial } from "./StartTrial";
 
 // Bound both rendering and the lite analytics batch for large organizations.
 const PAGE_SIZE = 20;
@@ -49,8 +53,14 @@ export default function Home() {
     refetch: refetchOrganizations,
   } = useUserOrganizations();
 
+  // On cloud an organization without a trial or plan can't track anything, so an empty
+  // home page asks for a website and a plan instead of offering "Add Website".
+  const { data: subscription, isLoading: isLoadingSubscription } = useStripeSubscription();
+  const hasNoPlan =
+    IS_CLOUD && !!subscription && subscription.status !== "active" && subscription.status !== "trialing";
+
   // Consolidated loading state
-  const isLoading = isLoadingOrganizations || isPending || isLoadingSites;
+  const isLoading = isLoadingOrganizations || isPending || isLoadingSites || (IS_CLOUD && isLoadingSubscription);
 
   // Check if user has organizations
   const hasOrganizations = Array.isArray(userOrganizationsData) && userOrganizationsData.length > 0;
@@ -65,6 +75,7 @@ export default function Home() {
   // Check if we should show sites content
   const shouldShowSites = hasOrganizations && !isLoading;
   const hasNoSites = shouldShowSites && (!sites?.sites || sites.sites.length === 0);
+  const sitesRequirePlan = shouldShowSites && !!sites?.sites?.some(site => site.requiresPlan);
 
   const { data: teamsData } = useTeams(activeOrganization?.id);
 
@@ -208,7 +219,10 @@ export default function Home() {
           <CardDescription>{t("Try adjusting your filters")}</CardDescription>
         </Card>
       ) : null}
-      {hasNoSites ? (
+      {hasNoSites && hasNoPlan && activeOrganization ? (
+        <StartTrial organizationId={activeOrganization.id} onSiteCreated={refetchSites} />
+      ) : null}
+      {hasNoSites && !hasNoPlan ? (
         <Card className="p-6 flex flex-col items-center text-center">
           <CardTitle className="mb-2 text-xl">{t("No websites yet")}</CardTitle>
           <CardDescription className="mb-4">{t("Add your first website to start tracking analytics")}</CardDescription>
@@ -242,6 +256,9 @@ export default function Home() {
   const content = (
     <>
       {hasNoOrganizations && <NoOrganization />}
+      {sitesRequirePlan && activeOrganization ? (
+        <PlanRequiredNotice organizationId={activeOrganization.id} returnPath="/" className="mb-4" />
+      ) : null}
       {filterBar}
       {siteCards}
       {pagination}

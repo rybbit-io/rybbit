@@ -15,7 +15,12 @@ import {
   STANDARD_MEMBER_LIMIT,
   STANDARD_SITE_LIMIT,
 } from "../../lib/const.js";
-import { getBestSubscription, subscriptionIncludesReplay, SubscriptionInfo } from "../../lib/subscriptionUtils.js";
+import {
+  getBestSubscription,
+  hasHadStripeSubscription,
+  subscriptionIncludesReplay,
+  SubscriptionInfo,
+} from "../../lib/subscriptionUtils.js";
 
 function getStartOfMonth() {
   return DateTime.now().startOf("month").toJSDate();
@@ -204,6 +209,9 @@ export async function getSubscriptionInner(organizationId: string) {
     eventLimit: subscription.eventLimit,
     monthlyEventCount: org.monthlyEventCount || 0,
     trialDaysRemaining: 0,
+    // One trial per organization: false once it has had any subscription (trial ended,
+    // canceled, lapsed), so the app offers plans instead of a trial.
+    trialEligible: !(await hasHadStripeSubscription(org.stripeCustomerId)),
     includesReplay,
     ...limits,
   };

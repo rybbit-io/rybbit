@@ -18,6 +18,9 @@ export interface SubscriptionData {
   trialDaysRemaining?: number;
   message?: string; // For expired trial message
   isOverride?: boolean;
+  // Only on "free": false once the organization has had any subscription, so it is offered
+  // plans instead of another trial (checkout skips the trial too).
+  trialEligible?: boolean;
   memberLimit: number | null;
   siteLimit: number | null;
 }
