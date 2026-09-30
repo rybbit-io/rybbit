@@ -13,6 +13,27 @@ import type { SiteTransaction } from "../../services/sites/withOrganizationSiteL
 import { invalidateOrganizationSitesCache, invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 /**
+ * Lock a site's row for the rest of the transaction and read the organization
+ * it is in now. Anything that authorizes a change of ownership (moving it,
+ * handing it over) must check the caller against this organization, under
+ * this lock — authorization done before it can be overtaken by a concurrent
+ * move. Lock order everywhere: organization row, then site row, then transfer
+ * rows.
+ */
+export async function lockSiteOwnership(
+  tx: SiteTransaction,
+  siteId: number
+): Promise<{ organizationId: string | null; domain: string } | null> {
+  const [site] = await tx
+    .select({ organizationId: sites.organizationId, domain: sites.domain })
+    .from(sites)
+    .where(eq(sites.siteId, siteId))
+    .limit(1)
+    .for("update");
+  return site ?? null;
+}
+
+/**
  * Reassigns a site to a different organization and clears the access grants
  * (restricted member access and team access) tied to the old organization,
  * which no longer apply in the target organization. Also invalidates the

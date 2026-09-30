@@ -5,8 +5,9 @@ import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
 import { getOrgMembership } from "../../lib/access.js";
+import { getUserOrgRole } from "../../lib/auth-utils.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
-import { applySiteMove, invalidateSiteMoveAccess } from "./applySiteMove.js";
+import { applySiteMove, invalidateSiteMoveAccess, lockSiteOwnership } from "./applySiteMove.js";
 import { targetSiteLimitError } from "./siteLimit.js";
 
 const moveSiteSchema = z.object({
@@ -73,6 +74,20 @@ export async function moveSite(
     }
 
     const failure = await withOrganizationSiteLock(targetOrganizationId, async tx => {
+      // The route guard checked the caller against the site's organization as
+      // it was when the request arrived; check again against the one it is in
+      // now, holding the site row so a concurrent move can't slip between.
+      const current = await lockSiteOwnership(tx, siteId);
+      if (!current || current.organizationId !== sourceOrganizationId) {
+        return { status: 409, error: "The site moved while this request was in flight; reload and try again" };
+      }
+      if (
+        !sourceOrganizationId ||
+        !roleHasPermission(await getUserOrgRole(request, sourceOrganizationId), "sites:transfer")
+      ) {
+        return { status: 403, error: "Forbidden" };
+      }
+
       const limitError = await targetSiteLimitError(tx, targetOrganizationId);
       if (limitError) return { status: 403, error: limitError };
 

@@ -17,6 +17,17 @@ vi.mock("../../db/postgres/postgres.js", async () => {
 vi.mock("../../lib/auth-utils.js", () => ({
   invalidateSitesAccessCache: mocks.invalidateSitesAccessCache,
   invalidateOrganizationSitesCache: mocks.invalidateOrganizationSitesCache,
+  // Memberships as seeded below. (Not read from PGlite: its single connection
+  // is held by the transaction that asks.)
+  getUserOrgRole: async (request: { user?: { id: string } }, organizationId: string) =>
+    (
+      ({
+        "barnaby:org_agency": "owner",
+        "tay:org_client": "owner",
+        "tay:org_other": "member",
+        "tay:org_agency": "viewer",
+      }) as Record<string, string>
+    )[`${request.user?.id}:${organizationId}`] ?? null,
 }));
 vi.mock("../../lib/email/email.js", () => ({ sendSiteTransferEmail: mocks.sendSiteTransferEmail }));
 vi.mock("../../lib/const.js", async importOriginal => ({
@@ -163,6 +174,17 @@ describe("starting a transfer", () => {
 
     expect(reply.statusCode).toBe(201);
     expect(reply.body.url).toContain(reply.body.id);
+  });
+
+  it("re-checks the sender against the organization the site is in now", async () => {
+    // The site was handed to org_client after the sender's request passed the
+    // guard: the sender has no role there, so they can't send it anywhere.
+    await (pgClient as any).exec(`UPDATE sites SET organization_id = 'org_client'`);
+
+    const reply = await startTransfer("barnaby@agency.io");
+
+    expect(reply.statusCode).toBe(403);
+    expect(await rows(`SELECT * FROM site_transfers`)).toEqual([]);
   });
 
   it("refuses organization keys, which act for no person", async () => {

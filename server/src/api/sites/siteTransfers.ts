@@ -6,11 +6,12 @@ import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { gscConnections, organization, sites, siteTransfers, user } from "../../db/postgres/schema.js";
 import { effectiveOrgRole, getOrgMembership } from "../../lib/access.js";
+import { getUserOrgRole } from "../../lib/auth-utils.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { sendSiteTransferEmail } from "../../lib/email/email.js";
 import { claimExpiryIso as utcIso } from "../../services/sites/claimExpiry.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
-import { applySiteMove, invalidateSiteMoveAccess } from "./applySiteMove.js";
+import { applySiteMove, invalidateSiteMoveAccess, lockSiteOwnership } from "./applySiteMove.js";
 import { targetSiteLimitError } from "./siteLimit.js";
 
 /**
@@ -81,41 +82,51 @@ export async function createSiteTransfer(
     return reply.status(401).send({ error: "Transfers must be started by a signed-in user" });
   }
 
+  const senderId = request.user.id;
+
   try {
-    const site = await db.query.sites.findFirst({
-      where: eq(sites.siteId, siteId),
-      columns: { domain: true, organizationId: true },
+    const outcome = await db.transaction(async tx => {
+      // The route guard checked the caller against the site's organization
+      // as it was when the request arrived; check again against the one it is
+      // in now, holding the site row so it can't move until this commits.
+      const site = await lockSiteOwnership(tx, siteId);
+      if (!site?.organizationId) {
+        return { ok: false as const, status: 404, error: "Site not found" };
+      }
+      if (!roleHasPermission(await getUserOrgRole(request, site.organizationId), "sites:transfer")) {
+        return { ok: false as const, status: 403, error: "Forbidden" };
+      }
+
+      const transfer: TransferRow = {
+        id: randomBytes(24).toString("base64url"),
+        siteId,
+        sourceOrganizationId: site.organizationId,
+        recipientEmail: parsed.data.email,
+        createdBy: senderId,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + TRANSFER_TTL_MS).toISOString(),
+      };
+      // One pending transfer per site: a new one replaces (and so revokes) the old.
+      await tx.delete(siteTransfers).where(eq(siteTransfers.siteId, siteId));
+      await tx.insert(siteTransfers).values(transfer);
+      return { ok: true as const, transfer, siteDomain: site.domain };
     });
-    if (!site?.organizationId) {
-      return reply.status(404).send({ error: "Site not found" });
+
+    if (!outcome.ok) {
+      return reply.status(outcome.status).send({ error: outcome.error });
     }
+    const { transfer, siteDomain } = outcome;
     const sourceOrg = await db.query.organization.findFirst({
-      where: eq(organization.id, site.organizationId),
+      where: eq(organization.id, transfer.sourceOrganizationId),
       columns: { name: true },
     });
 
-    const transfer: TransferRow = {
-      id: randomBytes(24).toString("base64url"),
-      siteId,
-      sourceOrganizationId: site.organizationId,
-      recipientEmail: parsed.data.email,
-      createdBy: request.user.id,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + TRANSFER_TTL_MS).toISOString(),
-    };
-
-    // One pending transfer per site: a new one replaces (and so revokes) the old.
-    await db.transaction(async tx => {
-      await tx.delete(siteTransfers).where(eq(siteTransfers.siteId, siteId));
-      await tx.insert(siteTransfers).values(transfer);
-    });
-
-    const sender = await db.query.user.findFirst({ where: eq(user.id, request.user.id), columns: { email: true } });
+    const sender = await db.query.user.findFirst({ where: eq(user.id, senderId), columns: { email: true } });
     try {
       await sendSiteTransferEmail({
         email: transfer.recipientEmail,
         sentBy: sender?.email ?? sourceOrg?.name ?? "A Rybbit user",
-        siteDomain: site.domain,
+        siteDomain,
         organizationName: sourceOrg?.name ?? "",
         transferLink: transferUrl(transfer.id),
       });
@@ -274,8 +285,10 @@ export async function acceptSiteTransfer(
     }
 
     const outcome = await withOrganizationSiteLock(targetOrganizationId, async tx => {
-      // Re-read and lock the transfer: a concurrent accept, cancel or
-      // replacement waits here, and afterwards finds it gone.
+      // Lock the site, then the transfer (the order every ownership change
+      // uses): a concurrent accept, cancel, replacement or move waits here, and
+      // afterwards finds the transfer gone or the site moved.
+      await lockSiteOwnership(tx, transfer.siteId);
       const [current] = await tx
         .select()
         .from(siteTransfers)

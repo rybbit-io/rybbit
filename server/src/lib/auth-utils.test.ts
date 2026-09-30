@@ -53,6 +53,7 @@ import {
   getUserHasAdminAccessToSite,
   getRequestIdentity,
   getUserIdFromRequest,
+  getUserHasSitePermission,
   getUserOrgRole,
   getUserSiteRole,
   invalidateSitesAccessCache,
@@ -784,6 +785,19 @@ describe("per-site roles from grants and teams", () => {
     expect(await getUserOrgRole(reqFor("user_restricted_editor"), ORG)).toBe("viewer");
     invalidateSitesAccessCache("user_restricted_editor");
     expect(await getUserSiteRole(reqFor("user_restricted_editor"), 5)).toBe("editor");
+  });
+});
+
+describe("getUserHasSitePermission", () => {
+  it("decides anything beyond reading on the current role, not a cached one", async () => {
+    invalidateSitesAccessCache("user_owner");
+    expect(await getUserSiteRole(reqFor("user_owner"), 13)).toBe("owner"); // warms the cache
+
+    // Demoted elsewhere (another worker): nothing invalidates this cache.
+    await db.update(member).set({ role: "viewer" }).where(eq(member.id, "member_owner"));
+
+    expect(await getUserHasSitePermission(reqFor("user_owner"), 13, "gsc:write")).toBe(false);
+    expect(await getUserHasSitePermission(reqFor("user_owner"), 13, "analytics:read")).toBe(true);
   });
 });
 

@@ -3,7 +3,7 @@ import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { sites, user } from "../db/postgres/schema.js";
-import { higherRole, isAdminRole, roleHasPermission, type OrgRole, type Permission } from "@rybbit/shared";
+import { higherRole, isAdminRole, PERMISSIONS, roleHasPermission, type OrgRole, type Permission } from "@rybbit/shared";
 import { effectiveOrgRole, getOrgMembership, resolveUserSites, type AccessibleSite } from "./access.js";
 import type { RateLimitDecision } from "./apiRateLimit.js";
 import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
@@ -471,13 +471,18 @@ export async function getUserSiteRole(
   return find(await getSitesUserHasAccessTo(req));
 }
 
-/** Whether the caller's role on the site holds the permission (roles only; scopes are the guards' job). */
+/**
+ * Whether the caller's role on the site holds the permission (roles only;
+ * scopes are the guards' job). Like the route guards, anything beyond reading
+ * is decided on the role as it stands now, not this worker's cached copy.
+ */
 export async function getUserHasSitePermission(
   req: FastifyRequest,
   siteId: string | number,
   permission: Permission
 ): Promise<boolean> {
-  return roleHasPermission(await getUserSiteRole(req, siteId), permission);
+  const fresh = PERMISSIONS[permission].minRole !== "viewer";
+  return roleHasPermission(await getUserSiteRole(req, siteId, { fresh }), permission);
 }
 
 export async function getUserHasAccessToSite(req: FastifyRequest, siteId: string | number) {
