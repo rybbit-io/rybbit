@@ -783,6 +783,29 @@ export const telemetry = pgTable("telemetry", {
 });
 
 // Google Search Console connections table
+// A pending hand-over of a site to someone outside its organization. The
+// site's admin names a recipient by email; the recipient accepts into an
+// organization they administer. The id is the secret in the emailed link. At
+// most one per site; the row is deleted when the transfer is accepted,
+// declined, cancelled or superseded, or when the site moves by other means.
+export const siteTransfers = pgTable(
+  "site_transfers",
+  {
+    id: text("id").primaryKey().notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    sourceOrganizationId: text("source_organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    recipientEmail: text("recipient_email").notNull(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { mode: "string" }).notNull(),
+  },
+  table => [unique("site_transfers_site_unique").on(table.siteId)]
+);
+
 export const gscConnections = pgTable("gsc_connections", {
   siteId: integer("site_id")
     .primaryKey()

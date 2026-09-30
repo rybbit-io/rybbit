@@ -1,0 +1,311 @@
+import { randomBytes } from "node:crypto";
+import { roleHasPermission } from "@rybbit/shared";
+import { eq } from "drizzle-orm";
+import { FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
+import { db } from "../../db/postgres/postgres.js";
+import { gscConnections, organization, sites, siteTransfers, user } from "../../db/postgres/schema.js";
+import { effectiveOrgRole, getOrgMembership } from "../../lib/access.js";
+import { sendSiteTransferEmail } from "../../lib/email/email.js";
+import { claimExpiryIso as utcIso } from "../../services/sites/claimExpiry.js";
+import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
+import { applySiteMove, invalidateSiteMoveAccess } from "./applySiteMove.js";
+import { targetSiteLimitError } from "./siteLimit.js";
+
+/**
+ * Handing a site to someone outside its organization.
+ *
+ * An admin of the site's organization names a recipient by email (the
+ * sites:transfer permission, enforced by the route guard). The recipient opens
+ * the emailed link, signed in with that email address, and picks an
+ * organization where they hold sites:create; the site then moves exactly as
+ * PUT /sites/:siteId/move moves it. Neither side needs a seat in the other's
+ * organization.
+ *
+ * The transfer id is the secret in the link — like an invitation id, it is
+ * only ever sent to the recipient's inbox (and shown to the sender so they can
+ * pass it on themselves when the instance cannot send email).
+ */
+
+const TRANSFER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+const createTransferSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+const acceptTransferSchema = z.object({
+  organizationId: z.string().min(1),
+});
+
+type TransferRow = typeof siteTransfers.$inferSelect;
+
+const transferUrl = (transferId: string) => `${process.env.BASE_URL ?? ""}/transfer/${transferId}`;
+
+// Postgres hands timestamps back without a zone; they are UTC.
+const isExpired = (transfer: Pick<TransferRow, "expiresAt">) => Date.parse(utcIso(transfer.expiresAt)!) <= Date.now();
+
+function serializeForSender(transfer: TransferRow) {
+  return {
+    id: transfer.id,
+    recipientEmail: transfer.recipientEmail,
+    createdAt: utcIso(transfer.createdAt),
+    expiresAt: utcIso(transfer.expiresAt),
+    url: transferUrl(transfer.id),
+  };
+}
+
+function parseSiteId(raw: string): number | null {
+  const siteId = Number(raw);
+  return Number.isInteger(siteId) && siteId > 0 ? siteId : null;
+}
+
+// ---- Sender (site admin) ----------------------------------------------------
+
+/** POST /sites/:siteId/transfer — start (or replace) the site's pending transfer. */
+export async function createSiteTransfer(
+  request: FastifyRequest<{ Params: { siteId: string }; Body: unknown }>,
+  reply: FastifyReply
+) {
+  const siteId = parseSiteId(request.params.siteId);
+  if (!siteId) {
+    return reply.status(400).send({ error: "Invalid site ID" });
+  }
+  const parsed = createTransferSchema.safeParse(request.body);
+  if (!parsed.success) {
+    return reply.status(400).send({ error: "A valid recipient email is required" });
+  }
+  // Like moving a site, handing it over is a person's decision: an
+  // organization-owned API key carries no user and cannot start one.
+  if (!request.user?.id) {
+    return reply.status(401).send({ error: "Transfers must be started by a signed-in user" });
+  }
+
+  try {
+    const site = await db.query.sites.findFirst({
+      where: eq(sites.siteId, siteId),
+      columns: { domain: true, organizationId: true },
+    });
+    if (!site?.organizationId) {
+      return reply.status(404).send({ error: "Site not found" });
+    }
+    const sourceOrg = await db.query.organization.findFirst({
+      where: eq(organization.id, site.organizationId),
+      columns: { name: true },
+    });
+
+    const transfer: TransferRow = {
+      id: randomBytes(24).toString("base64url"),
+      siteId,
+      sourceOrganizationId: site.organizationId,
+      recipientEmail: parsed.data.email,
+      createdBy: request.user.id,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + TRANSFER_TTL_MS).toISOString(),
+    };
+
+    // One pending transfer per site: a new one replaces (and so revokes) the old.
+    await db.transaction(async tx => {
+      await tx.delete(siteTransfers).where(eq(siteTransfers.siteId, siteId));
+      await tx.insert(siteTransfers).values(transfer);
+    });
+
+    const sender = await db.query.user.findFirst({ where: eq(user.id, request.user.id), columns: { email: true } });
+    try {
+      await sendSiteTransferEmail({
+        email: transfer.recipientEmail,
+        sentBy: sender?.email ?? sourceOrg?.name ?? "A Rybbit user",
+        siteDomain: site.domain,
+        organizationName: sourceOrg?.name ?? "",
+        transferLink: transferUrl(transfer.id),
+      });
+    } catch (error) {
+      // The link is still returned for the sender to pass on themselves.
+      request.log.error({ err: error, siteId }, "Could not send site transfer email");
+    }
+
+    return reply.status(201).send(serializeForSender(transfer));
+  } catch (error) {
+    request.log.error({ err: error, siteId }, "Error creating site transfer");
+    return reply.status(500).send({ error: "Failed to start the transfer" });
+  }
+}
+
+/** GET /sites/:siteId/transfer — the site's pending transfer, or null. */
+export async function getSiteTransfer(request: FastifyRequest<{ Params: { siteId: string } }>, reply: FastifyReply) {
+  const siteId = parseSiteId(request.params.siteId);
+  if (!siteId) {
+    return reply.status(400).send({ error: "Invalid site ID" });
+  }
+  const transfer = await db.query.siteTransfers.findFirst({ where: eq(siteTransfers.siteId, siteId) });
+  return reply.send({ transfer: transfer && !isExpired(transfer) ? serializeForSender(transfer) : null });
+}
+
+/** DELETE /sites/:siteId/transfer — cancel the site's pending transfer. */
+export async function cancelSiteTransfer(request: FastifyRequest<{ Params: { siteId: string } }>, reply: FastifyReply) {
+  const siteId = parseSiteId(request.params.siteId);
+  if (!siteId) {
+    return reply.status(400).send({ error: "Invalid site ID" });
+  }
+  await db.delete(siteTransfers).where(eq(siteTransfers.siteId, siteId));
+  return reply.send({ success: true });
+}
+
+// ---- Recipient ----------------------------------------------------------------
+
+type RecipientLookup =
+  | { ok: true; transfer: TransferRow; userId: string }
+  | { ok: false; status: number; body: Record<string, unknown> };
+
+/**
+ * The pending transfer, provided the signed-in user is the person it was sent
+ * to. The id alone is not enough: it must be opened from the recipient's
+ * account.
+ */
+async function loadTransferForRecipient(request: FastifyRequest, transferId: string): Promise<RecipientLookup> {
+  const userId = request.user?.id;
+  if (!userId) {
+    return { ok: false, status: 401, body: { error: "Sign in to view this transfer" } };
+  }
+
+  const transfer = await db.query.siteTransfers.findFirst({ where: eq(siteTransfers.id, transferId) });
+  if (!transfer || isExpired(transfer)) {
+    return { ok: false, status: 404, body: { error: "This transfer link is no longer valid" } };
+  }
+
+  const recipient = await db.query.user.findFirst({ where: eq(user.id, userId), columns: { email: true } });
+  if (recipient?.email.toLowerCase() !== transfer.recipientEmail.toLowerCase()) {
+    return {
+      ok: false,
+      status: 403,
+      body: { error: "This transfer was sent to a different email address", recipientEmail: transfer.recipientEmail },
+    };
+  }
+
+  return { ok: true, transfer, userId };
+}
+
+/** GET /site-transfers/:transferId — what the recipient is being offered. */
+export async function getIncomingSiteTransfer(
+  request: FastifyRequest<{ Params: { transferId: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const lookup = await loadTransferForRecipient(request, request.params.transferId);
+    if (!lookup.ok) {
+      return reply.status(lookup.status).send(lookup.body);
+    }
+    const { transfer } = lookup;
+
+    const [site, sourceOrg, sender] = await Promise.all([
+      db.query.sites.findFirst({ where: eq(sites.siteId, transfer.siteId), columns: { name: true, domain: true } }),
+      db.query.organization.findFirst({
+        where: eq(organization.id, transfer.sourceOrganizationId),
+        columns: { name: true },
+      }),
+      transfer.createdBy
+        ? db.query.user.findFirst({ where: eq(user.id, transfer.createdBy), columns: { email: true } })
+        : undefined,
+    ]);
+
+    return reply.send({
+      id: transfer.id,
+      site: { siteId: transfer.siteId, name: site?.name ?? "", domain: site?.domain ?? "" },
+      sourceOrganizationId: transfer.sourceOrganizationId,
+      sourceOrganizationName: sourceOrg?.name ?? "",
+      sentBy: sender?.email ?? null,
+      expiresAt: utcIso(transfer.expiresAt),
+    });
+  } catch (error) {
+    request.log.error({ err: error }, "Error loading site transfer");
+    return reply.status(500).send({ error: "Failed to load the transfer" });
+  }
+}
+
+/** POST /site-transfers/:transferId/accept — move the site into one of the recipient's organizations. */
+export async function acceptSiteTransfer(
+  request: FastifyRequest<{ Params: { transferId: string }; Body: unknown }>,
+  reply: FastifyReply
+) {
+  const parsed = acceptTransferSchema.safeParse(request.body);
+  if (!parsed.success) {
+    return reply.status(400).send({ error: "organizationId is required" });
+  }
+  const targetOrganizationId = parsed.data.organizationId;
+
+  try {
+    const lookup = await loadTransferForRecipient(request, request.params.transferId);
+    if (!lookup.ok) {
+      return reply.status(lookup.status).send(lookup.body);
+    }
+    const { transfer, userId } = lookup;
+
+    // The same gate as creating a site in that organization.
+    const membership = await getOrgMembership(userId, targetOrganizationId);
+    if (!roleHasPermission(effectiveOrgRole(membership), "sites:create")) {
+      return reply
+        .status(403)
+        .send({ error: "You must be an admin or owner of the organization you move the site into" });
+    }
+    if (targetOrganizationId === transfer.sourceOrganizationId) {
+      return reply.status(400).send({ error: "The site is already in this organization" });
+    }
+
+    const outcome = await withOrganizationSiteLock(targetOrganizationId, async tx => {
+      // Re-read under the lock: the site may have moved, or the transfer been
+      // cancelled or superseded, since the recipient opened the page.
+      const [current] = await tx.select().from(siteTransfers).where(eq(siteTransfers.id, transfer.id)).limit(1);
+      if (!current || isExpired(current)) {
+        return { status: 404, error: "This transfer link is no longer valid" };
+      }
+      const [site] = await tx
+        .select({ organizationId: sites.organizationId })
+        .from(sites)
+        .where(eq(sites.siteId, transfer.siteId))
+        .limit(1);
+      if (!site || site.organizationId !== transfer.sourceOrganizationId) {
+        await tx.delete(siteTransfers).where(eq(siteTransfers.id, transfer.id));
+        return { status: 409, error: "The site has moved since this transfer was sent" };
+      }
+
+      const limitError = await targetSiteLimitError(tx, targetOrganizationId);
+      if (limitError) {
+        return { status: 403, error: limitError };
+      }
+
+      // Also deletes the transfer.
+      await applySiteMove(transfer.siteId, transfer.sourceOrganizationId, targetOrganizationId, tx);
+      // The Search Console connection holds the sender's Google credentials;
+      // it does not go to someone else's organization.
+      await tx.delete(gscConnections).where(eq(gscConnections.siteId, transfer.siteId));
+      return null;
+    });
+
+    if (outcome) {
+      return reply.status(outcome.status).send({ error: outcome.error });
+    }
+
+    await invalidateSiteMoveAccess(transfer.sourceOrganizationId, targetOrganizationId);
+    return reply.send({ success: true, siteId: transfer.siteId, organizationId: targetOrganizationId });
+  } catch (error) {
+    request.log.error({ err: error }, "Error accepting site transfer");
+    return reply.status(500).send({ error: "Failed to accept the transfer" });
+  }
+}
+
+/** POST /site-transfers/:transferId/decline — the recipient turns the transfer down. */
+export async function declineSiteTransfer(
+  request: FastifyRequest<{ Params: { transferId: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const lookup = await loadTransferForRecipient(request, request.params.transferId);
+    if (!lookup.ok) {
+      return reply.status(lookup.status).send(lookup.body);
+    }
+    await db.delete(siteTransfers).where(eq(siteTransfers.id, lookup.transfer.id));
+    return reply.send({ success: true });
+  } catch (error) {
+    request.log.error({ err: error }, "Error declining site transfer");
+    return reply.status(500).send({ error: "Failed to decline the transfer" });
+  }
+}

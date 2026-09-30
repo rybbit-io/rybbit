@@ -5,10 +5,9 @@ import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
 import { getOrgMembership } from "../../lib/access.js";
-import { IS_CLOUD } from "../../lib/const.js";
-import { getSubscriptionInner } from "../stripe/getSubscription.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
 import { applySiteMove, invalidateSiteMoveAccess } from "./applySiteMove.js";
+import { targetSiteLimitError } from "./siteLimit.js";
 
 const moveSiteSchema = z.object({
   organizationId: z.string().min(1),
@@ -74,22 +73,8 @@ export async function moveSite(
     }
 
     const capacityError = await withOrganizationSiteLock(targetOrganizationId, async tx => {
-      // Enforce the target organization's site limit on cloud.
-      if (IS_CLOUD) {
-        const subscription = await getSubscriptionInner(targetOrganizationId);
-        const siteLimit = subscription?.siteLimit ?? null;
-        if (siteLimit !== null) {
-          const existingSites = await tx
-            .select({ siteId: sites.siteId })
-            .from(sites)
-            .where(eq(sites.organizationId, targetOrganizationId));
-          if (existingSites.length >= siteLimit) {
-            return `The target organization has reached its limit of ${siteLimit} website${
-              siteLimit === 1 ? "" : "s"
-            }. Please upgrade it to add more.`;
-          }
-        }
-      }
+      const limitError = await targetSiteLimitError(tx, targetOrganizationId);
+      if (limitError) return limitError;
 
       await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId, tx);
       return null;

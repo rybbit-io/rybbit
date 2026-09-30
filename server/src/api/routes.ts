@@ -172,6 +172,14 @@ import { createDashboardCache } from "./analytics/utils/dashboardCache.js";
 import { validateHttpTimeParams } from "./analytics/utils/query-validation.js";
 import { handleAppSumoWebhook, activateAppSumoLicense } from "./as/index.js";
 import { unclaimedSiteRouteOptions } from "./sites/createUnclaimedSite.js";
+import {
+  acceptSiteTransfer,
+  cancelSiteTransfer,
+  createSiteTransfer,
+  declineSiteTransfer,
+  getIncomingSiteTransfer,
+  getSiteTransfer,
+} from "./sites/siteTransfers.js";
 import { dashboardCacheRedis } from "../db/redis/redis.js";
 import {
   assertRouteAccessDeclared,
@@ -401,6 +409,14 @@ async function sitesRoutes(fastify: FastifyInstance) {
   fastify.put("/sites/:siteId/config", site("sites:configure"), updateSiteConfig);
   fastify.put("/sites/:siteId/move", site("sites:transfer"), moveSite);
   fastify.delete("/sites/:siteId", site("sites:delete"), deleteSite);
+  // Handing a site to someone outside the organization (see siteTransfers.ts).
+  fastify.post("/sites/:siteId/transfer", site("sites:transfer"), createSiteTransfer);
+  fastify.get("/sites/:siteId/transfer", site("sites:transfer"), getSiteTransfer);
+  fastify.delete("/sites/:siteId/transfer", site("sites:transfer"), cancelSiteTransfer);
+  // The recipient's side: the handler checks the signed-in user is the recipient.
+  fastify.get("/site-transfers/:transferId", authenticated("deny-scoped"), getIncomingSiteTransfer);
+  fastify.post("/site-transfers/:transferId/accept", authenticated("deny-scoped"), acceptSiteTransfer);
+  fastify.post("/site-transfers/:transferId/decline", authenticated("deny-scoped"), declineSiteTransfer);
   fastify.get("/sites/:siteId/private-link-config", site("sites:configure"), getSitePrivateLinkConfig);
   fastify.post("/sites/:siteId/private-link-config", site("sites:configure"), updateSitePrivateLinkConfig);
   fastify.get("/site/tracking-config/:siteId", publicRoute, getTrackingConfig); // Public - used by tracking script

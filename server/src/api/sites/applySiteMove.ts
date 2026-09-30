@@ -1,6 +1,14 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
-import { memberSiteAccess, segments, sites, teamSiteAccess } from "../../db/postgres/schema.js";
+import {
+  annotations,
+  importStatus,
+  memberSiteAccess,
+  segments,
+  sites,
+  siteTransfers,
+  teamSiteAccess,
+} from "../../db/postgres/schema.js";
 import type { SiteTransaction } from "../../services/sites/withOrganizationSiteLock.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
@@ -31,6 +39,12 @@ export async function applySiteMove(
     // hide them from the moved site and let the old org's deletion cascade
     // over them. Org-wide segments (null site_id) stay with their org.
     await tx.update(segments).set({ organizationId: targetOrganizationId }).where(eq(segments.siteId, siteId));
+    // Same for the site's own annotations (org-wide ones stay) and its import
+    // history, which carry the organization for access checks and cascades.
+    await tx.update(annotations).set({ organizationId: targetOrganizationId }).where(eq(annotations.siteId, siteId));
+    await tx.update(importStatus).set({ organizationId: targetOrganizationId }).where(eq(importStatus.siteId, siteId));
+    // A pending hand-over was authorized by the old organization.
+    await tx.delete(siteTransfers).where(eq(siteTransfers.siteId, siteId));
   };
   if (transaction) await move(transaction);
   else {
