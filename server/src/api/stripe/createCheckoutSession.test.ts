@@ -103,6 +103,16 @@ describe("createCheckoutSession — one trial per organization", () => {
     expect(mocks.checkoutSessionsCreate.mock.calls[0][0]).not.toHaveProperty("subscription_data");
   });
 
+  it("fails the checkout instead of granting a trial when the customer's history can't be read", async () => {
+    mocks.subscriptionsList.mockRejectedValue(new Error("stripe unavailable"));
+    const reply = replyStub();
+
+    await createCheckoutSession({ ...requestStub("u_owner", validBody), log: { error: vi.fn() } }, reply);
+
+    expect(reply.statusCode).toBe(500);
+    expect(mocks.checkoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
   it("still offers the trial after an abandoned checkout", async () => {
     mocks.subscriptionsList.mockResolvedValue({ data: [{ id: "sub_abandoned", status: "incomplete_expired" }] });
 

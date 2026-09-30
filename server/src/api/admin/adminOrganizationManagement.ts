@@ -7,6 +7,7 @@ import { member, memberSiteAccess, organization, sites, user } from "../../db/po
 import { siteIdsInOrganization } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 import { APPSUMO_TIER_LIMITS, getStripePrices } from "../../lib/const.js";
+import { usageService } from "../../services/usageService.js";
 
 const organizationOptionsQuerySchema = z.object({
   search: z.string().trim().max(200).optional().default(""),
@@ -121,6 +122,7 @@ export async function updateAdminSubscriptionOverride(
           : { planOverride: null, customPlan: value.customPlan };
 
     await db.update(organization).set(update).where(eq(organization.id, org.id));
+    usageService.requestOrganizationRefresh(org.id);
     return reply.send({ success: true, ...update });
   } catch (error) {
     request.log.error({ err: error }, "Failed to update subscription override");

@@ -98,6 +98,16 @@ describe("trackEvent", () => {
     expect(reply.send).toHaveBeenCalledWith("Site over monthly limit, event not tracked");
   });
 
+  it("reports a site with no plan without failing the request", async () => {
+    mocks.ingestEvent.mockResolvedValue({ status: "no_plan" });
+    const reply = replyStub();
+
+    await trackEvent(requestWithBody({ type: "pageview", site_id: "site_abc" }), reply);
+
+    expect(reply.status).toHaveBeenCalledWith(200);
+    expect(reply.send).toHaveBeenCalledWith("Site has no plan, event not tracked");
+  });
+
   it("answers a detected bot with the same success shape as a tracked event", async () => {
     mocks.ingestEvent.mockResolvedValue({ status: "bot" });
     const reply = replyStub();

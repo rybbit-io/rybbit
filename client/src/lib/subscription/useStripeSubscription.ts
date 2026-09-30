@@ -25,22 +25,24 @@ export interface SubscriptionData {
   siteLimit: number | null;
 }
 
-export function useStripeSubscription(): UseQueryResult<SubscriptionData | undefined, Error> {
+/** The subscription of `organizationId`, or of the active organization when omitted. */
+export function useStripeSubscription(organizationId?: string): UseQueryResult<SubscriptionData | undefined, Error> {
   const { data: activeOrg } = authClient.useActiveOrganization();
+  const orgId = organizationId ?? activeOrg?.id;
 
   const fetchSubscription = async () => {
-    if (!activeOrg || !IS_CLOUD) {
+    if (!orgId || !IS_CLOUD) {
       return undefined;
     }
 
-    return authedFetch<SubscriptionData>(`/stripe/subscription?organizationId=${activeOrg.id}`);
+    return authedFetch<SubscriptionData>(`/stripe/subscription?organizationId=${orgId}`);
   };
 
   return useQuery<SubscriptionData | undefined>({
-    queryKey: ["stripe-subscription", activeOrg?.id],
+    queryKey: ["stripe-subscription", orgId],
     queryFn: fetchSubscription,
     staleTime: 5 * 60 * 1000,
     retry: false,
-    enabled: !!activeOrg,
+    enabled: !!orgId,
   });
 }

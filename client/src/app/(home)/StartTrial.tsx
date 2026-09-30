@@ -19,7 +19,7 @@ import { LazyStartPlanDialog, OrganizationOwnerContact, usePlanPrompt } from "..
  */
 export function StartTrial({ organizationId, onSiteCreated }: { organizationId: string; onSiteCreated: () => void }) {
   const t = useExtracted();
-  const { isOwner, trialEligible } = usePlanPrompt(organizationId);
+  const { isLoading, isOwner, trialEligible } = usePlanPrompt(organizationId);
   const inputId = useId();
   const messageId = useId();
 
@@ -28,6 +28,8 @@ export function StartTrial({ organizationId, onSiteCreated }: { organizationId: 
   const [isCreating, setIsCreating] = useState(false);
   const [siteId, setSiteId] = useState<number | null>(null);
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
+
+  if (isLoading) return null;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

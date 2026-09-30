@@ -3,6 +3,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { memberSiteAccess, segments, sites, teamSiteAccess } from "../../db/postgres/schema.js";
 import type { SiteTransaction } from "../../services/sites/withOrganizationSiteLock.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
+import { usageService } from "../../services/usageService.js";
 
 /**
  * Reassigns a site to a different organization and clears the access grants
@@ -50,4 +51,6 @@ export async function invalidateSiteMoveAccess(sourceOrganizationId: string | nu
   for (const { userId } of affectedMembers) {
     invalidateSitesAccessCache(userId);
   }
+  // The moved site now follows the target organization's plan.
+  usageService.requestOrganizationRefresh(targetOrganizationId);
 }

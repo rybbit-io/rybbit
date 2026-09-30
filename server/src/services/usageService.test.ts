@@ -104,7 +104,13 @@ vi.mock("../lib/subscriptionUtils.js", async importOriginal => {
     ...actual,
     getAllStripeSubscriptionsByCustomer: mocks.getAllStripeSubscriptionsByCustomer,
     stripeSubscriptionInfoFromSnapshot: () => null,
-    getBestSubscription: async (organizationId: string) => state.subscriptions.get(organizationId) ?? freeSub(),
+    getBestSubscription: async (organizationId: string) => {
+      const subscription = state.subscriptions.get(organizationId);
+      if (subscription instanceof Error) {
+        throw subscription;
+      }
+      return subscription ?? freeSub();
+    },
     getBestSubscriptionFromStripeSub: async (organizationId: string) => {
       const subscription = state.subscriptions.get(organizationId);
       if (subscription instanceof Error) {
@@ -214,6 +220,7 @@ beforeEach(() => {
 
   // The service is a singleton; clear the blocked sets between tests.
   usageService.setSitesOverLimit(new Set());
+  usageService.setSitesWithoutPlan(new Set());
   usageService.setSitesWithoutReplay(new Set());
 });
 
@@ -592,9 +599,10 @@ describe("sites that need a plan (cloud, free plan ended 2026-02-13)", () => {
   it("blocks sites created after the cutoff in an org with no plan, and keeps legacy sites on the free tier", async () => {
     await usageService.updateOrganizationsMonthlyUsage();
 
-    expect(usageService.isSiteOverLimit(1)).toBe(false);
-    expect(usageService.isSiteOverLimit(2)).toBe(true);
-    // Needing a plan is not exceeding a limit: no flag, no email.
+    expect(usageService.isSiteWithoutPlan(1)).toBe(false);
+    expect(usageService.isSiteWithoutPlan(2)).toBe(true);
+    // Needing a plan is not exceeding a limit: no over-limit block, flag or email.
+    expect(usageService.isSiteOverLimit(2)).toBe(false);
     expect(state.updates[0]).toMatchObject({ overMonthlyLimit: false });
     expect(mocks.sendLimitExceededEmail).not.toHaveBeenCalled();
   });
@@ -604,17 +612,27 @@ describe("sites that need a plan (cloud, free plan ended 2026-02-13)", () => {
 
     await usageService.updateOrganizationsMonthlyUsage();
 
-    expect(usageService.getSitesOverLimit().size).toBe(0);
+    expect(usageService.getSitesWithoutPlan().size).toBe(0);
+  });
+
+  it("keeps the org's blocks when its plan lookup fails, instead of treating it as free", async () => {
+    state.subscriptions.set("org_1", stripeSub({ status: "trialing" }));
+    await usageService.updateOrganizationsMonthlyUsage();
+
+    state.subscriptions.set("org_1", new Error("appsumo lookup timed out"));
+    await usageService.updateOrganizationsMonthlyUsage();
+
+    expect(usageService.isSiteWithoutPlan(2)).toBe(false);
   });
 
   it("refreshOrganization unblocks the org's sites as soon as a trial starts", async () => {
     await usageService.updateOrganizationsMonthlyUsage();
-    expect(usageService.isSiteOverLimit(2)).toBe(true);
+    expect(usageService.isSiteWithoutPlan(2)).toBe(true);
 
     state.subscriptions.set("org_1", stripeSub({ status: "trialing" }));
     await usageService.refreshOrganization("org_1");
 
-    expect(usageService.isSiteOverLimit(2)).toBe(false);
+    expect(usageService.isSiteWithoutPlan(2)).toBe(false);
     // Pro includes replays, so the plan block on replays lifts too.
     expect(usageService.isSiteWithoutReplay(2)).toBe(false);
   });
@@ -622,9 +640,50 @@ describe("sites that need a plan (cloud, free plan ended 2026-02-13)", () => {
   it("refreshOrganization blocks a new site in an org with no plan before the next cron run", async () => {
     await usageService.refreshOrganization("org_1");
 
-    expect(usageService.isSiteOverLimit(1)).toBe(false);
-    expect(usageService.isSiteOverLimit(2)).toBe(true);
+    expect(usageService.isSiteWithoutPlan(1)).toBe(false);
+    expect(usageService.isSiteWithoutPlan(2)).toBe(true);
     expect(usageService.isSiteWithoutReplay(2)).toBe(true);
+  });
+
+  it("refreshOrganization keeps a replay quota the last cron run found exhausted", async () => {
+    state.subscriptions.set("org_1", stripeSub());
+    state.replayCounts = [{ site_id: 2, count: "1000" }];
+    await usageService.updateOrganizationsMonthlyUsage();
+    expect(usageService.isSiteWithoutReplay(2)).toBe(true);
+
+    await usageService.refreshOrganization("org_1");
+
+    expect(usageService.isSiteWithoutReplay(2)).toBe(true);
+  });
+
+  it("refreshOrganization leaves the blocks alone when the plan can't be resolved", async () => {
+    await usageService.updateOrganizationsMonthlyUsage();
+    state.subscriptions.set("org_1", new Error("db down"));
+
+    await expect(usageService.refreshOrganization("org_1")).rejects.toThrow("db down");
+    expect(usageService.isSiteWithoutPlan(2)).toBe(true);
+  });
+
+  it("does not let a cron run that started before a refresh overwrite it with older data", async () => {
+    // The cron resolves the org as free, then waits on the email/database work while
+    // checkout completes and a refresh unblocks the site.
+    state.organizations = [org("org_1", { stripeCustomerId: null, overMonthlyLimit: false })];
+    let releaseCron!: () => void;
+    const cronPaused = new Promise<void>(resolve => (releaseCron = resolve));
+    mocks.getAllStripeSubscriptionsByCustomer.mockImplementation(async () => {
+      await cronPaused;
+      return new Map();
+    });
+
+    const cronRun = usageService.updateOrganizationsMonthlyUsage();
+    state.subscriptions.set("org_1", stripeSub({ status: "trialing" }));
+    vi.setSystemTime(Date.now() + 1_000);
+    await usageService.refreshOrganization("org_1");
+    state.subscriptions.set("org_1", freeSub());
+    releaseCron();
+    await cronRun;
+
+    expect(usageService.isSiteWithoutPlan(2)).toBe(false);
   });
 
   it("never blocks sites for needing a plan when self-hosted", async () => {
@@ -632,6 +691,6 @@ describe("sites that need a plan (cloud, free plan ended 2026-02-13)", () => {
 
     await usageService.updateOrganizationsMonthlyUsage();
 
-    expect(usageService.getSitesOverLimit().size).toBe(0);
+    expect(usageService.getSitesWithoutPlan().size).toBe(0);
   });
 });

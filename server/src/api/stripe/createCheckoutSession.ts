@@ -70,8 +70,10 @@ export async function createCheckoutSession(
     }
 
     let stripeCustomerId = org.stripeCustomerId;
-    // One free trial per organization. A customer created just below has no history.
-    const trialEligible = !(await hasHadStripeSubscription(stripeCustomerId));
+    // One free trial per organization. A customer created just below has no history. If the
+    // history can't be read this throws, so checkout fails and can be retried rather than
+    // handing a returning customer another trial.
+    const trialEligible = !(await hasHadStripeSubscription(stripeCustomerId, { throwOnError: true }));
 
     // 3. If the organization doesn't have a Stripe Customer ID, create one
     if (!stripeCustomerId) {

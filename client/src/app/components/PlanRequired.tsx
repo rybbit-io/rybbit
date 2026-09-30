@@ -3,7 +3,8 @@
 import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useOrganizationMembers } from "@/api/admin/hooks/useOrganizationMembers";
 import { useUserOrganizations } from "@/api/admin/hooks/useOrganizations";
 import { Button } from "@/components/ui/button";
@@ -24,13 +25,42 @@ export const LazyStartPlanDialog = dynamic(() => import("./StartPlanDialog").the
  * subscription is offered plans, not another trial.
  */
 export function usePlanPrompt(organizationId: string | undefined) {
-  const { data: organizations } = useUserOrganizations();
-  const { data: subscription } = useStripeSubscription();
+  const { data: organizations, isLoading: isLoadingOrganizations } = useUserOrganizations();
+  // This organization's subscription, not the active one's: a dashboard can belong to another
+  // organization the person is in, and only that one's history decides whether a trial is on offer.
+  const { data: subscription, isLoading: isLoadingSubscription } = useStripeSubscription(organizationId);
   const role = organizations?.find(org => org.id === organizationId)?.role;
   return {
+    isLoading: isLoadingOrganizations || isLoadingSubscription,
     isOwner: role === "owner",
     trialEligible: subscription?.trialEligible !== false,
   };
+}
+
+const CHECKOUT_RETURN_WINDOW_MS = 60_000;
+
+/**
+ * True for a minute after Stripe checkout sends someone back (`?session_id=`): the new plan
+ * can take a few seconds to reach every server, so callers keep polling and hold back the
+ * "no plan" notice meanwhile. The parameter leaves the URL straight away, so a saved or
+ * reloaded link can't hide the notice again.
+ */
+export function useCheckoutReturn(): boolean {
+  const searchParams = useSearchParams();
+  const [pending, setPending] = useState(() => searchParams.has("session_id"));
+
+  useEffect(() => {
+    if (!pending) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("session_id")) {
+      url.searchParams.delete("session_id");
+      window.history.replaceState(null, "", url);
+    }
+    const timer = setTimeout(() => setPending(false), CHECKOUT_RETURN_WINDOW_MS);
+    return () => clearTimeout(timer);
+  }, [pending]);
+
+  return pending;
 }
 
 /** The organization owner's name and email, for members who can't start a plan themselves. */
@@ -86,9 +116,12 @@ export function PlanRequiredNotice({
   className?: string;
 }) {
   const t = useExtracted();
-  const { isOwner, trialEligible } = usePlanPrompt(organizationId);
+  const { isLoading, isOwner, trialEligible } = usePlanPrompt(organizationId);
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [planFlowStarted, setPlanFlowStarted] = useState(false);
+
+  // Wait for the role and the organization's history rather than promising a trial it can't have.
+  if (isLoading) return null;
 
   const title = siteName
     ? t("{site} isn't collecting data", { site: siteName })

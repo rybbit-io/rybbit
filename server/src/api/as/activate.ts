@@ -4,6 +4,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { asLicenses } from "../../db/postgres/schema-appsumo.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { IS_CLOUD } from "../../lib/const.js";
+import { usageService } from "../../services/usageService.js";
 
 /**
  * Check if AppSumo integration is enabled
@@ -190,6 +191,9 @@ export async function activateAppSumoLicense(
         )
       `);
     }
+
+    // Turn on sites that were waiting for a plan without waiting for the usage check.
+    usageService.requestOrganizationRefresh(organizationId);
 
     return reply.status(200).send({
       success: true,

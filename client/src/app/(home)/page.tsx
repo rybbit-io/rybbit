@@ -27,7 +27,7 @@ import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../lib/
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { useSyncStateWithUrl } from "../../lib/urlParams";
 import { AddSite } from "../components/AddSite";
-import { PlanRequiredNotice } from "../components/PlanRequired";
+import { PlanRequiredNotice, useCheckoutReturn } from "../components/PlanRequired";
 import { SiteCards } from "./SiteCards";
 import { StartTrial } from "./StartTrial";
 
@@ -45,7 +45,17 @@ export default function Home() {
   const { time, setTime } = useStore();
   const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
 
-  const { data: sites, refetch: refetchSites, isLoading: isLoadingSites } = useGetSitesFromOrg(activeOrganization?.id);
+  // Back from checkout started from the banner below: keep asking until the sites are on.
+  const checkoutReturnPending = useCheckoutReturn();
+  const {
+    data: sites,
+    refetch: refetchSites,
+    isLoading: isLoadingSites,
+  } = useGetSitesFromOrg(activeOrganization?.id, {
+    refetchInterval: checkoutReturnPending
+      ? query => (query.state.data?.sites.some(site => site.requiresPlan) ? 3000 : false)
+      : undefined,
+  });
 
   const {
     data: userOrganizationsData,
@@ -75,7 +85,8 @@ export default function Home() {
   // Check if we should show sites content
   const shouldShowSites = hasOrganizations && !isLoading;
   const hasNoSites = shouldShowSites && (!sites?.sites || sites.sites.length === 0);
-  const sitesRequirePlan = shouldShowSites && !!sites?.sites?.some(site => site.requiresPlan);
+  const sitesRequirePlan =
+    shouldShowSites && !checkoutReturnPending && !!sites?.sites?.some(site => site.requiresPlan);
 
   const { data: teamsData } = useTeams(activeOrganization?.id);
 

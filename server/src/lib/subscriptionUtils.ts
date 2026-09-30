@@ -84,6 +84,13 @@ export type SubscriptionInfo =
 /**
  * Gets the first day of the current month in YYYY-MM-DD format
  */
+/**
+ * `throwOnError`: rethrow a failed lookup instead of reporting "no plan from this source".
+ * Callers that act on a missing plan (the usage cron blocking sites) opt in, so a database
+ * or Stripe hiccup can't turn a paying organization into a free one.
+ */
+type LookupOptions = { throwOnError?: boolean };
+
 function getStartOfMonth(): string {
   return DateTime.now().startOf("month").toISODate() as string;
 }
@@ -92,7 +99,10 @@ function getStartOfMonth(): string {
  * Gets AppSumo subscription info for an organization
  * @returns AppSumo subscription info or null if no active license found
  */
-export async function getAppSumoSubscription(organizationId: string): Promise<AppSumoSubscriptionInfo | null> {
+export async function getAppSumoSubscription(
+  organizationId: string,
+  { throwOnError = false }: LookupOptions = {}
+): Promise<AppSumoSubscriptionInfo | null> {
   try {
     const appsumoLicense = await db.execute(
       sql`SELECT tier, status FROM appsumo.licenses WHERE organization_id = ${organizationId} AND status = 'active' LIMIT 1`
@@ -119,6 +129,7 @@ export async function getAppSumoSubscription(organizationId: string): Promise<Ap
     return null;
   } catch (error) {
     console.error("Error checking AppSumo license:", error);
+    if (throwOnError) throw error;
     return null;
   }
 }
@@ -127,7 +138,10 @@ export async function getAppSumoSubscription(organizationId: string): Promise<Ap
  * Gets plan override subscription info for an organization
  * @returns Override subscription info or null if no override set
  */
-export async function getOverrideSubscription(organizationId: string): Promise<OverrideSubscriptionInfo | null> {
+export async function getOverrideSubscription(
+  organizationId: string,
+  { throwOnError = false }: LookupOptions = {}
+): Promise<OverrideSubscriptionInfo | null> {
   try {
     const orgResult = await db
       .select({ planOverride: organization.planOverride })
@@ -178,6 +192,7 @@ export async function getOverrideSubscription(organizationId: string): Promise<O
     };
   } catch (error) {
     console.error("Error checking plan override:", error);
+    if (throwOnError) throw error;
     return null;
   }
 }
@@ -355,7 +370,10 @@ const subscriptionHistoryCache = new Map<string, { value: boolean; expiresAt: nu
  * "Choose a plan" instead of "Start free trial". Abandoned checkouts leave no subscription
  * (or only an incomplete one), so they do not use up the trial.
  */
-export async function hasHadStripeSubscription(stripeCustomerId: string | null): Promise<boolean> {
+export async function hasHadStripeSubscription(
+  stripeCustomerId: string | null,
+  { throwOnError = false }: LookupOptions = {}
+): Promise<boolean> {
   if (!stripe || !stripeCustomerId) {
     return false;
   }
@@ -375,8 +393,11 @@ export async function hasHadStripeSubscription(stripeCustomerId: string | null):
     return value;
   } catch (error) {
     logger.error({ err: error, stripeCustomerId }, "Error fetching Stripe subscription history");
-    // Unknown history: fall back to offering the trial rather than blocking checkout.
-    return cached?.value ?? false;
+    if (cached) return cached.value;
+    // Unknown history. Checkout opts into throwing so it never grants a second trial by
+    // accident; display callers fall back to showing the trial copy.
+    if (throwOnError) throw error;
+    return false;
   }
 }
 
@@ -472,7 +493,10 @@ function buildStripeSubscriptionInfo(subscription: Stripe.Subscription): StripeS
  * Gets custom plan subscription info for an organization
  * @returns Custom plan subscription info or null if no custom plan set
  */
-export async function getCustomPlanSubscription(organizationId: string): Promise<CustomPlanSubscriptionInfo | null> {
+export async function getCustomPlanSubscription(
+  organizationId: string,
+  { throwOnError = false }: LookupOptions = {}
+): Promise<CustomPlanSubscriptionInfo | null> {
   try {
     const orgResult = await db
       .select({ customPlan: organization.customPlan })
@@ -500,6 +524,7 @@ export async function getCustomPlanSubscription(organizationId: string): Promise
     };
   } catch (error) {
     console.error("Error checking custom plan:", error);
+    if (throwOnError) throw error;
     return null;
   }
 }
@@ -512,24 +537,26 @@ export async function getCustomPlanSubscription(organizationId: string): Promise
 export async function getBestSubscription(
   organizationId: string,
   stripeCustomerId: string | null,
-  { throwOnStripeError = false }: { throwOnStripeError?: boolean } = {}
+  { throwOnStripeError = false, throwOnLookupError = false }: { throwOnStripeError?: boolean; throwOnLookupError?: boolean } = {}
 ): Promise<SubscriptionInfo> {
+  const lookup = { throwOnError: throwOnLookupError };
+
   // Check custom plan first - highest priority
-  const customSub = await getCustomPlanSubscription(organizationId);
+  const customSub = await getCustomPlanSubscription(organizationId, lookup);
   if (customSub) {
     return customSub;
   }
 
   // Check override next
-  const overrideSub = await getOverrideSubscription(organizationId);
+  const overrideSub = await getOverrideSubscription(organizationId, lookup);
   if (overrideSub) {
     return overrideSub;
   }
 
   // Get both subscription types
   const [appsumoSub, stripeSub] = await Promise.all([
-    getAppSumoSubscription(organizationId),
-    getStripeSubscription(stripeCustomerId, { throwOnError: throwOnStripeError }),
+    getAppSumoSubscription(organizationId, lookup),
+    getStripeSubscription(stripeCustomerId, { throwOnError: throwOnStripeError || throwOnLookupError }),
   ]);
 
   if (stripeSub) {
@@ -551,14 +578,15 @@ export async function getBestSubscription(
  */
 export async function getBestSubscriptionFromStripeSub(
   organizationId: string,
-  stripeSub: StripeSubscriptionInfo | null
+  stripeSub: StripeSubscriptionInfo | null,
+  lookup: LookupOptions = {}
 ): Promise<SubscriptionInfo> {
-  const customSub = await getCustomPlanSubscription(organizationId);
+  const customSub = await getCustomPlanSubscription(organizationId, lookup);
   if (customSub) {
     return customSub;
   }
 
-  const overrideSub = await getOverrideSubscription(organizationId);
+  const overrideSub = await getOverrideSubscription(organizationId, lookup);
   if (overrideSub) {
     return overrideSub;
   }
@@ -567,7 +595,7 @@ export async function getBestSubscriptionFromStripeSub(
     return stripeSub;
   }
 
-  const appsumoSub = await getAppSumoSubscription(organizationId);
+  const appsumoSub = await getAppSumoSubscription(organizationId, lookup);
   if (appsumoSub) {
     return appsumoSub;
   }

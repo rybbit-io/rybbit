@@ -6,7 +6,7 @@ import { StartTrial } from "./StartTrial";
 const mocks = vi.hoisted(() => ({
   addSite: vi.fn(),
   onSiteCreated: vi.fn(),
-  prompt: { isOwner: true, trialEligible: true },
+  prompt: { isLoading: false, isOwner: true, trialEligible: true },
 }));
 
 vi.mock("next-intl", () => ({ useExtracted: () => (message: string) => message }));
@@ -32,7 +32,7 @@ vi.mock("../components/PlanRequired", () => ({
 }));
 
 beforeEach(() => {
-  mocks.prompt = { isOwner: true, trialEligible: true };
+  mocks.prompt = { isLoading: false, isOwner: true, trialEligible: true };
 });
 
 afterEach(() => {
@@ -88,7 +88,7 @@ describe("StartTrial — owner", () => {
   });
 
   it("offers plans, not another trial, to a returning organization", async () => {
-    mocks.prompt = { isOwner: true, trialEligible: false };
+    mocks.prompt = { isLoading: false, isOwner: true, trialEligible: false };
     mocks.addSite.mockResolvedValue({ siteId: 7 });
     renderStartTrial();
 
@@ -102,7 +102,7 @@ describe("StartTrial — owner", () => {
 
 describe("StartTrial — admins and members", () => {
   it("points at the owner instead of offering a checkout they can't complete", () => {
-    mocks.prompt = { isOwner: false, trialEligible: true };
+    mocks.prompt = { isLoading: false, isOwner: false, trialEligible: true };
     renderStartTrial();
 
     screen.getByRole("heading", { name: "This organization doesn't have a plan yet" });

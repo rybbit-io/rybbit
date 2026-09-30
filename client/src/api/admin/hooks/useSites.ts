@@ -12,7 +12,13 @@ import {
   SiteResponse,
 } from "../endpoints";
 
-export function useGetSitesFromOrg(organizationId?: string, options?: { enabled?: boolean }) {
+export function useGetSitesFromOrg(
+  organizationId?: string,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number | false | ((query: Query<GetSitesFromOrgResponse>) => number | false | undefined);
+  }
+) {
   return useQuery<GetSitesFromOrgResponse>({
     queryKey: ["get-sites-from-org", organizationId],
     queryFn: () => {
@@ -20,6 +26,7 @@ export function useGetSitesFromOrg(organizationId?: string, options?: { enabled?
     },
     staleTime: 60000, // 1 minute
     enabled: !!organizationId && options?.enabled !== false,
+    refetchInterval: options?.refetchInterval,
   });
 }
 

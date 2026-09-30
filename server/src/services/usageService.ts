@@ -28,16 +28,23 @@ type OrgSite = { siteId: number; createdAt: string | null };
 
 // IPC message a worker sends the cluster primary, which owns the blocked-site sets.
 export const REFRESH_ORGANIZATION_USAGE_MESSAGE = "refresh-organization-usage";
+const REFRESH_RETRY_DELAYS_MS = [0, 15_000, 60_000];
 
 class UsageService {
-  // Sites whose events are dropped at ingestion: their organization is over its monthly
-  // event limit, or the site needs a plan (see siteRequiresPlan) because the organization
-  // never started a trial. Named for the first reason, which came first.
   private sitesOverLimit = new Set<number>();
+  // Sites that collect nothing because their organization has no plan (see siteRequiresPlan):
+  // no events, replays or identify calls.
+  private sitesWithoutPlan = new Set<number>();
   // Sites that should not record session replays right now: their organization's plan
   // doesn't include replays, or its monthly replay quota is exhausted. Empty until the
   // usage cron runs (and always empty when self-hosted), so enforcement fails open.
   private sitesWithoutReplay = new Set<number>();
+  // Replay count per organization from the last cron run, so an on-demand refresh can apply
+  // the replay quota without its own ClickHouse query.
+  private orgReplayCounts = new Map<string, number>();
+  // When each organization was last refreshed on demand. A cron run that started before then
+  // holds older subscription data and must not overwrite that organization's blocks.
+  private orgRefreshedAt = new Map<string, number>();
   private usageCheckTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("usage-checker");
   private onUsageUpdatedCallbacks: UsageUpdateCallback[] = [];
@@ -49,6 +56,13 @@ class UsageService {
    */
   public setSitesOverLimit(sites: Set<number>): void {
     this.sitesOverLimit = sites;
+  }
+
+  /**
+   * Sets the sitesWithoutPlan set (used by workers receiving IPC updates from primary)
+   */
+  public setSitesWithoutPlan(sites: Set<number>): void {
+    this.sitesWithoutPlan = sites;
   }
 
   /**
@@ -89,6 +103,12 @@ class UsageService {
       );
 
       this.logger.info("Monthly usage check cron initialized (runs every 30 minutes)");
+
+      // The blocked-site sets live in memory and start empty, so without a run now an over-limit
+      // or plan-less site would collect for up to 30 minutes after every restart or deploy.
+      this.updateOrganizationsMonthlyUsage().catch(error => {
+        this.logger.error(error as Error, "Error during startup usage check");
+      });
     }
   }
 
@@ -104,6 +124,17 @@ class UsageService {
    */
   public isSiteOverLimit(siteId: number): boolean {
     return this.sitesOverLimit.has(siteId);
+  }
+
+  public getSitesWithoutPlan(): Set<number> {
+    return this.sitesWithoutPlan;
+  }
+
+  /**
+   * Checks if a site collects nothing until its organization starts a plan
+   */
+  public isSiteWithoutPlan(siteId: number): boolean {
+    return this.sitesWithoutPlan.has(siteId);
   }
 
   /**
@@ -183,7 +214,9 @@ class UsageService {
     // Resolve this org's Stripe subscription from the bulk snapshot (no per-org Stripe call),
     // then layer in custom plan / override / AppSumo via the same priority rules as elsewhere.
     const stripeSub = stripeSubscriptionInfoFromSnapshot(stripeSubscriptions, orgData.stripeCustomerId);
-    const subscription = await getBestSubscriptionFromStripeSub(orgData.id, stripeSub);
+    // A failed plan lookup throws, so the caller skips this org and keeps its current blocks
+    // instead of treating a paying organization as free.
+    const subscription = await getBestSubscriptionFromStripeSub(orgData.id, stripeSub, { throwOnError: true });
 
     // Log subscription details
     if (subscription.source === "appsumo") {
@@ -284,6 +317,7 @@ class UsageService {
    */
   public async updateOrganizationsMonthlyUsage(): Promise<void> {
     this.logger.info("Starting check of monthly event usage for organizations...");
+    const runStartedAt = Date.now();
 
     try {
       // Step 0: Pull every customer's subscription from Stripe in one bulk pass (a handful of
@@ -346,12 +380,12 @@ class UsageService {
           const alreadyNotifiedApproaching = orgData.approachingLimitNotifiedPeriodStart === monthStart;
 
           const subscription = await this.getOrganizationSubscriptionInfo(orgData, stripeSubscriptions);
+          if (this.refreshedSince(orgData.id, runStartedAt)) continue;
           const eventLimit = subscription.eventLimit;
           const isOverLimit = eventCount > eventLimit;
 
           const replayCount = orgStats?.replayCount || 0;
-          const replayBlocked =
-            !subscriptionIncludesReplay(subscription) || replayCount >= getReplayLimit(subscription);
+          this.orgReplayCounts.set(orgData.id, replayCount);
 
           let sendApproaching = false;
           if (!alreadyNotifiedApproaching && !isOverLimit && Number.isFinite(eventLimit) && daysRemaining >= 2) {
@@ -421,24 +455,19 @@ class UsageService {
             }
           }
 
-          const blockedCount = this.applySiteBlocks(orgSites, subscription, isOverLimit);
+          // The emails above awaited; a refresh may have landed with newer data meanwhile.
+          if (this.refreshedSince(orgData.id, runStartedAt)) continue;
+
+          const withoutPlanCount = this.applySiteBlocks(orgSites, subscription, isOverLimit, replayCount);
           if (isOverLimit) {
             this.logger.info(
-              `Organization ${orgData.name} is over limit. Added ${blockedCount} sites to blocked list.`
+              `Organization ${orgData.name} is over limit. Added ${orgSites.length} sites to blocked list.`
             );
-          } else if (blockedCount > 0) {
-            this.logger.info(`Organization ${orgData.name} has no plan. Blocked ${blockedCount} sites until it starts one.`);
           }
-
-          // Track sites that shouldn't record session replays — plan doesn't include
-          // them (e.g. after a downgrade from Pro) or the monthly quota is exhausted —
-          // so ingest/config endpoints can stop recording for them
-          for (const { siteId } of orgSites) {
-            if (replayBlocked) {
-              this.sitesWithoutReplay.add(siteId);
-            } else {
-              this.sitesWithoutReplay.delete(siteId);
-            }
+          if (withoutPlanCount > 0) {
+            this.logger.info(
+              `Organization ${orgData.name} has no plan. Blocked ${withoutPlanCount} sites until it starts one.`
+            );
           }
 
           this.logger.info(
@@ -451,6 +480,7 @@ class UsageService {
 
       this.logger.info(
         `Completed monthly event usage check. ${this.sitesOverLimit.size} sites are over their limit, ` +
+          `${this.sitesWithoutPlan.size} sites have no plan, ` +
           `${this.sitesWithoutReplay.size} sites lack session replay access.`
       );
 
@@ -463,28 +493,46 @@ class UsageService {
     }
   }
 
-  /**
-   * Blocks or unblocks each of an organization's sites for ingestion. Returns how many are
-   * blocked.
-   */
-  private applySiteBlocks(orgSites: OrgSite[], subscription: SubscriptionInfo, isOverLimit: boolean): number {
-    let blockedCount = 0;
-    for (const site of orgSites) {
-      if (isOverLimit || siteRequiresPlan(subscription, site.createdAt)) {
-        this.sitesOverLimit.add(site.siteId);
-        blockedCount++;
-      } else {
-        this.sitesOverLimit.delete(site.siteId);
-      }
-    }
-    return blockedCount;
+  private refreshedSince(organizationId: string, time: number): boolean {
+    return (this.orgRefreshedAt.get(organizationId) ?? 0) > time;
   }
 
   /**
-   * Re-evaluates one organization's blocked sites now instead of at the next cron run (up to
-   * 30 minutes away): a new site in an organization with no plan must stop collecting
-   * straight away, and a trial that just started must start it. Uses the organization's
-   * event count from the last cron run.
+   * Sets each of an organization's sites' blocks from its subscription: events dropped when the
+   * organization is over its limit, everything dropped when the site needs a plan, and replays
+   * dropped when the plan excludes them (e.g. after a downgrade from Pro) or the monthly replay
+   * quota is used up. Returns how many sites need a plan.
+   */
+  private applySiteBlocks(
+    orgSites: OrgSite[],
+    subscription: SubscriptionInfo,
+    isOverLimit: boolean,
+    replayCount: number
+  ): number {
+    const replayBlocked = !subscriptionIncludesReplay(subscription) || replayCount >= getReplayLimit(subscription);
+    let withoutPlanCount = 0;
+    for (const site of orgSites) {
+      if (isOverLimit) this.sitesOverLimit.add(site.siteId);
+      else this.sitesOverLimit.delete(site.siteId);
+
+      if (siteRequiresPlan(subscription, site.createdAt)) {
+        this.sitesWithoutPlan.add(site.siteId);
+        withoutPlanCount++;
+      } else {
+        this.sitesWithoutPlan.delete(site.siteId);
+      }
+
+      if (replayBlocked) this.sitesWithoutReplay.add(site.siteId);
+      else this.sitesWithoutReplay.delete(site.siteId);
+    }
+    return withoutPlanCount;
+  }
+
+  /**
+   * Re-evaluates one organization's site blocks now instead of at the next cron run (up to 30
+   * minutes away): a new site in an organization with no plan must stop collecting straight
+   * away, and a trial that just started must start it. Uses the event and replay counts from
+   * the last cron run. Throws if the plan can't be resolved, leaving the blocks as they were.
    */
   public async refreshOrganization(organizationId: string): Promise<void> {
     const [org] = await db
@@ -497,7 +545,7 @@ class UsageService {
     // This process's cached subscription may predate the checkout or cancellation that
     // triggered the refresh.
     invalidateStripeSubscriptionCache(org.stripeCustomerId);
-    const subscription = await getBestSubscription(organizationId, org.stripeCustomerId, { throwOnStripeError: true });
+    const subscription = await getBestSubscription(organizationId, org.stripeCustomerId, { throwOnLookupError: true });
 
     const orgSites = await db
       .select({ siteId: sites.siteId, createdAt: sites.createdAt })
@@ -505,23 +553,30 @@ class UsageService {
       .where(eq(sites.organizationId, organizationId));
 
     const isOverLimit = (org.monthlyEventCount ?? 0) > subscription.eventLimit;
-    this.applySiteBlocks(orgSites, subscription, isOverLimit);
-
-    // The replay quota needs a ClickHouse count, so leave quota blocks to the cron and only
-    // lift the plan block here (a trial that includes replays).
-    if (subscriptionIncludesReplay(subscription)) {
-      for (const { siteId } of orgSites) {
-        this.sitesWithoutReplay.delete(siteId);
-      }
-    } else {
-      for (const { siteId } of orgSites) {
-        this.sitesWithoutReplay.add(siteId);
-      }
-    }
+    this.applySiteBlocks(orgSites, subscription, isOverLimit, this.orgReplayCounts.get(organizationId) ?? 0);
+    this.orgRefreshedAt.set(organizationId, Date.now());
 
     for (const callback of this.onUsageUpdatedCallbacks) {
       callback();
     }
+  }
+
+  /**
+   * refreshOrganization with a couple of retries, for callers that can't wait on it (webhooks
+   * already acknowledged, sites already created). If every attempt fails, the next cron run
+   * reconciles the organization.
+   */
+  public async refreshOrganizationWithRetry(organizationId: string): Promise<void> {
+    for (const delayMs of REFRESH_RETRY_DELAYS_MS) {
+      if (delayMs > 0) await new Promise(resolve => setTimeout(resolve, delayMs));
+      try {
+        await this.refreshOrganization(organizationId);
+        return;
+      } catch (error) {
+        this.logger.warn({ err: error, organizationId }, "Refreshing organization usage failed");
+      }
+    }
+    this.logger.error({ organizationId }, "Gave up refreshing organization usage; the next usage check will reconcile it");
   }
 
   /**
@@ -537,9 +592,7 @@ class UsageService {
       return;
     }
 
-    this.refreshOrganization(organizationId).catch(error => {
-      this.logger.error({ err: error, organizationId }, "Error refreshing organization usage");
-    });
+    void this.refreshOrganizationWithRetry(organizationId);
   }
 
   /**

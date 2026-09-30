@@ -68,9 +68,7 @@ if (workerCount === 0) {
   // starts or a site is added, so the change reaches every worker without waiting for the cron
   cluster.on("message", (_worker, message: { type?: string; organizationId?: unknown }) => {
     if (message?.type === REFRESH_ORGANIZATION_USAGE_MESSAGE && typeof message.organizationId === "string") {
-      usageService.refreshOrganization(message.organizationId).catch(error => {
-        logger.error({ err: error, organizationId: message.organizationId }, "Error refreshing organization usage");
-      });
+      void usageService.refreshOrganizationWithRetry(message.organizationId);
     }
   });
 
@@ -78,6 +76,7 @@ if (workerCount === 0) {
   cluster.on("online", worker => {
     logger.info(`Worker ${worker.process.pid} is online`);
     worker.send({ type: "sites-over-limit", siteIds: Array.from(usageService.getSitesOverLimit()) });
+    worker.send({ type: "sites-without-plan", siteIds: Array.from(usageService.getSitesWithoutPlan()) });
     worker.send({ type: "sites-without-replay", siteIds: Array.from(usageService.getSitesWithoutReplay()) });
   });
 
@@ -96,16 +95,18 @@ if (workerCount === 0) {
    */
   function broadcastUsageState() {
     const overLimitIds = Array.from(usageService.getSitesOverLimit());
+    const withoutPlanIds = Array.from(usageService.getSitesWithoutPlan());
     const withoutReplayIds = Array.from(usageService.getSitesWithoutReplay());
     for (const id in cluster.workers) {
       const worker = cluster.workers[id];
       if (worker && !worker.isDead()) {
         worker.send({ type: "sites-over-limit", siteIds: overLimitIds });
+        worker.send({ type: "sites-without-plan", siteIds: withoutPlanIds });
         worker.send({ type: "sites-without-replay", siteIds: withoutReplayIds });
       }
     }
     logger.debug(
-      `Broadcasted ${overLimitIds.length} sites-over-limit and ${withoutReplayIds.length} sites-without-replay to workers`
+      `Broadcasted ${overLimitIds.length} sites-over-limit, ${withoutPlanIds.length} sites-without-plan and ${withoutReplayIds.length} sites-without-replay to workers`
     );
   }
 
