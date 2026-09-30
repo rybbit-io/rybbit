@@ -55,7 +55,7 @@ describe("PlanRequiredNotice", () => {
 });
 
 describe("useCheckoutReturn", () => {
-  it("holds back the notice for a minute after checkout and drops session_id from the URL", () => {
+  it("holds back the notice for two minutes after checkout and drops session_id from the URL", () => {
     vi.useFakeTimers();
     mocks.search = "session_id=cs_123";
     window.history.replaceState(null, "", "/42/main?session_id=cs_123&timeMode=day");
@@ -66,7 +66,11 @@ describe("useCheckoutReturn", () => {
     expect(window.location.search).toBe("?timeMode=day");
 
     act(() => {
-      vi.advanceTimersByTime(60_000);
+      vi.advanceTimersByTime(119_000);
+    });
+    expect(result.current).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(1_000);
     });
     expect(result.current).toBe(false);
   });

@@ -51,6 +51,9 @@ export async function invalidateSiteMoveAccess(sourceOrganizationId: string | nu
   for (const { userId } of affectedMembers) {
     invalidateSitesAccessCache(userId);
   }
-  // The moved site now follows the target organization's plan.
+  // The moved site now follows the target organization's plan. Refreshing the source too marks
+  // it as newer than any cron run already holding the old ownership, which would otherwise
+  // re-apply the source organization's blocks to the moved site.
   usageService.requestOrganizationRefresh(targetOrganizationId);
+  usageService.requestOrganizationRefresh(sourceOrganizationId);
 }

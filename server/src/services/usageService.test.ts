@@ -686,6 +686,18 @@ describe("sites that need a plan (cloud, free plan ended 2026-02-13)", () => {
     expect(usageService.isSiteWithoutPlan(2)).toBe(false);
   });
 
+  it("runs overlapping refreshes one after another, so an older one can't undo a newer one", async () => {
+    // A site-create refresh reads "free" and stalls on its site query while checkout's
+    // refresh starts; the checkout refresh must be the one that sticks.
+    const firstRefresh = usageService.refreshOrganization("org_1");
+    state.subscriptions.set("org_1", stripeSub({ status: "trialing" }));
+    const secondRefresh = usageService.refreshOrganization("org_1");
+
+    await Promise.all([firstRefresh, secondRefresh]);
+
+    expect(usageService.isSiteWithoutPlan(2)).toBe(false);
+  });
+
   it("never blocks sites for needing a plan when self-hosted", async () => {
     state.isCloud = false;
 

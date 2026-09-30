@@ -943,6 +943,29 @@ describe("hasHadStripeSubscription", () => {
     expect(mocks.list).toHaveBeenCalledTimes(2);
   });
 
+  it("does not trust an expired 'never subscribed' answer when the caller needs certainty", async () => {
+    listReturns([]);
+    await hasHadStripeSubscription("cus_history");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 61_000);
+    mocks.list.mockRejectedValue(new Error("stripe down"));
+
+    await expect(hasHadStripeSubscription("cus_history", { throwOnError: true })).rejects.toThrow("stripe down");
+    await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("keeps an expired 'had a subscription' answer when Stripe cannot be reached", async () => {
+    listReturns([stripeSub({ customer: "cus_history", status: "canceled" })]);
+    await hasHadStripeSubscription("cus_history");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 61_000);
+    mocks.list.mockRejectedValue(new Error("stripe down"));
+
+    await expect(hasHadStripeSubscription("cus_history", { throwOnError: true })).resolves.toBe(true);
+    vi.useRealTimers();
+  });
+
   it("offers the trial when Stripe cannot be reached", async () => {
     mocks.list.mockRejectedValue(new Error("stripe down"));
     await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(false);

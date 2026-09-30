@@ -393,11 +393,12 @@ export async function hasHadStripeSubscription(
     return value;
   } catch (error) {
     logger.error({ err: error, stripeCustomerId }, "Error fetching Stripe subscription history");
-    if (cached) return cached.value;
-    // Unknown history. Checkout opts into throwing so it never grants a second trial by
-    // accident; display callers fall back to showing the trial copy.
+    // An expired "had a subscription" is still true; an expired "never had one" may be out of
+    // date. Checkout opts into throwing so it never grants a second trial by accident; display
+    // callers fall back to the last answer, or to showing the trial copy.
+    if (cached?.value) return true;
     if (throwOnError) throw error;
-    return false;
+    return cached?.value ?? false;
   }
 }
 

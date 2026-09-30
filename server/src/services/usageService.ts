@@ -45,6 +45,9 @@ class UsageService {
   // When each organization was last refreshed on demand. A cron run that started before then
   // holds older subscription data and must not overwrite that organization's blocks.
   private orgRefreshedAt = new Map<string, number>();
+  // In-flight refreshes per organization. Refreshes run one after another so an older one
+  // (a site create that read "free") can't finish after a newer one (checkout) and undo it.
+  private orgRefreshQueue = new Map<string, Promise<void>>();
   private usageCheckTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("usage-checker");
   private onUsageUpdatedCallbacks: UsageUpdateCallback[] = [];
@@ -534,7 +537,18 @@ class UsageService {
    * away, and a trial that just started must start it. Uses the event and replay counts from
    * the last cron run. Throws if the plan can't be resolved, leaving the blocks as they were.
    */
-  public async refreshOrganization(organizationId: string): Promise<void> {
+  public refreshOrganization(organizationId: string): Promise<void> {
+    const previous = this.orgRefreshQueue.get(organizationId) ?? Promise.resolve();
+    const next = previous.catch(() => {}).then(() => this.refreshOrganizationNow(organizationId));
+    this.orgRefreshQueue.set(organizationId, next);
+    const forget = () => {
+      if (this.orgRefreshQueue.get(organizationId) === next) this.orgRefreshQueue.delete(organizationId);
+    };
+    next.then(forget, forget);
+    return next;
+  }
+
+  private async refreshOrganizationNow(organizationId: string): Promise<void> {
     const [org] = await db
       .select({ stripeCustomerId: organization.stripeCustomerId, monthlyEventCount: organization.monthlyEventCount })
       .from(organization)

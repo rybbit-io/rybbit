@@ -37,11 +37,13 @@ export function usePlanPrompt(organizationId: string | undefined) {
   };
 }
 
-const CHECKOUT_RETURN_WINDOW_MS = 60_000;
+// Longer than the server's 60-second per-worker subscription cache, so the polling below
+// outlasts any cached "no plan" answer from before checkout.
+const CHECKOUT_RETURN_WINDOW_MS = 2 * 60_000;
 
 /**
- * True for a minute after Stripe checkout sends someone back (`?session_id=`): the new plan
- * can take a few seconds to reach every server, so callers keep polling and hold back the
+ * True for two minutes after Stripe checkout sends someone back (`?session_id=`): the new
+ * plan can take a while to reach every server, so callers keep polling and hold back the
  * "no plan" notice meanwhile. The parameter leaves the URL straight away, so a saved or
  * reloaded link can't hide the notice again.
  */
