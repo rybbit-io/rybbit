@@ -12,8 +12,8 @@ export type GetOverviewResponse = {
   sessions: number;
   pageviews: number;
   users: number;
-  pages_per_session: number;
-  bounce_rate: number;
+  pages_per_session: number | null;
+  bounce_rate: number | null;
   session_duration: number;
 };
 

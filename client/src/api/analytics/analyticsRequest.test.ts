@@ -91,6 +91,8 @@ describe("buildAnalyticsRequest", () => {
       "filters"
     );
     expect(build({ path: "user-traits/keys" }, null, [real]).params.filters).toEqual([real]);
+    expect(build({ path: "user-traits/keys" }, null, [real, blank]).params.filters).toEqual([real]);
+    expect(build({ path: "user-traits/keys" }, null, [blank]).params).not.toHaveProperty("filters");
   });
 
   it("merges endpoint params over the shared context and drops undefined ones", () => {

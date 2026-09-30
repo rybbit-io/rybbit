@@ -24,7 +24,7 @@ import { isValidDomain, normalizeDomain } from "../../lib/utils";
 function TryPageContent() {
   const t = useExtracted();
   const { configs, isLoading: isLoadingConfigs, error: configError } = useConfigs();
-  useSetPageTitle("Start tracking");
+  useSetPageTitle(t("Start tracking"));
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialDomain = normalizeDomain(searchParams.get("domain") ?? "");
@@ -111,7 +111,7 @@ function TryPageContent() {
               id="domain"
               type="text"
               autoFocus
-              placeholder="example.com or sub.example.com"
+              placeholder={t("example.com or sub.example.com")}
               value={domain}
               onChange={e => setDomain(e.target.value.toLowerCase())}
               required

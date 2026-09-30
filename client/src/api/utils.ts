@@ -41,7 +41,7 @@ export function getStartAndEndDate(time: Time, timeZone: string): { startDate: s
   return { startDate: time.day, endDate: time.day };
 }
 
-function sanitizeFilters(filters?: Filter[]): Filter[] | undefined {
+export function sanitizeFilters(filters?: Filter[]): Filter[] | undefined {
   if (!filters) return undefined;
   const cleaned = filters.filter(f => {
     if (f.type === "is_null" || f.type === "is_not_null") return true;

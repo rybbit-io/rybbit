@@ -1,6 +1,6 @@
 import { Filter } from "@rybbit/shared";
 import { Time } from "../../components/DateSelector/types";
-import { authedFetch, buildApiParams } from "../utils";
+import { authedFetch, buildApiParams, sanitizeFilters } from "../utils";
 import { CommonApiParams, toQueryParams } from "./endpoints/types";
 
 /**
@@ -58,7 +58,7 @@ const omitUndefined = (params: Record<string, unknown>) =>
 export function buildAnalyticsRequest(descriptor: AnalyticsDescriptor, context: AnalyticsContext): AnalyticsRequest {
   const common: CommonApiParams = context.time
     ? buildApiParams(context.time, { timeZone: context.timeZone, filters: context.filters })
-    : { startDate: "", endDate: "", timeZone: context.timeZone, filters: context.filters };
+    : { startDate: "", endDate: "", timeZone: context.timeZone, filters: sanitizeFilters(context.filters) };
 
   // Period-less endpoints still carry the timezone and any filters, just no window.
   const contextParams = context.time

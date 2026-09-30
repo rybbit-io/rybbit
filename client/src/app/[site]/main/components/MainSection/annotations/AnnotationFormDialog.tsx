@@ -37,9 +37,7 @@ import {
 import { EmojiPicker } from "./EmojiPicker";
 import { useAnnotationPermissions } from "./useAnnotationPermissions";
 
-export type AnnotationEditorState =
-  | { mode: "create"; date?: Date }
-  | { mode: "edit"; annotation: Annotation };
+export type AnnotationEditorState = { mode: "create"; date?: Date } | { mode: "edit"; annotation: Annotation };
 
 type FormValues = {
   title: string;
@@ -53,13 +51,7 @@ type FormValues = {
   isPublic: boolean;
 };
 
-export function AnnotationFormDialog({
-  state,
-  onClose,
-}: {
-  state: AnnotationEditorState | null;
-  onClose: () => void;
-}) {
+export function AnnotationFormDialog({ state, onClose }: { state: AnnotationEditorState | null; onClose: () => void }) {
   const t = useExtracted();
   const { site } = useStore();
   const timezone = getTimezone();
@@ -202,7 +194,9 @@ export function AnnotationFormDialog({
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{state?.mode === "edit" ? t("Edit annotation") : t("New annotation")}</DialogTitle>
-          <DialogDescription>{t("A note pinned to the chart, so this moment stays explainable later.")}</DialogDescription>
+          <DialogDescription>
+            {t("A note pinned to the chart, so this moment stays explainable later.")}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -313,7 +307,8 @@ export function AnnotationFormDialog({
                           onClick={() => field.onChange(color)}
                           className={cn(
                             "w-5 h-5 rounded-full border-2 border-transparent transition-shadow",
-                            field.value === color && "ring-1 ring-offset-2 ring-neutral-900 dark:ring-neutral-100 ring-offset-white dark:ring-offset-neutral-900"
+                            field.value === color &&
+                              "ring-1 ring-offset-2 ring-neutral-900 dark:ring-neutral-100 ring-offset-white dark:ring-offset-neutral-900"
                           )}
                           style={{ background: annotationSwatch(color) }}
                         />
@@ -383,6 +378,7 @@ export function AnnotationFormDialog({
                       <button
                         type="button"
                         aria-label={t("More emoji")}
+                        aria-pressed={Boolean(field.value && !ANNOTATION_ICON_OPTIONS.includes(field.value))}
                         title={t("More emoji")}
                         className={cn(
                           "w-8 h-8 rounded-md border text-base leading-none transition-colors",

@@ -166,9 +166,13 @@ describe("analyticsParsers", () => {
     expect(analyticsParsers.past_minutes_end.parse("abc")).toBeNull();
   });
 
-  it("leaves date params as opaque strings", () => {
+  it("rejects invalid calendar dates at the URL boundary", () => {
     expect(analyticsParsers.day.parse("2024-03-15")).toBe("2024-03-15");
-    expect(analyticsParsers.startDate.parse("whenever")).toBe("whenever");
+    expect(analyticsParsers.startDate.parse("whenever")).toBeNull();
+    expect(analyticsParsers.compareStart.parse("2026-02-30")).toBeNull();
+    expect(analyticsParsers.compareEnd.parse("2026-13-01")).toBeNull();
+    expect(analyticsParsers.compareStart.parse("2024-02-29")).toBe("2024-02-29");
+    expect(analyticsParsers.compareStart.parse("2026-01")).toBeNull();
   });
 });
 

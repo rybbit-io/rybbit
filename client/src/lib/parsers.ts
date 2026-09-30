@@ -3,6 +3,7 @@ import { createParser, parseAsBoolean, parseAsInteger, parseAsJson, parseAsStrin
 import { DASHBOARD_DEFAULT_TIME_RANGES } from "./defaultTimeRange";
 import { StatType } from "./store";
 import { ComparisonMode, Time } from "@/components/DateSelector/types";
+import { DateTime } from "luxon";
 
 // Basic parsers
 export const parseAsOptionalString = parseAsString;
@@ -50,7 +51,10 @@ export const parseAsComparisonMode = parseAsStringEnum<ComparisonMode>(compariso
 export const parseAsWellKnown = parseAsStringEnum<string>([...DASHBOARD_DEFAULT_TIME_RANGES]);
 
 // ISO date string parser (for dates like "2024-01-01")
-export const parseAsIsoDate = parseAsString;
+export const parseAsIsoDate = createParser({
+  parse: value => (/^\d{4}-\d{2}-\d{2}$/.test(value) && DateTime.fromISO(value).isValid ? value : null),
+  serialize: value => value,
+});
 
 // JSON parsers for complex types
 const filterTypeValues: FilterType[] = [

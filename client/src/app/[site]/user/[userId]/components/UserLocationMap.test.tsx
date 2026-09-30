@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     return { remove: vi.fn() };
   }),
   setLngLat: vi.fn().mockReturnThis(),
+  theme: undefined as string | undefined,
 }));
 
 vi.mock("mapbox-gl", () => ({
@@ -22,7 +23,7 @@ vi.mock("mapbox-gl", () => ({
   },
 }));
 vi.mock("next-intl", () => ({ useExtracted: () => (message: string) => message }));
-vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "dark" }) }));
+vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: mocks.theme }) }));
 vi.mock("@/lib/configs", () => ({ useConfigs: () => ({ configs: { mapboxToken: "test-token" } }) }));
 vi.mock("@/lib/userStore", () => ({ userStore: () => ({ user: null }) }));
 vi.mock("@/components/EditTraitsDialog", () => ({ EditTraitsDialog: () => null }));
@@ -37,6 +38,7 @@ const getRegionName = (region: string) => regionNames[region] ?? "";
 let client: QueryClient;
 
 beforeEach(() => {
+  mocks.theme = "dark";
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   vi.stubGlobal("fetch", mocks.fetch);
   mocks.fetch.mockResolvedValue(new Response(JSON.stringify({ features: [{ center: [-3.701219, 40.421345] }] })));
@@ -49,7 +51,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function showSidebar(location: Pick<UserInfo, "country" | "region" | "city">, resolveRegion = getRegionName) {
+function showSidebar(
+  location: Pick<UserInfo, "country" | "region" | "city"> & Partial<UserInfo>,
+  resolveRegion = getRegionName
+) {
   return render(
     <QueryClientProvider client={client}>
       <UserSidebar
@@ -76,6 +81,22 @@ async function geocodingRequest() {
 }
 
 describe("user location geocoding", () => {
+  it("keeps the map dark before the theme settles", async () => {
+    mocks.theme = undefined;
+    showSidebar({ country: "ES", region: "", city: "Madrid" });
+    await waitFor(() =>
+      expect(mocks.map).toHaveBeenCalledWith(expect.objectContaining({ style: "mapbox://styles/mapbox/dark-v11" }))
+    );
+  });
+  it("does not request visitor referrer favicons from a third party", () => {
+    const { container } = showSidebar({
+      country: "",
+      region: "",
+      city: "",
+      first_referrer: "https://private.example.com/path",
+    });
+    expect(container.querySelector('img[src*="duckduckgo.com"]')).toBeNull();
+  });
   it.each([
     {
       country: "ES",

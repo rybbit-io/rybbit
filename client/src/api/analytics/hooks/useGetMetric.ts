@@ -48,6 +48,7 @@ export function usePaginatedMetric({
   customFilters = [],
   customTime,
   lite = false,
+  enabled = true,
 }: {
   parameter: FilterParameter;
   limit?: number;
@@ -62,6 +63,7 @@ export function usePaginatedMetric({
   return useAnalyticsQuery<PaginatedResponse>({
     key: parameter,
     path: metricPath(lite),
+    enabled,
     overrideTime: customTime,
     useFilters,
     additionalFilters,

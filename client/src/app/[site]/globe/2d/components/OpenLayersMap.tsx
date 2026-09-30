@@ -33,7 +33,9 @@ export function OpenLayersMap({ mapView, onSessionSelect }: OpenLayersMapProps) 
     if (!mapRef.current || mapInstanceRef.current) return;
 
     const baseLayer = new LayerGroup();
-    void apply(baseLayer, "https://tiles.openfreemap.org/styles/dark");
+    void apply(baseLayer, "https://tiles.openfreemap.org/styles/dark").catch((error: unknown) => {
+      console.error("Failed to load the map style", error instanceof Error ? error.message : error);
+    });
 
     const map = new Map({
       target: mapRef.current,

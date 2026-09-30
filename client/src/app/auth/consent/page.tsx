@@ -4,7 +4,7 @@ import { RybbitTextLogo } from "@/components/RybbitLogo";
 import { AuthError } from "@/components/auth/AuthError";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth";
-import { getScopeLabel } from "@/app/settings/account/components/ApiKeyScopePicker";
+import { useScopeLabel } from "@/app/settings/account/components/ApiKeyScopePicker";
 import { useQuery } from "@tanstack/react-query";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import { Suspense, useState } from "react";
 
 function Consent() {
   const t = useExtracted();
+  const getScopeLabel = useScopeLabel();
   const params = useSearchParams();
   const clientId = params.get("client_id");
   const validRequest = Boolean(clientId && params.get("sig") && params.get("exp"));

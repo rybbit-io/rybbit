@@ -10,7 +10,11 @@ import type { GetOverviewBucketedResponse } from "../../../../../api/analytics/e
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 import { TimeSeriesChart } from "../../../../../components/charts/TimeSeriesChart";
 import type { TimeSeriesChartPoint } from "../../../../../components/charts/TimeSeriesChart";
-import { bucketsBetween, getChartTimeBounds, shiftBuckets } from "../../../../../components/charts/timeSeriesChartUtils";
+import {
+  bucketsBetween,
+  getChartTimeBounds,
+  shiftBuckets,
+} from "../../../../../components/charts/timeSeriesChartUtils";
 import { formatChartDateTime } from "../../../../../lib/dateTimeUtils";
 import { getTimezone, useStore } from "../../../../../lib/store";
 import type { StatType } from "../../../../../lib/store";
@@ -140,7 +144,7 @@ export function Chart({
           )
         : 0;
     const previousPoints: PrevPoint[] = [];
-    previousData?.forEach(e => {
+    (previousTime ? previousData : undefined)?.forEach(e => {
       const prevTs = DateTime.fromSQL(e.time, { zone: timezone }).toUTC();
       const mappedMs = shiftBuckets(prevTs.setZone(timezone), bucket, bucketShift).toMillis();
       if (lowerBoundMs !== undefined && mappedMs < lowerBoundMs) return;
@@ -179,71 +183,71 @@ export function Chart({
 
   return (
     <>
-    <TimeSeriesChart
-      current={current}
-      previous={previous}
-      max={max}
-      chartMin={chartMin}
-      chartMax={chartMax}
-      displayDashed={displayDashed}
-      onPlotClick={onCreateAnnotation}
-      renderOverlay={context =>
-        annotations.length ? (
-          <AnnotationPins
-            context={context}
-            annotations={annotations}
-            bucket={bucket}
-            selectedKey={selectedPin?.cluster.key ?? null}
-            onSelect={(cluster, rect) => {
-              setHoveredPin(null);
-              setSelectedPin({ cluster, rect });
-            }}
-            onHover={(cluster, rect) => setHoveredPin(cluster && rect ? { cluster, rect } : null)}
-          />
-        ) : null
-      }
-      renderTooltip={({ point, previousPoint, bucket }) => {
-        const hoverCurrentY = point.y;
-        const hoverPreviousY = previousPoint?.y ?? 0;
-        const hoverDiff = hoverCurrentY - hoverPreviousY;
-        const hoverDiffPct = previousPoint && hoverPreviousY ? (hoverDiff / hoverPreviousY) * 100 : null;
+      <TimeSeriesChart
+        current={current}
+        previous={previous}
+        max={max}
+        chartMin={chartMin}
+        chartMax={chartMax}
+        displayDashed={displayDashed}
+        onPlotClick={onCreateAnnotation}
+        renderOverlay={context =>
+          annotations.length ? (
+            <AnnotationPins
+              context={context}
+              annotations={annotations}
+              bucket={bucket}
+              selectedKey={selectedPin?.cluster.key ?? null}
+              onSelect={(cluster, rect) => {
+                setHoveredPin(null);
+                setSelectedPin({ cluster, rect });
+              }}
+              onHover={(cluster, rect) => setHoveredPin(cluster && rect ? { cluster, rect } : null)}
+            />
+          ) : null
+        }
+        renderTooltip={({ point, previousPoint, bucket }) => {
+          const hoverCurrentY = point.y;
+          const hoverPreviousY = previousPoint?.y ?? 0;
+          const hoverDiff = hoverCurrentY - hoverPreviousY;
+          const hoverDiffPct = previousPoint && hoverPreviousY ? (hoverDiff / hoverPreviousY) * 100 : null;
 
-        return (
-          <ChartTooltip>
-            {hoverDiffPct !== null && (
-              <div
-                className="text-base font-medium px-2 pt-1.5 pb-1"
-                style={{
-                  color: hoverDiffPct > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
-                }}
-              >
-                {hoverDiffPct > 0 ? "+" : ""}
-                {hoverDiffPct.toFixed(2)}%
-              </div>
-            )}
-            <div className="w-full h-px bg-neutral-100 dark:bg-neutral-750" />
-            <div className="m-2 flex flex-col gap-1">
-              <div className="flex justify-between gap-3 text-sm">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-1 h-3 rounded-[3px] bg-dataviz shrink-0" />
-                  <span className="truncate">{formatChartDateTime(point.currentTime, bucket)}</span>
-                </div>
-                <div className="shrink-0">{formatTooltipValue(hoverCurrentY, selectedStat)}</div>
-              </div>
-              {previousPoint && (
-                <div className="flex justify-between gap-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-1 h-3 rounded-[3px] bg-neutral-200 dark:bg-neutral-750 shrink-0" />
-                    <span className="truncate">{formatChartDateTime(previousPoint.originalTime, bucket)}</span>
-                  </div>
-                  <div className="shrink-0">{formatTooltipValue(hoverPreviousY, selectedStat)}</div>
+          return (
+            <ChartTooltip>
+              {hoverDiffPct !== null && (
+                <div
+                  className="text-base font-medium px-2 pt-1.5 pb-1"
+                  style={{
+                    color: hoverDiffPct > 0 ? "hsl(var(--green-400))" : "hsl(var(--red-400))",
+                  }}
+                >
+                  {hoverDiffPct > 0 ? "+" : ""}
+                  {hoverDiffPct.toFixed(2)}%
                 </div>
               )}
-            </div>
-          </ChartTooltip>
-        );
-      }}
-    />
+              <div className="w-full h-px bg-neutral-100 dark:bg-neutral-750" />
+              <div className="m-2 flex flex-col gap-1">
+                <div className="flex justify-between gap-3 text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-1 h-3 rounded-[3px] bg-dataviz shrink-0" />
+                    <span className="truncate">{formatChartDateTime(point.currentTime, bucket)}</span>
+                  </div>
+                  <div className="shrink-0">{formatTooltipValue(hoverCurrentY, selectedStat)}</div>
+                </div>
+                {previousPoint && (
+                  <div className="flex justify-between gap-3 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-1 h-3 rounded-[3px] bg-neutral-200 dark:bg-neutral-750 shrink-0" />
+                      <span className="truncate">{formatChartDateTime(previousPoint.originalTime, bucket)}</span>
+                    </div>
+                    <div className="shrink-0">{formatTooltipValue(hoverPreviousY, selectedStat)}</div>
+                  </div>
+                )}
+              </div>
+            </ChartTooltip>
+          );
+        }}
+      />
 
       {hoveredPin &&
         !selectedPin &&
@@ -282,11 +286,7 @@ export function Chart({
 
       <ConfirmationModal
         title={t("Delete annotation")}
-        description={
-          pendingDelete
-            ? t("Delete “{title}”? This cannot be undone.", { title: pendingDelete.title })
-            : ""
-        }
+        description={pendingDelete ? t("Delete “{title}”? This cannot be undone.", { title: pendingDelete.title }) : ""}
         isOpen={!!pendingDelete}
         setIsOpen={open => !open && setPendingDelete(null)}
         onConfirm={confirmDelete}

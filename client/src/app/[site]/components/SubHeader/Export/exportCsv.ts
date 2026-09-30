@@ -78,8 +78,8 @@ export async function exportCsv({ site, time, filters, timeZone }: ExportCsvPara
     try {
       const payload = await fetchAnalytics<unknown>(site, buildAnalyticsRequest({ path, params }, context));
       return { filename, data: rows ? rows(payload) : (payload as Record<string, unknown>[]) };
-    } catch {
-      console.warn(`Failed to fetch ${filename}`);
+    } catch (error: unknown) {
+      console.warn(`Failed to fetch ${filename}`, error instanceof Error ? error.message : error);
       return { filename, data: [] };
     }
   });
@@ -100,14 +100,14 @@ export async function exportCsv({ site, time, filters, timeZone }: ExportCsvPara
           try {
             const data = await fetchGSCData(site, { dimension, startDate, endDate, timeZone });
             return { filename, data: data as unknown as Record<string, unknown>[] };
-          } catch {
-            console.warn(`Failed to fetch GSC ${dimension}`);
+          } catch (error: unknown) {
+            console.warn(`Failed to fetch GSC ${dimension}`, error instanceof Error ? error.message : error);
             return { filename, data: [] };
           }
         })
       );
-    } catch {
-      console.warn("Failed to check GSC connection");
+    } catch (error: unknown) {
+      console.warn("Failed to check GSC connection", error instanceof Error ? error.message : error);
       return [];
     }
   })();

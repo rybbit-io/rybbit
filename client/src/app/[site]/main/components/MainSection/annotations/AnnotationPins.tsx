@@ -90,13 +90,21 @@ export function AnnotationPins({
                 const width = Math.max(0, (item.x2 ?? item.x) - item.x);
                 return (
                   <g key={item.annotation.annotationId} pointerEvents="none">
-                    <rect x={item.x} y={plotTop} width={width} height={plotBottom - plotTop} fill={bandColor} opacity={0.08} />
+                    <rect
+                      x={item.x}
+                      y={plotTop}
+                      width={width}
+                      height={plotBottom - plotTop}
+                      fill={bandColor}
+                      opacity={0.08}
+                    />
                     <rect x={item.x} y={plotTop} width={width} height={2} fill={bandColor} />
                   </g>
                 );
               })}
             <g
               role="button"
+              tabIndex={0}
               aria-label={label}
               style={{ cursor: "pointer" }}
               onClick={e => {
@@ -104,6 +112,12 @@ export function AnnotationPins({
                 onSelect(cluster, e.currentTarget.getBoundingClientRect());
               }}
               onMouseEnter={e => onHover(cluster, e.currentTarget.getBoundingClientRect())}
+              onKeyDown={e => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                e.stopPropagation();
+                onSelect(cluster, e.currentTarget.getBoundingClientRect());
+              }}
               onMouseLeave={() => onHover(null)}
             >
               <line x1={cluster.x} x2={cluster.x} y1={pinY + r} y2={cluster.y - 2} stroke={color} strokeWidth={1.5} />
@@ -114,7 +128,15 @@ export function AnnotationPins({
                   {first.icon}
                 </text>
               ) : (
-                <StickyNote x={cluster.x - 6} y={pinY - 6} width={12} height={12} color={color} strokeWidth={2} pointerEvents="none" />
+                <StickyNote
+                  x={cluster.x - 6}
+                  y={pinY - 6}
+                  width={12}
+                  height={12}
+                  color={color}
+                  strokeWidth={2}
+                  pointerEvents="none"
+                />
               )}
               {!single && (
                 <g pointerEvents="none">

@@ -138,6 +138,15 @@ describe("DateSelector", () => {
 });
 
 describe("DateSelector realtime label", () => {
+  it.each([
+    { minutes: 1, label: "Last 1 minute" },
+    { minutes: 60, label: "Last 1 hour" },
+  ])("uses a singular duration for $minutes minutes", ({ minutes, label }) => {
+    render(
+      <DateSelector time={{ mode: "past-minutes", pastMinutesStart: minutes, pastMinutesEnd: 0 }} setTime={setTime} />
+    );
+    expect(screen.getByRole("button", { name: new RegExp(label) })).toBeTruthy();
+  });
   it("keeps the minutes of a window that is not a whole number of hours", () => {
     render(<DateSelector time={{ mode: "past-minutes", pastMinutesStart: 90, pastMinutesEnd: 0 }} setTime={setTime} />);
     expect(screen.getByRole("button", { name: /Last 90 minutes/ })).toBeTruthy();

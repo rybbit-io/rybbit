@@ -1,5 +1,6 @@
 import { getRequestConfig } from "next-intl/server";
 import { cookies, headers } from "next/headers";
+import { withEnglishFallback } from "./messages";
 
 const SUPPORTED_LOCALES = ["en", "de", "fr", "zh", "es", "pl", "it", "ko", "pt", "ja", "cs", "uk"] as const;
 type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -11,7 +12,7 @@ function isSupportedLocale(locale: string): locale is SupportedLocale {
 function getLocaleFromAcceptLanguage(acceptLanguage: string): SupportedLocale {
   const languages = acceptLanguage
     .split(",")
-    .map((part) => {
+    .map(part => {
       const [lang, q] = part.trim().split(";q=");
       return { lang: lang.trim().split("-")[0].toLowerCase(), q: q ? parseFloat(q) : 1 };
     })
@@ -46,6 +47,9 @@ export default getRequestConfig(async () => {
 
   return {
     locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
+    messages: withEnglishFallback(
+      (await import("../../messages/en.json")).default,
+      (await import(`../../messages/${locale}.json`)).default
+    ),
   };
 });

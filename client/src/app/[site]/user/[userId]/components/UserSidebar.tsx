@@ -8,7 +8,6 @@ import { Skeleton } from "../../../../../components/ui/skeleton";
 import { VisitCalendar } from "./Calendar";
 import { UserInfo, UserSessionCountResponse } from "../../../../../api/analytics/endpoints";
 import { ChannelIcon, extractDomain, getDisplayName } from "../../../../../components/Channel";
-import { Favicon } from "../../../../../components/Favicon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useCanOnSite } from "../../../../../hooks/usePermissions";
 import { useConfigs } from "../../../../../lib/configs";
@@ -50,9 +49,7 @@ export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, 
   const firstReferrerDomain = data?.first_referrer ? extractDomain(data.first_referrer) : null;
   const channelChanged = !!data?.last_channel && data.last_channel !== data.first_channel;
   const vitals = data?.vitals ?? null;
-  const vitalsToShow = vitals
-    ? VITALS_ORDER.filter(metric => vitals[`${metric}_p75`] != null)
-    : [];
+  const vitalsToShow = vitals ? VITALS_ORDER.filter(metric => vitals[`${metric}_p75`] != null) : [];
   const showMap = !!configs?.mapboxToken && !!data?.country;
 
   return (
@@ -69,15 +66,13 @@ export function UserSidebar({ data, isLoading, sessionCount, isLoadingCalendar, 
         ) : (
           <div>
             <InfoRow
-              icon={data?.first_channel ? <ChannelIcon channel={data.first_channel} className="w-3.5 h-3.5" /> : undefined}
+              icon={
+                data?.first_channel ? <ChannelIcon channel={data.first_channel} className="w-3.5 h-3.5" /> : undefined
+              }
               label={t("Channel")}
               value={data?.first_channel || "—"}
             />
-            <InfoRow
-              icon={firstReferrerDomain ? <Favicon domain={firstReferrerDomain} className="w-3.5 h-3.5" /> : undefined}
-              label={t("Referrer")}
-              value={firstReferrerDomain ? getDisplayName(firstReferrerDomain) : "—"}
-            />
+            <InfoRow label={t("Referrer")} value={firstReferrerDomain ? getDisplayName(firstReferrerDomain) : "—"} />
             <InfoRow
               label={t("Landing page")}
               value={

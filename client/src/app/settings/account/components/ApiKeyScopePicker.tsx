@@ -33,30 +33,46 @@ const SCOPE_MATRIX = {
 type ScopeResource = keyof typeof SCOPE_MATRIX;
 type ScopeAction = "read" | "write";
 
-const SCOPE_DESCRIPTORS: { resource: ScopeResource; label: string; description: string }[] = [
-  { resource: "analytics", label: "Analytics", description: "Traffic overview, metrics, retention, journeys, performance, and errors" },
-  { resource: "sessions", label: "Sessions", description: "Visitor sessions and their locations" },
-  { resource: "events", label: "Events", description: "Raw events, custom event names, and properties" },
-  { resource: "users", label: "Users", description: "Visitor profiles and traits; write covers identify and deletion" },
-  { resource: "goals", label: "Goals", description: "Conversion goals" },
-  { resource: "funnels", label: "Funnels", description: "Saved and ad-hoc conversion funnels" },
-  { resource: "dashboards", label: "Dashboards", description: "Saved dashboards" },
-  { resource: "annotations", label: "Annotations", description: "Timeline notes on the traffic chart" },
-  { resource: "segments", label: "Segments", description: "Saved filter segments" },
-  { resource: "flags", label: "Feature flags", description: "Feature flag definitions and evaluation" },
-  { resource: "experiments", label: "Experiments", description: "A/B experiments and their results" },
-  { resource: "sites", label: "Sites", description: "Site configuration; write covers create, update, and delete" },
-  { resource: "gsc", label: "Search Console", description: "Google Search Console connection and data" },
-  { resource: "org", label: "Organization", description: "Members and teams; write covers management" },
-  { resource: "replay", label: "Session replay", description: "Recorded replays; write covers deletion" },
-  { resource: "sql", label: "Custom SQL", description: "Read-only ClickHouse queries" },
-  { resource: "ingest", label: "Event ingestion", description: "Trusted server-side event tracking" },
-];
+function useScopeDescriptors(): { resource: ScopeResource; label: string; description: string }[] {
+  const t = useExtracted();
+  return [
+    {
+      resource: "analytics",
+      label: t("Analytics"),
+      description: t("Traffic overview, metrics, retention, journeys, performance, and errors"),
+    },
+    { resource: "sessions", label: t("Sessions"), description: t("Visitor sessions and their locations") },
+    { resource: "events", label: t("Events"), description: t("Raw events, custom event names, and properties") },
+    {
+      resource: "users",
+      label: t("Users"),
+      description: t("Visitor profiles and traits; write covers identify and deletion"),
+    },
+    { resource: "goals", label: t("Goals"), description: t("Conversion goals") },
+    { resource: "funnels", label: t("Funnels"), description: t("Saved and ad-hoc conversion funnels") },
+    { resource: "dashboards", label: t("Dashboards"), description: t("Saved dashboards") },
+    { resource: "annotations", label: t("Annotations"), description: t("Timeline notes on the traffic chart") },
+    { resource: "segments", label: t("Segments"), description: t("Saved filter segments") },
+    { resource: "flags", label: t("Feature flags"), description: t("Feature flag definitions and evaluation") },
+    { resource: "experiments", label: t("Experiments"), description: t("A/B experiments and their results") },
+    {
+      resource: "sites",
+      label: t("Sites"),
+      description: t("Site configuration; write covers create, update, and delete"),
+    },
+    { resource: "gsc", label: t("Search Console"), description: t("Google Search Console connection and data") },
+    { resource: "org", label: t("Organization"), description: t("Members and teams; write covers management") },
+    { resource: "replay", label: t("Session replay"), description: t("Recorded replays; write covers deletion") },
+    { resource: "sql", label: t("Custom SQL"), description: t("Read-only ClickHouse queries") },
+    { resource: "ingest", label: t("Event ingestion"), description: t("Trusted server-side event tracking") },
+  ];
+}
 
 export type ScopeSelection = Partial<Record<ScopeResource, ScopeAction[]>>;
 
-export function getScopeLabel(resource: string): string {
-  return SCOPE_DESCRIPTORS.find(d => d.resource === resource)?.label ?? resource;
+export function useScopeLabel() {
+  const descriptors = useScopeDescriptors();
+  return (resource: string) => descriptors.find(d => d.resource === resource)?.label ?? resource;
 }
 
 interface ApiKeyScopePickerProps {
@@ -86,6 +102,7 @@ function toggleAction(
 
 export function ApiKeyScopePicker({ value, onChange }: ApiKeyScopePickerProps) {
   const t = useExtracted();
+  const descriptors = useScopeDescriptors();
   const selectedCount = Object.keys(value).length;
 
   const setResource = (resource: ScopeResource, actions: ScopeAction[]) => {
@@ -109,7 +126,7 @@ export function ApiKeyScopePicker({ value, onChange }: ApiKeyScopePickerProps) {
       </div>
       {/* 320px deliberately clips the sixth row mid-height so the list reads as scrollable */}
       <div className="max-h-80 divide-y divide-neutral-100 overflow-y-auto dark:divide-neutral-800">
-        {SCOPE_DESCRIPTORS.map(descriptor => {
+        {descriptors.map(descriptor => {
           const available = SCOPE_MATRIX[descriptor.resource] as readonly ScopeAction[];
           const selected = value[descriptor.resource] ?? [];
           return (
@@ -137,7 +154,7 @@ export function ApiKeyScopePicker({ value, onChange }: ApiKeyScopePickerProps) {
                           onCheckedChange={checked =>
                             setResource(descriptor.resource, toggleAction(selected, action, !!checked, available))
                           }
-                          aria-label={`${descriptor.label} ${action}`}
+                          aria-label={`${descriptor.label} ${action === "read" ? t("Read") : t("Write")}`}
                         />
                       ) : (
                         <span aria-hidden="true" className="text-neutral-300 dark:text-neutral-700">

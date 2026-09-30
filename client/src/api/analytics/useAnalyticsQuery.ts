@@ -135,8 +135,12 @@ export function useAnalyticsQuery<TData>(options: AnalyticsQueryOptions<TData>):
         ? (previousData, previousQuery) =>
             scope !== undefined && previousQuery?.queryKey?.includes(scope) ? previousData : undefined
         : undefined,
-    enabled: (options.enabled ?? true) && hasScope && hasPeriod,
     ...options.props,
+    enabled: query =>
+      (options.enabled ?? true) &&
+      hasScope &&
+      hasPeriod &&
+      (typeof options.props?.enabled === "function" ? options.props.enabled(query) : (options.props?.enabled ?? true)),
   });
 }
 

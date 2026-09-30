@@ -74,7 +74,7 @@ describe("group relationships", () => {
     expect(SESSION_REPLAY_PAGE_FILTERS).not.toContain("event_name");
   });
 
-  it("keeps every group's parameters within the session page's superset, minus journey-only geo", () => {
+  it("keeps every group's parameters within the session page's superset", () => {
     for (const [name, group] of Object.entries(GROUPS)) {
       for (const parameter of group) {
         expect(SESSION_PAGE_FILTERS, `${name}.${parameter}`).toContain(parameter);

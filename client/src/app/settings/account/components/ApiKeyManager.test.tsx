@@ -56,7 +56,10 @@ vi.mock("../../../../lib/const", async importOriginal => ({
   IS_CLOUD: false,
 }));
 
-vi.mock("./ApiKeyScopePicker", () => ({ ApiKeyScopePicker: () => null, getScopeLabel: (scope: string) => scope }));
+vi.mock("./ApiKeyScopePicker", () => ({
+  ApiKeyScopePicker: () => null,
+  useScopeLabel: () => (scope: string) => scope,
+}));
 
 vi.mock("@/components/ui/sonner", () => ({ toast: { success: vi.fn(), error: mocks.toastError } }));
 
