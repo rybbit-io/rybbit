@@ -84,6 +84,7 @@ CREATE TABLE "member_site_access" (
   "id" serial PRIMARY KEY,
   "member_id" text NOT NULL,
   "site_id" integer NOT NULL,
+  "role" text,
   "created_at" timestamp NOT NULL DEFAULT now(),
   "created_by" text
 );
@@ -106,6 +107,7 @@ CREATE TABLE "team_site_access" (
   "id" serial PRIMARY KEY,
   "team_id" text NOT NULL,
   "site_id" integer NOT NULL,
+  "role" text,
   "created_at" timestamp NOT NULL DEFAULT now()
 );
 CREATE TABLE "sites" (
@@ -650,6 +652,27 @@ describe("per-site roles", () => {
     expect(await getUserSiteRole(reqFor("user_owner"), 12)).toBe("owner");
   });
 
+  it("holds editors and viewers to site grants and teams like members", async () => {
+    await db.insert(member).values([
+      { id: "member_editor", organizationId: ORG, userId: "user_editor", role: "editor", createdAt: NOW },
+      {
+        id: "member_viewer",
+        organizationId: ORG,
+        userId: "user_viewer",
+        role: "viewer",
+        createdAt: NOW,
+        hasRestrictedSiteAccess: true,
+      },
+    ]);
+    await db.insert(memberSiteAccess).values({ memberId: "member_viewer", siteId: 5 });
+
+    // Unrestricted, on no team: only the site no team gates.
+    expect(await siteIdsFor("user_editor")).toEqual([13]);
+    expect(await getUserSiteRole(reqFor("user_editor"), 13)).toBe("editor");
+    expect(await siteIdsFor("user_viewer")).toEqual([5]);
+    expect(await getUserSiteRole(reqFor("user_viewer"), 5)).toBe("viewer");
+  });
+
   it("gives a membership with an unknown role no access at all", async () => {
     await db.insert(member).values({
       id: "member_odd",
@@ -666,6 +689,76 @@ describe("per-site roles", () => {
     invalidateSitesAccessCache("user_peer");
     expect(await getSitesUserHasAccessTo(reqFor("user_peer"), true)).toEqual([]);
     expect((await getSitesUserHasAccessTo(reqFor("user_owner"), true)).length).toBe(13);
+  });
+});
+
+describe("per-site roles from grants and teams", () => {
+  it("gives a restricted member the role their grant carries", async () => {
+    await db.insert(member).values({
+      id: "member_client",
+      organizationId: ORG,
+      userId: "user_client",
+      role: "viewer",
+      createdAt: NOW,
+      hasRestrictedSiteAccess: true,
+    });
+    await db.insert(memberSiteAccess).values([
+      { memberId: "member_client", siteId: 5, role: "editor" },
+      { memberId: "member_client", siteId: 6, role: null },
+    ]);
+
+    invalidateSitesAccessCache("user_client");
+    expect(await getUserSiteRole(reqFor("user_client"), 5)).toBe("editor");
+    // A grant without a role of its own carries the organization role.
+    expect(await getUserSiteRole(reqFor("user_client"), 6)).toBe("viewer");
+    expect(await getUserSiteRole(reqFor("user_client"), 7)).toBeNull();
+  });
+
+  it("raises a team member's role on the team's sites only", async () => {
+    await db.update(teamSiteAccess).set({ role: "editor" }).where(eq(teamSiteAccess.teamId, "team_bbc"));
+
+    invalidateSitesAccessCache("user_peer");
+    expect(await getUserSiteRole(reqFor("user_peer"), 1)).toBe("editor");
+    expect(await getUserSiteRole(reqFor("user_peer"), 13)).toBe("member");
+  });
+
+  it("never lowers a role below the member's organization role", async () => {
+    await db.update(teamSiteAccess).set({ role: "viewer" }).where(eq(teamSiteAccess.teamId, "team_bbc"));
+    await db.update(member).set({ role: "editor" }).where(eq(member.id, "member_peer"));
+
+    invalidateSitesAccessCache("user_peer");
+    // The team grant says viewer; the member's own role is higher and stands.
+    expect(await getUserSiteRole(reqFor("user_peer"), 1)).toBe("editor");
+  });
+
+  it("ignores a grant naming a role grants cannot carry", async () => {
+    await db.insert(member).values({
+      id: "member_forged",
+      organizationId: ORG,
+      userId: "user_forged",
+      role: "viewer",
+      createdAt: NOW,
+      hasRestrictedSiteAccess: true,
+    });
+    await db.insert(memberSiteAccess).values({ memberId: "member_forged", siteId: 5, role: "owner" });
+
+    expect(await siteIdsFor("user_forged")).toEqual([]);
+  });
+
+  it("treats a restricted member as a viewer across the organization", async () => {
+    await db.insert(member).values({
+      id: "member_restricted_editor",
+      organizationId: ORG,
+      userId: "user_restricted_editor",
+      role: "editor",
+      createdAt: NOW,
+      hasRestrictedSiteAccess: true,
+    });
+    await db.insert(memberSiteAccess).values({ memberId: "member_restricted_editor", siteId: 5 });
+
+    expect(await getUserOrgRole(reqFor("user_restricted_editor"), ORG)).toBe("viewer");
+    invalidateSitesAccessCache("user_restricted_editor");
+    expect(await getUserSiteRole(reqFor("user_restricted_editor"), 5)).toBe("editor");
   });
 });
 

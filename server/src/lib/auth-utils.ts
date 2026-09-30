@@ -3,8 +3,8 @@ import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { sites, user } from "../db/postgres/schema.js";
-import { higherRole, isAdminRole, isOrgRole, roleHasPermission, type OrgRole, type Permission } from "@rybbit/shared";
-import { getOrgMembership, resolveUserSites, type AccessibleSite } from "./access.js";
+import { higherRole, isAdminRole, roleHasPermission, type OrgRole, type Permission } from "@rybbit/shared";
+import { effectiveOrgRole, getOrgMembership, resolveUserSites, type AccessibleSite } from "./access.js";
 import type { RateLimitDecision } from "./apiRateLimit.js";
 import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
@@ -200,13 +200,20 @@ function getSessionUserSites(req: FastifyRequest, userId: string): Promise<Acces
 
 /**
  * Every site the caller can reach, each with the role they hold on it.
- * `adminOnly` narrows to sites where that role is admin or owner.
+ * `adminOnly` narrows to sites where that role is admin or owner. `fresh`
+ * skips this worker's short-lived cache — for listings, where a site created,
+ * deleted or granted moments ago (possibly through another worker) must show.
  */
-export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = false): Promise<AccessibleSite[]> {
+export async function getSitesUserHasAccessTo(
+  req: FastifyRequest,
+  adminOnly = false,
+  { fresh = false }: { fresh?: boolean } = {}
+): Promise<AccessibleSite[]> {
   let accessible: AccessibleSite[];
 
   // Organization-owned API key (attached by the auth guards).
   if (!req.user?.id && req.apiKeyOrganizationId) {
+    if (fresh) sitesAccessCache.del(`org:${req.apiKeyOrganizationId}`);
     accessible = await getSitesForOrganization(req.apiKeyOrganizationId);
   } else {
     const session = req.user?.id ? null : await getSessionFromReq(req);
@@ -214,6 +221,7 @@ export async function getSitesUserHasAccessTo(req: FastifyRequest, adminOnly = f
     if (!userId) {
       return [];
     }
+    if (fresh) invalidateSitesAccessCache(userId);
     accessible = req.bearerAuth ? await getBearerUserSites(userId) : await getSessionUserSites(req, userId);
   }
 
@@ -286,9 +294,9 @@ async function resolveBearerUserRole(
   }
 
   if (options.organizationId) {
-    const membership = await getOrgMembership(userId, options.organizationId);
-    if (membership && isOrgRole(membership.role)) {
-      return { valid: true, role: membership.role, userId };
+    const role = effectiveOrgRole(await getOrgMembership(userId, options.organizationId));
+    if (role) {
+      return { valid: true, role, userId };
     }
   }
 
@@ -477,7 +485,7 @@ export async function getUserOrgRole(req: FastifyRequest, organizationId: string
     getOrgMembership(userId, organizationId),
     req.bearerAuth ? false : getIsUserAdmin(req),
   ]);
-  return higherRole(membership?.role, isSystemAdmin ? "admin" : null);
+  return higherRole(effectiveOrgRole(membership), isSystemAdmin ? "admin" : null);
 }
 
 /** Whether the caller's organization role holds the permission (roles only; scopes are the guards' job). */

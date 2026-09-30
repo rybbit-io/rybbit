@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
-import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
+import { isAdminRole, permissionsForRole } from "@rybbit/shared";
+import { getUserSiteRole } from "../../lib/auth-utils.js";
 
 interface GetSiteParams {
   Params: {
@@ -24,8 +25,8 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       return reply.status(404).send({ error: "Site not found" });
     }
 
-    // Check if user has admin access
-    const isOwner = await getUserHasAdminAccessToSite(request, site.siteId);
+    // The caller's role on the site; null for public and private-link viewers.
+    const role = await getUserSiteRole(request, site.siteId);
 
     return reply.status(200).send({
       id: site.id,
@@ -44,7 +45,10 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       blockBots: site.blockBots,
       firstPartyProxy: site.firstPartyProxy,
       trackIp: site.trackIp,
-      isOwner: isOwner,
+      isOwner: isAdminRole(role),
+      role,
+      // What that role allows here (a bearer credential's scopes may narrow it).
+      permissions: permissionsForRole(role),
       // Analytics features
       sessionReplay: site.sessionReplay,
       webVitals: site.webVitals,

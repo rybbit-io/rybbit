@@ -676,7 +676,7 @@ describe("mcp endpoint", () => {
     expect(result.content[0].text).toContain("403");
     expect(result.content[0].text).toContain("You don't have access to this site");
     expect(result.content[0].text).toContain("list_sites");
-    expect(result.content[0].text).toContain("admin/owner role");
+    expect(result.content[0].text).toContain("Insufficient role");
   });
 
   it("rejects invalid tool arguments before hitting the API", async () => {

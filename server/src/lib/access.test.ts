@@ -55,16 +55,19 @@ import {
   isOrgOwner,
   memberCanAccessSite,
   MemberSiteGrants,
+  memberSiteRole,
   resolveMemberSiteGrants,
   restrictedMemberSiteIds,
   siteIdsInOrganization,
 } from "./access.js";
 
+// Grants that name no role of their own (they inherit the member's org role).
 function grants(overrides: Partial<Record<keyof MemberSiteGrants, number[]>> = {}): MemberSiteGrants {
+  const inherit = (ids: number[] = []) => new Map(ids.map(id => [id, [null]]));
   return {
-    explicitSiteIds: new Set(overrides.explicitSiteIds ?? []),
+    explicitSiteIds: inherit(overrides.explicitSiteIds),
     teamGatedSiteIds: new Set(overrides.teamGatedSiteIds ?? []),
-    userTeamSiteIds: new Set(overrides.userTeamSiteIds ?? []),
+    userTeamSiteIds: inherit(overrides.userTeamSiteIds),
   };
 }
 
@@ -142,6 +145,22 @@ describe("restrictedMemberSiteIds cross-checks memberCanAccessSite", () => {
     expect(checked).toBe(shapes.length ** 3);
   });
 
+  it("gives a role exactly where the predicate admits the site, for every grant shape", () => {
+    for (const hasRestrictedSiteAccess of [true, false]) {
+      for (const explicitSiteIds of shapes) {
+        for (const teamGatedSiteIds of shapes) {
+          for (const userTeamSiteIds of shapes) {
+            const g = grants({ explicitSiteIds, teamGatedSiteIds, userTeamSiteIds });
+            for (const siteId of universe) {
+              const role = memberSiteRole(g, siteId, { role: "viewer", hasRestrictedSiteAccess });
+              expect(role !== null).toBe(memberCanAccessSite(g, siteId, hasRestrictedSiteAccess));
+            }
+          }
+        }
+      }
+    }
+  });
+
   it("never repeats a site id, even when the explicit and team grants overlap", () => {
     const ids = restrictedMemberSiteIds(grants({ explicitSiteIds: [1, 2], userTeamSiteIds: [2, 3] }));
 
@@ -151,6 +170,29 @@ describe("restrictedMemberSiteIds cross-checks memberCanAccessSite", () => {
 
   it("ignores teamGatedSiteIds, which only matter to the unrestricted branch", () => {
     expect(restrictedMemberSiteIds(grants({ teamGatedSiteIds: [1, 2, 3] }))).toEqual([]);
+  });
+});
+
+describe("memberSiteRole", () => {
+  const withRoles = (explicit: [number, (string | null)[]][], team: [number, (string | null)[]][] = []) => ({
+    explicitSiteIds: new Map(explicit),
+    teamGatedSiteIds: new Set<number>(),
+    userTeamSiteIds: new Map(team),
+  });
+
+  it("raises the organization role to the highest grant", () => {
+    const g = withRoles([[1, ["editor"]]], [[1, ["member"]]]);
+    expect(memberSiteRole(g, 1, { role: "viewer", hasRestrictedSiteAccess: true })).toBe("editor");
+  });
+
+  it("never lowers the organization role", () => {
+    const g = withRoles([[1, ["viewer"]]]);
+    expect(memberSiteRole(g, 1, { role: "member", hasRestrictedSiteAccess: true })).toBe("member");
+  });
+
+  it("uses the organization role for grants that name none", () => {
+    const g = withRoles([[1, [null]]]);
+    expect(memberSiteRole(g, 1, { role: "editor", hasRestrictedSiteAccess: true })).toBe("editor");
   });
 });
 
@@ -234,9 +276,9 @@ describe("resolveMemberSiteGrants", () => {
       grantedMemberIds: ["m_1"],
     });
 
-    expect(resolved.explicitSiteIds).toEqual(new Set([1, 2]));
+    expect(new Set(resolved.explicitSiteIds.keys())).toEqual(new Set([1, 2]));
     expect(resolved.teamGatedSiteIds).toEqual(new Set([2, 3]));
-    expect(resolved.userTeamSiteIds).toEqual(new Set([3]));
+    expect(new Set(resolved.userTeamSiteIds.keys())).toEqual(new Set([3]));
   });
 
   it("skips the explicit-grant query when no member ids are supplied", async () => {
@@ -248,7 +290,7 @@ describe("resolveMemberSiteGrants", () => {
       grantedMemberIds: [],
     });
 
-    expect(resolved.explicitSiteIds).toEqual(new Set());
+    expect(resolved.explicitSiteIds.size).toBe(0);
     expect(state.queriedTables).not.toContain("member_site_access");
   });
 
@@ -262,16 +304,16 @@ describe("resolveMemberSiteGrants", () => {
       grantedMemberIds: [],
     });
 
-    expect(resolved.userTeamSiteIds).toEqual(new Set());
+    expect(resolved.userTeamSiteIds.size).toBe(0);
     expect(state.queriedTables).not.toContain("team_site_access");
   });
 
   it("returns empty grants without querying when there is nothing to scope by", async () => {
     const resolved = await resolveMemberSiteGrants({ userId: "u_1", organizationIds: [], grantedMemberIds: [] });
 
-    expect(resolved.explicitSiteIds).toEqual(new Set());
+    expect(resolved.explicitSiteIds.size).toBe(0);
     expect(resolved.teamGatedSiteIds).toEqual(new Set());
-    expect(resolved.userTeamSiteIds).toEqual(new Set());
+    expect(resolved.userTeamSiteIds.size).toBe(0);
     expect(state.queriedTables).toEqual([]);
   });
 
@@ -285,7 +327,7 @@ describe("resolveMemberSiteGrants", () => {
       grantedMemberIds: ["m_1"],
     });
 
-    expect(resolved.explicitSiteIds).toEqual(new Set([5]));
+    expect(new Set(resolved.explicitSiteIds.keys())).toEqual(new Set([5]));
     expect(resolved.teamGatedSiteIds).toEqual(new Set());
     expect(state.queriedTables).toEqual(["member_site_access"]);
   });

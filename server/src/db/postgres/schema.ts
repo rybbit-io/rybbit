@@ -274,6 +274,8 @@ export const invitation = pgTable("invitation", {
   // Site access restriction for the invited member
   hasRestrictedSiteAccess: boolean("has_restricted_site_access").default(false).notNull(),
   siteIds: jsonb("site_ids").default([]).$type<number[]>(), // Array of site IDs to grant access to
+  // Raises the invited role on those sites (editor, member or viewer); null = no raise
+  siteRole: text("site_role"),
   teamId: text().references(() => team.id, { onDelete: "set null" }),
 });
 
@@ -289,6 +291,8 @@ export const memberSiteAccess = pgTable(
     siteId: integer("site_id")
       .notNull()
       .references(() => sites.siteId, { onDelete: "cascade" }),
+    // Raises the member's role on this site (editor, member or viewer); null or lower = their organization role
+    role: text("role"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
   },
@@ -329,6 +333,8 @@ export const teamSiteAccess = pgTable(
     siteId: integer("site_id")
       .notNull()
       .references(() => sites.siteId, { onDelete: "cascade" }),
+    // Raises the team members' role on this site (editor, member or viewer); null or lower = each one's organization role
+    role: text("role"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
   },
   (table) => [

@@ -41,6 +41,17 @@ describe("role ladder", () => {
     }
   });
 
+  it("separates reading, report building, site configuration and administration", () => {
+    expect(roleHasPermission("viewer", "analytics:read")).toBe(true);
+    expect(roleHasPermission("viewer", "goals:write")).toBe(false);
+    expect(roleHasPermission("member", "goals:write")).toBe(true);
+    expect(roleHasPermission("member", "sites:configure")).toBe(false);
+    expect(roleHasPermission("editor", "sites:configure")).toBe(true);
+    expect(roleHasPermission("editor", "flags:write")).toBe(true);
+    expect(roleHasPermission("editor", "sites:create")).toBe(false);
+    expect(roleHasPermission("editor", "members:manage")).toBe(false);
+  });
+
   it("keeps billing with owners and organization administration with admins", () => {
     expect(roleHasPermission("admin", "billing:manage")).toBe(false);
     expect(roleHasPermission("owner", "billing:manage")).toBe(true);
@@ -59,6 +70,7 @@ describe("role helpers", () => {
   it("classifies admins and owners as administrators", () => {
     expect(isAdminRole("owner")).toBe(true);
     expect(isAdminRole("admin")).toBe(true);
+    expect(isAdminRole("editor")).toBe(false);
     expect(isAdminRole("member")).toBe(false);
     expect(isAdminRole(null)).toBe(false);
   });
@@ -75,6 +87,8 @@ describe("role helpers", () => {
     expect(canAssignRole("admin", "owner")).toBe(false);
     expect(canAssignRole("admin", "admin")).toBe(true);
     expect(canAssignRole("admin", "member")).toBe(true);
+    expect(canAssignRole("admin", "viewer")).toBe(true);
+    expect(canAssignRole("editor", "viewer")).toBe(false);
     expect(canAssignRole("member", "member")).toBe(false);
     expect(canAssignRole("owner", "superuser")).toBe(false);
   });

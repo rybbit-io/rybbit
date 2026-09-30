@@ -58,6 +58,7 @@ CREATE TABLE "member_site_access" (
   "id" serial PRIMARY KEY,
   "member_id" text NOT NULL REFERENCES "member"("id") ON DELETE CASCADE,
   "site_id" integer NOT NULL REFERENCES "sites"("site_id") ON DELETE CASCADE,
+  "role" text,
   "created_at" timestamp NOT NULL DEFAULT now(),
   "created_by" text
 );

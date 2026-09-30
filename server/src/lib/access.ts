@@ -1,4 +1,4 @@
-import { isAdminRole, isOrgRole, type OrgRole } from "@rybbit/shared";
+import { higherRole, isAdminRole, isOrgRole, isSiteGrantRole, type OrgRole } from "@rybbit/shared";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
@@ -58,6 +58,25 @@ export async function getOrgMembership(
   return rows[0] ?? null;
 }
 
+/**
+ * The role a membership holds across the organization as a whole — what the
+ * organization-level permissions (org routes, org-wide segments and
+ * annotations) are checked against. A member restricted to specific sites is a
+ * viewer at that level: their role applies on the sites they were granted, not
+ * to things that span sites they cannot see.
+ */
+export function effectiveOrgRole(
+  membership: Pick<OrgMembership, "role" | "hasRestrictedSiteAccess"> | null | undefined
+): OrgRole | null {
+  if (!membership || !isOrgRole(membership.role)) {
+    return null;
+  }
+  if (membership.hasRestrictedSiteAccess && !isAdminRole(membership.role)) {
+    return "viewer";
+  }
+  return membership.role;
+}
+
 /** Admin or owner of the organization — the two roles that bypass site gating. */
 export function isOrgAdmin(membership: OrgMembership | null | undefined): boolean {
   return isAdminRole(membership?.role);
@@ -91,28 +110,43 @@ export async function siteIdsInOrganization(siteIds: number[], organizationId: s
 }
 
 /**
+ * A grant's role; null means "the member's organization role". A site reached
+ * through several grants lists each one's role.
+ */
+type GrantRoles = (string | null)[];
+
+/**
  * The grants that decide, together with the member's restriction flag, which
- * sites a member-role user may access. Resolved once per request and consulted
- * per site by {@link memberCanAccessSite}.
+ * sites a non-admin member may access and with what role. Resolved once per
+ * request and consulted per site by {@link memberSiteRole}.
  */
 export interface MemberSiteGrants {
-  /** Explicit per-member grants (member_site_access). */
-  explicitSiteIds: Set<number>;
+  /** Explicit per-member grants (member_site_access), with each grant's role. */
+  explicitSiteIds: Map<number, GrantRoles>;
   /** Sites gated behind any team in the scoped organizations. */
   teamGatedSiteIds: Set<number>;
-  /** Sites reachable through the teams the user belongs to. */
-  userTeamSiteIds: Set<number>;
+  /** Sites reachable through the teams the user belongs to, with each team grant's role. */
+  userTeamSiteIds: Map<number, GrantRoles>;
 }
 
 const NO_GRANTS: MemberSiteGrants = {
-  explicitSiteIds: new Set(),
+  explicitSiteIds: new Map(),
   teamGatedSiteIds: new Set(),
-  userTeamSiteIds: new Set(),
+  userTeamSiteIds: new Map(),
 };
+
+// A grant row naming a role no grant can carry (unknown, or admin/owner) is
+// ignored outright, so reachability and role never disagree about it.
+function addGrant(grants: Map<number, GrantRoles>, siteId: number, role: string | null | undefined) {
+  if (role != null && !isSiteGrantRole(role)) return;
+  const roles = grants.get(siteId);
+  if (roles) roles.push(role ?? null);
+  else grants.set(siteId, [role ?? null]);
+}
 
 /**
  * Load the site grants for one user across the organizations where they hold a
- * member role.
+ * non-admin role.
  *
  * `grantedMemberIds` carries the member rows whose explicit grants apply.
  * Explicit grants are only recorded for members with restricted access, so
@@ -132,7 +166,7 @@ export async function resolveMemberSiteGrants(options: {
   const [explicitGrants, teamGated, userTeams] = await Promise.all([
     grantedMemberIds.length > 0
       ? db
-          .select({ siteId: memberSiteAccess.siteId })
+          .select({ siteId: memberSiteAccess.siteId, role: memberSiteAccess.role })
           .from(memberSiteAccess)
           .where(inArray(memberSiteAccess.memberId, grantedMemberIds))
       : Promise.resolve([]),
@@ -152,10 +186,10 @@ export async function resolveMemberSiteGrants(options: {
       : Promise.resolve([]),
   ]);
 
-  const userTeamSiteIds = new Set<number>();
+  const userTeamSiteIds = new Map<number, GrantRoles>();
   if (userTeams.length > 0) {
     const userTeamSites = await db
-      .select({ siteId: teamSiteAccess.siteId })
+      .select({ siteId: teamSiteAccess.siteId, role: teamSiteAccess.role })
       .from(teamSiteAccess)
       .where(
         inArray(
@@ -164,12 +198,17 @@ export async function resolveMemberSiteGrants(options: {
         )
       );
     for (const s of userTeamSites) {
-      userTeamSiteIds.add(s.siteId);
+      addGrant(userTeamSiteIds, s.siteId, s.role);
     }
   }
 
+  const explicitSiteIds = new Map<number, GrantRoles>();
+  for (const grant of explicitGrants) {
+    addGrant(explicitSiteIds, grant.siteId, grant.role);
+  }
+
   return {
-    explicitSiteIds: new Set(explicitGrants.map(g => g.siteId)),
+    explicitSiteIds,
     teamGatedSiteIds: new Set(teamGated.map(s => s.siteId)),
     userTeamSiteIds,
   };
@@ -199,6 +238,34 @@ export function memberCanAccessSite(
 }
 
 /**
+ * The role a non-admin member holds on a site, or null when they cannot reach
+ * it. The member's organization role applies on every site they reach; an
+ * explicit or team grant naming a higher role raises it on that site, and never
+ * lowers it. (Grants stop at editor, and rows naming anything else are dropped
+ * when loaded.)
+ *
+ * Reachability is exactly {@link memberCanAccessSite}; this adds the role.
+ */
+export function memberSiteRole(
+  grants: MemberSiteGrants,
+  siteId: number,
+  membership: { role: OrgRole; hasRestrictedSiteAccess: boolean }
+): OrgRole | null {
+  const grantRoles = [...(grants.explicitSiteIds.get(siteId) ?? []), ...(grants.userTeamSiteIds.get(siteId) ?? [])];
+  const reachable =
+    grantRoles.length > 0 || (!membership.hasRestrictedSiteAccess && !grants.teamGatedSiteIds.has(siteId));
+  if (!reachable) {
+    return null;
+  }
+
+  let role: OrgRole | null = membership.role;
+  for (const granted of grantRoles) {
+    role = higherRole(role, granted);
+  }
+  return role;
+}
+
+/**
  * The closed set of sites a *restricted* member can reach — the narrowing
  * counterpart of {@link memberCanAccessSite}. Restricted access is entirely
  * grant-driven, so it can be enumerated instead of tested, which lets callers
@@ -209,7 +276,7 @@ export function memberCanAccessSite(
  * the two are cross-checked in access.test.ts.
  */
 export function restrictedMemberSiteIds(grants: MemberSiteGrants): number[] {
-  return Array.from(new Set([...grants.explicitSiteIds, ...grants.userTeamSiteIds]));
+  return Array.from(new Set([...grants.explicitSiteIds.keys(), ...grants.userTeamSiteIds.keys()]));
 }
 
 /**
@@ -310,17 +377,23 @@ export async function resolveUserSites(userId: string): Promise<AccessibleSite[]
       : null,
   ]);
 
+  // Admin/owner memberships hold their role on every site of the
+  // organization; other roles hold whatever their grants give them per site.
   const withRole = (site: SiteRow): AccessibleSite | null => {
-    const role = site.organizationId ? roleByOrgId.get(site.organizationId) : undefined;
+    const orgRole = site.organizationId ? roleByOrgId.get(site.organizationId) : undefined;
+    if (!orgRole) return null;
+    const gatedRow = gatedRowByOrgId.get(site.organizationId!);
+    if (!gatedRow) return { ...site, accessRole: orgRole };
+    const role = grants
+      ? memberSiteRole(grants, site.siteId, {
+          role: orgRole,
+          hasRestrictedSiteAccess: gatedRow.hasRestrictedSiteAccess,
+        })
+      : null;
     return role ? { ...site, accessRole: role } : null;
   };
-
   const accessible: AccessibleSite[] = [];
   for (const site of eagerSites) {
-    const gatedRow = site.organizationId ? gatedRowByOrgId.get(site.organizationId) : undefined;
-    if (gatedRow && grants && !memberCanAccessSite(grants, site.siteId, gatedRow.hasRestrictedSiteAccess)) {
-      continue;
-    }
     const entry = withRole(site);
     if (entry) accessible.push(entry);
   }

@@ -12,17 +12,37 @@
 
 import type { ScopeRequirement } from "./scopes";
 
-export const ORG_ROLES = ["owner", "admin", "member"] as const;
+// Highest first.
+//  - owner:  everything, including billing and deleting the organization
+//  - admin:  members, teams, API keys, creating/deleting/transferring sites
+//  - editor: configures sites — tracking settings, flags, experiments, imports,
+//            Search Console — and manages everyone's saved segments/annotations
+//  - member: builds reports — goals, funnels, dashboards, own segments/annotations
+//  - viewer: reads everything the organization lets them see, changes nothing
+export const ORG_ROLES = ["owner", "admin", "editor", "member", "viewer"] as const;
 export type OrgRole = (typeof ORG_ROLES)[number];
 
 const ROLE_RANK: Record<OrgRole, number> = {
-  member: 1,
-  admin: 2,
-  owner: 3,
+  viewer: 1,
+  member: 2,
+  editor: 3,
+  admin: 4,
+  owner: 5,
 };
 
 export function isOrgRole(value: unknown): value is OrgRole {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(ROLE_RANK, value);
+}
+
+/**
+ * Roles a site grant (a member's per-site access, or a team's) can carry.
+ * Admin authority is organization-wide, so grants stop at editor.
+ */
+export const SITE_GRANT_ROLES = ["editor", "member", "viewer"] as const satisfies readonly OrgRole[];
+export type SiteGrantRole = (typeof SITE_GRANT_ROLES)[number];
+
+export function isSiteGrantRole(value: unknown): value is SiteGrantRole {
+  return typeof value === "string" && (SITE_GRANT_ROLES as readonly string[]).includes(value);
 }
 
 /** Admins and owners: every site in the organization, never narrowed by site grants or teams. */
@@ -57,22 +77,22 @@ const write = (resource: ScopeRequirement["resource"]): ScopeRequirement => ({ r
 
 export const PERMISSIONS = {
   // Reading a site's analytics and the organization it belongs to.
-  "analytics:read": { minRole: "member", scope: read("analytics") },
-  "sessions:read": { minRole: "member", scope: read("sessions") },
-  "events:read": { minRole: "member", scope: read("events") },
-  "users:read": { minRole: "member", scope: read("users") },
-  "funnels:read": { minRole: "member", scope: read("funnels") },
-  "goals:read": { minRole: "member", scope: read("goals") },
-  "annotations:read": { minRole: "member", scope: read("annotations") },
-  "segments:read": { minRole: "member", scope: read("segments") },
-  "dashboards:read": { minRole: "member", scope: read("dashboards") },
-  "flags:read": { minRole: "member", scope: read("flags") },
-  "experiments:read": { minRole: "member", scope: read("experiments") },
-  "replay:read": { minRole: "member", scope: read("replay") },
-  "gsc:read": { minRole: "member", scope: read("gsc") },
-  "sites:read": { minRole: "member", scope: read("sites") },
-  "sql:read": { minRole: "member", scope: read("sql") },
-  "org:read": { minRole: "member", scope: read("org") },
+  "analytics:read": { minRole: "viewer", scope: read("analytics") },
+  "sessions:read": { minRole: "viewer", scope: read("sessions") },
+  "events:read": { minRole: "viewer", scope: read("events") },
+  "users:read": { minRole: "viewer", scope: read("users") },
+  "funnels:read": { minRole: "viewer", scope: read("funnels") },
+  "goals:read": { minRole: "viewer", scope: read("goals") },
+  "annotations:read": { minRole: "viewer", scope: read("annotations") },
+  "segments:read": { minRole: "viewer", scope: read("segments") },
+  "dashboards:read": { minRole: "viewer", scope: read("dashboards") },
+  "flags:read": { minRole: "viewer", scope: read("flags") },
+  "experiments:read": { minRole: "viewer", scope: read("experiments") },
+  "replay:read": { minRole: "viewer", scope: read("replay") },
+  "gsc:read": { minRole: "viewer", scope: read("gsc") },
+  "sites:read": { minRole: "viewer", scope: read("sites") },
+  "sql:read": { minRole: "viewer", scope: read("sql") },
+  "org:read": { minRole: "viewer", scope: read("org") },
 
   // Building reports: shared analysis objects, and a member's own segments and
   // annotations (rows another user created need the :manage permission).
@@ -83,17 +103,18 @@ export const PERMISSIONS = {
   "annotations:write": { minRole: "member", scope: write("annotations") },
   "segments:write": { minRole: "member", scope: write("segments") },
 
-  // Configuring a site.
-  "annotations:manage": { minRole: "admin", scope: write("annotations") },
-  "segments:manage": { minRole: "admin", scope: write("segments") },
-  "users:delete": { minRole: "admin", scope: write("users") },
-  "replay:delete": { minRole: "admin", scope: write("replay") },
-  "flags:write": { minRole: "admin", scope: write("flags") },
-  "experiments:write": { minRole: "admin", scope: write("experiments") },
-  "gsc:write": { minRole: "admin", scope: write("gsc") },
-  "sites:configure": { minRole: "admin", scope: write("sites") },
-  "imports:read": { minRole: "admin", scope: read("sites") },
-  "imports:write": { minRole: "admin", scope: write("sites") },
+  // Configuring a site, and managing saved segments and annotations other people
+  // created (org-wide ones are checked against the organization role).
+  "annotations:manage": { minRole: "editor", scope: write("annotations") },
+  "segments:manage": { minRole: "editor", scope: write("segments") },
+  "users:delete": { minRole: "editor", scope: write("users") },
+  "replay:delete": { minRole: "editor", scope: write("replay") },
+  "flags:write": { minRole: "editor", scope: write("flags") },
+  "experiments:write": { minRole: "editor", scope: write("experiments") },
+  "gsc:write": { minRole: "editor", scope: write("gsc") },
+  "sites:configure": { minRole: "editor", scope: write("sites") },
+  "imports:read": { minRole: "editor", scope: read("sites") },
+  "imports:write": { minRole: "editor", scope: write("sites") },
 
   // Administering the organization.
   "sites:create": { minRole: "admin", scope: write("sites") },
@@ -102,9 +123,13 @@ export const PERMISSIONS = {
   "members:manage": { minRole: "admin", scope: write("org") },
   "teams:manage": { minRole: "admin", scope: write("org") },
   "apikeys:manage": { minRole: "admin", scope: "deny-scoped" },
+  // Enforced by better-auth's organization access control (orgRoles in the
+  // server's auth.ts); listed here so the client can ask for it by name.
+  "org:rename": { minRole: "admin", scope: "deny-scoped" },
 
   // Owning the organization.
   "billing:manage": { minRole: "owner", scope: "deny-scoped" },
+  "org:delete": { minRole: "owner", scope: "deny-scoped" },
 } as const satisfies Record<string, PermissionSpec>;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -133,4 +158,9 @@ export function canAssignRole(actorRole: string | null | undefined, targetRole: 
     return false;
   }
   return roleHasPermission(actorRole, "members:manage") && ROLE_RANK[actorRole] >= ROLE_RANK[targetRole];
+}
+
+/** The roles someone holding `actorRole` may give to others, highest first. */
+export function assignableRoles(actorRole: string | null | undefined): OrgRole[] {
+  return ORG_ROLES.filter(role => canAssignRole(actorRole, role));
 }

@@ -125,7 +125,7 @@ export function registerUserTools(server: McpServer, api: RybbitApiClient, guard
     {
       title: "Delete user (GDPR erasure)",
       description:
-        "Permanently delete one person's analytics data: events, session replays, profile, and device aliases. Irreversible; erasure completes asynchronously. Requires the API key's user to be an org admin or owner. Confirm with the user before calling.",
+        "Permanently delete one person's analytics data: events, session replays, profile, and device aliases. Irreversible; erasure completes asynchronously. Requires the API key's user to hold the editor role or above on the site. Confirm with the user before calling.",
       inputSchema: { site_id: siteIdInput, user_id: userIdInput },
       outputSchema: successOutput,
       annotations: destructiveTool,

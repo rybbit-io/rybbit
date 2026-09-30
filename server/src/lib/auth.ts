@@ -13,7 +13,7 @@ import { apiKey } from "@better-auth/api-key";
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
-import { isAdminRole } from "@rybbit/shared";
+import { isAdminRole, isSiteGrantRole, SITE_GRANT_ROLES, type OrgRole } from "@rybbit/shared";
 import { siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
 import { getMemberLimitError } from "./memberLimits.js";
@@ -44,11 +44,18 @@ const orgAccessControl = createAccessControl({
   ...defaultStatements,
   apiKey: [...ORG_API_KEY_ACTIONS],
 });
+//
+// Every role in ORG_ROLES (@rybbit/shared) must be registered here or
+// better-auth rejects it on invite and role change. Editors and viewers hold
+// no better-auth statements beyond a member's: what separates them is Rybbit's
+// own permission map, which the route guards enforce.
 const orgRoles = {
   owner: orgAccessControl.newRole({ ...ownerAc.statements, apiKey: [...ORG_API_KEY_ACTIONS] }),
   admin: orgAccessControl.newRole({ ...adminAc.statements, apiKey: [...ORG_API_KEY_ACTIONS] }),
+  editor: orgAccessControl.newRole({ ...memberAc.statements }),
   member: orgAccessControl.newRole({ ...memberAc.statements }),
-};
+  viewer: orgAccessControl.newRole({ ...memberAc.statements }),
+} satisfies Record<OrgRole, unknown>;
 
 // Rate limiting moved out of the plugin and into lib/apiRateLimit.ts, which
 // enforces a burst tier and a daily quota per credential *owner* rather than a
@@ -108,6 +115,7 @@ const pluginList = [
         const invite = newInvitation as typeof newInvitation & {
           hasRestrictedSiteAccess?: boolean;
           siteIds?: number[];
+          siteRole?: string | null;
         };
         const hasRestrictedSiteAccess = invite.hasRestrictedSiteAccess === true;
 
@@ -116,8 +124,16 @@ const pluginList = [
             data: {
               hasRestrictedSiteAccess: false,
               siteIds: [],
+              siteRole: null,
             },
           };
+        }
+
+        const siteRole = invite.siteRole ?? null;
+        if (siteRole !== null && !isSiteGrantRole(siteRole)) {
+          throw new APIError("BAD_REQUEST", {
+            message: `siteRole must be one of: ${SITE_GRANT_ROLES.join(", ")}`,
+          });
         }
 
         if (isAdminRole(invite.role)) {
@@ -146,6 +162,7 @@ const pluginList = [
           data: {
             hasRestrictedSiteAccess: true,
             siteIds: uniqueSiteIds,
+            siteRole,
           },
         };
       },
@@ -185,6 +202,13 @@ const pluginList = [
             required: false,
             defaultValue: [],
             fieldName: "site_ids",
+          },
+          // Role on those sites; null = the invited role. Validated in
+          // beforeCreateInvitation.
+          siteRole: {
+            type: "string",
+            required: false,
+            fieldName: "site_role",
           },
         },
       },
@@ -469,13 +493,14 @@ export const auth = betterAuth({
               email: invitation.email,
               hasRestrictedSiteAccess: invitation.hasRestrictedSiteAccess,
               siteIds: invitation.siteIds,
+              siteRole: invitation.siteRole,
             })
             .from(invitation)
             .where(eq(invitation.id, invitationId))
             .limit(1);
 
           if (invitationRecord.length === 0) return;
-          const { organizationId, email, hasRestrictedSiteAccess, siteIds } = invitationRecord[0];
+          const { organizationId, email, hasRestrictedSiteAccess, siteIds, siteRole } = invitationRecord[0];
           if (!hasRestrictedSiteAccess) return;
 
           const userRecord = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
@@ -521,6 +546,7 @@ export const auth = betterAuth({
               grantableSiteIds.map(siteId => ({
                 memberId,
                 siteId,
+                role: isSiteGrantRole(siteRole) ? siteRole : null,
               }))
             );
           }

@@ -23,6 +23,7 @@ vi.mock("../lib/const.js", async importOriginal => ({
   IS_CLOUD: true,
 }));
 
+import { PERMISSIONS } from "@rybbit/shared";
 import type { RouteAccess } from "../lib/auth-middleware.js";
 import { apiRoutes } from "./routes.js";
 
@@ -44,8 +45,11 @@ async function collectRoutes() {
 const describeAccess = (access: RouteAccess | undefined) => {
   if (!access) return "UNDECLARED";
   if (typeof access === "string") return access;
-  if (access.level === "site") return `site ${access.permission}${access.allowPublic ? " (or public)" : ""}`;
-  return `org ${access.permission}`;
+  const minRole = PERMISSIONS[access.permission].minRole;
+  if (access.level === "site") {
+    return `site ${access.permission} [${minRole}+]${access.allowPublic ? " (or public)" : ""}`;
+  }
+  return `org ${access.permission} [${minRole}+]`;
 };
 
 describe("API route table", () => {

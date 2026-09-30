@@ -51,7 +51,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     {
       title: "Add organization member",
       description:
-        "Add an existing Rybbit user to the organization by email. The user must already have a Rybbit account. Requires an org admin/owner key; only an owner key can grant the owner role.",
+        "Add an existing Rybbit user to the organization by email. The user must already have a Rybbit account. Requires an org admin/owner key; nobody can grant a role above their own (only an owner key can grant owner).",
       inputSchema: {
         organization_id: organizationIdInput,
         email: z.string().email().describe("Email of an existing Rybbit user"),
@@ -71,7 +71,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     {
       title: "Update member site access",
       description:
-        "Restrict a member to specific sites, or lift the restriction. Applies to member-role users only (admins/owners always see all sites). Requires an org admin/owner key.",
+        "Restrict a member to specific sites, or lift the restriction. Applies to editor, member, and viewer roles (admins/owners always see all sites). Requires an org admin/owner key.",
       inputSchema: {
         organization_id: organizationIdInput,
         member_id: z.string().min(1).describe("Membership record id from list_members (not the user id)"),

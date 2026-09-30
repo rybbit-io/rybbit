@@ -1,4 +1,4 @@
-import { isAdminRole } from "@rybbit/shared";
+import { isAdminRole, isSiteGrantRole, SITE_GRANT_ROLES } from "@rybbit/shared";
 import { and, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 
@@ -15,6 +15,8 @@ interface UpdateMemberSiteAccessParams {
 interface UpdateMemberSiteAccessBody {
   hasRestrictedSiteAccess: boolean;
   siteIds: number[];
+  /** Role on the granted sites (editor, member or viewer); omit or null for the member's organization role. */
+  siteRole?: string | null;
 }
 
 export async function updateMemberSiteAccess(
@@ -26,7 +28,12 @@ export async function updateMemberSiteAccess(
 ) {
   const { organizationId, memberId } = request.params;
   const { hasRestrictedSiteAccess, siteIds } = request.body;
+  const siteRole = request.body.siteRole ?? null;
   const currentUserId = request.user?.id;
+
+  if (siteRole !== null && !isSiteGrantRole(siteRole)) {
+    return reply.status(400).send({ error: `siteRole must be one of: ${SITE_GRANT_ROLES.join(", ")}` });
+  }
 
   try {
     // Get the member record
@@ -75,6 +82,7 @@ export async function updateMemberSiteAccess(
           siteIds.map(siteId => ({
             memberId,
             siteId,
+            role: siteRole,
             createdBy: currentUserId || null,
           }))
         );
@@ -88,6 +96,7 @@ export async function updateMemberSiteAccess(
     const updatedSiteAccess = await db
       .select({
         siteId: memberSiteAccess.siteId,
+        role: memberSiteAccess.role,
         siteName: sites.name,
         siteDomain: sites.domain,
       })
@@ -100,6 +109,7 @@ export async function updateMemberSiteAccess(
       hasRestrictedSiteAccess,
       siteAccess: updatedSiteAccess.map(record => ({
         siteId: record.siteId,
+        role: record.role,
         name: record.siteName,
         domain: record.siteDomain,
       })),
