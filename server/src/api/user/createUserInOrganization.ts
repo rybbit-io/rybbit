@@ -6,7 +6,7 @@ import { member } from "../../db/postgres/schema.js";
 import { auth } from "../../lib/auth.js";
 import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission } from "@rybbit/shared";
 import { getOrgMembership } from "../../lib/access.js";
-import { getMemberLimitError } from "../../lib/memberLimits.js";
+import { getMemberLimitError, getPlanMemberLimit, memberLimitError } from "../../lib/memberLimits.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
@@ -121,8 +121,9 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
     // Add the new user to the organization, re-counting under the
     // organization's row lock so concurrent creates can't both take the last
     // seat. The loser's just-created account is removed again.
-    const memberLimitError = await withOrganizationSiteLock(organizationId, async tx => {
-      const limitError = await getMemberLimitError(organizationId, tx);
+    const memberLimit = await getPlanMemberLimit(organizationId);
+    const limitReached = await withOrganizationSiteLock(organizationId, async tx => {
+      const limitError = await memberLimitError(organizationId, memberLimit, tx);
       if (limitError) return limitError;
       await tx.insert(member).values([
         {
@@ -135,9 +136,9 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
       ]);
       return null;
     });
-    if (memberLimitError) {
+    if (limitReached) {
       await ctx.internalAdapter.deleteUser(createdUser.id);
-      return reply.status(403).send({ error: memberLimitError });
+      return reply.status(403).send({ error: limitReached });
     }
 
     return reply.status(201).send({ message: "User created and added to organization successfully" });

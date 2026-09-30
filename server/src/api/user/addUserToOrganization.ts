@@ -5,7 +5,7 @@ import { member, user } from "../../db/postgres/schema.js";
 import { randomBytes } from "crypto";
 import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission } from "@rybbit/shared";
 import { getOrgMembership } from "../../lib/access.js";
-import { getMemberLimitError } from "../../lib/memberLimits.js";
+import { getPlanMemberLimit, memberLimitError } from "../../lib/memberLimits.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
@@ -86,9 +86,11 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
     }
 
     // Count and insert under the organization's row lock, so concurrent adds
-    // can't both take the last seat.
-    const memberLimitError = await withOrganizationSiteLock(organizationId, async tx => {
-      const limitError = await getMemberLimitError(organizationId, tx);
+    // can't both take the last seat. (The plan's limit is looked up first:
+    // the locked transaction must not wait on a second connection.)
+    const memberLimit = await getPlanMemberLimit(organizationId);
+    const limitReached = await withOrganizationSiteLock(organizationId, async tx => {
+      const limitError = await memberLimitError(organizationId, memberLimit, tx);
       if (limitError) return limitError;
       await tx.insert(member).values([
         {
@@ -101,8 +103,8 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
       ]);
       return null;
     });
-    if (memberLimitError) {
-      return reply.status(403).send({ error: memberLimitError });
+    if (limitReached) {
+      return reply.status(403).send({ error: limitReached });
     }
 
     return reply.status(201).send({

@@ -22,12 +22,18 @@ vi.mock("../../lib/access.js", async importOriginal => {
   const actual = await importOriginal<typeof import("../../lib/access.js")>();
   return {
     ...actual,
-    getOrgMembership: vi.fn(async () => state.targetMembership as any),
+    // The target check, and the re-check against the site's current (source)
+    // organization under the site lock.
+    getOrgMembership: vi.fn(async (_userId: string, organizationId: string) =>
+      organizationId === "org_source"
+        ? state.sourceRole && { role: state.sourceRole, hasRestrictedSiteAccess: false }
+        : (state.targetMembership as any)
+    ),
   };
 });
 
 vi.mock("../../lib/auth-utils.js", () => ({
-  getUserOrgRole: vi.fn(async () => state.sourceRole),
+  getIsUserAdmin: vi.fn(async () => false),
 }));
 
 vi.mock("../../db/postgres/postgres.js", () => ({

@@ -1,18 +1,18 @@
 import { randomBytes } from "node:crypto";
-import { roleHasPermission } from "@rybbit/shared";
+import { higherRole, roleHasPermission } from "@rybbit/shared";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { gscConnections, organization, sites, siteTransfers, user } from "../../db/postgres/schema.js";
 import { effectiveOrgRole, getOrgMembership } from "../../lib/access.js";
-import { getUserOrgRole } from "../../lib/auth-utils.js";
+import { getIsUserAdmin } from "../../lib/auth-utils.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { sendSiteTransferEmail } from "../../lib/email/email.js";
 import { claimExpiryIso as utcIso } from "../../services/sites/claimExpiry.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
 import { applySiteMove, invalidateSiteMoveAccess, lockSiteOwnership } from "./applySiteMove.js";
-import { targetSiteLimitError } from "./siteLimit.js";
+import { getPlanSiteLimit, targetSiteLimitError } from "./siteLimit.js";
 
 /**
  * Handing a site to someone outside its organization.
@@ -85,7 +85,21 @@ export async function createSiteTransfer(
   const senderId = request.user.id;
 
   try {
-    const outcome = await db.transaction(async tx => {
+    // Which organization row to lock; re-checked once the locks are held.
+    const unlocked = await db.query.sites.findFirst({
+      where: eq(sites.siteId, siteId),
+      columns: { organizationId: true },
+    });
+    if (!unlocked?.organizationId) {
+      return reply.status(404).send({ error: "Site not found" });
+    }
+    const sourceOrganizationId = unlocked.organizationId;
+    // Resolved before the transaction: it must not wait on a second connection.
+    const isSystemAdmin = !request.bearerAuth && (await getIsUserAdmin(request));
+
+    // Lock order for every ownership change: organization row, site row,
+    // transfer rows.
+    const outcome = await withOrganizationSiteLock(sourceOrganizationId, async tx => {
       // The route guard checked the caller against the site's organization
       // as it was when the request arrived; check again against the one it is
       // in now, holding the site row so it can't move until this commits.
@@ -93,7 +107,18 @@ export async function createSiteTransfer(
       if (!site?.organizationId) {
         return { ok: false as const, status: 404, error: "Site not found" };
       }
-      if (!roleHasPermission(await getUserOrgRole(request, site.organizationId), "sites:transfer")) {
+      if (site.organizationId !== sourceOrganizationId) {
+        return {
+          ok: false as const,
+          status: 409,
+          error: "The site moved while this request was in flight; reload and try again",
+        };
+      }
+      const role = higherRole(
+        effectiveOrgRole(await getOrgMembership(senderId, sourceOrganizationId, tx)),
+        isSystemAdmin ? "admin" : null
+      );
+      if (!roleHasPermission(role, "sites:transfer")) {
         return { ok: false as const, status: 403, error: "Forbidden" };
       }
 
@@ -284,6 +309,9 @@ export async function acceptSiteTransfer(
       return reply.status(400).send({ error: "The site is already in this organization" });
     }
 
+    // Resolved before the transaction: it must not wait on a second connection.
+    const siteLimit = await getPlanSiteLimit(targetOrganizationId);
+
     const outcome = await withOrganizationSiteLock(targetOrganizationId, async tx => {
       // Lock the site, then the transfer (the order every ownership change
       // uses): a concurrent accept, cancel, replacement or move waits here, and
@@ -299,7 +327,7 @@ export async function acceptSiteTransfer(
         return { status: 404, error: "This transfer link is no longer valid" };
       }
 
-      const limitError = await targetSiteLimitError(tx, targetOrganizationId);
+      const limitError = await targetSiteLimitError(tx, targetOrganizationId, siteLimit);
       if (limitError) {
         return { status: 403, error: limitError };
       }

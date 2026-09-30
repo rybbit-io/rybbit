@@ -17,17 +17,7 @@ vi.mock("../../db/postgres/postgres.js", async () => {
 vi.mock("../../lib/auth-utils.js", () => ({
   invalidateSitesAccessCache: mocks.invalidateSitesAccessCache,
   invalidateOrganizationSitesCache: mocks.invalidateOrganizationSitesCache,
-  // Memberships as seeded below. (Not read from PGlite: its single connection
-  // is held by the transaction that asks.)
-  getUserOrgRole: async (request: { user?: { id: string } }, organizationId: string) =>
-    (
-      ({
-        "barnaby:org_agency": "owner",
-        "tay:org_client": "owner",
-        "tay:org_other": "member",
-        "tay:org_agency": "viewer",
-      }) as Record<string, string>
-    )[`${request.user?.id}:${organizationId}`] ?? null,
+  getIsUserAdmin: vi.fn(async () => false),
 }));
 vi.mock("../../lib/email/email.js", () => ({ sendSiteTransferEmail: mocks.sendSiteTransferEmail }));
 vi.mock("../../lib/const.js", async importOriginal => ({

@@ -5,16 +5,29 @@ import type { SiteTransaction } from "../../services/sites/withOrganizationSiteL
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 
 /**
- * Why the target organization cannot take one more site (its plan's site
- * limit, on cloud), or null when it can. Call inside
- * withOrganizationSiteLock(targetOrganizationId) so the count can't race.
+ * The plan's site limit for an organization (null when it has none, or on
+ * self-hosted instances). Resolve it BEFORE opening the locked transaction:
+ * the subscription lookup uses its own connections, and a transaction that
+ * waits on a second pooled connection can exhaust the pool.
  */
-export async function targetSiteLimitError(tx: SiteTransaction, targetOrganizationId: string): Promise<string | null> {
+export async function getPlanSiteLimit(organizationId: string): Promise<number | null> {
   if (!IS_CLOUD) {
     return null;
   }
-  const subscription = await getSubscriptionInner(targetOrganizationId);
-  const siteLimit = subscription?.siteLimit ?? null;
+  const subscription = await getSubscriptionInner(organizationId);
+  return subscription?.siteLimit ?? null;
+}
+
+/**
+ * Why the target organization cannot take one more site under `siteLimit`, or
+ * null when it can. Call inside withOrganizationSiteLock(targetOrganizationId)
+ * so the count can't race.
+ */
+export async function targetSiteLimitError(
+  tx: SiteTransaction,
+  targetOrganizationId: string,
+  siteLimit: number | null
+): Promise<string | null> {
   if (siteLimit === null) {
     return null;
   }

@@ -37,13 +37,16 @@ export interface OrgMembership {
  */
 export async function getOrgMembership(
   userId: string | undefined | null,
-  organizationId: string | undefined | null
+  organizationId: string | undefined | null,
+  // Pass the open transaction when calling from inside one: a second pooled
+  // connection per transaction can exhaust the pool and stall every worker.
+  executor: Pick<typeof db, "select"> = db
 ): Promise<OrgMembership | null> {
   if (!userId || !organizationId) {
     return null;
   }
 
-  const rows = await db
+  const rows = await executor
     .select({
       id: member.id,
       userId: member.userId,

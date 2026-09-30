@@ -22,12 +22,24 @@ export async function getPlanMemberLimit(organizationId: string): Promise<number
 /**
  * The plan's member limit, checked before anyone joins an organization
  * directly (add-member / create-user). Returns the message to show when the
- * organization is full, null otherwise. Pass the transaction holding the
- * organization's row lock (withOrganizationSiteLock) so two concurrent joins
- * can't both see the last free seat.
+ * organization is full, null otherwise.
  */
-export async function getMemberLimitError(organizationId: string, tx?: SiteTransaction): Promise<string | null> {
-  const memberLimit = await getPlanMemberLimit(organizationId);
+export async function getMemberLimitError(organizationId: string): Promise<string | null> {
+  return memberLimitError(organizationId, await getPlanMemberLimit(organizationId));
+}
+
+/**
+ * The same check against an already-resolved limit, counting through `tx` —
+ * the transaction holding the organization's row lock
+ * (withOrganizationSiteLock), so two concurrent joins can't both see the last
+ * free seat. Resolve the limit before opening that transaction: the plan
+ * lookup must not wait on a second pooled connection.
+ */
+export async function memberLimitError(
+  organizationId: string,
+  memberLimit: number | null,
+  tx?: SiteTransaction
+): Promise<string | null> {
   if (memberLimit === null) {
     return null;
   }
