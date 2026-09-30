@@ -1,7 +1,7 @@
 import { Compass } from "lucide-react";
 import Image from "next/image";
 
-const BROWSER_TO_LOGO: Record<string, string> = {
+export const BROWSER_TO_LOGO: Record<string, string> = {
   Chrome: "Chrome.svg",
   "Mobile Chrome": "Chrome.svg",
   "Chrome WebView": "Chrome.svg",

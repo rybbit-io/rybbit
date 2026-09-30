@@ -1,7 +1,7 @@
 import { Compass } from "lucide-react";
 import Image from "next/image";
 
-const OS_TO_LOGO: Record<string, string> = {
+export const OS_TO_LOGO: Record<string, string> = {
   Windows: "Windows.svg",
   "Windows Phone": "Windows.svg",
   "Windows Mobile": "Windows.svg",

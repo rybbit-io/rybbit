@@ -1201,12 +1201,20 @@ function domainMatchLength(host: string, entry: string): number {
 
 // The most specific entry wins, so "mail.google.com" (email) beats "google."
 // (search) and "tieba.baidu.com" (social) beats "baidu." (search).
-function getDomainSourceType(host: string): string | null {
+function getDomainSourceType(source: string): string | null {
+  // UTM sources are sometimes a URL ("https://facebook.com/") or carry a path
+  const host = source.replace(/^[a-z][a-z0-9+.-]*:\/\//, "").split(/[/?#:]/)[0];
+  // An entry also covers its country sites: "shopee.com" matches "shopee.com.my"
+  const countrylessHost = /\.[a-z]{2}$/.test(host) ? host.slice(0, -3) : "";
+
   let bestType: string | null = null;
   let bestLength = 0;
   for (const [type, domains] of domainSourceTypes) {
     for (const domain of domains) {
-      const length = domainMatchLength(host, domain);
+      const length = Math.max(
+        domainMatchLength(host, domain),
+        countrylessHost ? domainMatchLength(countrylessHost, domain) : 0,
+      );
       if (length > bestLength) {
         bestType = type;
         bestLength = length;

@@ -101,6 +101,24 @@ describe("getChannel - referrer domain matching", () => {
   });
 });
 
+describe("getChannel - country sites and URL-valued sources", () => {
+  it("covers country sites of a listed domain", () => {
+    for (const host of ["shopee.com.my", "lazada.com.ph", "mercadolibre.com.mx", "rakuten.com.tw", "walmart.com.mx"]) {
+      expect(fromReferrer(host), host).toBe("Organic Shopping");
+    }
+    expect(getChannel("", "utm_source=shopee.com.my&utm_medium=paid")).toBe("Paid Shopping");
+    expect(fromReferrer("mail.google.com.br")).toBe("Email");
+    // stripping the country code must not create new substring-style collisions
+    expect(fromReferrer("microsoft.co.il")).toBe("Referral");
+  });
+
+  it("reads the host out of URL-valued UTM sources", () => {
+    expect(getChannel("", "utm_source=https%3A%2F%2Ffacebook.com%2F&utm_medium=cpc")).toBe("Paid Social");
+    expect(getChannel("", "utm_source=https%3A%2F%2Fwww.perplexity.ai%2F&utm_medium=paid")).toBe("Paid AI");
+    expect(getChannel("", "utm_source=chatgpt.com%2Fc%2F123")).toBe("AI");
+  });
+});
+
 describe("getChannel - self-referrals", () => {
   it("classifies navigation between the site's own hosts as Internal", () => {
     expect(getChannel("https://www.example.org/a", "", "example.org")).toBe("Internal");
