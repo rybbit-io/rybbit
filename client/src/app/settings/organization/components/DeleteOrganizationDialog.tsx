@@ -21,7 +21,13 @@ import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 import { USER_ORGANIZATIONS_QUERY_KEY } from "../../../../api/admin/hooks/useOrganizations";
-import { Organization } from "../page";
+import type { Organization } from "../page";
+
+/** Whether the organization is on a paid plan, which has to be cancelled before it can be deleted. */
+export function useHasActiveSubscription() {
+  const { data: subscription } = useStripeSubscription();
+  return !!(subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro"));
+}
 
 interface DeleteOrganizationDialogProps {
   organization: Organization;
@@ -29,16 +35,13 @@ interface DeleteOrganizationDialogProps {
 }
 
 export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrganizationDialogProps) {
-  const { data: subscription } = useStripeSubscription();
+  const hasActiveSubscription = useHasActiveSubscription();
   const t = useExtracted();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const queryClient = useQueryClient();
   const confirmPromptId = useId();
-
-  const hasActiveSubscription =
-    subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro");
 
   const handleDelete = async () => {
     if (confirmText !== organization.name) {
@@ -83,8 +86,12 @@ export function DeleteOrganizationDialog({ organization, onSuccess }: DeleteOrga
   return (
     <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" className="w-full">
-          {t("Delete Organization")}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-mr-2.5 text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+        >
+          {t("Delete organization")}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

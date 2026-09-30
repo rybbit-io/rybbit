@@ -132,9 +132,9 @@ export function InviteMemberDialog({
       <Tooltip>
         <TooltipTrigger asChild>
           <span>
-            <Button disabled size="sm" variant="outline" title={t("Upgrade to Pro to add more members")}>
-              <UserPlus className="h-4 w-4 mr-1" />
-              {t("Invite Member")}
+            <Button disabled size="sm" variant="success" title={t("Upgrade to Pro to add more members")}>
+              <UserPlus />
+              {t("Invite people")}
             </Button>
           </span>
         </TooltipTrigger>
@@ -150,9 +150,9 @@ export function InviteMemberDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <UserPlus className="h-4 w-4 mr-1" />
-          {t("Invite Member")}
+        <Button size="sm" variant="success">
+          <UserPlus />
+          {t("Invite people")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">

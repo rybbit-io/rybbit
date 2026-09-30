@@ -1,9 +1,10 @@
 "use client";
+
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { toast } from "@/components/ui/sonner";
-import { useOrganizationInvitations } from "../../../../api/admin/hooks/useOrganizations";
+
+import type { useOrganizationInvitations } from "@/api/admin/hooks/useOrganizations";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -13,19 +14,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "../../../../components/ui/alert-dialog";
-import { Badge } from "../../../../components/ui/badge";
-import { Button } from "../../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
-import { authClient } from "../../../../lib/auth";
-import { useRoleInfo } from "../../../../lib/roles";
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/sonner";
+import { TableCell, TableRow } from "@/components/ui/table";
+import { authClient } from "@/lib/auth";
+import { useRoleInfo } from "@/lib/roles";
+import { getTimezone } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
-interface InvitationsProps {
-  organizationId: string;
-  /** Cancel pending invitations (members:manage). */
-  canManage: boolean;
-}
+import { InvitationAvatar } from "../../components/PersonAvatar";
+import { PEOPLE_CELL, PEOPLE_CHIP, PEOPLE_ROW, PEOPLE_SECONDARY, PersonCell, SiteAccessSummary } from "./PeopleCells";
+import type { PersonAccess } from "./personAccess";
+
+export type Invitation = NonNullable<ReturnType<typeof useOrganizationInvitations>["data"]>[number];
 
 function CancelInvitationButton({
   invitation,
@@ -67,8 +70,9 @@ function CancelInvitationButton({
     >
       <AlertDialogTrigger asChild>
         <Button
-          variant="default"
-          size="sm"
+          variant="ghost"
+          size="xs"
+          className="-mr-1.5"
           aria-label={t("Cancel invitation for {email}", { email: invitation.email })}
         >
           {t("Cancel")}
@@ -96,91 +100,109 @@ function CancelInvitationButton({
   );
 }
 
-export function Invitations({ organizationId, canManage }: InvitationsProps) {
+function ResendInvitationButton({ invitation, onResent }: { invitation: Invitation; onResent: () => void }) {
+  const t = useExtracted();
+  const [isResending, setIsResending] = useState(false);
+
+  const handleResend = async () => {
+    setIsResending(true);
+    try {
+      // better-auth emails the existing invitation again with a fresh expiry; its role, sites and team
+      // stay as they were (the site fields are required by the client types, and ignored on a resend).
+      // It reports failures in the result rather than throwing.
+      const { error } = await authClient.organization.inviteMember({
+        email: invitation.email,
+        // better-auth's client types only know its default roles; the server's access control defines ours.
+        role: invitation.role as "owner" | "admin" | "member",
+        organizationId: invitation.organizationId,
+        hasRestrictedSiteAccess: invitation.hasRestrictedSiteAccess ?? false,
+        siteIds: invitation.siteIds ?? [],
+        resend: true,
+      });
+      if (error) {
+        throw new Error(error.message || t("Failed to resend invitation"));
+      }
+      toast.success(t("Invitation sent to {email}", { email: invitation.email }));
+      onResent();
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : t("Failed to resend invitation"));
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="xs"
+      loading={isResending}
+      loadingLabel={t("Resending...")}
+      aria-label={t("Resend invitation to {email}", { email: invitation.email })}
+      onClick={handleResend}
+    >
+      {t("Resend")}
+    </Button>
+  );
+}
+
+interface InvitationRowProps {
+  invitation: Invitation;
+  /** Who sent it, while they're still a member. */
+  inviterName?: string;
+  /** The sites they'll reach once they join; undefined while loading, null when unavailable. */
+  access: PersonAccess | null | undefined;
+  /** Show the actions column and allow cancelling (members:manage). */
+  canManage: boolean;
+  /** Allow emailing it again. */
+  canResend: boolean;
+  /** After a cancel or resend, so the list can be fetched again. */
+  onChanged: () => void;
+}
+
+/** A pending invitation, as a row of the people table. */
+export function InvitationRow({
+  invitation,
+  inviterName,
+  access,
+  canManage,
+  canResend,
+  onChanged,
+}: InvitationRowProps) {
   const t = useExtracted();
   const roleInfo = useRoleInfo();
 
-  const {
-    data: invitations,
-    refetch: refetchInvitations,
-    isLoading: invitationsLoading,
-  } = useOrganizationInvitations(organizationId);
-  const pendingInvitations = invitations?.filter(invitation => invitation.status === "pending") ?? [];
+  const expiresAt = DateTime.fromJSDate(new Date(invitation.expiresAt)).setZone(getTimezone());
+  const expiry = expiresAt.toLocaleString({ month: "short", day: "numeric" });
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xl">{t("Invitations")}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("Email")}</TableHead>
-              <TableHead>{t("Role")}</TableHead>
-              <TableHead>{t("Status")}</TableHead>
-              <TableHead>{t("Expires")}</TableHead>
-              {canManage && <TableHead className="w-12">{t("Actions")}</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invitationsLoading ? (
-              // Loading skeleton rows
-              Array.from({ length: 2 }).map((_, index) => (
-                <TableRow key={`loading-${index}`}>
-                  <TableCell>
-                    <div className="h-4 bg-muted animate-pulse rounded w-32"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-muted animate-pulse rounded w-16"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-6 bg-muted animate-pulse rounded w-20"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-muted animate-pulse rounded w-20"></div>
-                  </TableCell>
-                  {canManage && (
-                    <TableCell>
-                      <div className="h-8 bg-muted animate-pulse rounded w-16 ml-auto"></div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
-            ) : (
-              <>
-                {pendingInvitations.length > 0 ? (
-                  pendingInvitations.map(invitation => (
-                    <TableRow key={invitation.id}>
-                      <TableCell>{invitation.email}</TableCell>
-                      <TableCell className="capitalize">{roleInfo(invitation.role).label}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{t("Pending")}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {DateTime.fromJSDate(new Date(invitation.expiresAt)).toLocaleString(DateTime.DATE_SHORT)}
-                      </TableCell>
-                      {canManage && (
-                        <TableCell className="text-right">
-                          {invitation.status === "pending" && (
-                            <CancelInvitationButton invitation={invitation} onCancelled={refetchInvitations} />
-                          )}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={canManage ? 5 : 4} className="text-center py-6 text-muted-foreground">
-                      {t("No pending invitations")}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+    <TableRow className={PEOPLE_ROW}>
+      <TableCell className={PEOPLE_CELL}>
+        <PersonCell
+          avatar={<InvitationAvatar />}
+          name={invitation.email}
+          marker={
+            <Badge variant="outline" className={PEOPLE_CHIP}>
+              {t("Pending")}
+            </Badge>
+          }
+          detail={inviterName ? t("Invited by {name}", { name: inviterName }) : undefined}
+        />
+      </TableCell>
+      <TableCell className={cn(PEOPLE_CELL, PEOPLE_SECONDARY)}>{roleInfo(invitation.role).label}</TableCell>
+      <TableCell className={cn(PEOPLE_CELL, PEOPLE_SECONDARY)}>
+        <SiteAccessSummary access={access} />
+      </TableCell>
+      <TableCell className={cn(PEOPLE_CELL, "whitespace-nowrap tabular-nums text-neutral-500 dark:text-neutral-400")}>
+        {expiresAt < DateTime.now() ? t("Expired {date}", { date: expiry }) : t("Expires {date}", { date: expiry })}
+      </TableCell>
+      {canManage && (
+        <TableCell className={cn(PEOPLE_CELL, "text-right")}>
+          <div className="inline-flex items-center justify-end gap-1">
+            {canResend && <ResendInvitationButton invitation={invitation} onResent={onChanged} />}
+            <CancelInvitationButton invitation={invitation} onCancelled={onChanged} />
+          </div>
+        </TableCell>
+      )}
+    </TableRow>
   );
 }

@@ -20,8 +20,17 @@ import { Button } from "../../../../components/ui/button";
 import { authClient } from "../../../../lib/auth";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
 
-export function DeleteAccount() {
+/**
+ * Paid plans must be cancelled before the account can be deleted. Deliberately independent of a
+ * running deletion, which used to flip the dialog to "Cannot delete account" mid-delete.
+ */
+export function useHasActiveSubscription() {
   const { data: subscription } = useStripeSubscription();
+  return !!(subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro"));
+}
+
+export function DeleteAccount() {
+  const hasActiveSubscription = useHasActiveSubscription();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -53,11 +62,6 @@ export function DeleteAccount() {
     setIsOpen(false);
   };
 
-  // Paid plans must be cancelled first. (isDeleting used to be part of this, which flipped the dialog to
-  // "Cannot delete account" for as long as the deletion was running.)
-  const hasActiveSubscription =
-    subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro");
-
   return (
     <AlertDialog
       open={isOpen}
@@ -66,8 +70,13 @@ export function DeleteAccount() {
       }}
     >
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" className="w-full" onClick={() => setIsOpen(true)}>
-          {t("Delete Account")}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+          onClick={() => setIsOpen(true)}
+        >
+          {t("Delete account")}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
