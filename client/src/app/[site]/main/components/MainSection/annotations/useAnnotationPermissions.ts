@@ -9,8 +9,9 @@ import { useStore } from "@/lib/store";
 /**
  * Who may do what with annotations on the current site, from the server's
  * permission lists: annotations:write creates and manages your own site
- * annotations, annotations:manage in the organization manages all of them
- * (including organization-wide ones). Public and private-link viewers only read.
+ * annotations; annotations:manage on the site manages everyone's site
+ * annotations, and in the organization, the organization-wide ones. Public and
+ * private-link viewers only read.
  */
 export function useAnnotationPermissions() {
   const { site, privateKey } = useStore();
@@ -24,6 +25,7 @@ export function useAnnotationPermissions() {
   const orgPermissions = useOrgPermissions(siteData?.organizationId ?? undefined);
 
   const canWrite = signedIn && sitePermissions.can("annotations:write");
+  const canManageSite = signedIn && sitePermissions.can("annotations:manage");
   const canManageAll = signedIn && !!siteData?.organizationId && orgPermissions.can("annotations:manage");
 
   return {
@@ -31,6 +33,6 @@ export function useAnnotationPermissions() {
     /** May create and edit organization-wide annotations. */
     canManageAll,
     canManage: (annotation: Annotation) =>
-      canManageAll || (canWrite && annotation.siteId !== null && annotation.userId === userId),
+      annotation.siteId === null ? canManageAll : canManageSite || (canWrite && annotation.userId === userId),
   };
 }

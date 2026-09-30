@@ -228,6 +228,11 @@ export async function getSitesUserHasAccessTo(
   return adminOnly ? accessible.filter(site => isAdminRole(site.accessRole)) : accessible;
 }
 
+/** Drop an organization-owned key's cached site list (after a site leaves or joins the organization). */
+export function invalidateOrganizationSitesCache(organizationId: string) {
+  sitesAccessCache.del(`org:${organizationId}`);
+}
+
 // Cache invalidation helper - call this when member site access changes
 export function invalidateSitesAccessCache(userId: string) {
   sitesAccessCache.del(sessionSitesKey(userId));
@@ -271,9 +276,12 @@ async function resolveTargetOrganizationId(options: {
  */
 async function resolveBearerUserRole(
   userId: string,
-  options: { organizationId?: string; siteId?: string | number }
+  options: { organizationId?: string; siteId?: string | number; fresh?: boolean }
 ): Promise<{ valid: boolean; role: string | null; userId?: string }> {
   const denied = { valid: false, role: null };
+  if (options.fresh) {
+    invalidateSitesAccessCache(userId);
+  }
 
   if (options.siteId !== undefined && options.siteId !== null && options.siteId !== "") {
     const siteId = Number(options.siteId);
@@ -327,7 +335,9 @@ export interface BearerAuthResult {
  */
 export async function checkApiKey(
   req: FastifyRequest,
-  options: { organizationId?: string; siteId?: string | number }
+  // fresh: resolve the user's site role from the database rather than this
+  // worker's short-lived cache — for permissions that change something.
+  options: { organizationId?: string; siteId?: string | number; fresh?: boolean }
 ): Promise<BearerAuthResult> {
   const apiKey = resolveBearerTokenFromRequest(req);
   if (!apiKey) {
@@ -436,11 +446,21 @@ export async function getSiteIsPubliclyReadable(req: FastifyRequest, siteId: str
   return false;
 }
 
-/** The role the caller holds on a site, or null when they cannot reach it. */
-export async function getUserSiteRole(req: FastifyRequest, siteId: string | number): Promise<OrgRole | null> {
+/**
+ * The role the caller holds on a site, or null when they cannot reach it.
+ * `fresh` reads it from the database instead of this worker's short-lived
+ * cache, so a demotion, removal or site move made moments ago (possibly on
+ * another worker) already applies.
+ */
+export async function getUserSiteRole(
+  req: FastifyRequest,
+  siteId: string | number,
+  { fresh = false }: { fresh?: boolean } = {}
+): Promise<OrgRole | null> {
   const find = (accessible: AccessibleSite[]) =>
     accessible.find(site => site.siteId === Number(siteId))?.accessRole ?? null;
-  const role = find(await getSitesUserHasAccessTo(req));
+  const role = find(await getSitesUserHasAccessTo(req, false, { fresh }));
+  if (fresh) return role;
   if (role) return role;
 
   // A claim may have committed in another worker while this one still holds

@@ -1,4 +1,4 @@
-import { isAdminRole } from "@rybbit/shared";
+import { isAdminRole, isOrgRole } from "@rybbit/shared";
 import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { eq } from "drizzle-orm";
@@ -202,6 +202,12 @@ class WeeklyReportService {
       for (const memberData of members) {
         // Skip users who have disabled email reports
         if (memberData.sendAutoEmailReports === false) {
+          continue;
+        }
+
+        // A membership whose role isn't one Rybbit knows reaches nothing
+        // (the same rule the request-time resolver applies).
+        if (!isOrgRole(memberData.role)) {
           continue;
         }
 

@@ -1,9 +1,10 @@
-import { assignableRoles, permissionsForRole } from "@rybbit/shared";
+import { assignableRoles, higherRole, permissionsForRole } from "@rybbit/shared";
 import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { eq } from "drizzle-orm";
 import { member, organization } from "../../db/postgres/schema.js";
 import { effectiveOrgRole } from "../../lib/access.js";
+import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 export const getUserOrganizations = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
@@ -27,11 +28,18 @@ export const getUserOrganizations = async (request: FastifyRequest, reply: Fasti
       .innerJoin(organization, eq(member.organizationId, organization.id))
       .where(eq(member.userId, userId));
 
+    // The same role the organization guards use: a system-admin browser
+    // session acts as admin in every organization it belongs to.
+    const isSystemAdmin = !request.bearerAuth && (await getIsUserAdmin(request));
+
     return reply.send(
       userOrganizations.map(({ hasRestrictedSiteAccess, ...org }) => {
         // A member restricted to specific sites is a viewer at the organization
         // level; their role applies on the sites they were granted.
-        const orgRole = effectiveOrgRole({ role: org.role, hasRestrictedSiteAccess });
+        const orgRole = higherRole(
+          effectiveOrgRole({ role: org.role, hasRestrictedSiteAccess }),
+          isSystemAdmin ? "admin" : null
+        );
         return {
           ...org,
           // What the caller's role allows in the organization. Site grants and

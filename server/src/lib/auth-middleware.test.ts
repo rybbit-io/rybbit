@@ -224,6 +224,19 @@ describe("permission guards", () => {
     expect(mocks.getSiteIsPubliclyReadable).not.toHaveBeenCalled();
   });
 
+  it("re-reads the role for anything beyond reading, and uses the cache for reads", async () => {
+    mocks.getSessionFromReq.mockResolvedValue({ user: { id: "session_user" } });
+    mocks.getUserSiteRole.mockResolvedValue("admin");
+
+    await app.inject({ method: "GET", url: "/sites/5/goals" });
+    expect(mocks.getUserSiteRole).toHaveBeenLastCalledWith(expect.anything(), "5", { fresh: false });
+    expect(mocks.checkApiKey).toHaveBeenLastCalledWith(expect.anything(), { siteId: "5", fresh: false });
+
+    await app.inject({ method: "DELETE", url: "/sites/5" });
+    expect(mocks.getUserSiteRole).toHaveBeenLastCalledWith(expect.anything(), "5", { fresh: true });
+    expect(mocks.checkApiKey).toHaveBeenLastCalledWith(expect.anything(), { siteId: "5", fresh: true });
+  });
+
   it("keeps returning 429 for rate-limited keys", async () => {
     mocks.checkApiKey.mockResolvedValue({ valid: false, role: null, rateLimited: true, statements: null });
 

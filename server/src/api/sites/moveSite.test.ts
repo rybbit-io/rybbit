@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
 
 const mocks = vi.hoisted(() => ({
   getSubscriptionInner: vi.fn(),
-  applySiteMove: vi.fn(async () => {}),
+  applySiteMove: vi.fn(async () => true),
 }));
 
 // The membership check now goes through the shared Site Access module.

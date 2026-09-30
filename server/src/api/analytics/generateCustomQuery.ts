@@ -66,7 +66,9 @@ export async function generateCustomQuery(
     return reply.status(400).send({ error: body.error.errors[0]?.message ?? "Invalid request body" });
   }
 
-  const userSites = await getSitesUserHasAccessTo(request);
+  // Read fresh: raw event access must not outlive a site move or a revoked
+  // grant by even the few seconds the per-worker cache holds.
+  const userSites = await getSitesUserHasAccessTo(request, false, { fresh: true });
   const siteIds = userSites
     .filter(site => site.organizationId === request.params.organizationId)
     .map(site => site.siteId);

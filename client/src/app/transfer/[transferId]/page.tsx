@@ -119,6 +119,42 @@ function WrongAccount({ recipientEmail, currentEmail }: { recipientEmail: string
   );
 }
 
+function VerifyEmail({ transferId, email }: { transferId: string; email: string }) {
+  const t = useExtracted();
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  const send = async () => {
+    setStatus("sending");
+    // Opening the emailed link verifies the address and brings them back here.
+    const { error } = await authClient.sendVerificationEmail({
+      email,
+      callbackURL: `${window.location.origin}/transfer/${encodeURIComponent(transferId)}`,
+    });
+    setStatus(error ? "error" : "sent");
+  };
+
+  return (
+    <PageCard title={t("Verify your email to accept this transfer")}>
+      <div className="flex flex-col gap-4 text-center">
+        <p className="text-sm">{t("We'll send a link to {email}. Open it, then come back to this page.", { email })}</p>
+        {status === "sent" ? (
+          <p className="text-sm text-muted-foreground">{t("Verification email sent. Check your inbox.")}</p>
+        ) : (
+          <Button onClick={send} loading={status === "sending"} className="w-full">
+            {t("Send verification email")}
+          </Button>
+        )}
+        {status === "error" && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{t("Couldn't send the email. Try again in a moment.")}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </PageCard>
+  );
+}
+
 function InvalidLink() {
   const t = useExtracted();
   const router = useRouter();
@@ -321,8 +357,12 @@ function IncomingTransfer({ transferId, currentEmail }: { transferId: string; cu
     return <ThreeDotLoader />;
   }
   if (error instanceof ApiError && error.status === 403) {
-    const recipientEmail = (error.body as { recipientEmail?: string } | undefined)?.recipientEmail ?? "";
-    return <WrongAccount recipientEmail={recipientEmail} currentEmail={currentEmail} />;
+    const body = error.body as { reason?: string; recipientEmailHint?: string } | undefined;
+    if (body?.reason === "email_unverified") {
+      return <VerifyEmail transferId={transferId} email={currentEmail} />;
+    }
+    // The server only reveals a masked address, e.g. "t••@example.org".
+    return <WrongAccount recipientEmail={body?.recipientEmailHint ?? ""} currentEmail={currentEmail} />;
   }
   if (error instanceof ApiError && error.status === 404) {
     return <InvalidLink />;

@@ -1,29 +1,41 @@
 import { count, eq } from "drizzle-orm";
 import { db } from "../db/postgres/postgres.js";
 import { member } from "../db/postgres/schema.js";
+import type { SiteTransaction } from "../services/sites/withOrganizationSiteLock.js";
 import { IS_CLOUD } from "./const.js";
 
 /**
- * The plan's member limit, checked before anyone joins an organization — by
- * invitation (the better-auth hook) or directly (add-member / create-user).
- * Returns the message to show when the organization is full, null otherwise.
- * Self-hosted instances have no plans and never hit a limit.
+ * The plan's member limit for an organization, or null when it has none
+ * (self-hosted instances, unlimited plans).
  */
-export async function getMemberLimitError(organizationId: string): Promise<string | null> {
+export async function getPlanMemberLimit(organizationId: string): Promise<number | null> {
   if (!IS_CLOUD) {
     return null;
   }
-
   // Lazy import: getSubscription pulls in the Stripe client and, through it,
   // modules that import auth.ts, which calls this.
   const { getSubscriptionInner } = await import("../api/stripe/getSubscription.js");
   const subscription = await getSubscriptionInner(organizationId);
-  const memberLimit = subscription?.memberLimit ?? null;
+  return subscription?.memberLimit ?? null;
+}
+
+/**
+ * The plan's member limit, checked before anyone joins an organization
+ * directly (add-member / create-user). Returns the message to show when the
+ * organization is full, null otherwise. Pass the transaction holding the
+ * organization's row lock (withOrganizationSiteLock) so two concurrent joins
+ * can't both see the last free seat.
+ */
+export async function getMemberLimitError(organizationId: string, tx?: SiteTransaction): Promise<string | null> {
+  const memberLimit = await getPlanMemberLimit(organizationId);
   if (memberLimit === null) {
     return null;
   }
 
-  const [row] = await db.select({ value: count() }).from(member).where(eq(member.organizationId, organizationId));
+  const [row] = await (tx ?? db)
+    .select({ value: count() })
+    .from(member)
+    .where(eq(member.organizationId, organizationId));
   if (Number(row?.value ?? 0) < memberLimit) {
     return null;
   }

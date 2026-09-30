@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({ isCloud: false, siteLimit: null as number | nu
 const mocks = vi.hoisted(() => ({
   sendSiteTransferEmail: vi.fn(async () => {}),
   invalidateSitesAccessCache: vi.fn(),
+  invalidateOrganizationSitesCache: vi.fn(),
 }));
 
 vi.mock("../../db/postgres/postgres.js", async () => {
@@ -13,7 +14,10 @@ vi.mock("../../db/postgres/postgres.js", async () => {
   const client = new PGlite();
   return { db: drizzle(client, { schema }), sql: client };
 });
-vi.mock("../../lib/auth-utils.js", () => ({ invalidateSitesAccessCache: mocks.invalidateSitesAccessCache }));
+vi.mock("../../lib/auth-utils.js", () => ({
+  invalidateSitesAccessCache: mocks.invalidateSitesAccessCache,
+  invalidateOrganizationSitesCache: mocks.invalidateOrganizationSitesCache,
+}));
 vi.mock("../../lib/email/email.js", () => ({ sendSiteTransferEmail: mocks.sendSiteTransferEmail }));
 vi.mock("../../lib/const.js", async importOriginal => ({
   ...(await importOriginal<typeof import("../../lib/const.js")>()),
@@ -38,7 +42,7 @@ import {
 // Only the columns these handlers and applySiteMove touch.
 const DDL = `
 CREATE TABLE "organization" ("id" text PRIMARY KEY, "name" text NOT NULL);
-CREATE TABLE "user" ("id" text PRIMARY KEY, "email" text NOT NULL);
+CREATE TABLE "user" ("id" text PRIMARY KEY, "email" text NOT NULL, "emailVerified" boolean NOT NULL DEFAULT false);
 CREATE TABLE "sites" (
   "site_id" serial PRIMARY KEY,
   "name" text NOT NULL,
@@ -113,7 +117,8 @@ beforeEach(async () => {
     TRUNCATE "site_transfers", "gsc_connections", "import_status", "annotations", "segments",
       "team_site_access", "member_site_access", "member", "sites", "user", "organization" RESTART IDENTITY;
     INSERT INTO "organization" VALUES ('org_agency', 'Parcero'), ('org_client', 'TAY'), ('org_other', 'Other');
-    INSERT INTO "user" VALUES ('barnaby', 'barnaby@agency.io'), ('tay', 'Tay@Example.org'), ('mallory', 'mallory@evil.io');
+    INSERT INTO "user" VALUES
+      ('barnaby', 'barnaby@agency.io', true), ('tay', 'Tay@Example.org', true), ('mallory', 'mallory@evil.io', true);
     INSERT INTO "sites" ("name", "domain", "organization_id") VALUES ('TAY', 'tay.example.org', 'org_agency');
     INSERT INTO "member" ("id", "organizationId", "userId", "role") VALUES
       ('m_barnaby', 'org_agency', 'barnaby', 'owner'),
@@ -200,6 +205,9 @@ describe("the recipient", () => {
     const asMallory = replyStub();
     await getIncomingSiteTransfer(request({ params: { transferId: body.id }, user: { id: "mallory" } }), asMallory);
     expect(asMallory.statusCode).toBe(403);
+    // Enough to tell them which account to use, not enough to register it.
+    expect(asMallory.body).toMatchObject({ reason: "wrong_account", recipientEmailHint: "t••@example.org" });
+    expect(JSON.stringify(asMallory.body)).not.toContain("tay@example.org");
 
     const signedOut = replyStub();
     await getIncomingSiteTransfer(request({ params: { transferId: body.id }, user: undefined }), signedOut);
@@ -231,6 +239,9 @@ describe("the recipient", () => {
     expect(await rows(`SELECT * FROM member_site_access`)).toEqual([]);
     expect(await rows(`SELECT * FROM site_transfers`)).toEqual([]);
     expect(await rows(`SELECT * FROM gsc_connections`)).toEqual([]);
+    // Organization keys of both sides stop seeing the old site list.
+    expect(mocks.invalidateOrganizationSitesCache).toHaveBeenCalledWith("org_agency");
+    expect(mocks.invalidateOrganizationSitesCache).toHaveBeenCalledWith("org_client");
   });
 
   it("can only move the site into an organization they administer", async () => {
@@ -260,6 +271,43 @@ describe("the recipient", () => {
 
     expect(reply.statusCode).toBe(403);
     expect(await rows(`SELECT organization_id FROM sites`)).toEqual([{ organization_id: "org_agency" }]);
+  });
+
+  it("on cloud, needs the recipient's address to be verified", async () => {
+    state.isCloud = true;
+    const { body } = await startTransfer();
+    await (pgClient as any).exec(`UPDATE "user" SET "emailVerified" = false WHERE id = 'tay'`);
+    const reply = replyStub();
+
+    await acceptSiteTransfer(
+      request({ params: { transferId: body.id }, body: { organizationId: "org_client" }, user: { id: "tay" } }),
+      reply
+    );
+
+    expect(reply.statusCode).toBe(403);
+    expect(reply.body).toMatchObject({ reason: "email_unverified" });
+    expect(await rows(`SELECT organization_id FROM sites`)).toEqual([{ organization_id: "org_agency" }]);
+  });
+
+  it("lets only one of two concurrent accepts move the site", async () => {
+    const { body } = await startTransfer();
+    await (pgClient as any).exec(
+      `INSERT INTO "member" ("id", "organizationId", "userId", "role") VALUES ('m_tay_other_owner', 'org_other', 'tay', 'owner')
+       ON CONFLICT DO NOTHING; UPDATE "member" SET role = 'owner' WHERE id = 'm_tay_other'`
+    );
+    const accept = (organizationId: string) => {
+      const reply = replyStub();
+      return acceptSiteTransfer(
+        request({ params: { transferId: body.id }, body: { organizationId }, user: { id: "tay" } }),
+        reply
+      ).then(() => reply);
+    };
+
+    const replies = await Promise.all([accept("org_client"), accept("org_other")]);
+
+    expect(replies.map(reply => reply.statusCode).sort()).toEqual([200, 404]);
+    const winner = replies.find(reply => reply.statusCode === 200)!.body.organizationId;
+    expect(await rows(`SELECT organization_id FROM sites`)).toEqual([{ organization_id: winner }]);
   });
 
   it("is refused once the site has moved by other means", async () => {

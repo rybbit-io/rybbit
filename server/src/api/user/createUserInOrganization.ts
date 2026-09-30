@@ -7,6 +7,7 @@ import { auth } from "../../lib/auth.js";
 import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission } from "@rybbit/shared";
 import { getOrgMembership } from "../../lib/access.js";
 import { getMemberLimitError } from "../../lib/memberLimits.js";
+import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
@@ -87,11 +88,12 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
       return reply.status(400).send({ error: "A user with this email already exists" });
     }
 
-    // Checked before the account is created, so a full organization never
-    // leaves behind a user who belongs nowhere.
-    const memberLimitError = await getMemberLimitError(organizationId);
-    if (memberLimitError) {
-      return reply.status(403).send({ error: memberLimitError });
+    // Checked before the account is created, so a full organization usually
+    // never leaves behind a user who belongs nowhere; re-checked under the
+    // organization's lock when the membership is written.
+    const earlyLimitError = await getMemberLimitError(organizationId);
+    if (earlyLimitError) {
+      return reply.status(403).send({ error: earlyLimitError });
     }
 
     // Create the user + credential account (mirrors better-auth's admin createUser)
@@ -116,16 +118,27 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
       userId: createdUser.id,
     });
 
-    // Add the new user to the organization
-    await db.insert(member).values([
-      {
-        userId: createdUser.id,
-        organizationId: organizationId,
-        role: role,
-        id: generateId(),
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+    // Add the new user to the organization, re-counting under the
+    // organization's row lock so concurrent creates can't both take the last
+    // seat. The loser's just-created account is removed again.
+    const memberLimitError = await withOrganizationSiteLock(organizationId, async tx => {
+      const limitError = await getMemberLimitError(organizationId, tx);
+      if (limitError) return limitError;
+      await tx.insert(member).values([
+        {
+          userId: createdUser.id,
+          organizationId: organizationId,
+          role: role,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      return null;
+    });
+    if (memberLimitError) {
+      await ctx.internalAdapter.deleteUser(createdUser.id);
+      return reply.status(403).send({ error: memberLimitError });
+    }
 
     return reply.status(201).send({ message: "User created and added to organization successfully" });
   } catch (error: any) {

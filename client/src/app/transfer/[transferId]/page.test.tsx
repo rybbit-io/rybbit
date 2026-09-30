@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   createOrganization: vi.fn(),
   setActive: vi.fn(),
   signOut: vi.fn(),
+  sendVerificationEmail: vi.fn(async () => ({ error: null })),
 }));
 
 vi.mock("next-intl", () => ({
@@ -32,6 +33,7 @@ vi.mock("@/lib/auth", () => ({
   authClient: {
     useSession: () => mocks.session,
     signOut: mocks.signOut,
+    sendVerificationEmail: mocks.sendVerificationEmail,
     organization: { create: mocks.createOrganization, setActive: mocks.setActive },
   },
 }));
@@ -102,15 +104,33 @@ describe("site transfer page", () => {
     mocks.incoming = {
       data: undefined,
       error: new ApiError("This transfer was sent to a different email address", 403, {
-        recipientEmail: "grace@example.com",
+        reason: "wrong_account",
+        recipientEmailHint: "g••@example.com",
       }),
       isLoading: false,
     };
     renderPage();
 
-    expect(screen.getByText("This transfer was sent to grace@example.com. Sign in with that address.")).toBeTruthy();
+    expect(screen.getByText("This transfer was sent to g••@example.com. Sign in with that address.")).toBeTruthy();
     expect(screen.getByText("Signed in as ada@example.com")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  });
+
+  it("asks an unverified recipient to verify their address first", async () => {
+    mocks.incoming = {
+      data: undefined,
+      error: new ApiError("Verify your email address to accept this transfer", 403, { reason: "email_unverified" }),
+      isLoading: false,
+    };
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Send verification email" }));
+
+    await waitFor(() => expect(screen.getByText("Verification email sent. Check your inbox.")).toBeTruthy());
+    expect(mocks.sendVerificationEmail).toHaveBeenCalledWith({
+      email: "ada@example.com",
+      callbackURL: expect.stringMatching(/\/transfer\/tr_1$/),
+    });
   });
 
   it("says a dead link is no longer valid", () => {

@@ -14,6 +14,8 @@ const state = vi.hoisted(() => ({
   siteAccess: false,
   membership: null as null | { role: string },
   systemAdmin: false,
+  // A role on the site above the membership's, as a site grant or team gives.
+  siteRole: null as string | null,
   writes: [] as Array<{ op: string; values?: unknown }>,
 }));
 
@@ -54,7 +56,8 @@ vi.mock("../../../db/postgres/postgres.js", () => {
 
 // getUserOrgRole folds system-admin authority into the org role; mirror that.
 vi.mock("../../../lib/auth-utils.js", () => ({
-  getUserHasAccessToSite: async () => state.siteAccess,
+  getUserSiteRole: async () =>
+    state.siteAccess ? (state.systemAdmin ? "admin" : (state.siteRole ?? state.membership?.role ?? "member")) : null,
   getUserOrgRole: async () => (state.systemAdmin ? "admin" : (state.membership?.role ?? null)),
 }));
 
@@ -128,16 +131,17 @@ beforeEach(() => {
   state.siteAccess = false;
   state.membership = null;
   state.systemAdmin = false;
+  state.siteRole = null;
   state.writes = [];
 });
 
 describe("resolveSegmentActor", () => {
   it("treats an organization API key as an admin of its own org only", async () => {
     const own = await resolveSegmentActor(fakeRequest({ apiKeyOrganizationId: "org_1" }), 1, "org_1");
-    expect(own).toEqual({ userId: null, hasSiteAccess: true, canManage: true });
+    expect(own).toEqual({ userId: null, hasSiteAccess: true, canManage: true, canManageSite: true });
 
     const other = await resolveSegmentActor(fakeRequest({ apiKeyOrganizationId: "org_2" }), 1, "org_1");
-    expect(other).toEqual({ userId: null, hasSiteAccess: false, canManage: false });
+    expect(other).toEqual({ userId: null, hasSiteAccess: false, canManage: false, canManageSite: false });
   });
 
   it("gives an anonymous viewer no access at all", async () => {
@@ -145,6 +149,7 @@ describe("resolveSegmentActor", () => {
       userId: null,
       hasSiteAccess: false,
       canManage: false,
+      canManageSite: false,
     });
   });
 
@@ -162,9 +167,10 @@ describe("resolveSegmentActor", () => {
 });
 
 describe("rule predicates", () => {
-  const admin = { userId: "a", hasSiteAccess: true, canManage: true };
-  const member = { userId: "member_1", hasSiteAccess: true, canManage: false };
-  const viewer = { userId: null, hasSiteAccess: false, canManage: false };
+  const admin = { userId: "a", hasSiteAccess: true, canManage: true, canManageSite: true };
+  const member = { userId: "member_1", hasSiteAccess: true, canManage: false, canManageSite: false };
+  const siteEditor = { userId: "e", hasSiteAccess: true, canManage: false, canManageSite: true };
+  const viewer = { userId: null, hasSiteAccess: false, canManage: false, canManageSite: false };
 
   it("reads: site access sees everything, viewers see public only", () => {
     expect(canReadSegment({ isPublic: false }, member)).toBe(true);
@@ -173,11 +179,17 @@ describe("rule predicates", () => {
   });
 
   it("edits: admins edit anything, members only their own, viewers nothing", () => {
-    expect(canEditSegment({ userId: "someone_else" }, admin)).toBe(true);
-    expect(canEditSegment({ userId: "member_1" }, member)).toBe(true);
-    expect(canEditSegment({ userId: "someone_else" }, member)).toBe(false);
-    expect(canEditSegment({ userId: null }, member)).toBe(false);
-    expect(canEditSegment({ userId: null }, viewer)).toBe(false);
+    expect(canEditSegment({ userId: "someone_else", siteId: 1 }, admin)).toBe(true);
+    expect(canEditSegment({ userId: "member_1", siteId: 1 }, member)).toBe(true);
+    expect(canEditSegment({ userId: "someone_else", siteId: 1 }, member)).toBe(false);
+    expect(canEditSegment({ userId: null, siteId: 1 }, member)).toBe(false);
+    expect(canEditSegment({ userId: null, siteId: 1 }, viewer)).toBe(false);
+  });
+
+  it("per-site editors edit the site's segments, but only org-level managers edit org-wide ones", () => {
+    expect(canEditSegment({ userId: "someone_else", siteId: 1 }, siteEditor)).toBe(true);
+    expect(canEditSegment({ userId: "e", siteId: null }, siteEditor)).toBe(false);
+    expect(canEditSegment({ userId: "someone_else", siteId: null }, admin)).toBe(true);
   });
 
   it("scopes a segment to its own site or its whole organization", () => {

@@ -13,10 +13,10 @@ import { apiKey } from "@better-auth/api-key";
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
-import { isAdminRole, isSiteGrantRole, SITE_GRANT_ROLES, type OrgRole } from "@rybbit/shared";
+import { isAdminRole, isOrgRole, isSiteGrantRole, ORG_ROLES, SITE_GRANT_ROLES, type OrgRole } from "@rybbit/shared";
 import { siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
-import { getMemberLimitError } from "./memberLimits.js";
+import { getMemberLimitError, getPlanMemberLimit } from "./memberLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
 import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
 import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
@@ -93,6 +93,10 @@ const pluginList = [
   dash(),
   organization({
     allowUserToCreateOrganization: true,
+    // better-auth checks this whenever it adds a member itself — including
+    // accepting an invitation, which the invite-time check below can't
+    // cover. 100 is better-auth's own default, kept for unlimited plans.
+    membershipLimit: async (_user, org) => (await getPlanMemberLimit(org.id)) ?? 100,
     creatorRole: "owner",
     ac: orgAccessControl,
     roles: orgRoles,
@@ -398,6 +402,18 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async ctx => {
+      // better-auth accepts several roles at once (an array, stored
+      // comma-joined). Rybbit gives each membership exactly one role, and the
+      // access resolver denies anything else, so refuse it at the door.
+      if (ctx.path === "/organization/invite-member" || ctx.path === "/organization/update-member-role") {
+        const role = (ctx.body as { role?: unknown } | undefined)?.role;
+        if (!isOrgRole(role)) {
+          throw new APIError("BAD_REQUEST", {
+            message: `role must be one of: ${ORG_ROLES.join(", ")}`,
+          });
+        }
+      }
+
       // Gate API key creation on better-auth's own /api-key/create route. This
       // is the only choke point that covers direct client calls — the Fastify
       // endpoints (createUserApiKey / createOrgApiKey) do richer plan checks

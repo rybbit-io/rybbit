@@ -72,15 +72,17 @@ export async function moveSite(
       return reply.status(404).send({ error: "Target organization not found" });
     }
 
-    const capacityError = await withOrganizationSiteLock(targetOrganizationId, async tx => {
+    const failure = await withOrganizationSiteLock(targetOrganizationId, async tx => {
       const limitError = await targetSiteLimitError(tx, targetOrganizationId);
-      if (limitError) return limitError;
+      if (limitError) return { status: 403, error: limitError };
 
-      await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId, tx);
+      if (!(await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId, tx))) {
+        return { status: 409, error: "The site moved while this request was in flight; reload and try again" };
+      }
       return null;
     });
 
-    if (capacityError) return reply.status(403).send({ error: capacityError });
+    if (failure) return reply.status(failure.status).send({ error: failure.error });
     await invalidateSiteMoveAccess(sourceOrganizationId, targetOrganizationId);
     return reply.status(200).send({ success: true, organizationId: targetOrganizationId });
   } catch (error) {

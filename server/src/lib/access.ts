@@ -116,9 +116,9 @@ export async function siteIdsInOrganization(siteIds: number[], organizationId: s
 type GrantRoles = (string | null)[];
 
 /**
- * The grants that decide, together with the member's restriction flag, which
- * sites a non-admin member may access and with what role. Resolved once per
- * request and consulted per site by {@link memberSiteRole}.
+ * One organization's grants that decide, together with the member's
+ * restriction flag, which of its sites a non-admin member may access and with
+ * what role. Consulted per site by {@link memberSiteRole}.
  */
 export interface MemberSiteGrants {
   /** Explicit per-member grants (member_site_access), with each grant's role. */
@@ -129,11 +129,36 @@ export interface MemberSiteGrants {
   userTeamSiteIds: Map<number, GrantRoles>;
 }
 
-const NO_GRANTS: MemberSiteGrants = {
+const emptyGrants = (): MemberSiteGrants => ({
   explicitSiteIds: new Map(),
   teamGatedSiteIds: new Set(),
   userTeamSiteIds: new Map(),
-};
+});
+
+const NO_GRANTS: MemberSiteGrants = emptyGrants();
+
+/**
+ * Grants keyed by the organization that made them — the organization of the
+ * membership (explicit grants) or team (team grants). A grant counts only
+ * toward sites of that same organization: a site that moved elsewhere keeps no
+ * authority from grants its old organization wrote, even ones written in the
+ * race window around the move.
+ */
+export type OrganizationSiteGrants = Map<string, MemberSiteGrants>;
+
+/** One organization's grants (empty when it made none). */
+export function grantsInOrganization(grants: OrganizationSiteGrants, organizationId: string): MemberSiteGrants {
+  return grants.get(organizationId) ?? NO_GRANTS;
+}
+
+function grantsFor(grants: OrganizationSiteGrants, organizationId: string): MemberSiteGrants {
+  let scoped = grants.get(organizationId);
+  if (!scoped) {
+    scoped = emptyGrants();
+    grants.set(organizationId, scoped);
+  }
+  return scoped;
+}
 
 // A grant row naming a role no grant can carry (unknown, or admin/owner) is
 // ignored outright, so reachability and role never disagree about it.
@@ -156,62 +181,62 @@ export async function resolveMemberSiteGrants(options: {
   userId: string;
   organizationIds: string[];
   grantedMemberIds: string[];
-}): Promise<MemberSiteGrants> {
+}): Promise<OrganizationSiteGrants> {
   const { userId, organizationIds, grantedMemberIds } = options;
+  const grants: OrganizationSiteGrants = new Map();
 
   if (organizationIds.length === 0 && grantedMemberIds.length === 0) {
-    return NO_GRANTS;
+    return grants;
   }
 
   const [explicitGrants, teamGated, userTeams] = await Promise.all([
     grantedMemberIds.length > 0
       ? db
-          .select({ siteId: memberSiteAccess.siteId, role: memberSiteAccess.role })
+          .select({
+            siteId: memberSiteAccess.siteId,
+            role: memberSiteAccess.role,
+            organizationId: member.organizationId,
+          })
           .from(memberSiteAccess)
+          .innerJoin(member, eq(memberSiteAccess.memberId, member.id))
           .where(inArray(memberSiteAccess.memberId, grantedMemberIds))
       : Promise.resolve([]),
     organizationIds.length > 0
       ? db
-          .select({ siteId: teamSiteAccess.siteId })
+          .select({ siteId: teamSiteAccess.siteId, organizationId: team.organizationId })
           .from(teamSiteAccess)
           .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
           .where(inArray(team.organizationId, organizationIds))
       : Promise.resolve([]),
     organizationIds.length > 0
       ? db
-          .select({ teamId: teamMember.teamId })
+          .select({ teamId: teamMember.teamId, organizationId: team.organizationId })
           .from(teamMember)
           .innerJoin(team, eq(teamMember.teamId, team.id))
           .where(and(eq(teamMember.userId, userId), inArray(team.organizationId, organizationIds)))
       : Promise.resolve([]),
   ]);
 
-  const userTeamSiteIds = new Map<number, GrantRoles>();
   if (userTeams.length > 0) {
+    const organizationByTeam = new Map(userTeams.map(t => [t.teamId, t.organizationId]));
     const userTeamSites = await db
-      .select({ siteId: teamSiteAccess.siteId, role: teamSiteAccess.role })
+      .select({ teamId: teamSiteAccess.teamId, siteId: teamSiteAccess.siteId, role: teamSiteAccess.role })
       .from(teamSiteAccess)
-      .where(
-        inArray(
-          teamSiteAccess.teamId,
-          userTeams.map(t => t.teamId)
-        )
-      );
+      .where(inArray(teamSiteAccess.teamId, [...organizationByTeam.keys()]));
     for (const s of userTeamSites) {
-      addGrant(userTeamSiteIds, s.siteId, s.role);
+      const organizationId = organizationByTeam.get(s.teamId);
+      if (organizationId) addGrant(grantsFor(grants, organizationId).userTeamSiteIds, s.siteId, s.role);
     }
   }
 
-  const explicitSiteIds = new Map<number, GrantRoles>();
   for (const grant of explicitGrants) {
-    addGrant(explicitSiteIds, grant.siteId, grant.role);
+    addGrant(grantsFor(grants, grant.organizationId).explicitSiteIds, grant.siteId, grant.role);
+  }
+  for (const gated of teamGated) {
+    grantsFor(grants, gated.organizationId).teamGatedSiteIds.add(gated.siteId);
   }
 
-  return {
-    explicitSiteIds,
-    teamGatedSiteIds: new Set(teamGated.map(s => s.siteId)),
-    userTeamSiteIds,
-  };
+  return grants;
 }
 
 /**
@@ -293,11 +318,14 @@ export async function filterSitesByMemberAccess<T extends { siteId: number }>(
   memberId: string,
   hasRestrictedSiteAccess: boolean
 ): Promise<T[]> {
-  const grants = await resolveMemberSiteGrants({
-    userId,
-    organizationIds: [organizationId],
-    grantedMemberIds: hasRestrictedSiteAccess ? [memberId] : [],
-  });
+  const grants = grantsInOrganization(
+    await resolveMemberSiteGrants({
+      userId,
+      organizationIds: [organizationId],
+      grantedMemberIds: hasRestrictedSiteAccess ? [memberId] : [],
+    }),
+    organizationId
+  );
 
   return orgSites.filter(site => memberCanAccessSite(grants, site.siteId, hasRestrictedSiteAccess));
 }
@@ -385,7 +413,7 @@ export async function resolveUserSites(userId: string): Promise<AccessibleSite[]
     const gatedRow = gatedRowByOrgId.get(site.organizationId!);
     if (!gatedRow) return { ...site, accessRole: orgRole };
     const role = grants
-      ? memberSiteRole(grants, site.siteId, {
+      ? memberSiteRole(grantsInOrganization(grants, site.organizationId!), site.siteId, {
           role: orgRole,
           hasRestrictedSiteAccess: gatedRow.hasRestrictedSiteAccess,
         })
@@ -399,7 +427,13 @@ export async function resolveUserSites(userId: string): Promise<AccessibleSite[]
   }
 
   if (grants && restrictedOrgIds.length > 0) {
-    const candidateSiteIds = restrictedMemberSiteIds(grants);
+    const candidateSiteIds = Array.from(
+      new Set(
+        restrictedOrgIds.flatMap(organizationId =>
+          restrictedMemberSiteIds(grantsInOrganization(grants, organizationId))
+        )
+      )
+    );
     if (candidateSiteIds.length > 0) {
       const grantedSites = await db
         .select()

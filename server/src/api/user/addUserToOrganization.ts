@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission } from "@rybbit/shared";
 import { getOrgMembership } from "../../lib/access.js";
 import { getMemberLimitError } from "../../lib/memberLimits.js";
+import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
@@ -84,20 +85,25 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
       return reply.status(400).send({ error: "User is already a member of this organization" });
     }
 
-    const memberLimitError = await getMemberLimitError(organizationId);
+    // Count and insert under the organization's row lock, so concurrent adds
+    // can't both take the last seat.
+    const memberLimitError = await withOrganizationSiteLock(organizationId, async tx => {
+      const limitError = await getMemberLimitError(organizationId, tx);
+      if (limitError) return limitError;
+      await tx.insert(member).values([
+        {
+          userId: foundUser.id,
+          organizationId: organizationId,
+          role: role,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      return null;
+    });
     if (memberLimitError) {
       return reply.status(403).send({ error: memberLimitError });
     }
-
-    await db.insert(member).values([
-      {
-        userId: foundUser.id,
-        organizationId: organizationId,
-        role: role,
-        id: generateId(),
-        createdAt: new Date().toISOString(),
-      },
-    ]);
 
     return reply.status(201).send({
       message: "User added to organization successfully",

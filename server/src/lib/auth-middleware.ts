@@ -244,6 +244,10 @@ export interface SitePermissionOptions {
  */
 export function requireSitePermission(permission: Permission, options: SitePermissionOptions = {}): AuthMiddleware {
   const scope = PERMISSIONS[permission].scope;
+  // Reads (every viewer permission) may use the short-lived per-worker role
+  // cache; anything a viewer can't do re-reads the role, so revoking access
+  // takes effect immediately for writes and admin actions.
+  const fresh = PERMISSIONS[permission].minRole !== "viewer";
   return async (request, reply) => {
     const siteId = getSiteIdFromParams(request);
     if (!siteId) {
@@ -253,7 +257,7 @@ export function requireSitePermission(permission: Permission, options: SitePermi
     // Bearer credential first. A key whose role or scope falls short falls
     // through to the session, so a browser tab holding both still works.
     let scopeDenied = false;
-    const apiKeyResult = await checkApiKey(request, { siteId });
+    const apiKeyResult = await checkApiKey(request, { siteId, fresh });
     if (apiKeyResult.valid && roleHasPermission(apiKeyResult.role, permission)) {
       if (bearerScopeOk(apiKeyResult, scope)) {
         attachApiKeyUser(request, reply, apiKeyResult);
@@ -263,7 +267,7 @@ export function requireSitePermission(permission: Permission, options: SitePermi
       scopeDenied = true;
     }
 
-    const role = await getUserSiteRole(request, siteId);
+    const role = await getUserSiteRole(request, siteId, { fresh });
     if (roleHasPermission(role, permission)) {
       const session = await getSessionFromReq(request);
       if (session?.user) request.user = session.user;

@@ -60,6 +60,7 @@ import {
 import {
   filterSitesByMemberAccess,
   getOrgMembership,
+  grantsInOrganization,
   isOrgAdmin,
   isOrgOwner,
   memberCanAccessSite,
@@ -340,11 +341,14 @@ describe("restrictedMemberSiteIds matches the restricted branch of memberCanAcce
   const universe = Array.from({ length: 13 }, (_, i) => i + 1);
 
   async function grantsFor(restricted: boolean) {
-    return resolveMemberSiteGrants({
-      userId: "user_peer",
-      organizationIds: [ORG],
-      grantedMemberIds: restricted ? ["member_peer"] : [],
-    });
+    return grantsInOrganization(
+      await resolveMemberSiteGrants({
+        userId: "user_peer",
+        organizationIds: [ORG],
+        grantedMemberIds: restricted ? ["member_peer"] : [],
+      }),
+      ORG
+    );
   }
 
   it("enumerates exactly the sites the predicate admits, for a member on a team", async () => {
@@ -743,6 +747,27 @@ describe("per-site roles from grants and teams", () => {
     await db.insert(memberSiteAccess).values({ memberId: "member_forged", siteId: 5, role: "owner" });
 
     expect(await siteIdsFor("user_forged")).toEqual([]);
+  });
+
+  it("ignores a grant its organization wrote for a site that has since moved away", async () => {
+    // user_client is a viewer in both organizations; ORG's editor grant on
+    // site 5 was written (or raced in) after site 5 moved to org_new.
+    await db.insert(member).values([
+      {
+        id: "m_client_old",
+        organizationId: ORG,
+        userId: "user_client2",
+        role: "viewer",
+        createdAt: NOW,
+        hasRestrictedSiteAccess: true,
+      },
+      { id: "m_client_new", organizationId: "org_new", userId: "user_client2", role: "viewer", createdAt: NOW },
+    ]);
+    await db.insert(memberSiteAccess).values({ memberId: "m_client_old", siteId: 5, role: "editor" });
+    await db.update(sites).set({ organizationId: "org_new" }).where(eq(sites.siteId, 5));
+
+    invalidateSitesAccessCache("user_client2");
+    expect(await getUserSiteRole(reqFor("user_client2"), 5)).toBe("viewer");
   });
 
   it("treats a restricted member as a viewer across the organization", async () => {

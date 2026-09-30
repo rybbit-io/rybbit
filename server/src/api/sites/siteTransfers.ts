@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { gscConnections, organization, sites, siteTransfers, user } from "../../db/postgres/schema.js";
 import { effectiveOrgRole, getOrgMembership } from "../../lib/access.js";
+import { IS_CLOUD } from "../../lib/const.js";
 import { sendSiteTransferEmail } from "../../lib/email/email.js";
 import { claimExpiryIso as utcIso } from "../../services/sites/claimExpiry.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
@@ -156,10 +157,18 @@ type RecipientLookup =
   | { ok: true; transfer: TransferRow; userId: string }
   | { ok: false; status: number; body: Record<string, unknown> };
 
+/** "tay@example.org" → "t••@example.org": enough to recognise, not to register. */
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  return `${local.slice(0, 1)}${"•".repeat(Math.max(1, Math.min(local.length - 1, 3)))}@${domain ?? ""}`;
+}
+
 /**
  * The pending transfer, provided the signed-in user is the person it was sent
- * to. The id alone is not enough: it must be opened from the recipient's
- * account.
+ * to. The id alone is not enough: it must be opened from an account that holds
+ * the recipient's address — verified, where this instance can send the
+ * verification email (otherwise anyone holding a leaked link could register
+ * the address and accept).
  */
 async function loadTransferForRecipient(request: FastifyRequest, transferId: string): Promise<RecipientLookup> {
   const userId = request.user?.id;
@@ -172,12 +181,26 @@ async function loadTransferForRecipient(request: FastifyRequest, transferId: str
     return { ok: false, status: 404, body: { error: "This transfer link is no longer valid" } };
   }
 
-  const recipient = await db.query.user.findFirst({ where: eq(user.id, userId), columns: { email: true } });
+  const recipient = await db.query.user.findFirst({
+    where: eq(user.id, userId),
+    columns: { email: true, emailVerified: true },
+  });
   if (recipient?.email.toLowerCase() !== transfer.recipientEmail.toLowerCase()) {
     return {
       ok: false,
       status: 403,
-      body: { error: "This transfer was sent to a different email address", recipientEmail: transfer.recipientEmail },
+      body: {
+        error: "This transfer was sent to a different email address",
+        reason: "wrong_account",
+        recipientEmailHint: maskEmail(transfer.recipientEmail),
+      },
+    };
+  }
+  if (IS_CLOUD && !recipient.emailVerified) {
+    return {
+      ok: false,
+      status: 403,
+      body: { error: "Verify your email address to accept this transfer", reason: "email_unverified" },
     };
   }
 
@@ -251,20 +274,16 @@ export async function acceptSiteTransfer(
     }
 
     const outcome = await withOrganizationSiteLock(targetOrganizationId, async tx => {
-      // Re-read under the lock: the site may have moved, or the transfer been
-      // cancelled or superseded, since the recipient opened the page.
-      const [current] = await tx.select().from(siteTransfers).where(eq(siteTransfers.id, transfer.id)).limit(1);
+      // Re-read and lock the transfer: a concurrent accept, cancel or
+      // replacement waits here, and afterwards finds it gone.
+      const [current] = await tx
+        .select()
+        .from(siteTransfers)
+        .where(eq(siteTransfers.id, transfer.id))
+        .limit(1)
+        .for("update");
       if (!current || isExpired(current)) {
         return { status: 404, error: "This transfer link is no longer valid" };
-      }
-      const [site] = await tx
-        .select({ organizationId: sites.organizationId })
-        .from(sites)
-        .where(eq(sites.siteId, transfer.siteId))
-        .limit(1);
-      if (!site || site.organizationId !== transfer.sourceOrganizationId) {
-        await tx.delete(siteTransfers).where(eq(siteTransfers.id, transfer.id));
-        return { status: 409, error: "The site has moved since this transfer was sent" };
       }
 
       const limitError = await targetSiteLimitError(tx, targetOrganizationId);
@@ -272,8 +291,12 @@ export async function acceptSiteTransfer(
         return { status: 403, error: limitError };
       }
 
-      // Also deletes the transfer.
-      await applySiteMove(transfer.siteId, transfer.sourceOrganizationId, targetOrganizationId, tx);
+      // Moves only while the site is still in the organization the transfer
+      // was sent from, and deletes the transfer.
+      if (!(await applySiteMove(transfer.siteId, current.sourceOrganizationId, targetOrganizationId, tx))) {
+        await tx.delete(siteTransfers).where(eq(siteTransfers.id, transfer.id));
+        return { status: 409, error: "The site has moved since this transfer was sent" };
+      }
       // The Search Console connection holds the sender's Google credentials;
       // it does not go to someone else's organization.
       await tx.delete(gscConnections).where(eq(gscConnections.siteId, transfer.siteId));
