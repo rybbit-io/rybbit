@@ -110,12 +110,17 @@ describe("getChannel - country sites and URL-valued sources", () => {
     expect(fromReferrer("mail.google.com.br")).toBe("Email");
     // stripping the country code must not create new substring-style collisions
     expect(fromReferrer("microsoft.co.il")).toBe("Referral");
+    expect(fromReferrer("pi.ai.uk")).toBe("Referral");
+    expect(fromReferrer("t.co.uk")).toBe("Referral");
   });
 
   it("reads the host out of URL-valued UTM sources", () => {
     expect(getChannel("", "utm_source=https%3A%2F%2Ffacebook.com%2F&utm_medium=cpc")).toBe("Paid Social");
     expect(getChannel("", "utm_source=https%3A%2F%2Fwww.perplexity.ai%2F&utm_medium=paid")).toBe("Paid AI");
     expect(getChannel("", "utm_source=chatgpt.com%2Fc%2F123")).toBe("AI");
+    expect(getChannel("", "utm_source=https%3A%2F%2Fuser%40facebook.com%2F&utm_medium=cpc")).toBe("Paid Social");
+    expect(getChannel("", "utm_source=%2F%2Ffacebook.com%2F&utm_medium=cpc")).toBe("Paid Social");
+    expect(getChannel("", "utm_source=android-app%3A%2F%2Fcom.google.android.gm%2F")).toBe("Email");
   });
 });
 
