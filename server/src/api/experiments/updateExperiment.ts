@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { experiments, featureFlags } from "../../db/postgres/schema.js";
+import { hasScope, scopeToString } from "../../lib/scopes.js";
 import { invalidateFeatureFlagDefinitions } from "../../services/featureFlags/definitions.js";
 import { experimentUpdateSchema, type ExperimentUpdate } from "./schemas.js";
 import {
@@ -17,6 +18,11 @@ import {
   timestampsForStatus,
   validateExperimentReferences,
 } from "./utils.js";
+
+const FLAGS_WRITE = { resource: "flags", action: "write" } as const;
+
+/** The experiment or its flag changed between the handler's read and its write. */
+class ExperimentConflictError extends Error {}
 
 export async function updateExperiment(
   request: FastifyRequest<{
@@ -96,21 +102,48 @@ export async function updateExperiment(
       }
     }
 
-    const flagUpdate = flag && body.status ? flagUpdateForStatusChange(existing.status, body.status, flag, winner) : null;
+    const flagUpdate =
+      flag && body.status ? flagUpdateForStatusChange(existing.status, body.status, flag, winner) : null;
 
-    const [updated] = await db.transaction(async tx => {
+    // The route guard only checked experiments:write. A lifecycle change also
+    // switches or rolls out the flag, so a scoped bearer credential must hold
+    // flags:write too, or it could change serving the flag endpoint would deny it.
+    if (flagUpdate && request.bearerAuth && !hasScope(request.bearerStatements ?? null, FLAGS_WRITE)) {
+      return reply.status(403).send({ error: "Insufficient scope", required: scopeToString(FLAGS_WRITE) });
+    }
+
+    // Validation above ran against `existing` and `flag`. Only write if neither
+    // changed since (status and flag version as optimistic locks), so a
+    // concurrent edit, lifecycle change or delete rolls the whole update back.
+    const updated = await db.transaction(async tx => {
       if (flag && flagUpdate) {
-        await tx
+        const flagRows = await tx
           .update(featureFlags)
           .set({ ...flagUpdate, version: flag.version + 1, updatedAt: new Date().toISOString() })
-          .where(and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flag.flagId)));
+          .where(
+            and(
+              eq(featureFlags.siteId, siteId),
+              eq(featureFlags.flagId, flag.flagId),
+              eq(featureFlags.version, flag.version)
+            )
+          )
+          .returning({ flagId: featureFlags.flagId });
+        if (flagRows.length === 0) throw new ExperimentConflictError();
       }
 
-      return tx
+      const [row] = await tx
         .update(experiments)
         .set(updateData)
-        .where(and(eq(experiments.siteId, siteId), eq(experiments.experimentId, experimentId)))
+        .where(
+          and(
+            eq(experiments.siteId, siteId),
+            eq(experiments.experimentId, experimentId),
+            eq(experiments.status, existing.status)
+          )
+        )
         .returning({ experimentId: experiments.experimentId });
+      if (!row) throw new ExperimentConflictError();
+      return row;
     });
 
     if (flagUpdate) {
@@ -120,6 +153,11 @@ export async function updateExperiment(
     const record = await getExperimentWithRelations(siteId, updated.experimentId);
     return reply.send({ success: true, data: record ? serializeExperiment(record) : updated });
   } catch (error) {
+    if (error instanceof ExperimentConflictError) {
+      return reply
+        .status(409)
+        .send({ error: "This experiment or its feature flag changed while saving. Reload and try again." });
+    }
     const duplicateMessage = getDuplicateExperimentMessage(error);
     if (duplicateMessage) {
       return reply.status(409).send({ error: duplicateMessage });
