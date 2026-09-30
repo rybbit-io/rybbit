@@ -129,9 +129,9 @@ export function DateSelector({
       // Whole hours read as hours; a typed 90m keeps its minutes rather than
       // rounding down to "Last 1 hours".
       if (time.pastMinutesStart >= 60 && time.pastMinutesStart % 60 === 0) {
-        return t("Last {hours} hours", { hours: String(time.pastMinutesStart / 60) });
+        return t("Last {hours, plural, one {# hour} other {# hours}}", { hours: time.pastMinutesStart / 60 });
       }
-      return t("Last {minutes} minutes", { minutes: String(time.pastMinutesStart) });
+      return t("Last {minutes, plural, one {# minute} other {# minutes}}", { minutes: time.pastMinutesStart });
     }
 
     if (time.mode === "day") {

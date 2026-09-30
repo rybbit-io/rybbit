@@ -6,6 +6,16 @@ import { organization } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getOrgMembership } from "../../lib/access.js";
 import Stripe from "stripe";
+import { z } from "zod";
+
+const portalSchema = z.object({
+  organizationId: z.string().trim().min(1),
+  returnUrl: z
+    .string()
+    .url()
+    .refine(url => ["https:", "http:"].includes(new URL(url).protocol)),
+  flowType: z.enum(["subscription_update", "subscription_cancel", "payment_method_update"]).optional(),
+});
 
 interface PortalRequestBody {
   returnUrl: string;
@@ -14,18 +24,19 @@ interface PortalRequestBody {
 }
 
 export async function createPortalSession(request: FastifyRequest<{ Body: PortalRequestBody }>, reply: FastifyReply) {
-  const { returnUrl, organizationId, flowType } = request.body;
   const userId = request.user?.id;
 
   if (!userId) {
     return reply.status(401).send({ error: "Unauthorized" });
   }
 
-  if (!returnUrl || !organizationId) {
+  const parsed = portalSchema.safeParse(request.body);
+  if (!parsed.success) {
     return reply.status(400).send({
       error: "Missing required parameters: returnUrl, organizationId",
     });
   }
+  const { returnUrl, organizationId, flowType } = parsed.data;
 
   try {
     // 1. Verify user has permission to manage billing for this organization
@@ -135,11 +146,10 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
 
     // 4. Return the Billing Portal Session URL
     return reply.send({ portalUrl: portalSession.url });
-  } catch (error: any) {
+  } catch (error) {
     request.log.error({ err: error }, "Stripe Portal Session Error");
     return reply.status(500).send({
       error: "Failed to create Stripe portal session",
-      details: error.message,
     });
   }
 }

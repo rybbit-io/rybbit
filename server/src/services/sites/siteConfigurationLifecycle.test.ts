@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
 
 const mocks = vi.hoisted(() => ({
   clickhouseCommand: vi.fn(),
+  clickhouseQuery: vi.fn(),
   invalidate: vi.fn(),
   getConfig: vi.fn(),
 }));
@@ -39,7 +40,7 @@ vi.mock("../../db/postgres/postgres.js", () => ({
 }));
 
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({
-  clickhouse: { command: mocks.clickhouseCommand },
+  clickhouse: { command: mocks.clickhouseCommand, query: mocks.clickhouseQuery },
 }));
 
 vi.mock("../../lib/siteConfig.js", () => ({
@@ -70,10 +71,16 @@ beforeEach(() => {
   state.updates.length = 0;
   state.deletes = 0;
   mocks.clickhouseCommand.mockResolvedValue(undefined);
+  mocks.clickhouseQuery.mockResolvedValue({ json: async () => [] });
   mocks.getConfig.mockResolvedValue({ siteId: 1, id: "abcdef123456", name: "Renamed" });
 });
 
 describe("siteConfigurationLifecycle", () => {
+  it("clears the detected platform when the site domain changes", async () => {
+    state.site = { ...makeSite(), detectedPlatform: "wordpress" };
+    await siteConfigurationLifecycle.update(1, { domain: "new.example.com" });
+    expect(state.updates[0]).toMatchObject({ domain: "new.example.com", detectedPlatform: null });
+  });
   it("updates persistence once, invalidates the Site, and reloads its configuration", async () => {
     const result = await siteConfigurationLifecycle.update(1, { name: "Renamed" });
 
@@ -117,5 +124,27 @@ describe("siteConfigurationLifecycle", () => {
 
     expect(state.deletes).toBe(0);
     expect(mocks.invalidate).not.toHaveBeenCalled();
+  });
+
+  it("erases retained legacy and backfill metadata before deleting the site", async () => {
+    mocks.clickhouseQuery.mockResolvedValue({
+      json: async () => [{ name: "session_replay_metadata" }, { name: "session_replay_metadata_v2_backfill" }],
+    });
+    await siteConfigurationLifecycle.delete(1);
+    const queries = mocks.clickhouseCommand.mock.calls.map(([command]) => command.query);
+    expect(queries).toEqual(
+      expect.arrayContaining([
+        "DELETE FROM session_replay_metadata WHERE site_id = {id:UInt32}",
+        "DELETE FROM session_replay_metadata_v2 WHERE site_id = {id:UInt32}",
+        "DELETE FROM session_replay_metadata_v2_backfill WHERE site_id = {id:UInt32}",
+      ])
+    );
+    expect(state.deletes).toBe(1);
+  });
+
+  it("does not delete the site when rollback-table discovery fails", async () => {
+    mocks.clickhouseQuery.mockRejectedValueOnce(new Error("discovery failed"));
+    await expect(siteConfigurationLifecycle.delete(1)).rejects.toThrow("discovery failed");
+    expect(state.deletes).toBe(0);
   });
 });

@@ -1,6 +1,6 @@
 import { FilterParameter } from "@rybbit/shared";
 import { z } from "zod";
-import { dateRegex, dateTimeRegex, isValidTimeZone, parseDateTimeMs } from "./timeWindow.js";
+import { dateRegex, dateTimeRegex, isValidTimeZone, parseDateTimeMs, TimeBucketToFn } from "./timeWindow.js";
 
 // =============================================================================
 // FILTER RELATED SCHEMAS
@@ -73,6 +73,8 @@ export const filterSchema = z.object({
   parameter: filterParamSchema,
   type: filterTypeSchema,
   value: z.array(z.string().or(z.number())),
+}).refine(filter => !["greater_than", "less_than", "greater_than_or_equal", "less_than_or_equal"].includes(filter.type) || filter.parameter === "lat" || filter.parameter === "lon", {
+  message: "Numeric comparison operators require a numeric dimension",
 });
 
 // =============================================================================
@@ -99,6 +101,7 @@ const optionalNonNegativeMinutes = z
  */
 const httpTimeParamsSchema = z
   .object({
+    bucket: z.string().refine(value => Object.prototype.hasOwnProperty.call(TimeBucketToFn, value), { message: "Invalid time bucket" }).optional(),
     start_date: z
       .string()
       .regex(dateRegex, { message: "Invalid start_date format. Use YYYY-MM-DD" })

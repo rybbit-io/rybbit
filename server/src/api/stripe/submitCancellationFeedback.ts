@@ -3,6 +3,18 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { cancellationFeedback } from "../../db/postgres/schema.js";
 import { getOrgMembership } from "../../lib/access.js";
+import { z } from "zod";
+
+const feedbackSchema = z.object({
+  organizationId: z.string().trim().min(1),
+  reason: z.string().trim().min(1).max(255),
+  reasonDetails: z.string().max(5000).optional(),
+  retentionOfferShown: z.string().max(255).optional(),
+  retentionOfferAccepted: z.boolean().optional(),
+  outcome: z.string().trim().min(1).max(255),
+  planNameAtCancellation: z.string().max(255).optional(),
+  monthlyEventCountAtCancellation: z.number().int().nonnegative().optional(),
+});
 
 interface CancellationFeedbackBody {
   organizationId: string;
@@ -25,6 +37,13 @@ export async function submitCancellationFeedback(
     return reply.status(401).send({ error: "Unauthorized" });
   }
 
+  const parsed = feedbackSchema.safeParse(request.body);
+  if (!parsed.success) {
+    return reply
+      .status(400)
+      .send({ error: "Missing required parameters: organizationId, reason, outcome, or invalid feedback" });
+  }
+
   const {
     organizationId,
     reason,
@@ -34,13 +53,7 @@ export async function submitCancellationFeedback(
     outcome,
     planNameAtCancellation,
     monthlyEventCountAtCancellation,
-  } = request.body;
-
-  if (!organizationId || !reason || !outcome) {
-    return reply.status(400).send({
-      error: "Missing required parameters: organizationId, reason, outcome",
-    });
-  }
+  } = parsed.data;
 
   try {
     // Verify user has permission (owner only)

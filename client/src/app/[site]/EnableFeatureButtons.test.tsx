@@ -69,7 +69,7 @@ describe.each([
     const button = screen.getByRole("button", { name: "Enable" });
     fireEvent.click(button);
 
-    await waitFor(() => expect(mocks.refetch).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.refetch).toHaveBeenCalledWith({ throwOnError: true }));
     expect(mocks.updateSiteConfig).toHaveBeenCalledWith(7, config);
     expect(button.getAttribute("aria-busy")).toBe("true");
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
@@ -106,5 +106,22 @@ describe.each([
     expect(button.hasAttribute("aria-busy")).toBe(false);
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
     expect(mocks.refetch).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed refetch without confirming success", async () => {
+    mocks.updateSiteConfig.mockResolvedValue({ success: true });
+    mocks.refetch.mockImplementation(async (options?: { throwOnError?: boolean }) => {
+      const error = new Error("Site refresh failed");
+      if (options?.throwOnError) throw error;
+      return { isError: true, error };
+    });
+    render(<Banner />);
+
+    const button = screen.getByRole("button", { name: "Enable" });
+    fireEvent.click(button);
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(`Failed to enable ${name}: Site refresh failed`));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(button.hasAttribute("aria-busy")).toBe(false);
   });
 });

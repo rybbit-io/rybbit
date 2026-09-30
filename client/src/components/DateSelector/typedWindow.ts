@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { z } from "zod";
 import { getDashboardTimeForRange, type DashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
 import { Time } from "./types";
 
@@ -38,6 +39,28 @@ const UNITS: Record<string, TypedUnit> = {
  */
 const MAX_DAYS = 366;
 const MAX_REALTIME_MINUTES = 7 * 24 * 60;
+const TYPED_WINDOW_PATTERN = /^\s*(\d{1,4})\s*([a-z]*)\s*$/i;
+const typedWindowSchema = z
+  .string()
+  .regex(TYPED_WINDOW_PATTERN)
+  .transform(text => {
+    const [, digits, suffix] = TYPED_WINDOW_PATTERN.exec(text)!;
+    return { count: Number(digits), ...(suffix ? { unit: UNITS[suffix.toLowerCase()] ?? suffix } : {}) };
+  })
+  .pipe(
+    z
+      .object({
+        count: z.number().int().min(1),
+        unit: z.enum(["minute", "hour", "day", "week"]).optional(),
+      })
+      .refine(({ count, unit }) => {
+        if (unit === "minute") return count <= MAX_REALTIME_MINUTES;
+        if (unit === "hour") return count * 60 <= MAX_REALTIME_MINUTES;
+        if (unit === "day") return count <= MAX_DAYS;
+        if (unit === "week") return count * 7 <= MAX_DAYS;
+        return true;
+      })
+  );
 
 /**
  * "14d", "3 days", "90 min" → a window counted back from now. Grafana and
@@ -46,24 +69,8 @@ const MAX_REALTIME_MINUTES = 7 * 24 * 60;
  * which letters would finish the phrase; anything else is an ordinary search.
  */
 export function parseTypedWindow(text: string): TypedWindow | null {
-  const match = /^\s*(\d{1,4})\s*([a-z]*)\s*$/i.exec(text);
-  if (!match) return null;
-
-  const count = Number(match[1]);
-  if (count < 1) return null;
-
-  if (!match[2]) return { count };
-
-  const unit = UNITS[match[2].toLowerCase()];
-  if (!unit) return null;
-
-  const minutes = unit === "minute" ? count : unit === "hour" ? count * 60 : 0;
-  if (minutes > MAX_REALTIME_MINUTES) return null;
-
-  const days = unit === "day" ? count : unit === "week" ? count * 7 : 0;
-  if (days > MAX_DAYS) return null;
-
-  return { count, unit };
+  const result = typedWindowSchema.safeParse(text);
+  return result.success ? result.data : null;
 }
 
 /**

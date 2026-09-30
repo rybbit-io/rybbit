@@ -99,6 +99,15 @@ beforeEach(async () => {
 });
 
 describe("previewSubscriptionUpdate — authorization", () => {
+  it.each([
+    { ...validBody, newPriceId: {} },
+    { ...validBody, organizationId: ["org_1"] },
+  ])("rejects malformed preview input: %j", async body => {
+    const reply = replyStub();
+    await previewSubscriptionUpdate(requestStub("u_owner", body), reply);
+    expect(reply.statusCode).toBe(400);
+    expect(mocks.subscriptionsList).not.toHaveBeenCalled();
+  });
   it("returns a proration preview for the org owner", async () => {
     const reply = replyStub();
 

@@ -21,7 +21,7 @@ export type GetErrorBucketedResponse = {
 }[];
 
 export const buildErrorBucketedQuery = (query: GetErrorBucketedRequest["Querystring"], siteId: number) => {
-  const { bucket } = query;
+  const { bucket = "hour" } = query;
   const window = resolveTimeWindow(query);
   const timeStatement = window.where();
   const { filteredSessionsCTE, rowFilterStatement } = buildSessionAndRowFilterFragments(

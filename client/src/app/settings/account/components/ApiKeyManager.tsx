@@ -30,7 +30,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/
 import { IS_CLOUD } from "../../../../lib/const";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
 import { LedgerRow, LedgerSection, LedgerTable } from "../../components/Ledger";
-import { ApiKeyScopePicker, getScopeLabel, type ScopeSelection } from "./ApiKeyScopePicker";
+import { ApiKeyScopePicker, useScopeLabel, type ScopeSelection } from "./ApiKeyScopePicker";
 
 const INLINE_LINK =
   "font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700 dark:text-neutral-100 dark:hover:text-neutral-300";
@@ -42,6 +42,7 @@ const FORM_ROW = "px-4 md:grid-cols-[244px_minmax(0,1fr)]";
 /** "Full access", or what a restricted key may touch, with the full list on hover. */
 function PermissionsSummary({ permissions }: { permissions: Record<string, string[]> | null | undefined }) {
   const t = useExtracted();
+  const getScopeLabel = useScopeLabel();
   const entries = permissions ? Object.entries(permissions) : [];
 
   if (entries.length === 0) {
@@ -183,7 +184,7 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
   };
 
   const handleApiKeyDialogOpenChange = (open: boolean) => {
-    if (!open && !keyCopied && !confirmClose) {
+    if (!open && !keyCopied) {
       setConfirmClose(true);
       return;
     }
@@ -433,7 +434,10 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
                 onCopy={() => setKeyCopied(true)}
                 onError={() => toast.error(t("Couldn't copy to clipboard. Select the key and copy it manually."))}
               />
-              <Button variant="outline" onClick={() => handleApiKeyDialogOpenChange(false)}>
+              <Button
+                variant="outline"
+                onClick={() => (showCloseWarning ? setShowApiKeyDialog(false) : handleApiKeyDialogOpenChange(false))}
+              >
                 {showCloseWarning ? t("Close anyway") : t("Done")}
               </Button>
             </div>

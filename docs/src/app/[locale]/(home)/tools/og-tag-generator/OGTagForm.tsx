@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle, Copy, Loader2 } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 interface OGVariation {
@@ -14,6 +15,7 @@ interface OGVariation {
 }
 
 export function OGTagForm() {
+  const t = useExtracted();
   const [pageTitle, setPageTitle] = useState("");
   const [pageDescription, setPageDescription] = useState("");
   const [pageType, setPageType] = useState<"website" | "article" | "product" | "blog">("website");
@@ -25,7 +27,7 @@ export function OGTagForm() {
 
   const generateOGTags = async () => {
     if (!pageTitle || !pageDescription) {
-      setError("Please fill in all required fields");
+      setError(t("Please fill in all required fields"));
       return;
     }
 
@@ -45,13 +47,13 @@ export function OGTagForm() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to generate OG tags");
+        throw new Error(data.error || t("Failed to generate OG tags"));
       }
 
       const data = await response.json();
       setVariations(data.variations);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("An error occurred"));
     } finally {
       setIsLoading(false);
     }
@@ -67,13 +69,14 @@ export function OGTagForm() {
     <div className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Page Title <span className="text-red-500">*</span>
+          {t("Page Title ")}
+          <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={pageTitle}
           onChange={e => setPageTitle(e.target.value)}
-          placeholder="e.g., The Ultimate Guide to Web Analytics"
+          placeholder={t("e.g., The Ultimate Guide to Web Analytics")}
           disabled={isLoading}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
         />
@@ -81,12 +84,15 @@ export function OGTagForm() {
 
       <div>
         <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Page Description <span className="text-red-500">*</span>
+          {t("Page Description ")}
+          <span className="text-red-500">*</span>
         </label>
         <textarea
           value={pageDescription}
           onChange={e => setPageDescription(e.target.value)}
-          placeholder="e.g., Learn how to track website visitors, measure conversions, and grow your business with privacy-focused analytics..."
+          placeholder={t(
+            "e.g., Learn how to track website visitors, measure conversions, and grow your business with privacy-focused analytics..."
+          )}
           disabled={isLoading}
           rows={4}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
@@ -94,31 +100,32 @@ export function OGTagForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-          Page Type
-        </label>
+        <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">{t("Page Type")}</label>
         <select
           value={pageType}
           onChange={e => setPageType(e.target.value as typeof pageType)}
           disabled={isLoading}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
         >
-          <option value="website">Website</option>
-          <option value="article">Article</option>
-          <option value="blog">Blog Post</option>
-          <option value="product">Product</option>
+          <option value="website">{t("Website")}</option>
+          <option value="article">{t("Article")}</option>
+          <option value="blog">{t("Blog Post")}</option>
+          <option value="product">{t("Product")}</option>
         </select>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg">
+        <div
+          role="alert"
+          className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg"
+        >
           <p className="text-sm text-red-900 dark:text-red-200">{error}</p>
         </div>
       )}
 
       {remainingRequests !== null && (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          {remainingRequests} requests remaining this minute
+          {remainingRequests} {t(" requests remaining this minute")}
         </p>
       )}
 
@@ -130,7 +137,7 @@ export function OGTagForm() {
         {isLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Generating OG Tags...
+            {t("Generating OG Tags...")}
           </>
         ) : (
           "Generate Open Graph Tags"
@@ -139,7 +146,7 @@ export function OGTagForm() {
 
       {variations.length > 0 && (
         <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-6">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Generated Variations</h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("Generated Variations")}</h3>
           {variations.map((variation, index) => (
             <div
               key={index}
@@ -154,12 +161,12 @@ export function OGTagForm() {
                   {copiedIndex === index ? (
                     <>
                       <CheckCircle className="w-4 h-4" />
-                      Copied
+                      {t("Copied")}
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4" />
-                      Copy HTML
+                      {t("Copy HTML")}
                     </>
                   )}
                 </button>
@@ -167,31 +174,31 @@ export function OGTagForm() {
 
               <div className="space-y-3 mb-4">
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Title</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t("Title")}</p>
                   <p className="text-sm text-neutral-900 dark:text-white font-medium">{variation.ogTitle}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Description</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t("Description")}</p>
                   <p className="text-sm text-neutral-900 dark:text-white">{variation.ogDescription}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Type</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t("Type")}</p>
                     <p className="text-sm text-neutral-900 dark:text-white">{variation.ogType}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Twitter Card</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t("Twitter Card")}</p>
                     <p className="text-sm text-neutral-900 dark:text-white">{variation.twitterCard}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Image Suggestion</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t("Image Suggestion")}</p>
                   <p className="text-sm text-neutral-600 dark:text-neutral-300">{variation.ogImageSuggestion}</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">HTML Code</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{t("HTML Code")}</p>
                 <pre className="p-3 bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg overflow-x-auto">
                   <code className="text-xs text-neutral-900 dark:text-neutral-100">{variation.htmlCode}</code>
                 </pre>

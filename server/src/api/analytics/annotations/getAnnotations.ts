@@ -91,7 +91,7 @@ export async function getAnnotations(
       .where(and(...conditions))
       .orderBy(asc(annotations.date), asc(annotations.annotationId));
 
-    return reply.send(rows.map(row => ({ ...row, date: toIso(row.date) ?? row.date, endDate: toIso(row.endDate) })));
+    return reply.header("Cache-Control", "no-store").send(rows.map(row => ({ ...row, date: toIso(row.date) ?? row.date, endDate: toIso(row.endDate) })));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return reply.status(400).send({ error: "Validation error", details: error.errors });

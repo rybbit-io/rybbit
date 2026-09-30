@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { User, Copy, Check, AlertCircle, Loader2 } from "lucide-react";
-import type { BioGeneratorPlatformConfig } from "./bio-generator-platform-configs";
+import { useExtracted } from "next-intl";
+import { useState } from "react";
+import type { BioGeneratorPlatformConfig } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/bio-generator-platform-configs";
 
 interface BioGeneratorProps {
   platform: BioGeneratorPlatformConfig;
 }
 
 export function BioGenerator({ platform }: BioGeneratorProps) {
+  const t = useExtracted();
   const [name, setName] = useState("");
   const [profession, setProfession] = useState("");
   const [interests, setInterests] = useState("");
@@ -25,7 +27,7 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
 
   const handleGenerate = async () => {
     if (!name.trim() && !profession.trim()) {
-      setError("Please provide at least your name or profession");
+      setError(t("Please provide at least your name or profession"));
       return;
     }
 
@@ -63,12 +65,12 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to generate bios");
+        throw new Error(data.error || t("Failed to generate bios"));
       }
 
       setBios(data.bios);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("An error occurred"));
     } finally {
       setLoading(false);
     }
@@ -94,7 +96,7 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
           </div>
           <div>
             <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-1">
-              {platform.name} {platform.bioType} Guidelines
+              {platform.name} {platform.bioType} {t(" Guidelines")}
             </h3>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">{platform.contextGuidelines}</p>
           </div>
@@ -106,13 +108,13 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
         {/* Name Input */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Name or Brand *
+            {t("Name or Brand")}
           </label>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="Your name or brand name"
+            placeholder={t("Your name or brand name")}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
         </div>
@@ -120,13 +122,13 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
         {/* Profession Input */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Profession or Role
+            {t("Profession or Role")}
           </label>
           <input
             type="text"
             value={profession}
             onChange={e => setProfession(e.target.value)}
-            placeholder="e.g., Software Engineer, Content Creator, Artist"
+            placeholder={t("e.g., Software Engineer, Content Creator, Artist")}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
         </div>
@@ -134,20 +136,20 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
         {/* Interests Input */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            Interests or Focus Areas (Optional)
+            {t("Interests or Focus Areas (Optional)")}
           </label>
           <input
             type="text"
             value={interests}
             onChange={e => setInterests(e.target.value)}
-            placeholder="e.g., AI, fitness, travel, photography"
+            placeholder={t("e.g., AI, fitness, travel, photography")}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500"
           />
         </div>
 
         {/* Tone Selector */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">Tone</label>
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-2">{t("Tone")}</label>
           <select
             value={tone}
             onChange={e => setTone(e.target.value)}
@@ -170,12 +172,13 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Generating...
+              {t("Generating...")}
             </>
           ) : (
             <>
               <User className="w-5 h-5" />
-              Generate {platform.bioType}
+              {t("Generate ")}
+              {platform.bioType}
             </>
           )}
         </button>
@@ -185,14 +188,19 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
       {rateLimit && (
         <div className="mb-6 p-4 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Rate limit: {rateLimit.remaining} of {rateLimit.limit} requests remaining
+            {t("Rate limit: ")}
+            {rateLimit.remaining} {t(" of ")}
+            {rateLimit.limit} {t(" requests remaining")}
           </p>
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
+        <div
+          role="alert"
+          className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3"
+        >
           <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
@@ -201,7 +209,11 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
       {/* Generated Bios */}
       {bios.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Generated {platform.bioType}s</h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+            {t("Generated ")}
+            {platform.bioType}
+            {t("s")}
+          </h3>
 
           {bios.map((bio, index) => {
             const isOverLimit = bio.length > platform.characterLimit;
@@ -213,7 +225,10 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
                 className="p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg"
               >
                 <div className="flex items-start justify-between gap-4 mb-3">
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Option {index + 1}</p>
+                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                    {t("Option ")}
+                    {index + 1}
+                  </p>
                   <button
                     onClick={() => copyBio(bio, index)}
                     disabled={isOverLimit}
@@ -222,12 +237,12 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
                     {copiedIndex === index ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        Copied
+                        {t("Copied")}
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" />
-                        Copy
+                        {t("Copy")}
                       </>
                     )}
                   </button>
@@ -241,20 +256,23 @@ export function BioGenerator({ platform }: BioGeneratorProps) {
                       isOverLimit
                         ? "text-red-600 dark:text-red-400"
                         : charsRemaining < 20
-                        ? "text-orange-600 dark:text-orange-400"
-                        : "text-neutral-500 dark:text-neutral-400"
+                          ? "text-orange-600 dark:text-orange-400"
+                          : "text-neutral-500 dark:text-neutral-400"
                     }`}
                   >
-                    {bio.length} / {platform.characterLimit} characters
+                    {bio.length} {t(" / ")}
+                    {platform.characterLimit} {t(" characters")}
                   </span>
                   {isOverLimit && (
                     <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5" />
-                      {Math.abs(charsRemaining)} over limit
+                      {Math.abs(charsRemaining)} {t(" over limit")}
                     </span>
                   )}
                   {!isOverLimit && charsRemaining < 20 && (
-                    <span className="text-orange-600 dark:text-orange-400">{charsRemaining} remaining</span>
+                    <span className="text-orange-600 dark:text-orange-400">
+                      {charsRemaining} {t(" remaining")}
+                    </span>
                   )}
                 </div>
               </div>

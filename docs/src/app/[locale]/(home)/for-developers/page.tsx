@@ -1,15 +1,16 @@
+import { ArrowRight } from "lucide-react";
+import { useExtracted } from "next-intl";
+import Link from "next/link";
 import { CodeCard } from "@/components/CodeCard";
 import { CTASection } from "@/components/CTASection";
+import { SectionKicker } from "@/components/deco/SectionKicker";
+import { TrackingSnippet } from "@/components/deco/TrackingSnippet";
 import { GitHubStarButton } from "@/components/GitHubStarButton";
 import { GridCrosses } from "@/components/GridCrosses";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
 import { PersonaCrossLinks } from "@/components/persona/PersonaCrossLinks";
 import { PersonaFaqSection } from "@/components/persona/PersonaFaqSection";
-import { SectionKicker } from "@/components/deco/SectionKicker";
-import { TrackingSnippet } from "@/components/deco/TrackingSnippet";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
 
 const pageTitle = "Rybbit for Developers | Open-Source, Self-Hostable Analytics";
 const pageDescription =
@@ -55,38 +56,6 @@ const mcpClients = [
 
 // Rendered in the accordion AND emitted as FAQPage JSON-LD from the same
 // array, so the schema can never drift from the visible answers.
-const faqItems = [
-  {
-    question: "What do I need to self-host Rybbit?",
-    answer:
-      "A server with Docker. Clone the repository and run the setup script with your domain. It brings up the full stack with Docker Compose. Self-hosting is free for personal and business use.",
-  },
-  {
-    question: "Is the open-source version the full product?",
-    answer:
-      "Rybbit is 100% open source under AGPL v3, including the code for the cloud and enterprise offerings. See the self-hosting vs cloud guide for the practical differences between running it yourself and using the managed cloud.",
-  },
-  {
-    question: "Does Rybbit have an SDK?",
-    answer:
-      "Yes. @rybbit/js on npm for websites and web apps, plus Node and React Native SDKs. The plain script tag works anywhere HTML does.",
-  },
-  {
-    question: "Can I access my data programmatically?",
-    answer:
-      "Yes. The Stats API exposes the metrics the dashboard shows over HTTP with bearer-key auth, and there's an API playground in the dashboard for exploring endpoints and generating code snippets.",
-  },
-  {
-    question: "How does the MCP server work?",
-    answer:
-      "It's a hosted MCP endpoint on top of the REST API. Point Claude Code, Claude Desktop, Codex, Cursor, VS Code, or opencode at it, and your agent can query traffic, debug errors, and manage goals with the same permissions as a teammate.",
-  },
-  {
-    question: "Is Rybbit GDPR compliant without a cookie banner?",
-    answer:
-      "Yes. Rybbit doesn't use cookies or collect personal data that could identify visitors, so sites using it don't need a consent banner for analytics.",
-  },
-];
 
 const tokenPlain = "";
 const tokenName = "text-neutral-700 dark:text-neutral-300";
@@ -162,14 +131,56 @@ const selfHostTokens = [
 ];
 
 export default function ForDevelopersPage() {
+  const t = useExtracted();
+  const faqItems = [
+    {
+      question: t("What do I need to self-host Rybbit?"),
+      answer: t(
+        "A server with Docker. Clone the repository and run the setup script with your domain. It brings up the full stack with Docker Compose. Self-hosting is free for personal and business use."
+      ),
+    },
+    {
+      question: t("Is the open-source version the full product?"),
+      answer: t(
+        "Rybbit is 100% open source under AGPL v3, including the code for the cloud and enterprise offerings. See the self-hosting vs cloud guide for the practical differences between running it yourself and using the managed cloud."
+      ),
+    },
+    {
+      question: t("Does Rybbit have an SDK?"),
+      answer: t(
+        "Yes. @rybbit/js on npm for websites and web apps, plus Node and React Native SDKs. The plain script tag works anywhere HTML does."
+      ),
+    },
+    {
+      question: t("Can I access my data programmatically?"),
+      answer: t(
+        "Yes. The Stats API exposes the metrics the dashboard shows over HTTP with bearer-key auth, and there's an API playground in the dashboard for exploring endpoints and generating code snippets."
+      ),
+    },
+    {
+      question: t("How does the MCP server work?"),
+      answer: t(
+        "It's a hosted MCP endpoint on top of the REST API. Point Claude Code, Claude Desktop, Codex, Cursor, VS Code, or opencode at it, and your agent can query traffic, debug errors, and manage goals with the same permissions as a teammate."
+      ),
+    },
+    {
+      question: t("Is Rybbit GDPR compliant without a cookie banner?"),
+      answer: t(
+        "Yes. Rybbit doesn't use cookies or collect personal data that could identify visitors, so sites using it don't need a consent banner for analytics."
+      ),
+    },
+  ];
+
   return (
     <div className="overflow-x-clip">
       <InteriorPageHero
-        eyebrow="Rybbit for developers"
-        title="Analytics that behaves like good software."
-        description="One script tag, or one npm package. A REST API for everything the dashboard shows, an MCP server your agents can operate, and a codebase you can read, audit, and run on your own server."
+        eyebrow={t("Rybbit for developers")}
+        title={t("Analytics that behaves like good software.")}
+        description={t(
+          "One script tag, or one npm package. A REST API for everything the dashboard shows, an MCP server your agents can operate, and a codebase you can read, audit, and run on your own server."
+        )}
         eventLocation="for_developers_hero"
-        note="7-day free trial, or self-host free forever."
+        note={t("7-day free trial, or self-host free forever.")}
       />
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="dev-install-title">
@@ -177,22 +188,23 @@ export default function ForDevelopersPage() {
           <GridCrosses />
           <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 md:py-20">
             <div className="lg:sticky lg:top-24">
-              <SectionKicker>Install</SectionKicker>
+              <SectionKicker>{t("Install")}</SectionKicker>
               <h2
                 id="dev-install-title"
                 className="mt-5 max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
               >
-                One tag. Or one package.
+                {t("One tag. Or one package.")}
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                Drop the script on any site, or install @rybbit/js and initialize it in two lines. Autocapture starts
-                immediately; custom events are there when you want them.
+                {t(
+                  "Drop the script on any site, or install @rybbit/js and initialize it in two lines. Autocapture starts immediately; custom events are there when you want them."
+                )}
               </p>
               <Link
                 href="/docs/script"
                 className="group mt-8 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
-                Script docs
+                {t("Script docs")}
                 <ArrowRight
                   className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                   aria-hidden="true"
@@ -202,7 +214,7 @@ export default function ForDevelopersPage() {
           </div>
           <div className="grid content-center gap-5 px-5 py-10 sm:px-8 md:grid-cols-2 md:py-14 lg:col-span-8 lg:px-10">
             <TrackingSnippet />
-            <CodeCard label="app.ts" tokens={sdkTokens} />
+            <CodeCard label={t("app.ts")} tokens={sdkTokens} />
           </div>
         </div>
       </section>
@@ -212,23 +224,23 @@ export default function ForDevelopersPage() {
           <GridCrosses />
           <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 md:py-20">
             <div className="lg:sticky lg:top-24">
-              <SectionKicker>Stats API</SectionKicker>
+              <SectionKicker>{t("Stats API")}</SectionKicker>
               <h2
                 id="dev-api-title"
                 className="mt-5 max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
               >
-                Everything in the dashboard, over HTTP.
+                {t("Everything in the dashboard, over HTTP.")}
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                Every metric Rybbit shows is available from the REST API with a bearer key. Pull traffic into your own
-                tools, build a live feed, or export events to a warehouse. An API playground in the dashboard generates
-                ready-to-use snippets.
+                {t(
+                  "Every metric Rybbit shows is available from the REST API with a bearer key. Pull traffic into your own tools, build a live feed, or export events to a warehouse. An API playground in the dashboard generates ready-to-use snippets."
+                )}
               </p>
               <Link
                 href="/docs/api/getting-started"
                 className="group mt-8 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
-                API reference
+                {t("API reference")}
                 <ArrowRight
                   className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                   aria-hidden="true"
@@ -237,11 +249,12 @@ export default function ForDevelopersPage() {
             </div>
           </div>
           <div className="flex flex-col justify-center gap-5 px-5 py-10 sm:px-8 md:py-14 lg:col-span-8 lg:px-10">
-            <CodeCard label="terminal" tokens={apiTokens} />
-            <CodeCard label="response.json" tokens={apiResponseTokens} />
+            <CodeCard label={t("terminal")} tokens={apiTokens} />
+            <CodeCard label={t("response.json")} tokens={apiResponseTokens} />
             <p className="max-w-2xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-              Organization keys or personal keys, rate-limited per plan. Sessions, metrics, funnels, goals, errors, and
-              events are all endpoints. See the reference for the full surface.
+              {t(
+                "Organization keys or personal keys, rate-limited per plan. Sessions, metrics, funnels, goals, errors, and events are all endpoints. See the reference for the full surface."
+              )}
             </p>
           </div>
         </div>
@@ -252,22 +265,23 @@ export default function ForDevelopersPage() {
           <GridCrosses />
           <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 md:py-20">
             <div className="lg:sticky lg:top-24">
-              <SectionKicker>MCP</SectionKicker>
+              <SectionKicker>{t("MCP")}</SectionKicker>
               <h2
                 id="dev-mcp-title"
                 className="mt-5 max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
               >
-                Your agent already knows how to use it.
+                {t("Your agent already knows how to use it.")}
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                A hosted MCP server sits on top of the full REST API. Your agent reads live traffic, debugs errors, and
-                manages goals, with the same permissions as a teammate.
+                {t(
+                  "A hosted MCP server sits on top of the full REST API. Your agent reads live traffic, debugs errors, and manages goals, with the same permissions as a teammate."
+                )}
               </p>
               <Link
                 href="/docs/mcp"
                 className="group mt-8 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
-                Set up MCP
+                {t("Set up MCP")}
                 <ArrowRight
                   className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                   aria-hidden="true"
@@ -276,9 +290,9 @@ export default function ForDevelopersPage() {
             </div>
           </div>
           <div className="flex flex-col justify-center gap-6 px-5 py-10 sm:px-8 md:py-14 lg:col-span-8 lg:px-10">
-            <CodeCard label="terminal" tokens={mcpTokens} />
+            <CodeCard label={t("terminal")} tokens={mcpTokens} />
             <div>
-              <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Works with</p>
+              <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t("Works with")}</p>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {mcpClients.map(client => (
                   <li key={client.name}>
@@ -301,16 +315,17 @@ export default function ForDevelopersPage() {
           <GridCrosses />
           <div className="border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 md:py-20">
             <div className="lg:sticky lg:top-24">
-              <SectionKicker>Open source</SectionKicker>
+              <SectionKicker>{t("Open source")}</SectionKicker>
               <h2
                 id="dev-oss-title"
                 className="mt-5 max-w-sm text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl"
               >
-                Read the code. Run the code.
+                {t("Read the code. Run the code.")}
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                Every line of Rybbit is on GitHub under AGPL v3, including the cloud and enterprise features. Clone it,
-                audit it, and run the full stack on your own VPS with Docker.
+                {t(
+                  "Every line of Rybbit is on GitHub under AGPL v3, including the cloud and enterprise features. Clone it, audit it, and run the full stack on your own VPS with Docker."
+                )}
               </p>
               <div className="mt-8 flex flex-col items-start gap-4">
                 <GitHubStarButton />
@@ -318,7 +333,7 @@ export default function ForDevelopersPage() {
                   href="/docs/self-hosting"
                   className="group inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
-                  Self-hosting guide
+                  {t("Self-hosting guide")}
                   <ArrowRight
                     className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                     aria-hidden="true"
@@ -328,21 +343,22 @@ export default function ForDevelopersPage() {
             </div>
           </div>
           <div className="flex flex-col justify-center gap-5 px-5 py-10 sm:px-8 md:py-14 lg:col-span-8 lg:px-10">
-            <CodeCard label="terminal" tokens={selfHostTokens} />
+            <CodeCard label={t("terminal")} tokens={selfHostTokens} />
             <p className="max-w-2xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-              The setup script brings up the full stack with Docker Compose. Self-hosting is free for personal and
-              business use.
+              {t(
+                "The setup script brings up the full stack with Docker Compose. Self-hosting is free for personal and business use."
+              )}
             </p>
           </div>
         </div>
       </section>
 
-      <PersonaFaqSection heading="Developer FAQ" items={faqItems} />
+      <PersonaFaqSection heading={t("Developer FAQ")} items={faqItems} />
       <PersonaCrossLinks current="for-developers" />
 
       <CTASection
-        title="Ship analytics in the next ten minutes."
-        description="One script tag now. The API, the MCP server, and self-hosting whenever you want them."
+        title={t("Ship analytics in the next ten minutes.")}
+        description={t("One script tag now. The API, the MCP server, and self-hosting whenever you want them.")}
         eventLocation="for_developers_bottom_cta"
       />
     </div>

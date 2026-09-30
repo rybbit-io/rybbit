@@ -59,6 +59,13 @@ function canonical(value: unknown): unknown {
 
 const hooks = <T>(hook: T | T[] | undefined): T[] => (hook === undefined ? [] : Array.isArray(hook) ? hook : [hook]);
 
+function bypassCache(header: string): boolean {
+  return header.split(",").some(directive => {
+    const [name, value] = directive.trim().toLowerCase().split("=").map(part => part.trim());
+    return name === "no-cache" || name === "no-store" || (name === "max-age" && /^\d+$/.test(value ?? "") && Number(value) === 0);
+  });
+}
+
 export function createDashboardCache({
   redis,
   namespace,
@@ -90,7 +97,7 @@ export function createDashboardCache({
       ttlMs <= 0 ||
       request.method !== "GET" ||
       redis.status !== "ready" ||
-      /(?:no-cache|no-store|max-age=0)/i.test(String(request.headers["cache-control"] || ""))
+      bypassCache(String(request.headers["cache-control"] || ""))
     )
       return;
 

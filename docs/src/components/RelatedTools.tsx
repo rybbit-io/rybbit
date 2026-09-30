@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useExtracted } from "next-intl";
+import Link from "next/link";
 
 interface Tool {
   name: string;
@@ -1403,7 +1404,16 @@ const allTools: Tool[] = [
 
 // Retired 2026-07-18 (off-brand / no organic traffic) — excluded from related-tool listings; pages 301 → /tools.
 const RETIRED_TOOL_SUFFIXES = ["-logo-generator", "-hashtag-generator"];
-const RETIRED_PLATFORMS = new Set(["nostr", "lemmy", "warpcast", "dribbble", "mastodon", "medium", "whatsapp", "tumblr"]);
+const RETIRED_PLATFORMS = new Set([
+  "nostr",
+  "lemmy",
+  "warpcast",
+  "dribbble",
+  "mastodon",
+  "medium",
+  "whatsapp",
+  "tumblr",
+]);
 const RETIRED_HREFS = new Set(["/tools/vk-comment-generator", "/tools/vk-photo-resizer"]);
 const activeTools = allTools.filter(
   tool =>
@@ -1419,6 +1429,7 @@ interface RelatedToolsProps {
 }
 
 export function RelatedTools({ currentToolHref, category, maxTools = 6 }: RelatedToolsProps) {
+  const t = useExtracted();
   // Determine current tool properties
   const currentTool = activeTools.find(t => t.href === currentToolHref);
   const currentPlatform = currentTool?.platform;
@@ -1457,16 +1468,18 @@ export function RelatedTools({ currentToolHref, category, maxTools = 6 }: Relate
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">Related tools</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+            {t("Related tools")}
+          </h2>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Keep working with a nearby calculator or utility.
+            {t("Keep working with a nearby calculator or utility.")}
           </p>
         </div>
         <Link
           href="/tools"
           className="inline-flex min-h-9 items-center gap-2 rounded-md text-sm font-medium text-neutral-700 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-300 dark:hover:text-neutral-50"
         >
-          View all tools
+          {t("View all tools")}
           <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>

@@ -1,8 +1,9 @@
 "use client";
 
 import { CheckCircle, Copy, Loader2 } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import type { PageNamePlatformConfig } from "./page-name-platform-configs";
+import type { PageNamePlatformConfig } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/page-name-platform-configs";
 
 interface PageNameGeneratorProps {
   platform: PageNamePlatformConfig;
@@ -14,9 +15,8 @@ const lengthOptions = [
   { value: "long", label: "Long", description: "4-6 words, descriptive" },
 ];
 
-export default function PageNameGenerator({
-  platform,
-}: PageNameGeneratorProps) {
+export default function PageNameGenerator({ platform }: PageNameGeneratorProps) {
+  const t = useExtracted();
   const [topic, setTopic] = useState("");
   const [keywords, setKeywords] = useState("");
   const [length, setLength] = useState("medium");
@@ -24,9 +24,7 @@ export default function PageNameGenerator({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [remainingRequests, setRemainingRequests] = useState<number | null>(
-    null
-  );
+  const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
 
   const generateNames = async () => {
     if (!topic.trim()) {
@@ -61,13 +59,13 @@ export default function PageNameGenerator({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to generate names");
+        throw new Error(data.error || t("Failed to generate names"));
       }
 
       const data = await response.json();
       setNames(data.names);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("An error occurred"));
     } finally {
       setIsLoading(false);
     }
@@ -86,58 +84,54 @@ export default function PageNameGenerator({
   return (
     <div className="space-y-6">
       <div>
-        <label
-          htmlFor="topic"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          {platform.pageType} Topic/Purpose
+        <label htmlFor="topic" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          {platform.pageType} {t(" Topic/Purpose")}
         </label>
         <textarea
+          required
+          aria-label={t("Topic/Purpose")}
           id="topic"
           rows={3}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
-          placeholder={`Describe what your ${platform.pageType.toLowerCase()} is about (e.g., "A gaming community for strategy game players" or "Tech startup focused on AI tools")`}
+          placeholder={t(
+            'Describe what your {value1} is about (e.g., "A gaming community for strategy game players" or "Tech startup focused on AI tools")',
+            { value1: platform.pageType.toLowerCase() }
+          )}
           value={topic}
-          onChange={(e) => setTopic(e.target.value)}
+          onChange={e => setTopic(e.target.value)}
           maxLength={500}
         />
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          {topic.length} / 500 characters
+          {topic.length} {t(" / 500 characters")}
         </p>
       </div>
 
       <div>
-        <label
-          htmlFor="keywords"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Keywords (Optional)
+        <label htmlFor="keywords" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          {t("Keywords (Optional)")}
         </label>
         <input
           id="keywords"
           type="text"
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          placeholder="Keywords to include (e.g., gaming, tech, creative)"
+          placeholder={t("Keywords to include (e.g., gaming, tech, creative)")}
           value={keywords}
-          onChange={(e) => setKeywords(e.target.value)}
+          onChange={e => setKeywords(e.target.value)}
           maxLength={100}
         />
       </div>
 
       <div>
-        <label
-          htmlFor="length"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Name Length
+        <label htmlFor="length" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          {t("Name Length")}
         </label>
         <select
           id="length"
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
           value={length}
-          onChange={(e) => setLength(e.target.value)}
+          onChange={e => setLength(e.target.value)}
         >
-          {lengthOptions.map((option) => (
+          {lengthOptions.map(option => (
             <option key={option.value} value={option.value}>
               {option.label} - {option.description}
             </option>
@@ -153,7 +147,7 @@ export default function PageNameGenerator({
         {isLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Generating Names...
+            {t("Generating Names...")}
           </>
         ) : (
           "Generate Names"
@@ -162,12 +156,15 @@ export default function PageNameGenerator({
 
       {remainingRequests !== null && (
         <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
-          {remainingRequests} requests remaining this minute
+          {remainingRequests} {t(" requests remaining this minute")}
         </p>
       )}
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div
+          role="alert"
+          className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+        >
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
@@ -175,7 +172,8 @@ export default function PageNameGenerator({
       {names.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-            Generated {platform.pageType} Names
+            {t("Generated ")}
+            {platform.pageType} {t(" Names")}
           </h3>
           {names.map((name, index) => (
             <div
@@ -183,13 +181,11 @@ export default function PageNameGenerator({
               className="p-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg"
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="flex-1 text-lg font-medium text-neutral-900 dark:text-white">
-                  {name}
-                </p>
+                <p className="flex-1 text-lg font-medium text-neutral-900 dark:text-white">{name}</p>
                 <button
                   onClick={() => copyToClipboard(name, index)}
                   className="flex-shrink-0 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
-                  title="Copy to clipboard"
+                  title={t("Copy to clipboard")}
                 >
                   {copiedIndex === index ? (
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
@@ -199,9 +195,8 @@ export default function PageNameGenerator({
                 </button>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                {name.length} characters
-                {platform.characterLimit &&
-                  ` / ${platform.characterLimit} limit`}
+                {name.length} {t(" characters")}
+                {platform.characterLimit && ` / ${platform.characterLimit} limit`}
               </p>
             </div>
           ))}
@@ -210,7 +205,7 @@ export default function PageNameGenerator({
 
       <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
         <p className="text-sm text-neutral-700 dark:text-neutral-300">
-          <strong>Platform Guidelines:</strong> {platform.contextGuidelines}
+          <strong>{t("Platform Guidelines:")}</strong> {platform.contextGuidelines}
         </p>
       </div>
     </div>

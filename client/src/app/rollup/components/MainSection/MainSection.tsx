@@ -31,8 +31,8 @@ const Stat = ({
   decimals?: number;
   postfix?: string;
 }) => {
-  const selectedStat = useStore((state) => state.selectedStat);
-  const setSelectedStat = useStore((state) => state.setSelectedStat);
+  const selectedStat = useStore(state => state.selectedStat);
+  const setSelectedStat = useStore(state => state.setSelectedStat);
   return (
     <div
       className={cn(
@@ -72,9 +72,9 @@ export function MainSection({
   lite?: boolean;
 }) {
   const t = useExtracted();
-  const selectedStat = useStore((state) => state.selectedStat);
-  const bucket = useStore((state) => state.bucket);
-  const time = useStore((state) => state.time);
+  const selectedStat = useStore(state => state.selectedStat);
+  const bucket = useStore(state => state.bucket);
+  const time = useStore(state => state.time);
 
   const { series, isFetching, isLoading } = useRollupBucketed({
     siteIds,
@@ -89,10 +89,7 @@ export function MainSection({
   const statsLoading = isLoading || isLoadingOverview;
 
   const siteMetaById = useMemo(() => {
-    const m = new Map<
-      number,
-      { siteId: number; name: string; domain: string }
-    >();
+    const m = new Map<number, { siteId: number; name: string; domain: string }>();
     for (const s of sites) {
       m.set(s.siteId, { siteId: s.siteId, name: s.name, domain: s.domain });
     }
@@ -115,9 +112,9 @@ export function MainSection({
       pageviews += d.pageviews;
       sessions += d.sessions;
       users += d.users;
-      weightedBounce += d.bounce_rate * d.sessions;
+      weightedBounce += (d.bounce_rate ?? 0) * d.sessions;
       weightedDuration += d.session_duration * d.sessions;
-      weightedPagesPerSession += d.pages_per_session * d.sessions;
+      weightedPagesPerSession += (d.pages_per_session ?? 0) * d.sessions;
     }
     return {
       pageviews,
@@ -153,24 +150,9 @@ export function MainSection({
       <Card>
         <CardContent className="p-0 w-full">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0 items-center">
-            <Stat
-              title={t("Unique Users")}
-              id="users"
-              value={totals.users}
-              isLoading={statsLoading}
-            />
-            <Stat
-              title={t("Sessions")}
-              id="sessions"
-              value={totals.sessions}
-              isLoading={statsLoading}
-            />
-            <Stat
-              title={t("Pageviews")}
-              id="pageviews"
-              value={totals.pageviews}
-              isLoading={statsLoading}
-            />
+            <Stat title={t("Unique Users")} id="users" value={totals.users} isLoading={statsLoading} />
+            <Stat title={t("Sessions")} id="sessions" value={totals.sessions} isLoading={statsLoading} />
+            <Stat title={t("Pageviews")} id="pageviews" value={totals.pageviews} isLoading={statsLoading} />
             <Stat
               title={t("Pages per Session")}
               id="pages_per_session"
@@ -202,9 +184,7 @@ export function MainSection({
         {isFetching && <CardLoader />}
         <CardContent className="p-2 md:p-4 py-3 w-full">
           <div className="flex items-center justify-between px-2 md:px-0">
-            <span className="text-sm text-neutral-700 dark:text-neutral-200">
-              {getSelectedStatLabel()}
-            </span>
+            <span className="text-sm text-neutral-700 dark:text-neutral-200">{getSelectedStatLabel()}</span>
             <BucketSelection />
           </div>
           <div className="h-[200px] md:h-[290px] relative">
@@ -219,7 +199,7 @@ export function MainSection({
           </div>
           {series.length > 0 && (
             <div className="flex flex-wrap gap-x-4 gap-y-1 px-2 md:px-0 pt-2">
-              {series.map((s) => {
+              {series.map(s => {
                 const meta = siteMetaById.get(s.siteId);
                 return (
                   <div
@@ -232,9 +212,7 @@ export function MainSection({
                         backgroundColor: siteColorMap.get(s.siteId) ?? "",
                       }}
                     />
-                    <span className="truncate max-w-[180px]">
-                      {meta?.name || meta?.domain || `Site ${s.siteId}`}
-                    </span>
+                    <span className="truncate max-w-[180px]">{meta?.name || meta?.domain || `Site ${s.siteId}`}</span>
                   </div>
                 );
               })}

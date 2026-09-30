@@ -19,6 +19,22 @@ afterEach(async () => {
 });
 
 describe("dashboard response cache", () => {
+  it.each([
+    ["s-maxage=0", true],
+    ["max-age=01", true],
+    ["x-no-cache", true],
+    ["MAX-AGE = 000", false],
+    ["public, no-store", false],
+  ])("matches cache directives exactly for %s", async (header, cachedResponse) => {
+    const redis = mockRedis();
+    const app = Fastify();
+    apps.push(app);
+    const query = vi.fn(async () => ({ data: 42 }));
+    app.get("/sites/:siteId/overview", createDashboardCache({ redis, namespace: "test" })({}), query);
+    await app.inject({ url: "/sites/1/overview", headers: { "cache-control": header } });
+    await app.inject({ url: "/sites/1/overview", headers: { "cache-control": header } });
+    expect(query).toHaveBeenCalledTimes(cachedResponse ? 1 : 2);
+  });
   it("shares one query across concurrent viewers on separate backend workers", async () => {
     const redis = mockRedis();
     const query = vi.fn(async () => {

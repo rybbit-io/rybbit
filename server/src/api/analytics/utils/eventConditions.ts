@@ -42,7 +42,7 @@ export function resolvePropertyFilters(config: LegacyPropertyConfig): PropertyFi
 function propsFilterCondition(filter: PropertyFilter): string {
   const key = SqlString.escape(filter.key);
   if (typeof filter.value === "number") {
-    return `toFloat64(JSONExtractString(toString(props), ${key})) = ${SqlString.escape(filter.value)}`;
+    return `toFloat64OrNull(JSONExtractString(toString(props), ${key})) = ${SqlString.escape(filter.value)}`;
   }
   const value = typeof filter.value === "boolean" ? (filter.value ? "true" : "false") : filter.value;
   return `JSONExtractString(toString(props), ${key}) = ${SqlString.escape(value)}`;

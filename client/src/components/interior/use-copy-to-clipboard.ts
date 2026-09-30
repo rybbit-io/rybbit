@@ -128,5 +128,5 @@ export function useCopyToClipboard({ timeout = 2000, onCopy, onError }: UseCopyT
     return () => clearTimeout(id);
   }, [ticket, status, timeout]);
 
-  return { copy, reset, status, copied: status === "copied" };
+  return { copy, reset, status, copied: status === "copied", copyCount: ticket };
 }

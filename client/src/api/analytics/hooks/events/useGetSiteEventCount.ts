@@ -1,11 +1,12 @@
 import { EVENT_FILTERS } from "../../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../../lib/store";
+import { useStore } from "../../../../lib/store";
 import { type SiteEventCountPoint } from "../../endpoints";
 import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
 export function useGetSiteEventCount() {
   const bucket = useStore(state => state.bucket);
-  const filteredFilters = getFilteredFilters(EVENT_FILTERS);
+  const filters = useStore(state => state.filters);
+  const filteredFilters = filters.filter(filter => EVENT_FILTERS.includes(filter.parameter));
 
   return useAnalyticsQuery<SiteEventCountPoint[]>({
     key: "site-event-count",

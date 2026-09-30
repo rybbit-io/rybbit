@@ -1,5 +1,5 @@
 import { GOALS_PAGE_FILTERS } from "../../../../lib/filterGroups";
-import { getFilteredFilters } from "../../../../lib/store";
+import { useStore } from "../../../../lib/store";
 import { GoalsResponse } from "../../endpoints";
 import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
@@ -16,7 +16,8 @@ export function useGetGoals({
 }) {
   // Only the goals page's filter parameters apply; an empty subset means no
   // filters at all (not the store's full filter list).
-  const filteredFilters = getFilteredFilters(GOALS_PAGE_FILTERS);
+  const filters = useStore(state => state.filters);
+  const filteredFilters = filters.filter(filter => GOALS_PAGE_FILTERS.includes(filter.parameter));
 
   return useAnalyticsQuery<GoalsResponse>({
     key: "goals",

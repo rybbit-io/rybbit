@@ -127,7 +127,10 @@ export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
       // A comparison is stored as the choice, not as the window it resolves to,
       // so stepping the date selector carries it along instead of stranding the
       // dashboard on the period it was picked in.
-      setComparison: comparison => set(getTimeState(get().time, comparison)),
+      setComparison: comparison => {
+        const { previousTime } = getTimeState(get().time, comparison);
+        set({ comparison, previousTime });
+      },
       setBucket: bucket => set({ bucket }),
       selectedStat: "users",
       setSelectedStat: stat => set({ selectedStat: stat }),
@@ -240,10 +243,7 @@ const filterKey = (filter: Filter) => JSON.stringify([filter.parameter, filter.t
  * (if any) are dropped. Every report keeps reading `filters`, so nothing
  * else in the dashboard learns what a segment is.
  */
-export const applySegment = (
-  segment: { segmentId: number; filters: Filter[] },
-  replacing: Filter[] = []
-) => {
+export const applySegment = (segment: { segmentId: number; filters: Filter[] }, replacing: Filter[] = []) => {
   const { filters, setFilters, setSegmentId } = useStore.getState();
   const dropped = new Set(replacing.map(filterKey));
   const segmentKeys = new Set(segment.filters.map(filterKey));

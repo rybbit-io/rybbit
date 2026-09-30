@@ -62,10 +62,7 @@ export function PricingCard({
         "relative h-full overflow-hidden",
         recommended ? "bg-plate-accent" : "bg-white dark:bg-neutral-950",
         framed
-          ? cn(
-              "rounded-lg border",
-              recommended ? "border-emerald-500" : "border-neutral-200 dark:border-neutral-800"
-            )
+          ? cn("rounded-lg border", recommended ? "border-emerald-500" : "border-neutral-200 dark:border-neutral-800")
           : // Inside the seamed grid the emerald hairline replaces the 1px seam
             // around the cell, so the signal plate carries its own edge.
             recommended && "z-10 outline outline-1 outline-emerald-500",
@@ -96,7 +93,7 @@ export function PricingCard({
         <AppLink
           href={buttonHref}
           onClick={() => {
-            if (eventLocation) trackAdEvent("signup", { location: "pricing" });
+            if (eventLocation) trackAdEvent("signup", { location: eventLocation });
           }}
           data-rybbit-event={eventLocation ? "signup" : undefined}
           data-rybbit-prop-location={eventLocation}
@@ -118,7 +115,10 @@ export function PricingCard({
                 ) : (
                   <X className="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
                 )}
-                <span className={cn("text-sm", !included && "text-neutral-500")}>{feature}</span>
+                <span className={cn("text-sm", !included && "text-neutral-500")}>
+                  {!included && <span className="sr-only">{t("Not included")}: </span>}
+                  {feature}
+                </span>
               </div>
             );
           })}
@@ -129,7 +129,11 @@ export function PricingCard({
               aria-expanded={isExpanded}
               className="mt-2 flex cursor-pointer items-center gap-3 rounded-sm text-sm text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:text-neutral-400 dark:hover:text-white"
             >
-              {isExpanded ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
+              {isExpanded ? (
+                <ArrowUp className="size-4" aria-hidden="true" />
+              ) : (
+                <ArrowDown className="size-4" aria-hidden="true" />
+              )}
               {isExpanded ? t("Show less") : t("Show more ({count} more)", { count: String(features.length - 7) })}
             </button>
           )}

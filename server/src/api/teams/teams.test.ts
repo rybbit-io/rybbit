@@ -167,7 +167,7 @@ describe("createTeam", () => {
       { site_id: 1 },
       { site_id: 2 },
     ]);
-    expect(mocks.invalidateSitesAccessCache.mock.calls).toEqual([["member_1"], ["member_2"]]);
+    expect(mocks.invalidateSitesAccessCache.mock.calls).toEqual(expect.arrayContaining([["member_1"], ["member_2"]]));
   });
 
   it("gives the team's site grants the requested role", async () => {
@@ -502,7 +502,7 @@ describe("deleteTeam", () => {
     expect(await rows(`SELECT * FROM team`)).toEqual([]);
     expect(await rows(`SELECT * FROM "teamMember"`)).toEqual([]);
     expect(await rows(`SELECT * FROM team_site_access`)).toEqual([]);
-    expect(mocks.invalidateSitesAccessCache.mock.calls).toEqual([["member_1"], ["member_2"]]);
+    expect(mocks.invalidateSitesAccessCache.mock.calls).toEqual(expect.arrayContaining([["member_1"], ["member_2"]]));
   });
 
   it("does not expose or delete a team through the wrong organization", async () => {

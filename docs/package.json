@@ -7,6 +7,7 @@
     "dev": "next dev --turbo --port 3003",
     "start": "next start",
     "test:agent-readiness": "jiti src/lib/agent-readiness.test.ts",
+    "test:docs-regressions": "jiti src/lib/docs-regressions.test.ts",
     "test:agent-http": "node scripts/test-agent-http.mjs",
     "postinstall": "fumadocs-mdx",
     "extract": "node scripts/extract-messages.mjs",

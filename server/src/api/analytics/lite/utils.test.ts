@@ -62,10 +62,14 @@ describe("getLiteSessionFilter", () => {
     });
 
     it("should fall back for operators outside the lite map", () => {
-      for (const type of ["regex", "not_regex", "greater_than", "less_than"]) {
+      for (const type of ["regex", "not_regex"]) {
         const result = getLiteSessionFilter(filtersOf([{ parameter: "country", type, value: ["US"] }]));
         expect(result).toEqual({ supported: false, sql: "" });
       }
+    });
+
+    it("rejects numeric operators on text dimensions", () => {
+      expect(() => getLiteSessionFilter(filtersOf([{ parameter: "country", type: "greater_than", value: ["US"] }]))).toThrow("Numeric comparison operators require a numeric dimension");
     });
 
     it("should fall back for an empty value array", () => {
@@ -197,9 +201,9 @@ describe("hasLiteRealtimeRange", () => {
     [30, 0, true],
     [120, 0, true],
     [240, 120, true],
-    [121, 0, false],
-    [1440, 0, false],
-    [2880, 1440, false],
+    [121, 0, true],
+    [1440, 0, true],
+    [2880, 1440, true],
   ])("uses the window length for %i to %i minutes ago", (start, end, expected) => {
     expect(hasLiteRealtimeRange(params({ past_minutes_start: start, past_minutes_end: end }))).toBe(expected);
   });

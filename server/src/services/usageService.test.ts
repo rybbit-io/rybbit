@@ -31,12 +31,13 @@ const state = vi.hoisted(() => ({
 
 const mocks = vi.hoisted(() => ({
   getAllStripeSubscriptionsByCustomer: vi.fn(),
+  refreshSiteQuery: vi.fn(),
   sendLimitExceededEmail: vi.fn(),
   sendApproachingLimitEmail: vi.fn(),
 }));
 
 vi.mock("../db/postgres/postgres.js", () => {
-  function chain(rows: () => unknown[]) {
+  function chain(rows: () => unknown[] | Promise<unknown[]>) {
     const builder: any = {
       from: () => builder,
       innerJoin: () => builder,
@@ -53,7 +54,7 @@ vi.mock("../db/postgres/postgres.js", () => {
       select: (fields: Record<string, unknown>) =>
         chain(() => {
           if ("email" in fields) return state.owners;
-          if ("siteId" in fields) return state.sites;
+          if ("siteId" in fields) return "organizationId" in fields ? state.sites : mocks.refreshSiteQuery();
           return state.organizations;
         }),
       update: () => ({
@@ -213,6 +214,8 @@ beforeEach(() => {
 
   mocks.getAllStripeSubscriptionsByCustomer.mockReset();
   mocks.getAllStripeSubscriptionsByCustomer.mockResolvedValue(new Map());
+  mocks.refreshSiteQuery.mockReset();
+  mocks.refreshSiteQuery.mockImplementation(() => state.sites);
   mocks.sendLimitExceededEmail.mockReset();
   mocks.sendLimitExceededEmail.mockResolvedValue(undefined);
   mocks.sendApproachingLimitEmail.mockReset();
@@ -689,13 +692,28 @@ describe("sites that need a plan (cloud, free plan ended 2026-02-13)", () => {
   it("runs overlapping refreshes one after another, so an older one can't undo a newer one", async () => {
     // A site-create refresh reads "free" and stalls on its site query while checkout's
     // refresh starts; the checkout refresh must be the one that sticks.
+    let releaseSites!: (sites: typeof state.sites) => void;
+    const siteQuery = new Promise<typeof state.sites>(resolve => (releaseSites = resolve));
+    let signalSiteQueryStarted!: () => void;
+    const siteQueryStarted = new Promise<void>(resolve => (signalSiteQueryStarted = resolve));
+    mocks.refreshSiteQuery.mockImplementationOnce(() => {
+      signalSiteQueryStarted();
+      return siteQuery;
+    });
+
     const firstRefresh = usageService.refreshOrganization("org_1");
+    await siteQueryStarted;
     state.subscriptions.set("org_1", stripeSub({ status: "trialing" }));
     const secondRefresh = usageService.refreshOrganization("org_1");
+    await Promise.resolve();
+    expect(mocks.refreshSiteQuery).toHaveBeenCalledOnce();
+
+    releaseSites(state.sites);
 
     await Promise.all([firstRefresh, secondRefresh]);
 
     expect(usageService.isSiteWithoutPlan(2)).toBe(false);
+    expect(mocks.refreshSiteQuery).toHaveBeenCalledTimes(2);
   });
 
   it("never blocks sites for needing a plan when self-hosted", async () => {

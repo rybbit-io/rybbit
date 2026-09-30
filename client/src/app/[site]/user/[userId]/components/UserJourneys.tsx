@@ -39,10 +39,10 @@ export function UserJourneys({ userId }: { userId: string }) {
   const t = useExtracted();
   const [steps, setSteps] = useState<number>(3);
 
-  const { data: siteMetadata } = useGetSite();
+  const { data: siteMetadata, isLoading: isLoadingSite, error: siteError, refetch: refetchSite } = useGetSite();
   const { time } = useStore();
 
-  const { data, isLoading, isFetching, error, refetch } = useJourneys({
+  const { data, isLoading, isFetching, isPlaceholderData, error, refetch } = useJourneys({
     siteId: siteMetadata?.siteId,
     steps,
     time,
@@ -74,8 +74,10 @@ export function UserJourneys({ userId }: { userId: string }) {
             />
           </div>
         </div>
-        {isLoading ? (
+        {isLoadingSite || (!siteMetadata && !siteError) || isLoading || isPlaceholderData ? (
           <JourneysSkeleton />
+        ) : siteError ? (
+          <ErrorState title={t("Failed to load data")} message={siteError.message} refetch={refetchSite} />
         ) : error ? (
           <ErrorState title={t("Failed to load data")} message={error.message} refetch={refetch} />
         ) : journeys.length > 0 && siteMetadata?.domain ? (

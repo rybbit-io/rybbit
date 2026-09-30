@@ -25,7 +25,7 @@ export function UserLocationMap({ country, region, city, className }: UserLocati
 
   const query = [city, region, getCountryName(country)].filter(Boolean).join(", ");
 
-  const style = resolvedTheme === "dark" ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11";
+  const style = resolvedTheme !== "light" ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11";
 
   const { data: coordinates, isLoading } = useQuery({
     queryKey: ["user-location-geocode", configs?.mapboxToken, query, country],

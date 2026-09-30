@@ -39,7 +39,6 @@ export const posthogComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "~11KB", competitorValue: "~60KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: "With proxy" },
       { name: "API access", rybbitValue: true, competitorValue: true },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "Free" },
@@ -52,7 +51,7 @@ export const posthogExtendedData = {
 
   introHeading: "Why consider Rybbit over PostHog?",
   introParagraphs: [
-    "PostHog is a product analytics platform that bundles analytics, session replay, feature flags, A/B testing, and surveys into a single tool. That breadth comes with significant complexity, and teams often spend more time configuring PostHog than using it. The ~60KB script can also weigh on page performance.",
+    "PostHog is a product analytics platform that bundles analytics, session replay, feature flags, A/B testing, and surveys into a single tool. That breadth comes with significant complexity, and teams often spend more time configuring PostHog than using it.",
     "Rybbit takes the opposite approach: do web analytics well instead of doing everything adequately. The single-page dashboard gives your whole team the metrics they need, with no training required. Non-technical team members can understand user behavior, track conversions, and watch session replays without learning a query language or navigating dozens of menus.",
     "Privacy is another key difference. Rybbit is cookie-free by default and never collects personal data, with no configuration needed. PostHog uses cookies by default and requires setup to achieve privacy compliance. Self-hosting is also dramatically simpler: Rybbit runs on TypeScript and ClickHouse, while PostHog requires Kafka, Redis, PostgreSQL, and ClickHouse. If you need focused, privacy-first web analytics that your whole team can use from day one, Rybbit is the better fit.",
   ],
@@ -61,7 +60,7 @@ export const posthogExtendedData = {
     "You want focused web analytics without the bloat",
     "You need a dashboard your non-technical team can use immediately",
     "You want privacy-first analytics that's cookie-free by default",
-    "You prefer a lightweight script (~11KB vs ~60KB)",
+    "You prefer a lightweight script (~11KB compressed)",
     "You want simple, predictable pricing without usage surprises",
     "You need fast self-hosting without complex infrastructure",
   ],
@@ -118,7 +117,7 @@ export const posthogExtendedData = {
             opposite bet: web analytics your whole team actually opens. One dashboard covers traffic,{" "}
             <Link href="/features/funnels">funnels</Link>,{" "}
             <Link href="/features/session-replay">session replay</Link>, user journeys, error tracking, Web Vitals, and
-            user profiles, from an ~11KB script, with nothing to configure and no query language to learn.
+            user profiles, from an ~11KB compressed script, with nothing to configure and no query language to learn.
           </>,
         ],
       },

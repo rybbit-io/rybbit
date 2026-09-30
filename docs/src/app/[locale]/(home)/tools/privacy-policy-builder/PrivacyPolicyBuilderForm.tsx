@@ -1,9 +1,11 @@
 "use client";
 
 import { CheckCircle, Copy } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 export function PrivacyPolicyBuilderForm() {
+  const t = useExtracted();
   const [companyName, setCompanyName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -164,13 +166,14 @@ If you have any questions about this Privacy Policy, please contact us at:
         {/* Company Name */}
         <div>
           <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-            Company Name <span className="text-red-500">*</span>
+            {t("Company Name ")}
+            <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={companyName}
             onChange={e => setCompanyName(e.target.value)}
-            placeholder="Acme Inc."
+            placeholder={t("Acme Inc.")}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
@@ -178,7 +181,8 @@ If you have any questions about this Privacy Policy, please contact us at:
         {/* Website URL */}
         <div>
           <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-            Website URL <span className="text-red-500">*</span>
+            {t("Website URL ")}
+            <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -192,20 +196,21 @@ If you have any questions about this Privacy Policy, please contact us at:
         {/* Contact Email */}
         <div>
           <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-            Contact Email <span className="text-red-500">*</span>
+            {t("Contact Email ")}
+            <span className="text-red-500">*</span>
           </label>
           <input
             type="email"
             value={contactEmail}
             onChange={e => setContactEmail(e.target.value)}
-            placeholder="privacy@example.com"
+            placeholder={t("privacy@example.com")}
             className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
         {/* Checkboxes */}
         <div className="space-y-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
-          <p className="text-sm font-medium text-neutral-900 dark:text-white mb-3">What does your website do?</p>
+          <p className="text-sm font-medium text-neutral-900 dark:text-white mb-3">{t("What does your website do?")}</p>
 
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -215,9 +220,9 @@ If you have any questions about this Privacy Policy, please contact us at:
               className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 dark:border-neutral-700 rounded focus:ring-emerald-500"
             />
             <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-white">Collects personal data</div>
+              <div className="text-sm font-medium text-neutral-900 dark:text-white">{t("Collects personal data")}</div>
               <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Name, email, phone number, payment info, etc.
+                {t("Name, email, phone number, payment info, etc.")}
               </div>
             </div>
           </label>
@@ -230,9 +235,9 @@ If you have any questions about this Privacy Policy, please contact us at:
               className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 dark:border-neutral-700 rounded focus:ring-emerald-500"
             />
             <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-white">Uses cookies</div>
+              <div className="text-sm font-medium text-neutral-900 dark:text-white">{t("Uses cookies")}</div>
               <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Session cookies, tracking cookies, etc.
+                {t("Session cookies, tracking cookies, etc.")}
               </div>
             </div>
           </label>
@@ -245,9 +250,9 @@ If you have any questions about this Privacy Policy, please contact us at:
               className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 dark:border-neutral-700 rounded focus:ring-emerald-500"
             />
             <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-white">Uses analytics</div>
+              <div className="text-sm font-medium text-neutral-900 dark:text-white">{t("Uses analytics")}</div>
               <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Google Analytics, Rybbit, Plausible, etc.
+                {t("Google Analytics, Rybbit, Plausible, etc.")}
               </div>
             </div>
           </label>
@@ -260,9 +265,11 @@ If you have any questions about this Privacy Policy, please contact us at:
               className="mt-1 w-4 h-4 text-emerald-600 border-neutral-300 dark:border-neutral-700 rounded focus:ring-emerald-500"
             />
             <div>
-              <div className="text-sm font-medium text-neutral-900 dark:text-white">Shares data with third parties</div>
+              <div className="text-sm font-medium text-neutral-900 dark:text-white">
+                {t("Shares data with third parties")}
+              </div>
               <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Service providers, partners, advertisers, etc.
+                {t("Service providers, partners, advertisers, etc.")}
               </div>
             </div>
           </label>
@@ -273,7 +280,7 @@ If you have any questions about this Privacy Policy, please contact us at:
           <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800">
             <div className="flex items-center justify-between mb-3">
               <label className="block text-sm font-medium text-neutral-900 dark:text-white">
-                Your Privacy Policy (Markdown)
+                {t("Your Privacy Policy (Markdown)")}
               </label>
               <div className="flex gap-2">
                 <button
@@ -281,13 +288,13 @@ If you have any questions about this Privacy Policy, please contact us at:
                   className="px-4 py-2 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                 >
                   {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? t("Copied") : t("Copy")}
                 </button>
                 <button
                   onClick={downloadPolicy}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
                 >
-                  Download
+                  {t("Download")}
                 </button>
               </div>
             </div>
@@ -305,7 +312,7 @@ If you have any questions about this Privacy Policy, please contact us at:
             onClick={clearForm}
             className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
           >
-            Clear
+            {t("Clear")}
           </button>
         </div>
       </div>

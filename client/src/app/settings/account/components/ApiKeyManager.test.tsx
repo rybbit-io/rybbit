@@ -56,7 +56,10 @@ vi.mock("../../../../lib/const", async importOriginal => ({
   IS_CLOUD: false,
 }));
 
-vi.mock("./ApiKeyScopePicker", () => ({ ApiKeyScopePicker: () => null, getScopeLabel: (scope: string) => scope }));
+vi.mock("./ApiKeyScopePicker", () => ({
+  ApiKeyScopePicker: () => null,
+  useScopeLabel: () => (scope: string) => scope,
+}));
 
 vi.mock("@/components/ui/sonner", () => ({ toast: { success: vi.fn(), error: mocks.toastError } }));
 
@@ -105,13 +108,25 @@ describe("ApiKeyManager reveal dialog", () => {
     await waitFor(() => expect(dialog.isConnected).toBe(false));
   });
 
-  it("guards Escape the same way", async () => {
+  it.each(["Escape", "close icon", "overlay"])("keeps the key after repeated %s dismissals", async dismissal => {
     const dialog = await createKey();
+    // Radix installs its outside-pointer listener in a later task.
+    await new Promise(resolve => setTimeout(resolve, 0));
 
-    fireEvent.keyDown(dialog, { key: "Escape" });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (dismissal === "Escape") fireEvent.keyDown(dialog, { key: "Escape" });
+      else if (dismissal === "close icon") fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+      else {
+        const overlay = dialog.previousElementSibling!;
+        fireEvent.pointerDown(overlay, { button: 0, pointerType: "mouse" });
+      }
+      expect(dialog.isConnected).toBe(true);
+      expect(within(dialog).getByText(SECRET)).toBeTruthy();
+      expect(within(dialog).getByRole("alert")).toBeTruthy();
+    }
 
-    expect(dialog.isConnected).toBe(true);
-    expect(within(dialog).getByRole("alert")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close anyway" }));
+    await waitFor(() => expect(dialog.isConnected).toBe(false));
   });
 
   it("closes straight away once the key was copied with the button", async () => {

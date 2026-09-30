@@ -178,7 +178,9 @@ function calculateBotSignals(): BotSignalResult {
       addSignal("pluginApiAbsence");
     }
   } catch (e) {
-    // If any top-level access fails, return whatever we've accumulated
+    if (!(e instanceof DOMException && ["SecurityError", "NotAllowedError", "NotSupportedError"].includes(e.name))) {
+      console.warn("Failed to collect browser bot signals:", e);
+    }
   }
 
   return {

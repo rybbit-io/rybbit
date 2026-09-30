@@ -19,6 +19,7 @@ function installClipboardApi() {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   Reflect.deleteProperty(navigator, "clipboard");
   mocks.writeText.mockReset();
 });
@@ -84,6 +85,30 @@ describe("CopyButton", () => {
     fireEvent.click(screen.getByRole("button", { name: "Copy key" }));
 
     expect(mocks.writeText).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { outcome: "copied", announcement: "Copied" },
+    { outcome: "error", announcement: "Couldn't copy to clipboard" },
+  ])("announces repeated $outcome results in separate tasks", async ({ outcome, announcement }) => {
+    vi.useFakeTimers();
+    installClipboardApi();
+    if (outcome === "copied") mocks.writeText.mockResolvedValue(undefined);
+    else mocks.writeText.mockRejectedValue(new Error("denied"));
+    render(<CopyButton value="secret" label="Copy key" />);
+    const button = screen.getByRole("button", { name: "Copy key" });
+    const status = screen.getByRole("status");
+
+    await act(async () => fireEvent.click(button));
+    act(() => vi.advanceTimersByTime(0));
+    expect(status.textContent).toBe(announcement);
+
+    await act(async () => fireEvent.click(button));
+    expect(button.dataset.status).toBe(outcome);
+    expect(status.textContent).toBe("");
+
+    act(() => vi.advanceTimersByTime(0));
+    expect(status.textContent).toBe(announcement);
   });
 });
 

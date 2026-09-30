@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { stripe } from "../../lib/stripe.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization } from "../../db/postgres/schema.js";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import Stripe from "stripe";
 import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
 import { usageService } from "../../services/usageService.js";
@@ -58,13 +58,30 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
               .where(eq(organization.stripeCustomerId, stripeCustomerId))
               .limit(1);
 
-            // If the organization doesn't have the customer ID yet, update it
+            if (existingOrg[0] && existingOrg[0].id !== organizationId) {
+              request.log.warn({ organizationId, stripeCustomerId }, "Stripe customer belongs to another organization");
+              break;
+            }
+            // A late checkout completion must never replace a newer canonical customer.
             if (existingOrg.length === 0) {
               request.log.info({ organizationId, stripeCustomerId }, "Linking organization to Stripe customer");
-              await db
+              const linked = await db
                 .update(organization)
                 .set({ stripeCustomerId: stripeCustomerId })
-                .where(eq(organization.id, organizationId));
+                .where(
+                  and(
+                    eq(organization.id, organizationId),
+                    or(isNull(organization.stripeCustomerId), eq(organization.stripeCustomerId, stripeCustomerId))
+                  )
+                )
+                .returning({ id: organization.id });
+              if (linked.length === 0) {
+                request.log.warn(
+                  { organizationId, stripeCustomerId },
+                  "Ignoring checkout for a noncanonical Stripe customer"
+                );
+                break;
+              }
             } else {
               request.log.info(
                 { organizationId: existingOrg[0].id, stripeCustomerId },

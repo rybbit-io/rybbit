@@ -45,18 +45,22 @@ All tools use `ToolPageLayout` with 6 sections: Header, Tool, Educational Conten
 3. Educational content: h2 for sections, no h1
 4. Keep metadata title <60 chars, description 150-160 chars
 5. Include Rybbit integration in FAQs when relevant
+6. Import source modules with `@/*` aliases; group package imports before source imports.
+7. Use `useExtracted()` from `next-intl` for component-owned labels, hints, actions, errors, and results. Keep API values and identifiers untranslated.
+8. Associate each native control with a label and use native `required` for mandatory inputs. Announce dynamically rendered failures with `role="alert"`.
 
 ## Common Patterns
 
 ```tsx
 // Loading
+const t = useExtracted();
 const [isLoading, setIsLoading] = useState(false);
-<button disabled={isLoading}>{isLoading ? "Processing..." : "Calculate"}</button>;
+<button disabled={isLoading}>{isLoading ? t("Processing...") : t("Calculate")}</button>;
 
 // Error
 const [error, setError] = useState<string | null>(null);
 {
-  error && <div className="p-4 bg-red-50...">{error}</div>;
+  error && <div role="alert" className="p-4 bg-red-50...">{error}</div>;
 }
 
 // Copy
@@ -114,14 +118,17 @@ For tools that are identical across platforms but with different branding (e.g.,
 // (social-media-tools)/components/YourToolComponent.tsx
 "use client";
 
+import { useExtracted } from "next-intl";
+
 interface YourToolProps {
   platformName?: string;
   platformSpecificOption?: string;
 }
 
 export function YourTool({ platformName, platformSpecificOption }: YourToolProps) {
+  const t = useExtracted();
   // Your tool logic here
-  return <div>Tool UI for {platformName}</div>;
+  return <div>{t("Tool UI for {platform}", { platform: platformName ?? "" })}</div>;
 }
 ```
 
@@ -164,11 +171,11 @@ Create a **single** dynamic route that handles all platforms:
 
 ```tsx
 // (social-media-tools)/[slug]/page.tsx
-import { ToolPageLayout } from "../../components/ToolPageLayout";
-import { YourTool } from "../components/YourToolComponent";
-import { platformConfigs, platformList } from "../components/platform-configs";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { YourTool } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/YourToolComponent";
+import { platformConfigs, platformList } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/platform-configs";
+import { ToolPageLayout } from "@/app/[locale]/(home)/tools/components/ToolPageLayout";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

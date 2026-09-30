@@ -84,12 +84,16 @@ function indexNode(index: NodeIndex, node: SNode | undefined, parentId: number |
 function resetNodeIndex(index: NodeIndex, root: SNode): void {
   index.byId.clear();
   index.parent.clear();
-  indexNode(index, root, null);
+  indexNode(index, structuredClone(root), null);
 }
 
 function indexMutationAdds(index: NodeIndex, adds: Array<{ node?: SNode; parentId?: unknown }>): void {
   for (const add of adds) {
-    indexNode(index, add?.node, typeof add?.parentId === "number" ? add.parentId : null);
+    indexNode(
+      index,
+      add?.node ? structuredClone(add.node) : undefined,
+      typeof add?.parentId === "number" ? add.parentId : null
+    );
   }
 }
 
@@ -306,8 +310,21 @@ export function getMeaningfulEvents(events: RawEvent[] | undefined): MeaningfulE
 
     // Keep the index in lockstep with the replay so clicks can resolve nodes
     // inserted after the active FullSnapshot.
-    if (source === 0 && Array.isArray(ev.data?.adds)) {
-      indexMutationAdds(index, ev.data.adds);
+    if (source === 0) {
+      if (Array.isArray(ev.data?.adds)) indexMutationAdds(index, ev.data.adds);
+      for (const mutation of ev.data?.texts ?? []) {
+        const node = index.byId.get(mutation.id);
+        if (node) node.textContent = mutation.value;
+      }
+      for (const mutation of ev.data?.attributes ?? []) {
+        const node = index.byId.get(mutation.id);
+        if (!node) continue;
+        node.attributes = { ...node.attributes };
+        for (const [name, value] of Object.entries(mutation.attributes)) {
+          if (value === null) delete node.attributes[name];
+          else node.attributes[name] = value;
+        }
+      }
       continue;
     }
 
@@ -436,7 +453,11 @@ function collapseRageClicks(events: MeaningfulEvent[]): MeaningfulEvent[] {
     // Grow a cluster of clicks within the time + distance window.
     let j = i + 1;
     const anchor = coords(e);
-    while (j < events.length && events[j].kind === "click" && events[j].timestamp - events[i].timestamp <= RAGE_CLICK_WINDOW_MS) {
+    while (
+      j < events.length &&
+      events[j].kind === "click" &&
+      events[j].timestamp - events[i].timestamp <= RAGE_CLICK_WINDOW_MS
+    ) {
       const c = coords(events[j]);
       if (anchor && c && Math.hypot(c[0] - anchor[0], c[1] - anchor[1]) > RAGE_CLICK_RADIUS) break;
       j++;
@@ -526,8 +547,8 @@ export function getTechnicalGroups(events: RawEvent[] | undefined): TechnicalGro
       if (current) groups.push(current);
       const label: string =
         type === 3 && source !== undefined
-          ? INCREMENTAL_TYPES[source] ?? `Source ${source}`
-          : EVENT_TYPE_NAMES[type] ?? `Type ${type}`;
+          ? (INCREMENTAL_TYPES[source] ?? `Source ${source}`)
+          : (EVENT_TYPE_NAMES[type] ?? `Type ${type}`);
       current = {
         key: `${ev.timestamp}-${i}`,
         label,

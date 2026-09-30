@@ -6,6 +6,12 @@ import { filterParamSchema, validateFilters, validateHttpTimeParams } from "./qu
 // =============================================================================
 
 describe("validateHttpTimeParams", () => {
+  it("accepts known buckets and rejects invalid and inherited property names", () => {
+    expect(validateHttpTimeParams({ bucket: "hour" })).toBeNull();
+    for (const bucket of ["garbage", "toString", "constructor"]) {
+      expect(validateHttpTimeParams({ bucket })).toBe("Invalid time bucket");
+    }
+  });
   it("returns null when no time params are present (all-time mode)", () => {
     expect(validateHttpTimeParams({})).toBeNull();
     expect(validateHttpTimeParams({ site: "1", filters: "[]" })).toBeNull();

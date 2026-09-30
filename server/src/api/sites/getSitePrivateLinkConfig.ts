@@ -6,9 +6,9 @@ export async function getSitePrivateLinkConfig(
   reply: FastifyReply
 ) {
   try {
-    const parsedSiteId = parseInt(request.params.siteId, 10);
+    const parsedSiteId = Number(request.params.siteId);
 
-    if (isNaN(parsedSiteId)) {
+    if (!/^[1-9]\d*$/.test(request.params.siteId) || !Number.isSafeInteger(parsedSiteId)) {
       return reply.status(400).send({ success: false, error: "Invalid site ID" });
     }
 

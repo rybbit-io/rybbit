@@ -1,6 +1,5 @@
-import { FastifyReply, FastifyRequest } from "fastify";
-import { getTimeStatement } from "./utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
+import { FastifyReply, FastifyRequest } from "fastify";
 import {
   analyticsRoute,
   getPaginationStatements,
@@ -8,6 +7,7 @@ import {
   runPaginatedQuery,
 } from "./utils/analyticsQuery.js";
 import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "./utils/sessionFilters.js";
+import { getTimeStatement } from "./utils/timeWindow.js";
 
 interface GetErrorEventsRequest {
   Params: {

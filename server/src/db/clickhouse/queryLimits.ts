@@ -2,6 +2,7 @@
 export const QUERY_USER_LIMITS = {
   maxExecutionTimeSeconds: 60,
   maxMemoryUsageBytes: 4_000_000_000,
+  maxMemoryUsageForUserBytes: 8_000_000_000,
   maxThreads: 4,
   maxResultRows: 1000,
   maxConcurrentQueriesForUser: 8,

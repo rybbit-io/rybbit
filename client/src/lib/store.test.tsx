@@ -69,6 +69,13 @@ describe("filter state", () => {
 });
 
 describe("time and comparison state", () => {
+  it("preserves an explicit bucket when changing comparison only", () => {
+    useStore.getState().setBucket("month");
+    useStore.getState().setComparison({ mode: "none" });
+    expect(useStore.getState()).toMatchObject({ bucket: "month", previousTime: null });
+    useStore.getState().setComparison({ mode: "previous" });
+    expect(useStore.getState()).toMatchObject({ bucket: "month", previousTime: { mode: "day", day: "2026-08-13" } });
+  });
   it("derives the comparison window and bucket whenever time changes", () => {
     useStore.getState().setTime({ mode: "range", startDate: "2026-08-01", endDate: "2026-08-07" });
 

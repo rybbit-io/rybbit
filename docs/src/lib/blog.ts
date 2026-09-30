@@ -8,17 +8,20 @@ const WORDS_PER_MINUTE = 220;
 /** Reading time in whole minutes, derived from the indexed body text. */
 export function readingTimeMinutes(post: BlogPost): number {
   const { structuredData } = post.data;
-  const text = [
-    ...structuredData.headings.map(h => h.content),
-    ...structuredData.contents.map(c => c.content),
-  ].join(" ");
+  const text = [...structuredData.headings.map(h => h.content), ...structuredData.contents.map(c => c.content)].join(
+    " "
+  );
   const words = text.split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.round(words / WORDS_PER_MINUTE));
 }
 
 export function wordCount(post: BlogPost): number {
   const { structuredData } = post.data;
-  return structuredData.contents.map(c => c.content).join(" ").split(/\s+/).filter(Boolean).length;
+  return structuredData.contents
+    .map(c => c.content)
+    .join(" ")
+    .split(/\s+/)
+    .filter(Boolean).length;
 }
 
 /**
@@ -29,8 +32,8 @@ export function postImageUrl(post: BlogPost): string {
   return post.data.image || createOGImageUrl(post.data.title, post.data.description, "Blog").url;
 }
 
-export function isGeneratedImage(url: string): boolean {
-  return url.startsWith("/og/");
+export function shouldUnoptimizeBlogImage(url: string): boolean {
+  return url.startsWith("/og/") || /^https?:\/\//i.test(url);
 }
 
 export function absoluteUrl(path: string): string {
@@ -39,9 +42,7 @@ export function absoluteUrl(path: string): string {
 
 /** Newest first. */
 export function sortedPosts(): BlogPost[] {
-  return [...blogSource.getPages()].sort(
-    (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
-  );
+  return [...blogSource.getPages()].sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 }
 
 /** Posts sharing the most tags with `current`, newest first as a tie-break. */

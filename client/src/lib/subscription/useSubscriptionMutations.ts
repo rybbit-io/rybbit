@@ -44,6 +44,8 @@ interface UpdateSubscriptionResponse {
   };
 }
 
+export class SubscriptionRefreshError extends Error {}
+
 export function usePreviewSubscriptionUpdate() {
   return useMutation<PreviewSubscriptionResponse, Error, PreviewSubscriptionParams>({
     mutationFn: async ({ organizationId, newPriceId }) => {
@@ -74,7 +76,29 @@ export function useUpdateSubscription() {
   const queryClient = useQueryClient();
   const t = useExtracted();
 
-  return useMutation<UpdateSubscriptionResponse, Error, UpdateSubscriptionParams>({
+  const refreshSubscription = async (organizationId: string) => {
+    const queryKeys = [
+      ["stripe-subscription", organizationId],
+      ["stripe-invoices", organizationId],
+      ["get-sites-from-org", organizationId],
+    ];
+    try {
+      await Promise.all(queryKeys.map(queryKey => queryClient.invalidateQueries({ queryKey }, { throwOnError: true })));
+      // TanStack resolves paused refetches even with throwOnError enabled.
+      const paused = queryKeys.some(queryKey =>
+        queryClient.getQueryCache().findAll({ queryKey, type: "active" }).some(query => query.state.fetchStatus === "paused")
+      );
+      if (paused) throw new Error(t("Billing refresh is paused while offline."));
+    } catch (error) {
+      throw new SubscriptionRefreshError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const reportRefreshError = (error: Error) => {
+    toast.error(t("Your subscription was updated, but refreshing billing data failed: {message}", { message: error.message }));
+  };
+
+  const mutation = useMutation<UpdateSubscriptionResponse, Error, UpdateSubscriptionParams>({
     mutationFn: async ({ organizationId, newPriceId }) => {
       const response = await fetch(`${BACKEND_URL}/stripe/update-subscription`, {
         method: "POST",
@@ -97,22 +121,30 @@ export function useUpdateSubscription() {
       return data;
     },
     onSuccess: async (_data, { organizationId }) => {
-      // The server drops its Stripe cache in the same request, so refetching
-      // everything derived from the plan updates the page in place: no reload,
-      // and the toast survives. Returning this promise keeps the mutation
-      // pending (mutateAsync unresolved) until the fresh data has landed.
-      await Promise.all([
-        // Billing page: plan card, usage cards, limits.
-        queryClient.invalidateQueries({ queryKey: ["stripe-subscription", organizationId] }),
-        // A mid-cycle change creates a prorated invoice.
-        queryClient.invalidateQueries({ queryKey: ["stripe-invoices", organizationId] }),
-        // Organization + plan summary behind feature gates (DisabledOverlay) and usage banners.
-        queryClient.invalidateQueries({ queryKey: ["get-sites-from-org", organizationId] }),
-      ]);
+      await refreshSubscription(organizationId);
       toast.success(t("Subscription updated"));
     },
     onError: error => {
-      toast.error(t("Subscription update failed: {message}", { message: error.message }));
+      if (error instanceof SubscriptionRefreshError) {
+        reportRefreshError(error);
+      } else {
+        toast.error(t("Subscription update failed: {message}", { message: error.message }));
+      }
     },
   });
+
+  const retryRefresh = async () => {
+    if (!mutation.variables || !(mutation.error instanceof SubscriptionRefreshError)) return false;
+    try {
+      await refreshSubscription(mutation.variables.organizationId);
+      toast.success(t("Subscription updated"));
+      mutation.reset();
+      return true;
+    } catch (error) {
+      reportRefreshError(error as SubscriptionRefreshError);
+      return false;
+    }
+  };
+
+  return { ...mutation, retryRefresh };
 }

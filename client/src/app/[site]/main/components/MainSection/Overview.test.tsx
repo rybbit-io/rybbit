@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import type { GetOverviewResponse } from "@/api/analytics/endpoints/overview";
 import { useStore } from "@/lib/store";
 import { Overview } from "./Overview";
 
@@ -17,7 +18,7 @@ const BASE = {
   session_duration: 95,
 };
 
-const api = vi.hoisted(() => ({ overview: {} as Record<string, number> | Error }));
+const api = vi.hoisted(() => ({ overview: {} as GetOverviewResponse | Error }));
 
 vi.mock("next-intl", () => ({ useExtracted: () => (message: string) => message }));
 vi.mock("@number-flow/react", () => ({ default: ({ value }: { value: number }) => <span>{value}</span> }));
@@ -65,6 +66,15 @@ afterEach(() => {
 });
 
 describe("Overview stat tiles", () => {
+  it("renders undefined aggregate ratios as zero without exposing null", async () => {
+    api.overview = { ...BASE, pages_per_session: null, bounce_rate: null };
+    renderOverview();
+    await screen.findByText("100");
+
+    expect(mark("Pages per Session").textContent).toBe("0");
+    expect(mark("Bounce Rate").textContent).toBe("0%");
+  });
+
   it("don't flash on first paint, and flash only the number a background refetch moved", async () => {
     const client = renderOverview();
     await screen.findByText("100");

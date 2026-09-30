@@ -7,16 +7,16 @@ import { TrackedButton } from "@/components/TrackedButton";
 import { ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
 
-const EUFlag = () => (
+const EUFlag = ({ label }: { label: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
     viewBox="0 0 767 512"
     role="img"
-    aria-label="European flag"
+    aria-label={label}
     className="h-4 w-6 shrink-0 rounded-[2px]"
   >
-    <title>European flag</title>
+    <title>{label}</title>
     <path className="fill-[#233E90]" d="M766 1H1v510h765V1Z" />
     <path
       className="fill-yellow-400"
@@ -58,7 +58,7 @@ export function HeroSection({ title, subtitle, showEUFlag = true, showGitHubStar
 
             {showEUFlag && (
               <div className="mt-5 flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                <EUFlag />
+                <EUFlag label={t("European flag")} />
                 <span>{t("EU-hosted cloud")}</span>
               </div>
             )}
@@ -155,7 +155,7 @@ export function HeroSection({ title, subtitle, showEUFlag = true, showGitHubStar
               <iframe
                 src="https://demo.rybbit.com/81/main"
                 className="block h-full w-full border-none md:h-[117.6%] md:w-[117.6%] md:origin-top-left md:scale-[0.85]"
-                title="Rybbit Analytics Demo"
+                title={t("Rybbit Analytics Demo")}
               />
             </div>
           </div>

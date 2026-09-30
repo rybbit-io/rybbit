@@ -47,7 +47,6 @@ export const plausibleComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "~11KB", competitorValue: "~5KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: true },
       { name: "API access", rybbitValue: true, competitorValue: "Business plan only" },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "$9/mo" },
@@ -180,8 +179,7 @@ export const plausibleExtendedData = {
           <>
             If a traffic dashboard is genuinely all you want, Plausible is an excellent one, arguably the best
             at being exactly that. It has the longest track record in the category, an EU-owned and EU-hosted cloud, a
-            famously tiny script (Plausible advertises it as 54&times; smaller than Google Analytics; Rybbit&apos;s is
-            around 11KB compressed), and a 30-day trial with no card required versus Rybbit&apos;s 7 days. Choosing it means
+            lightweight script, and a 30-day trial with no card required versus Rybbit&apos;s 7 days. Choosing it means
             going without session replay and error tracking (and paying for its Business plan to get funnels), and
             for plenty of content sites and blogs, that&apos;s the right call. If you&apos;re weighing more options
             than these two, our roundup of

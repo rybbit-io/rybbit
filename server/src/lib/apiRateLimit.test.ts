@@ -11,7 +11,7 @@ vi.mock("./logger/logger.js", () => ({
   createServiceLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }));
 
-const { consumeApiRateLimit, dailyLimitForPlan } = await import("./apiRateLimit.js");
+const { consumeApiRateLimit, dailyLimitForPlan, apiRateLimitKey } = await import("./apiRateLimit.js");
 const { API_BURST_LIMIT, PRO_API_DAILY_LIMIT, STANDARD_API_DAILY_LIMIT } = await import("./const.js");
 
 const redisResult = (overrides: Record<string, unknown> = {}) => ({
@@ -55,7 +55,10 @@ describe("consumeApiRateLimit", () => {
     await consumeApiRateLimit("org1", 5000);
 
     expect(apiRateLimitConsume).toHaveBeenCalledWith(
-      expect.objectContaining({ burstKey: "rl:burst:org1", dailyKey: `rl:day:org1:${Math.floor(Date.UTC(2024, 4, 1, 23) / 86_400_000)}` })
+      expect.objectContaining({
+        burstKey: "rl:burst:org1",
+        dailyKey: `rl:day:org1:${Math.floor(Date.UTC(2024, 4, 1, 23) / 86_400_000)}`,
+      })
     );
   });
 
@@ -136,5 +139,19 @@ describe("consumeApiRateLimit", () => {
     // Every request would otherwise pay the full Redis command timeout, adding
     // a second of latency to the entire API for the length of an outage.
     expect(apiRateLimitConsume.mock.calls.length).toBe(callsDuringOutage);
+  });
+});
+
+describe("API rate-limit keys", () => {
+  it("uses a stable user key for authenticated requests", () => {
+    expect(apiRateLimitKey("one", "2001:db8::1")).toBe("user:one");
+  });
+  it("normalizes IPv6 spellings and rotating addresses to a /64", () => {
+    expect(apiRateLimitKey(undefined, "2001:db8::1")).toBe(apiRateLimitKey(undefined, "2001:0db8:0000:0000::ffff"));
+    expect(apiRateLimitKey(undefined, "2001:db8:0:1::1")).not.toBe(apiRateLimitKey(undefined, "2001:db8::1"));
+  });
+  it("normalizes IPv4-mapped IPv6 without grouping distinct IPv4 clients", () => {
+    expect(apiRateLimitKey(undefined, "::ffff:192.0.2.1")).toBe(apiRateLimitKey(undefined, "192.0.2.1"));
+    expect(apiRateLimitKey(undefined, "192.0.2.2")).not.toBe(apiRateLimitKey(undefined, "192.0.2.1"));
   });
 });

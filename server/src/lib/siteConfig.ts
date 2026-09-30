@@ -110,7 +110,7 @@ class SiteConfig {
       embedEnabled: site.embedEnabled || false,
       saltUserIds: site.saltUserIds || false,
       domain: site.domain || "",
-      blockBots: site.blockBots === undefined ? true : site.blockBots,
+      blockBots: site.blockBots ?? true,
       firstPartyProxy: site.firstPartyProxy || false,
       excludedIPs: Array.isArray(site.excludedIPs) ? site.excludedIPs : [],
       excludedCountries: Array.isArray(site.excludedCountries) ? site.excludedCountries : [],
@@ -186,7 +186,7 @@ class SiteConfig {
    * Never throws: ingestion reads this per event and must degrade to "no
    * configuration" rather than fail on a Postgres blip.
    */
-  async getConfig(siteIdOrId?: string | number): Promise<SiteConfigData | undefined> {
+  async getConfig(siteIdOrId?: string | number, throwOnError = false): Promise<SiteConfigData | undefined> {
     if (!siteIdOrId) return undefined;
 
     try {
@@ -198,6 +198,7 @@ class SiteConfig {
       }
       return config;
     } catch (error) {
+      if (throwOnError) throw error;
       logger.error(error as Error, `Error fetching site configuration for ${siteIdOrId}`);
       return undefined;
     }
@@ -254,7 +255,7 @@ class SiteConfig {
    * ingestion path warm each other rather than keeping separate tables.
    */
   async resolveSiteId(siteIdOrId?: string | number): Promise<number | null> {
-    const config = await this.getConfig(siteIdOrId);
+    const config = await this.getConfig(siteIdOrId, true);
     return config?.siteId ?? null;
   }
 

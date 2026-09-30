@@ -55,6 +55,17 @@ async function feedbackRows(): Promise<any[]> {
 
 const validBody = { organizationId: "org_1", reason: "too_expensive", outcome: "cancelled" };
 
+it.each([
+  { ...validBody, retentionOfferAccepted: "false" },
+  { ...validBody, monthlyEventCountAtCancellation: -1 },
+  { ...validBody, reasonDetails: {} },
+  { ...validBody, organizationId: ["org_1"] },
+])("rejects malformed cancellation feedback: %j", async body => {
+  const reply = replyStub();
+  await submitCancellationFeedback(requestStub("u_owner", body), reply);
+  expect(reply.statusCode).toBe(400);
+});
+
 beforeAll(async () => {
   await (sql as any).exec(DDL);
 });

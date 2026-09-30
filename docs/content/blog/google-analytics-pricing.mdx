@@ -3,6 +3,7 @@ title: "How Much Does Google Analytics Cost? GA4 vs GA 360 Pricing"
 description: "Google Analytics 4 is free, but Google Analytics 360 is sold by quote. What each tier costs, where the free limits stop, and what paid alternatives charge."
 keyword: "google analytics pricing"
 date: 2026-09-13
+image: /og/image.png?title=Google+Analytics+Pricing&label=Blog
 tags: ["google analytics", "pricing", "comparisons"]
 author: Rybbit Team
 ---
@@ -64,7 +65,7 @@ None of this appears on an invoice from Google, which is why it's easy to miss.
 
 ### Consent banners and lost data
 
-GA4 sets [first-party cookies](https://support.google.com/analytics/answer/11397207) that last two years to distinguish users and sessions. France's regulator CNIL is blunt about what that means: operators must obtain consent before setting trackers, and ["most large audience measurement offerings do not fall within the scope of the exemption"](https://www.cnil.fr/en/sheet-ndeg16-use-analytics-your-websites-and-applications). Every visitor who ignores or declines the banner is invisible to your reports.
+GA4 sets [first-party cookies](https://support.google.com/analytics/answer/11397207) that last two years to distinguish users and sessions. France's regulator CNIL is blunt about what that means: operators must obtain consent before setting trackers, and ["most large audience measurement offerings do not fall within the scope of the exemption"](https://www.cnil.fr/en/sheet-ndeg16-use-analytics-your-websites-and-applications). In basic consent mode, visitors who do not grant consent are not measured by the Google tag. [Advanced Consent Mode](https://developers.google.com/tag-platform/security/concepts/consent-mode) can send cookieless pings and support modeled conversions and key events for eligible properties, but modeled results do not restore complete observed visitor journeys.
 
 How many? It varies widely by country, industry and banner design. Didomi's consent benchmark, built on hundreds of millions of banner interactions collected throughout 2025, puts [opt-in rates](https://www.didomi.io/blog/benchmark-average-consent-rate-europe) (opt-ins divided by banners displayed) between 55.7% in Western Europe and 67.6% in Eastern Europe. For a Western European audience, roughly four in ten banner impressions never become a tracked visitor. That gap costs you twice: in the campaign you can't attribute, and in the tool you buy to fill it.
 
@@ -91,7 +92,7 @@ The cost is compliance work: a consent management platform, a data processing ag
 Plenty of teams should stay on the free tier:
 
 - **You run on Google Ads.** The Ads integration, audiences and key-event import are the strongest reasons to use GA4, and no alternative replicates them fully.
-- **Your traffic is under the sampling line.** If your explorations rarely touch 10 million events, sampling and the 1-million-event export cap don't affect you.
+- **Your traffic is under the sampling line.** Check both limits separately: explorations below 10 million queried events can avoid sampling, while a Standard property's daily BigQuery batch export is limited to 1 million events. Exceeding that export limit can pause exports.
 - **You have an analyst comfortable in BigQuery.** The export plus SQL turns GA4 into a capable warehouse, and the bill for a mid-size site is often small.
 - **You track a website and a mobile app together.** GA4's shared event model across web and Firebase is hard to match.
 - **You already have consent infrastructure** and have accepted the data loss that comes with it.
@@ -124,7 +125,7 @@ Yes. The standard version of Google Analytics 4 is free with no usage fees. The 
 Google doesn't publish a price. A GA 360 reseller reported a starting retail price of $50,000 per year for 25 million events per month in 2022, and a partner calculator puts typical contracts between $50,000 and more than $150,000 per year.
 
 **Does GA4 have a paid version?**
-Yes. Google Analytics 360 runs on GA4 properties with higher limits (50-month retention, a 1-billion-event sampling threshold, billions of BigQuery events per day, 125 custom dimensions), subproperties, roll-ups, expanded data sets and SLAs.
+Yes. Google Analytics 360 runs on GA4 properties with higher limits (50-month retention, a default 100-million-event sampling threshold (up to 1 billion with "More detailed results" selected in Explore), billions of BigQuery events per day, 125 custom dimensions), subproperties, roll-ups, expanded data sets and SLAs.
 
 **Is Google Analytics free for business?**
 Yes. There is no separate business license; companies of any size use the free tier. Businesses pay in other ways: consent-banner data loss, BigQuery costs if they export, setup and training time, and compliance work.

@@ -1,5 +1,9 @@
 import { lookup } from "node:dns/promises";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
+import { Address6 } from "ip-address";
+import { JSDOM } from "jsdom";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
 const logger = createServiceLogger("platform-detect");
@@ -53,10 +57,17 @@ export function isPublicUnicastAddress(address: string): boolean {
   const family = isIP(address);
   if (family === 4) return isPublicV4(address);
   if (family === 6) {
-    const lower = address.toLowerCase();
-    // v4-mapped / v4-translated: judge the embedded v4
-    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/) || lower.match(/^64:ff9b::(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapped) return isPublicV4(mapped[1]);
+    const parsed = new Address6(address);
+    if (parsed.isMapped4()) return isPublicV4(parsed.to4().correctForm());
+    const lower = parsed.correctForm().toLowerCase();
+    if (!parsed.isInSubnet(new Address6("2000::/3"))) return false;
+    // Reject translation/tunneling prefixes: routing can expose an embedded private v4.
+    if (parsed.isInSubnet(new Address6("64:ff9b::/96")) ||
+        parsed.isInSubnet(new Address6("64:ff9b:1::/48")) ||
+        parsed.isInSubnet(new Address6("2002::/16")) ||
+        parsed.isInSubnet(new Address6("2001::/32"))) return false;
+    if (parsed.isInSubnet(new Address6("2001:db8::/32")) ||
+        parsed.isInSubnet(new Address6("3fff::/20"))) return false; // documentation
     if (lower === "::" || lower === "::1") return false;
     if (/^(fc|fd)/.test(lower)) return false; // unique local fc00::/7
     if (/^fe[89ab]/.test(lower)) return false; // link-local fe80::/10
@@ -102,19 +113,51 @@ async function isSafeTarget(url: URL): Promise<boolean> {
   }
 }
 
-async function readBody(response: Response): Promise<string | null> {
-  if (!response.body) return null;
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  while (received < MAX_BODY_BYTES) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    received += value.length;
-  }
-  reader.cancel().catch(() => {});
-  return Buffer.concat(chunks).toString("utf-8");
+function fetchPublicTarget(url: URL): Promise<{ status: number; location?: string; body: string | null }> {
+  return new Promise((resolve, reject) => {
+    const request = (url.protocol === "https:" ? httpsRequest : httpRequest)(url, {
+      agent: false,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      // Validate the resolution actually handed to the socket, including every redirect.
+      lookup: (hostname, options, callback) => {
+        lookup(hostname, { all: true, verbatim: true }).then(addresses => {
+          if (!addresses.length || addresses.some(address => !isPublicUnicastAddress(address.address))) {
+            callback(new Error("Blocked non-public connection address"), "", 0);
+            return;
+          }
+          if (options.all) callback(null, addresses);
+          else callback(null, addresses[0].address, addresses[0].family);
+        }, error => callback(error, "", 0));
+      },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; RybbitSetupCheck/1.0; +https://rybbit.com)",
+        Accept: "text/html",
+      },
+    }, response => {
+      const status = response.statusCode ?? 0;
+      if (status < 200 || status >= 300) {
+        response.destroy();
+        resolve({ status, location: response.headers.location, body: null });
+        return;
+      }
+      const chunks: Buffer[] = [];
+      let received = 0;
+      response.on("data", (chunk: Buffer) => {
+        const remaining = MAX_BODY_BYTES - received;
+        chunks.push(chunk.subarray(0, remaining));
+        received += Math.min(chunk.length, remaining);
+        if (received >= MAX_BODY_BYTES) {
+          resolve({ status, body: Buffer.concat(chunks).toString("utf8") });
+          response.destroy();
+        }
+      });
+      response.on("end", () => resolve({ status, body: Buffer.concat(chunks).toString("utf8") }));
+      response.on("error", () => resolve({ status, body: null }));
+      response.on("aborted", () => resolve({ status, body: null }));
+    });
+    request.on("error", reject);
+    request.end();
+  });
 }
 
 /**
@@ -124,9 +167,8 @@ async function readBody(response: Response): Promise<string | null> {
  * Every hop (initial and each redirect) is validated against the SSRF guard
  * before it is fetched, redirects are followed manually with a hop cap, only
  * http/https on default ports are allowed, and the body read is size-capped.
- * (DNS is re-resolved by fetch after validation, so a fast-rebinding attacker
- * retains a narrow TOCTOU window; combined with the response never being
- * echoed back raw, the primitive is reduced to a coarse reachability oracle.)
+ * The request's socket lookup validates the address used by the connection,
+ * so DNS rebinding cannot replace a checked public address with a private one.
  */
 export async function fetchHomepage(domain: string): Promise<string | null> {
   // A site "domain" must be a bare hostname - anything else is refused outright.
@@ -145,24 +187,16 @@ export async function fetchHomepage(domain: string): Promise<string | null> {
         logger.debug({ domain, target: url.href }, "Blocked non-public fetch target");
         break;
       }
-      let response: Response;
+      let response: Awaited<ReturnType<typeof fetchPublicTarget>>;
       try {
-        response = await fetch(url, {
-          redirect: "manual",
-          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; RybbitSetupCheck/1.0; +https://rybbit.com)",
-            Accept: "text/html",
-          },
-        });
+        response = await fetchPublicTarget(url);
       } catch (error) {
         logger.debug({ domain, scheme, err: error }, "Homepage fetch failed");
         break;
       }
 
       if (response.status >= 300 && response.status < 400) {
-        const location = response.headers.get("location");
-        response.body?.cancel().catch(() => {});
+        const location = response.location;
         if (!location) break;
         try {
           url = new URL(location, url);
@@ -172,8 +206,8 @@ export async function fetchHomepage(domain: string): Promise<string | null> {
         continue;
       }
 
-      if (!response.ok) break;
-      return await readBody(response);
+      if (response.status < 200 || response.status >= 300) break;
+      return response.body;
     }
   }
   return null;
@@ -195,6 +229,8 @@ export async function detectPlatform(domain: string): Promise<PlatformInfo | nul
  * snippet for a different site doesn't report success.
  */
 export function hasRybbitScript(html: string, siteId: number): boolean {
-  if (!/api\/script\.js|rybbit\.js/i.test(html)) return false;
-  return new RegExp(`data-site-id=["']?${siteId}["'\\s>]`, "i").test(html);
+  const document = new JSDOM(html).window.document;
+  return [...document.querySelectorAll("script[src]")].some(script =>
+    /api\/script\.js|rybbit\.js/i.test(script.getAttribute("src") ?? "") && script.getAttribute("data-site-id") === String(siteId)
+  );
 }

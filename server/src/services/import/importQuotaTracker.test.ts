@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ImportQuotaTracker } from "./importQuotaTracker.js";
 import { db } from "../../db/postgres/postgres.js";
-import { getBestSubscription } from "../../lib/subscriptionUtils.js";
+import { getBestSubscription, type SubscriptionInfo } from "../../lib/subscriptionUtils.js";
 
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({
   clickhouse: { query: vi.fn() },
@@ -26,23 +26,37 @@ vi.mock("../../api/analytics/utils/utils.js", () => ({
 // The constructor is private; tests build trackers directly with injected state
 // instead of going through the DB/ClickHouse-backed static create().
 function makeTracker(usage: Record<string, number>, limit: number, oldestAllowedMonth: string): ImportQuotaTracker {
-  return new (ImportQuotaTracker as any)(new Map(Object.entries(usage)), limit, oldestAllowedMonth);
+  type TestConstructor = new (
+    usage: Map<string, number>,
+    limit: number,
+    oldestAllowedMonth: string
+  ) => ImportQuotaTracker;
+  return new (ImportQuotaTracker as unknown as TestConstructor)(
+    new Map(Object.entries(usage)),
+    limit,
+    oldestAllowedMonth
+  );
 }
 
 // Drizzle query builders are thenable; create() awaits `.limit(1)` for the org
 // row and `.where(...)` for the site rows, so every link resolves to `rows`.
-function chainResolving(rows: unknown) {
-  const chain: any = {
+function chainResolving<T>(rows: T) {
+  interface QueryChain extends PromiseLike<T> {
+    from: () => QueryChain;
+    where: () => QueryChain;
+    limit: () => QueryChain;
+  }
+  const chain: QueryChain = {
     from: () => chain,
     where: () => chain,
     limit: () => chain,
-    then: (resolve: any, reject: any) => Promise.resolve(rows).then(resolve, reject),
+    then: (resolve, reject) => Promise.resolve(rows).then(resolve, reject),
   };
-  return chain;
+  return chain as unknown as ReturnType<typeof db.select>;
 }
 
 function mockDbForCreate() {
-  vi.mocked(db.select as any)
+  vi.mocked(db.select)
     .mockReturnValueOnce(chainResolving([{ stripeCustomerId: "cus_123" }]))
     .mockReturnValueOnce(chainResolving([])); // no sites -> ClickHouse never queried
 }
@@ -184,9 +198,43 @@ describe("ImportQuotaTracker", () => {
   });
 
   describe("getHistoricalWindowMonths (via create)", () => {
-    async function createTrackerForSubscription(subscription: Record<string, unknown>) {
+    async function createTrackerForSubscription(subscription: {
+      source: "free" | "appsumo" | "stripe";
+      eventLimit: number;
+      planName?: string;
+    }) {
       mockDbForCreate();
-      vi.mocked(getBestSubscription).mockResolvedValueOnce(subscription as any);
+      const common = { eventLimit: subscription.eventLimit, periodStart: "2024-06-01" };
+      let fixture: SubscriptionInfo;
+      if (subscription.source === "free") {
+        fixture = { ...common, source: "free", planName: "free", status: "free" };
+      } else if (subscription.source === "appsumo") {
+        fixture = {
+          ...common,
+          source: "appsumo",
+          tier: "2",
+          replayLimit: 1000,
+          planName: subscription.planName!,
+          status: "active",
+          interval: "lifetime",
+          cancelAtPeriodEnd: false,
+        };
+      } else {
+        fixture = {
+          ...common,
+          source: "stripe",
+          subscriptionId: "sub_123",
+          priceId: "price_123",
+          planName: subscription.planName!,
+          replayLimit: 1000,
+          status: "active",
+          interval: "month",
+          currentPeriodEnd: new Date("2024-07-01"),
+          cancelAtPeriodEnd: false,
+          createdAt: new Date("2024-06-01"),
+        };
+      }
+      vi.mocked(getBestSubscription).mockResolvedValueOnce(fixture);
       return ImportQuotaTracker.create("org-1");
     }
 

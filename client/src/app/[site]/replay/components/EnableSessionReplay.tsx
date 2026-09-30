@@ -32,7 +32,7 @@ export function EnableSessionReplay() {
     try {
       await updateSiteConfig(siteId, { sessionReplay: true });
       // Stay busy until the refetch hides this banner, so "Enable" never flashes back
-      await refetch();
+      await refetch({ throwOnError: true });
       toast.success(t("Session replay enabled"));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

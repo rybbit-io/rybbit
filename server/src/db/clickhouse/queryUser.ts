@@ -1,4 +1,5 @@
 import SqlString from "sqlstring";
+import { ClickHouseError } from "@clickhouse/client";
 import { CLICKHOUSE_QUERY_USER, clickhouse, clickhouseQuery } from "./client.js";
 import { clickhouseInitLogger as logger } from "./initUtils.js";
 import { QUERY_USER_LIMITS } from "./queryLimits.js";
@@ -32,6 +33,7 @@ export function buildQueryUserStatements(database: string, user: string, passwor
     "readonly = 2 READONLY",
     `max_execution_time = ${l.maxExecutionTimeSeconds} READONLY`,
     `max_memory_usage = ${l.maxMemoryUsageBytes} READONLY`,
+    `max_memory_usage_for_user = ${l.maxMemoryUsageForUserBytes} READONLY`,
     `max_threads = ${l.maxThreads} READONLY`,
     `max_result_rows = ${l.maxResultRows} READONLY`,
     "result_overflow_mode = 'break' READONLY",
@@ -50,8 +52,16 @@ export function buildQueryUserStatements(database: string, user: string, passwor
     `ALTER USER ${user} IDENTIFIED WITH sha256_password BY ${secret} SETTINGS PROFILE ${SqlString.escape(profile)}`,
     // Reset grants to exactly SELECT on the events table.
     `REVOKE ALL ON *.* FROM ${user}`,
+    `REVOKE ALL FROM ${user}`,
+    `ALTER USER ${user} DEFAULT ROLE NONE`,
     `GRANT SELECT ON ${database}.events TO ${user}`,
   ];
+}
+
+export function classifyClickHouseFailure(error: unknown) {
+  if (error instanceof ClickHouseError) return { kind: "clickhouse", code: error.code, type: error.type };
+  if (error instanceof Error) return { kind: "transport", name: error.name };
+  return { kind: "unknown" };
 }
 
 export async function provisionQueryUser() {
@@ -66,7 +76,7 @@ export async function provisionQueryUser() {
     logger.info({ user, database }, "ClickHouse query user provisioned");
   } catch (error) {
     logger.error(
-      { err: error, user },
+      { failure: classifyClickHouseFailure(error), user },
       `Could not provision ClickHouse user "${user}" (the main ClickHouse user needs access_management). Custom SQL queries and dashboards will fail until it exists with SELECT on ${database}.events — see docs: self-hosting-advanced → Custom SQL queries`
     );
   }
@@ -76,7 +86,7 @@ export async function provisionQueryUser() {
     await result.json();
   } catch (error) {
     logger.error(
-      { err: error, user },
+      { failure: classifyClickHouseFailure(error), user },
       `ClickHouse user "${user}" cannot connect; custom SQL queries and dashboards are unavailable (check CLICKHOUSE_QUERY_PASSWORD)`
     );
   }

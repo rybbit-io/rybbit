@@ -3,7 +3,9 @@ import { DateTime } from "luxon";
 
 import type { Time } from "@/components/DateSelector/types";
 
-const bucketUnit = (bucket: TimeBucket): { unit: "minutes" | "hours" | "days" | "weeks" | "months" | "years"; size: number } => {
+const bucketUnit = (
+  bucket: TimeBucket
+): { unit: "minutes" | "hours" | "days" | "weeks" | "months" | "years"; size: number } => {
   switch (bucket) {
     case "minute":
       return { unit: "minutes", size: 1 };
@@ -189,7 +191,7 @@ const floorToBucketStart = (dt: DateTime, bucket: TimeBucket): DateTime =>
  * queries use (`toStartOfWeek`); the Monday convention's first bucket then sits
  * a day inside the edge, which is only a day of leading gutter.
  */
-const firstBucketStart = (start: DateTime, bucket: TimeBucket): DateTime =>
+export const firstBucketStart = (start: DateTime, bucket: TimeBucket): DateTime =>
   bucket === "week" ? start.startOf("day").minus({ days: start.weekday % 7 }) : floorToBucket(start, bucket);
 
 /**

@@ -29,8 +29,7 @@ export const capabilities: FeatureCapability[] = [
   {
     icon: <Calendar className="w-5 h-5" />,
     title: "Daily or weekly cohorts",
-    description:
-      "Choose between daily and weekly cohort groupings depending on your product's engagement frequency.",
+    description: "Choose between daily and weekly cohort groupings depending on your product's engagement frequency.",
   },
   {
     icon: <Timer className="w-5 h-5" />,
@@ -133,7 +132,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "What counts as a 'return visit'?",
     answer:
-      "A return visit is any session by a previously seen visitor on a subsequent day or week. Rybbit recognizes returning visitors with an anonymous hashed identifier, without cookies or personal data. If you turn on the optional daily-rotating salt for extra privacy, visitors can't be linked across days, so multi-day retention stops being meaningful.",
+      "A return visit is any session by a previously seen visitor on a subsequent day or week. Rybbit recognizes returning visitors with an anonymous hashed identifier, without cookies or personal data. If you turn on the optional daily-rotating salt for extra privacy, anonymous visitors can't be linked across days, so their multi-day retention stops being meaningful. Visitors identified with a stable custom user ID can still be grouped across days.",
   },
   {
     question: "What time ranges are available?",

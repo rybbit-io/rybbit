@@ -142,6 +142,7 @@ export function NoData() {
   const waitingHeadingId = useId();
   const arrivedHeadingId = useId();
   const waitingRef = useRef<HTMLDivElement>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
   const focusDismissOnMount = useRef(false);
   // The confirmation mounts only once the install card has faded out, so focus is handed over here.
   const dismissRef = useCallback((button: HTMLButtonElement | null) => {
@@ -167,6 +168,13 @@ export function NoData() {
 
   const showCard = (waiting || arrived) && !isLoadingSiteMetadata;
 
+  const dismissConfirmation = () => {
+    if (confirmationRef.current?.contains(document.activeElement)) {
+      document.getElementById("dashboard-content")?.focus({ preventScroll: true });
+    }
+    dismiss();
+  };
+
   return (
     <AnimatePresence initial={false}>
       {showCard && siteId ? (
@@ -186,7 +194,13 @@ export function NoData() {
               <AutoHeight contentClassName="p-4">
                 <AnimatePresence initial={false} mode="wait">
                   {arrived ? (
-                    <motion.div key="arrived" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={FADE_IN}>
+                    <motion.div
+                      ref={confirmationRef}
+                      key="arrived"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={FADE_IN}
+                    >
                       <FirstPageviewCard
                         headingId={arrivedHeadingId}
                         siteName={siteMetadata?.name ?? ""}
@@ -195,7 +209,7 @@ export function NoData() {
                         visitor={
                           firstSession ? { country: firstSession.country, browser: firstSession.browser } : undefined
                         }
-                        onDismiss={dismiss}
+                        onDismiss={dismissConfirmation}
                         dismissRef={dismissRef}
                       />
                     </motion.div>

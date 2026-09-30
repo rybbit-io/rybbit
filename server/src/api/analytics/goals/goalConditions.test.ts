@@ -91,7 +91,7 @@ describe("buildGoalCondition — event goals", () => {
         config: { eventName: "purchase", propertyFilters: [{ key: "amount", value: 99.5 }] },
       })
     ).toBe(
-      "type = 'custom_event' AND event_name = 'purchase' AND toFloat64(JSONExtractString(toString(props), 'amount')) = 99.5"
+      "type = 'custom_event' AND event_name = 'purchase' AND toFloat64OrNull(JSONExtractString(toString(props), 'amount')) = 99.5"
     );
   });
 

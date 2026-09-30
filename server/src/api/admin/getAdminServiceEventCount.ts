@@ -35,6 +35,7 @@ export async function getAdminServiceEventCount(
     // the predicate and the fill come from one window rather than two
     // hand-written defaults that have to agree.
     const today = DateTime.now().setZone(time_zone);
+    if (!today.isValid) return res.status(400).send({ error: "Invalid time zone" });
     const start_date = req.query.start_date || today.minus({ days: 30 }).toFormat("yyyy-MM-dd");
     const end_date = req.query.end_date || today.toFormat("yyyy-MM-dd");
 

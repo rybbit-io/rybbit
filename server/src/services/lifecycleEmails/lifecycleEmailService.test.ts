@@ -343,6 +343,16 @@ describe("transition: first data arrives", () => {
     expect(mocks.sendLifecycleEmail).toHaveBeenCalledTimes(2);
     expect(mocks.sendLifecycleEmail.mock.calls[1][1]).toBe("Rybbit is live on acme.com");
   });
+
+  it("stops after an ambiguous live-email attempt instead of also sending install help", async () => {
+    addUser("u1", daysAgo(1));
+    addOwnedSite("u1", 42, "live.com", hoursAgo(20));
+    addOwnedSite("u1", 43, "uninstalled.com", hoursAgo(20));
+    state.siteStats.push({ site_id: 42, first_event: hoursAgo(1), last_event: hoursAgo(1), total: 5, pageviews: 5, custom_events: 0 });
+    mocks.sendLifecycleEmail.mockResolvedValueOnce(false);
+    await run();
+    expect(mocks.sendLifecycleEmail).toHaveBeenCalledOnce();
+  });
 });
 
 describe("state: data flowing", () => {

@@ -1,16 +1,18 @@
 "use client";
 
+import { Upload, Download, RotateCw, ZoomIn, Image as ImageIcon, X } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState, useCallback, useRef } from "react";
 import Cropper, { Area } from "react-easy-crop";
-import { Upload, Download, RotateCw, ZoomIn, Image as ImageIcon, X } from "lucide-react";
-import { ImageResizerPlatformConfig } from "./image-resizer-platform-configs";
-import getCroppedImg from "./image-resizer-utils";
+import { ImageResizerPlatformConfig } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/image-resizer-platform-configs";
+import getCroppedImg from "@/app/[locale]/(home)/tools/(social-media-tools)/components/image-resizer-utils";
 
 interface ImageResizerProps {
   platform: ImageResizerPlatformConfig;
 }
 
 export default function ImageResizer({ platform }: ImageResizerProps) {
+  const t = useExtracted();
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -21,9 +23,9 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedDimension = platform.dimensions[selectedDimensionIndex];
-  
+
   // Calculate aspect ratio from dimensions if not explicitly provided
-  const aspect = selectedDimension.aspectRatio ?? (selectedDimension.width / selectedDimension.height);
+  const aspect = selectedDimension.aspectRatio ?? selectedDimension.width / selectedDimension.height;
 
   const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -86,7 +88,7 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
       {/* Controls Section */}
       <div className="space-y-4">
         <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-          Select Image Type
+          {t("Select Image Type")}
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {platform.dimensions.map((dim, index) => (
@@ -99,16 +101,13 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
                   : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-emerald-300 dark:hover:border-emerald-700"
               }`}
             >
-              <div className="font-medium text-neutral-900 dark:text-white">
-                {dim.label}
-              </div>
+              <div className="font-medium text-neutral-900 dark:text-white">{dim.label}</div>
               <div className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                {dim.width} x {dim.height} px
+                {dim.width} {t(" x ")}
+                {dim.height} {t(" px")}
               </div>
               {dim.description && (
-                <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                  {dim.description}
-                </div>
+                <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">{dim.description}</div>
               )}
             </button>
           ))}
@@ -118,26 +117,16 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
       {/* Editor Section */}
       <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
         {!imageSrc ? (
-          <div 
+          <div
             className="h-80 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-900/50 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors border-2 border-dashed border-neutral-300 dark:border-neutral-700 m-4 rounded-lg"
             onClick={triggerFileInput}
           >
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onFileChange}
-              className="hidden"
-              ref={fileInputRef}
-            />
+            <input type="file" accept="image/*" onChange={onFileChange} className="hidden" ref={fileInputRef} />
             <div className="p-4 bg-emerald-100 dark:bg-emerald-900/30 rounded-full mb-4">
               <Upload className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <p className="text-lg font-medium text-neutral-900 dark:text-white mb-1">
-              Upload an image
-            </p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              JPG, PNG, or WebP (Max 10MB)
-            </p>
+            <p className="text-lg font-medium text-neutral-900 dark:text-white mb-1">{t("Upload an image")}</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("JPG, PNG, or WebP (Max 10MB)")}</p>
           </div>
         ) : (
           <div className="flex flex-col">
@@ -156,7 +145,7 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
               <button
                 onClick={resetImage}
                 className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-colors z-10"
-                title="Remove image"
+                title={t("Remove image")}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -168,9 +157,12 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400">
                     <span className="flex items-center gap-2">
-                      <ZoomIn className="w-4 h-4" /> Zoom
+                      <ZoomIn className="w-4 h-4" /> {t(" Zoom")}
                     </span>
-                    <span>{Math.round(zoom * 100)}%</span>
+                    <span>
+                      {Math.round(zoom * 100)}
+                      {t("%")}
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -179,7 +171,7 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
                     max={3}
                     step={0.1}
                     aria-labelledby="Zoom"
-                    onChange={(e) => setZoom(Number(e.target.value))}
+                    onChange={e => setZoom(Number(e.target.value))}
                     className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                   />
                 </div>
@@ -187,9 +179,12 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400">
                     <span className="flex items-center gap-2">
-                      <RotateCw className="w-4 h-4" /> Rotation
+                      <RotateCw className="w-4 h-4" /> {t(" Rotation")}
                     </span>
-                    <span>{rotation}°</span>
+                    <span>
+                      {rotation}
+                      {t("°")}
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -198,7 +193,7 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
                     max={360}
                     step={1}
                     aria-labelledby="Rotation"
-                    onChange={(e) => setRotation(Number(e.target.value))}
+                    onChange={e => setRotation(Number(e.target.value))}
                     className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                   />
                 </div>
@@ -206,7 +201,12 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
 
               <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-neutral-700">
                 <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                  Output: <span className="font-mono text-neutral-900 dark:text-white">{selectedDimension.width} x {selectedDimension.height}px</span>
+                  {t("Output: ")}
+                  <span className="font-mono text-neutral-900 dark:text-white">
+                    {selectedDimension.width} {t(" x ")}
+                    {selectedDimension.height}
+                    {t("px")}
+                  </span>
                 </div>
                 <button
                   onClick={onDownload}
@@ -217,7 +217,7 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
                     "Processing..."
                   ) : (
                     <>
-                      <Download className="w-4 h-4" /> Download Image
+                      <Download className="w-4 h-4" /> {t(" Download Image")}
                     </>
                   )}
                 </button>
@@ -226,18 +226,17 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
           </div>
         )}
       </div>
-      
+
       <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
         <div className="flex gap-3">
           <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg h-fit">
             <ImageIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-1">
-              Why use this tool?
-            </h3>
+            <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-1">{t("Why use this tool?")}</h3>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {platform.educationalContent} This tool ensures your images are perfectly sized to avoid automatic cropping or quality loss.
+              {platform.educationalContent}{" "}
+              {t(" This tool ensures your images are perfectly sized to avoid automatic cropping or quality loss.")}
             </p>
           </div>
         </div>
@@ -245,4 +244,3 @@ export default function ImageResizer({ platform }: ImageResizerProps) {
     </div>
   );
 }
-

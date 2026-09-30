@@ -67,7 +67,7 @@ export const buildSessionQueries = (query: GetSessionRequest["Querystring"]) => 
   const minutes = query.minutes ? parseInt(query.minutes) : undefined;
 
   // Add time filter if minutes is provided
-  const timeFilter = minutes ? `timestamp > now() - interval ${minutes} minute` : "";
+  const timeFilter = minutes ? `timestamp_ms > now64(3) - interval ${minutes} minute` : "";
 
   // Add the WHERE clause connector if timeFilter exists
   const timeFilterWithConnector = timeFilter ? `AND ${timeFilter}` : "";

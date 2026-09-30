@@ -51,12 +51,14 @@ class IdentityBackfillQueue {
   // WHERE clause: folding a `days: null` admin backfill in with the routine
   // 30-day ones would widen every assignment to a full-history partition scan.
   private pending = new Map<number | null, Map<string, PendingIdentity>>();
+  private freshCounts = new Map<number | null, number>();
 
   // Flushes are serialised by chaining rather than by a boolean guard. A guard
   // would make a concurrent flush() a silent no-op, which loses two things: a
   // size-triggered flush during a slow one would never run, and shutdown's
   // `await flush()` would return while work was still in flight.
   private chain: Promise<void> = Promise.resolve();
+  private sizeFlushScheduled = false;
 
   private logger = createServiceLogger("identity-backfill-queue");
 
@@ -66,13 +68,27 @@ class IdentityBackfillQueue {
     }, FLUSH_INTERVAL_MS);
   }
 
+  private scheduleSizeFlush(): void {
+    if (this.sizeFlushScheduled) return;
+    this.sizeFlushScheduled = true;
+    void this.flush().finally(() => {
+      this.sizeFlushScheduled = false;
+      if (this.hasFullFreshBatch()) {
+        this.scheduleSizeFlush();
+      }
+    });
+  }
+
   enqueue(assignment: IdentityAssignment, days: number | null) {
     this.add({ ...assignment, attempts: 0 }, days);
 
-    const group = this.pending.get(days);
-    if (group && group.size >= MAX_IDENTITIES_PER_MUTATION) {
-      void this.flush();
+    if (this.hasFullFreshBatch()) {
+      this.scheduleSizeFlush();
     }
+  }
+
+  private hasFullFreshBatch(): boolean {
+    return [...this.freshCounts.values()].some(count => count >= MAX_IDENTITIES_PER_MUTATION);
   }
 
   private add(entry: PendingIdentity, days: number | null) {
@@ -89,6 +105,7 @@ class IdentityBackfillQueue {
     const key = `${entry.siteId}:${entry.anonymousId}`;
     if (!group.has(key)) {
       group.set(key, entry);
+      if (entry.attempts === 0) this.freshCounts.set(days, (this.freshCounts.get(days) ?? 0) + 1);
     }
   }
 
@@ -117,6 +134,7 @@ class IdentityBackfillQueue {
     if (groups.length === 0) return;
 
     this.pending = new Map();
+    this.freshCounts.clear();
 
     for (const [days, assignments] of groups) {
       const queued = [...assignments.values()];

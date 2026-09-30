@@ -1,7 +1,10 @@
+import { Readable } from "node:stream";
 import Fastify, { type FastifyInstance } from "fastify";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as bearerAuth from "../lib/bearerAuth.js";
 import { createMcpAuthenticator, extractBearerToken } from "./auth.js";
 import { mcpRoutes, type McpRouteOptions } from "./index.js";
+import * as toolRegistration from "./tools/index.js";
 
 describe("extractBearerToken", () => {
   // Must mirror the REST layer's parsing exactly (startsWith("Bearer ") +
@@ -108,6 +111,11 @@ describe("mcp endpoint", () => {
 
   async function buildApp(options: McpRouteOptions): Promise<FastifyInstance> {
     const instance = Fastify();
+    instance.addHook("onResponse", async request => {
+      // Inject disables auto-destroy and its socket lacks native destroySoon.
+      // Match IncomingMessage cleanup after the body and response are complete.
+      Readable.prototype.destroy.call(request.raw);
+    });
     instance.register(
       async fastify => {
         await fastify.register(mcpRoutes, options);
@@ -155,7 +163,16 @@ describe("mcp endpoint", () => {
           captured.query = request.query as Record<string, unknown>;
           // The API returns `sessions` plus the deprecated `visitors` alias.
           return {
-            data: [{ step_number: 1, step_name: "Step 1", sessions: 10, visitors: 10, conversion_rate: 100, dropoff_rate: 0 }],
+            data: [
+              {
+                step_number: 1,
+                step_name: "Step 1",
+                sessions: 10,
+                visitors: 10,
+                conversion_rate: 100,
+                dropoff_rate: 0,
+              },
+            ],
           };
         });
 
@@ -171,7 +188,16 @@ describe("mcp endpoint", () => {
           captured.url = request.url;
           captured.query = request.query as Record<string, unknown>;
           return {
-            data: [{ query: "acme\u202Eanalytics", page: "https://acme.com/pricing", clicks: 12, impressions: 300, ctr: 0.04, position: 3.2 }],
+            data: [
+              {
+                query: "acme\u202Eanalytics",
+                page: "https://acme.com/pricing",
+                clicks: 12,
+                impressions: 300,
+                ctr: 0.04,
+                position: 3.2,
+              },
+            ],
           };
         });
 
@@ -231,6 +257,43 @@ describe("mcp endpoint", () => {
 
   afterEach(async () => {
     await app.close();
+    vi.restoreAllMocks();
+  });
+
+  it("cleans up consumed injected requests before the adapter's drain timeout", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/mcp",
+      headers: MCP_HEADERS,
+      payload: rpc("tools/list"),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.raw.req.destroyed).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 650));
+  });
+
+  it("returns a JSON-RPC error and releases the handoff when tool registration throws", async () => {
+    const registerHandoff = vi.spyOn(bearerAuth, "registerBearerHandoff");
+    vi.spyOn(toolRegistration, "registerTools").mockImplementationOnce(() => {
+      throw new Error("registration failed");
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/mcp",
+      headers: MCP_HEADERS,
+      payload: rpc("tools/list"),
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toEqual({
+      jsonrpc: "2.0",
+      error: { code: -32603, message: "Internal server error" },
+      id: null,
+    });
+    expect(registerHandoff).toHaveBeenCalledOnce();
+    expect(bearerAuth.consumeBearerHandoff(registerHandoff.mock.results[0].value, "rb_test_key")).toBeNull();
+    expect((await listTools(app)).length).toBeGreaterThan(0);
   });
 
   it("rejects requests without an Authorization header", async () => {
@@ -542,7 +605,16 @@ describe("mcp endpoint", () => {
     });
     // Search queries are typed by strangers: bidi overrides are stripped like other analytics labels.
     expect(result.structuredContent).toEqual({
-      data: [{ query: "acme analytics", page: "https://acme.com/pricing", clicks: 12, impressions: 300, ctr: 0.04, position: 3.2 }],
+      data: [
+        {
+          query: "acme analytics",
+          page: "https://acme.com/pricing",
+          clicks: 12,
+          impressions: 300,
+          ctr: 0.04,
+          position: 3.2,
+        },
+      ],
     });
   });
 
@@ -566,7 +638,10 @@ describe("mcp endpoint", () => {
   });
 
   it("get_sessions prunes rows to the requested fields", async () => {
-    const result = await callTool(app, "get_sessions", { site_id: 5, fields: ["user_id", "entry_page", "not_a_column"] });
+    const result = await callTool(app, "get_sessions", {
+      site_id: 5,
+      fields: ["user_id", "entry_page", "not_a_column"],
+    });
 
     expect(result.isError).toBeFalsy();
     const row = result.structuredContent.data[0];

@@ -24,7 +24,7 @@ export function isCalendarDate(value: string): boolean {
 const dateInput = z
   .string()
   .trim()
-  .refine(value => isCalendarDate(value) || (ISO_WITH_OFFSET.test(value) && !Number.isNaN(Date.parse(value))), {
+  .refine(value => isCalendarDate(value) || (ISO_WITH_OFFSET.test(value) && isCalendarDate(value.slice(0, 10)) && !Number.isNaN(Date.parse(value))), {
     message: "Expected an ISO 8601 timestamp with offset (e.g. 2026-08-18T14:10:00Z) or a YYYY-MM-DD date",
   })
   .transform(value => new Date(DATE_ONLY.test(value) ? `${value}T00:00:00.000Z` : value).toISOString());

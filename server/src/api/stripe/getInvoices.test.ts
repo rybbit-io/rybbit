@@ -101,6 +101,15 @@ const expectedMappedInvoice = {
 };
 
 describe("getInvoices — authorization", () => {
+  it.each([{ organizationId: ["org_1"] }, { organizationId: {} }, { organizationId: " " }])(
+    "rejects malformed query input: %j",
+    async query => {
+      const reply = replyStub();
+      await getInvoices(requestStub("u_owner", query), reply);
+      expect(reply.statusCode).toBe(400);
+      expect(mocks.invoicesList).not.toHaveBeenCalled();
+    }
+  );
   it("returns mapped invoices for the org owner", async () => {
     const reply = replyStub();
 

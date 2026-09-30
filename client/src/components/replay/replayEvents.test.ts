@@ -18,6 +18,22 @@ const click = (timestamp: number, id: number) => ({
 });
 
 describe("getMeaningfulEvents", () => {
+  it("uses text and attribute mutations that precede a click", () => {
+    const snapshot = { timestamp: 1000, type: 2, data: { node: element(10, "button", "Save") } };
+    const events = [
+      snapshot,
+      click(1500, 10),
+      { timestamp: 2000, type: 3, data: { source: 0, texts: [{ id: 11, value: "Saved" }] } },
+      click(3000, 10),
+      { timestamp: 4000, type: 3, data: { source: 0, attributes: [{ id: 10, attributes: { "aria-label": "Done" } }] } },
+      click(5000, 10),
+      { timestamp: 6000, type: 3, data: { source: 0, attributes: [{ id: 10, attributes: { "aria-label": null } }] } },
+      click(7000, 10),
+    ];
+    const expected = ["“Save”", "“Saved”", "“Done”", "“Saved”"];
+    expect(getMeaningfulEvents(events).map(event => event.detail)).toEqual(expected);
+    expect(getMeaningfulEvents(events).map(event => event.detail)).toEqual(expected);
+  });
   it("resolves click targets against the FullSnapshot active at click time", () => {
     const events = [
       {

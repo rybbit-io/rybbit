@@ -249,7 +249,7 @@ export function Overview() {
         title={t("Pages per Session")}
         id="pages_per_session"
         value={currentPagesPerSession}
-        previous={overviewDataPrevious?.pages_per_session}
+        previous={overviewDataPrevious?.pages_per_session ?? undefined}
         decimals={1}
         isLoading={isLoading}
         flash={flash}
@@ -258,7 +258,7 @@ export function Overview() {
         title={t("Bounce Rate")}
         id="bounce_rate"
         value={currentBounceRate}
-        previous={overviewDataPrevious?.bounce_rate}
+        previous={overviewDataPrevious?.bounce_rate ?? undefined}
         isLoading={isLoading}
         postfix="%"
         decimals={1}

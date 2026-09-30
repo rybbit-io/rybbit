@@ -1,12 +1,13 @@
-import { ReactNode } from "react";
-import Link from "next/link";
+import styles from "./ToolPageLayout.module.css";
 import { ChevronRight } from "lucide-react";
+import { useExtracted } from "next-intl";
+import Link from "next/link";
+import { ReactNode } from "react";
+import { BuiltByRybbit } from "@/app/[locale]/(home)/tools/components/BuiltByRybbit";
+import { ToolCTA } from "@/app/[locale]/(home)/tools/components/ToolCTA";
 import { GridCrosses } from "@/components/GridCrosses";
 import { RelatedTools } from "@/components/RelatedTools";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { BuiltByRybbit } from "./BuiltByRybbit";
-import { ToolCTA } from "./ToolCTA";
-import styles from "./ToolPageLayout.module.css";
 
 export interface FAQItem {
   question: string;
@@ -33,7 +34,7 @@ export function ToolPageLayout({
   toolSlug,
   title,
   description,
-  badge = "Free tool",
+  badge,
   toolComponent,
   educationalContent,
   faqs,
@@ -44,6 +45,7 @@ export function ToolPageLayout({
   ctaButtonText,
   structuredData,
 }: ToolPageLayoutProps) {
+  const t = useExtracted();
   return (
     <div className="overflow-x-clip">
       {structuredData && (
@@ -54,14 +56,14 @@ export function ToolPageLayout({
         <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
           <GridCrosses className="hidden sm:block" />
           <div className="px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
-            <nav aria-label="Breadcrumb">
+            <nav aria-label={t("Breadcrumb")}>
               <ol className="flex flex-wrap items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
                 <li>
                   <Link
                     href="/"
                     className="rounded-sm transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:hover:text-white"
                   >
-                    Home
+                    {t("Home")}
                   </Link>
                 </li>
                 <ChevronRight className="size-3.5 text-neutral-400 dark:text-neutral-600" aria-hidden="true" />
@@ -70,7 +72,7 @@ export function ToolPageLayout({
                     href="/tools"
                     className="rounded-sm transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:hover:text-white"
                   >
-                    Tools
+                    {t("Tools")}
                   </Link>
                 </li>
                 <ChevronRight className="size-3.5 text-neutral-400 dark:text-neutral-600" aria-hidden="true" />
@@ -84,7 +86,7 @@ export function ToolPageLayout({
               <div className="lg:col-span-8">
                 <p className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                   <span aria-hidden="true" className="size-2 rounded-[1px] bg-emerald-600 dark:bg-emerald-400" />
-                  {badge}
+                  {badge ?? t("Free tool")}
                 </p>
                 <h1 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight tracking-[-0.03em] text-neutral-950 text-balance dark:text-neutral-50 sm:text-4xl">
                   {title}
@@ -98,15 +100,18 @@ export function ToolPageLayout({
         </div>
       </section>
 
-      <section className="border-b border-neutral-200 dark:border-neutral-800" aria-label={`${title} workspace`}>
+      <section
+        className="border-b border-neutral-200 dark:border-neutral-800"
+        aria-label={t("{title} workspace", { title })}
+      >
         <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
           <GridCrosses className="hidden sm:block" />
           <div className="flex min-h-11 items-center justify-between border-b border-neutral-200 px-5 text-xs font-medium text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 sm:px-8 lg:px-10">
             <span className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200">
               <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-              Interactive workspace
+              {t("Interactive workspace")}
             </span>
-            <span className="hidden sm:inline">Free · no account required</span>
+            <span className="hidden sm:inline">{t("Free · no account required")}</span>
           </div>
 
           <div className="grid lg:grid-cols-12">
@@ -133,7 +138,7 @@ export function ToolPageLayout({
             <aside className="min-w-0 border-t border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-t-0 lg:px-8 lg:py-16">
               <div className="lg:sticky lg:top-24">
                 <h2 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
-                  Frequently asked questions
+                  {t("Frequently asked questions")}
                 </h2>
                 <div className="mt-5 border-t border-neutral-200 dark:border-neutral-800">
                   <Accordion type="single" collapsible className="w-full">

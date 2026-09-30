@@ -1,16 +1,16 @@
 "use client";
 
 import { CheckCircle, Copy, Loader2 } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import type { UsernameGeneratorPlatformConfig } from "./username-generator-platform-configs";
+import type { UsernameGeneratorPlatformConfig } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/username-generator-platform-configs";
 
 interface UsernameGeneratorProps {
   platform: UsernameGeneratorPlatformConfig;
 }
 
-export default function UsernameGenerator({
-  platform,
-}: UsernameGeneratorProps) {
+export default function UsernameGenerator({ platform }: UsernameGeneratorProps) {
+  const t = useExtracted();
   const [name, setName] = useState("");
   const [interests, setInterests] = useState("");
   const [includeNumbers, setIncludeNumbers] = useState(false);
@@ -18,13 +18,11 @@ export default function UsernameGenerator({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [remainingRequests, setRemainingRequests] = useState<number | null>(
-    null
-  );
+  const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
 
   const generateUsernames = async () => {
     if (!name.trim() && !interests.trim()) {
-      setError("Please provide your name or interests");
+      setError(t("Please provide your name or interests"));
       return;
     }
 
@@ -55,13 +53,13 @@ export default function UsernameGenerator({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to generate usernames");
+        throw new Error(data.error || t("Failed to generate usernames"));
       }
 
       const data = await response.json();
       setUsernames(data.usernames);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("An error occurred"));
     } finally {
       setIsLoading(false);
     }
@@ -80,37 +78,31 @@ export default function UsernameGenerator({
   return (
     <div className="space-y-6">
       <div>
-        <label
-          htmlFor="name"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Your Name or Brand
+        <label htmlFor="name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          {t("Your Name or Brand")}
         </label>
         <input
           id="name"
           type="text"
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          placeholder="Enter your name, brand, or nickname"
+          placeholder={t("Enter your name, brand, or nickname")}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={e => setName(e.target.value)}
           maxLength={100}
         />
       </div>
 
       <div>
-        <label
-          htmlFor="interests"
-          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-        >
-          Interests or Keywords (Optional)
+        <label htmlFor="interests" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          {t("Interests or Keywords (Optional)")}
         </label>
         <input
           id="interests"
           type="text"
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          placeholder="e.g., gaming, tech, art, music"
+          placeholder={t("e.g., gaming, tech, art, music")}
           value={interests}
-          onChange={(e) => setInterests(e.target.value)}
+          onChange={e => setInterests(e.target.value)}
           maxLength={100}
         />
       </div>
@@ -121,13 +113,10 @@ export default function UsernameGenerator({
           type="checkbox"
           className="w-4 h-4 text-emerald-600 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 rounded focus:ring-2 focus:ring-emerald-500"
           checked={includeNumbers}
-          onChange={(e) => setIncludeNumbers(e.target.checked)}
+          onChange={e => setIncludeNumbers(e.target.checked)}
         />
-        <label
-          htmlFor="includeNumbers"
-          className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
-        >
-          Include numbers in usernames
+        <label htmlFor="includeNumbers" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          {t("Include numbers in usernames")}
         </label>
       </div>
 
@@ -139,7 +128,7 @@ export default function UsernameGenerator({
         {isLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Generating Usernames...
+            {t("Generating Usernames...")}
           </>
         ) : (
           "Generate Usernames"
@@ -148,21 +137,22 @@ export default function UsernameGenerator({
 
       {remainingRequests !== null && (
         <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
-          {remainingRequests} requests remaining this minute
+          {remainingRequests} {t(" requests remaining this minute")}
         </p>
       )}
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div
+          role="alert"
+          className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+        >
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
 
       {usernames.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-            Generated Usernames
-          </h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("Generated Usernames")}</h3>
           {usernames.map((username, index) => (
             <div
               key={index}
@@ -176,7 +166,7 @@ export default function UsernameGenerator({
                 <button
                   onClick={() => copyToClipboard(username, index)}
                   className="flex-shrink-0 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
-                  title="Copy to clipboard"
+                  title={t("Copy to clipboard")}
                 >
                   {copiedIndex === index ? (
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
@@ -186,9 +176,8 @@ export default function UsernameGenerator({
                 </button>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                {username.length} characters
-                {platform.characterLimit &&
-                  ` / ${platform.characterLimit} limit`}
+                {username.length} {t(" characters")}
+                {platform.characterLimit && ` / ${platform.characterLimit} limit`}
               </p>
             </div>
           ))}
@@ -197,15 +186,14 @@ export default function UsernameGenerator({
 
       <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg space-y-2">
         <p className="text-sm text-neutral-700 dark:text-neutral-300">
-          <strong>Platform Guidelines:</strong> {platform.contextGuidelines}
+          <strong>{t("Platform Guidelines:")}</strong> {platform.contextGuidelines}
         </p>
         <p className="text-xs text-neutral-600 dark:text-neutral-400">
-          <strong>Allowed characters:</strong> {platform.allowedCharacters}
+          <strong>{t("Allowed characters:")}</strong> {platform.allowedCharacters}
         </p>
         {platform.characterLimit && (
           <p className="text-xs text-neutral-600 dark:text-neutral-400">
-            <strong>Character limit:</strong> {platform.characterLimit}{" "}
-            characters
+            <strong>{t("Character limit:")}</strong> {platform.characterLimit} {t("characters")}
           </p>
         )}
       </div>

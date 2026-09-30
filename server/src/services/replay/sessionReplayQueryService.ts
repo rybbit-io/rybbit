@@ -10,6 +10,7 @@ import { FilterParams } from "@rybbit/shared";
 import { r2Storage } from "../storage/r2StorageService.js";
 import { getFilterStatement } from "../../api/analytics/utils/getFilterStatement.js";
 import { matchesUser } from "../../api/analytics/utils/effectiveUserId.js";
+import { deleteReplayMetadata } from "./deleteReplayMetadata.js";
 
 /**
  * Service responsible for querying/retrieving session replay data
@@ -183,7 +184,8 @@ export class SessionReplayQueryService {
           event_type as type,
           event_data as data,
           event_data_key,
-          batch_index
+          batch_index,
+          sequence_number
         FROM session_replay_events
         WHERE site_id = {siteId:UInt16} 
           AND session_id = {sessionId:String}
@@ -199,6 +201,7 @@ export class SessionReplayQueryService {
       data: string;
       event_data_key: string | null;
       batch_index: number | null;
+      sequence_number: number;
     };
 
     const eventsResults = await processResults<EventRow>(eventsResult);
@@ -235,6 +238,7 @@ export class SessionReplayQueryService {
           timestamp: event.timestamp,
           type: event.type,
           data: JSON.parse(event.data),
+          sequenceNumber: event.sequence_number,
         });
       }
     }
@@ -269,6 +273,7 @@ export class SessionReplayQueryService {
               timestamp: event.timestamp,
               type: event.type,
               data: data[event.batch_index],
+              sequenceNumber: event.sequence_number,
             });
           }
         }
@@ -276,10 +281,10 @@ export class SessionReplayQueryService {
     }
 
     // Sort events by timestamp (in case batches were processed out of order)
-    events.sort((a, b) => a.timestamp - b.timestamp);
+    events.sort((a, b) => a.timestamp - b.timestamp || a.sequenceNumber - b.sequenceNumber);
 
     return {
-      events,
+      events: events.map(({ sequenceNumber, ...event }) => event),
       metadata,
     };
   }
@@ -345,13 +350,9 @@ export class SessionReplayQueryService {
       query_params: { siteId, sessionId },
     });
 
-    await clickhouse.command({
-      query: `
-        DELETE FROM session_replay_metadata_v2
-        WHERE site_id = {siteId:UInt16}
-          AND session_id = {sessionId:String}
-      `,
-      query_params: { siteId, sessionId },
-    });
+    await deleteReplayMetadata(
+      "site_id = {siteId:UInt16} AND session_id = {sessionId:String}",
+      { siteId, sessionId }
+    );
   }
 }

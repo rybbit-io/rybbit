@@ -101,7 +101,9 @@ export default function FunnelsPage() {
           {canWrite && <CreateFunnelDialog />}
         </div>
 
-        {isLoading || !funnels ? (
+        {!site ? (
+          <NothingFound icon={<Funnel className="w-10 h-10" />} title={t("Select a site to view funnels")} />
+        ) : isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
               <FunnelRowSkeleton key={i} />
@@ -128,7 +130,12 @@ export default function FunnelsPage() {
           <NothingFound
             icon={<Funnel className="w-10 h-10" />}
             title={t("No funnels yet")}
-            description={<span>{t("Create your first funnel to track conversions through your site's user journey.")} <ExternalLink href="https://rybbit.com/docs/funnels">{t("Learn more")}</ExternalLink></span>}
+            description={
+              <span>
+                {t("Create your first funnel to track conversions through your site's user journey.")}{" "}
+                <ExternalLink href="https://rybbit.com/docs/funnels">{t("Learn more")}</ExternalLink>
+              </span>
+            }
             action={canWrite ? <CreateFunnelDialog /> : undefined}
           />
         )}

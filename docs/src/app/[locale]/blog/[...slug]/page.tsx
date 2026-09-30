@@ -12,7 +12,7 @@ import { CTASection } from "@/components/CTASection";
 import { GridCrosses } from "@/components/GridCrosses";
 import {
   absoluteUrl,
-  isGeneratedImage,
+  shouldUnoptimizeBlogImage,
   postImageUrl,
   readingTimeMinutes,
   relatedPosts,
@@ -31,6 +31,7 @@ function formatDate(date: Date) {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
@@ -114,7 +115,7 @@ function RelatedPostCard({ post }: { post: BlogPost }) {
           alt=""
           width={1200}
           height={630}
-          unoptimized={isGeneratedImage(image)}
+          unoptimized={shouldUnoptimizeBlogImage(image)}
           sizes="(max-width: 768px) 100vw, 380px"
           className="aspect-[1200/630] w-full rounded-md border border-neutral-200 object-cover dark:border-neutral-800"
         />
@@ -274,6 +275,7 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
               <div className="border-b border-neutral-200 dark:border-neutral-800">
                 <Image
                   src={page.data.image}
+                  unoptimized={shouldUnoptimizeBlogImage(page.data.image)}
                   alt={page.data.title}
                   width={1200}
                   height={630}
@@ -317,10 +319,7 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
                       }
                       // Inline code
                       return (
-                        <code
-                          className="rounded bg-neutral-100 px-1.5 py-0.5 text-sm dark:bg-neutral-900"
-                          {...props}
-                        />
+                        <code className="rounded bg-neutral-100 px-1.5 py-0.5 text-sm dark:bg-neutral-900" {...props} />
                       );
                     },
                   }}
@@ -331,10 +330,7 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
         </div>
 
         {related.length > 0 && (
-          <section
-            aria-labelledby="related-posts"
-            className="border-b border-neutral-200 dark:border-neutral-800"
-          >
+          <section aria-labelledby="related-posts" className="border-b border-neutral-200 dark:border-neutral-800">
             <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
               <GridCrosses />
               <h2

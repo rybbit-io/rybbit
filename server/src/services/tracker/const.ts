@@ -1,4 +1,5 @@
 import { AI_CHAT_DOMAINS } from "@rybbit/shared";
+import * as psl from "psl";
 
 const searchDomains = [
   // Google and variants
@@ -1135,16 +1136,57 @@ export function isMobileAppId(source: string): boolean {
   return /^[a-z0-9_]+(\.([a-z0-9_]+))+$/.test(source);
 }
 
+function getSourceUrl(source: string): URL | null {
+  try {
+    return new URL(source.startsWith("//") ? `https:${source}` : source.includes("://") ? source : `https://${source}`);
+  } catch {
+    return null;
+  }
+}
+
+function matchesSourceDomain(source: URL | null, entry: string): boolean {
+  if (!source) return false;
+  const host = source.hostname.replace(/\.$/, "");
+  const domain = entry.split("/")[0];
+  const path = entry.slice(domain.length);
+
+  if (domain.endsWith(".")) {
+    if (!host.includes(domain)) return false;
+    const parsed = psl.parse(host);
+    if (parsed.error || !parsed.listed || !parsed.tld) return false;
+
+    // A brand must sit immediately before a public suffix, not inside another domain.
+    const brandDomain = domain + parsed.tld;
+    return host === brandDomain || host.endsWith("." + brandDomain);
+  }
+
+  if (host !== domain && !host.endsWith("." + domain)) return false;
+  return !path || source.pathname === path || source.pathname.startsWith(path + "/");
+}
+
 // Helper function to categorize traffic source type
 export function getSourceType(source: string): string {
   const lowerSource = source.toLowerCase();
 
+  // Known package IDs are not hostnames, even when they contain a brand label.
+  if (isMobileAppId(lowerSource)) {
+    if (aiChatAppIds.some(id => id.toLowerCase() === lowerSource)) return "ai";
+    if (socialAppIds.some(id => id.toLowerCase() === lowerSource)) return "social";
+    if (videoAppIds.some(id => id.toLowerCase() === lowerSource)) return "video";
+    if (searchAppIds.some(id => id.toLowerCase() === lowerSource)) return "search";
+    if (emailAppIds.some(id => id.toLowerCase() === lowerSource)) return "email";
+    if (shoppingAppIds.some(id => id.toLowerCase() === lowerSource)) return "shopping";
+    if (newsAppIds.some(id => id.toLowerCase() === lowerSource)) return "news";
+    if (productivityAppIds.some(id => id.toLowerCase() === lowerSource)) return "productivity";
+  }
+
   // Check domains first (AI before search to avoid misclassification)
-  if (aiChatDomains.some(domain => lowerSource.includes(domain))) return "ai";
-  if (searchDomains.some(domain => lowerSource.includes(domain))) return "search";
-  if (socialDomains.some(domain => lowerSource.includes(domain))) return "social";
-  if (videoDomains.some(domain => lowerSource.includes(domain))) return "video";
-  if (shoppingDomains.some(domain => lowerSource.includes(domain))) return "shopping";
+  const sourceUrl = getSourceUrl(lowerSource);
+  if (aiChatDomains.some(domain => matchesSourceDomain(sourceUrl, domain))) return "ai";
+  if (searchDomains.some(domain => matchesSourceDomain(sourceUrl, domain))) return "search";
+  if (socialDomains.some(domain => matchesSourceDomain(sourceUrl, domain))) return "social";
+  if (videoDomains.some(domain => matchesSourceDomain(sourceUrl, domain))) return "video";
+  if (shoppingDomains.some(domain => matchesSourceDomain(sourceUrl, domain))) return "shopping";
 
   // Check source names (AI before search)
   if (aiChatSources.includes(lowerSource)) return "ai";
@@ -1155,18 +1197,7 @@ export function getSourceType(source: string): string {
   if (emailSources.includes(lowerSource)) return "email";
   if (smsSources.includes(lowerSource)) return "sms";
 
-  // Check mobile app IDs (AI before search)
-  if (isMobileAppId(source)) {
-    if (aiChatAppIds.includes(source)) return "ai";
-    if (socialAppIds.includes(source)) return "social";
-    if (videoAppIds.includes(source)) return "video";
-    if (searchAppIds.includes(source)) return "search";
-    if (emailAppIds.includes(source)) return "email";
-    if (shoppingAppIds.includes(source)) return "shopping";
-    if (newsAppIds.includes(source)) return "news";
-    if (productivityAppIds.includes(source)) return "productivity";
-    return "mobile-app";
-  }
+  if (isMobileAppId(lowerSource)) return "mobile-app";
 
   return "direct";
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 interface CalculateImpactResult {
@@ -16,6 +17,7 @@ interface CalculateImpactResult {
 }
 
 export function PageSpeedForm() {
+  const t = useExtracted();
   const [currentLoadTime, setCurrentLoadTime] = useState("");
   const [targetLoadTime, setTargetLoadTime] = useState("");
   const [monthlyVisitors, setMonthlyVisitors] = useState("");
@@ -88,7 +90,8 @@ export function PageSpeedForm() {
           {/* Current Load Time */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Current Page Load Time <span className="text-red-500">*</span>
+              {t("Current Page Load Time ")}
+              <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -96,22 +99,23 @@ export function PageSpeedForm() {
                 step="0.1"
                 value={currentLoadTime}
                 onChange={e => setCurrentLoadTime(e.target.value)}
-                placeholder="4.5"
+                placeholder={t("4.5")}
                 className="w-full pl-4 pr-20 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">
-                seconds
+                {t("seconds")}
               </span>
             </div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              Your current page load time (check with PageSpeed Insights)
+              {t("Your current page load time (check with PageSpeed Insights)")}
             </p>
           </div>
 
           {/* Target Load Time */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Target Page Load Time <span className="text-red-500">*</span>
+              {t("Target Page Load Time ")}
+              <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -119,37 +123,39 @@ export function PageSpeedForm() {
                 step="0.1"
                 value={targetLoadTime}
                 onChange={e => setTargetLoadTime(e.target.value)}
-                placeholder="2.0"
+                placeholder={t("2.0")}
                 className="w-full pl-4 pr-20 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">
-                seconds
+                {t("seconds")}
               </span>
             </div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              Your target load time (recommended: under 3 seconds)
+              {t("Your target load time (recommended: under 3 seconds)")}
             </p>
           </div>
 
           {/* Monthly Visitors */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Monthly Visitors <span className="text-red-500">*</span>
+              {t("Monthly Visitors ")}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
               value={monthlyVisitors}
               onChange={e => setMonthlyVisitors(e.target.value)}
-              placeholder="50000"
+              placeholder={t("50000")}
               className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Total monthly visitors</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t("Total monthly visitors")}</p>
           </div>
 
           {/* Conversion Rate */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Current Conversion Rate <span className="text-red-500">*</span>
+              {t("Current Conversion Rate ")}
+              <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -157,33 +163,36 @@ export function PageSpeedForm() {
                 step="0.01"
                 value={conversionRate}
                 onChange={e => setConversionRate(e.target.value)}
-                placeholder="2.5"
+                placeholder={t("2.5")}
                 className="w-full pl-4 pr-10 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">
-                %
+                {t("%")}
               </span>
             </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Your current conversion rate</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t("Your current conversion rate")}</p>
           </div>
 
           {/* Average Order Value */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Average Order Value <span className="text-red-500">*</span>
+              {t("Average Order Value ")}
+              <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">
+                {t("$")}
+              </span>
               <input
                 type="number"
                 step="0.01"
                 value={averageOrderValue}
                 onChange={e => setAverageOrderValue(e.target.value)}
-                placeholder="75.00"
+                placeholder={t("75.00")}
                 className="w-full pl-8 pr-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Average value per conversion</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t("Average value per conversion")}</p>
           </div>
 
           {/* Results */}
@@ -191,7 +200,7 @@ export function PageSpeedForm() {
             <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                  {metrics.monthlyImpact >= 0 ? "Monthly Revenue Gain" : "Monthly Revenue Loss"}
+                  {metrics.monthlyImpact >= 0 ? t("Monthly Revenue Gain") : t("Monthly Revenue Loss")}
                 </label>
                 <div
                   className={`px-4 py-6 border rounded-lg text-center ${
@@ -207,17 +216,18 @@ export function PageSpeedForm() {
                         : "text-red-600 dark:text-red-400"
                     }`}
                   >
-                    {metrics.monthlyImpact >= 0 ? "+" : "-"}$
+                    {metrics.monthlyImpact >= 0 ? "+" : "-"}
+                    {t("$")}
                     {Math.abs(metrics.monthlyImpact).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </div>
-                  <div className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">per month</div>
+                  <div className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t("per month")}</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                    Annual Impact
+                    {t("Annual Impact")}
                   </label>
                   <div
                     className={`px-4 py-4 border rounded-lg text-center ${
@@ -233,7 +243,8 @@ export function PageSpeedForm() {
                           : "text-red-600 dark:text-red-400"
                       }`}
                     >
-                      {metrics.annualImpact >= 0 ? "+" : "-"}$
+                      {metrics.annualImpact >= 0 ? "+" : "-"}
+                      {t("$")}
                       {Math.abs(metrics.annualImpact).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </div>
                   </div>
@@ -241,35 +252,38 @@ export function PageSpeedForm() {
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                    Conversion Rate Change
+                    {t("Conversion Rate Change")}
                   </label>
                   <div className="px-4 py-4 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-center">
                     <div className="text-2xl font-bold text-neutral-900 dark:text-white">
                       {metrics.conversionImpact >= 0 ? "+" : ""}
-                      {metrics.conversionImpact.toFixed(1)}%
+                      {metrics.conversionImpact.toFixed(1)}
+                      {t("%")}
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                    New Conversion Rate
+                    {t("New Conversion Rate")}
                   </label>
                   <div className="px-4 py-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-300 dark:border-blue-800 rounded-lg text-center">
                     <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {metrics.newConversionRate.toFixed(2)}%
+                      {metrics.newConversionRate.toFixed(2)}
+                      {t("%")}
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-                    Bounce Rate Impact
+                    {t("Bounce Rate Impact")}
                   </label>
                   <div className="px-4 py-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-300 dark:border-blue-800 rounded-lg text-center">
                     <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {metrics.timeDifference > 0 ? "+" : ""}
-                      {metrics.bounceRateChange.toFixed(1)}%
+                      {metrics.timeDifference > 0 ? "-" : metrics.timeDifference < 0 ? "+" : ""}
+                      {metrics.bounceRateChange.toFixed(1)}
+                      {t("%")}
                     </div>
                   </div>
                 </div>
@@ -282,23 +296,42 @@ export function PageSpeedForm() {
                     : "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900 text-orange-900 dark:text-orange-200"
                 }`}
               >
-                <h3 className="font-semibold mb-2">Impact Summary:</h3>
+                <h3 className="font-semibold mb-2">{t("Impact Summary:")}</h3>
                 <ul className="text-sm space-y-1">
                   <li>
-                    Improving load time from <strong>{currentLoadTime}s</strong> to <strong>{targetLoadTime}s</strong>
-                  </li>
-                  <li>
-                    Conversion rate changes from <strong>{parseFloat(conversionRate).toFixed(2)}%</strong> to{" "}
-                    <strong>{metrics.newConversionRate.toFixed(2)}%</strong>
-                  </li>
-                  <li>
-                    Potential revenue impact:{" "}
+                    {t("Improving load time from ")}
                     <strong>
-                      ${Math.abs(metrics.monthlyImpact).toLocaleString(undefined, { maximumFractionDigits: 0 })}/month
+                      {currentLoadTime}
+                      {t("s")}
                     </strong>{" "}
-                    ({metrics.monthlyImpact >= 0 ? "gain" : "loss"})
+                    {t(" to ")}
+                    <strong>
+                      {targetLoadTime}
+                      {t("s")}
+                    </strong>
                   </li>
-                  <li>Based on industry research: 7% conversion impact per second of load time</li>
+                  <li>
+                    {t("Conversion rate changes from ")}
+                    <strong>
+                      {parseFloat(conversionRate).toFixed(2)}
+                      {t("%")}
+                    </strong>{" "}
+                    {t(" to")}{" "}
+                    <strong>
+                      {metrics.newConversionRate.toFixed(2)}
+                      {t("%")}
+                    </strong>
+                  </li>
+                  <li>
+                    {t("Potential revenue impact:")}{" "}
+                    <strong>
+                      {t("$")}
+                      {Math.abs(metrics.monthlyImpact).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {t("/month")}
+                    </strong>{" "}
+                    ({metrics.monthlyImpact >= 0 ? t("gain") : t("loss")})
+                  </li>
+                  <li>{t("Based on industry research: 7% conversion impact per second of load time")}</li>
                 </ul>
               </div>
             </div>
@@ -310,7 +343,7 @@ export function PageSpeedForm() {
               onClick={clearForm}
               className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
             >
-              Clear
+              {t("Clear")}
             </button>
           </div>
         </div>

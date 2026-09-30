@@ -17,6 +17,7 @@ import {
   bucketMinuteInterval,
   canDragSelectBucket,
   floorToBucket,
+  firstBucketStart,
   floorToMinuteInterval,
   getDragZoomBucket,
   stepBucket,
@@ -624,9 +625,12 @@ export function TimeSeriesChart<
   // (zoom restore) can cancel it; otherwise the first click's action would
   // swallow the second click.
   const pendingClickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (pendingClickRef.current) clearTimeout(pendingClickRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (pendingClickRef.current) clearTimeout(pendingClickRef.current);
+    },
+    []
+  );
   const handleClick = (e: React.MouseEvent<SVGRectElement>) => {
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
@@ -635,7 +639,9 @@ export function TimeSeriesChart<
     if (!onPlotClick || !hasDomain) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const px = Math.max(plotLeft, Math.min(plotRight, e.clientX - rect.left + plotLeft));
-    const date = pxToBucketStart(px).toUTC().toJSDate();
+    const date = firstBucketStart(DateTime.fromJSDate(xScale.invert(px), { zone: timezone }), bucket)
+      .toUTC()
+      .toJSDate();
     if (pendingClickRef.current) clearTimeout(pendingClickRef.current);
     pendingClickRef.current = setTimeout(() => {
       pendingClickRef.current = null;
@@ -869,8 +875,7 @@ export function TimeSeriesChart<
             />
           )}
 
-          {hasDomain &&
-            renderOverlay?.({ xScale, yScale, plotLeft, plotRight, plotTop, plotBottom, pointAt, isDark })}
+          {hasDomain && renderOverlay?.({ xScale, yScale, plotLeft, plotRight, plotTop, plotBottom, pointAt, isDark })}
         </svg>
       )}
 

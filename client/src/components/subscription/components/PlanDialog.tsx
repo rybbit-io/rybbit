@@ -6,9 +6,9 @@ import { authClient } from "@/lib/auth";
 import { BACKEND_URL } from "@/lib/const";
 import { STRIPE_TIERS } from "@/lib/stripe";
 import { EVENT_TIERS, findPriceForTier, formatEventTier } from "@/lib/subscription/planUtils";
-import { usePreviewSubscriptionUpdate, useUpdateSubscription } from "@/lib/subscription/useSubscriptionMutations";
+import { SubscriptionRefreshError, usePreviewSubscriptionUpdate, useUpdateSubscription } from "@/lib/subscription/useSubscriptionMutations";
 import { cn } from "@/lib/utils";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, RefreshCw } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { CheckoutModal } from "./CheckoutModal";
@@ -62,10 +62,27 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
   const { data: activeOrg } = authClient.useActiveOrganization();
   const previewMutation = usePreviewSubscriptionUpdate();
   const updateMutation = useUpdateSubscription();
+  const refreshFailed = updateMutation.error instanceof SubscriptionRefreshError &&
+    updateMutation.variables?.organizationId === activeOrg?.id;
 
   const eventLimit = EVENT_TIERS[eventLimitIndex];
 
   const handleSelectPlan = async () => {
+    if (refreshFailed) {
+      setIsLoading(true);
+      try {
+        if (await updateMutation.retryRefresh()) {
+          previewMutation.reset();
+          setPendingPriceId(null);
+          setPendingPlanName(null);
+          onOpenChange(false);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     if (!activeOrg) {
       toast.error("Please select an organization");
       return;
@@ -291,18 +308,25 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
             )}
 
             {/* Action button */}
-            {eventLimit !== "Custom" && (
-              <Button
-                className="w-full h-11"
-                variant="success"
-                onClick={handleSelectPlan}
-                // Covers the preview request and, after confirming, the update itself
-                loading={isLoading || previewMutation.isPending || updateMutation.isPending}
-                disabled={isCurrentSelection}
-              >
-                {isCurrentSelection ? t("Current Plan") : hasActiveSubscription ? t("Change Plan") : t("Subscribe")}
-                {!isCurrentSelection && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
+            {(refreshFailed || eventLimit !== "Custom") && (
+              <>
+                {refreshFailed && (
+                  <p role="alert" className="text-sm text-neutral-600 dark:text-neutral-300">
+                    {t("Your plan changed successfully. Refresh billing data to see the updated plan.")}
+                  </p>
+                )}
+                <Button
+                  className="w-full h-11"
+                  variant="success"
+                  onClick={handleSelectPlan}
+                  // Covers the preview request, update, and billing refresh.
+                  loading={isLoading || previewMutation.isPending || updateMutation.isPending}
+                  disabled={!refreshFailed && isCurrentSelection}
+                >
+                  {refreshFailed ? t("Retry refreshing") : isCurrentSelection ? t("Current Plan") : hasActiveSubscription ? t("Change Plan") : t("Subscribe")}
+                  {refreshFailed ? <RefreshCw /> : !isCurrentSelection && <ArrowRight className="ml-2 h-4 w-4" />}
+                </Button>
+              </>
             )}
 
             {/* Features comparison link */}

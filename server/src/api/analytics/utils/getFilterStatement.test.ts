@@ -514,11 +514,9 @@ describe("getFilterStatement", () => {
       expect(getFilterStatement(filters)).toBe("AND lat >= 10");
     });
 
-    it("should coerce numeric comparisons on non-numeric parameters", () => {
-      // Pinned behavior: any parameter accepts numeric comparison types; the
-      // value is coerced with Number() and inlined unquoted.
+    it("rejects numeric comparisons on text parameters", () => {
       const filters = JSON.stringify([{ parameter: "pathname", type: "greater_than_or_equal", value: ["10"] }]);
-      expect(getFilterStatement(filters)).toBe("AND pathname >= 10");
+      expect(() => getFilterStatement(filters)).toThrow("Numeric comparison operators require a numeric dimension");
     });
 
     it("should throw for non-numeric value with greater_than_or_equal", () => {

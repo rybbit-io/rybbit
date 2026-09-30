@@ -61,8 +61,12 @@ describe("validateFeatureFlagRegexPattern", () => {
     expect(validateFeatureFlagRegexPattern("a*".repeat(26))).toBe("Regex pattern is too complex");
   });
 
-  it("does not reject a nested-quantifier-free alternation", () => {
-    expect(validateFeatureFlagRegexPattern("(a|a)*$")).toBeNull();
+  it("rejects quantified alternations that can cause exponential backtracking", () => {
+    for (const pattern of ["(a|a)*$", "(a|aa)+$", "((?:a|aa)b)*$"]) {
+      expect(validateFeatureFlagRegexPattern(pattern)).toBe("Regex pattern is too complex");
+      expect(precompileFeatureFlagRegexPattern(pattern)).toBeUndefined();
+    }
+    expect(validateFeatureFlagRegexPattern("^(foo|bar)$")).toBeNull();
   });
 });
 

@@ -60,7 +60,7 @@ describe("buildFunnelStepCondition — event steps", () => {
         propertyFilters: [{ key: "amount", value: 10 }],
       })
     ).toBe(
-      "type = 'custom_event' AND event_name = 'purchase' AND toFloat64(JSONExtractString(toString(props), 'amount')) = 10"
+      "type = 'custom_event' AND event_name = 'purchase' AND toFloat64OrNull(JSONExtractString(toString(props), 'amount')) = 10"
     );
   });
 

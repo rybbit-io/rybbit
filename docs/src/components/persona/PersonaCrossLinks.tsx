@@ -1,6 +1,7 @@
-import { GridCrosses } from "@/components/GridCrosses";
 import { ArrowRight } from "lucide-react";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
+import { GridCrosses } from "@/components/GridCrosses";
 
 export type PersonaSlug =
   | "for-developers"
@@ -14,64 +15,65 @@ export type PersonaSlug =
   | "for-european-companies"
   | "enterprise";
 
-const personas: { slug: PersonaSlug; title: string; description: string }[] = [
-  {
-    slug: "for-developers",
-    title: "For developers",
-    description: "The script tag, the SDK, the API, the MCP server, and self-hosting.",
-  },
-  {
-    slug: "for-agencies",
-    title: "For agencies",
-    description: "One workspace for every client site, with dashboards clients can read on their own.",
-  },
-  {
-    slug: "white-label",
-    title: "White label",
-    description: "Embed dashboards, build on the API, or self-host: analytics under your own brand.",
-  },
-  {
-    slug: "for-startups",
-    title: "For startups",
-    description: "Answers about your traffic and product without hiring a data team.",
-  },
-  {
-    slug: "for-saas",
-    title: "For SaaS",
-    description: "Signup funnels, retention cohorts, and the sessions behind every drop-off.",
-  },
-  {
-    slug: "for-ecommerce",
-    title: "For ecommerce",
-    description: "Checkout funnels, campaign tracking, and full traffic with no consent banner.",
-  },
-  {
-    slug: "for-small-business",
-    title: "For small businesses",
-    description: "The handful of numbers that matter, with no GA4 setup and no cookie banner.",
-  },
-  {
-    slug: "for-creators",
-    title: "For creators & publishers",
-    description: "What resonates, where readers come from, and a dashboard you can share.",
-  },
-  {
-    slug: "for-european-companies",
-    title: "For European companies",
-    description: "EU-hosted cloud, cookieless compliance, and a self-host option for full control.",
-  },
-  {
-    slug: "enterprise",
-    title: "Enterprise",
-    description: "SSO, dedicated instances, on-premise installation, and infinite retention.",
-  },
-];
-
 /**
  * The persona cluster's closing nav: every sibling page plus the compare
  * hub, so a mis-landed visitor can self-select instead of bouncing.
  */
 export function PersonaCrossLinks({ current }: { current: PersonaSlug }) {
+  const t = useExtracted();
+  const personas: { slug: PersonaSlug; title: string; description: string }[] = [
+    {
+      slug: "for-developers",
+      title: t("For developers"),
+      description: t("The script tag, the SDK, the API, the MCP server, and self-hosting."),
+    },
+    {
+      slug: "for-agencies",
+      title: t("For agencies"),
+      description: t("One workspace for every client site, with dashboards clients can read on their own."),
+    },
+    {
+      slug: "white-label",
+      title: t("White label"),
+      description: t("Embed dashboards, build on the API, or self-host: analytics under your own brand."),
+    },
+    {
+      slug: "for-startups",
+      title: t("For startups"),
+      description: t("Answers about your traffic and product without hiring a data team."),
+    },
+    {
+      slug: "for-saas",
+      title: t("For SaaS"),
+      description: t("Signup funnels, retention cohorts, and the sessions behind every drop-off."),
+    },
+    {
+      slug: "for-ecommerce",
+      title: t("For ecommerce"),
+      description: t("Checkout funnels, campaign tracking, and full traffic with no consent banner."),
+    },
+    {
+      slug: "for-small-business",
+      title: t("For small businesses"),
+      description: t("The handful of numbers that matter, with no GA4 setup and no cookie banner."),
+    },
+    {
+      slug: "for-creators",
+      title: t("For creators & publishers"),
+      description: t("What resonates, where readers come from, and a dashboard you can share."),
+    },
+    {
+      slug: "for-european-companies",
+      title: t("For European companies"),
+      description: t("EU-hosted cloud, cookieless compliance, and a self-host option for full control."),
+    },
+    {
+      slug: "enterprise",
+      title: t("Enterprise"),
+      description: t("SSO, dedicated instances, on-premise installation, and infinite retention."),
+    },
+  ];
+
   const siblings = personas.filter(persona => persona.slug !== current);
 
   return (
@@ -80,7 +82,7 @@ export function PersonaCrossLinks({ current }: { current: PersonaSlug }) {
         <GridCrosses />
         <div className="border-b border-neutral-200 px-5 py-8 dark:border-neutral-800 sm:px-8 lg:px-10">
           <h2 id="persona-crosslinks-title" className="text-2xl font-semibold tracking-tight md:text-3xl">
-            More ways teams use Rybbit.
+            {t("More ways teams use Rybbit.")}
           </h2>
         </div>
         <div className="grid grid-cols-1 gap-px bg-neutral-200 dark:bg-neutral-800 sm:grid-cols-2">
@@ -107,9 +109,9 @@ export function PersonaCrossLinks({ current }: { current: PersonaSlug }) {
             className="group flex items-start justify-between gap-4 bg-white px-5 py-6 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:bg-neutral-950 dark:hover:bg-neutral-900/60 sm:px-8 lg:px-10"
           >
             <span className="min-w-0">
-              <span className="block font-semibold tracking-tight">Compare Rybbit</span>
+              <span className="block font-semibold tracking-tight">{t("Compare Rybbit")}</span>
               <span className="mt-1 block text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-                Side-by-side with Google Analytics, Plausible, Matomo, PostHog, and more.
+                {t("Side-by-side with Google Analytics, Plausible, Matomo, PostHog, and more.")}
               </span>
             </span>
             <ArrowRight

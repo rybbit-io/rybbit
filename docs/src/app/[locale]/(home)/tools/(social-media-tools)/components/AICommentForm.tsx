@@ -1,8 +1,9 @@
 "use client";
 
 import { CheckCircle, Copy, Loader2 } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import type { CommentPlatformConfig } from "./comment-platform-configs";
+import type { CommentPlatformConfig } from "@/app/[locale]/(home)/tools/(social-media-tools)/components/comment-platform-configs";
 
 interface AICommentFormProps {
   platform: CommentPlatformConfig;
@@ -44,6 +45,7 @@ const lengthOptions = [
 ];
 
 export default function AICommentForm({ platform }: AICommentFormProps) {
+  const t = useExtracted();
   const [originalContent, setOriginalContent] = useState("");
   const [tone, setTone] = useState("friendly");
   const [length, setLength] = useState("medium");
@@ -51,13 +53,11 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [remainingRequests, setRemainingRequests] = useState<number | null>(
-    null
-  );
+  const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
 
   const generateComments = async () => {
     if (!originalContent.trim()) {
-      setError("Please paste the content you want to comment on");
+      setError(t("Please paste the content you want to comment on"));
       return;
     }
 
@@ -86,13 +86,13 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to generate comments");
+        throw new Error(data.error || t("Failed to generate comments"));
       }
 
       const data = await response.json();
       setComments(data.comments);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("An error occurred"));
     } finally {
       setIsLoading(false);
     }
@@ -115,39 +115,35 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
           htmlFor="original-content"
           className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
         >
-          Original Content
+          {t("Original Content")}
         </label>
         <textarea
           id="original-content"
           rows={6}
           className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
-          placeholder={`Paste the ${platform.name} post or content you want to comment on...`}
+          placeholder={t("Paste the {name} post or content you want to comment on...", { name: platform.name })}
           value={originalContent}
-          onChange={(e) => setOriginalContent(e.target.value)}
+          onChange={e => setOriginalContent(e.target.value)}
           maxLength={platform.characterLimit || 10000}
         />
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
           {originalContent.length}
-          {platform.characterLimit && ` / ${platform.characterLimit}`}{" "}
-          characters
+          {platform.characterLimit && ` / ${platform.characterLimit}`} {t("characters")}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label
-            htmlFor="tone"
-            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-          >
-            Tone
+          <label htmlFor="tone" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+            {t("Tone")}
           </label>
           <select
             id="tone"
             className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             value={tone}
-            onChange={(e) => setTone(e.target.value)}
+            onChange={e => setTone(e.target.value)}
           >
-            {toneOptions.map((option) => (
+            {toneOptions.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label} - {option.description}
               </option>
@@ -156,19 +152,16 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
         </div>
 
         <div>
-          <label
-            htmlFor="length"
-            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-          >
-            Length
+          <label htmlFor="length" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+            {t("Length")}
           </label>
           <select
             id="length"
             className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             value={length}
-            onChange={(e) => setLength(e.target.value)}
+            onChange={e => setLength(e.target.value)}
           >
-            {lengthOptions.map((option) => (
+            {lengthOptions.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label} - {option.description}
               </option>
@@ -185,7 +178,7 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
         {isLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Generating Comments...
+            {t("Generating Comments...")}
           </>
         ) : (
           "Generate Comments"
@@ -194,34 +187,33 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
 
       {remainingRequests !== null && (
         <p className="text-sm text-center text-neutral-600 dark:text-neutral-400">
-          {remainingRequests} requests remaining this minute
+          {remainingRequests} {t(" requests remaining this minute")}
         </p>
       )}
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div
+          role="alert"
+          className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+        >
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
 
       {comments.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-            Generated Comments
-          </h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("Generated Comments")}</h3>
           {comments.map((comment, index) => (
             <div
               key={index}
               className="p-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg"
             >
               <div className="flex items-start justify-between gap-3 mb-2">
-                <p className="flex-1 text-neutral-900 dark:text-white whitespace-pre-wrap">
-                  {comment}
-                </p>
+                <p className="flex-1 text-neutral-900 dark:text-white whitespace-pre-wrap">{comment}</p>
                 <button
                   onClick={() => copyToClipboard(comment, index)}
                   className="flex-shrink-0 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
-                  title="Copy to clipboard"
+                  title={t("Copy to clipboard")}
                 >
                   {copiedIndex === index ? (
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
@@ -231,7 +223,7 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
                 </button>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {comment.length} characters
+                {comment.length} {t(" characters")}
               </p>
             </div>
           ))}
@@ -240,7 +232,7 @@ export default function AICommentForm({ platform }: AICommentFormProps) {
 
       <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg">
         <p className="text-sm text-neutral-700 dark:text-neutral-300">
-          <strong>Platform Context:</strong> {platform.contextGuidelines}
+          <strong>{t("Platform Context:")}</strong> {platform.contextGuidelines}
         </p>
       </div>
     </div>

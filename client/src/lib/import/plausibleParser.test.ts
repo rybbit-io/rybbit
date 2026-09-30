@@ -390,7 +390,7 @@ describe("referrers and utm parameters", () => {
 
   it("drops friendly source names that cannot become urls", async () => {
     expect((await withSource("2024-03-01,Brave,,,,,,,1,1\n")).referrer).toBe("");
-    expect((await withSource("2024-03-01,Direct / None,,,,,,,1,1\n")).referrer).toBe("https://Direct / None");
+    expect((await withSource("2024-03-01,Direct / None,,,,,,,1,1\n")).referrer).toBe("");
   });
 
   it("keeps a value that already has a scheme", async () => {

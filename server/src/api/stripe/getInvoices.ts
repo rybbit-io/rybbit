@@ -5,6 +5,9 @@ import { db } from "../../db/postgres/postgres.js";
 import { organization } from "../../db/postgres/schema.js";
 import { getOrgMembership } from "../../lib/access.js";
 import { stripe } from "../../lib/stripe.js";
+import { z } from "zod";
+
+const invoicesSchema = z.object({ organizationId: z.string().trim().min(1) });
 
 export async function getInvoices(
   request: FastifyRequest<{
@@ -15,15 +18,16 @@ export async function getInvoices(
   reply: FastifyReply
 ) {
   const userId = request.user?.id;
-  const { organizationId } = request.query;
 
   if (!userId) {
     return reply.status(401).send({ error: "Unauthorized" });
   }
 
-  if (!organizationId) {
+  const parsed = invoicesSchema.safeParse(request.query);
+  if (!parsed.success) {
     return reply.status(400).send({ error: "Organization ID is required" });
   }
+  const { organizationId } = parsed.data;
 
   if (!stripe) {
     return reply.status(500).send({ error: "Stripe is not configured" });

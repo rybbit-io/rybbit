@@ -21,7 +21,7 @@ Disclosure up front: we build [Rybbit](https://rybbit.com), one of the nine, and
 | [Heap](#3-heap-contentsquare) | Autocapture, priced by sessions | 10K sessions/month | Growth by estimate; Pro and Premier by quote | Sessions | No / No |
 | [Pendo](#4-pendo) | B2B SaaS analytics plus in-app guides | 500 MAUs | By quote | Monthly active users | No / No |
 | [OpenPanel](#5-openpanel) | Low-cost open-source event analytics | Self-hosting (cloud: 30-day trial) | $2.50/month for 5K events; $90 at 1M | Events | AGPL-3.0 / Yes |
-| [Rybbit](#6-rybbit) | Web products that also need [traffic analytics](/features/web-analytics) | Self-hosting (cloud: 7-day trial) | $19/month for 100K events | Events | AGPL-3.0 / Yes |
+| [Rybbit](#6-rybbit) | Web products that also need [traffic analytics](/features/web-analytics) | Self-hosting (cloud: 7-day trial) | $19/month for 100K monthly pageviews | Monthly pageviews | AGPL-3.0 / Yes |
 | [Countly](#7-countly) | Mobile, desktop and IoT apps on your own servers | Countly Lite, self-hosted | Flex from $175/month | MAUs and data points | Lite edition / Yes |
 | [Google Analytics 4](#8-google-analytics-4) | $0 budgets and Google Ads reporting | All of it | Analytics 360 by quote | No usage fee | No / No |
 | [Matomo](#9-matomo) | Self-hosted web analytics with funnels | On-Premise, self-hosted | Cloud from $26/month for 50K hits | Hits | GPL-3.0 / Yes |
@@ -46,10 +46,15 @@ Price is a weaker reason than it sounds. Amplitude Plus starts at $0 for the fir
 | Mixpanel Growth | $378 | $1,176 | $2,289 |
 | PostHog (analytics only) | $84 | $324 | $643 |
 | OpenPanel Cloud | $250 | $350 | $530 |
+
+Rybbit uses monthly pageview tiers, so its prices are not comparable event-volume quotes:
+
+| Plan | 3M pageviews/month | 10M pageviews/month | 20M pageviews/month |
+| --- | --- | --- | --- |
 | Rybbit Standard (no replay) | $149 | $249 | $399 |
 | Rybbit Pro (with [replay](/features/session-replay)) | $299 | $499 | $799 |
 
-Sources: the calculators on [Amplitude's](https://amplitude.com/pricing) and [Mixpanel's](https://mixpanel.com/pricing/) pricing pages, PostHog's [per-event rates](https://posthog.com/docs/product-analytics/pricing), OpenPanel's [price table](https://openpanel.dev/pricing) and our [pricing page](/pricing). Annual billing cuts most rows; Amplitude's 10M tier drops to $576 a month and Mixpanel's to $840. Replay allowances differ too: 10,000 a month on Amplitude Plus, 20,000 on Mixpanel Growth, a tenth of the event tier on Rybbit Pro (1 million at 10M events), and billed separately on PostHog. Vendors also count events differently, so treat the table as a rough guide, not a quote.
+Sources: the calculators on [Amplitude's](https://amplitude.com/pricing) and [Mixpanel's](https://mixpanel.com/pricing/) pricing pages, PostHog's [per-event rates](https://posthog.com/docs/product-analytics/pricing), OpenPanel's [price table](https://openpanel.dev/pricing) and our [pricing page](/pricing). Annual billing cuts most rows; Amplitude's 10M tier drops to $576 a month and Mixpanel's to $840. Replay allowances differ too: 10,000 a month on Amplitude Plus, 20,000 on Mixpanel Growth, a tenth of the pageview tier on Rybbit Pro (1 million at 10M monthly pageviews), and billed separately on PostHog. Vendors also count events differently, and Rybbit uses pageviews, so these tables are separate rough guides, not equivalent-volume quotes.
 
 Startups with under $10 million in funding and fewer than 20 employees can also get a free year of Amplitude's Growth plan. Switching makes more sense when you need what the plan gates hold back without a sales contract, want to self-host, or want tracking without cookies.
 
@@ -123,7 +128,7 @@ On the [pricing page](https://www.heap.io/pricing), Free includes core charts, S
 
 [Rybbit](https://rybbit.com) is open-source web analytics with the product-analytics reports in the same dashboard: [funnels](/features/funnels) built from page paths, [custom events](/features/custom-events) or autocaptured clicks, outbound links, form submits and copies; [retention](/features/retention); [user journeys](/features/user-journeys); [user profiles](/features/user-profiles) with `identify()` and custom traits; [sessions](/features/sessions); [error tracking](/features/error-tracking); and [Web Vitals](/features/web-vitals), next to referrers, UTM campaigns, pages and devices. Tracking is cookieless by default, so Rybbit's own tracking needs no consent banner, and the cloud is hosted in the EU.
 
-[Pricing](/pricing) is by events. Standard is $19 a month for 100,000 events (up to 5 websites and 3 team members) and includes everything above plus [goals](/features/goals), email reports, API access and 3 years of data retention, against 2 on Amplitude Plus. Pro is $39 a month for 100,000 events and adds [session replay](/features/session-replay) (10,000 replays a month at that tier, rising with the plan), unlimited websites and team members, and 5-year retention. Cloud plans start with a 7-day trial (the card is collected at signup), and self-hosting is free under AGPL-3.0.
+[Pricing](/pricing) uses monthly pageview tiers. Standard is $19 a month for 100,000 monthly pageviews (up to 5 websites and 3 team members) and includes everything above plus [goals](/features/goals), email reports, API access and 3 years of data retention, against 2 on Amplitude Plus. Pro is $39 a month for 100,000 monthly pageviews and adds [session replay](/features/session-replay) (10,000 replays a month at that tier, rising with the plan), unlimited websites and team members, and 5-year retention. Cloud plans start with a 7-day trial (the card is collected at signup), and self-hosting is free under AGPL-3.0.
 
 Where it falls short of Amplitude:
 
@@ -137,7 +142,7 @@ Where it falls short of Amplitude:
 Pick something else if you run experiments in Amplitude today (PostHog or Mixpanel), are mobile-first (Mixpanel, PostHog or Heap), or target users with behavioral cohorts (Mixpanel or PostHog).
 
 - **Free option:** self-hosting, replay included; the cloud has a 7-day trial
-- **Paid:** Standard from $19/month, Pro from $39/month; $249 and $499 at 10M events
+- **Paid:** Standard from $19/month, Pro from $39/month; $249 and $499 at 10M monthly pageviews
 - **Drawbacks:** the list above
 
 ## 7. Countly

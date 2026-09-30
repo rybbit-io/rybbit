@@ -21,6 +21,16 @@ describe("isPublicUnicastAddress (SSRF guard)", () => {
     "fe80::1",
     "::ffff:127.0.0.1", // v4-mapped loopback
     "::ffff:10.0.0.1",
+    "::ffff:7f00:1",
+    "0:0:0:0:0:ffff:a00:1",
+    "64:ff9b::a00:1",
+    "64:ff9b:1::a00:1",
+    "2002:a00:1::",
+    "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+    "2001:db8::1",
+    "3fff::1",
+    "::a00:1",
+    "fec0::1",
   ])("rejects %s", address => {
     expect(isPublicUnicastAddress(address)).toBe(false);
   });
@@ -53,6 +63,11 @@ describe("hasRybbitScript", () => {
 
   it("rejects pages without the script", () => {
     expect(hasRybbitScript('<span data-site-id="42"></span>', 42)).toBe(false);
+  });
+
+  it("requires the matching site id on the same script element", () => {
+    expect(hasRybbitScript('<script src="/api/script.js"></script><div data-site-id="42"></div>', 42)).toBe(false);
+    expect(hasRybbitScript('<script src="/api/script.js" data-site-id="43"></script><script src="other.js" data-site-id="42"></script>', 42)).toBe(false);
   });
 });
 

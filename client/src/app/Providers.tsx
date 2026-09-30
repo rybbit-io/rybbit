@@ -13,7 +13,7 @@ import { MotionConfig } from "framer-motion";
 import { ThemeProvider } from "next-themes";
 import Script from "next/script";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { AuthenticationGuard } from "../components/AuthenticationGuard";
 import { CommandPalette } from "../components/command-palette/CommandPalette";
 import { OrganizationInitializer } from "../components/OrganizationInitializer";
@@ -77,7 +77,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <AuthenticationGuard />
               {children}
               {/* ⌘K palette and "?" shortcut sheet; renders nothing for signed-out visitors. */}
-              <CommandPalette />
+              <Suspense fallback={null}>
+                <CommandPalette />
+              </Suspense>
               <VersionCheck />
             </QueryProvider>
             <Toaster />

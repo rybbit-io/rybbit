@@ -38,6 +38,8 @@ describe("updateAnnotationSchema", () => {
 describe("date strictness", () => {
   it("rejects impossible calendar dates and offset-less timestamps", () => {
     expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-02-30" }).success).toBe(false);
+    expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-02-30T00:00:00Z" }).success).toBe(false);
+    expect(updateAnnotationSchema.safeParse({ endDate: "2026-02-30T00:00:00+0200" }).success).toBe(false);
     expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18T14:10:00" }).success).toBe(false);
     expect(createAnnotationSchema.safeParse({ title: "x", date: "08/18/2026" }).success).toBe(false);
     expect(createAnnotationSchema.safeParse({ title: "x", date: "2026-08-18T14:10:00Z" }).success).toBe(true);

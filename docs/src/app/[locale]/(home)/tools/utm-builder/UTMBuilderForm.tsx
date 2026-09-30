@@ -1,9 +1,11 @@
 "use client";
 
 import { CheckCircle, Copy } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 
 export function UTMBuilderForm() {
+  const t = useExtracted();
   const [url, setUrl] = useState("");
   const [source, setSource] = useState("");
   const [medium, setMedium] = useState("");
@@ -54,9 +56,12 @@ export function UTMBuilderForm() {
           {/* Website URL */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Website URL <span className="text-red-500">*</span>
+              {t("Website URL ")}
+              <span className="text-red-500">*</span>
             </label>
             <input
+              required
+              aria-label={t("Website URL")}
               type="text"
               value={url}
               onChange={e => setUrl(e.target.value)}
@@ -68,78 +73,103 @@ export function UTMBuilderForm() {
           {/* Campaign Source */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Campaign Source <span className="text-red-500">*</span>
+              {t("Campaign Source ")}
+              <span className="text-red-500">*</span>
             </label>
             <input
+              required
+              aria-label={t("Campaign Source")}
               type="text"
               value={source}
               onChange={e => setSource(e.target.value)}
-              placeholder="google, newsletter, facebook"
+              placeholder={t("google, newsletter, facebook")}
               className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">The referrer (e.g., google, newsletter)</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {t("The referrer (e.g., google, newsletter)")}
+            </p>
           </div>
 
           {/* Campaign Medium */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Campaign Medium <span className="text-red-500">*</span>
+              {t("Campaign Medium ")}
+              <span className="text-red-500">*</span>
             </label>
             <input
+              required
+              aria-label={t("Campaign Medium")}
               type="text"
               value={medium}
               onChange={e => setMedium(e.target.value)}
-              placeholder="cpc, email, social"
+              placeholder={t("cpc, email, social")}
               className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Marketing medium (e.g., cpc, email, social)</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {t("Marketing medium (e.g., cpc, email, social)")}
+            </p>
           </div>
 
           {/* Campaign Name */}
           <div>
             <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
-              Campaign Name <span className="text-red-500">*</span>
+              {t("Campaign Name ")}
+              <span className="text-red-500">*</span>
             </label>
             <input
+              required
+              aria-label={t("Campaign Name")}
               type="text"
               value={campaign}
               onChange={e => setCampaign(e.target.value)}
-              placeholder="summer_sale, product_launch"
+              placeholder={t("summer_sale, product_launch")}
               className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Product, promo code, or slogan (e.g., summer_sale)</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {t("Product, promo code, or slogan (e.g., summer_sale)")}
+            </p>
           </div>
 
           {/* Campaign Term (Optional) */}
           <div>
-            <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">Campaign Term</label>
+            <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
+              {t("Campaign Term")}
+            </label>
             <input
               type="text"
               value={term}
               onChange={e => setTerm(e.target.value)}
-              placeholder="running_shoes, blue_widget"
+              placeholder={t("running_shoes, blue_widget")}
               className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Identify the paid keywords (optional)</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {t("Identify the paid keywords (optional)")}
+            </p>
           </div>
 
           {/* Campaign Content (Optional) */}
           <div>
-            <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">Campaign Content</label>
+            <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
+              {t("Campaign Content")}
+            </label>
             <input
               type="text"
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="logolink, textlink"
+              placeholder={t("logolink, textlink")}
               className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Differentiate ads or links (optional)</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              {t("Differentiate ads or links (optional)")}
+            </p>
           </div>
 
           {/* Result */}
           {utmUrl && (
             <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800">
-              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">Your UTM URL</label>
+              <label className="block text-sm font-medium text-neutral-900 dark:text-white mb-2">
+                {t("Your UTM URL")}
+              </label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -152,7 +182,7 @@ export function UTMBuilderForm() {
                   className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
                 >
                   {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? t("Copied") : t("Copy")}
                 </button>
               </div>
             </div>
@@ -164,7 +194,7 @@ export function UTMBuilderForm() {
               onClick={clearForm}
               className="px-6 py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white font-medium rounded-lg transition-colors"
             >
-              Clear
+              {t("Clear")}
             </button>
           </div>
         </div>

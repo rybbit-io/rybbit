@@ -28,7 +28,7 @@ export function stepRequiresValue(step: FunnelStep): boolean {
 }
 
 export function hasIncompleteSteps(steps: FunnelStep[]): boolean {
-  return steps.some(step => stepRequiresValue(step) && !step.value);
+  return steps.some(step => stepRequiresValue(step) && !step.value.trim());
 }
 
 // Funnel request type
@@ -89,14 +89,10 @@ export async function saveFunnel(
   site: string | number,
   params: SaveFunnelParams
 ): Promise<{ success: boolean; funnelId: number }> {
-  const response = await authedFetch<{ success: boolean; funnelId: number }>(
-    `/sites/${site}/funnels`,
-    undefined,
-    {
-      method: "POST",
-      data: params,
-    }
-  );
+  const response = await authedFetch<{ success: boolean; funnelId: number }>(`/sites/${site}/funnels`, undefined, {
+    method: "POST",
+    data: params,
+  });
   return response;
 }
 
@@ -104,16 +100,9 @@ export async function saveFunnel(
  * Delete a saved funnel
  * DELETE /api/funnels/:funnelId/:site
  */
-export async function deleteFunnel(
-  site: string | number,
-  funnelId: number
-): Promise<{ success: boolean }> {
-  const response = await authedFetch<{ success: boolean }>(
-    `/sites/${site}/funnels/${funnelId}`,
-    undefined,
-    {
-      method: "DELETE",
-    }
-  );
+export async function deleteFunnel(site: string | number, funnelId: number): Promise<{ success: boolean }> {
+  const response = await authedFetch<{ success: boolean }>(`/sites/${site}/funnels/${funnelId}`, undefined, {
+    method: "DELETE",
+  });
   return response;
 }

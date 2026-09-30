@@ -190,8 +190,8 @@ describe("siteConfig.getConfig", () => {
     ]);
   });
 
-  it("applies the blockBots default a direct column read would miss", async () => {
-    dbMock.rows.push(createSiteRow({ siteId: 123, blockBots: undefined as unknown as boolean }));
+  it.each([undefined, null])("applies the blockBots default for %s", async blockBots => {
+    dbMock.rows.push(createSiteRow({ siteId: 123, blockBots: blockBots as unknown as boolean }));
 
     expect((await siteConfig.getConfig(123))?.blockBots).toBe(true);
   });
@@ -309,6 +309,10 @@ describe("siteConfig.reload", () => {
 });
 
 describe("siteConfig.resolveSiteId", () => {
+  it("propagates database errors rather than reporting a missing site", async () => {
+    dbMock.failure = new Error("postgres is down");
+    await expect(siteConfig.resolveSiteId("abcdef123456")).rejects.toThrow("postgres is down");
+  });
   it("resolves a text id to the numeric site id", async () => {
     dbMock.rows.push(createSiteRow({ id: "abcdef123456", siteId: 123 }));
 

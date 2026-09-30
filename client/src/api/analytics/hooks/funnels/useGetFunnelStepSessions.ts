@@ -1,6 +1,6 @@
 import { Time } from "../../../../components/DateSelector/types";
 import { FUNNEL_PAGE_FILTERS } from "../../../../lib/filterGroups";
-import { getFilteredFilters } from "../../../../lib/store";
+import { useStore } from "../../../../lib/store";
 import { FunnelStep, GetSessionsResponse } from "../../endpoints";
 import { useAnalyticsQuery } from "../../useAnalyticsQuery";
 
@@ -25,7 +25,8 @@ export function useGetFunnelStepSessions({
 }) {
   // Only the funnel page's filter parameters apply; an empty subset means no
   // filters at all (not the store's full filter list).
-  const filteredFilters = getFilteredFilters(FUNNEL_PAGE_FILTERS);
+  const filters = useStore(state => state.filters);
+  const filteredFilters = filters.filter(filter => FUNNEL_PAGE_FILTERS.includes(filter.parameter));
 
   return useAnalyticsQuery<GetSessionsResponse>({
     key: ["funnel-step-sessions", stepNumber],
