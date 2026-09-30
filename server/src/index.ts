@@ -291,7 +291,6 @@ const authUsersWrite = authSiteScoped("users", "write");
 const authGoalsWrite = authSiteScoped("goals", "write");
 const authFunnelsWrite = authSiteScoped("funnels", "write");
 const authAnalyticsRead = authSiteScoped("analytics", "read");
-const authReplayWrite = authSiteScoped("replay", "write");
 const authOrgRead = authOnlyScoped("org", "read");
 const adminSitesRead = adminSiteScoped("sites", "read");
 // Annotations validate their own optional start/end bounds (either may stand
@@ -312,6 +311,7 @@ const adminFlagsWrite = adminSiteScoped("flags", "write");
 const adminExperimentsWrite = adminSiteScoped("experiments", "write");
 const adminSitesWrite = adminSiteScoped("sites", "write");
 const adminGscWrite = adminSiteScoped("gsc", "write");
+const adminReplayWrite = adminSiteScoped("replay", "write");
 const orgAnalyticsRead = orgMemberScoped("analytics", "read");
 const orgSqlRead = orgMemberScoped("sql", "read");
 
@@ -544,7 +544,7 @@ async function sessionReplayRoutes(fastify: FastifyInstance) {
   fastify.post("/session-replay/record/:siteId", recordSessionReplay); // Public - tracking endpoint
   fastify.get("/sites/:siteId/session-replay/list", publicReplayRead, getSessionReplays);
   fastify.get("/sites/:siteId/session-replay/:sessionId", publicReplayRead, getSessionReplayEvents);
-  fastify.delete("/sites/:siteId/session-replay/:sessionId", authReplayWrite, deleteSessionReplay);
+  fastify.delete("/sites/:siteId/session-replay/:sessionId", adminReplayWrite, deleteSessionReplay);
 }
 
 async function sitesRoutes(fastify: FastifyInstance) {

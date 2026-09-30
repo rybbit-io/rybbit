@@ -630,6 +630,81 @@ describe("checkApiKey — organization-owned keys", () => {
   });
 });
 
+// A personal key or OAuth token must reach exactly the sites its user's
+// browser session reaches — the guards trust checkApiKey before they consult
+// the session, so a key that ignored member/team restrictions would be a way
+// around them.
+describe("checkApiKey — user credentials honour site restrictions", () => {
+  const request = () => ({ headers: { authorization: "Bearer rb_user_key" }, query: {} }) as any;
+  const userKey = (userId: string) =>
+    ({ valid: true, key: { referenceId: userId, permissions: null, configId: "default" } }) as any;
+
+  beforeEach(async () => {
+    vi.mocked(auth.api.verifyApiKey).mockReset();
+    vi.mocked(auth.api.verifyRybbitOAuthToken as any).mockReset();
+    vi.mocked(auth.api.verifyRybbitOAuthToken as any).mockResolvedValue(null);
+    await db.insert(member).values({
+      id: "member_restricted",
+      organizationId: ORG,
+      userId: "user_restricted",
+      role: "member",
+      createdAt: NOW,
+      hasRestrictedSiteAccess: true,
+    });
+    await db.insert(memberSiteAccess).values({ memberId: "member_restricted", siteId: 13 });
+    await db.insert(sites).values({
+      id: "hex_elsewhere",
+      siteId: 900,
+      name: "elsewhere",
+      domain: "elsewhere.example.com",
+      organizationId: "org_elsewhere",
+    });
+  });
+
+  it("admits a restricted member's key on a granted site", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue(userKey("user_restricted"));
+
+    const result = await checkApiKey(request(), { siteId: 13 });
+
+    expect(result.valid).toBe(true);
+    expect(result.role).toBe("member");
+  });
+
+  it("rejects a restricted member's key on an ungranted site in the same organization", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue(userKey("user_restricted"));
+
+    const result = await checkApiKey(request(), { siteId: 1 });
+
+    expect(result.valid).toBe(false);
+    expect(result.role).toBeNull();
+  });
+
+  it("rejects an unrestricted member's key on a site gated by a team they are not on", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue(userKey("user_peer"));
+
+    expect((await checkApiKey(request(), { siteId: 12 })).valid).toBe(false);
+    expect((await checkApiKey(request(), { siteId: 1 })).valid).toBe(true);
+  });
+
+  it("lets an owner's key reach every site of the organization", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue(userKey("user_owner"));
+
+    expect((await checkApiKey(request(), { siteId: 12 })).valid).toBe(true);
+  });
+
+  it("rejects a site outside the organization named alongside it", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue(userKey("user_owner"));
+
+    expect((await checkApiKey(request(), { organizationId: ORG, siteId: 900 })).valid).toBe(false);
+  });
+
+  it("still validates org-level requests on membership alone", async () => {
+    vi.mocked(auth.api.verifyApiKey).mockResolvedValue(userKey("user_restricted"));
+
+    expect((await checkApiKey(request(), { organizationId: ORG })).valid).toBe(true);
+  });
+});
+
 // Handlers re-check access internally through getSitesUserHasAccessTo (goals,
 // funnels, gsc, custom SQL). The guards attach apiKeyOrganizationId for org
 // keys; the resolver must map it to the org's full site set or every such

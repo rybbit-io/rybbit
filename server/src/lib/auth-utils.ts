@@ -3,7 +3,14 @@ import { FastifyRequest } from "fastify";
 import NodeCache from "node-cache";
 import { db } from "../db/postgres/postgres.js";
 import { member, sites, user } from "../db/postgres/schema.js";
-import { getOrgMembership, memberCanAccessSite, resolveMemberSiteGrants, restrictedMemberSiteIds } from "./access.js";
+import {
+  getOrgMembership,
+  isOrgAdmin,
+  memberCanAccessSite,
+  resolveMemberSiteGrants,
+  restrictedMemberSiteIds,
+  siteIdsInOrganization,
+} from "./access.js";
 import type { RateLimitDecision } from "./apiRateLimit.js";
 import { consumeRateLimitForIdentity } from "./apiRateLimitPolicy.js";
 import { auth } from "./auth.js";
@@ -324,26 +331,47 @@ async function resolveTargetOrganizationId(options: {
 /**
  * Resolve the org membership role for a bearer-authenticated user, scoped to
  * either an explicit organization or the organization owning a site.
+ *
+ * When a site is named, the user must also be able to reach that site: a
+ * member-role user's personal key or OAuth token is held to the same member
+ * and team site restrictions as their browser session.
  */
 async function resolveBearerUserOrgRole(
   userId: string,
   options: { organizationId?: string; siteId?: string | number }
 ): Promise<{ valid: boolean; role: string | null; userId?: string }> {
   const organizationId = await resolveTargetOrganizationId(options);
+  if (!organizationId) {
+    return { valid: false, role: null };
+  }
 
-  if (organizationId) {
-    // Check if the bearer credential's user is a member of the organization
-    const userMembership = await db
-      .select()
-      .from(member)
-      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-      .limit(1);
+  const membership = await getOrgMembership(userId, organizationId);
+  if (!membership) {
+    return { valid: false, role: null };
+  }
 
-    if (userMembership.length > 0) {
-      return { valid: true, role: userMembership[0].role, userId };
+  if (options.siteId !== undefined && options.siteId !== null && options.siteId !== "") {
+    const siteId = Number(options.siteId);
+    if (!Number.isInteger(siteId)) {
+      return { valid: false, role: null };
+    }
+    const [siteInOrg] = await siteIdsInOrganization([siteId], organizationId);
+    if (siteInOrg === undefined) {
+      return { valid: false, role: null };
+    }
+    if (!isOrgAdmin(membership)) {
+      const grants = await resolveMemberSiteGrants({
+        userId,
+        organizationIds: [organizationId],
+        grantedMemberIds: membership.hasRestrictedSiteAccess ? [membership.id] : [],
+      });
+      if (!memberCanAccessSite(grants, siteId, membership.hasRestrictedSiteAccess)) {
+        return { valid: false, role: null };
+      }
     }
   }
-  return { valid: false, role: null };
+
+  return { valid: true, role: membership.role, userId };
 }
 
 export interface BearerAuthResult {
