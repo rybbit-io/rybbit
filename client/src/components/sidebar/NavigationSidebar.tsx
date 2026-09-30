@@ -2,6 +2,7 @@
 import { AppWindow, Building2, Combine, CreditCard, UserCircle, Users } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { usePathname } from "next/navigation";
+import { useActiveOrgName } from "../../hooks/useActiveOrgName";
 import { useOrgPermissions } from "../../hooks/usePermissions";
 import { IS_CLOUD } from "../../lib/const";
 import { OrganizationSelector } from "../OrganizationSelector";
@@ -11,6 +12,8 @@ export function NavigationSidebar() {
   const t = useExtracted();
   const pathname = usePathname();
   const { can } = useOrgPermissions();
+  const activeOrgName = useActiveOrgName();
+  const showOrgSettings = can("members:manage") || can("teams:manage") || (IS_CLOUD && can("billing:manage"));
 
   return (
     <Sidebar.Root>
@@ -30,12 +33,14 @@ export function NavigationSidebar() {
           href="/rollup"
           icon={<Combine className="w-4 h-4" />}
         />
+        <Sidebar.SectionHeader>{t("Personal")}</Sidebar.SectionHeader>
         <Sidebar.Item
           label={t("Account")}
           active={pathname.startsWith("/settings/account")}
           href="/settings/account"
           icon={<UserCircle className="w-4 h-4" />}
         />
+        {showOrgSettings && <Sidebar.SectionHeader>{activeOrgName ?? t("Organization")}</Sidebar.SectionHeader>}
         {can("members:manage") && (
           <Sidebar.Item
             label={t("Organization")}

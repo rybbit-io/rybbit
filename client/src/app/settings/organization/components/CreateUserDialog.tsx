@@ -86,8 +86,8 @@ export function CreateUserDialog({ organizationId, onSuccess, assignableRoles }:
   return (
     <Dialog open={open} onOpenChange={resetState}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <UserPlus className="h-4 w-4 mr-1" />
+        <Button size="sm" variant="success">
+          <UserPlus />
           {t("Create User")}
         </Button>
       </DialogTrigger>

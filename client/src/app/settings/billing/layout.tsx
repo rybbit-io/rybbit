@@ -2,25 +2,25 @@
 
 import { useExtracted } from "next-intl";
 import { OrgPermissionGate } from "../components/OrgPermissionGate";
+import { SettingsPage, SettingsPageHeader } from "../components/Ledger";
+import { useActiveOrgName } from "../../../hooks/useActiveOrgName";
 
 export default function BillingLayout({ children }: { children: React.ReactNode }) {
   const t = useExtracted();
+  const orgName = useActiveOrgName();
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t("Billing")}</h1>
-        <p className="text-neutral-500 dark:text-neutral-400">
-          {t("Manage your subscription and billing.")}
-        </p>
-      </div>
-
+    <SettingsPage>
+      <SettingsPageHeader
+        title={t("Billing")}
+        description={orgName ? t("Plan, usage and invoices for {name}.", { name: orgName }) : undefined}
+      />
       <OrgPermissionGate
         permission="billing:manage"
         deniedMessage={t("You don't have permission to view subscription settings.")}
       >
-        <div className="mt-6">{children}</div>
+        {children}
       </OrgPermissionGate>
-    </div>
+    </SettingsPage>
   );
 }

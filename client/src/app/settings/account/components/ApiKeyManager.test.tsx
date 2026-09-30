@@ -17,10 +17,15 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("next-intl", () => ({
-  useExtracted: () => (message: string, values?: Record<string, string | number>) =>
-    values ? message.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? `{${key}}`)) : message,
-}));
+vi.mock("next-intl", () => {
+  const format = (message: string, values?: Record<string, unknown>) =>
+    values ? message.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? `{${key}}`)) : message;
+  // Rich messages render their tagged chunks as plain text.
+  const t = Object.assign(format, {
+    rich: (message: string, values?: Record<string, unknown>) => format(message.replace(/<\/?\w+>/g, ""), values),
+  });
+  return { useExtracted: () => t };
+});
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
@@ -57,12 +62,23 @@ vi.mock("@/components/ui/sonner", () => ({ toast: { success: vi.fn(), error: moc
 
 async function createKey() {
   render(<ApiKeyManager />);
-  fireEvent.change(screen.getByLabelText("API Key Name"), { target: { value: "Deploy script" } });
-  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create key" }));
+  const form = screen.getByRole("form", { name: "New personal API key" });
+  fireEvent.change(within(form).getByLabelText("Key name"), { target: { value: "Deploy script" } });
+  fireEvent.click(within(form).getByRole("button", { name: "Create key" }));
   return screen.findByRole("dialog", { name: "API Key Created" });
 }
 
 beforeEach(() => {
+  // The create form's Radix switch renders a hidden input inside the form and measures it.
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
   mocks.createKey.mockResolvedValue({ key: SECRET });
   Object.defineProperty(navigator, "clipboard", { value: { writeText: mocks.writeText }, configurable: true });
 });
@@ -70,6 +86,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
   Reflect.deleteProperty(navigator, "clipboard");
 });
 
@@ -136,5 +153,36 @@ describe("ApiKeyManager reveal dialog", () => {
     );
     fireEvent.click(within(dialog).getByRole("button", { name: "Done" }));
     expect(within(dialog).getByRole("alert")).toBeTruthy();
+  });
+});
+
+describe("ApiKeyManager create form", () => {
+  it("opens from the section header and starts over after Cancel", () => {
+    render(<ApiKeyManager />);
+    expect(screen.queryByRole("form")).toBeNull();
+
+    const toggle = screen.getByRole("button", { name: "Create key" });
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+
+    const form = screen.getByRole("form", { name: "New personal API key" });
+    fireEvent.change(within(form).getByLabelText("Key name"), { target: { value: "Draft" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("form")).toBeNull();
+
+    fireEvent.click(toggle);
+    const reopened = screen.getByRole("form", { name: "New personal API key" });
+    expect((within(reopened).getByLabelText("Key name") as HTMLInputElement).value).toBe("");
+    expect(mocks.createKey).not.toHaveBeenCalled();
+  });
+
+  it("describes organization keys as the organization's own", () => {
+    render(<ApiKeyManager organizationId="org_1" />);
+
+    expect(screen.getByRole("heading", { name: "Organization API keys" })).toBeTruthy();
+    expect(screen.getByText(/keep working when people leave/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Create key" }));
+    expect(screen.getByRole("form", { name: "New organization API key" })).toBeTruthy();
   });
 });
