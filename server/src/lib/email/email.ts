@@ -242,16 +242,6 @@ Bill`;
   }
 };
 
-// Cancel a scheduled email
-export const cancelScheduledEmail = async (emailId: string): Promise<void> => {
-  if (!resend) return;
-  try {
-    await resend.emails.cancel(emailId);
-  } catch (error) {
-    console.error("Failed to cancel scheduled email:", error);
-  }
-};
-
 /**
  * Signed one-click marketing unsubscribe URL used by all lifecycle emails.
  * Unsubscribe links must keep working from old emails, so the TTL is long

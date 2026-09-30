@@ -43,9 +43,8 @@ export const user = pgTable(
     // deprecated
     monthlyEventCount: integer().default(0),
     sendAutoEmailReports: boolean().default(true),
-    // deprecated - Resend email IDs from the retired pre-scheduled tip sequence; kept so
-    // unsubscribe can still cancel tips already scheduled for users who signed up before
-    // the lifecycle email system replaced it
+    // deprecated - Resend IDs from the retired tip sequence; retained until the
+    // separate contract migration audits and drops the legacy data
     scheduledTipEmailIds: jsonb("scheduled_tip_email_ids").$type<string[]>().default([]),
   },
   table => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)]
