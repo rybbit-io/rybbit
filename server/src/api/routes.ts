@@ -78,6 +78,7 @@ import {
   getSession,
   getSessionLocations,
   getSessions,
+  getSessionsSummary,
   getSiteEventCount,
   getUserInfo,
   getUserSessionCount,
@@ -314,6 +315,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/has-data", publicSitesRead, getSiteHasData);
   fastify.get("/sites/:siteId/is-public", publicSitesRead, getSiteIsPublic);
   fastify.get("/sites/:siteId/sessions", publicSessionsRead, getSessions);
+  fastify.get("/sites/:siteId/sessions/summary", publicSessionsRead, getSessionsSummary);
   fastify.get("/sites/:siteId/sessions/:sessionId", publicSessionsRead, getSession);
   fastify.get("/sites/:siteId/events", publicEventsRead, getEvents);
   fastify.get("/sites/:siteId/events/time-series", publicEventsRead, getEventBucketed);

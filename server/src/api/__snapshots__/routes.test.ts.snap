@@ -105,6 +105,7 @@ exports[`API route table > pins the access each route requires 1`] = `
   "GET    /api/sites/:siteId/sessions → site sessions:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/sessions/:sessionId → site sessions:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/sessions/locations → site sessions:read [viewer+] (or public)",
+  "GET    /api/sites/:siteId/sessions/summary → site sessions:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/transfer → site sites:transfer [admin+]",
   "GET    /api/sites/:siteId/usage → site sites:read [viewer+]",
   "GET    /api/sites/:siteId/user-traits/keys → site users:read [viewer+] (or public)",

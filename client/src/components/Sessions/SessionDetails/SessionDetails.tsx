@@ -50,6 +50,9 @@ export function SessionDetails({ session, userId, highlightedEventTimestamp }: S
       "copy",
       "form_submit",
       "input_change",
+      // Errors used to start hidden, so a session's failures only appeared
+      // after finding and switching on their chip.
+      "error",
     ])
   );
 
