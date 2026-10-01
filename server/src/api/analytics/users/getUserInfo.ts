@@ -4,10 +4,8 @@ import { eq, and } from "drizzle-orm";
 import { db } from "../../../db/postgres/postgres.js";
 import { userProfiles, userAliases } from "../../../db/postgres/schema.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
-import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
-import { getTimeStatement } from "../utils/timeWindow.js";
-import { matchesUser } from "../utils/effectiveUserId.js";
 import { runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { buildUserEventScope } from "./userEventScope.js";
 
 interface UserPageviewData {
   sessions: number;
@@ -86,25 +84,7 @@ export interface UserInfoResponse {
 }
 
 export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
-  // Optional time range + dimension filters; both empty when the page is on
-  // all-time with no filters, which keeps the original full-history behavior.
-  const timeStatement = getTimeStatement(query);
-  const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
-  const filteredSessionsJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
-  const withFilteredSessions = filteredSessionsCTE ? `WITH ${filteredSessionsCTE}` : "";
-
-  // Filters select sessions first. Every panel then reads all events in those
-  // sessions, keeping the summary, vitals, locations, devices, and session list
-  // on the same session-scoped semantics.
-  const scopedEvents = `(
-        SELECT source_events.*
-        FROM events AS source_events
-        ${filteredSessionsJoin}
-        WHERE
-            ${matchesUser("{userId:String}", "source_events")}
-            AND source_events.site_id = {site:Int32}
-            ${timeStatement}
-    ) AS events`;
+  const { filteredSessionsCTE, withFilteredSessions, scopedEvents } = buildUserEventScope(query, siteId);
 
   const sessionsQuery = `
     WITH ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}

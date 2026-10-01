@@ -21,12 +21,18 @@ vi.mock("mapbox-gl", () => ({
     }),
   },
 }));
-vi.mock("next-intl", () => ({ useExtracted: () => (message: string) => message }));
+vi.mock("next-intl", () => ({ useExtracted: () => (message: string) => message, useLocale: () => "en" }));
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "dark" }) }));
 vi.mock("@/lib/configs", () => ({ useConfigs: () => ({ configs: { mapboxToken: "test-token" } }) }));
 vi.mock("@/lib/userStore", () => ({ userStore: () => ({ user: null }) }));
 vi.mock("@/components/EditTraitsDialog", () => ({ EditTraitsDialog: () => null }));
-vi.mock("./Calendar", () => ({ VisitCalendar: () => null }));
+// The rail's segments section and its links reach the analytics layer and the
+// router; neither has anything to do with where the map points.
+vi.mock("@/api/analytics/hooks/useUserProfile", () => ({ useUserSegments: () => ({ data: undefined }) }));
+vi.mock("./profileLinks", async importOriginal => ({
+  ...(await importOriginal<typeof import("./profileLinks")>()),
+  useProfileHref: () => () => "#",
+}));
 
 const regionNames: Record<string, string> = {
   "ES-MD": "Madrid, Comunidad de",
@@ -53,10 +59,11 @@ function showSidebar(location: Pick<UserInfo, "country" | "region" | "city">, re
   return render(
     <QueryClientProvider client={client}>
       <UserSidebar
+        userId="visitor"
         data={location as UserInfo}
         isLoading={false}
-        sessionCount={[]}
-        isLoadingCalendar={false}
+        firstTouch={undefined}
+        isLoadingFirstTouch={false}
         getRegionName={resolveRegion}
       />
     </QueryClientProvider>
