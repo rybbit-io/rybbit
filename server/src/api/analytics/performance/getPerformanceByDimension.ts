@@ -3,6 +3,8 @@ import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
 import { analyticsRoute, getPaginationStatements, runPaginatedQuery } from "../utils/analyticsQuery.js";
 import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "../utils/sessionFilters.js";
+import { WebVitalRatingCounts } from "../types.js";
+import { WEB_VITAL_RATING_COLUMNS, webVitalRatingCounts } from "./webVitalRatings.js";
 
 interface GetPerformanceByDimensionRequest {
   Params: {
@@ -46,7 +48,7 @@ export type PerformanceByDimensionItem = {
   ttfb_p75: number | null;
   ttfb_p90: number | null;
   ttfb_p99: number | null;
-};
+} & WebVitalRatingCounts;
 
 type GetPerformanceByDimensionPaginatedResponse = {
   data: PerformanceByDimensionItem[];
@@ -141,7 +143,8 @@ export const buildPerformanceByDimensionQuery = (
             quantileIf(0.5)(ttfb, ttfb IS NOT NULL) as ttfb_p50,
             quantileIf(0.75)(ttfb, ttfb IS NOT NULL) as ttfb_p75,
             quantileIf(0.9)(ttfb, ttfb IS NOT NULL) as ttfb_p90,
-            quantileIf(0.99)(ttfb, ttfb IS NOT NULL) as ttfb_p99
+            quantileIf(0.99)(ttfb, ttfb IS NOT NULL) as ttfb_p99,
+            ${webVitalRatingCounts()}
         FROM events
         ${sessionJoin}
         WHERE 
@@ -191,7 +194,8 @@ export const buildPerformanceByDimensionQuery = (
       ttfb_p50,
       ttfb_p75,
       ttfb_p90,
-      ttfb_p99
+      ttfb_p99,
+      ${WEB_VITAL_RATING_COLUMNS.join(",\n      ")}
   FROM PerformanceStats
   ${orderByStatement}
   ${limitStatement}
