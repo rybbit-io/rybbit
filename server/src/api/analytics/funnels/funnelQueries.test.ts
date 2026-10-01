@@ -66,6 +66,41 @@ describe("funnel queries with global session filters", () => {
     expect(sql).toContain("FROM Step2");
   });
 
+  it("orders drilldown steps by the millisecond timestamp, like the analysis that counted them", () => {
+    const sql = buildFunnelStepSessionsQuery({ ...query, mode: "dropped", page: 1, limit: 25 }, 1, steps, 1);
+
+    expect(sql).toContain("min(timestamp_ms) as step_time");
+    expect(sql).toContain("sa.timestamp_ms > s1.step_time");
+    expect(sql).not.toContain("sa.timestamp > s1.step_time");
+  });
+
+  it("marks each drilldown session that has a replay and keeps the newest first", () => {
+    const sql = buildFunnelStepSessionsQuery({ ...query, mode: "reached", page: 1, limit: 25 }, 1, steps, 2);
+
+    expect(sql).toContain("FROM session_replay_metadata_v2");
+    expect(sql).toContain("if(r.session_id != '', 1, 0) AS has_replay");
+    expect(sql).toContain("ORDER BY a.session_end DESC");
+    expect(sql).not.toContain("session_id IN (SELECT session_id FROM ReplaySessions)");
+  });
+
+  it("narrows the drilldown to sessions with a replay when asked", () => {
+    const reached = buildFunnelStepSessionsQuery(
+      { ...query, mode: "reached", page: 1, limit: 25, replays_only: "true" },
+      1,
+      steps,
+      2
+    );
+    const dropped = buildFunnelStepSessionsQuery(
+      { ...query, mode: "dropped", page: 1, limit: 25, replays_only: "true" },
+      1,
+      steps,
+      1
+    );
+
+    expect(reached).toMatch(/FROM Step2\s+WHERE session_id IN \(SELECT session_id FROM ReplaySessions\)/);
+    expect(dropped).toMatch(/FROM Step2\s+\)\s+AND session_id IN \(SELECT session_id FROM ReplaySessions\)/);
+  });
+
   it("returns the same canonical attribution fields used by session filtering", () => {
     const sql = buildFunnelStepSessionsQuery({ ...query, mode: "reached", page: 1, limit: 25 }, 1, steps, 2);
 

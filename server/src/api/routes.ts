@@ -50,6 +50,7 @@ import {
   getEvents,
   getFunnel,
   getFunnelStepSessions,
+  getFunnelSummaries,
   getFunnels,
   getGoalSessions,
   getGoalTimeSeries,
@@ -329,6 +330,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/user-traits/users", publicUsersRead, getUserTraitValueUsers);
   fastify.get("/sites/:siteId/sessions/locations", publicSessionsRead, getSessionLocations);
   fastify.get("/sites/:siteId/funnels", publicFunnelsRead, getFunnels);
+  fastify.get("/sites/:siteId/funnels/summary", publicFunnelsRead, getFunnelSummaries);
   fastify.get("/sites/:siteId/journeys", publicAnalyticsRead, getJourneys);
   fastify.post("/sites/:siteId/funnels/analyze", publicFunnelsRead, getFunnel);
   fastify.post("/sites/:siteId/funnels/:stepNumber/sessions", publicFunnelsRead, getFunnelStepSessions);

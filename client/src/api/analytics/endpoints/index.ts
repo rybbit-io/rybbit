@@ -104,6 +104,8 @@ export type {
   FunnelRequest,
   SaveFunnelRequest,
   FunnelResponse,
+  FunnelSummary,
+  FunnelSummariesResponse,
   AnalyzeFunnelParams,
   FunnelStepSessionsParams,
   SaveFunnelParams,

@@ -67,8 +67,8 @@ export function CreateFunnelDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex gap-2">
-          <Plus className="w-4 h-4" /> {t("Create Funnel")}
+        <Button variant="accent" size="sm">
+          <Plus /> {t("Create funnel")}
         </Button>
       </DialogTrigger>
       <DialogContentFullScreen
