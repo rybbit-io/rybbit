@@ -1,161 +1,239 @@
 "use client";
 
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef } from "react";
+import { useRef, useState } from "react";
 import "./globe.css";
 
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import type { GetSessionsResponse } from "../../../api/analytics/endpoints";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
-import { SessionCard } from "../../../components/Sessions/SessionCard";
-import { Dialog, DialogContent, DialogTitle } from "../../../components/ui/dialog";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { useConfigs } from "../../../lib/configs";
+import { useCountries, useSubdivisions } from "../../../lib/geo";
 import { SubHeader } from "../components/SubHeader/SubHeader";
-import { GlobeSessions } from "./components/GlobeSessions";
-import MapViewSelector from "./components/ModeSelector";
-import MapStyleSelector from "./components/MapStyleSelector";
-import { TimelineScrubber } from "./components/TimelineScrubber";
 import { OpenLayersMap } from "./2d/components/OpenLayersMap";
 import { MapboxMap } from "./3d/components/MapboxMap";
-import { useGlobeStore } from "./globeStore";
 import { useTimelineLayer } from "./3d/hooks/timelineLayer/useTimelineLayer";
-import { useCoordinatesLayer } from "./3d/hooks/useCoordinatesLayer";
-import { useCountriesLayer } from "./3d/hooks/useCountriesLayer";
-import { useLayerVisibility } from "./3d/hooks/useLayerVisibility";
+import { useChoroplethLayer } from "./3d/hooks/useChoroplethLayer";
+import { useCitiesLayer } from "./3d/hooks/useCitiesLayer";
 import { useMapbox } from "./3d/hooks/useMapbox";
-import { useSubdivisionsLayer } from "./3d/hooks/useSubdivisionsLayer";
-import { useShallow } from "zustand/react/shallow";
-import { useTimelineStore } from "./timelineStore";
-import { useTimelineSessions } from "./3d/hooks/timelineLayer/useTimelineSessions";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
-import { WINDOW_SIZE_OPTIONS } from "./timelineUtils";
+import { useOnlineLayer } from "./3d/hooks/useOnlineLayer";
+import { GlobeRail } from "./components/GlobeRail";
+import { GlobeStatBand } from "./components/GlobeStatBand";
+import { GlobeToolbar } from "./components/GlobeToolbar";
+import { MapControls } from "./components/MapControls";
+import { MapLegend } from "./components/MapLegend";
+import { PlaceCard } from "./components/PlaceCard";
+import { ReplayBar } from "./components/ReplayBar";
+import { SessionPanel } from "./components/SessionPanel";
+import { useGlobeStore, useMapStyle } from "./globeStore";
+import { useGlobeData } from "./hooks/useGlobeData";
+import { useGlobeReplay } from "./hooks/useGlobeReplay";
+import { useOnlineLocations } from "./hooks/useOnlineLocations";
+import { placeCountryCode } from "./utils/places";
+
+// How far the hover card sits from the pointer.
+const HOVER_OFFSET = 14;
 
 export default function GlobePage() {
   useSetPageTitle("Globe");
   const mapContainer = useRef<HTMLDivElement>(null);
-  const { windowSize, setManualWindowSize } = useTimelineStore(
-    useShallow(s => ({ windowSize: s.windowSize, setManualWindowSize: s.setManualWindowSize }))
-  );
+  const mapArea = useRef<HTMLDivElement>(null);
+  const [selectedSession, setSelectedSession] = useState<GetSessionsResponse[number] | null>(null);
 
-  // Fetch timeline sessions and update store
-  useTimelineSessions();
+  const breakdown = useGlobeStore(state => state.breakdown);
+  const mapMode = useGlobeStore(state => state.mapMode);
+  const showOnline = useGlobeStore(state => state.showOnline);
+  const hover = useGlobeStore(state => state.hover);
+  const selectedKey = useGlobeStore(state => state.selectedKey);
+  const toggleSelected = useGlobeStore(state => state.toggleSelected);
+  const mapStyle = useMapStyle();
 
-  const { mapView, mapMode, mapStyle, setMapStyle, timelineStyle, setTimelineStyle } = useGlobeStore(
-    useShallow(s => ({
-      mapView: s.mapView,
-      mapMode: s.mapMode,
-      mapStyle: s.mapStyle,
-      setMapStyle: s.setMapStyle,
-      timelineStyle: s.timelineStyle,
-      setTimelineStyle: s.setTimelineStyle,
-    }))
-  );
+  const replay = useGlobeReplay();
+  const data = useGlobeData(replay);
+  const online = useOnlineLocations();
+  const { data: countriesGeoData } = useCountries();
+  const { data: subdivisionsGeoData } = useSubdivisions();
 
-  // Automatically switch styles based on view
-  useEffect(() => {
-    if (mapView === "timeline") {
-      // Restore timeline style when switching back to timeline view
-      if (mapStyle !== timelineStyle) {
-        setMapStyle(timelineStyle);
-      }
-    } else {
-      // Force dark-v11 for non-timeline views
-      if (mapStyle !== "mapbox://styles/mapbox/dark-v11") {
-        setMapStyle("mapbox://styles/mapbox/dark-v11");
-      }
-    }
-  }, [mapView, mapStyle, timelineStyle, setMapStyle]);
+  const showsPlaces = breakdown !== "sessions";
+  const strokeColor = data.scale.tint(0.35);
+  const windowKey = replay.windowStart ? replay.windowStart.toMillis() : null;
 
-  const { map, mapLoaded } = useMapbox(mapContainer, mapMode === "3D");
+  // The globe (Mapbox) is driven from here; the flat map (OpenLayers) owns its layers.
+  const is3D = mapMode === "3D";
+  const { map, mapLoaded } = useMapbox(mapContainer, is3D, mapStyle);
+  const globeReady = is3D && mapLoaded;
+  // Without a Mapbox token the globe is a message, and controls for a map that is not there would mislead.
+  const { configs } = useConfigs();
+  const hasMap = !is3D || !!configs?.mapboxToken;
 
-  useCountriesLayer({
+  useChoroplethLayer({
     map,
-    mapLoaded: mapMode === "3D" && mapLoaded,
-    mapView,
+    mapLoaded: globeReady,
+    id: "countries",
+    geoData: countriesGeoData,
+    codeProperty: "ISO_A2",
+    enabled: breakdown === "country",
+    places: data.fills,
+    selectedKey,
   });
 
-  useSubdivisionsLayer({
+  useChoroplethLayer({
     map,
-    mapLoaded: mapMode === "3D" && mapLoaded,
-    mapView,
+    mapLoaded: globeReady,
+    id: "subdivisions",
+    geoData: subdivisionsGeoData,
+    codeProperty: "iso_3166_2",
+    enabled: breakdown === "region",
+    places: data.fills,
+    selectedKey,
   });
 
-  useCoordinatesLayer({
+  useCitiesLayer({
     map,
-    mapLoaded: mapMode === "3D" && mapLoaded,
-    minutes: 30,
-    mapView,
+    mapLoaded: globeReady,
+    enabled: breakdown === "city",
+    points: data.cityPoints,
+    strokeColor,
+    selectedKey,
   });
 
-  const { selectedSession, setSelectedSession } = useTimelineLayer({
+  useOnlineLayer({ map, mapLoaded: globeReady, enabled: showOnline, points: online.locations, tone: data.tone });
+
+  useTimelineLayer({
     map,
-    mapLoaded: mapMode === "3D" && mapLoaded,
-    mapView,
+    mapLoaded: globeReady,
+    enabled: breakdown === "sessions",
+    activeSessions: replay.activeSessions,
+    windowKey,
+    onSessionSelect: setSelectedSession,
   });
 
-  useLayerVisibility(map, mapView, mapMode === "3D" && mapLoaded);
+  const selectedEntry = showsPlaces && selectedKey ? data.byKey.get(selectedKey) : undefined;
+  const hoverEntry = showsPlaces && hover && hover.key !== selectedKey ? data.byKey.get(hover.key) : undefined;
+  const placeCount = data.totals?.places ?? data.entries.length;
+  const onlineIn = (key: string) => (showOnline ? online.byCountry.get(placeCountryCode(data.level, key)) : undefined);
+
+  // On a narrow screen the list sits below the map, so what a row opens (the
+  // place card, the session panel) would appear out of sight above it.
+  const revealMap = () => mapArea.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const selectPlaceFromList = (key: string) => {
+    if (key !== selectedKey) revealMap();
+    toggleSelected(key);
+  };
+  const selectSessionFromList = (session: GetSessionsResponse[number]) => {
+    revealMap();
+    setSelectedSession(session);
+  };
 
   return (
     <DisabledOverlay message="Globe" featurePath="globe">
-      <div className="relative w-full h-dvh overflow-hidden">
-        <div className="p-2 md:p-4 relative z-50 dark">
+      <div className="flex flex-col xl:h-dvh">
+        <div className="shrink-0 space-y-3 p-2 md:p-4 md:pb-3">
           <SubHeader />
+          <GlobeStatBand online={online} />
+          <GlobeToolbar />
         </div>
-        <div className="absolute top-0 left-0 right-0 bottom-0 z-10">
-          {mapMode === "3D" ? (
-            <MapboxMap mapContainer={mapContainer} />
-          ) : (
-            <OpenLayersMap key="openlayers-map" mapView={mapView} onSessionSelect={setSelectedSession} />
-          )}
-          <div className="absolute bottom-2 left-2 right-2  md:right-4 md:left-4 z-99999 flex flex-col gap-2 pointer-events-none ">
-            <div className="flex items-end gap-2 justify-between overflow-x-auto">
-              <div className="pointer-events-auto dark">
-                <MapViewSelector />
-              </div>
-              {mapView === "timeline" ? (
-                <div className="pointer-events-auto flex gap-2 dark">
-                  {mapMode === "3D" && <MapStyleSelector />}
-                  <Select
-                    value={windowSize.toString()}
-                    onValueChange={(value: string) => {
-                      const newSize = parseInt(value, 10);
-                      setManualWindowSize(newSize);
-                    }}
-                  >
-                    <SelectTrigger className="w-[60px] h-[30px] text-white" size="sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {WINDOW_SIZE_OPTIONS.map(option => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+
+        <div className="flex min-h-0 flex-1 flex-col border-t border-neutral-100 dark:border-neutral-850 xl:flex-row">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div
+              ref={mapArea}
+              className="relative h-[55dvh] min-h-[340px] overflow-hidden xl:h-auto xl:min-h-0 xl:flex-1"
+            >
+              {is3D ? (
+                <MapboxMap mapContainer={mapContainer} />
               ) : (
-                <div className="pointer-events-auto hidden md:block dark">
-                  <GlobeSessions />
+                <OpenLayersMap
+                  key="openlayers-map"
+                  breakdown={breakdown}
+                  styleUrl={mapStyle}
+                  tone={data.tone}
+                  places={data.fills}
+                  cityPoints={data.cityPoints}
+                  strokeColor={strokeColor}
+                  selectedKey={selectedKey}
+                  onlinePoints={online.locations}
+                  showOnline={showOnline}
+                  activeSessions={replay.activeSessions}
+                  windowKey={windowKey}
+                  onSessionSelect={setSelectedSession}
+                />
+              )}
+
+              {hasMap && <MapControls className="absolute right-2 top-2 z-10 md:right-4 md:top-4" />}
+
+              {hasMap && (
+                <MapLegend
+                  className="absolute bottom-2 left-2 z-10 max-w-[calc(100%-1rem)] md:bottom-4 md:left-4"
+                  scale={showsPlaces ? data.scale : null}
+                  level={data.level}
+                  metric={data.metric}
+                  showOnline={showOnline}
+                  tone={data.tone}
+                />
+              )}
+
+              {selectedEntry && (
+                <PlaceCard
+                  className="absolute left-2 top-2 z-20 max-w-[calc(100%-3.5rem)] md:left-4 md:top-4"
+                  entry={selectedEntry}
+                  level={data.level}
+                  metric={data.metric}
+                  totals={data.totals}
+                  placeCount={placeCount}
+                  online={onlineIn(selectedEntry.key)}
+                  windowed={data.windowed}
+                  pinned
+                  onClose={() => toggleSelected(null)}
+                />
+              )}
+
+              {hover && hoverEntry && (
+                // Follows the pointer, on whichever side of it has room, and never takes pointer events from the map.
+                <div
+                  className="pointer-events-none absolute z-30 hidden md:block"
+                  style={{
+                    left: hover.x,
+                    top: hover.y,
+                    transform: `translate(${
+                      hover.x > hover.width / 2 ? `calc(-100% - ${HOVER_OFFSET}px)` : `${HOVER_OFFSET}px`
+                    }, ${hover.y > hover.height / 2 ? `calc(-100% - ${HOVER_OFFSET}px)` : `${HOVER_OFFSET}px`})`,
+                  }}
+                >
+                  <PlaceCard
+                    entry={hoverEntry}
+                    level={data.level}
+                    metric={data.metric}
+                    totals={data.totals}
+                    placeCount={placeCount}
+                    online={onlineIn(hoverEntry.key)}
+                    windowed={data.windowed}
+                  />
                 </div>
               )}
+
+              {selectedSession && (
+                <SessionPanel
+                  className="absolute inset-x-2 bottom-2 z-40 max-h-[calc(100%-1rem)] md:inset-x-4 md:bottom-4 md:max-h-[calc(100%-2rem)]"
+                  session={selectedSession}
+                  onClose={() => setSelectedSession(null)}
+                />
+              )}
             </div>
-            {mapView === "timeline" && (
-              <div className="pointer-events-auto dark">
-                <TimelineScrubber />
-              </div>
-            )}
+
+            <ReplayBar replay={replay} className="shrink-0" />
           </div>
+
+          <GlobeRail
+            className="border-t border-neutral-100 dark:border-neutral-850 xl:w-[344px] xl:shrink-0 xl:border-l xl:border-t-0"
+            data={data}
+            windowSessions={replay.index >= 0 ? replay.activeSessions : null}
+            windowLoading={replay.sessionsLoading}
+            onSessionSelect={selectSessionFromList}
+            onPlaceSelect={selectPlaceFromList}
+          />
         </div>
       </div>
-
-      <Dialog open={!!selectedSession} onOpenChange={open => !open && setSelectedSession(null)}>
-        <VisuallyHidden>
-          <DialogTitle>Session Details</DialogTitle>
-        </VisuallyHidden>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-transparent border-0 p-0 shadow-none [&>button]:hidden">
-          {selectedSession && <SessionCard session={selectedSession} expandedByDefault />}
-        </DialogContent>
-      </Dialog>
     </DisabledOverlay>
   );
 }

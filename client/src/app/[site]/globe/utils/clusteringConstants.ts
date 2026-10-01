@@ -18,3 +18,12 @@ export const SPREAD_START_ZOOM = 8;
 
 // Maximum offset in degrees to apply when spreading points (roughly 11 meters at equator)
 export const SPREAD_RADIUS_DEGREES = 0.006;
+
+// Cluster circles are data marks, so they take the data colour (periwinkle),
+// stronger for larger clusters, with dark text. Emerald stays for actions.
+export const CLUSTER_STYLE = {
+  small: "hsla(230, 100%, 85%, 0.7)",
+  medium: "hsla(230, 100%, 85%, 0.85)",
+  large: "hsla(230, 100%, 85%, 1)",
+  text: "#171717",
+} as const;

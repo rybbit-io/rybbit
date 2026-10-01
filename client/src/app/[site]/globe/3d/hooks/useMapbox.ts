@@ -1,14 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { useConfigs } from "../../../../../lib/configs";
-import { useGlobeStore } from "../../globeStore";
+import { registerMapController } from "../../utils/mapController";
 
-export function useMapbox(containerRef: React.RefObject<HTMLDivElement | null>, enabled: boolean = true) {
+const INITIAL_VIEW = { zoom: 1.5, center: [0, 20] as [number, number], pitch: 0, bearing: 0 };
+
+// The drawing buffer is only readable inside a render, so the snapshot is taken
+// from the next one. Read synchronously (toDataURL), then turned into a Blob.
+function snapshotMap(mapInstance: mapboxgl.Map): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    mapInstance.once("render", () => {
+      try {
+        const [header, base64] = mapInstance.getCanvas().toDataURL("image/png").split(",");
+        const bytes = Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+        resolve(new Blob([bytes], { type: header.match(/data:(.*?);/)?.[1] ?? "image/png" }));
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error("The map could not be exported"));
+      }
+    });
+    mapInstance.triggerRepaint();
+  });
+}
+
+export function useMapbox(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  enabled: boolean = true,
+  mapStyle: string
+) {
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
   const { configs } = useConfigs();
-  const { mapStyle } = useGlobeStore();
 
   // Function to apply custom styling (fog, water color, etc.)
   const applyCustomStyling = (mapInstance: mapboxgl.Map) => {
@@ -57,10 +79,7 @@ export function useMapbox(containerRef: React.RefObject<HTMLDivElement | null>, 
       container: containerRef.current,
       style: mapStyle,
       projection: { name: "globe" },
-      zoom: 1.5,
-      center: [0, 20],
-      pitch: 0,
-      bearing: 0,
+      ...INITIAL_VIEW,
       antialias: true,
       attributionControl: false,
     });
@@ -74,7 +93,15 @@ export function useMapbox(containerRef: React.RefObject<HTMLDivElement | null>, 
 
     mapInstance.on("style.load", handleStyleLoad);
 
+    const unregister = registerMapController({
+      zoomIn: () => mapInstance.zoomIn(),
+      zoomOut: () => mapInstance.zoomOut(),
+      resetView: () => mapInstance.easeTo({ ...INITIAL_VIEW, duration: 500 }),
+      snapshot: () => snapshotMap(mapInstance),
+    });
+
     return () => {
+      unregister();
       mapInstance.off("style.load", handleStyleLoad);
       mapInstance.remove();
       if (map.current === mapInstance) {
@@ -82,6 +109,8 @@ export function useMapbox(containerRef: React.RefObject<HTMLDivElement | null>, 
       }
       setMapLoaded(false);
     };
+    // The style is applied by the effect below once the map exists.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, containerRef, configs?.mapboxToken]);
 
   // Handle style changes

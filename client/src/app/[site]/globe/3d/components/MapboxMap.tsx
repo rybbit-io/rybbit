@@ -19,18 +19,21 @@ export const MapboxMap = ({ mapContainer }: { mapContainer: RefObject<HTMLDivEle
           <NothingFound
             title={t("Mapbox access token not found")}
             description={
-              <p className="text-sm max-w-[600px] text-center">
-                {t("Please set the MAPBOX_TOKEN environment variable and rebuild all containers. To get a Mapbox token, please visit")}{" "}
+              // NothingFound wraps the description in a paragraph, so this must not be one.
+              <span className="block text-sm max-w-[600px] text-center">
+                {t(
+                  "Please set the MAPBOX_TOKEN environment variable and rebuild all containers. To get a Mapbox token, please visit"
+                )}{" "}
                 <a
                   href="https://docs.mapbox.com/help/dive-deeper/access-tokens/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-400 hover:underline"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
                 >
                   Mapbox
                 </a>{" "}
                 {t("and create an account.")}
-              </p>
+              </span>
             }
           />
         </div>

@@ -6,6 +6,3 @@ export const UNCLUSTERED_LAYER_ID = "timeline-unclustered-point";
 
 // Radius in pixels within which points are grouped into clusters (Mapbox-specific)
 export const CLUSTER_RADIUS = 25;
-
-export const PAGE_SIZE = 10000;
-export const MAX_PAGES = 10;
