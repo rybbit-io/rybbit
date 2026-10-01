@@ -47,6 +47,44 @@ export type EventName = {
   count: number;
 };
 
+// One row of the events page's names table: count, users, last occurrence and
+// the count per trend bucket (aligned to EventNameStats.buckets)
+export type EventNameStat = {
+  eventName: string;
+  count: number;
+  users: number;
+  lastSeen: string;
+  trend: number[];
+};
+
+export type EventTrendBucket = "hour" | "day" | "week" | "month";
+
+export type EventNameStats = {
+  // Bucket start times in the request's timezone, oldest first
+  buckets: string[];
+  events: EventNameStat[];
+};
+
+// The events page's stat band, for one period
+export type EventsOverview = {
+  events: number;
+  users_with_events: number;
+  users: number;
+  sessions: number;
+  sessions_with_events: number;
+  event_names: number;
+  autocaptured: number;
+};
+
+// A custom event that fired on most days and then stopped
+export type SilentEvent = {
+  eventName: string;
+  lastSeen: string;
+  total: number;
+  activeDays: number;
+  spanDays: number;
+};
+
 // Event property key-value pair
 export type EventProperty = {
   propertyKey: string;
