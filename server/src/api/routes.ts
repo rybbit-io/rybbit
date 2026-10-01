@@ -67,6 +67,9 @@ import {
   getSiteCardsLite,
   getSiteCards,
   getPageTitles,
+  getPages,
+  getPagesSummary,
+  getPageTrends,
   getPerformanceByDimension,
   getPerformanceOverview,
   getPerformanceTimeSeries,
@@ -300,6 +303,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/metric-lite", cachedAnalyticsRead, getMetricLite);
   fastify.get("/sites/:siteId/metric", cachedAnalyticsRead, getMetric);
   fastify.get("/sites/:siteId/page-titles", cachedAnalyticsRead, getPageTitles);
+  fastify.get("/sites/:siteId/pages", cachedAnalyticsRead, getPages);
+  fastify.get("/sites/:siteId/pages/summary", cachedAnalyticsRead, getPagesSummary);
+  fastify.get("/sites/:siteId/pages/trends", cachedAnalyticsRead, getPageTrends);
   fastify.get("/sites/:siteId/errors/names", publicAnalyticsRead, getErrorNames);
   fastify.get("/sites/:siteId/errors/events", publicAnalyticsRead, getErrorEvents);
   fastify.get("/sites/:siteId/errors/time-series", publicAnalyticsRead, getErrorBucketed);

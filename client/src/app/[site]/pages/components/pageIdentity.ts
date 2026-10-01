@@ -1,18 +1,32 @@
-import type { Filter } from "@rybbit/shared";
+import type { Filter, FilterParameter } from "@rybbit/shared";
 
-import type { PageTitleItem } from "@/api/analytics/endpoints";
+import type { PageRow, PagesMode, PageTrend } from "@/api/analytics/hooks/useGetPages";
 
-export function getPageItemKey(item: PageTitleItem) {
-  return item.value ? `title:${item.value}` : `pathname:${item.pathname}`;
+/** Unique among the rows of one table: a page and a section can share a key ("/docs"). */
+export const getRowId = (row: Pick<PageRow | PageTrend, "kind" | "key">) => `${row.kind}:${row.key}`;
+
+/** How a section is written: "/docs/". The root section is just "/". */
+export const formatSection = (section: string) => (section.endsWith("/") ? section : `${section}/`);
+
+const MODE_PARAMETER: Record<PagesMode, FilterParameter> = {
+  all: "pathname",
+  entry: "entry_page",
+  exit: "exit_page",
+};
+
+/**
+ * The filter that identifies a page row. On the entry and exit lists a row
+ * stands for the sessions that started or ended on the page, not every session
+ * that saw it.
+ */
+export function getPageFilters(path: string, mode: PagesMode): Filter[] {
+  return [{ parameter: MODE_PARAMETER[mode], value: [path], type: "equals" }];
 }
 
-export function getPageItemFilters(item: PageTitleItem): Filter[] {
-  if (item.value) {
-    return [{ parameter: "page_title", value: [item.value], type: "equals" }];
-  }
-
-  return [
-    { parameter: "page_title", value: [], type: "is_null" },
-    { parameter: "pathname", value: [item.pathname], type: "equals" },
-  ];
+/** Paths and sections of a batch of rows, as the trends endpoint takes them. */
+export function getTrendKeys(rows: Pick<PageRow, "kind" | "key">[]) {
+  return {
+    paths: rows.filter(row => row.kind === "page").map(row => row.key),
+    sections: rows.filter(row => row.kind === "section").map(row => row.key),
+  };
 }
