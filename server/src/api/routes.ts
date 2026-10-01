@@ -51,9 +51,11 @@ import {
   getFunnel,
   getFunnelStepSessions,
   getFunnels,
+  getGoalPreview,
   getGoalSessions,
   getGoalTimeSeries,
   getGoals,
+  getGoalsSummary,
   getJourneys,
   getLiveUsercount,
   getMetric,
@@ -279,6 +281,8 @@ const publicSegmentsRead = publicSite("segments:read");
 // one query per card), and /generate spends OpenRouter credit. Cap per user.
 const customQueryRateLimit = { max: 60, timeWindow: "1 minute" };
 const generateQueryRateLimit = { max: 20, timeWindow: "1 minute" };
+// The inline goal form asks for a preview as the pattern is typed (debounced).
+const goalPreviewRateLimit = { max: 60, timeWindow: "1 minute" };
 const withRateLimit = <T extends { preHandler: unknown; config?: object }>(
   opts: T,
   limit: { max: number; timeWindow: string }
@@ -329,9 +333,15 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/funnels", site("funnels:write"), createFunnel);
   fastify.delete("/sites/:siteId/funnels/:funnelId", site("funnels:write"), deleteFunnel);
   fastify.get("/sites/:siteId/goals", publicGoalsRead, getGoals);
+  fastify.get("/sites/:siteId/goals/summary", publicGoalsRead, getGoalsSummary);
   fastify.get("/sites/:siteId/goals/time-series", publicGoalsRead, getGoalTimeSeries);
   fastify.get("/sites/:siteId/goals/:goalId/sessions", publicGoalsRead, getGoalSessions);
   fastify.post("/sites/:siteId/goals", site("goals:write"), createGoal);
+  fastify.post(
+    "/sites/:siteId/goals/preview",
+    withRateLimit(site("goals:write"), goalPreviewRateLimit),
+    getGoalPreview
+  );
   fastify.delete("/sites/:siteId/goals/:goalId", site("goals:write"), deleteGoal);
   fastify.put("/sites/:siteId/goals/:goalId", site("goals:write"), updateGoal);
   // Timeline annotations. Read is public-guarded so public dashboards and
