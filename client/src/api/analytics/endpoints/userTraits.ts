@@ -7,45 +7,31 @@ export interface TraitKeysResponse {
   keys: TraitKey[];
 }
 
-export interface TraitValue {
-  value: string;
-  userCount: number;
-}
-
-export interface TraitValuesResponse {
-  values: TraitValue[];
-  total: number;
-  hasMore: boolean;
-}
-
-export interface TraitValuesParams {
-  key: string;
-  limit?: number;
-  offset?: number;
-}
-
-export interface TraitValueUser {
-  user_id: string;
-  identified_user_id: string;
-  traits: Record<string, unknown> | null;
-  country: string;
-  region: string;
-  city: string;
-  browser: string;
-  operating_system: string;
-  device_type: string;
+// Totals for a set of users. Sessions, pageviews and events are sums.
+export interface TraitGroupStats {
+  users: number;
   sessions: number;
+  pageviews: number;
+  events: number;
 }
 
-export interface TraitValueUsersResponse {
-  users: TraitValueUser[];
-  total: number;
-  hasMore: boolean;
-}
-
-export interface TraitValueUsersParams {
-  key: string;
+export interface TraitValueGroup extends TraitGroupStats {
   value: string;
-  limit?: number;
-  offset?: number;
+}
+
+// The period's users grouped by one trait. Every user is in exactly one of
+// groups, other or none.
+export interface TraitBreakdown {
+  key: string;
+  // Too many identified users were active to join to their traits; the rest is empty
+  limited: boolean;
+  limit: number;
+  totals: (TraitGroupStats & { identified: number }) | null;
+  // The largest values, by users
+  groups: TraitValueGroup[];
+  // Every value past the largest ones, together
+  other: (TraitGroupStats & { values: number }) | null;
+  // Users with no value for the key: anonymous, or identified without it
+  none: TraitGroupStats | null;
+  searchLimited?: boolean;
 }

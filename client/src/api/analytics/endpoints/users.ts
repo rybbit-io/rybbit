@@ -111,6 +111,29 @@ export interface UsersListResponse {
   totalCount: number;
   page: number;
   pageSize: number;
+  // More profiles matched a name, username or email search than the server
+  // looks up at once; the list covers the most recently updated of them.
+  searchLimited?: boolean;
+  // A trait group was asked for in a period with too many identified users to
+  // join to their traits.
+  breakdownLimited?: boolean;
+}
+
+// The Users page's stat band figures for one period
+export interface UsersSummary {
+  users: number;
+  identified_users: number;
+  // Sum of every user's session count
+  sessions: number;
+  identified_sessions: number;
+  // Null for an all-time period, which has no earlier window to look back over
+  new_users: number | null;
+  returning_users: number | null;
+  // How far back "new" looks, in days
+  lookback_days: number;
+  // Users with at least power_min_sessions sessions in the period
+  power_users: number;
+  power_min_sessions: number;
 }
 
 export interface IdentifyUserPayload {
