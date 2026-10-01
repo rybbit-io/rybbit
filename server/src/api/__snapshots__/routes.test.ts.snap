@@ -71,6 +71,7 @@ exports[`API route table > pins the access each route requires 1`] = `
   "GET    /api/sites/:siteId/export/pdf → site analytics:read [viewer+]",
   "GET    /api/sites/:siteId/feature-flags → site flags:read [viewer+]",
   "GET    /api/sites/:siteId/funnels → site funnels:read [viewer+] (or public)",
+  "GET    /api/sites/:siteId/funnels/summary → site funnels:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/goals → site goals:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/goals/:goalId/sessions → site goals:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/goals/time-series → site goals:read [viewer+] (or public)",

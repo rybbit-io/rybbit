@@ -13,6 +13,7 @@ export { createFunnel } from "./funnels/createFunnel.js";
 export { deleteFunnel } from "./funnels/deleteFunnel.js";
 export { getFunnel } from "./funnels/getFunnel.js";
 export { getFunnelStepSessions } from "./funnels/getFunnelStepSessions.js";
+export { getFunnelSummaries } from "./funnels/getFunnelSummaries.js";
 export { getFunnels } from "./funnels/getFunnels.js";
 
 // Dashboards
