@@ -38,8 +38,10 @@ export { expandSegmentParam } from "./segments/expandSegmentParam.js";
 // Goals
 export { createGoal } from "./goals/createGoal.js";
 export { deleteGoal } from "./goals/deleteGoal.js";
+export { getGoalPreview } from "./goals/getGoalPreview.js";
 export { getGoals } from "./goals/getGoals.js";
 export { getGoalSessions } from "./goals/getGoalSessions.js";
+export { getGoalsSummary } from "./goals/getGoalsSummary.js";
 export { getGoalTimeSeries } from "./goals/getGoalTimeSeries.js";
 export { updateGoal } from "./goals/updateGoal.js";
 
