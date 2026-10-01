@@ -1,18 +1,26 @@
 "use client";
 
 import { Route } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useExtracted } from "next-intl";
 import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { useJourneys } from "../../../../../api/analytics/hooks/useGetJourneys";
 import { ErrorState } from "../../../../../components/ErrorState";
+import { SegmentedControl } from "../../../../../components/interior/segmented-control";
 import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
 import { Skeleton } from "../../../../../components/ui/skeleton";
-import { Slider } from "../../../../../components/ui/slider";
 import { useStore } from "../../../../../lib/store";
 import { SankeyDiagram } from "../../../journeys/components/SankeyDiagram";
+import { OpenInLink, ProfileCardHeader } from "./ProfileCard";
+import { useProfileHref, userFilter } from "./profileLinks";
 
 const MAX_JOURNEYS = 50;
+
+// Five choices, so each is one click away: a slider hid the values and took
+// a drag to move one step.
+const STEP_CHOICES = ["2", "3", "4", "5", "6"] as const;
+type StepChoice = (typeof STEP_CHOICES)[number];
+const STEP_OPTIONS = STEP_CHOICES.map(value => ({ value, label: value }));
 
 // Sankey-shaped placeholder: three columns of node blocks thinning to the right
 const SKELETON_COLUMNS: string[][] = [
@@ -37,42 +45,52 @@ function JourneysSkeleton() {
 
 export function UserJourneys({ userId }: { userId: string }) {
   const t = useExtracted();
-  const [steps, setSteps] = useState<number>(3);
+  const stepsLabelId = useId();
+  const [stepChoice, setStepChoice] = useState<StepChoice>("3");
+  const steps = Number(stepChoice);
 
   const { data: siteMetadata } = useGetSite();
   const { time } = useStore();
+  const profileHref = useProfileHref();
 
   const { data, isLoading, isFetching, error, refetch } = useJourneys({
     siteId: siteMetadata?.siteId,
     steps,
     time,
     limit: MAX_JOURNEYS,
-    additionalFilters: [{ parameter: "user_id", value: [userId], type: "equals" }],
+    additionalFilters: [userFilter(userId)],
   });
 
   const journeys = data?.journeys ?? [];
 
   return (
     <Card>
-      <CardContent className="pt-3">
+      <CardContent className="pt-4">
         {/* Step changes keep the previous diagram on screen; signal the refresh
             the same way StandardSection does */}
         {isFetching && !isLoading && <CardLoader />}
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <h2 className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("Journeys")}</h2>
-          <div className="flex w-[150px] items-center gap-2.5">
-            <span className="whitespace-nowrap text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
-              {t("{steps} steps", { steps: String(steps) })}
-            </span>
-            <Slider
-              value={[steps]}
-              onValueChange={([value]) => setSteps(value)}
-              min={2}
-              max={6}
-              step={1}
-              className="flex-1"
-            />
-          </div>
+        <div className="mb-3">
+          <ProfileCardHeader
+            title={t("Journeys")}
+            note={t("First {steps} pages of each session", { steps: String(steps) })}
+            right={
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div className="flex items-center gap-2">
+                  <span id={stepsLabelId} className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {t("Steps")}
+                  </span>
+                  <SegmentedControl<StepChoice>
+                    aria-labelledby={stepsLabelId}
+                    size="sm"
+                    options={STEP_OPTIONS}
+                    value={stepChoice}
+                    onValueChange={setStepChoice}
+                  />
+                </div>
+                <OpenInLink href={profileHref("journeys", [userFilter(userId)])}>{t("Open in Journeys")}</OpenInLink>
+              </div>
+            }
+          />
         </div>
         {isLoading ? (
           <JourneysSkeleton />
