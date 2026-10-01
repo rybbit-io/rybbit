@@ -59,6 +59,8 @@ export { getErrorEvents } from "./getErrorEvents.js";
 export { getErrorNames } from "./getErrorNames.js";
 export { generateCustomQuery } from "./generateCustomQuery.js";
 export { getJourneys } from "./getJourneys.js";
+export { getJourneySessions } from "./getJourneySessions.js";
+export { getJourneySummary } from "./getJourneySummary.js";
 export { getLiveUsercount } from "./getLiveUsercount.js";
 export { getMetric } from "./getMetric.js";
 export { getOrgEventCount } from "./getOrgEventCount.js";
