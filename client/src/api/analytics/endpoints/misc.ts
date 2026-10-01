@@ -15,11 +15,28 @@ export type RetentionMode = "day" | "week";
 export interface Journey {
   path: string[];
   count: number;
+  /** Share of the sessions with two or more pages, 0–100. */
   percentage: number;
+  /** Sessions on this path that completed the requested goal; absent without a goal. */
+  conversions?: number;
 }
 
 export interface JourneysResponse {
   journeys: Journey[];
+  /** Sessions with two or more pages in the period, before any step filter. */
+  totalSessions: number;
+}
+
+/** "section" collapses the pages under a first-level folder into one step, e.g. /docs/**. */
+export type JourneyGrouping = "path" | "section";
+
+export interface JourneySummary {
+  /** Sessions that visited two or more pages. */
+  sessions: number;
+  avgPathLength: number;
+  /** Null when no goal was requested. */
+  conversions: number | null;
+  topExit: { page: string; sessions: number } | null;
 }
 
 // Page title types

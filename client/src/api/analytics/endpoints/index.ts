@@ -171,6 +171,8 @@ export type {
   RetentionMode,
   Journey,
   JourneysResponse,
+  JourneyGrouping,
+  JourneySummary,
   RetentionParams,
   JourneysParams,
   PageTitleItem,
