@@ -16,6 +16,9 @@ export function useDeleteGoal() {
         queryKey: ["goals", site],
       });
       queryClient.invalidateQueries({
+        queryKey: ["goals-summary", site],
+      });
+      queryClient.invalidateQueries({
         queryKey: ["goal-time-series", site],
       });
     },
