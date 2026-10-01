@@ -92,6 +92,8 @@ export { getUserSegments } from "./users/getUserSegments.js";
 export { getUserSessionCount } from "./users/getUserSessionCount.js";
 export { getUserSummary } from "./users/getUserSummary.js";
 export { getUsers } from "./users/getUsers.js";
+export { getUsersSummary } from "./users/getUsersSummary.js";
+export { getUserTraitBreakdown } from "./users/getUserTraitBreakdown.js";
 export { getUserTraitKeys, getUserTraitValues, getUserTraitValueUsers } from "./users/getUserTraits.js";
 export { identifyUser } from "./users/identifyUser.js";
 export { updateUserTraits } from "./users/updateUserTraits.js";

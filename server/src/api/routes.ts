@@ -94,10 +94,12 @@ import {
   getUserSessionCount,
   getUserSessionGoals,
   getUserSummary,
+  getUserTraitBreakdown,
   getUserTraitKeys,
   getUserTraitValueUsers,
   getUserTraitValues,
   getUsers,
+  getUsersSummary,
   identifyUser,
   runCustomQuery,
   runDashboardCardQuery,
@@ -336,6 +338,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/events/count", publicEventsRead, getSiteEventCount);
   fastify.get("/sites/:siteId/users", publicUsersRead, getUsers);
 
+  fastify.get("/sites/:siteId/users/summary", publicUsersRead, getUsersSummary);
   fastify.get("/sites/:siteId/users/session-count", publicUsersRead, getUserSessionCount);
   fastify.get("/sites/:siteId/users/:userId", publicUsersRead, getUserInfo);
   fastify.get("/sites/:siteId/users/:userId/summary", publicUsersRead, getUserSummary);
@@ -349,6 +352,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/user-traits/keys", publicUsersRead, getUserTraitKeys);
   fastify.get("/sites/:siteId/user-traits/values", publicUsersRead, getUserTraitValues);
   fastify.get("/sites/:siteId/user-traits/users", publicUsersRead, getUserTraitValueUsers);
+  fastify.get("/sites/:siteId/user-traits/breakdown", publicUsersRead, getUserTraitBreakdown);
   fastify.get("/sites/:siteId/sessions/locations", publicSessionsRead, getSessionLocations);
   fastify.get("/sites/:siteId/funnels", publicFunnelsRead, getFunnels);
   fastify.get("/sites/:siteId/funnels/summary", publicFunnelsRead, getFunnelSummaries);

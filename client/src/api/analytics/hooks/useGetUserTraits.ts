@@ -1,10 +1,10 @@
-import { TraitKeysResponse, TraitValuesResponse, TraitValueUsersResponse } from "../endpoints";
-import { useAnalyticsInfiniteQuery, useAnalyticsQuery } from "../useAnalyticsQuery";
+import { TraitBreakdown, TraitKeysResponse } from "../endpoints";
+import { useAnalyticsQuery } from "../useAnalyticsQuery";
+import { narrowingParams, UsersNarrowing, useUserPageFilters } from "./useGetUsers";
 
-const VALUES_LIMIT = 1000;
-const USERS_LIMIT = 250;
+type PeriodTime = "current" | "previous";
 
-// Trait keys and values describe the whole site, not the selected period.
+// Trait keys describe the whole site, not the selected period.
 const TRAIT_CONTEXT = { useTime: false, useFilters: false } as const;
 
 export function useGetUserTraitKeys() {
@@ -18,34 +18,30 @@ export function useGetUserTraitKeys() {
   });
 }
 
-export function useGetUserTraitValues(key: string | null) {
-  return useAnalyticsInfiniteQuery<TraitValuesResponse>({
-    key: ["user-trait-values", key],
-    path: "user-traits/values",
-    unwrap: false,
-    ...TRAIT_CONTEXT,
-    params: { key, limit: VALUES_LIMIT },
+/**
+ * The period's users grouped by one trait. Takes the same narrowing as the
+ * users list (never a trait group of its own), so a group's count matches the
+ * rows that open under it.
+ */
+export function useGetUserTraitBreakdown({
+  traitKey,
+  periodTime,
+  narrowing,
+  enabled = true,
+}: {
+  traitKey: string | null;
+  periodTime?: PeriodTime;
+  narrowing: Omit<UsersNarrowing, "traitGroup">;
+  enabled?: boolean;
+}) {
+  return useAnalyticsQuery<TraitBreakdown>({
+    // Under the "users" prefix so the mutations that invalidate the list refresh this too.
+    key: ["users", "trait-breakdown"],
+    path: "user-traits/breakdown",
+    periodTime,
+    ...useUserPageFilters(),
+    params: { key: traitKey ?? undefined, ...narrowingParams(narrowing) },
     staleTime: 0,
-    initialPageParam: 0,
-    pageParams: offset => ({ offset }),
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.hasMore ? allPages.reduce((total, page) => total + page.values.length, 0) : undefined,
-    enabled: !!key,
-  });
-}
-
-export function useGetUserTraitValueUsers(key: string | null, value: string | null) {
-  return useAnalyticsInfiniteQuery<TraitValueUsersResponse>({
-    key: ["user-trait-value-users", key, value],
-    path: "user-traits/users",
-    unwrap: false,
-    ...TRAIT_CONTEXT,
-    params: { key, value, limit: USERS_LIMIT },
-    staleTime: 0,
-    initialPageParam: 0,
-    pageParams: offset => ({ offset }),
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.hasMore ? allPages.reduce((total, page) => total + page.users.length, 0) : undefined,
-    enabled: !!key && value !== null,
+    enabled: enabled && !!traitKey,
   });
 }

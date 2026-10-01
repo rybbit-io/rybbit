@@ -177,6 +177,7 @@ export type {
   LinkedDevice,
   UserSessionCountResponse,
   UsersListResponse,
+  UsersSummary,
   IdentifyUserPayload,
 } from "./users";
 
@@ -211,16 +212,7 @@ export type {
 } from "./sessionReplay";
 
 // User Traits types
-export type {
-  TraitKey,
-  TraitKeysResponse,
-  TraitValue,
-  TraitValuesResponse,
-  TraitValuesParams,
-  TraitValueUser,
-  TraitValueUsersResponse,
-  TraitValueUsersParams,
-} from "./userTraits";
+export type { TraitKey, TraitKeysResponse, TraitGroupStats, TraitValueGroup, TraitBreakdown } from "./userTraits";
 
 // Export endpoints
 export { exportPdfReport } from "./export";
