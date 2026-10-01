@@ -17,13 +17,21 @@ describe("getActiveSiteId", () => {
 
 describe("hasDateSelector", () => {
   it("is true on pages that mount a DateSelector", () => {
-    for (const path of ["/", "/rollup", "/12/main", "/12/sessions", "/12/user/abc", "/12/dashboards/4"]) {
+    for (const path of [
+      "/",
+      "/rollup",
+      "/12/main",
+      "/12/sessions",
+      "/12/retention",
+      "/12/user/abc",
+      "/12/dashboards/4",
+    ]) {
       expect(hasDateSelector(path), path).toBe(true);
     }
   });
 
   it("is false where the preset hotkeys do nothing", () => {
-    for (const path of ["/12/retention", "/12/query", "/12/api-playground", "/12/dashboards", "/settings/account"]) {
+    for (const path of ["/12/query", "/12/api-playground", "/12/dashboards", "/settings/account"]) {
       expect(hasDateSelector(path), path).toBe(false);
     }
   });

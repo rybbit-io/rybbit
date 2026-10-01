@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { getSessionGoalMatcher, resolveSessionGoals, SessionGoal } from "./sessionGoals.js";
 
 export interface SessionDetails {
   session_id: string;
@@ -38,6 +39,8 @@ export interface Event {
   type: string;
   event_name?: string;
   properties?: string;
+  // Goals this event completed. Empty for most events.
+  goals: SessionGoal[];
 }
 
 export interface SessionPageviewsAndEvents {
@@ -63,7 +66,10 @@ export interface GetSessionRequest {
   };
 }
 
-export const buildSessionQueries = (query: GetSessionRequest["Querystring"]) => {
+// Array(UInt32) of the goal ids an event completes; see buildSessionGoalMatcher.
+const NO_GOALS_EXPRESSION = "emptyArrayUInt32()";
+
+export const buildSessionQueries = (query: GetSessionRequest["Querystring"], goalExpression = NO_GOALS_EXPRESSION) => {
   const minutes = query.minutes ? parseInt(query.minutes) : undefined;
 
   // Add time filter if minutes is provided
@@ -130,7 +136,8 @@ SELECT
     referrer,
     type,
     event_name,
-    props
+    props,
+    ${goalExpression} AS goal_ids
 FROM events
 WHERE
     site_id = {siteId:Int32}
@@ -152,7 +159,10 @@ export const getSession = analyticsRoute<GetSessionRequest>(
     const limit = req.query.limit ? parseInt(req.query.limit) : 100;
     const offset = req.query.offset ? parseInt(req.query.offset) : 0;
 
-    const { sessionQuery, countQuery, eventsQuery } = buildSessionQueries(req.query);
+    // The same conditions the Goals page counts with, so an event marked here
+    // is one that page counted as a conversion.
+    const matcher = await getSessionGoalMatcher(Number(siteId));
+    const { sessionQuery, countQuery, eventsQuery } = buildSessionQueries(req.query, matcher.expression);
 
     // Execute queries in parallel
     const [sessionData, countData, eventsData] = await Promise.all([
@@ -170,7 +180,7 @@ export const getSession = analyticsRoute<GetSessionRequest>(
           sessionId,
         },
       }),
-      runAnalyticsQuery<Event>({
+      runAnalyticsQuery<Omit<Event, "goals"> & { goal_ids: number[] }>({
         query: eventsQuery,
         params: {
           siteId: Number(siteId),
@@ -188,7 +198,10 @@ export const getSession = analyticsRoute<GetSessionRequest>(
     // Combine results
     const response: SessionPageviewsAndEvents = {
       session: sessionData[0],
-      events: eventsData,
+      events: eventsData.map(({ goal_ids, ...event }) => ({
+        ...event,
+        goals: resolveSessionGoals(matcher, [], goal_ids ?? []),
+      })),
       pagination: {
         total: countData[0].total,
         limit,

@@ -1,234 +1,333 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import { useNivoTheme } from "@/lib/nivo";
-import { ResponsiveLine } from "@nivo/line";
-import { DateTime } from "luxon";
-import { useTheme } from "next-themes";
-import { useMemo } from "react";
-import { ProcessedRetentionData, RetentionMode } from "../../../api/analytics/endpoints";
-import { ChartTooltip } from "../../../components/charts/ChartTooltip";
-import { Skeleton } from "../../../components/ui/skeleton";
+import { ReactNode, useId } from "react";
+import { ChartLegend, ChartLegendItem } from "../../../components/site/ChartLegend";
+import { cn } from "../../../lib/utils";
+import { formatPercent, RetentionAverage, RetentionCohortRow, RetentionModel } from "./retentionModel";
 
-interface RetentionChartProps {
-  data: ProcessedRetentionData | undefined;
-  isLoading: boolean;
-  mode: RetentionMode;
+export const AVERAGE_COLOR = "hsl(var(--dataviz))";
+/** The one cohort drawn on its own line. Orange differs from the data hue in lightness as well as hue. */
+export const COHORT_COLOR = "hsl(var(--orange-400))";
+const PREVIOUS_COLOR = "hsl(var(--neutral-500))";
+const OTHERS_COLOR = "hsl(var(--dataviz) / 0.5)";
+
+// The plot is drawn in a 1000-unit-wide box stretched over the grid's period
+// columns, so a period's x is the centre of its column at any width. Strokes
+// keep their pixel width (non-scaling-stroke); dots are HTML, which a
+// stretched SVG would squash.
+const BOX_WIDTH = 1000;
+const HEIGHT = 204;
+const PLOT_TOP = 12;
+const PLOT_BOTTOM = HEIGHT - 6;
+
+type Point = [number, number];
+
+const linePath = (points: Point[]) =>
+  points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`).join("");
+
+/** Finished cells only: a period still in progress would read as a drop. */
+const finishedCells = (cohort: RetentionCohortRow) => cohort.cells.filter(cell => cell.offset >= 1 && !cell.partial);
+
+interface RetentionReadoutProps {
+  model: RetentionModel;
+  /** The comparison period's average per offset. Null while the comparison is off or loading. */
+  previousAverage: (RetentionAverage | null)[] | null;
+  /** The cohort drawn on its own line. */
+  activeCohort: RetentionCohortRow | null;
+  activeCohortLabel: string | null;
+  /** The period under the crosshair. */
+  activeOffset: number;
+  periodLabel: (offset: number) => string;
 }
 
-// Vibrant color palette for different cohorts using Tailwind CSS HSL variables
-const cohortColors = [
-  "hsl(var(--accent-500))", // Primary accent color
-  "hsl(var(--green-500))", // Green
-  "hsl(var(--red-500))", // Red
-  "hsl(var(--blue-500))", // Blue
-  "hsl(var(--orange-500))", // Orange
-  "hsl(var(--purple-500))", // Purple
-  "hsl(var(--teal-500))", // Teal
-  "hsl(var(--amber-500))", // Amber
-  "hsl(var(--slate-600))", // Slate
-  "hsl(var(--red-600))", // Darker red
-  "hsl(var(--green-600))", // Darker green
-  "hsl(var(--blue-600))", // Darker blue
-  "hsl(var(--purple-600))", // Darker purple
-  "hsl(var(--teal-600))", // Darker teal
-];
+/**
+ * The curve's legend and its reading at the period under the crosshair, in
+ * one: each series is named beside its value.
+ */
+export function RetentionReadout({
+  model,
+  previousAverage,
+  activeCohort,
+  activeCohortLabel,
+  activeOffset,
+  periodLabel,
+}: RetentionReadoutProps) {
+  const t = useExtracted();
 
-// Loading skeleton
-const RetentionChartSkeleton = () => (
-  <div className="h-[400px] flex items-center justify-center">
-    <div className="w-full space-y-3">
-      <Skeleton className="h-[300px] w-full bg-neutral-100 dark:bg-neutral-900 rounded-md animate-pulse" />
-      <div className="flex items-center justify-between px-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton
-            key={i}
-            className="h-4 w-12 bg-neutral-150/50 dark:bg-neutral-700/50 animate-pulse"
-            style={{
-              animationDelay: `${i * 100}ms`,
-              opacity: 0.3 + i * 0.1,
-            }}
-          />
-        ))}
+  const average = model.average[activeOffset] ?? null;
+  const previous = previousAverage?.[activeOffset] ?? null;
+  const activeCell = activeCohort?.cells[activeOffset];
+  const cohort = activeCell && !activeCell.partial ? activeCell : null;
+  const others = model.cohorts.flatMap(other => {
+    const cell = other.cells[activeOffset];
+    return other.size > 0 && other.key !== activeCohort?.key && cell && !cell.partial ? [cell.pct] : [];
+  });
+
+  const row = (label: string, text: string) => (
+    <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+      <span className="truncate">{label}</span>
+      <span className="font-medium tabular-nums text-neutral-900 dark:text-neutral-50">{text}</span>
+    </span>
+  );
+  const none = t("n/a");
+
+  const legend: ChartLegendItem[] = [
+    {
+      id: "average",
+      color: AVERAGE_COLOR,
+      label: row(t("Average, all cohorts"), average ? formatPercent(average.pct) : none),
+    },
+  ];
+  if (activeCohort && activeCohortLabel) {
+    legend.push({
+      id: "cohort",
+      color: COHORT_COLOR,
+      label: row(t("{cohort} cohort", { cohort: activeCohortLabel }), cohort ? formatPercent(cohort.pct) : none),
+    });
+  }
+  if (previousAverage) {
+    legend.push({
+      id: "previous",
+      color: PREVIOUS_COLOR,
+      dashed: true,
+      label: row(t("Comparison period"), previous ? formatPercent(previous.pct) : none),
+    });
+  }
+  if (others.length > 0) {
+    legend.push({
+      id: "others",
+      color: OTHERS_COLOR,
+      label: row(
+        t("Other cohorts"),
+        others.length === 1
+          ? formatPercent(others[0])
+          : `${Math.min(...others).toFixed(1)} – ${formatPercent(Math.max(...others))}`
+      ),
+    });
+  }
+
+  return (
+    <div className="text-xs">
+      <div className="flex items-center justify-between gap-3 text-neutral-500 dark:text-neutral-400">
+        <span className="font-medium text-neutral-900 dark:text-neutral-50">{periodLabel(activeOffset)}</span>
+        <span>{t("after first visit")}</span>
+      </div>
+      <ChartLegend items={legend} className="mt-2.5 flex-col flex-nowrap items-stretch gap-y-2" />
+      <div className="mt-3 border-t border-neutral-100 pt-2.5 leading-relaxed text-neutral-500 dark:border-neutral-850 dark:text-neutral-400">
+        {model.mode === "week"
+          ? t("Week 0 is always 100%, so the curve starts at week 1.")
+          : t("Day 0 is always 100%, so the curve starts at day 1.")}
       </div>
     </div>
-  </div>
-);
+  );
+}
 
-export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
+interface RetentionChartProps {
+  model: RetentionModel;
+  /** The comparison period's average per offset. Null while the comparison is off or loading. */
+  previousAverage: (RetentionAverage | null)[] | null;
+  /** The cohort drawn on its own line. */
+  activeCohort: RetentionCohortRow | null;
+  activeCohortLabel: string | null;
+  /** The period under the crosshair. */
+  activeOffset: number;
+  onHoverOffset: (offset: number | null) => void;
+  /** Drawn in the grid's two leading columns, from md up. */
+  readout: ReactNode;
+  /** Classes that lay out the grid's columns, shared with the heat grid below. */
+  columnsClassName: string;
+}
+
+/**
+ * The retention curve, drawn over the heat grid's own columns: the average of
+ * all cohorts, one highlighted cohort, the comparison period, and the other
+ * cohorts as a faint spread. It starts at period 1, since period 0 is always
+ * 100% and would flatten everything after it.
+ */
+export function RetentionChart({
+  model,
+  previousAverage,
+  activeCohort,
+  activeCohortLabel,
+  activeOffset,
+  onHoverOffset,
+  readout,
+  columnsClassName,
+}: RetentionChartProps) {
   const t = useExtracted();
-  const { resolvedTheme } = useTheme();
-  const nivoTheme = useNivoTheme();
+  const gradientId = useId();
 
-  // Get cohort keys once for both chart data and tooltip
-  const cohortKeys = useMemo(() => {
-    if (!data || !data.cohorts) return [];
-    return Object.keys(data.cohorts)
-      .sort((a, b) => b.localeCompare(a))
-      .slice(0, 12); // Limit to 12 most recent cohorts for better readability
-  }, [data]);
+  const columns = model.maxOffset;
+  const x = (offset: number) => ((offset - 0.5) / columns) * BOX_WIDTH;
+  const y = (pct: number) => PLOT_BOTTOM - (Math.min(pct, model.scaleMax) / model.scaleMax) * (PLOT_BOTTOM - PLOT_TOP);
+  const left = (offset: number) => `${((offset - 0.5) / columns) * 100}%`;
 
-  // Process data for the chart - organize by cohort
-  const chartData = useMemo(() => {
-    if (!data || !data.cohorts || cohortKeys.length === 0) {
-      return [];
-    }
+  const ticks = Array.from({ length: Math.round(model.scaleMax / model.scaleStep) + 1 }, (_, i) => i * model.scaleStep);
 
-    // Format each cohort as a series (line)
-    return cohortKeys.map((cohortKey, index) => {
-      const cohortData = data.cohorts[cohortKey];
+  const averagePoints = model.average.flatMap((average, offset): Point[] =>
+    average && offset >= 1 ? [[x(offset), y(average.pct)]] : []
+  );
+  const previousPoints = (previousAverage ?? []).flatMap((average, offset): Point[] =>
+    average && offset >= 1 && offset <= columns ? [[x(offset), y(average.pct)]] : []
+  );
+  const activePoints = activeCohort
+    ? finishedCells(activeCohort).map((cell): Point => [x(cell.offset), y(cell.pct)])
+    : [];
+  const others = model.cohorts.filter(cohort => cohort.size > 0 && cohort.key !== activeCohort?.key);
 
-      // Format the date label based on mode
-      let formattedDate: string;
-      const startDate = DateTime.fromISO(cohortKey);
-      if (mode === "day") {
-        formattedDate = startDate.toFormat("MMM dd");
-      } else {
-        // For weekly mode
-        const endDate = startDate.plus({ days: 6 });
+  const averageAtActive = model.average[activeOffset] ?? null;
+  const previousAtActive = previousAverage?.[activeOffset] ?? null;
+  const activeCell = activeCohort?.cells[activeOffset];
+  const cohortAtActive = activeCell && !activeCell.partial ? activeCell : null;
 
-        // If same month, don't repeat month
-        if (startDate.month === endDate.month) {
-          formattedDate = `${startDate.toFormat("MMM dd")}-${endDate.toFormat("dd")}`;
-        } else {
-          formattedDate = `${startDate.toFormat("MMM dd")}-${endDate.toFormat("MMM dd")}`;
-        }
-      }
-
-      // Create data points for each period
-      const points = cohortData.percentages.map((percentage, periodIndex) => ({
-        x: periodIndex,
-        y: percentage ?? null,
-      }));
-
-      return {
-        id: formattedDate,
-        data: points.filter(point => point.y !== null), // Remove null points
-        color: cohortColors[index % cohortColors.length],
-      };
-    });
-  }, [data, mode, cohortKeys]);
-
-  if (isLoading) {
-    return <RetentionChartSkeleton />;
-  }
-
-  if (!data || chartData.length === 0) {
-    return (
-      <div className="h-[400px] flex items-center justify-center">
-        <div className="text-neutral-500 dark:text-neutral-400 text-sm">{t("No retention data available")}</div>
-      </div>
-    );
-  }
-
-  // Calculate max Y value with a little headroom
-  const maxY = Math.min(
-    100,
-    Math.max(...chartData.flatMap(series => series.data.map(d => (typeof d.y === "number" ? d.y : 0)))) * 1.1
+  const dot = (key: string, offset: number, pct: number, color: string, hollow: boolean) => (
+    <span
+      key={key}
+      className={cn(
+        "pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full",
+        hollow ? "h-2 w-2 border-2 bg-white dark:bg-neutral-900" : "h-[5px] w-[5px]"
+      )}
+      style={{
+        left: left(offset),
+        top: y(pct),
+        ...(hollow ? { borderColor: color, boxSizing: "content-box" } : { backgroundColor: color }),
+      }}
+    />
   );
 
   return (
-    <div className="h-[400px] overflow-visible">
-      <ResponsiveLine
-        data={chartData}
-        theme={nivoTheme}
-        margin={{ top: 20, right: 120, bottom: 30, left: 40 }}
-        xScale={{
-          type: "linear",
-          min: 0,
-          max: "auto",
-        }}
-        yScale={{
-          type: "linear",
-          min: 0,
-          max: maxY,
-          stacked: false,
-        }}
-        curve="linear"
-        axisBottom={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: 0,
-          tickValues: chartData.length,
-          format: value => `${value}`,
-        }}
-        axisLeft={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: 0,
-          tickValues: 5,
-          format: value => `${value}%`,
-        }}
-        enableGridX={true}
-        gridYValues={5}
-        gridXValues={Array.from({ length: data.maxPeriods + 1 }, (_, i) => i)}
-        colors={{ datum: "color" }}
-        enableSlices="x"
-        pointSize={0}
-        legends={[
-          {
-            anchor: "right",
-            direction: "column",
-            justify: false,
-            translateX: 120,
-            translateY: 0,
-            itemsSpacing: 5,
-            itemDirection: "left-to-right",
-            itemWidth: 100,
-            itemHeight: 20,
-            itemOpacity: 0.85,
-            symbolSize: 12,
-            symbolShape: "circle",
-            symbolBorderColor: "rgba(0, 0, 0, .5)",
-            effects: [
-              {
-                on: "hover",
-                style: {
-                  itemBackground: "rgba(0, 0, 0, .1)",
-                  itemOpacity: 1,
-                },
-              },
-            ],
-            itemTextColor: resolvedTheme === "dark" ? "hsl(var(--neutral-200))" : "hsl(var(--neutral-700))",
-          },
-        ]}
-        sliceTooltip={({ slice }) => {
-          const xValue = slice.points[0]?.data.x as number;
-
-          return (
-            <ChartTooltip>
-              <div className="p-2 text-sm">
-                <div className="font-medium mb-2 text-neutral-700 dark:text-neutral-200">
-                  {mode === "day" ? t("Day {value}", { value: String(xValue) }) : t("Week {value}", { value: String(xValue) })}
-                </div>
-                <div className="flex flex-col gap-1">
-                  {slice.points.map((point: any) => {
-                    const value = point.data.y as number | null;
-                    // Point ID format is "serieId.index", extract the serie ID
-                    const cohortLabel = String(point.id).split(".")[0];
-                    // Get color from chartData since point.serieColor may be undefined
-                    const seriesData = chartData.find(s => s.id === cohortLabel);
-                    const color = point.serieColor || seriesData?.color || point.color;
-                    return (
-                      <div key={point.id} className="flex justify-between items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1 h-3 rounded-[3px]" style={{ backgroundColor: color }} />
-                          <span className="text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
-                            {cohortLabel}
-                          </span>
-                        </div>
-                        <span className="font-medium text-neutral-700 dark:text-neutral-200">
-                          {value !== null ? `${value.toFixed(1)}%` : "-"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </ChartTooltip>
-          );
-        }}
-      />
+    <div className={cn("grid gap-x-0.5", columnsClassName)}>
+      {/* Below md the leading columns are too narrow for the readout; the card puts it above the plot. */}
+      <div className="col-span-2 hidden pr-14 pt-2 md:block">{readout}</div>
+      <div
+        className="relative col-start-3 col-end-[-1]"
+        style={{ height: HEIGHT }}
+        role="img"
+        aria-label={
+          activeCohortLabel
+            ? t("Average retention by period since first visit, with the {cohort} cohort highlighted", {
+                cohort: activeCohortLabel,
+              })
+            : t("Average retention by period since first visit")
+        }
+      >
+        {ticks.map(tick => (
+          <span
+            key={tick}
+            className="absolute right-full mr-2 -translate-y-1/2 whitespace-nowrap text-[11px] tabular-nums text-neutral-500 dark:text-neutral-400"
+            style={{ top: y(tick) }}
+          >
+            {Number.isInteger(tick) ? tick : tick.toFixed(2).replace(/0$/, "")}%
+          </span>
+        ))}
+        <svg
+          viewBox={`0 0 ${BOX_WIDTH} ${HEIGHT}`}
+          preserveAspectRatio="none"
+          className="absolute inset-0 h-full w-full"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={AVERAGE_COLOR} stopOpacity="0.2" />
+              <stop offset="1" stopColor={AVERAGE_COLOR} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {ticks.map(tick => (
+            <line
+              key={tick}
+              x1={0}
+              x2={BOX_WIDTH}
+              y1={y(tick)}
+              y2={y(tick)}
+              className="stroke-neutral-200 dark:stroke-neutral-800"
+              strokeWidth={1}
+              strokeDasharray={tick === 0 ? undefined : "2 4"}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {others.map(cohort => {
+            const points = finishedCells(cohort).map((cell): Point => [x(cell.offset), y(cell.pct)]);
+            return points.length > 1 ? (
+              <path
+                key={cohort.key}
+                d={linePath(points)}
+                fill="none"
+                stroke="hsl(var(--dataviz) / 0.3)"
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null;
+          })}
+          {averagePoints.length > 1 && (
+            <path
+              d={`${linePath(averagePoints)}L${averagePoints[averagePoints.length - 1][0].toFixed(2)},${PLOT_BOTTOM}L${averagePoints[0][0].toFixed(2)},${PLOT_BOTTOM}Z`}
+              fill={`url(#${gradientId})`}
+            />
+          )}
+          {previousPoints.length > 1 && (
+            <path
+              d={linePath(previousPoints)}
+              fill="none"
+              stroke={PREVIOUS_COLOR}
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          <line
+            x1={x(activeOffset)}
+            x2={x(activeOffset)}
+            y1={0}
+            y2={HEIGHT}
+            className="stroke-neutral-300 dark:stroke-neutral-600"
+            strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
+          />
+          {activePoints.length > 1 && (
+            <path
+              d={linePath(activePoints)}
+              fill="none"
+              stroke={COHORT_COLOR}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          {averagePoints.length > 1 && (
+            <path
+              d={linePath(averagePoints)}
+              fill="none"
+              stroke={AVERAGE_COLOR}
+              strokeWidth={2.5}
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+        {model.average.map((average, offset) =>
+          average && offset >= 1 ? dot(`average-${offset}`, offset, average.pct, AVERAGE_COLOR, false) : null
+        )}
+        {/* A cohort with a single finished period has no line to draw. */}
+        {activeCohort && activePoints.length === 1
+          ? finishedCells(activeCohort).map(cell =>
+              dot(`cohort-${cell.offset}`, cell.offset, cell.pct, COHORT_COLOR, false)
+            )
+          : null}
+        {previousAtActive && dot("previous", activeOffset, previousAtActive.pct, PREVIOUS_COLOR, true)}
+        {cohortAtActive && dot("cohort", activeOffset, cohortAtActive.pct, COHORT_COLOR, true)}
+        {averageAtActive && dot("average", activeOffset, averageAtActive.pct, AVERAGE_COLOR, true)}
+        {/* One hover target per period column, so the crosshair follows the pointer onto the grid below. */}
+        <div
+          className="absolute inset-0 grid gap-x-0.5"
+          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+          onMouseLeave={() => onHoverOffset(null)}
+        >
+          {Array.from({ length: columns }, (_, index) => (
+            <div key={index} onMouseEnter={() => onHoverOffset(index + 1)} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

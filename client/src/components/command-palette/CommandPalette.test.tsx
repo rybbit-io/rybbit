@@ -301,7 +301,7 @@ describe("CommandPalette", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     cleanup();
 
-    mocks.pathname = "/12/retention";
+    mocks.pathname = "/12/query";
     render(<CommandPalette />);
     dialog = await openPalette();
     expect(within(dialog).queryByText("Date range")).toBeNull();

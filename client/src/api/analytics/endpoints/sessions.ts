@@ -1,6 +1,13 @@
 import { authedFetch } from "../../utils";
 import { CommonApiParams, PaginationParams, toQueryParams } from "./types";
 
+// A goal a session or one of its events completed. `name` is null for an
+// unnamed goal.
+export interface SessionGoal {
+  id: number;
+  name: string | null;
+}
+
 // Session response type
 export type GetSessionsResponse = {
   session_id: string;
@@ -45,7 +52,33 @@ export type GetSessionsResponse = {
   lat: number;
   lon: number;
   has_replay: number;
+  // Goals the session completed, the most recent conversion first. Only the
+  // sessions list returns it, and only when asked to (include_goals).
+  converted_goals?: SessionGoal[];
 }[];
+
+// The saved views of the Sessions page
+export type SessionView = "all" | "identified" | "replay" | "converted" | "bounced" | "errors";
+
+export type SessionSort = "started" | "ended" | "duration" | "pageviews" | "events" | "errors";
+
+// How many sessions each view holds. `converted` is null on a site with no goals.
+export type SessionViewCounts = Record<Exclude<SessionView, "converted">, number> & { converted: number | null };
+
+// Sessions summary response type
+export interface SessionsSummary {
+  // The period at a glance, whatever the pageview/event/duration ranges are set to
+  sessions: number;
+  session_duration: number;
+  pages_per_session: number;
+  bounce_rate: number;
+  converted: number | null;
+  with_errors: number;
+  // The same sessions narrowed by the ranges, per view
+  matching: SessionViewCounts;
+  // `matching` by the day each session started (YYYY-MM-DD in the request's timezone), newest first
+  days: ({ day: string } & SessionViewCounts)[];
+}
 
 // Session details type
 export interface SessionDetails {
@@ -93,6 +126,8 @@ export interface SessionEvent {
   type: string;
   event_name?: string;
   props?: SessionEventProps;
+  // Goals this event completed
+  goals?: SessionGoal[];
 }
 
 // Session pageviews and events response
@@ -121,8 +156,15 @@ export interface SessionsParams extends CommonApiParams, PaginationParams {
   sessionId?: string;
   identifiedOnly?: boolean;
   minPageviews?: number;
+  maxPageviews?: number;
   minEvents?: number;
+  maxEvents?: number;
   minDuration?: number;
+  maxDuration?: number;
+  view?: SessionView;
+  sortBy?: SessionSort;
+  sortOrder?: "asc" | "desc";
+  includeGoals?: boolean;
 }
 
 export interface SessionDetailsParams {
@@ -148,8 +190,15 @@ export async function fetchSessions(
     session_id: params.sessionId,
     identified_only: params.identifiedOnly,
     min_pageviews: params.minPageviews,
+    max_pageviews: params.maxPageviews,
     min_events: params.minEvents,
+    max_events: params.maxEvents,
     min_duration: params.minDuration,
+    max_duration: params.maxDuration,
+    view: params.view,
+    sort_by: params.sortBy,
+    sort_order: params.sortOrder,
+    include_goals: params.includeGoals || undefined,
   };
 
   const response = await authedFetch<{ data: GetSessionsResponse }>(

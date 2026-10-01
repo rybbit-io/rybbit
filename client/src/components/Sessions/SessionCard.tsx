@@ -25,6 +25,7 @@ import {
 import { Badge } from "../ui/badge";
 import { ReplayDrawer } from "./ReplayDrawer";
 import { SessionDetails } from "./SessionDetails";
+import { sessionEventCount } from "./sessionEventCount";
 
 interface SessionCardProps {
   session: GetSessionsResponse[number];
@@ -163,7 +164,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
               <TooltipTrigger asChild>
                 <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
                   <EventTypeIcon type="custom_event" />
-                  <span>{formatter(session.events + (session.button_clicks || 0) + (session.copies || 0) + (session.form_submits || 0) + (session.input_changes || 0))}</span>
+                  <span>{formatter(sessionEventCount(session))}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>{t("Events")}</TooltipContent>
@@ -253,7 +254,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
               <TooltipTrigger asChild>
                 <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
                   <EventTypeIcon type="custom_event" />
-                  <span>{formatter(session.events + (session.button_clicks || 0) + (session.copies || 0) + (session.form_submits || 0) + (session.input_changes || 0))}</span>
+                  <span>{formatter(sessionEventCount(session))}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>{t("Events")}</TooltipContent>

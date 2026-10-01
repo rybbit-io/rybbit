@@ -44,17 +44,23 @@ import {
   generateCustomQuery,
   getEventBucketed,
   getEventNames,
+  getEventNameStats,
+  getEventsOverview,
+  getSilentEvents,
   getAutocaptureEvents,
   getAutocaptureValues,
   getEventProperties,
   getEvents,
   getFunnel,
   getFunnelStepSessions,
+  getFunnelSummaries,
   getFunnels,
   getGoalSessions,
   getGoalTimeSeries,
   getGoals,
   getJourneys,
+  getJourneySessions,
+  getJourneySummary,
   getLiveUsercount,
   getMetric,
   getMetricLite,
@@ -67,6 +73,9 @@ import {
   getSiteCardsLite,
   getSiteCards,
   getPageTitles,
+  getPages,
+  getPagesSummary,
+  getPageTrends,
   getPerformanceByDimension,
   getPerformanceOverview,
   getPerformanceTimeSeries,
@@ -74,9 +83,15 @@ import {
   getSession,
   getSessionLocations,
   getSessions,
+  getSessionsSummary,
   getSiteEventCount,
+  getUserGoals,
   getUserInfo,
+  getUserRepeatedError,
+  getUserSegments,
   getUserSessionCount,
+  getUserSessionGoals,
+  getUserSummary,
   getUserTraitBreakdown,
   getUserTraitKeys,
   getUserTraitValueUsers,
@@ -302,6 +317,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/metric-lite", cachedAnalyticsRead, getMetricLite);
   fastify.get("/sites/:siteId/metric", cachedAnalyticsRead, getMetric);
   fastify.get("/sites/:siteId/page-titles", cachedAnalyticsRead, getPageTitles);
+  fastify.get("/sites/:siteId/pages", cachedAnalyticsRead, getPages);
+  fastify.get("/sites/:siteId/pages/summary", cachedAnalyticsRead, getPagesSummary);
+  fastify.get("/sites/:siteId/pages/trends", cachedAnalyticsRead, getPageTrends);
   fastify.get("/sites/:siteId/errors/names", publicAnalyticsRead, getErrorNames);
   fastify.get("/sites/:siteId/errors/events", publicAnalyticsRead, getErrorEvents);
   fastify.get("/sites/:siteId/errors/time-series", publicAnalyticsRead, getErrorBucketed);
@@ -309,6 +327,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/has-data", publicSitesRead, getSiteHasData);
   fastify.get("/sites/:siteId/is-public", publicSitesRead, getSiteIsPublic);
   fastify.get("/sites/:siteId/sessions", publicSessionsRead, getSessions);
+  fastify.get("/sites/:siteId/sessions/summary", publicSessionsRead, getSessionsSummary);
   fastify.get("/sites/:siteId/sessions/:sessionId", publicSessionsRead, getSession);
   fastify.get("/sites/:siteId/events", publicEventsRead, getEvents);
   fastify.get("/sites/:siteId/events/time-series", publicEventsRead, getEventBucketed);
@@ -318,6 +337,11 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/users/summary", publicUsersRead, getUsersSummary);
   fastify.get("/sites/:siteId/users/session-count", publicUsersRead, getUserSessionCount);
   fastify.get("/sites/:siteId/users/:userId", publicUsersRead, getUserInfo);
+  fastify.get("/sites/:siteId/users/:userId/summary", publicUsersRead, getUserSummary);
+  fastify.get("/sites/:siteId/users/:userId/goals", publicUsersRead, getUserGoals);
+  fastify.get("/sites/:siteId/users/:userId/session-goals", publicUsersRead, getUserSessionGoals);
+  fastify.get("/sites/:siteId/users/:userId/segments", publicUsersRead, getUserSegments);
+  fastify.get("/sites/:siteId/users/:userId/repeated-error", publicUsersRead, getUserRepeatedError);
   fastify.post("/sites/:siteId/users/identify", site("users:write"), identifyUser);
   fastify.put("/sites/:siteId/users/:userId/traits", site("users:write"), updateUserTraits);
   fastify.delete("/sites/:siteId/users/:userId", site("users:delete"), deleteUser);
@@ -327,7 +351,10 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/user-traits/breakdown", publicUsersRead, getUserTraitBreakdown);
   fastify.get("/sites/:siteId/sessions/locations", publicSessionsRead, getSessionLocations);
   fastify.get("/sites/:siteId/funnels", publicFunnelsRead, getFunnels);
+  fastify.get("/sites/:siteId/funnels/summary", publicFunnelsRead, getFunnelSummaries);
   fastify.get("/sites/:siteId/journeys", publicAnalyticsRead, getJourneys);
+  fastify.get("/sites/:siteId/journeys/summary", publicAnalyticsRead, getJourneySummary);
+  fastify.get("/sites/:siteId/journeys/sessions", publicSessionsRead, getJourneySessions);
   fastify.post("/sites/:siteId/funnels/analyze", publicFunnelsRead, getFunnel);
   fastify.post("/sites/:siteId/funnels/:stepNumber/sessions", publicFunnelsRead, getFunnelStepSessions);
   fastify.post("/sites/:siteId/funnels", site("funnels:write"), createFunnel);
@@ -374,6 +401,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.delete("/sites/:siteId/experiments/:experimentId", site("experiments:write"), deleteExperiment);
   fastify.get("/sites/:siteId/experiments/:experimentId/results", site("experiments:read"), getExperimentResults);
   fastify.get("/sites/:siteId/events/names", cachedEventsRead, getEventNames);
+  fastify.get("/sites/:siteId/events/names/stats", cachedEventsRead, getEventNameStats);
+  fastify.get("/sites/:siteId/events/overview", cachedEventsRead, getEventsOverview);
+  fastify.get("/sites/:siteId/events/silent", cachedEventsRead, getSilentEvents);
   fastify.get("/sites/:siteId/events/properties", publicEventsRead, getEventProperties);
   fastify.get("/sites/:siteId/events/autocapture", cachedEventsRead, getAutocaptureEvents);
   fastify.get("/sites/:siteId/events/autocapture-values", publicEventsRead, getAutocaptureValues);

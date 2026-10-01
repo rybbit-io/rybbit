@@ -6,19 +6,19 @@ import { DateTime } from "luxon";
 import Link from "next/link";
 import { Event } from "../../../../../api/analytics/endpoints";
 import { fetchSessions } from "../../../../../api/analytics/endpoints/sessions";
-import { EventTypeIcon } from "../../../../../components/EventIcons";
 import { CopyButton } from "../../../../../components/interior/copy-button";
 import { SessionCard, SessionCardSkeleton } from "../../../../../components/Sessions/SessionCard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../../../../../components/ui/sheet";
 import { hour12, userLocale } from "../../../../../lib/dateTimeUtils";
 import { getRegionName } from "../../../../../lib/geo";
-import { getTimezone } from "../../../../../lib/store";
+import { getTimezone, useStore } from "../../../../../lib/store";
 import { getCountryName, getUserDisplayName, truncateString } from "../../../../../lib/utils";
 import { Browser } from "../../../components/shared/icons/Browser";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 import { DeviceIcon } from "../../../components/shared/icons/Device";
 import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
-import { buildEventPath, getEventTypeLabel, parseEventProperties } from "./eventLogUtils";
+import { EventTypeMark, useEventTypeLabels } from "../EventTypeMark";
+import { buildEventPath, parseEventProperties } from "./eventLogUtils";
 
 interface EventDetailsSheetProps {
   open: boolean;
@@ -29,6 +29,9 @@ interface EventDetailsSheetProps {
 
 export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDetailsSheetProps) {
   const t = useExtracted();
+  const { singular: typeLabels } = useEventTypeLabels();
+  // Set on a private-link view, so the user link stays inside it.
+  const privateKey = useStore(state => state.privateKey);
   const selectedEventProperties = event ? parseEventProperties(event) : {};
   const propertiesJson =
     Object.keys(selectedEventProperties).length > 0 ? JSON.stringify(selectedEventProperties, null, 2) : "";
@@ -63,8 +66,12 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
         <SheetHeader className="mb-4">
           <SheetTitle>
             <div className="flex items-center gap-2">
-              <EventTypeIcon type={event?.type || ""} className="w-5 h-5" />
-              <span className="font-medium">{getEventTypeLabel(event?.type || "")}</span>
+              <EventTypeMark type={event?.type || ""} className="w-5 h-5" />
+              <span className="font-medium">
+                {event?.type === "custom_event" && event.event_name
+                  ? event.event_name
+                  : (typeLabels[event?.type || ""] ?? typeLabels.custom_event)}
+              </span>
             </div>
           </SheetTitle>
         </SheetHeader>
@@ -83,7 +90,7 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                     <span className="text-neutral-500 dark:text-neutral-400">{t("User")}</span>
                     <Link
-                      href={`/${site}/user/${encodeURIComponent(event.identified_user_id || event.user_id)}`}
+                      href={`/${site}/${privateKey ? `${privateKey}/` : ""}user/${encodeURIComponent(event.identified_user_id || event.user_id)}`}
                       className="hover:underline"
                     >
                       {getUserDisplayName({
