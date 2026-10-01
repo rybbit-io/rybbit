@@ -2,10 +2,12 @@ import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { analyticsRoute, getPaginationStatements, runPaginatedQuery } from "../utils/analyticsQuery.js";
+import { resolveBotSource } from "./botSource.js";
 import {
   BOT_DIMENSIONS,
   type BotDimensionKey,
   type BotLayerKey,
+  type BotSourceTable,
   getBotFilterStatement,
   getBotLayerStatement,
   getBotPurposeStatement,
@@ -38,7 +40,11 @@ export interface BotDimensionRequest {
   }>;
 }
 
-export const buildBotDimensionQuery = (query: BotDimensionRequest["Querystring"], isCountQuery = false) => {
+export const buildBotDimensionQuery = (
+  query: BotDimensionRequest["Querystring"],
+  isCountQuery = false,
+  table: BotSourceTable = "bot_events"
+) => {
   const { dimension } = query;
   if (!BOT_DIMENSIONS.has(dimension)) {
     throw new Error(`Unsupported bot dimension: ${dimension}`);
@@ -57,7 +63,7 @@ export const buildBotDimensionQuery = (query: BotDimensionRequest["Querystring"]
       ${dimension === "pathname" ? "any(hostname)" : "''"} AS hostname,
       count() AS count,
       round(count() * 100.0 / sum(count()) OVER (), 2) AS percentage
-    FROM bot_events
+    FROM ${table}
     WHERE site_id = {siteId:Int32}
       ${filterStatement}
       ${layerStatement}
@@ -85,10 +91,11 @@ export const getBotDimension = analyticsRoute<BotDimensionRequest>(
   "bot dimension",
   async (req: FastifyRequest<BotDimensionRequest>, res: FastifyReply) => {
     const params = { siteId: Number(req.params.siteId) };
+    const { table } = await resolveBotSource(req.params.siteId);
 
     const response: BotDimensionResponse = await runPaginatedQuery<BotDimensionItem>(
-      { query: buildBotDimensionQuery(req.query), params },
-      { query: buildBotDimensionQuery(req.query, true), params }
+      { query: buildBotDimensionQuery(req.query, false, table), params },
+      { query: buildBotDimensionQuery(req.query, true, table), params }
     );
 
     return res.send({ data: response });

@@ -34,6 +34,7 @@ import {
   getDashboards,
   getSegment,
   getSegments,
+  getBotAiPages,
   getBotAiSummary,
   getBotDimension,
   getBotOverview,
@@ -392,6 +393,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/bots/time-series", publicAnalyticsRead, getBotTimeSeries);
   fastify.get("/sites/:siteId/bots/by-dimension", publicAnalyticsRead, getBotDimension);
   fastify.get("/sites/:siteId/bots/ai-summary", publicAnalyticsRead, getBotAiSummary);
+  fastify.get("/sites/:siteId/bots/ai-pages", publicAnalyticsRead, getBotAiPages);
   fastify.get("/sites/:siteId/export/pdf", site("analytics:read"), generatePdfReport);
 }
 

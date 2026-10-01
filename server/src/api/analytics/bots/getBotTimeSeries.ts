@@ -3,10 +3,11 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { TimeBucket } from "../types.js";
 import { resolveTimeWindow } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { resolveBotSource } from "./botSource.js";
 import {
   AI_CRAWLER_PURPOSE_SQL_LIST,
-  AI_PURPOSE_SQL_LIST,
   type BotLayerKey,
+  type BotSourceTable,
   getBotFilterStatement,
   getBotLayerStatement,
   getBotPurposeStatement,
@@ -17,6 +18,11 @@ type BotTimeSeriesPoint = {
   bot_requests: number;
   ai_agent_requests: number;
   ai_crawler_requests: number;
+  ai_training_requests: number;
+  ai_search_requests: number;
+  search_requests: number;
+  scripted_requests: number;
+  unclassified_requests: number;
 };
 
 export interface BotTimeSeriesRequest {
@@ -31,7 +37,10 @@ export interface BotTimeSeriesRequest {
   }>;
 }
 
-export const buildBotTimeSeriesQuery = (query: BotTimeSeriesRequest["Querystring"]) => {
+export const buildBotTimeSeriesQuery = (
+  query: BotTimeSeriesRequest["Querystring"],
+  table: BotSourceTable = "bot_events"
+) => {
   const { bucket = "hour" } = query;
   const window = resolveTimeWindow(query);
   const timeStatement = window.where();
@@ -44,11 +53,18 @@ export const buildBotTimeSeriesQuery = (query: BotTimeSeriesRequest["Querystring
     SELECT
       ${window.bucketed("timestamp", bucket)} AS time,
       count() AS bot_requests,
-      -- Returned on every bucket so the chart can draw agents against crawlers
-      -- without a second round trip; both read 0 on windows predating identity.
+      -- Every split is returned on every bucket so the chart can change its
+      -- breakdown without a second round trip; all of them read 0 on windows
+      -- predating identity. What is left after these is the known tooling:
+      -- SEO, link previews, monitoring, security.
       countIf(bot_purpose = 'ai_agent') AS ai_agent_requests,
-      countIf(bot_purpose IN (${AI_CRAWLER_PURPOSE_SQL_LIST})) AS ai_crawler_requests
-    FROM bot_events
+      countIf(bot_purpose IN (${AI_CRAWLER_PURPOSE_SQL_LIST})) AS ai_crawler_requests,
+      countIf(bot_purpose = 'ai_training') AS ai_training_requests,
+      countIf(bot_purpose = 'ai_search') AS ai_search_requests,
+      countIf(bot_purpose = 'search') AS search_requests,
+      countIf(bot_purpose IN ('scripted', 'headless')) AS scripted_requests,
+      countIf(bot_purpose IN ('', 'unknown')) AS unclassified_requests
+    FROM ${table}
     WHERE site_id = {siteId:Int32}
       ${filterStatement}
       ${layerStatement}
@@ -62,8 +78,9 @@ export const buildBotTimeSeriesQuery = (query: BotTimeSeriesRequest["Querystring
 export const getBotTimeSeries = analyticsRoute<BotTimeSeriesRequest>(
   "bot time series",
   async (req: FastifyRequest<BotTimeSeriesRequest>, res: FastifyReply) => {
+    const source = await resolveBotSource(req.params.siteId);
     const data = await runAnalyticsQuery<BotTimeSeriesPoint>({
-      query: buildBotTimeSeriesQuery(req.query),
+      query: buildBotTimeSeriesQuery(req.query, source.table),
       params: { siteId: Number(req.params.siteId) },
     });
 
