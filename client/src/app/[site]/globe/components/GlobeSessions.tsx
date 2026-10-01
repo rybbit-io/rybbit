@@ -1,102 +1,90 @@
-import { getTimezone } from "@/lib/store";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+"use client";
+
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
-import { useMemo, useState } from "react";
-import { useCurrentSite } from "../../../../api/admin/hooks/useSites";
-import { useGetSessionsInfinite } from "../../../../api/analytics/hooks/useGetUserSessions";
+import { useMemo } from "react";
 import { GetSessionsResponse } from "../../../../api/analytics/endpoints";
+import { useGetSessionsInfinite } from "../../../../api/analytics/hooks/useGetUserSessions";
 import { Avatar, generateName } from "../../../../components/Avatar";
-import { Channel } from "../../../../components/Channel";
 import { EventTypeIcon } from "../../../../components/EventIcons";
-import { SessionCard as FullSessionCard } from "../../../../components/Sessions/SessionCard";
 import {
   BrowserTooltipIcon,
   CountryFlagTooltipIcon,
   DeviceTypeTooltipIcon,
   OperatingSystemTooltipIcon,
 } from "../../../../components/TooltipIcons/TooltipIcons";
-import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "../../../../components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
+import { Skeleton } from "../../../../components/ui/skeleton";
 import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { formatShortDuration } from "../../../../lib/dateTimeUtils";
-import { cn, formatter, truncateString } from "../../../../lib/utils";
+import { useTimezone } from "../../../../lib/store";
+import { formatter } from "../../../../lib/utils";
 
-function SessionCardSkeleton() {
+// A replay window can hold thousands of sessions; the list shows the first of them.
+const WINDOW_LIST_LIMIT = 100;
+
+function SessionRowSkeleton() {
   return (
-    <div className="rounded-lg bg-white dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-800 overflow-hidden p-2 space-y-2 animate-pulse">
-      <div className="flex justify-between border-b border-neutral-200 dark:border-neutral-700 pb-2">
+    <div className="space-y-2 px-3 py-2.5">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <div className="h-4 w-4 bg-neutral-150 dark:bg-neutral-700 rounded-full" />
-          <div className="h-3 w-24 bg-neutral-150 dark:bg-neutral-700 rounded" />
+          <Skeleton className="h-4 w-4 rounded-full" />
+          <Skeleton className="h-3 w-24 rounded" />
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-3 w-20 bg-neutral-150 dark:bg-neutral-700 rounded" />
-          <div className="h-3 w-1 bg-neutral-150 dark:bg-neutral-700 rounded" />
-          <div className="h-3 w-10 bg-neutral-150 dark:bg-neutral-700 rounded hidden md:block" />
-        </div>
+        <Skeleton className="h-3 w-20 rounded" />
       </div>
-      <div className="flex space-x-2 items-center">
-        <div className="h-4 w-4 bg-neutral-150 dark:bg-neutral-700 rounded-sm" />
-        <div className="h-4 w-4 bg-neutral-150 dark:bg-neutral-700 rounded-sm" />
-        <div className="h-4 w-4 bg-neutral-150 dark:bg-neutral-700 rounded-sm" />
-        <div className="h-4 w-4 bg-neutral-150 dark:bg-neutral-700 rounded-sm" />
-        <div className="h-[21px] w-12 bg-neutral-150 dark:bg-neutral-700 rounded-sm" />
-        <div className="h-[21px] w-12 bg-neutral-150 dark:bg-neutral-700 rounded-sm" />
-        <div className="h-[21px] w-16 bg-neutral-150 dark:bg-neutral-700 rounded-sm" />
-      </div>
-      <div className="items-center flex-1 min-w-0 hidden md:flex gap-2">
-        <div className="h-3 w-32 bg-neutral-150 dark:bg-neutral-700 rounded" />
-        <div className="h-3 w-3 bg-neutral-150 dark:bg-neutral-700 rounded" />
-        <div className="h-3 w-32 bg-neutral-150 dark:bg-neutral-700 rounded" />
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-4 w-4 rounded-sm" />
+        <Skeleton className="h-4 w-4 rounded-sm" />
+        <Skeleton className="h-4 w-4 rounded-sm" />
+        <Skeleton className="h-4 w-12 rounded-sm" />
       </div>
     </div>
   );
 }
 
-function SessionCard({ session, onClick }: { session: GetSessionsResponse[number]; onClick?: () => void }) {
+function SessionRow({ session, onSelect }: { session: GetSessionsResponse[number]; onSelect: () => void }) {
   const t = useExtracted();
+  const timeZone = useTimezone();
   const { hour12, formatDateTime } = useDateTimeFormat();
-  // Calculate session duration in minutes
   const start = DateTime.fromSQL(session.session_start, { zone: "utc" });
   const end = DateTime.fromSQL(session.session_end, { zone: "utc" });
-  const totalSeconds = Math.floor(end.diff(start).milliseconds / 1000);
-  const duration = formatShortDuration(totalSeconds);
-  const siteId = useCurrentSite();
-
+  const duration = formatShortDuration(Math.floor(end.diff(start).milliseconds / 1000));
   const name = generateName(session.user_id);
 
   return (
     <div
-      className="rounded-lg bg-neutral-850 border border-neutral-800 overflow-hidden p-2 space-y-2 cursor-pointer hover:bg-neutral-800 transition-colors"
-      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      className="cursor-pointer space-y-2 px-3 py-2.5 outline-none hover:bg-neutral-50 focus-visible:bg-neutral-50 dark:hover:bg-neutral-800/30 dark:focus-visible:bg-neutral-800/30"
+      aria-label={t("Open the session of {name}", { name })}
+      onClick={onSelect}
+      onKeyDown={event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
     >
-      <div className="flex justify-between border-b border-neutral-700 pb-2">
-        <div className="text-sm text-neutral-100 flex items-center gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
           <Avatar id={session.user_id} size={16} />
-          <span className="text-xs text-neutral-200 max-w-32 truncate hover:underline">{name}</span>
+          <span className="truncate text-xs text-neutral-800 dark:text-neutral-200">{name}</span>
         </div>
-        <div className="flex space-x-2 items-center pr-2">
-          <div className="flex items-center gap-1.5 text-xs text-neutral-300">
-            <span className="text-neutral-400">
-              {formatDateTime(DateTime.fromSQL(session.session_start, { zone: "utc" }), {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-                hour12,
-                timeZone: getTimezone(),
-              })}
-            </span>
-            <span className="text-neutral-400">•</span>
-            <span className="hidden md:block">{duration}</span>
-          </div>
-        </div>
+        <span className="shrink-0 text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+          {formatDateTime(start, {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12,
+            timeZone,
+          })}
+          {" · "}
+          {duration}
+        </span>
       </div>
-      <div className="flex space-x-2 items-center">
+      <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
         {session.country && (
           <CountryFlagTooltipIcon country={session.country} city={session.city} region={session.region} />
         )}
@@ -110,107 +98,79 @@ function SessionCard({ session, onClick }: { session: GetSessionsResponse[number
           screen_width={session.screen_width}
           screen_height={session.screen_height}
         />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge className="flex items-center gap-1 bg-neutral-800 text-neutral-300">
-              <EventTypeIcon type="pageview" />
-              <span>{formatter(session.pageviews)}</span>
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{t("Pageviews")}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge className="flex items-center gap-1 bg-neutral-800 text-neutral-300">
-              <EventTypeIcon type="custom_event" />
-              <span>{formatter(session.events)}</span>
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{t("Events")}</TooltipContent>
-        </Tooltip>
-        <Channel channel={session.channel} referrer={session.referrer} />
-      </div>
-      <div className="items-center flex-1 min-w-0 hidden md:flex">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="text-xs text-neutral-400 truncate max-w-[200px] inline-block">
-              {truncateString(session.entry_page, 32)}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{session.entry_page || "-"}</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <ArrowRight className="mx-2 w-3 h-3 shrink-0 text-neutral-400" />
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="text-xs text-neutral-400 truncate max-w-[200px] inline-block">
-              {truncateString(session.exit_page, 32)}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{session.exit_page || "-"}</p>
-          </TooltipContent>
-        </Tooltip>
+        <span className="inline-flex items-center gap-1 tabular-nums" title={t("Pageviews")}>
+          <EventTypeIcon type="pageview" />
+          {formatter(session.pageviews)}
+        </span>
+        <span className="inline-flex items-center gap-1 tabular-nums" title={t("Events")}>
+          <EventTypeIcon type="custom_event" />
+          {formatter(session.events)}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-right text-neutral-500 dark:text-neutral-400">
+          {session.entry_page}
+        </span>
       </div>
     </div>
   );
 }
 
-export function GlobeSessions() {
+interface GlobeSessionsProps {
+  /** Sessions in the replay window on the map; null lists the whole period. */
+  windowSessions: GetSessionsResponse | null;
+  windowLoading: boolean;
+  onSelect: (session: GetSessionsResponse[number]) => void;
+}
+
+/**
+ * The people behind the map, in the rail: the period's sessions, or the ones
+ * in the replay window while one is on the map. A row opens the session in the
+ * panel over the map.
+ */
+export function GlobeSessions({ windowSessions, windowLoading, onSelect }: GlobeSessionsProps) {
   const t = useExtracted();
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetSessionsInfinite({});
+  const period = useGetSessionsInfinite({});
+  const periodSessions = useMemo(() => period.data?.pages.flatMap(page => page ?? []) ?? [], [period.data]);
 
-  const [expanded, setExpanded] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<GetSessionsResponse[number] | null>(null);
-
-  // Combine all pages of data
-  const flattenedData = useMemo(() => {
-    if (!data) return [];
-    return data.pages.flatMap(page => page || []);
-  }, [data]);
+  const inWindow = windowSessions !== null;
+  const sessions = inWindow ? windowSessions.slice(0, WINDOW_LIST_LIMIT) : periodSessions;
+  const isLoading = inWindow ? windowLoading : period.isLoading;
+  const hidden = inWindow ? windowSessions.length - sessions.length : 0;
 
   return (
-    <>
-      <div className="space-y-2 bg-neutral-850/60 p-2 rounded-lg w-[371px] backdrop-blur-sm border border-neutral-800">
-        <div className="text-sm text-neutral-200 font-medium flex items-center justify-between">
-          {t("SESSIONS")}
-          <Button variant="ghost" size="smIcon" onClick={() => setExpanded(!expanded)}>
-            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-          </Button>
-        </div>
-        <div className={cn("space-y-2 overflow-y-auto", expanded ? "max-h-[calc(100vh-210px)]" : "max-h-[210px]")}>
-          {isLoading ? (
-            <>
-              <SessionCardSkeleton />
-              <SessionCardSkeleton />
-              <SessionCardSkeleton />
-            </>
-          ) : (
-            flattenedData.map(session => (
-              <SessionCard key={session.session_id} session={session} onClick={() => setSelectedSession(session)} />
-            ))
-          )}
-          {isFetchingNextPage && <SessionCardSkeleton />}
-        </div>
-        {/* Load more button */}
-        {hasNextPage && expanded && !isLoading && (
-          <Button onClick={() => fetchNextPage()} className="w-full" variant="ghost" size="sm">
-            {t("Load more")}
-          </Button>
-        )}
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="divide-y divide-neutral-100 dark:divide-neutral-800/70">
+        {isLoading
+          ? Array.from({ length: 8 }, (_, index) => <SessionRowSkeleton key={index} />)
+          : sessions.map(session => (
+              <SessionRow key={session.session_id} session={session} onSelect={() => onSelect(session)} />
+            ))}
+        {!inWindow && period.isFetchingNextPage && <SessionRowSkeleton />}
       </div>
 
-      <Dialog open={!!selectedSession} onOpenChange={open => !open && setSelectedSession(null)}>
-        <VisuallyHidden>
-          <DialogTitle>{t("Session Details")}</DialogTitle>
-        </VisuallyHidden>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-transparent border-0 p-0 shadow-none gap-0 [&>button]:hidden">
-          {selectedSession && <FullSessionCard session={selectedSession} expandedByDefault />}
-        </DialogContent>
-      </Dialog>
-    </>
+      {!isLoading && sessions.length === 0 && (
+        <p className="px-3 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
+          {inWindow ? t("No sessions in this window") : t("No sessions in this period")}
+        </p>
+      )}
+      {hidden > 0 && (
+        <p className="border-t border-neutral-100 px-3 py-2.5 text-xs tabular-nums text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+          {t("{count} more in this window", { count: hidden.toLocaleString() })}
+        </p>
+      )}
+      {!inWindow && period.hasNextPage && !isLoading && (
+        <div className="border-t border-neutral-100 p-2 dark:border-neutral-800">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onClick={() => period.fetchNextPage()}
+            loading={period.isFetchingNextPage}
+          >
+            {t("Load more")}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

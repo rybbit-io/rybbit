@@ -1,71 +1,37 @@
-import { DateTime } from "luxon";
 import { create } from "zustand";
-import { useMemo } from "react";
-import type { GetSessionsResponse } from "../../../api/analytics/endpoints";
-import { useStore } from "../../../lib/store";
-import { getActiveSessions } from "./timelineUtils";
+
+export const REPLAY_SPEEDS = [1, 2, 4] as const;
+export type ReplaySpeed = (typeof REPLAY_SPEEDS)[number];
 
 interface TimelineStore {
-  currentTime: DateTime | null;
-  timeRange: { start: DateTime; end: DateTime } | null;
-  windowSize: number; // in minutes
-  manualWindowSize: number | null; // User-selected window size, overrides auto-calculated
-  allSessions: GetSessionsResponse;
-  isLoading: boolean;
-  isError: boolean;
-  hasMoreData: boolean;
-  setCurrentTime: (time: DateTime) => void;
-  setTimeRange: (start: DateTime, end: DateTime) => void;
-  setWindowSize: (size: number) => void;
+  /**
+   * An instant (epoch ms) inside the window being replayed. Null shows the whole
+   * period. Which window it falls in is derived from the period and the window
+   * size, so changing either keeps the position instead of resetting it.
+   */
+  currentTime: number | null;
+  /** User-selected window size in minutes; null uses the default for the period. */
+  manualWindowSize: number | null;
+  speed: ReplaySpeed;
+  /**
+   * Replaying needs the period's sessions themselves, which is a large fetch.
+   * It starts the first time the user plays, scrubs or asks for sessions.
+   */
+  sessionsRequested: boolean;
+  setCurrentTime: (time: number | null) => void;
   setManualWindowSize: (size: number | null) => void;
-  setAllSessions: (sessions: GetSessionsResponse, hasMoreData: boolean) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: boolean) => void;
-  reset: () => void;
+  setSpeed: (speed: ReplaySpeed) => void;
+  requestSessions: () => void;
 }
 
 export const useTimelineStore = create<TimelineStore>(set => ({
   currentTime: null,
-  timeRange: null,
-  windowSize: 60,
   manualWindowSize: null,
-  allSessions: [],
-  isLoading: false,
-  isError: false,
-  hasMoreData: false,
-  setCurrentTime: time => set({ currentTime: time }),
-  setTimeRange: (start, end) => set({ timeRange: { start, end }, currentTime: start }),
-  setWindowSize: size => set({ windowSize: size }),
-  setManualWindowSize: size => set({ manualWindowSize: size, windowSize: size || 60 }),
-  setAllSessions: (sessions, hasMoreData) => set({ allSessions: sessions, hasMoreData }),
-  setLoading: loading => set({ isLoading: loading }),
-  setError: error => set({ isError: error }),
-  reset: () =>
-    set({
-      currentTime: null,
-      timeRange: null,
-      windowSize: 60,
-      manualWindowSize: null,
-      allSessions: [],
-      isLoading: false,
-      isError: false,
-      hasMoreData: false,
-    }),
+  speed: 1,
+  sessionsRequested: false,
+  // Choosing a window is what replaying means, so it always needs the sessions.
+  setCurrentTime: time => set(time === null ? { currentTime: null } : { currentTime: time, sessionsRequested: true }),
+  setManualWindowSize: size => set({ manualWindowSize: size }),
+  setSpeed: speed => set({ speed }),
+  requestSessions: () => set({ sessionsRequested: true }),
 }));
-
-// Hook to compute active sessions based on current time and window size
-// Uses useMemo to prevent infinite re-renders
-export function useActiveSessions(): GetSessionsResponse {
-  const currentTime = useTimelineStore(state => state.currentTime);
-  const windowSize = useTimelineStore(state => state.windowSize);
-  const allSessions = useTimelineStore(state => state.allSessions);
-  // Use reactive timezone from useStore
-  const storeTimezone = useStore(state => state.timezone);
-  const timezone = storeTimezone === "system" ? Intl.DateTimeFormat().resolvedOptions().timeZone : storeTimezone;
-
-  return useMemo(() => {
-    if (!currentTime || allSessions.length === 0) return [];
-    const activeSessions = getActiveSessions(allSessions, currentTime, windowSize, timezone);
-    return activeSessions;
-  }, [currentTime, windowSize, allSessions, timezone]);
-}

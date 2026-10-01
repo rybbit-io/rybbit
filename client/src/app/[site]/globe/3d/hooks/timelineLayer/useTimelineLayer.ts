@@ -1,13 +1,8 @@
 import throttle from "lodash/throttle";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
-import { useActiveSessions, useTimelineStore } from "../../../timelineStore";
 import { initializeClusterSource, setupClusterClickHandler } from "./timelineClusterUtils";
-import {
-  CLUSTER_LAYER_ID,
-  CLUSTER_RADIUS,
-  SOURCE_ID,
-} from "./timelineLayerConstants";
+import { CLUSTER_LAYER_ID, CLUSTER_RADIUS, SOURCE_ID } from "./timelineLayerConstants";
 import { setClusterLayersVisibility, updateGeoJSONData } from "./timelineLayerManager";
 import {
   addClusterLayers,
@@ -21,18 +16,30 @@ import { CLUSTER_MAX_ZOOM, CLUSTERING_THRESHOLD, SPREAD_START_ZOOM } from "../..
 export function useTimelineLayer({
   map,
   mapLoaded,
-  mapView,
+  enabled,
+  activeSessions,
+  windowKey,
+  onSessionSelect,
 }: {
   map: React.RefObject<mapboxgl.Map | null>;
   mapLoaded: boolean;
-  mapView: string;
+  /** Avatars are only drawn in the sessions breakdown. */
+  enabled: boolean;
+  /** The sessions in the replay window on the map. */
+  activeSessions: GetSessionsResponse;
+  /** Changes when the replay moves to another window. */
+  windowKey: number | null;
+  /** "View details" in a session's tooltip. */
+  onSessionSelect: (session: GetSessionsResponse[number]) => void;
 }) {
-  const activeSessions = useActiveSessions();
-  const { currentTime } = useTimelineStore();
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const markersMapRef = useRef<Map<string, MarkerData>>(new Map());
   const openTooltipSessionIdRef = useRef<string | null>(null);
-  const [selectedSession, setSelectedSession] = useState<GetSessionsResponse[number] | null>(null);
+  // Markers keep their click handlers across renders; they call whichever handler is current.
+  const onSessionSelectRef = useRef(onSessionSelect);
+  useEffect(() => {
+    onSessionSelectRef.current = onSessionSelect;
+  }, [onSessionSelect]);
 
   // Close tooltip when timeline time changes
   useEffect(() => {
@@ -40,7 +47,7 @@ export function useTimelineLayer({
       popupRef.current.remove();
       openTooltipSessionIdRef.current = null;
     }
-  }, [currentTime]);
+  }, [windowKey]);
 
   // Initialize Mapbox source and layers for clustering
   useEffect(() => {
@@ -77,8 +84,8 @@ export function useTimelineLayer({
     const mapInstance = map.current;
     const markersMap = markersMapRef.current;
 
-    // Hide layers and markers if not in timeline view
-    if (mapView !== "timeline") {
+    // Hide layers and markers outside the sessions breakdown
+    if (!enabled) {
       setClusterLayersVisibility(mapInstance, false);
       clearAllMarkers(markersMap);
       return;
@@ -106,7 +113,7 @@ export function useTimelineLayer({
         popupRef,
         openTooltipSessionIdRef,
         map,
-        setSelectedSession,
+        session => onSessionSelectRef.current(session),
         SPREAD_START_ZOOM
       );
     };
@@ -146,10 +153,5 @@ export function useTimelineLayer({
       mapInstance.off("sourcedata", throttledUpdateMarkers);
       mapInstance.off("click", handleMapClick);
     };
-  }, [activeSessions, mapLoaded, map, mapView]);
-
-  return {
-    selectedSession,
-    setSelectedSession,
-  };
+  }, [activeSessions, mapLoaded, map, enabled]);
 }

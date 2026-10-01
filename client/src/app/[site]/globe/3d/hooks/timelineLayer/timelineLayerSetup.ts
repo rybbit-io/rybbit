@@ -1,6 +1,6 @@
 import mapboxgl from "mapbox-gl";
 import { SOURCE_ID, CLUSTER_LAYER_ID, CLUSTER_COUNT_LAYER_ID, UNCLUSTERED_LAYER_ID } from "./timelineLayerConstants";
-import { MIN_CLUSTER_SIZE } from "../../../utils/clusteringConstants";
+import { CLUSTER_STYLE, MIN_CLUSTER_SIZE } from "../../../utils/clusteringConstants";
 
 /**
  * Create and configure the popup for session tooltips
@@ -26,7 +26,15 @@ export function addClusterLayers(mapInstance: mapboxgl.Map): void {
     source: SOURCE_ID,
     filter: ["all", ["has", "point_count"], [">=", ["get", "point_count"], MIN_CLUSTER_SIZE]],
     paint: {
-      "circle-color": ["step", ["get", "point_count"], "#059669", 10, "#059669", 30, "#10b981", 100, "#34d399"],
+      "circle-color": [
+        "step",
+        ["get", "point_count"],
+        CLUSTER_STYLE.small,
+        30,
+        CLUSTER_STYLE.medium,
+        100,
+        CLUSTER_STYLE.large,
+      ],
       "circle-radius": ["step", ["get", "point_count"], 15, 10, 20, 30, 25],
     },
   });
@@ -45,7 +53,7 @@ export function addClusterLayers(mapInstance: mapboxgl.Map): void {
       "text-ignore-placement": true,
     },
     paint: {
-      "text-color": "#ffffff",
+      "text-color": CLUSTER_STYLE.text,
     },
   });
 

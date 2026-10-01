@@ -9,11 +9,15 @@ import { fromLonLat } from "ol/proj";
 import Cluster from "ol/source/Cluster";
 import VectorSource from "ol/source/Vector";
 import { Circle, Fill, Style, Text } from "ol/style";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { GetSessionsResponse } from "../../../../../api/analytics/endpoints";
 import { frogAvatarSVG } from "../../../../../lib/frogAvatar";
-import { useActiveSessions, useTimelineStore } from "../../timelineStore";
-import { CLUSTER_MAX_ZOOM, CLUSTERING_THRESHOLD, MIN_CLUSTER_SIZE } from "../../utils/clusteringConstants";
+import {
+  CLUSTER_MAX_ZOOM,
+  CLUSTER_STYLE,
+  CLUSTERING_THRESHOLD,
+  MIN_CLUSTER_SIZE,
+} from "../../utils/clusteringConstants";
 import { buildTooltipHTML } from "../../utils/timelineTooltipBuilder";
 
 // OpenLayers-specific clustering constants
@@ -23,8 +27,14 @@ const AVATAR_MARKER_STYLE =
 
 interface TimelineLayerProps {
   mapInstanceRef: React.RefObject<OLMap | null>;
-  mapViewRef: React.RefObject<string>;
-  mapView: string;
+  /** Avatars are only drawn in the sessions breakdown. */
+  enabled: boolean;
+  /** The sessions in the replay window on the map. */
+  activeSessions: GetSessionsResponse;
+  /** Changes when the replay moves to another window. */
+  windowKey: number | null;
+  /** "View details" in a session's tooltip. */
+  onSessionSelect: (session: GetSessionsResponse[number]) => void;
 }
 
 type OverlayData = {
@@ -34,16 +44,24 @@ type OverlayData = {
   cleanup: () => void;
 };
 
-export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView }: TimelineLayerProps) {
-  const activeSessions = useActiveSessions();
-  const { currentTime } = useTimelineStore();
+export function useOpenLayersTimelineLayer({
+  mapInstanceRef,
+  enabled,
+  activeSessions,
+  windowKey,
+  onSessionSelect,
+}: TimelineLayerProps) {
   const overlaysMapRef = useRef<Map<string, OverlayData>>(new Map());
   const clusterLayerRef = useRef<VectorLayer<Cluster> | null>(null);
   const tooltipOverlayRef = useRef<Overlay | null>(null);
   const openTooltipSessionIdRef = useRef<string | null>(null);
   const tooltipSessionRef = useRef<GetSessionsResponse[number] | null>(null);
-  const [selectedSession, setSelectedSession] = useState<GetSessionsResponse[number] | null>(null);
   const currentZoomRef = useRef<number>(2);
+  // The tooltip's click listener is attached once; it calls whichever handler is current.
+  const onSessionSelectRef = useRef(onSessionSelect);
+  useEffect(() => {
+    onSessionSelectRef.current = onSessionSelect;
+  }, [onSessionSelect]);
 
   // Close tooltip when timeline time changes
   useEffect(() => {
@@ -52,7 +70,7 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       openTooltipSessionIdRef.current = null;
       tooltipSessionRef.current = null;
     }
-  }, [currentTime]);
+  }, [windowKey]);
 
   // Track zoom level changes
   useEffect(() => {
@@ -89,7 +107,7 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
       const session = tooltipSessionRef.current;
       if (!session) return;
 
-      setSelectedSession(session);
+      onSessionSelectRef.current(session);
       tooltipOverlayRef.current?.setPosition(undefined);
       openTooltipSessionIdRef.current = null;
       tooltipSessionRef.current = null;
@@ -130,8 +148,8 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
 
     const overlaysMap = overlaysMapRef.current;
 
-    // Hide everything if not in timeline view
-    if (mapView !== "timeline") {
+    // Hide everything outside the sessions breakdown
+    if (!enabled) {
       // Clear overlays
       overlaysMap.forEach(({ overlay, cleanup }) => {
         cleanup();
@@ -186,15 +204,8 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
         const size = clusterFeatures ? clusterFeatures.length : 1;
 
         if (size >= MIN_CLUSTER_SIZE) {
-          // Determine color based on cluster size (matching Mapbox steps)
-          let color: string;
-          if (size >= 100) {
-            color = "#34d399"; // green-400
-          } else if (size >= 30) {
-            color = "#10b981"; // green-500
-          } else {
-            color = "#059669"; // green-600
-          }
+          // The data colour, stronger for larger clusters (matching Mapbox steps)
+          const color = size >= 100 ? CLUSTER_STYLE.large : size >= 30 ? CLUSTER_STYLE.medium : CLUSTER_STYLE.small;
 
           // Determine radius based on cluster size (matching Mapbox steps)
           let radius: number;
@@ -216,7 +227,7 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
             text: new Text({
               text: size.toString(),
               fill: new Fill({
-                color: "#ffffff",
+                color: CLUSTER_STYLE.text,
               }),
               font: "bold 14px sans-serif",
             }),
@@ -502,10 +513,5 @@ export function useOpenLayersTimelineLayer({ mapInstanceRef, mapViewRef, mapView
         clusterLayerRef.current = null;
       }
     };
-  }, [activeSessions, mapView, mapInstanceRef, mapViewRef]);
-
-  return {
-    selectedSession,
-    setSelectedSession,
-  };
+  }, [activeSessions, enabled, mapInstanceRef]);
 }
