@@ -82,6 +82,8 @@ exports[`API route table > pins the access each route requires 1`] = `
   "GET    /api/sites/:siteId/imports → site imports:read [editor+]",
   "GET    /api/sites/:siteId/is-public → site sites:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/journeys → site analytics:read [viewer+] (or public)",
+  "GET    /api/sites/:siteId/journeys/sessions → site sessions:read [viewer+] (or public)",
+  "GET    /api/sites/:siteId/journeys/summary → site analytics:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/live-user-count → site analytics:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/metric → site analytics:read [viewer+] (or public)",
   "GET    /api/sites/:siteId/metric-lite → site analytics:read [viewer+] (or public)",
