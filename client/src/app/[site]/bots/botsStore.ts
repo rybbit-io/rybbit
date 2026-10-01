@@ -4,11 +4,16 @@ import { type BotLayerKey } from "../../../api/analytics/endpoints";
 /** Which question the page is answering. */
 export type BotsLens = "ai" | "all";
 
+/** What the chart's bars are split by. */
+export type BotsBreakdown = "purpose" | "none";
+
 type BotsStore = {
   lens: BotsLens;
   setLens: (lens: BotsLens) => void;
   selectedLayer: BotLayerKey | null;
   setSelectedLayer: (layer: BotLayerKey | null) => void;
+  breakdown: BotsBreakdown;
+  setBreakdown: (breakdown: BotsBreakdown) => void;
 };
 
 export const useBotsStore = create<BotsStore>(set => ({
@@ -19,4 +24,6 @@ export const useBotsStore = create<BotsStore>(set => ({
   setLens: lens => set(lens === "ai" ? { lens, selectedLayer: null } : { lens }),
   selectedLayer: null,
   setSelectedLayer: layer => set({ selectedLayer: layer }),
+  breakdown: "purpose",
+  setBreakdown: breakdown => set({ breakdown }),
 }));

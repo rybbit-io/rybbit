@@ -1,8 +1,6 @@
-import type { BotPurpose } from "../../../../../api/analytics/endpoints";
-
-/** Colors for the two halves of AI traffic, used by the chart and the legend. */
-export const AI_AGENT_COLOR = "hsl(var(--dataviz))";
-export const AI_CRAWLER_COLOR = "hsl(var(--amber-400))";
+import { useExtracted } from "next-intl";
+import { useMemo } from "react";
+import { type AiPurposeKey, type BotFamilyKey } from "../../botsData";
 
 const PURPOSE_LABELS: Record<string, string> = {
   ai_training: "AI training crawler",
@@ -17,12 +15,6 @@ const PURPOSE_LABELS: Record<string, string> = {
   headless: "Headless browser",
 };
 
-const PURPOSE_DESCRIPTIONS: Record<string, string> = {
-  ai_training: "Collecting pages to train a model. Does not send readers back.",
-  ai_search: "Indexing pages so an assistant can cite them. Can send readers back.",
-  ai_agent: "Someone asked an assistant to open this page, just now.",
-};
-
 /**
  * Rows written before bot identity shipped carry an empty purpose. Saying so is
  * more honest than folding them into a real category.
@@ -31,8 +23,43 @@ export function formatBotPurpose(value: string) {
   return PURPOSE_LABELS[value] ?? (value ? value : "Unclassified");
 }
 
-export function describeBotPurpose(value: string) {
-  return PURPOSE_DESCRIPTIONS[value as BotPurpose];
+/** Short names for the three AI purposes, as the chart, the legend and the operator table use them. */
+export function useAiPurposeLabels(): Record<AiPurposeKey, string> {
+  const t = useExtracted();
+  return useMemo(
+    () => ({
+      training: t("Training"),
+      search: t("Answer engine"),
+      agent: t("Agent"),
+    }),
+    [t]
+  );
 }
 
-export const AI_PURPOSE_ORDER: BotPurpose[] = ["ai_agent", "ai_search", "ai_training"];
+/** What each AI purpose means for the site owner, for tooltips. */
+export function useAiPurposeDescriptions(): Record<AiPurposeKey, string> {
+  const t = useExtracted();
+  return useMemo(
+    () => ({
+      training: t("Collecting pages to train a model. Does not send readers back."),
+      search: t("Indexing pages so an assistant can cite them. Can send readers back."),
+      agent: t("Someone asked an assistant to open this page, just now."),
+    }),
+    [t]
+  );
+}
+
+/** Names for the families the all-bots chart stacks. */
+export function useBotFamilyLabels(): Record<BotFamilyKey, string> {
+  const t = useExtracted();
+  return useMemo(
+    () => ({
+      ai: t("AI"),
+      search: t("Search engines"),
+      tools: t("SEO, previews and monitoring"),
+      scripted: t("Scripted and headless"),
+      unclassified: t("Unclassified"),
+    }),
+    [t]
+  );
+}

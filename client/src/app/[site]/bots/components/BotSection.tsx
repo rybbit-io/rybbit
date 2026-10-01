@@ -14,7 +14,7 @@ import { addFilter, removeFilter, useStore } from "../../../../lib/store";
 import { cn } from "../../../../lib/utils";
 import { StandardSkeleton } from "../../components/shared/StandardSection/Skeleton";
 
-function useFilterToggle() {
+export function useFilterToggle() {
   const filters = useStore(state => state.filters);
 
   return useCallback(

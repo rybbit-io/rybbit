@@ -122,6 +122,8 @@ export type {
 
 // Bots types
 export type {
+  BotAiBot,
+  BotAiPage,
   BotAiSummaryRow,
   BotDimensionKey,
   BotDimensionItem,
@@ -134,6 +136,7 @@ export type {
   GetBotAiSummaryResponse,
   GetBotOverviewResponse,
   GetBotTimeSeriesResponse,
+  PaginatedBotAiPagesResponse,
   PaginatedBotDimensionResponse,
 } from "./bots";
 
