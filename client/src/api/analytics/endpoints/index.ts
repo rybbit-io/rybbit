@@ -118,6 +118,7 @@ export type {
   PerformanceTimeSeriesParams,
   PerformanceByDimensionParams,
   PaginatedPerformanceResponse,
+  WebVitalRatingCounts,
 } from "./performance";
 
 // Bots types
