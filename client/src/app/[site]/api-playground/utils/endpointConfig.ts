@@ -825,7 +825,7 @@ export const endpointCategories: EndpointCategory[] = [
         path: "/sites/:site/retention",
         name: "Get Retention",
         description: "Returns cohort-based retention analysis",
-        hasCommonParams: false,
+        hasCommonParams: true,
         specificParams: ["mode", "range"],
         parameterMetadata: {
           mode: { label: "Mode", type: "select", options: ["day", "week"] },
