@@ -74,6 +74,7 @@ export { runCustomQuery } from "./runCustomQuery.js";
 export { getSession } from "./sessions/getSession.js";
 export { getSessionLocations } from "./sessions/getSessionLocations.js";
 export { getSessions } from "./sessions/getSessions.js";
+export { getSessionsSummary } from "./sessions/getSessionsSummary.js";
 export { deleteUser } from "./users/deleteUser.js";
 export { getUserInfo } from "./users/getUserInfo.js";
 export { getUserSessionCount } from "./users/getUserSessionCount.js";
