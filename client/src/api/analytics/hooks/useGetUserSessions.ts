@@ -1,7 +1,13 @@
 import { Time } from "../../../components/DateSelector/types";
 import { SESSION_PAGE_FILTERS, USER_DETAIL_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { getFilteredFilters, useStore } from "../../../lib/store";
-import { GetSessionsResponse, SessionPageviewsAndEvents, UserSessionCountResponse } from "../endpoints";
+import {
+  GetSessionsResponse,
+  SessionPageviewsAndEvents,
+  SessionSort,
+  SessionView,
+  UserSessionCountResponse,
+} from "../endpoints";
 import { useAnalyticsInfiniteQuery, useAnalyticsQuery } from "../useAnalyticsQuery";
 
 export function useGetSessions({
@@ -11,8 +17,15 @@ export function useGetSessions({
   identifiedOnly = false,
   timeOverride,
   minPageviews,
+  maxPageviews,
   minEvents,
+  maxEvents,
   minDuration,
+  maxDuration,
+  view,
+  sortBy,
+  sortOrder,
+  includeGoals,
 }: {
   userId?: string;
   page?: number;
@@ -20,8 +33,16 @@ export function useGetSessions({
   identifiedOnly?: boolean;
   timeOverride?: Time;
   minPageviews?: number;
+  maxPageviews?: number;
   minEvents?: number;
+  maxEvents?: number;
   minDuration?: number;
+  maxDuration?: number;
+  view?: SessionView;
+  sortBy?: SessionSort;
+  sortOrder?: "asc" | "desc";
+  // Ask for each session's completed goals (`converted_goals`).
+  includeGoals?: boolean;
 }) {
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
@@ -39,8 +60,15 @@ export function useGetSessions({
       user_id: userId,
       identified_only: identifiedOnly,
       min_pageviews: minPageviews,
+      max_pageviews: maxPageviews,
       min_events: minEvents,
+      max_events: maxEvents,
       min_duration: minDuration,
+      max_duration: maxDuration,
+      view,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      include_goals: includeGoals || undefined,
     },
     staleTime: Infinity,
   });

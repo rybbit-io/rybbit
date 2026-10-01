@@ -1,5 +1,6 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
 import { enrichWithTraits } from "../utils/utils.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { GetSessionsResponse } from "../sessions/getSessions.js";
@@ -22,8 +23,12 @@ export interface GetFunnelStepSessionsRequest {
     mode: "reached" | "dropped";
     limit?: number;
     page: number;
+    /** "true" lists only the sessions that have a replay. */
+    replays_only?: string;
   }>;
 }
+
+const replaysOnlySchema = z.enum(["true", "false"]).optional();
 
 export const buildFunnelStepSessionsQuery = (
   query: GetFunnelStepSessionsRequest["Querystring"],
@@ -32,6 +37,7 @@ export const buildFunnelStepSessionsQuery = (
   stepNumber: number
 ) => {
   const { mode } = query;
+  const replaysOnly = query.replays_only === "true";
   const timeStatement = getTimeStatement(query);
   const filteredSessionsCTE = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
 
@@ -39,14 +45,17 @@ export const buildFunnelStepSessionsQuery = (
   const stepsToCheck = mode === "reached" ? stepNumber : stepNumber + 1;
   const stepConditions = steps.slice(0, stepsToCheck).map(step => buildFunnelStepCondition(step));
 
-  // Build CTEs for each funnel step to identify qualifying sessions
+  // Build CTEs for each funnel step to identify qualifying sessions. Steps are
+  // ordered by the millisecond timestamp, as in the analyze and summary queries,
+  // so a session counted as continuing is never listed as dropped (a pageview
+  // and the event it fires often share a second).
   const stepCTEs = [
     `
     ${filteredSessionsCTE ? `${filteredSessionsCTE},` : ""}
     SessionActions AS (
       SELECT
         session_id,
-        timestamp,
+        timestamp_ms,
         pathname,
         event_name,
         type,
@@ -63,7 +72,7 @@ export const buildFunnelStepSessionsQuery = (
     Step1 AS (
       SELECT DISTINCT
         session_id,
-        min(timestamp) as step_time
+        min(timestamp_ms) as step_time
       FROM SessionActions
       WHERE ${stepConditions[0]}
       GROUP BY session_id
@@ -76,17 +85,18 @@ export const buildFunnelStepSessionsQuery = (
     Step${i + 1} AS (
       SELECT DISTINCT
         s${i}.session_id,
-        min(sa.timestamp) as step_time
+        min(sa.timestamp_ms) as step_time
       FROM Step${i} s${i}
       JOIN SessionActions sa ON s${i}.session_id = sa.session_id
       WHERE
-        sa.timestamp > s${i}.step_time
+        sa.timestamp_ms > s${i}.step_time
         AND ${stepConditions[i]}
       GROUP BY s${i}.session_id
     )`);
   }
 
   // Determine which sessions to retrieve
+  const replayCondition = replaysOnly ? "session_id IN (SELECT session_id FROM ReplaySessions)" : "";
   let targetSessionsCTE = "";
   if (mode === "reached") {
     // Sessions that completed step N
@@ -94,6 +104,7 @@ export const buildFunnelStepSessionsQuery = (
     TargetSessions AS (
       SELECT session_id
       FROM Step${stepNumber}
+      ${replayCondition ? `WHERE ${replayCondition}` : ""}
     )`;
   } else {
     // Sessions that completed step N but NOT step N+1
@@ -105,6 +116,7 @@ export const buildFunnelStepSessionsQuery = (
         SELECT session_id
         FROM Step${stepNumber + 1}
       )
+      ${replayCondition ? `AND ${replayCondition}` : ""}
     )`;
   }
 
@@ -112,6 +124,15 @@ export const buildFunnelStepSessionsQuery = (
   return `
     WITH
     ${stepCTEs.join(",\n")}
+    ,
+    -- Same rule as the sessions list: a replay with at least two recorded events
+    ReplaySessions AS (
+      SELECT DISTINCT session_id
+      FROM session_replay_metadata_v2
+      FINAL
+      WHERE site_id = {siteId:Int32}
+        AND event_count >= 2
+    )
     ,
     ${targetSessionsCTE}
     ,
@@ -162,10 +183,13 @@ export const buildFunnelStepSessionsQuery = (
       GROUP BY
         e.session_id,
         e.user_id
-      ORDER BY session_end DESC
     )
-    SELECT *
-    FROM AggregatedSessions
+    SELECT
+      a.*,
+      if(r.session_id != '', 1, 0) AS has_replay
+    FROM AggregatedSessions a
+    LEFT JOIN ReplaySessions r ON a.session_id = r.session_id
+    ORDER BY a.session_end DESC
     LIMIT {limit:Int32} OFFSET {offset:Int32}
     `;
 };
@@ -190,6 +214,10 @@ export const getFunnelStepSessions = analyticsRoute<GetFunnelStepSessionsRequest
 
     if (mode !== "reached" && mode !== "dropped") {
       return res.status(400).send({ error: "Mode must be 'reached' or 'dropped'" });
+    }
+
+    if (!replaysOnlySchema.safeParse(req.query.replays_only).success) {
+      return res.status(400).send({ error: "replays_only must be 'true' or 'false'" });
     }
 
     // For final step in "dropped" mode, return empty results (no drop-off possible)

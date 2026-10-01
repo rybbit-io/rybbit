@@ -1,19 +1,19 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import {
-  SESSION_CHANNEL_AGG,
-  SESSION_REFERRER_AGG,
-  SESSION_UTM_CAMPAIGN_AGG,
-  SESSION_UTM_CONTENT_AGG,
-  SESSION_UTM_MEDIUM_AGG,
-  SESSION_UTM_SOURCE_AGG,
-  SESSION_UTM_TERM_AGG,
-} from "../utils/sessionAttribution.js";
 import { getSessionFilterStatement } from "../utils/sessionFilters.js";
 import { enrichWithTraits } from "../utils/utils.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { analyticsRoute, runAnalyticsQuery, QuerySpec } from "../utils/analyticsQuery.js";
-import { matchesUser } from "../utils/effectiveUserId.js";
+import { getSessionGoalMatcher, resolveSessionGoals, SessionGoal, SessionGoalMatcher } from "./sessionGoals.js";
+import {
+  buildAggregatedSessionsCTE,
+  buildRangeConditions,
+  buildSessionOrder,
+  buildViewCondition,
+  parseSessionListParams,
+  REPLAY_LOOKUP_QUERY,
+  sessionListParamsSchema,
+} from "./sessionQuery.js";
 
 export type GetSessionsResponse = {
   session_id: string;
@@ -58,6 +58,9 @@ export type GetSessionsResponse = {
   lat: number;
   lon: number;
   has_replay: number;
+  // Goals the session completed, the most recent conversion first. Present
+  // when the request asked for goals (include_goals, or the converted view).
+  converted_goals?: SessionGoal[];
 }[];
 
 export interface GetSessionsRequest {
@@ -70,28 +73,44 @@ export interface GetSessionsRequest {
     user_id?: string;
     session_id?: string;
     identified_only?: string;
+    view?: string;
+    sort_by?: string;
+    sort_order?: string;
+    include_goals?: string;
     min_pageviews?: string;
+    max_pageviews?: string;
     min_events?: string;
+    max_events?: string;
     min_duration?: string;
+    max_duration?: string;
   }>;
 }
 
-export const buildSessionsQuery = (query: GetSessionsRequest["Querystring"], siteId: number): QuerySpec => {
-  const {
-    filters,
-    page = 1,
-    user_id: userId,
-    session_id: sessionId,
-    limit = 100,
-    identified_only: identifiedOnly = "false",
-    min_pageviews: minPageviewsStr,
-    min_events: minEventsStr,
-    min_duration: minDurationStr,
-  } = query;
-  const filterIdentified = identifiedOnly === "true";
-  const minPageviews = minPageviewsStr ? parseInt(minPageviewsStr, 10) : undefined;
-  const minEvents = minEventsStr ? parseInt(minEventsStr, 10) : undefined;
-  const minDuration = minDurationStr ? parseInt(minDurationStr, 10) : undefined;
+const DEFAULT_LIMIT = 100;
+// The Globe timeline pages through sessions 10,000 at a time; nothing asks for more.
+const MAX_LIMIT = 10_000;
+// Session ids per replay lookup. Query parameters travel in the request URL,
+// so a 10,000-row page is looked up in slices rather than as one long list.
+const REPLAY_LOOKUP_CHUNK = 1000;
+
+const NO_GOALS: SessionGoalMatcher = { goals: [], expression: "emptyArrayUInt32()" };
+
+// Untrusted `limit`/`page`: anything unusable falls back to the defaults, and
+// one request can never ask for more than MAX_LIMIT rows.
+const toPositiveInt = (value: unknown, fallback: number) => {
+  const parsed = parseInt(String(value), 10);
+  return Number.isFinite(parsed) && parsed >= 1 ? parsed : fallback;
+};
+
+export const buildSessionsQuery = (
+  query: GetSessionsRequest["Querystring"],
+  siteId: number,
+  matcher: SessionGoalMatcher = NO_GOALS
+): QuerySpec => {
+  const { filters, user_id: userId, session_id: sessionId, identified_only: identifiedOnly = "false" } = query;
+  const params = sessionListParamsSchema.parse(query);
+  const limit = Math.min(toPositiveInt(query.limit, DEFAULT_LIMIT), MAX_LIMIT);
+  const page = toPositiveInt(query.page, 1);
 
   const timeStatement = getTimeStatement(query);
 
@@ -102,76 +121,23 @@ export const buildSessionsQuery = (query: GetSessionsRequest["Querystring"], sit
   // - fieldMappings: CTE extracts UTM params as separate columns, so we need to map the field names
   const filterStatement = getSessionFilterStatement(filters, siteId, timeStatement);
 
+  const ranges = buildRangeConditions(params);
+  const conditions = [
+    identifiedOnly === "true" ? "identified_user_id != ''" : null,
+    buildViewCondition(params.view, query),
+    ...ranges.conditions,
+  ].filter((condition): condition is string => !!condition);
+
+  // The ORDER BY belongs to the statement that carries the LIMIT. It used to
+  // sit inside the CTE, where the outer query was free to ignore it, so
+  // consecutive pages could repeat or skip sessions.
   const querySQL = `
-  WITH AggregatedSessions AS (
-      SELECT
-          session_id,
-          argMax(user_id, timestamp) AS user_id,
-          argMax(identified_user_id, timestamp) AS identified_user_id,
-          argMax(country, timestamp) AS country,
-          argMax(region, timestamp) AS region,
-          argMax(city, timestamp) AS city,
-          argMax(language, timestamp) AS language,
-          argMax(device_type, timestamp) AS device_type,
-          argMax(browser, timestamp) AS browser,
-          argMax(browser_version, timestamp) AS browser_version,
-          argMax(operating_system, timestamp) AS operating_system,
-          argMax(operating_system_version, timestamp) AS operating_system_version,
-          argMax(screen_width, timestamp) AS screen_width,
-          argMax(screen_height, timestamp) AS screen_height,
-          ${SESSION_REFERRER_AGG} AS referrer,
-          ${SESSION_CHANNEL_AGG} AS channel,
-          argMin(hostname, timestamp) AS hostname,
-          ${SESSION_UTM_SOURCE_AGG} AS utm_source,
-          ${SESSION_UTM_MEDIUM_AGG} AS utm_medium,
-          ${SESSION_UTM_CAMPAIGN_AGG} AS utm_campaign,
-          ${SESSION_UTM_TERM_AGG} AS utm_term,
-          ${SESSION_UTM_CONTENT_AGG} AS utm_content,
-          MAX(timestamp) AS session_end,
-          MIN(timestamp) AS session_start,
-          dateDiff('second', MIN(timestamp), MAX(timestamp)) AS session_duration,
-          argMinIf(pathname, timestamp_ms, type = 'pageview') AS entry_page,
-          argMaxIf(pathname, timestamp_ms, type = 'pageview') AS exit_page,
-          countIf(type = 'pageview') AS pageviews,
-          countIf(type = 'custom_event') AS events,
-          countIf(type = 'error') AS errors,
-          countIf(type = 'outbound') AS outbound,
-          countIf(type = 'button_click') AS button_clicks,
-          countIf(type = 'copy') AS copies,
-          countIf(type = 'form_submit') AS form_submits,
-          countIf(type = 'input_change') AS input_changes,
-          argMax(ip, timestamp) AS ip,
-          argMax(lat, timestamp) AS lat,
-          argMax(lon, timestamp) AS lon,
-          argMax(tag, timestamp) AS tag,
-          argMax(timezone, timestamp) AS timezone
-      FROM events
-      WHERE
-          site_id = {siteId:Int32}
-          ${userId ? ` AND ${matchesUser("{user_id:String}", "events")}` : ""}
-          ${sessionId ? ` AND events.session_id = {session_id:String}` : ""}
-          ${timeStatement}
-      GROUP BY
-          session_id
-      ORDER BY session_end DESC
-  ),
-  ReplaySessions AS (
-      SELECT DISTINCT session_id
-      FROM session_replay_metadata_v2
-      FINAL
-      WHERE site_id = {siteId:Int32}
-        AND event_count >= 2
-  )
-  SELECT
-      a.*,
-      if(r.session_id != '', 1, 0) AS has_replay
-  FROM AggregatedSessions a
-  LEFT JOIN ReplaySessions r ON a.session_id = r.session_id
+  WITH ${buildAggregatedSessionsCTE(query, matcher)}
+  SELECT *
+  FROM AggregatedSessions
   WHERE 1 = 1 ${filterStatement}
-  ${filterIdentified ? "AND a.identified_user_id != ''" : ""}
-  ${minPageviews !== undefined ? "AND a.pageviews >= {minPageviews:Int32}" : ""}
-  ${minEvents !== undefined ? "AND a.events >= {minEvents:Int32}" : ""}
-  ${minDuration !== undefined ? "AND a.session_duration >= {minDuration:Int32}" : ""}
+  ${conditions.map(condition => `AND ${condition}`).join("\n  ")}
+  ${buildSessionOrder(params.sort_by, params.sort_order)}
   LIMIT {limit:Int32} OFFSET {offset:Int32}
   `;
 
@@ -181,26 +147,66 @@ export const buildSessionsQuery = (query: GetSessionsRequest["Querystring"], sit
       siteId,
       user_id: userId,
       session_id: sessionId,
-      limit: limit || 100,
-      offset: (page - 1) * (limit || 100),
-      minPageviews: minPageviews ?? 0,
-      minEvents: minEvents ?? 0,
-      minDuration: minDuration ?? 0,
+      limit,
+      offset: (page - 1) * limit,
+      ...ranges.queryParams,
     },
   };
 };
 
+type SessionRow = Omit<GetSessionsResponse[number], "traits" | "has_replay" | "converted_goals"> & {
+  converted_goal_ids: number[];
+  last_goal_ids: number[];
+};
+
+/** Slices of at most `size` ids, in order. */
+export const chunkIds = (ids: string[], size: number): string[][] =>
+  Array.from({ length: Math.ceil(ids.length / size) }, (_, index) => ids.slice(index * size, (index + 1) * size));
+
+/**
+ * Which of these sessions have a replay. A key lookup for the rows of one page,
+ * instead of the join that used to read all of the site's replay metadata on
+ * every list request.
+ */
+async function findSessionsWithReplay(siteId: number, sessionIds: string[]): Promise<Set<string>> {
+  const found = await Promise.all(
+    chunkIds(sessionIds, REPLAY_LOOKUP_CHUNK).map(ids =>
+      runAnalyticsQuery<{ session_id: string }>({ query: REPLAY_LOOKUP_QUERY, params: { siteId, sessionIds: ids } })
+    )
+  );
+  return new Set(found.flat().map(row => row.session_id));
+}
+
 export const getSessions = analyticsRoute<GetSessionsRequest>(
   "sessions",
   async (req: FastifyRequest<GetSessionsRequest>, res: FastifyReply) => {
-    const site = req.params.siteId;
+    const siteId = Number(req.params.siteId);
 
-    const data = await runAnalyticsQuery<Omit<GetSessionsResponse[number], "traits">>(
-      buildSessionsQuery(req.query, Number(site))
+    const parsed = parseSessionListParams(req.query);
+    if (!parsed.ok) {
+      return res.status(400).send({ error: parsed.error });
+    }
+
+    // Goals are matched only for a request that shows or filters on them.
+    const wantsGoals = parsed.params.include_goals === "true" || parsed.params.view === "converted";
+    const matcher = wantsGoals ? await getSessionGoalMatcher(siteId) : NO_GOALS;
+    const rows = await runAnalyticsQuery<SessionRow>(buildSessionsQuery(req.query, siteId, matcher));
+
+    const withReplay = await findSessionsWithReplay(
+      siteId,
+      rows.map(row => row.session_id)
     );
 
+    const data = rows.map(({ converted_goal_ids, last_goal_ids, ...row }) => ({
+      ...row,
+      has_replay: withReplay.has(row.session_id) ? 1 : 0,
+      ...(wantsGoals
+        ? { converted_goals: resolveSessionGoals(matcher, last_goal_ids ?? [], converted_goal_ids ?? []) }
+        : {}),
+    }));
+
     // Enrich with traits from Postgres
-    const dataWithTraits = await enrichWithTraits(data, Number(site));
+    const dataWithTraits = await enrichWithTraits(data, siteId);
 
     return res.send({ data: dataWithTraits });
   }

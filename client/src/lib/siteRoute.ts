@@ -10,6 +10,7 @@ export const SYNCED_ANALYTICS_ROUTES = new Set([
   "events",
   "funnels",
   "journeys",
+  "retention",
   "errors",
   "pages",
   "replay",

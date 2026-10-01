@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { availableComparisonModes, getAbsoluteBounds, resolveComparison } from "@/lib/time";
+import { availableComparisonModes, resolveComparison } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Check, ChevronDown } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { describeBounds, rangeFieldsForTime, timeFromRangeFields } from "./rangeFields";
+import { describeComparisonWindow, rangeFieldsForTime, timeFromRangeFields } from "./rangeFields";
 import { Comparison, ComparisonMode, Time } from "./types";
 
 type CustomFields = { startDate: string; endDate: string };
@@ -60,17 +60,7 @@ export function ComparisonSelect({
     none: t("No comparison"),
   };
 
-  // "Mar 8 – Mar 14" says nothing useful when the window is a year back, so the
-  // year is named whenever it differs from the period being compared.
-  const describe = (target: Time | null) => {
-    const bounds = target && getAbsoluteBounds(target, zone);
-    const label = describeBounds(bounds ?? null);
-    const current = getAbsoluteBounds(time, zone);
-    if (!bounds || !label || !current) return label;
-
-    const year = bounds.end.minus({ minutes: 1 }).year;
-    return year === current.end.minus({ minutes: 1 }).year ? label : `${label}, ${year}`;
-  };
+  const describe = (target: Time | null) => describeComparisonWindow(target, time, zone);
 
   const resolvedRange = describe(resolved);
 

@@ -44,17 +44,25 @@ import {
   generateCustomQuery,
   getEventBucketed,
   getEventNames,
+  getEventNameStats,
+  getEventsOverview,
+  getSilentEvents,
   getAutocaptureEvents,
   getAutocaptureValues,
   getEventProperties,
   getEvents,
   getFunnel,
   getFunnelStepSessions,
+  getFunnelSummaries,
   getFunnels,
+  getGoalPreview,
   getGoalSessions,
   getGoalTimeSeries,
   getGoals,
+  getGoalsSummary,
   getJourneys,
+  getJourneySessions,
+  getJourneySummary,
   getLiveUsercount,
   getMetric,
   getMetricLite,
@@ -67,6 +75,9 @@ import {
   getSiteCardsLite,
   getSiteCards,
   getPageTitles,
+  getPages,
+  getPagesSummary,
+  getPageTrends,
   getPerformanceByDimension,
   getPerformanceOverview,
   getPerformanceTimeSeries,
@@ -74,13 +85,21 @@ import {
   getSession,
   getSessionLocations,
   getSessions,
+  getSessionsSummary,
   getSiteEventCount,
+  getUserGoals,
   getUserInfo,
+  getUserRepeatedError,
+  getUserSegments,
   getUserSessionCount,
+  getUserSessionGoals,
+  getUserSummary,
+  getUserTraitBreakdown,
   getUserTraitKeys,
   getUserTraitValueUsers,
   getUserTraitValues,
   getUsers,
+  getUsersSummary,
   identifyUser,
   runCustomQuery,
   runDashboardCardQuery,
@@ -279,6 +298,8 @@ const publicSegmentsRead = publicSite("segments:read");
 // one query per card), and /generate spends OpenRouter credit. Cap per user.
 const customQueryRateLimit = { max: 60, timeWindow: "1 minute" };
 const generateQueryRateLimit = { max: 20, timeWindow: "1 minute" };
+// The inline goal form asks for a preview as the pattern is typed (debounced).
+const goalPreviewRateLimit = { max: 60, timeWindow: "1 minute" };
 const withRateLimit = <T extends { preHandler: unknown; config?: object }>(
   opts: T,
   limit: { max: number; timeWindow: string }
@@ -300,6 +321,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/metric-lite", cachedAnalyticsRead, getMetricLite);
   fastify.get("/sites/:siteId/metric", cachedAnalyticsRead, getMetric);
   fastify.get("/sites/:siteId/page-titles", cachedAnalyticsRead, getPageTitles);
+  fastify.get("/sites/:siteId/pages", cachedAnalyticsRead, getPages);
+  fastify.get("/sites/:siteId/pages/summary", cachedAnalyticsRead, getPagesSummary);
+  fastify.get("/sites/:siteId/pages/trends", cachedAnalyticsRead, getPageTrends);
   fastify.get("/sites/:siteId/errors/names", publicAnalyticsRead, getErrorNames);
   fastify.get("/sites/:siteId/errors/events", publicAnalyticsRead, getErrorEvents);
   fastify.get("/sites/:siteId/errors/time-series", publicAnalyticsRead, getErrorBucketed);
@@ -307,31 +331,48 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/has-data", publicSitesRead, getSiteHasData);
   fastify.get("/sites/:siteId/is-public", publicSitesRead, getSiteIsPublic);
   fastify.get("/sites/:siteId/sessions", publicSessionsRead, getSessions);
+  fastify.get("/sites/:siteId/sessions/summary", publicSessionsRead, getSessionsSummary);
   fastify.get("/sites/:siteId/sessions/:sessionId", publicSessionsRead, getSession);
   fastify.get("/sites/:siteId/events", publicEventsRead, getEvents);
   fastify.get("/sites/:siteId/events/time-series", publicEventsRead, getEventBucketed);
   fastify.get("/sites/:siteId/events/count", publicEventsRead, getSiteEventCount);
   fastify.get("/sites/:siteId/users", publicUsersRead, getUsers);
 
+  fastify.get("/sites/:siteId/users/summary", publicUsersRead, getUsersSummary);
   fastify.get("/sites/:siteId/users/session-count", publicUsersRead, getUserSessionCount);
   fastify.get("/sites/:siteId/users/:userId", publicUsersRead, getUserInfo);
+  fastify.get("/sites/:siteId/users/:userId/summary", publicUsersRead, getUserSummary);
+  fastify.get("/sites/:siteId/users/:userId/goals", publicUsersRead, getUserGoals);
+  fastify.get("/sites/:siteId/users/:userId/session-goals", publicUsersRead, getUserSessionGoals);
+  fastify.get("/sites/:siteId/users/:userId/segments", publicUsersRead, getUserSegments);
+  fastify.get("/sites/:siteId/users/:userId/repeated-error", publicUsersRead, getUserRepeatedError);
   fastify.post("/sites/:siteId/users/identify", site("users:write"), identifyUser);
   fastify.put("/sites/:siteId/users/:userId/traits", site("users:write"), updateUserTraits);
   fastify.delete("/sites/:siteId/users/:userId", site("users:delete"), deleteUser);
   fastify.get("/sites/:siteId/user-traits/keys", publicUsersRead, getUserTraitKeys);
   fastify.get("/sites/:siteId/user-traits/values", publicUsersRead, getUserTraitValues);
   fastify.get("/sites/:siteId/user-traits/users", publicUsersRead, getUserTraitValueUsers);
+  fastify.get("/sites/:siteId/user-traits/breakdown", publicUsersRead, getUserTraitBreakdown);
   fastify.get("/sites/:siteId/sessions/locations", publicSessionsRead, getSessionLocations);
   fastify.get("/sites/:siteId/funnels", publicFunnelsRead, getFunnels);
+  fastify.get("/sites/:siteId/funnels/summary", publicFunnelsRead, getFunnelSummaries);
   fastify.get("/sites/:siteId/journeys", publicAnalyticsRead, getJourneys);
+  fastify.get("/sites/:siteId/journeys/summary", publicAnalyticsRead, getJourneySummary);
+  fastify.get("/sites/:siteId/journeys/sessions", publicSessionsRead, getJourneySessions);
   fastify.post("/sites/:siteId/funnels/analyze", publicFunnelsRead, getFunnel);
   fastify.post("/sites/:siteId/funnels/:stepNumber/sessions", publicFunnelsRead, getFunnelStepSessions);
   fastify.post("/sites/:siteId/funnels", site("funnels:write"), createFunnel);
   fastify.delete("/sites/:siteId/funnels/:funnelId", site("funnels:write"), deleteFunnel);
   fastify.get("/sites/:siteId/goals", publicGoalsRead, getGoals);
+  fastify.get("/sites/:siteId/goals/summary", publicGoalsRead, getGoalsSummary);
   fastify.get("/sites/:siteId/goals/time-series", publicGoalsRead, getGoalTimeSeries);
   fastify.get("/sites/:siteId/goals/:goalId/sessions", publicGoalsRead, getGoalSessions);
   fastify.post("/sites/:siteId/goals", site("goals:write"), createGoal);
+  fastify.post(
+    "/sites/:siteId/goals/preview",
+    withRateLimit(site("goals:write"), goalPreviewRateLimit),
+    getGoalPreview
+  );
   fastify.delete("/sites/:siteId/goals/:goalId", site("goals:write"), deleteGoal);
   fastify.put("/sites/:siteId/goals/:goalId", site("goals:write"), updateGoal);
   // Timeline annotations. Read is public-guarded so public dashboards and
@@ -370,6 +411,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.delete("/sites/:siteId/experiments/:experimentId", site("experiments:write"), deleteExperiment);
   fastify.get("/sites/:siteId/experiments/:experimentId/results", site("experiments:read"), getExperimentResults);
   fastify.get("/sites/:siteId/events/names", cachedEventsRead, getEventNames);
+  fastify.get("/sites/:siteId/events/names/stats", cachedEventsRead, getEventNameStats);
+  fastify.get("/sites/:siteId/events/overview", cachedEventsRead, getEventsOverview);
+  fastify.get("/sites/:siteId/events/silent", cachedEventsRead, getSilentEvents);
   fastify.get("/sites/:siteId/events/properties", publicEventsRead, getEventProperties);
   fastify.get("/sites/:siteId/events/autocapture", cachedEventsRead, getAutocaptureEvents);
   fastify.get("/sites/:siteId/events/autocapture-values", publicEventsRead, getAutocaptureValues);

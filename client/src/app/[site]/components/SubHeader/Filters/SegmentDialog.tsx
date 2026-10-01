@@ -81,6 +81,12 @@ export interface SegmentDialogProps {
   /** Starting filters for a new segment, e.g. the dashboard's current chips. */
   initialFilters?: Filter[];
   availableFilters?: FilterParameter[];
+  /**
+   * Whether a newly created segment is applied to the dashboard. Defaults to
+   * true; a pivot saves the people behind one row without narrowing the page
+   * to them, so it passes false.
+   */
+  applyOnCreate?: boolean;
 }
 
 /**
@@ -108,7 +114,14 @@ export function SegmentDialog(props: SegmentDialogProps) {
   );
 }
 
-function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableFilters }: SegmentDialogProps) {
+function SegmentForm({
+  onOpenChange,
+  siteId,
+  segment,
+  initialFilters,
+  availableFilters,
+  applyOnCreate = true,
+}: SegmentDialogProps) {
   const t = useExtracted();
   const { data: site } = useGetSite(siteId);
   const { data: activeOrganization } = authClient.useActiveOrganization();
@@ -189,7 +202,7 @@ function SegmentForm({ onOpenChange, siteId, segment, initialFilters, availableF
         toast.success(t("Saved segment “{name}”", { name: updated.name }));
       } else {
         const created = await createSegment({ siteId, body });
-        applySegment(created, appliedSegment?.filters);
+        if (applyOnCreate) applySegment(created, appliedSegment?.filters);
         toast.success(t("Saved segment “{name}”", { name: created.name }));
       }
       onOpenChange(false);

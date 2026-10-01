@@ -12,6 +12,7 @@ export function useGetFunnelStepSessions({
   mode,
   page = 1,
   limit = 25,
+  replaysOnly = false,
   enabled = false,
 }: {
   steps: FunnelStep[];
@@ -21,6 +22,8 @@ export function useGetFunnelStepSessions({
   mode: "reached" | "dropped";
   page?: number;
   limit?: number;
+  /** Lists only the sessions that have a replay. */
+  replaysOnly?: boolean;
   enabled?: boolean;
 }) {
   // Only the funnel page's filter parameters apply; an empty subset means no
@@ -34,7 +37,7 @@ export function useGetFunnelStepSessions({
     overrideTime: time,
     useFilters: filteredFilters.length > 0,
     customFilters: filteredFilters,
-    params: { mode, page, limit },
+    params: { mode, page, limit, replays_only: replaysOnly ? "true" : undefined },
     body: () => ({ steps }),
     enabled: !!steps && steps.length >= 2 && enabled,
   });

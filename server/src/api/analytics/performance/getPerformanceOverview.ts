@@ -4,6 +4,7 @@ import { PerformanceOverviewMetrics } from "../types.js";
 import { FilterParams } from "@rybbit/shared";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { buildSessionAndRowFilterFragments, TARGET_EVENT_ROW_LEVEL_PARAMS } from "../utils/sessionFilters.js";
+import { webVitalRatingCounts } from "./webVitalRatings.js";
 
 export const buildPerformanceOverviewQuery = (query: FilterParams, siteId: number) => {
   const timeStatement = getTimeStatement(query);
@@ -37,6 +38,7 @@ export const buildPerformanceOverviewQuery = (query: FilterParams, siteId: numbe
       quantile(0.75)(ttfb) AS ttfb_p75,
       quantile(0.9)(ttfb) AS ttfb_p90,
       quantile(0.99)(ttfb) AS ttfb_p99,
+      ${webVitalRatingCounts()},
       COUNT(*) AS total_performance_events
     FROM events
     ${sessionJoin}
