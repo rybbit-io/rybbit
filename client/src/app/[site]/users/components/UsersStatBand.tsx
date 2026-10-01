@@ -31,7 +31,14 @@ export function UsersStatBand({ comparisonEnabled }: { comparisonEnabled: boolea
 
   const count = (value: number | null | undefined) => (value == null ? NO_VALUE : value.toLocaleString());
   // A line of context only describes figures that arrived; it still holds its space while they load or fail.
-  const context = (text: string) => (current ? text : "");
+  // `hint` spells the line out on hover, for the widths where the band has to cut it short.
+  const context = (text: string, hint?: string) => (current ? <span title={hint}>{text}</span> : "");
+  const newHint = t("Users with no visit in the {days} days before this period", {
+    days: String(current?.lookback_days ?? 0),
+  });
+  const returningHint = t("Users who also visited in the {days} days before this period", {
+    days: String(current?.lookback_days ?? 0),
+  });
   const users = current?.users ?? 0;
   const days = current?.lookback_days ?? 0;
 
@@ -73,9 +80,10 @@ export function UsersStatBand({ comparisonEnabled }: { comparisonEnabled: boolea
             t("{percent} · first visit in {days} days", {
               percent: formatShare(share(current?.new_users ?? 0, users)),
               days: String(days),
-            })
+            }),
+            newHint
           ),
-          title: t("Users with no visit in the {days} days before this period", { days: String(days) }),
+          title: newHint,
         },
         current?.returning_users !== null && {
           id: "returning",
@@ -87,9 +95,10 @@ export function UsersStatBand({ comparisonEnabled }: { comparisonEnabled: boolea
             t("{percent} · back within {days} days", {
               percent: formatShare(share(current?.returning_users ?? 0, users)),
               days: String(days),
-            })
+            }),
+            returningHint
           ),
-          title: t("Users who also visited in the {days} days before this period", { days: String(days) }),
+          title: returningHint,
         },
         {
           id: "sessions-per-user",
