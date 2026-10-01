@@ -1,23 +1,20 @@
-import { TimeBucket } from "@rybbit/shared";
+import type { PercentileLevel, TimeBucket, WebVitalMetric } from "@rybbit/shared";
 import { CommonApiParams, PaginationParams, SortParams } from "./types";
 
-// Performance Overview Response
-export type GetPerformanceOverviewResponse = {
-  current: {
-    lcp: number;
-    cls: number;
-    inp: number;
-    fcp: number;
-    ttfb: number;
-  };
-  previous: {
-    lcp: number;
-    cls: number;
-    inp: number;
-    fcp: number;
-    ttfb: number;
-  };
+type WebVitalPercentiles = {
+  [K in WebVitalMetric as `${K}_${PercentileLevel}`]: number | null;
 };
+
+/** Loads that reported each metric, and how many of those were good and poor. */
+export type WebVitalRatingCounts = {
+  [K in WebVitalMetric as `${K}_${"count" | "good" | "poor"}`]: number;
+};
+
+// Performance Overview Response
+export type GetPerformanceOverviewResponse = WebVitalPercentiles &
+  WebVitalRatingCounts & {
+    total_performance_events: number;
+  };
 
 // Performance Time Series Response
 export type GetPerformanceTimeSeriesResponse = {
@@ -74,22 +71,16 @@ export type PerformanceByDimensionItem = {
   ttfb_p75: number | null;
   ttfb_p90: number | null;
   ttfb_p99: number | null;
-};
+} & WebVitalRatingCounts;
 
-export interface PerformanceOverviewParams extends CommonApiParams {
-  percentile?: number | string;
-}
+export type PerformanceOverviewParams = CommonApiParams;
 
 export interface PerformanceTimeSeriesParams extends CommonApiParams {
   bucket: TimeBucket;
 }
 
-export interface PerformanceByDimensionParams
-  extends CommonApiParams,
-    PaginationParams,
-    SortParams {
+export interface PerformanceByDimensionParams extends CommonApiParams, PaginationParams, SortParams {
   dimension: string;
-  percentile?: number | string;
 }
 
 export interface PaginatedPerformanceResponse {
