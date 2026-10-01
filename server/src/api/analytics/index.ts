@@ -69,6 +69,7 @@ export { getSiteCards, getSiteCardsLite } from "./getSiteCards.js";
 export { getOverviewBucketedLite } from "./lite/getOverviewBucketedLite.js";
 export { getMetricLite } from "./lite/getMetricLite.js";
 export { getPageTitles } from "./getPageTitles.js";
+export { getPages, getPagesSummary, getPageTrends } from "./getPages.js";
 export { getRetention } from "./getRetention.js";
 export { runCustomQuery } from "./runCustomQuery.js";
 export { getSession } from "./sessions/getSession.js";
