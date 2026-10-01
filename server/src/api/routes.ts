@@ -44,6 +44,9 @@ import {
   generateCustomQuery,
   getEventBucketed,
   getEventNames,
+  getEventNameStats,
+  getEventsOverview,
+  getSilentEvents,
   getAutocaptureEvents,
   getAutocaptureValues,
   getEventProperties,
@@ -370,6 +373,9 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.delete("/sites/:siteId/experiments/:experimentId", site("experiments:write"), deleteExperiment);
   fastify.get("/sites/:siteId/experiments/:experimentId/results", site("experiments:read"), getExperimentResults);
   fastify.get("/sites/:siteId/events/names", cachedEventsRead, getEventNames);
+  fastify.get("/sites/:siteId/events/names/stats", cachedEventsRead, getEventNameStats);
+  fastify.get("/sites/:siteId/events/overview", cachedEventsRead, getEventsOverview);
+  fastify.get("/sites/:siteId/events/silent", cachedEventsRead, getSilentEvents);
   fastify.get("/sites/:siteId/events/properties", publicEventsRead, getEventProperties);
   fastify.get("/sites/:siteId/events/autocapture", cachedEventsRead, getAutocaptureEvents);
   fastify.get("/sites/:siteId/events/autocapture-values", publicEventsRead, getAutocaptureValues);
