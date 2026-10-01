@@ -39,6 +39,7 @@ const DATE_SELECTOR_ROUTES = new Set([
   "goals",
   "funnels",
   "journeys",
+  "retention",
   "errors",
   "performance",
   "experiments",

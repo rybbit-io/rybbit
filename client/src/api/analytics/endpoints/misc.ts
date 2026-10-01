@@ -3,10 +3,23 @@ import { CommonApiParams, PaginationParams } from "./types";
 
 // Retention types
 export interface ProcessedRetentionData {
-  cohorts: Record<string, { size: number; percentages: (number | null)[] }>;
+  // Keyed by the cohort period's first day (YYYY-MM-DD); empty cohorts are left
+  // out. `percentages` and `counts` are per period since the first visit, null
+  // past the end of the window.
+  cohorts: Record<string, { size: number; percentages: (number | null)[]; counts: (number | null)[] }>;
   maxPeriods: number;
   mode: "day" | "week";
   range: number;
+  // Every cohort period in the window, oldest first.
+  periods: string[];
+  windowStart: string;
+  windowEnd: string;
+  timeZone: string;
+  firstPeriodPartial: boolean;
+  lastPeriodPartial: boolean;
+  lastPeriodInProgress: boolean;
+  truncated: boolean;
+  lookbackDays: number;
 }
 
 export type RetentionMode = "day" | "week";
