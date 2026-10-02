@@ -37,6 +37,12 @@ describe("user queries with session-scoped filters", () => {
 
     expect(dataSql).toContain("countIf(type = 'pageview') AS pageviews");
     expect(dataSql).toContain("countIf(type = 'custom_event') AS events");
+    const lifetimeAt = dataSql.indexOf("LifetimeFirstSeen AS");
+    expect(lifetimeAt).toBeGreaterThan(0);
+    expect(dataSql.slice(0, lifetimeAt)).not.toContain("min(timestamp) AS first_seen");
+    expect(dataSql.slice(lifetimeAt)).toContain("min(timestamp) AS first_seen");
+    expect(dataSql.slice(lifetimeAt)).not.toContain("utm_campaign");
+    expect(countSql).not.toContain("LifetimeFirstSeen");
   });
 
   it("lets campaign and pathname filters match different rows for list and count", () => {
@@ -62,7 +68,52 @@ describe("user queries with session-scoped filters", () => {
     }
 
     expect(queries.sessionsQuery).toContain("dateDiff('second', MIN(timestamp), MAX(timestamp)) AS session_duration");
+    const firstSeenAt = queries.sessionsQuery.indexOf("SELECT min(lifetime_events.timestamp)");
+    const firstSeenEnd = queries.sessionsQuery.indexOf(") AS first_seen");
+    expect(firstSeenAt).toBeGreaterThan(0);
+    expect(queries.sessionsQuery.slice(firstSeenAt, firstSeenEnd)).not.toContain("utm_campaign");
     expect(queries.vitalsQuery).toContain("WHERE type = 'performance'");
+  });
+
+  it("keeps first_seen on the user's full history when a date range is selected", () => {
+    const ranged = {
+      filters: "",
+      start_date: "2026-09-20",
+      end_date: "2026-09-25",
+      time_zone: "UTC",
+    };
+
+    const dataSql = buildUsersQuery(ranged, 1, null, false);
+    const countSql = buildUsersQuery(ranged, 1, null, true);
+    const lifetimeAt = dataSql.indexOf("LifetimeFirstSeen AS");
+
+    expect(lifetimeAt).toBeGreaterThan(0);
+    expect(dataSql.slice(0, lifetimeAt)).toContain("'2026-09-20'");
+    expect(dataSql.slice(0, lifetimeAt)).not.toContain("min(timestamp) AS first_seen");
+    expect(dataSql.slice(lifetimeAt)).toContain("min(timestamp) AS first_seen");
+    expect(dataSql.slice(lifetimeAt)).not.toContain("2026-09-20");
+    expect(dataSql).toContain("max(timestamp) AS last_seen");
+    expect(dataSql).toContain("FROM PageUsers AS page");
+    expect(dataSql).toContain("ORDER BY last_seen DESC, effective_user_id ASC");
+    expect(dataSql).toContain("ORDER BY page.last_seen DESC, page.effective_user_id ASC");
+    expect(countSql).not.toContain("LifetimeFirstSeen");
+
+    const sortedByFirstSeen = buildUsersQuery({ ...ranged, sort_by: "first_seen", sort_order: "asc" }, 1, null, false);
+    expect(sortedByFirstSeen).toContain("FROM QualifiedUsers");
+    expect(sortedByFirstSeen).toContain("ORDER BY lifetime.first_seen ASC, page.effective_user_id ASC");
+    expect(sortedByFirstSeen.indexOf("LIMIT {limit:Int32}")).toBeGreaterThan(
+      sortedByFirstSeen.indexOf("LifetimeFirstSeen AS")
+    );
+
+    const sessionsSql = buildUserInfoQueries(ranged, 1).sessionsQuery;
+    const firstSeenAt = sessionsSql.indexOf("SELECT min(lifetime_events.timestamp)");
+    const firstSeenEnd = sessionsSql.indexOf(") AS first_seen");
+
+    expect(firstSeenAt).toBeGreaterThan(0);
+    expect(sessionsSql.slice(0, firstSeenAt)).toContain("'2026-09-20'");
+    expect(sessionsSql.slice(firstSeenAt, firstSeenEnd)).not.toContain("2026-09-20");
+    expect(sessionsSql).toContain("MAX(session_end) AS last_seen");
+    expect(sessionsSql).not.toContain("MIN(session_start) AS first_seen");
   });
 
   it("counts compound-filtered sessions by their start date", () => {
