@@ -1,13 +1,14 @@
+import { higherRole, roleHasPermission } from "@rybbit/shared";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
-import { IS_CLOUD } from "../../lib/const.js";
-import { getSubscriptionInner } from "../stripe/getSubscription.js";
+import { effectiveOrgRole, getOrgMembership } from "../../lib/access.js";
+import { getIsUserAdmin } from "../../lib/auth-utils.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
-import { applySiteMove, invalidateSiteMoveAccess } from "./applySiteMove.js";
+import { applySiteMove, invalidateSiteMoveAccess, lockSiteOwnership } from "./applySiteMove.js";
+import { getPlanSiteLimit, targetSiteLimitError } from "./siteLimit.js";
 
 const moveSiteSchema = z.object({
   organizationId: z.string().min(1),
@@ -58,7 +59,7 @@ export async function moveSite(
     if (!targetMembership) {
       return reply.status(403).send({ error: "You are not a member of the target organization" });
     }
-    if (!isOrgAdmin(targetMembership)) {
+    if (!roleHasPermission(targetMembership.role, "sites:create")) {
       return reply.status(403).send({ error: "You must be an admin or owner of the target organization" });
     }
 
@@ -72,29 +73,40 @@ export async function moveSite(
       return reply.status(404).send({ error: "Target organization not found" });
     }
 
-    const capacityError = await withOrganizationSiteLock(targetOrganizationId, async tx => {
-      // Enforce the target organization's site limit on cloud.
-      if (IS_CLOUD) {
-        const subscription = await getSubscriptionInner(targetOrganizationId);
-        const siteLimit = subscription?.siteLimit ?? null;
-        if (siteLimit !== null) {
-          const existingSites = await tx
-            .select({ siteId: sites.siteId })
-            .from(sites)
-            .where(eq(sites.organizationId, targetOrganizationId));
-          if (existingSites.length >= siteLimit) {
-            return `The target organization has reached its limit of ${siteLimit} website${
-              siteLimit === 1 ? "" : "s"
-            }. Please upgrade it to add more.`;
-          }
-        }
+    // Resolved before the transaction: it must not wait on a second connection.
+    const [isSystemAdmin, siteLimit] = await Promise.all([
+      request.bearerAuth ? false : getIsUserAdmin(request),
+      getPlanSiteLimit(targetOrganizationId),
+    ]);
+
+    const failure = await withOrganizationSiteLock(targetOrganizationId, async tx => {
+      // The route guard checked the caller against the site's organization as
+      // it was when the request arrived; check again against the one it is in
+      // now, holding the site row so a concurrent move can't slip between.
+      const current = await lockSiteOwnership(tx, siteId);
+      if (!current || current.organizationId !== sourceOrganizationId) {
+        return { status: 409, error: "The site moved while this request was in flight; reload and try again" };
+      }
+      const sourceRole = sourceOrganizationId
+        ? higherRole(
+            effectiveOrgRole(await getOrgMembership(userId, sourceOrganizationId, tx)),
+            isSystemAdmin ? "admin" : null
+          )
+        : null;
+      if (!roleHasPermission(sourceRole, "sites:transfer")) {
+        return { status: 403, error: "Forbidden" };
       }
 
-      await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId, tx);
+      const limitError = await targetSiteLimitError(tx, targetOrganizationId, siteLimit);
+      if (limitError) return { status: 403, error: limitError };
+
+      if (!(await applySiteMove(siteId, sourceOrganizationId, targetOrganizationId, tx))) {
+        return { status: 409, error: "The site moved while this request was in flight; reload and try again" };
+      }
       return null;
     });
 
-    if (capacityError) return reply.status(403).send({ error: capacityError });
+    if (failure) return reply.status(failure.status).send({ error: failure.error });
     await invalidateSiteMoveAccess(sourceOrganizationId, targetOrganizationId);
     return reply.status(200).send({ success: true, organizationId: targetOrganizationId });
   } catch (error) {

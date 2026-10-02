@@ -5,12 +5,12 @@ import { useExtracted } from "next-intl";
 export const metadata = createMetadata({
   title: "Rybbit - Cookieless Google Analytics Replacement",
   description:
-    "Open source, cookieless web & product analytics with an 18 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed.",
+    "Open source, cookieless web & product analytics with an 11 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed.",
   openGraph: {
     images: [
       createOGImageUrl(
         "Rybbit - Cookieless Google Analytics Replacement",
-        "Open source, cookieless web & product analytics with an 18 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed."
+        "Open source, cookieless web & product analytics with an 11 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed."
       ),
     ],
   },
@@ -18,7 +18,7 @@ export const metadata = createMetadata({
     images: [
       createOGImageUrl(
         "Rybbit - Cookieless Google Analytics Replacement",
-        "Open source, cookieless web & product analytics with an 18 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed."
+        "Open source, cookieless web & product analytics with an 11 KB script and one readable dashboard. GDPR/CCPA compliant, no cookie banner needed."
       ),
     ],
   },

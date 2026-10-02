@@ -60,8 +60,27 @@ export interface SavedFunnel {
   steps: FunnelStep[];
   createdAt: string;
   updatedAt: string;
-  conversionRate: number | null;
-  totalVisitors: number | null;
+}
+
+// One saved funnel over one period, from GET /sites/:site/funnels/summary
+export interface FunnelSummary {
+  funnel_id: number;
+  steps: {
+    sessions: number;
+    // Median time from reaching this step to reaching the next; null on the
+    // last step and when nobody continued
+    median_seconds_to_next: number | null;
+  }[];
+  // Median time from the first step to the last
+  median_seconds_to_convert: number | null;
+}
+
+export interface FunnelSummariesResponse {
+  // Distinct sessions that reached the first step of at least one saved funnel
+  sessions_entered_any: number;
+  funnels: FunnelSummary[];
+  // The site has more saved funnels than one summary covers
+  truncated: boolean;
 }
 
 export interface AnalyzeFunnelParams extends CommonApiParams {

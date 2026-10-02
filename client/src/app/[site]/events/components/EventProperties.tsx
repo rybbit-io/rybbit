@@ -106,11 +106,7 @@ export function EventProperties({ properties, isLoading, selectedEvent, size = "
                         <div className="hidden group-hover:block text-neutral-500 dark:text-neutral-400">
                           {Math.round(percentage * 10) / 10}%
                         </div>
-                        <NumberFlow
-                          respectMotionPreference={false}
-                          value={property.count}
-                          format={{ notation: "compact" }}
-                        />
+                        <NumberFlow value={property.count} format={{ notation: "compact" }} />
                       </div>
                     </div>
                   </div>

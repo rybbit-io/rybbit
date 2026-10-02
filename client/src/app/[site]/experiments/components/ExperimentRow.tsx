@@ -2,6 +2,15 @@
 
 import type { Experiment, ExperimentStatus } from "@/api/analytics/endpoints";
 import { useDeleteExperiment, useUpdateExperiment } from "@/api/analytics/hooks/experiments/useExperiments";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,11 +39,22 @@ function MetaChip({ icon, children }: { icon: ReactNode; children: ReactNode }) 
   );
 }
 
-export function ExperimentRow({ experiment, experiments }: { experiment: Experiment; experiments: Experiment[] }) {
+export function ExperimentRow({
+  experiment,
+  experiments,
+  canWrite,
+}: {
+  experiment: Experiment;
+  experiments: Experiment[];
+  /** experiments:write: start, pause, complete, edit and delete. Without it the row is read-only. */
+  canWrite: boolean;
+}) {
   const t = useExtracted();
   const deleteMutation = useDeleteExperiment();
   const updateMutation = useUpdateExperiment();
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
   const primaryGoalName =
     experiment.primaryGoal?.name || (experiment.primaryGoalId ? t("Untitled goal") : t("No goal"));
 
@@ -51,11 +71,10 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
           : null;
 
   const handleDelete = async () => {
-    if (!window.confirm(t("Delete this experiment?"))) return;
-
     try {
       await deleteMutation.mutateAsync(experiment.experimentId);
       toast.success(t("Experiment deleted"));
+      setDeleteOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to delete experiment"));
     }
@@ -65,9 +84,15 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
     try {
       await updateMutation.mutateAsync({ experimentId: experiment.experimentId, payload: { status } });
       toast.success(t("Experiment updated"));
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to update experiment"));
+      return false;
     }
+  };
+
+  const handleComplete = async () => {
+    if (await setStatus("completed")) setCompleteOpen(false);
   };
 
   const isRunning = experiment.status === "running";
@@ -105,58 +130,60 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {experiment.status !== "running" && experiment.status !== "completed" && (
-            <Button size="sm" onClick={() => setStatus("running")} disabled={updateMutation.isPending}>
-              <Play className="h-3.5 w-3.5" />
-              {t("Start")}
-            </Button>
-          )}
-          {experiment.status === "running" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setStatus("paused")}
-              disabled={updateMutation.isPending}
-            >
-              <Pause className="h-3.5 w-3.5" />
-              {t("Pause")}
-            </Button>
-          )}
-          {experiment.status !== "completed" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setStatus("completed")}
-              disabled={updateMutation.isPending}
-            >
-              <Square className="h-3.5 w-3.5" />
-              {t("Complete")}
-            </Button>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="smIcon" variant="ghost" aria-label={t("Actions")}>
-                <MoreHorizontal className="h-4 w-4" />
+        {canWrite && (
+          <div className="flex shrink-0 items-center gap-2">
+            {experiment.status !== "running" && experiment.status !== "completed" && (
+              <Button size="sm" onClick={() => setStatus("running")} disabled={updateMutation.isPending}>
+                <Play className="h-3.5 w-3.5" />
+                {t("Start")}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onSelect={() => setEditOpen(true)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                {t("Edit")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={deleteMutation.isPending}
-                onSelect={handleDelete}
-                className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+            )}
+            {experiment.status === "running" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setStatus("paused")}
+                disabled={updateMutation.isPending}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t("Delete")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                <Pause className="h-3.5 w-3.5" />
+                {t("Pause")}
+              </Button>
+            )}
+            {experiment.status !== "completed" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setCompleteOpen(true)}
+                disabled={updateMutation.isPending}
+              >
+                <Square className="h-3.5 w-3.5" />
+                {t("Complete")}
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="smIcon" variant="ghost" aria-label={t("Actions")}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {t("Edit")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={deleteMutation.isPending}
+                  onSelect={() => setDeleteOpen(true)}
+                  className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t("Delete")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       <div className="p-4">
@@ -164,6 +191,62 @@ export function ExperimentRow({ experiment, experiments }: { experiment: Experim
       </div>
 
       <ExperimentDialog experiment={experiment} experiments={experiments} open={editOpen} onOpenChange={setEditOpen} />
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={open => {
+          if (!deleteMutation.isPending) setDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Delete this experiment?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('This permanently deletes "{name}". Its feature flag and goal are not deleted.', {
+                name: experiment.name,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>{t("Cancel")}</AlertDialogCancel>
+            {/* Plain Buttons, not AlertDialogAction, so these dialogs stay open until the request settles (the
+                handlers close them on success). `loading` keeps their width while pending. */}
+            <Button
+              variant="destructive"
+              loading={deleteMutation.isPending}
+              loadingLabel={t("Deleting...")}
+              onClick={handleDelete}
+            >
+              {t("Delete")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={completeOpen}
+        onOpenChange={open => {
+          if (!updateMutation.isPending) setCompleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Complete this experiment?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                'This permanently ends "{name}": a completed experiment can\'t be restarted. Its feature flag keeps serving variants until you change it.',
+                { name: experiment.name }
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateMutation.isPending}>{t("Cancel")}</AlertDialogCancel>
+            <Button loading={updateMutation.isPending} loadingLabel={t("Completing...")} onClick={handleComplete}>
+              {t("Complete experiment")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

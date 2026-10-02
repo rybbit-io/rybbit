@@ -7,6 +7,7 @@ import { sites } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { validateIPPattern } from "../../lib/ipUtils.js";
 import { detectPlatform } from "../lifecycleEmails/platformDetect.js";
+import { usageService } from "../usageService.js";
 import { siteConfig, type SiteConfigData } from "../../lib/siteConfig.js";
 
 import { claimExpiryIso } from "./claimExpiry.js";
@@ -303,6 +304,9 @@ class SiteConfigurationLifecycle {
       }
     });
     if (siteType === "web") this.detectSitePlatform(createdSite);
+    // A site added to an organization with no plan must stop collecting now, not at the next
+    // usage check.
+    usageService.requestOrganizationRefresh(createdSite.organizationId);
     return createdSite;
   }
 
@@ -416,6 +420,7 @@ class SiteConfigurationLifecycle {
 
     siteConfig.invalidate(claimedSite);
     this.detectSitePlatform(claimedSite);
+    usageService.requestOrganizationRefresh(claimedSite.organizationId);
     return claimedSite;
   }
 

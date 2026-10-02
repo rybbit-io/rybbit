@@ -1,44 +1,53 @@
 "use client";
 
-import { authClient } from "@/lib/auth";
-import { useQueryClient } from "@tanstack/react-query";
+import { Check } from "lucide-react";
+import Link from "next/link";
 import { useExtracted } from "next-intl";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
+import { authClient } from "@/lib/auth";
 import { useUpdateAccountSettings } from "../../../../api/admin/hooks/useAccountSettings";
+import { LanguageSwitcher } from "../../../../components/LanguageSwitcher";
+import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Input } from "../../../../components/ui/input";
 import { Switch } from "../../../../components/ui/switch";
+import { useActiveOrgName } from "../../../../hooks/useActiveOrgName";
 import { validateEmail } from "../../../../lib/auth-utils";
 import { IS_CLOUD } from "../../../../lib/const";
+import { DangerRow, DangerZone, LedgerRow, LedgerRows, LedgerSaveBar, LedgerSection } from "../../components/Ledger";
 import { ApiKeyManager } from "./ApiKeyManager";
 import { ChangePassword } from "./ChangePassword";
-import { DeleteAccount } from "./DeleteAccount";
-import { LanguageSwitcher } from "../../../../components/LanguageSwitcher";
-import { useSignout } from "../../../../hooks/useSignout";
+import { DeleteAccount, useHasActiveSubscription } from "./DeleteAccount";
+
+const INLINE_LINK =
+  "font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700 dark:text-neutral-100 dark:hover:text-neutral-300";
 
 export function AccountInner() {
   const session = authClient.useSession();
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const signout = useSignout();
   const updateAccountSettings = useUpdateAccountSettings();
+  const hasActiveSubscription = useHasActiveSubscription();
+  const orgName = useActiveOrgName();
   const t = useExtracted();
 
-  const [email, setEmail] = useState(session.data?.user.email ?? "");
-  const [name, setName] = useState(session.data?.user.name ?? "");
-  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
-  const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const user = session.data?.user;
+  const currentName = user?.name ?? "";
+  const currentEmail = user?.email ?? "";
+  // Returned by the server but not part of the client's inferred session type.
+  const sendAutoEmailReports = (user as { sendAutoEmailReports?: boolean } | undefined)?.sendAutoEmailReports;
 
-  useEffect(() => {
-    setEmail(session.data?.user.email ?? "");
-    setName(session.data?.user.name ?? "");
-  }, [session]);
+  // null while the field shows the saved name; a string once it has been edited.
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const name = nameDraft ?? currentName;
+  const nameDirty = nameDraft !== null && nameDraft !== currentName;
+
+  // null while the email row shows the current address; a string while a new one is being entered.
+  const [newEmail, setNewEmail] = useState<string | null>(null);
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
 
   const handleNameUpdate = async () => {
-    if (!name) {
+    if (!name.trim()) {
       toast.error(t("Name cannot be empty"));
       return;
     }
@@ -54,7 +63,8 @@ export function AccountInner() {
       }
 
       toast.success(t("Name updated successfully"));
-      session.refetch();
+      await session.refetch();
+      setNameDraft(null);
     } catch (error) {
       console.error("Error updating name:", error);
       toast.error(error instanceof Error ? error.message : t("Failed to update name"));
@@ -64,6 +74,7 @@ export function AccountInner() {
   };
 
   const handleEmailUpdate = async () => {
+    const email = newEmail ?? "";
     if (!email) {
       toast.error(t("Email cannot be empty"));
       return;
@@ -86,13 +97,13 @@ export function AccountInner() {
 
       // The email isn't changed yet — better-auth sends a confirmation link
       // to the current address if it's verified, otherwise to the new one.
-      const confirmationEmail = session.data?.user.emailVerified ? session.data.user.email : email;
+      const confirmationEmail = user?.emailVerified ? currentEmail : email;
       toast.success(
         t("A confirmation link has been sent to {email}. Your email will be updated once you confirm the change.", {
           email: confirmationEmail,
         })
       );
-      setEmail(session.data?.user.email ?? "");
+      setNewEmail(null);
     } catch (error) {
       console.error("Error updating email:", error);
       toast.error(error instanceof Error ? error.message : t("Failed to update email"));
@@ -115,95 +126,170 @@ export function AccountInner() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card className="p-2">
-        <CardHeader>
-          <CardTitle className="text-xl">{t("Account")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">{t("Name")}</h4>
-            <p className="text-xs text-neutral-500">{t("Update your name displayed across the platform")}</p>
-            <div className="flex space-x-2">
-              <Input id="name" value={name} onChange={({ target }) => setName(target.value)} placeholder="name" />
-              <Button
-                variant="outline"
-                onClick={handleNameUpdate}
-                disabled={isUpdatingName || name === session.data?.user.name}
-              >
-                {isUpdatingName ? t("Updating...") : t("Update")}
-              </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">{t("Email")}</h4>
-            <p className="text-xs text-neutral-500">{t("Update your email address for account notifications")}</p>
-            <div className="flex space-x-2">
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={({ target }) => setEmail(target.value)}
-                placeholder="email@example.com"
-              />
-              <Button
-                variant="outline"
-                onClick={handleEmailUpdate}
-                disabled={isUpdatingEmail || email === session.data?.user.email}
-              >
-                {isUpdatingEmail ? t("Updating...") : t("Update")}
-              </Button>
-            </div>
-          </div>
-          {(session.data?.user as any)?.sendAutoEmailReports !== undefined && IS_CLOUD && (
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">{t("Send Weekly Email Reports")}</h4>
-                <p className="text-xs text-neutral-500">{t("Enable or disable automatic email reports for your account.")}</p>
+    <>
+      <LedgerSection title={t("Profile")}>
+        <LedgerRows>
+          <LedgerRow label={t("Name")} description={t("Shown to teammates in member lists.")} htmlFor="account-name">
+            <Input
+              id="account-name"
+              autoComplete="name"
+              value={name}
+              onChange={({ target }) => setNameDraft(target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && nameDirty && !isUpdatingName) {
+                  e.preventDefault();
+                  handleNameUpdate();
+                }
+              }}
+              className="max-w-sm"
+            />
+          </LedgerRow>
+          <LedgerRow
+            label={t("Email")}
+            description={t("For sign-in, reports and invitations.")}
+            htmlFor={newEmail === null ? undefined : "account-new-email"}
+          >
+            {newEmail === null ? (
+              <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="min-w-0 break-all text-sm">{currentEmail}</span>
+                {user?.emailVerified && (
+                  <Badge variant="success" className="gap-1">
+                    <Check className="size-3" aria-hidden="true" />
+                    {t("Verified")}
+                  </Badge>
+                )}
+                <Button size="sm" className="ml-auto" onClick={() => setNewEmail("")}>
+                  {t("Change email")}
+                </Button>
               </div>
-              <div className="flex space-x-2">
+            ) : (
+              <form
+                className="flex flex-wrap items-center gap-2"
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleEmailUpdate();
+                }}
+              >
+                <Input
+                  id="account-new-email"
+                  type="email"
+                  autoComplete="email"
+                  autoFocus
+                  value={newEmail}
+                  onChange={({ target }) => setNewEmail(target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Escape" && !isUpdatingEmail) setNewEmail(null);
+                  }}
+                  placeholder="email@example.com"
+                  className="max-w-sm"
+                />
+                <div className="ml-auto flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setNewEmail(null)}
+                    disabled={isUpdatingEmail}
+                  >
+                    {t("Cancel")}
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="success"
+                    size="sm"
+                    loading={isUpdatingEmail}
+                    loadingLabel={t("Sending...")}
+                    disabled={!newEmail || newEmail === currentEmail}
+                  >
+                    {t("Send confirmation link")}
+                  </Button>
+                </div>
+              </form>
+            )}
+            <p className="mt-2 max-w-[62ch] text-xs leading-4 text-neutral-500 dark:text-neutral-400">
+              {user?.emailVerified
+                ? t(
+                    "To change it, we email a confirmation link to {email} first, then a link to the new address. The new address takes over once you click both.",
+                    { email: currentEmail }
+                  )
+                : t("To change it, we email a link to the new address. It takes over once you click that link.")}
+            </p>
+          </LedgerRow>
+        </LedgerRows>
+        <LedgerSaveBar
+          dirty={nameDirty}
+          saving={isUpdatingName}
+          onCancel={() => setNameDraft(null)}
+          onSave={handleNameUpdate}
+        />
+      </LedgerSection>
+
+      <LedgerSection title={t("Preferences")}>
+        <LedgerRows>
+          {sendAutoEmailReports !== undefined && IS_CLOUD && (
+            <LedgerRow
+              label={t("Weekly email reports")}
+              description={t("A traffic summary for each site you can access.")}
+              htmlFor="account-email-reports"
+            >
+              <div className="flex min-h-9 items-center gap-3">
                 <Switch
-                  checked={(session.data?.user as any).sendAutoEmailReports}
+                  id="account-email-reports"
+                  checked={sendAutoEmailReports}
                   onCheckedChange={handleEmailReportsToggle}
                   disabled={updateAccountSettings.isPending}
                 />
+                <span className="min-w-0 break-words text-sm text-neutral-500 dark:text-neutral-400">
+                  {sendAutoEmailReports ? t("On, sent to {email}", { email: currentEmail }) : t("Off")}
+                </span>
               </div>
-            </div>
+            </LedgerRow>
           )}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">{t("Language")}</h4>
-            <p className="text-xs text-neutral-500">{t("Select your preferred language")}</p>
+          <LedgerRow label={t("Language")} description={t("For menus and labels.")}>
             <LanguageSwitcher />
-          </div>
-          <Button variant="outline" onClick={signout}>
-            {t("Sign out")}
-          </Button>
-        </CardContent>
-      </Card>
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
 
-      <Card className="p-2">
-        <CardHeader>
-          <CardTitle className="text-xl">{t("Security")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">{t("Password")}</h4>
-            <p className="text-xs text-neutral-500">{t("Change your account password")}</p>
-            <div className="w-[200px]">
+      <LedgerSection title={t("Sign-in & security")}>
+        <LedgerRows>
+          <LedgerRow label={t("Password")} description={t("Used with your email to sign in.")}>
+            <div className="flex min-h-9 items-center justify-end">
               <ChangePassword />
             </div>
-          </div>
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
 
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-red-500">{t("Danger Zone")}</h4>
-            <p className="text-xs text-neutral-500">{t("Permanently delete your account and all associated data")}</p>
-            <div className="w-[200px]">
-              <DeleteAccount />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
       <ApiKeyManager />
-    </div>
+
+      <DangerZone>
+        <DangerRow
+          label={t("Delete account")}
+          description={t("Permanent. There is no undo.")}
+          consequence={
+            <>
+              {t(
+                "Deletes your profile, your sign-in and your personal API keys, and removes you from every organization."
+              )}
+              {hasActiveSubscription && (
+                <>
+                  {" "}
+                  {t.rich("{name} has an active subscription, so cancel it in <link>Billing</link> first.", {
+                    name: orgName ?? t("Your organization"),
+                    link: chunks => (
+                      <Link href="/settings/billing" className={INLINE_LINK}>
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
+                </>
+              )}
+            </>
+          }
+          action={<DeleteAccount />}
+        />
+      </DangerZone>
+    </>
   );
 }

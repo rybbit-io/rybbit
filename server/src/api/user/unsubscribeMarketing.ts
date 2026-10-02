@@ -3,16 +3,8 @@ import { eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "../../db/postgres/postgres.js";
 import { user } from "../../db/postgres/schema.js";
-import { cancelScheduledEmail, unsubscribeContact } from "../../lib/email/email.js";
+import { unsubscribeContact } from "../../lib/email/email.js";
 import { verifyExpiringPayload } from "../../lib/signedToken.js";
-
-// Cancel tip emails pre-scheduled in Resend for users who signed up before the
-// lifecycle email system replaced the fixed drip. Remove once those have aged out.
-const cancelLegacyScheduledTips = async (emailIds: string[]): Promise<void> => {
-  for (const emailId of emailIds) {
-    await cancelScheduledEmail(emailId);
-  }
-};
 
 // Authenticated user unsubscribe
 export const unsubscribeMarketing = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -26,7 +18,6 @@ export const unsubscribeMarketing = async (request: FastifyRequest, reply: Fasti
     const [userData] = await db
       .select({
         email: user.email,
-        scheduledTipEmailIds: user.scheduledTipEmailIds,
       })
       .from(user)
       .where(eq(user.id, userId));
@@ -34,19 +25,6 @@ export const unsubscribeMarketing = async (request: FastifyRequest, reply: Fasti
     if (!userData) {
       return reply.status(404).send({ error: "User not found" });
     }
-
-    // Cancel scheduled tip emails
-    const emailIds = (userData.scheduledTipEmailIds as string[]) || [];
-    await cancelLegacyScheduledTips(emailIds);
-
-    // Clear the scheduled email IDs
-    await db
-      .update(user)
-      .set({
-        scheduledTipEmailIds: [],
-        updatedAt: DateTime.now().toISO(),
-      })
-      .where(eq(user.id, userId));
 
     // Mark contact as unsubscribed in Resend
     await unsubscribeContact(userData.email);
@@ -97,30 +75,6 @@ export const oneClickUnsubscribeMarketing = async (
         `);
       }
       return reply.status(400).send({ error: "Email is required" });
-    }
-
-    // Find user by email
-    const [userData] = await db
-      .select({
-        id: user.id,
-        scheduledTipEmailIds: user.scheduledTipEmailIds,
-      })
-      .from(user)
-      .where(eq(user.email, email));
-
-    if (userData) {
-      // Cancel scheduled tip emails
-      const emailIds = (userData.scheduledTipEmailIds as string[]) || [];
-      await cancelLegacyScheduledTips(emailIds);
-
-      // Clear the scheduled email IDs
-      await db
-        .update(user)
-        .set({
-          scheduledTipEmailIds: [],
-          updatedAt: DateTime.now().toISO(),
-        })
-        .where(eq(user.id, userData.id));
     }
 
     // Mark contact as unsubscribed in Resend (even if user not found in our DB)

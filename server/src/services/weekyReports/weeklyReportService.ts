@@ -1,3 +1,4 @@
+import { isAdminRole, isOrgRole } from "@rybbit/shared";
 import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { eq } from "drizzle-orm";
@@ -204,9 +205,15 @@ class WeeklyReportService {
           continue;
         }
 
+        // A membership whose role isn't one Rybbit knows reaches nothing
+        // (the same rule the request-time resolver applies).
+        if (!isOrgRole(memberData.role)) {
+          continue;
+        }
+
         // Only report on sites the member can actually access
         let allowedSites = report.sites;
-        if (memberData.role === "member") {
+        if (!isAdminRole(memberData.role)) {
           allowedSites = await filterSitesByMemberAccess(
             report.sites,
             report.organizationId,

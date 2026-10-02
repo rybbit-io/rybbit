@@ -182,9 +182,13 @@ export const fieldsInput = z
 
 export const organizationIdInput = z.string().min(1).describe("Organization ID from list_sites");
 
+// Kept in sync with ORG_ROLES in @rybbit/shared permissions.ts (inlined like
+// the other enums here).
 export const memberRoleInput = z
-  .enum(["admin", "member", "owner"])
-  .describe("Role in the organization; only an owner key can grant 'owner'");
+  .enum(["owner", "admin", "editor", "member", "viewer"])
+  .describe(
+    "Role in the organization, highest first: owner, admin, editor (configures sites), member (builds reports), viewer (read only). Nobody can grant a role above their own."
+  );
 
 export const propertyFilterInput = z.object({
   key: z.string(),

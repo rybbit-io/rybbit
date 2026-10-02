@@ -24,6 +24,7 @@ import { EventTypeIcon } from "../../../../components/EventIcons";
 import { EventTrackingNotice } from "../../../../components/EventTrackingNotice";
 import { isAutocaptureTargetType, targetTypeToEventType } from "../../../../lib/events";
 import { Funnel } from "./Funnel";
+import { metricsFromAnalysis } from "./funnelMetrics";
 
 const URL_PATTERN = /^(https?:\/\/|www\.|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\/)/i;
 
@@ -495,7 +496,11 @@ export function FunnelForm({
 
   let funnelArea = null;
   if (funnelData && funnelData.length) {
-    funnelArea = <Funnel data={funnelData} isError={isError} error={error} isPending={isPending} steps={steps} />;
+    funnelArea = (
+      <div className="pt-3">
+        <Funnel steps={steps} metrics={metricsFromAnalysis(funnelData)} />
+      </div>
+    );
   } else {
     funnelArea = (
       <div className="flex flex-1 items-center justify-center py-16">

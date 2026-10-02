@@ -1,20 +1,51 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { PaidPlan } from "../../../components/subscription/PaidPlain/PaidPlan";
-import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscription";
-import { NoOrganization } from "../../../components/NoOrganization";
-import { ExpiredTrialPlan } from "../../../components/subscription/ExpiredTrialPlan";
-import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
-import { FreePlan } from "../../../components/subscription/FreePlan";
-import { OverridePlan } from "../../../components/subscription/OverridePlan";
-import { CustomPlan } from "../../../components/subscription/CustomPlan";
-import { Building } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { authClient } from "@/lib/auth";
 import { useEffect } from "react";
-import { AppSumoPlan } from "../../../components/subscription/AppSumoPlan";
+import { NoOrganization } from "@/components/NoOrganization";
+import { AppSumoPlan } from "@/components/subscription/AppSumoPlan";
+import { CustomPlan } from "@/components/subscription/CustomPlan";
+import { ExpiredTrialPlan } from "@/components/subscription/ExpiredTrialPlan";
+import { FreePlan } from "@/components/subscription/FreePlan";
+import { OverridePlan } from "@/components/subscription/OverridePlan";
+import { PaidPlan } from "@/components/subscription/PaidPlain/PaidPlan";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCanInOrg } from "@/hooks/usePermissions";
+import { useSetPageTitle } from "@/hooks/useSetPageTitle";
+import { authClient } from "@/lib/auth";
+import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
+import { LedgerRow, LedgerRows, LedgerSection } from "../components/Ledger";
+
+function BillingSkeleton() {
+  const t = useExtracted();
+  return (
+    <>
+      <LedgerSection title={t("Plan")}>
+        <LedgerRows>
+          <LedgerRow label={t("Current plan")}>
+            <div className="space-y-2 md:pt-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+      <LedgerSection title={t("Usage this month")}>
+        <LedgerRows>
+          <LedgerRow label={t("Events")}>
+            <div className="space-y-3 md:pt-2">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-1.5 w-full" />
+            </div>
+          </LedgerRow>
+          <LedgerRow label={t("Sites")}>
+            <Skeleton className="h-4 w-24 md:mt-2" />
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+    </>
+  );
+}
 
 export default function OrganizationBillingPage() {
   useSetPageTitle("Organization Billing");
@@ -31,76 +62,57 @@ export default function OrganizationBillingPage() {
     }
   }, [session?.user?.email]);
 
-  // Check if the current user is an owner by looking at the members in the active organization
-  const currentUserMember = activeOrg?.members?.find(member => member.userId === session?.user?.id);
-  const isOwner = currentUserMember?.role === "owner";
+  const canManageBilling = useCanInOrg("billing:manage", activeOrg?.id);
 
   const isLoading = isLoadingSubscription || isPending;
 
-  // Determine which plan to display
-  const renderPlanComponent = () => {
-    if (!activeOrg && !isPending) {
-      return <NoOrganization message={t("You need to select an organization to manage your subscription.")} />;
-    }
+  if (isLoading) {
+    return <BillingSkeleton />;
+  }
 
-    if (!isOwner) {
-      return (
-        <Card className="p-6 flex flex-col items-center text-center w-full">
-          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <Building className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="mb-2 text-xl">{t("Not an owner")}</CardTitle>
-          <CardDescription className="mb-6">
-            {t("Only the owner of the organization can manage the subscription.")}
-          </CardDescription>
-        </Card>
-      );
-    }
+  if (!activeOrg && !isPending) {
+    return <NoOrganization message={t("You need to select an organization to manage your subscription.")} />;
+  }
 
-    if (!activeSubscription) {
-      return <ExpiredTrialPlan />;
-    }
+  if (!canManageBilling) {
+    return (
+      <LedgerSection title={t("Plan")}>
+        <LedgerRows>
+          <LedgerRow label={t("Not an owner")}>
+            <p className="text-sm text-neutral-700 md:pt-2 dark:text-neutral-300">
+              {t("Only the owner of the organization can manage the subscription.")}
+            </p>
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+    );
+  }
 
-    // Check if trial expired
-    if (activeSubscription.status === "expired") {
-      return <ExpiredTrialPlan message={activeSubscription.message} />;
-    }
+  if (!activeSubscription) {
+    return <ExpiredTrialPlan />;
+  }
 
-    // Check if user is on free plan
-    if (activeSubscription.status === "free") {
-      return <FreePlan />;
-    }
+  // Check if trial expired
+  if (activeSubscription.status === "expired") {
+    return <ExpiredTrialPlan message={activeSubscription.message} />;
+  }
 
-    if (activeSubscription.planName === "custom") {
-      return <CustomPlan />;
-    }
+  // Check if user is on free plan
+  if (activeSubscription.status === "free") {
+    return <FreePlan />;
+  }
 
-    if (activeSubscription.planName.startsWith("appsumo")) {
-      return <AppSumoPlan />;
-    }
+  if (activeSubscription.planName === "custom") {
+    return <CustomPlan />;
+  }
 
-    if (activeSubscription.isOverride) {
-      return <OverridePlan />;
-    }
+  if (activeSubscription.planName.startsWith("appsumo")) {
+    return <AppSumoPlan />;
+  }
 
-    return <PaidPlan />;
-  };
+  if (activeSubscription.isOverride) {
+    return <OverridePlan />;
+  }
 
-  return (
-    <div className="space-y-6">
-      {isLoading ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-4 w-[200px]" />
-              <Skeleton className="h-20 w-full mt-4" />
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        renderPlanComponent()
-      )}
-    </div>
-  );
+  return <PaidPlan />;
 }

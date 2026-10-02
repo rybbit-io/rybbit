@@ -6,6 +6,7 @@ import { ErrorNameItem } from "@/api/analytics/endpoints";
 import { Pagination } from "@/components/pagination";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { SubHeader } from "../components/SubHeader/SubHeader";
@@ -46,8 +47,6 @@ export default function Errors() {
 
   const errorsDataArray: ErrorNameItem[] | undefined = apiResponse?.data;
   const totalCount: number | undefined = apiResponse?.totalCount;
-
-  const isLoading = isLoadingErrors || isFetching;
 
   // Create a minimal table object with the required pagination methods
   const table = {
@@ -104,7 +103,9 @@ export default function Errors() {
         <SubHeader />
         <EnableErrorTracking />
 
-        {isLoading ? (
+        {/* Skeleton on the first load only. A new page, filter or time range keeps the previous list
+            on screen (placeholder data), dimmed until the answer arrives. */}
+        {isLoadingErrors ? (
           <ErrorListSkeleton count={pagination.pageSize} />
         ) : isErrorErrors ? (
           <div className="text-center p-8 text-destructive">
@@ -113,26 +114,28 @@ export default function Errors() {
           </div>
         ) : errorsDataArray && errorsDataArray.length > 0 ? (
           <>
-            {errorsDataArray.map((errorItem: ErrorNameItem, index: number) => (
-              <ErrorListItem key={`${errorItem.value}-${index}-${pagination.pageIndex}`} errorData={errorItem} />
-            ))}
+            <div aria-busy={isFetching} className={cn("transition-opacity", isPlaceholderData && "opacity-60")}>
+              {errorsDataArray.map((errorItem: ErrorNameItem, index: number) => (
+                <ErrorListItem key={`${errorItem.value}-${index}-${pagination.pageIndex}`} errorData={errorItem} />
+              ))}
+            </div>
             {totalPages > 0 && (
               <Pagination
                 table={table}
                 data={{ items: errorsDataArray || [], total: totalCount || 0 }}
                 pagination={pagination}
                 setPagination={setPagination}
-                isLoading={isLoading}
-                itemName="errors"
+                isLoading={isPlaceholderData}
+                itemName={t("errors")}
               />
             )}
           </>
-        ) : !isLoadingErrors && !isFetching ? (
+        ) : (
           <NothingFound
             title={t("No error events found")}
             description={t("Errors will appear here once error tracking is enabled and errors occur on your site.")}
           />
-        ) : null}
+        )}
       </div>
     </DisabledOverlay>
   );

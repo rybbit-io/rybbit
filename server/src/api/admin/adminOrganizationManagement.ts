@@ -1,12 +1,14 @@
+import { isAdminRole, ORG_ROLES, SITE_GRANT_ROLES } from "@rybbit/shared";
 import { and, count, desc, eq, ilike, ne, or } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { db } from "../../db/postgres/postgres.js";
 import { member, memberSiteAccess, organization, sites, user } from "../../db/postgres/schema.js";
-import { siteIdsInOrganization } from "../../lib/access.js";
+import { grantRoleForRewrite, siteIdsInOrganization } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 import { APPSUMO_TIER_LIMITS, getStripePrices } from "../../lib/const.js";
+import { usageService } from "../../services/usageService.js";
 
 const organizationOptionsQuerySchema = z.object({
   search: z.string().trim().max(200).optional().default(""),
@@ -121,6 +123,7 @@ export async function updateAdminSubscriptionOverride(
           : { planOverride: null, customPlan: value.customPlan };
 
     await db.update(organization).set(update).where(eq(organization.id, org.id));
+    usageService.requestOrganizationRefresh(org.id);
     return reply.send({ success: true, ...update });
   } catch (error) {
     request.log.error({ err: error }, "Failed to update subscription override");
@@ -198,12 +201,14 @@ export async function getAdminOrganizationMember(
 
 const updateMemberSchema = z
   .object({
-    role: z.enum(["owner", "admin", "member"]),
+    role: z.enum(ORG_ROLES),
     hasRestrictedSiteAccess: z.boolean(),
     siteIds: z.array(z.number().int().positive()).max(500),
+    // Role on the granted sites; omit to keep what each grant already carries.
+    siteRole: z.enum(SITE_GRANT_ROLES).nullable().optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.role === "member" && value.hasRestrictedSiteAccess && value.siteIds.length === 0) {
+    if (!isAdminRole(value.role) && value.hasRestrictedSiteAccess && value.siteIds.length === 0) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["siteIds"], message: "Select at least one site" });
     }
   });
@@ -240,7 +245,7 @@ export async function updateAdminOrganizationMember(
       return reply.status(400).send({ error: "An organization must have at least one owner" });
     }
 
-    const restricted = value.role === "member" && value.hasRestrictedSiteAccess;
+    const restricted = !isAdminRole(value.role) && value.hasRestrictedSiteAccess;
     const requestedSiteIds = restricted ? [...new Set(value.siteIds)] : [];
     const validSiteIds = new Set(await siteIdsInOrganization(requestedSiteIds, found.organizationId));
     if (requestedSiteIds.some(siteId => !validSiteIds.has(siteId))) {
@@ -248,6 +253,8 @@ export async function updateAdminOrganizationMember(
     }
 
     await db.transaction(async tx => {
+      const roleFor = await grantRoleForRewrite(tx, found.memberId, value.siteRole);
+
       await tx
         .update(member)
         .set({ role: value.role, hasRestrictedSiteAccess: restricted })
@@ -258,6 +265,7 @@ export async function updateAdminOrganizationMember(
           requestedSiteIds.map(siteId => ({
             memberId: found.memberId,
             siteId,
+            role: roleFor(siteId),
             createdBy: request.user?.id ?? null,
           }))
         );

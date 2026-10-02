@@ -1,12 +1,13 @@
+import { isAdminRole, permissionsForRole } from "@rybbit/shared";
 import { eq } from "drizzle-orm";
 import { FastifyRequest, FastifyReply } from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
-import { sites, organization, team, teamSiteAccess } from "../../db/postgres/schema.js";
+import { organization, team, teamSiteAccess } from "../../db/postgres/schema.js";
 import { DEFAULT_EVENT_LIMIT, IS_CLOUD, LITE_DASHBOARD } from "../../lib/const.js";
-import { getUserIdFromRequest } from "../../lib/auth-utils.js";
-import { filterSitesByMemberAccess, getOrgMembership } from "../../lib/access.js";
+import { getOrganizationSitesForCaller } from "../../lib/auth-utils.js";
 import { processResults } from "../analytics/utils/utils.js";
+import { siteRequiresPlan } from "../../lib/subscriptionUtils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 import { buildSiteSessionCountsQuery } from "./siteSessionCountsQuery.js";
 
@@ -21,28 +22,12 @@ export async function getSitesFromOrg(
   try {
     const { organizationId } = req.params;
 
-    // Use session user ID, falling back to API key user ID
-    const userId = req.user?.id ?? (await getUserIdFromRequest(req));
-
-    // Run all database queries concurrently
-    const [memberRecord, allSitesData, orgInfo] = await Promise.all([
-      getOrgMembership(userId, organizationId),
-      db.select().from(sites).where(eq(sites.organizationId, organizationId)),
+    // The organization's sites the caller can reach, each with their role on
+    // it — member and team restrictions already applied.
+    const [sitesData, orgInfo] = await Promise.all([
+      getOrganizationSitesForCaller(req, organizationId),
       db.select().from(organization).where(eq(organization.id, organizationId)).limit(1),
     ]);
-
-    // Filter sites based on member's access restrictions and teams
-    let sitesData = allSitesData;
-
-    if (memberRecord?.role === "member" && userId) {
-      sitesData = await filterSitesByMemberAccess(
-        allSitesData,
-        organizationId,
-        userId,
-        memberRecord.id,
-        memberRecord.hasRestrictedSiteAccess
-      );
-    }
 
     // Query session counts for the sites
     const sessionCountMap = new Map<number, number>();
@@ -102,13 +87,18 @@ export async function getSitesFromOrg(
     // apiKey and privateLinkKey are secrets (ingestion auth / private-link
     // dashboard access) and must not be exposed to org members here — the
     // client reads them from the admin-gated per-site endpoints instead.
-    const enhancedSitesData = sitesData.map(({ apiKey, privateLinkKey, ...site }) => ({
+    const enhancedSitesData = sitesData.map(({ apiKey, privateLinkKey, accessRole, ...site }) => ({
       ...site,
       type: site.type || "web",
       domain: site.domain || "",
       sessionsLast24Hours: sessionCountMap.get(site.siteId) || 0,
-      isOwner: memberRecord?.role !== "member",
+      isOwner: isAdminRole(accessRole),
+      // The caller's role on this site and what it allows (a bearer
+      // credential's scopes may narrow that further).
+      role: accessRole,
+      permissions: permissionsForRole(accessRole),
       teams: siteTeamMap.get(site.siteId) || [],
+      requiresPlan: siteRequiresPlan(subscription, site.createdAt),
     }));
 
     // Sort by sessions descending
@@ -116,6 +106,9 @@ export async function getSitesFromOrg(
 
     return res.status(200).send({
       organization: orgInfo[0] || null,
+      // The caller's role in the organization, from the route guard.
+      role: req.accessRole ?? null,
+      permissions: permissionsForRole(req.accessRole),
       sites: enhancedSitesData,
       subscription: {
         monthlyEventCount,

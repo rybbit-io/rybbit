@@ -3,6 +3,7 @@
 import { useExtracted } from "next-intl";
 import { ErrorEvent } from "@/api/analytics/endpoints";
 import { useGetErrorEventsInfinite } from "@/api/analytics/hooks/errors/useGetErrorEvents";
+import { CopyButton } from "@/components/interior/copy-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -113,16 +114,11 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
           </Link>
         </div>
         <div className="flex items-center gap-2">
-
-
           {errorEvent.user_id && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href={`/${site}/user/${encodeURIComponent(errorEvent.user_id)}`}>
-                  <Avatar
-                    size={24}
-                    id={errorEvent.user_id}
-                  />
+                  <Avatar size={24} id={errorEvent.user_id} />
                 </Link>
               </TooltipTrigger>
               <TooltipContent>User ID: {errorEvent.user_id}</TooltipContent>
@@ -172,9 +168,19 @@ function ErrorEventItem({ errorEvent }: { errorEvent: ErrorEvent }) {
                   </div>
                 </div>
               )}
-              <pre className="text-xs text-neutral-900 dark:text-neutral-100 bg-neutral-200 dark:bg-neutral-800 p-2 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word">
-                {errorEvent.stack}
-              </pre>
+              <div className="relative">
+                <pre className="text-xs text-neutral-900 dark:text-neutral-100 bg-neutral-200 dark:bg-neutral-800 p-2 pr-9 rounded overflow-x-auto whitespace-pre-wrap wrap-break-word">
+                  {errorEvent.stack}
+                </pre>
+                <CopyButton
+                  iconOnly
+                  size="xs"
+                  tooltip
+                  value={errorEvent.stack}
+                  label={t("Copy stack trace")}
+                  className="absolute right-1 top-1"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -311,7 +317,10 @@ export function ErrorDetails({ errorMessage }: ErrorDetailsProps) {
 
       {totalCount > 0 && (
         <div className="text-center text-xs text-neutral-500 dark:text-neutral-500 mt-2">
-          {t("Showing {shown} of {total} error events", { shown: String(allErrorEvents.length), total: String(totalCount) })}
+          {t("Showing {shown} of {total} error events", {
+            shown: String(allErrorEvents.length),
+            total: String(totalCount),
+          })}
         </div>
       )}
     </div>

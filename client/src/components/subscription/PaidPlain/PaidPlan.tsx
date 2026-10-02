@@ -1,22 +1,28 @@
-import { Clock, Shield } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { useExtracted, useLocale } from "next-intl";
 import { useState } from "react";
+import { DangerRow, DangerZone, LedgerRow, LedgerRows, LedgerSection } from "@/app/settings/components/Ledger";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
-import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
-import { Button } from "../../ui/button";
-import { Card, CardContent } from "../../ui/card";
-import { BACKEND_URL } from "../../../lib/const";
-import { getPlanType, getStripePrices } from "../../../lib/stripe";
-import { formatDate } from "../../../lib/subscription/planUtils";
-import { useStripeSubscription } from "../../../lib/subscription/useStripeSubscription";
-import { UsageChart } from "../../UsageChart";
 import { authClient } from "@/lib/auth";
-import { InvoicesCard } from "../components/InvoicesCard";
-import { UsageCards } from "../components/UsageCards";
-import { CancellationDialog } from "./CancellationDialog";
+import { BACKEND_URL } from "@/lib/const";
+import { getPlanType, getStripePrices } from "@/lib/stripe";
+import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
+import { InvoicesSection } from "../components/InvoicesSection";
 import { PlanDialog } from "../components/PlanDialog";
+import { PlanAllowances, PlanSection } from "../components/PlanSection";
+import { UsageHistorySection } from "../components/UsageHistorySection";
+import { UsageSection } from "../components/UsageSection";
+import { CancellationDialog } from "./CancellationDialog";
+
+const DANGER_BUTTON =
+  "text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-400";
 
 export function PaidPlan() {
-  const { data: activeSubscription, isLoading, error: subscriptionError, refetch } = useStripeSubscription();
+  const t = useExtracted();
+  const locale = useLocale();
+  const { data: activeSubscription } = useStripeSubscription();
 
   const { data: activeOrg } = authClient.useActiveOrganization();
   const organizationId = activeOrg?.id;
@@ -26,29 +32,9 @@ export function PaidPlan() {
   const [showPlanDialog, setShowPlanDialog] = useState(false);
   const [showCancellationDialog, setShowCancellationDialog] = useState(false);
 
-  const isTrial = !!activeSubscription?.isTrial;
-  const trialDaysRemaining = activeSubscription?.trialDaysRemaining || 0;
-
-  const eventLimit = activeSubscription?.eventLimit || 0;
-  const currentUsage = activeSubscription?.monthlyEventCount || 0;
-  const isAnnualPlan = activeSubscription?.interval === "year";
-
-  const stripePlan = getStripePrices().find(p => p.name === activeSubscription?.planName);
-
-  const planType = activeSubscription ? getPlanType(activeSubscription.planName) : null;
-
-  const currentPlanDetails = activeSubscription
-    ? {
-      id: planType,
-      name: planType,
-      price: `$${stripePlan?.price}`,
-      interval: stripePlan?.interval,
-    }
-    : null;
-
   const createPortalSession = async (flowType?: string) => {
     if (!organizationId) {
-      toast.error("No organization selected");
+      toast.error(t("No organization selected"));
       return;
     }
 
@@ -71,18 +57,19 @@ export function PaidPlan() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create portal session.");
+        throw new Error(data.error || t("Failed to create portal session."));
       }
 
       if (data.portalUrl) {
         window.location.href = data.portalUrl;
       } else {
-        throw new Error("Portal URL not received.");
+        throw new Error(t("Portal URL not received."));
       }
     } catch (err: any) {
       console.error("Portal Session Error:", err);
-      setActionError(err.message || "Could not open billing portal.");
-      toast.error(`Error: ${err.message || "Could not open billing portal."}`);
+      const message = err.message || t("Could not open billing portal.");
+      setActionError(message);
+      toast.error(t("Error: {message}", { message }));
     } finally {
       setIsProcessing(false);
     }
@@ -91,41 +78,87 @@ export function PaidPlan() {
   const handleChangePlan = () => setShowPlanDialog(true);
   const handleCancelSubscription = () => setShowCancellationDialog(true);
 
-  const getFormattedPrice = () => {
-    if (!currentPlanDetails) return "$0/month";
-    return `${currentPlanDetails.price}/${currentPlanDetails.interval === "year" ? "year" : "month"}`;
-  };
-
-  const formatRenewalDate = () => {
-    if (!activeSubscription?.currentPeriodEnd) return "N/A";
-    const formattedDate = formatDate(activeSubscription.currentPeriodEnd);
-
-    if (activeSubscription.cancelAtPeriodEnd) {
-      return `Cancels on ${formattedDate}`;
-    }
-    if (activeSubscription.status === "trialing") {
-      return `Trial ends on ${formattedDate}`;
-    }
-    if (activeSubscription.status === "active") {
-      return isAnnualPlan ? `Renews annually on ${formattedDate}` : `Renews monthly on ${formattedDate}`;
-    }
-    return `Status: ${activeSubscription.status}, ends/renews ${formattedDate}`;
-  };
-
   if (!activeSubscription) {
     return null;
   }
 
+  const isTrial = !!activeSubscription.isTrial;
+  const trialDaysRemaining = activeSubscription.trialDaysRemaining || 0;
+  const isAnnualPlan = activeSubscription.interval === "year";
+
+  const stripePlan = getStripePrices().find(p => p.name === activeSubscription.planName);
+  const planType = getPlanType(activeSubscription.planName);
+  const planName = stripePlan ? `${planType} ${stripePlan.shortName}` : planType;
+
+  const priceAmount = stripePlan
+    ? new Intl.NumberFormat(locale, { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(
+        stripePlan.price
+      )
+    : null;
+  const price = priceAmount
+    ? stripePlan?.interval === "year"
+      ? t("{price}/year", { price: priceAmount })
+      : t("{price}/month", { price: priceAmount })
+    : null;
+
+  const periodEnd = activeSubscription.currentPeriodEnd
+    ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(activeSubscription.currentPeriodEnd))
+    : null;
+
+  // What happens at the end of the current period, trial status folded in.
+  const getStatusLine = () => {
+    if (!periodEnd) return null;
+    if (activeSubscription.cancelAtPeriodEnd) {
+      return t("Cancels on {date}.", { date: periodEnd });
+    }
+    if (activeSubscription.status === "trialing") {
+      return trialDaysRemaining > 0
+        ? t("Your trial ends in {count, plural, one {# day} other {# days}}, on {date}.", {
+            count: trialDaysRemaining,
+            date: periodEnd,
+          })
+        : t("Your trial ends today. Upgrade to continue tracking.");
+    }
+    if (activeSubscription.status === "active") {
+      return isAnnualPlan
+        ? t("Renews annually on {date}.", { date: periodEnd })
+        : t("Renews monthly on {date}.", { date: periodEnd });
+    }
+    return t("Status: {status}. Ends or renews on {date}.", { status: activeSubscription.status, date: periodEnd });
+  };
+
+  const getCancelConsequence = () => {
+    // Without another plan the organization drops to the legacy free tier, which only sites created
+    // before the free plan closed still get (FREE_PLAN_CUTOFF_DATE and DEFAULT_EVENT_LIMIT on the server).
+    const after = t(
+      "After that, unless the organization has another plan such as an AppSumo license, sites added since {cutoff} stop collecting new events and older sites drop to {limit} events a month. Data already collected is kept.",
+      {
+        cutoff: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
+          new Date("2026-02-13T00:00:00Z")
+        ),
+        limit: (3000).toLocaleString(locale),
+      }
+    );
+    if (!periodEnd) return after;
+    if (activeSubscription.cancelAtPeriodEnd) {
+      return `${t("{plan} is already set to cancel on {date}.", { plan: planName, date: periodEnd })} ${after}`;
+    }
+    if (isTrial) {
+      return `${t("Your trial stays active until {date} and you won't be charged.", { date: periodEnd })} ${after}`;
+    }
+    return `${t("{plan} stays active until {date} and you won't be charged again.", { plan: planName, date: periodEnd })} ${after}`;
+  };
+
   return (
-    <div className="space-y-6">
+    <>
       {actionError && <Alert variant="destructive">{actionError}</Alert>}
       <PlanDialog
         open={showPlanDialog}
         onOpenChange={setShowPlanDialog}
-        currentPlanName={activeSubscription?.planName}
-        hasActiveSubscription={!!activeSubscription}
+        currentPlanName={activeSubscription.planName}
+        hasActiveSubscription
       />
-      {activeSubscription && organizationId && (
+      {organizationId && (
         <CancellationDialog
           open={showCancellationDialog}
           onOpenChange={setShowCancellationDialog}
@@ -135,90 +168,74 @@ export function PaidPlan() {
           onChangePlan={handleChangePlan}
         />
       )}
-      <Card>
-        <CardContent>
-          <div className="space-y-6 mt-3 p-2">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <p className="text-3xl font-bold">{currentPlanDetails?.name || activeSubscription.planName} </p>
-                <p className="text text-neutral-600 dark:text-neutral-300">
-                  {getFormattedPrice()} • {activeSubscription.eventLimit.toLocaleString()} events
-                </p>
-                {isAnnualPlan && (
-                  <div className="mt-2 text-sm text-emerald-400">
-                    <p>You save by paying annually (4 months free)</p>
-                  </div>
-                )}
-                <p className="text-neutral-400 text-sm">{formatRenewalDate()}</p>
-              </div>
-              <div className="space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => createPortalSession("payment_method_update")}
-                  disabled={isProcessing}
-                >
-                  Manage Payment Details
-                </Button>
-                <Button variant="success" onClick={handleChangePlan}>
-                  Change Plan
-                </Button>
-              </div>
-            </div>
-            {currentUsage >= eventLimit && (
-              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
-                    <strong>Usage limit reached!</strong> You've exceeded your plan's event limit.
-                  </p>
-                  <Button variant="success" size="sm" onClick={handleChangePlan}>
-                    Upgrade Plan
-                  </Button>
-                </div>
-              </div>
-            )}
-            <UsageCards />
 
-            {organizationId && <UsageChart organizationId={organizationId} />}
+      <PlanSection
+        name={planName}
+        price={price}
+        description={
+          isTrial ? t("Free trial.") : isAnnualPlan ? t("Billed annually, 4 months free.") : t("Billed monthly.")
+        }
+        status={getStatusLine()}
+        details={<PlanAllowances subscription={activeSubscription} />}
+        action={
+          <Button variant="success" onClick={handleChangePlan}>
+            {t("Change plan")}
+          </Button>
+        }
+      />
 
-            {isTrial && (
-              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                <Clock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                <AlertTitle>Trial Status</AlertTitle>
-                <AlertDescription>
-                  {trialDaysRemaining > 0 ? (
-                    <>Your trial ends in <strong>{trialDaysRemaining} days</strong> on {formatDate(activeSubscription.currentPeriodEnd)}.</>
-                  ) : (
-                    <>Your trial ends today. Upgrade to continue tracking.</>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
+      <UsageSection
+        subscription={activeSubscription}
+        planName={planType}
+        overLimitAction={
+          <Button variant="success" size="sm" onClick={handleChangePlan}>
+            {t("Upgrade plan")}
+          </Button>
+        }
+      />
 
-            {isAnnualPlan && !isTrial && (
-              <div className="pt-2 pb-0 px-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md border border-emerald-100 dark:border-emerald-800">
-                <p className="text-sm text-emerald-700 dark:text-emerald-300 py-2">
-                  <strong>Annual Billing:</strong> You're on annual billing which saves you money compared to monthly
-                  billing. Your subscription will renew once per year on{" "}
-                  {formatDate(activeSubscription.currentPeriodEnd)}.
-                </p>
-              </div>
-            )}
+      {organizationId && <UsageHistorySection organizationId={organizationId} />}
 
-            <div className="flex justify-end pt-2 border-t border-neutral-200 dark:border-neutral-800">
+      <LedgerSection title={t("Payment")}>
+        <LedgerRows>
+          <LedgerRow label={t("Payment method")} description={t("Charged on each renewal.")}>
+            <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2">
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                {t("Your card and billing email are managed in Stripe.")}
+              </p>
               <Button
-                variant="ghost"
-                onClick={handleCancelSubscription}
+                variant="outline"
+                className="sm:ml-auto"
+                onClick={() => createPortalSession("payment_method_update")}
                 disabled={isProcessing}
-                size="sm"
-                className="dark:hover:bg-red-700/60"
               >
-                {isTrial ? "Cancel Trial" : "Cancel Subscription"}
+                {t("Manage in Stripe")}
+                <ExternalLink aria-hidden className="size-3.5" />
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      <InvoicesCard />
-    </div >
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+
+      <InvoicesSection />
+
+      <DangerZone>
+        <DangerRow
+          label={isTrial ? t("Cancel trial") : t("Cancel subscription")}
+          description={isTrial ? t("Takes effect when the trial ends.") : t("Takes effect when the period ends.")}
+          consequence={getCancelConsequence()}
+          action={
+            <Button
+              variant="ghost"
+              onClick={handleCancelSubscription}
+              disabled={isProcessing}
+              className={DANGER_BUTTON}
+            >
+              {isTrial ? t("Cancel trial") : t("Cancel subscription")}
+            </Button>
+          }
+        />
+      </DangerZone>
+    </>
   );
 }

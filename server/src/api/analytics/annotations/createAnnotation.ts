@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../../db/postgres/postgres.js";
 import { annotations } from "../../../db/postgres/schema.js";
-import { getUserHasAdminAccessToSite } from "../../../lib/auth-utils.js";
+import { getUserHasOrgPermission } from "../../../lib/auth-utils.js";
 import { getSiteOrganizationId, parseSiteId } from "./annotationAccess.js";
 import { createAnnotationSchema } from "./annotationSchema.js";
 
@@ -26,9 +26,12 @@ export async function createAnnotation(
       return reply.status(404).send({ error: "Site not found" });
     }
 
-    // Site access is enforced by the requireSiteAccess preHandler; any member
-    // may create for the site, but organization-wide annotations are admin-only.
-    if (input.scope === "organization" && !(await getUserHasAdminAccessToSite(request, siteId))) {
+    // The route guard requires annotations:write on the site; an annotation on
+    // every site of the organization needs annotations:manage in it.
+    if (
+      input.scope === "organization" &&
+      !(await getUserHasOrgPermission(request, organizationId, "annotations:manage"))
+    ) {
       return reply.status(403).send({ error: "Only organization admins can create organization-wide annotations" });
     }
 

@@ -2,12 +2,14 @@ import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useCurrentSite } from "../api/admin/hooks/useSites";
+import { useCanInOrg } from "../hooks/usePermissions";
 import { DEFAULT_EVENT_LIMIT } from "../lib/subscription/constants";
 import { Button } from "./ui/button";
 
 export function FreePlanBanner() {
   const t = useExtracted();
   const { site, subscription } = useCurrentSite();
+  const canUpgrade = useCanInOrg("billing:manage", site?.organizationId ?? undefined);
 
   if (!site) return null;
 
@@ -27,7 +29,7 @@ export function FreePlanBanner() {
             })}
           </span>
         </div>
-        {site.isOwner && (
+        {canUpgrade && (
           <Button variant="success" size="sm" asChild>
             <Link href="/subscribe">
               {t("Upgrade")} <ArrowRight className="ml-1 h-3 w-3" />

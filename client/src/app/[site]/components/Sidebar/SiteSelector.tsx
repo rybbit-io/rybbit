@@ -7,6 +7,7 @@ import { Favicon } from "../../../../components/Favicon";
 import { Button } from "../../../../components/ui/button";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "../../../../components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../components/ui/popover";
+import { useCanInOrg } from "../../../../hooks/usePermissions";
 import { authClient } from "../../../../lib/auth";
 import { useStore } from "../../../../lib/store";
 import { userStore } from "../../../../lib/userStore";
@@ -79,6 +80,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
   const t = useExtracted();
   const { data: activeOrganization } = authClient.useActiveOrganization();
   const { data: sites } = useGetSitesFromOrg(activeOrganization?.id);
+  const canAddSites = useCanInOrg("sites:create", activeOrganization?.id);
   const embed = useEmbedablePage();
 
   const pathname = usePathname();
@@ -172,7 +174,7 @@ function SiteSelectorContent({ onSiteSelect }: { onSiteSelect: () => void }) {
         </div>
       )}
 
-      {!isDemo && (
+      {!isDemo && canAddSites && (
         <div className="border-t border-neutral-200 dark:border-neutral-800 p-1">
           <AddSite
             trigger={

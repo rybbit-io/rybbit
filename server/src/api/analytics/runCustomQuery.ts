@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { clickhouseQuery } from "../../db/clickhouse/clickhouse.js";
 import { QUERY_USER_LIMITS } from "../../db/clickhouse/queryLimits.js";
-import { getSitesUserHasAccessTo } from "../../lib/auth-utils.js";
+import { getOrganizationSitesForCaller } from "../../lib/auth-utils.js";
 import {
   MAX_CUSTOM_QUERY_LENGTH,
   normalizeCustomQuery,
@@ -36,7 +36,9 @@ export async function runCustomQuery(
     return reply.status(400).send({ error: validationError });
   }
 
-  const userSites = await getSitesUserHasAccessTo(request);
+  // Read fresh: raw event access must not outlive a site move or a revoked
+  // grant by even the few seconds the per-worker cache holds.
+  const userSites = await getOrganizationSitesForCaller(request, request.params.organizationId);
   const accessibleSiteIds = userSites
     .filter(site => site.organizationId === request.params.organizationId)
     .map(site => site.siteId);

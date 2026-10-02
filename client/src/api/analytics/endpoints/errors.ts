@@ -1,5 +1,5 @@
 import { TimeBucket } from "@rybbit/shared";
-import { CommonApiParams, PaginationParams } from "./types";
+import { CommonApiParams } from "./types";
 
 // Error Name Item type
 export type ErrorNameItem = {
@@ -15,9 +15,6 @@ export type ErrorNamesPaginatedResponse = {
   data: ErrorNameItem[];
   totalCount: number;
 };
-
-// Non-paginated response (standard format)
-export type ErrorNamesStandardResponse = ErrorNameItem[];
 
 // Error Event type
 export type ErrorEvent = {
@@ -50,20 +47,11 @@ export type ErrorEventsPaginatedResponse = {
   totalCount: number;
 };
 
-// Non-paginated response (standard format)
-export type ErrorEventsStandardResponse = ErrorEvent[];
-
 // Error bucketed response (time series)
 export type GetErrorBucketedResponse = {
   time: string;
   error_count: number;
 }[];
-
-export interface ErrorNamesParams extends CommonApiParams, PaginationParams {}
-
-export interface ErrorEventsParams extends CommonApiParams, PaginationParams {
-  errorMessage: string;
-}
 
 export interface ErrorBucketedParams extends CommonApiParams {
   errorMessage: string;

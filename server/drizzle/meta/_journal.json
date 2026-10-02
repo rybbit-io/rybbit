@@ -148,6 +148,20 @@
       "when": 1789189000176,
       "tag": "0020_unclaimed_sites",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790740950134,
+      "tag": "0021_site_grant_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790741724744,
+      "tag": "0022_site_transfers",
+      "breakpoints": true
     }
   ]
 }

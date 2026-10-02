@@ -55,6 +55,12 @@ When `memberUserIds` or `siteIds` is provided, it **replaces** the team's entire
       type: 'number[]',
       required: false,
     },
+    siteRole: {
+      description: "Raises the team members' role on the team's sites (never lowers it); null to leave each member's own role. Omit to keep the current setting.",
+      type: 'string',
+      typeDescription: '"editor" | "member" | "viewer" | null',
+      required: false,
+    },
   }}
 />
 

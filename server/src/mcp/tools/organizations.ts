@@ -51,7 +51,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     {
       title: "Add organization member",
       description:
-        "Add an existing Rybbit user to the organization by email. The user must already have a Rybbit account. Requires an org admin/owner key; only an owner key can grant the owner role.",
+        "Add an existing Rybbit user to the organization by email. The user must already have a Rybbit account. Requires an org admin/owner key; nobody can grant a role above their own (only an owner key can grant owner).",
       inputSchema: {
         organization_id: organizationIdInput,
         email: z.string().email().describe("Email of an existing Rybbit user"),
@@ -71,22 +71,34 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     {
       title: "Update member site access",
       description:
-        "Restrict a member to specific sites, or lift the restriction. Applies to member-role users only (admins/owners always see all sites). Requires an org admin/owner key.",
+        "Restrict a member to specific sites, or lift the restriction. Applies to editor, member, and viewer roles (admins/owners always see all sites). Requires an org admin/owner key.",
       inputSchema: {
         organization_id: organizationIdInput,
         member_id: z.string().min(1).describe("Membership record id from list_members (not the user id)"),
         has_restricted_site_access: z.boolean().describe("true = member sees only site_ids; false = member sees all org sites"),
         site_ids: z.array(z.number().int().positive()).describe("Sites the member may access when restricted"),
+        // Inlined like the other enums here (SITE_GRANT_ROLES in @rybbit/shared).
+        site_role: z
+          .enum(["editor", "member", "viewer"])
+          .nullable()
+          .optional()
+          .describe("Raises the member's role on site_ids only (never lowers it). null clears it; omit to keep what the member's grants already carry."),
       },
       outputSchema: memberSiteAccessOutput,
       annotations: idempotentWrite,
     },
-    guard(async ({ organization_id, member_id, has_restricted_site_access, site_ids }) =>
+    guard(async ({ organization_id, member_id, has_restricted_site_access, site_ids, site_role }) =>
       ok(
         await api.call(
           "PUT",
           `/organizations/${encodeURIComponent(organization_id)}/members/${encodeURIComponent(member_id)}/sites`,
-          { body: { hasRestrictedSiteAccess: has_restricted_site_access, siteIds: site_ids } }
+          {
+            body: {
+              hasRestrictedSiteAccess: has_restricted_site_access,
+              siteIds: site_ids,
+              ...(site_role !== undefined ? { siteRole: site_role } : {}),
+            },
+          }
         )
       )
     )

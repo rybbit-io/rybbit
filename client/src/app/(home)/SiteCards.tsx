@@ -5,9 +5,11 @@ import { useStore } from "@/lib/store";
 import { hasRangeTimes } from "@/lib/time";
 import { BatchedSiteCard, SiteCard, SiteCardProps } from "./SiteCard";
 
-interface SiteCardsProps extends Omit<SiteCardProps, "siteId" | "name" | "domain" | "tags"> {
+type SiteFields = "siteId" | "name" | "domain" | "tags" | "canEditTags";
+
+interface SiteCardsProps extends Omit<SiteCardProps, SiteFields> {
   organizationId: string;
-  sites: Pick<SiteCardProps, "siteId" | "name" | "domain" | "tags">[];
+  sites: Pick<SiteCardProps, SiteFields>[];
 }
 
 export function SiteCards({ organizationId, sites, ...props }: SiteCardsProps) {

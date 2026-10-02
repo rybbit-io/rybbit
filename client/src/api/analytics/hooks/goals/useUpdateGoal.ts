@@ -29,13 +29,19 @@ export function useUpdateGoal() {
         config: goalData.config,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, goalData) => {
       // Invalidate goals query to refetch with the updated goal
       queryClient.invalidateQueries({
         queryKey: ["goals", site],
       });
       queryClient.invalidateQueries({
+        queryKey: ["goals-summary", site],
+      });
+      queryClient.invalidateQueries({
         queryKey: ["goal-time-series", site],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["goal-sessions", goalData.goalId],
       });
     },
   });

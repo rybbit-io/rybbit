@@ -1,5 +1,5 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/basic-tabs";
 import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
@@ -50,6 +50,9 @@ export function SessionDetails({ session, userId, highlightedEventTimestamp }: S
       "copy",
       "form_submit",
       "input_change",
+      // Errors used to start hidden, so a session's failures only appeared
+      // after finding and switching on their chip.
+      "error",
     ])
   );
 

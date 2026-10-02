@@ -3,7 +3,6 @@ import round from "lodash/round";
 import { Expand, Info, SquareArrowOutUpRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { useCurrentSite } from "../../../../../api/admin/hooks/useSites";
 import { GSCDimension } from "../../../../../api/gsc/endpoints";
 import { useConnectGSC } from "../../../../../api/gsc/hooks/useConnectGSC";
 import { useGetGSCConnection } from "../../../../../api/gsc/hooks/useGetGSCConnection";
@@ -12,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../compone
 import { Button } from "../../../../../components/ui/button";
 import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
 import { ScrollArea } from "../../../../../components/ui/scroll-area";
+import { useCanOnSite } from "../../../../../hooks/usePermissions";
 import { formatter, getCountryName, truncateString } from "../../../../../lib/utils";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 import { DeviceIcon } from "../../../components/shared/icons/Device";
@@ -22,13 +22,12 @@ type Tab = "queries" | "pages" | "countries" | "devices";
 
 function ConnectPrompt() {
   const { mutate: connect, isPending } = useConnectGSC();
-  const { site } = useCurrentSite();
   const t = useExtracted();
 
-  // Connecting completes an OAuth flow that requires site admin access on the
-  // server. Members would be stranded on a 403 after Google consent, so show
+  // Connecting completes an OAuth flow that requires gsc:write on the server.
+  // Anyone without it would be stranded on a 403 after Google consent, so show
   // them an explanation instead of a button they can't complete.
-  const canConnect = site?.isOwner ?? false;
+  const canConnect = useCanOnSite("gsc:write");
 
   return (
     <div className="flex flex-col items-center justify-center mt-12 gap-4">

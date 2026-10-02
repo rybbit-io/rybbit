@@ -106,3 +106,19 @@ export function describeBounds(bounds: { start: DateTime; end: DateTime } | null
   if (!bounds) return null;
   return `${bounds.start.toFormat("MMM d")} – ${bounds.end.minus({ minutes: 1 }).toFormat("MMM d")}`;
 }
+
+/**
+ * The window a comparison resolves to, as the date panel and the Compare
+ * control print it. "Mar 8 – Mar 14" says nothing useful when the window is a
+ * year back, so the year is named whenever it differs from the period being
+ * compared.
+ */
+export function describeComparisonWindow(target: Time | null, time: Time, zone: string): string | null {
+  const bounds = target && getAbsoluteBounds(target, zone);
+  const label = describeBounds(bounds ?? null);
+  const current = getAbsoluteBounds(time, zone);
+  if (!bounds || !label || !current) return label;
+
+  const year = bounds.end.minus({ minutes: 1 }).year;
+  return year === current.end.minus({ minutes: 1 }).year ? label : `${label}, ${year}`;
+}

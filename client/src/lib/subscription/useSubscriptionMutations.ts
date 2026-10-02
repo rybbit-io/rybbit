@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useExtracted } from "next-intl";
 import { BACKEND_URL } from "../const";
 import { toast } from "@/components/ui/sonner";
 
@@ -71,6 +72,7 @@ export function usePreviewSubscriptionUpdate() {
 
 export function useUpdateSubscription() {
   const queryClient = useQueryClient();
+  const t = useExtracted();
 
   return useMutation<UpdateSubscriptionResponse, Error, UpdateSubscriptionParams>({
     mutationFn: async ({ organizationId, newPriceId }) => {
@@ -94,13 +96,23 @@ export function useUpdateSubscription() {
 
       return data;
     },
-    onSuccess: (data, variables) => {
-      // Invalidate subscription data to refetch latest info
-      queryClient.invalidateQueries({ queryKey: ["stripe-subscription", variables.organizationId] });
-      toast.success("Subscription updated successfully!");
+    onSuccess: async (_data, { organizationId }) => {
+      // The server drops its Stripe cache in the same request, so refetching
+      // everything derived from the plan updates the page in place: no reload,
+      // and the toast survives. Returning this promise keeps the mutation
+      // pending (mutateAsync unresolved) until the fresh data has landed.
+      await Promise.all([
+        // Billing page: plan card, usage cards, limits.
+        queryClient.invalidateQueries({ queryKey: ["stripe-subscription", organizationId] }),
+        // A mid-cycle change creates a prorated invoice.
+        queryClient.invalidateQueries({ queryKey: ["stripe-invoices", organizationId] }),
+        // Organization + plan summary behind feature gates (DisabledOverlay) and usage banners.
+        queryClient.invalidateQueries({ queryKey: ["get-sites-from-org", organizationId] }),
+      ]);
+      toast.success(t("Subscription updated"));
     },
     onError: error => {
-      toast.error(`Subscription update failed: ${error.message}`);
+      toast.error(t("Subscription update failed: {message}", { message: error.message }));
     },
   });
 }

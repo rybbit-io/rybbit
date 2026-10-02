@@ -72,7 +72,9 @@ const EVENT_COLUMNS = `
   type
 `;
 
-const EVENT_TYPE_FILTER = `AND type IN ('custom_event', 'pageview', 'outbound', 'button_click', 'copy', 'form_submit', 'input_change')`;
+// Everything a visitor does, which leaves out only the web-vitals rows. Errors
+// belong here: the log has always offered an Error type to filter by.
+const EVENT_TYPE_FILTER = `AND type IN ('custom_event', 'pageview', 'outbound', 'button_click', 'copy', 'form_submit', 'input_change', 'error')`;
 
 export const buildEventsQuery = (query: GetEventsRequest["Querystring"], siteId: number): QuerySpec => {
   const { since_timestamp, before_timestamp, page_size: pageSize = "50", filters } = query;

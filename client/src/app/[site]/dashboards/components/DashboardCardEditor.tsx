@@ -1,8 +1,10 @@
 "use client";
 
 import type { DashboardCard, DashboardCardMapping, DashboardValueFormat, DashboardVizType } from "@rybbit/shared";
+import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { useDashboardCard } from "../../../../api/analytics/hooks/useDashboardCard";
+import { SegmentedControl } from "../../../../components/interior/segmented-control";
 import { Button } from "../../../../components/ui/button";
 import {
   DropdownMenu,
@@ -41,7 +43,6 @@ import {
   Table2,
   X,
 } from "lucide-react";
-import { cn } from "../../../../lib/utils";
 import { JsonEditor } from "../../feature-flags/components/JsonEditor";
 import { QueryEditor } from "../../query/components/QueryEditor";
 import { ResultsTable } from "../../query/components/ResultsTable";
@@ -246,6 +247,7 @@ function FormatSelect({
 }
 
 export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: DashboardCardEditorProps) {
+  const t = useExtracted();
   const [title, setTitle] = useState(card.title);
   const [sql, setSql] = useState(card.sql);
   const [vizType, setVizType] = useState<DashboardVizType>(card.vizType);
@@ -547,26 +549,27 @@ export function DashboardCardEditor({ siteId, card, open, onClose, onSave }: Das
             disabled={mode === "json"}
             className="min-w-0 flex-1 rounded-md bg-transparent px-2 py-1 text-base font-semibold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 hover:bg-neutral-100 focus:bg-neutral-100 focus-visible:ring-1 focus-visible:ring-neutral-300 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent dark:text-neutral-50 dark:placeholder:text-neutral-600 dark:hover:bg-neutral-900 dark:focus:bg-neutral-900 dark:focus-visible:ring-neutral-700"
           />
-          {/* Mode toggle: visual builder vs. the full card object as JSON. */}
-          <div className="flex shrink-0 items-center rounded-lg border border-neutral-150 p-0.5 dark:border-neutral-850">
-            {(["visual", "json"] as const).map(value => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => switchMode(value)}
-                aria-pressed={mode === value}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                  mode === value
-                    ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
-                    : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-300"
-                )}
-              >
-                {value === "json" && <Braces className="h-3.5 w-3.5" />}
-                {value === "visual" ? "Visual" : "JSON"}
-              </button>
-            ))}
-          </div>
+          {/* Mode toggle: visual builder vs. the full card object as JSON. switchMode
+              may refuse to leave JSON while it is invalid; the control follows `mode`. */}
+          <SegmentedControl<EditorMode>
+            aria-label={t("Editor mode")}
+            size="sm"
+            className="shrink-0"
+            options={[
+              { value: "visual", label: t("Visual") },
+              {
+                value: "json",
+                label: (
+                  <>
+                    <Braces className="h-3.5 w-3.5" />
+                    {t("JSON")}
+                  </>
+                ),
+              },
+            ]}
+            value={mode}
+            onValueChange={switchMode}
+          />
           <SheetClose asChild>
             <Button variant="ghost" size="smIcon" aria-label="Close editor" className="shrink-0 text-neutral-500">
               <X className="h-4 w-4" />

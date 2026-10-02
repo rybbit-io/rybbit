@@ -31,9 +31,8 @@ export async function getFunnels(
         configuration: data.configuration || {},
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
-        // Include any additional analytics data that might be stored
-        conversionRate: data.lastResult?.conversionRate || null,
-        totalVisitors: data.lastResult?.totalVisitors || null,
+        // Sessions and conversion are computed per period by getFunnelSummaries;
+        // nothing is stored with the definition.
       };
     });
 

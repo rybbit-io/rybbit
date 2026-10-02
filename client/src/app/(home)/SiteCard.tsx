@@ -23,6 +23,8 @@ export interface SiteCardProps {
   name: string;
   domain: string;
   tags?: string[];
+  /** The viewer may edit this site's tags (sites:configure on it). */
+  canEditTags?: boolean;
   allTags?: string[];
   onTagsUpdated?: () => void;
   selectedTags?: string[];
@@ -111,6 +113,7 @@ function SiteCardView({
   name,
   domain,
   tags = [],
+  canEditTags = false,
   allTags = [],
   onTagsUpdated,
   onTagClick,
@@ -134,7 +137,7 @@ function SiteCardView({
     <Link href={`/${siteId}`}>
       <div
         ref={cardRef}
-        className="flex flex-col md:flex-row md:justify-between gap-3 rounded-lg bg-white dark:bg-neutral-900/70 px-3 py-2 border border-neutral-100 dark:border-neutral-850 transition-all duration-300 hover:translate-y-[-2px] w-full"
+        className="flex flex-col md:flex-row md:justify-between gap-3 rounded-lg bg-white dark:bg-neutral-900/70 px-3 py-2 border border-neutral-100 dark:border-neutral-850 transition-all duration-300 motion-safe:hover:translate-y-[-2px] w-full"
       >
         {showSkeleton ? (
           <>
@@ -196,7 +199,7 @@ function SiteCardView({
                     +{tags.length - 3}
                   </Badge>
                 )}
-                {onTagsUpdated && (
+                {canEditTags && onTagsUpdated && (
                   <Tooltip>
                     <TagEditor
                       siteId={siteId}

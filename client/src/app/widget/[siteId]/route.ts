@@ -191,6 +191,9 @@ function renderHTML(c: Config) {
     0%   { transform: scale(1); opacity: 0.5; }
     100% { transform: scale(2.2); opacity: 0; }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse::before { animation: none; }
+  }
 </style>
 </head>
 <body>

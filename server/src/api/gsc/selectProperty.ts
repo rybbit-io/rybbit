@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
+import { getUserHasSitePermission } from "../../lib/auth-utils.js";
 import { db } from "../../db/postgres/postgres.js";
 import { getGSCProperties, refreshGSCToken } from "./utils.js";
 
@@ -32,7 +32,7 @@ export async function selectGSCProperty(req: FastifyRequest<SelectPropertyReques
     }
 
     // Managing the connection is an admin action, consistent with connect/disconnect.
-    const hasAccess = await getUserHasAdminAccessToSite(req, numericSiteId);
+    const hasAccess = await getUserHasSitePermission(req, numericSiteId, "gsc:write");
     if (!hasAccess) {
       return res.status(403).send({ error: "Access denied" });
     }

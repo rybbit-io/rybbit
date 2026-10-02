@@ -2,9 +2,9 @@ import { ClickHouseError } from "@clickhouse/client";
 import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ query: vi.fn(), getSitesUserHasAccessTo: vi.fn() }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), getOrganizationSitesForCaller: vi.fn() }));
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({ clickhouseQuery: { query: mocks.query } }));
-vi.mock("../../lib/auth-utils.js", () => ({ getSitesUserHasAccessTo: mocks.getSitesUserHasAccessTo }));
+vi.mock("../../lib/auth-utils.js", () => ({ getOrganizationSitesForCaller: mocks.getOrganizationSitesForCaller }));
 
 import { runCustomQuery } from "./runCustomQuery.js";
 import { runDashboardCardQuery } from "./runDashboardCardQuery.js";
@@ -13,7 +13,7 @@ let app: FastifyInstance;
 
 beforeEach(async () => {
   vi.resetAllMocks();
-  mocks.getSitesUserHasAccessTo.mockResolvedValue([{ siteId: 1, organizationId: "org-1" }]);
+  mocks.getOrganizationSitesForCaller.mockResolvedValue([{ siteId: 1, organizationId: "org-1" }]);
   app = Fastify();
   app.post<{ Params: { organizationId: string }; Body: unknown }>(
     "/organizations/:organizationId/query",

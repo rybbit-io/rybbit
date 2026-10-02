@@ -1,3 +1,4 @@
+import { isSiteGrantRole, SITE_GRANT_ROLES } from "@rybbit/shared";
 import { eq, and, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
@@ -9,6 +10,8 @@ interface CreateTeamBody {
   name: string;
   memberUserIds?: string[];
   siteIds?: number[];
+  /** Role the team's members get on its sites (editor, member or viewer); omit or null for each member's organization role. */
+  siteRole?: string | null;
 }
 
 export async function createTeam(
@@ -24,6 +27,11 @@ export async function createTeam(
 
   if (!name || !name.trim()) {
     return reply.status(400).send({ error: "Team name is required" });
+  }
+
+  const siteRole = request.body.siteRole ?? null;
+  if (siteRole !== null && !isSiteGrantRole(siteRole)) {
+    return reply.status(400).send({ error: `siteRole must be one of: ${SITE_GRANT_ROLES.join(", ")}` });
   }
 
   try {
@@ -90,6 +98,7 @@ export async function createTeam(
           siteIds.map(siteId => ({
             teamId,
             siteId,
+            role: siteRole,
           }))
         );
       }
@@ -110,6 +119,7 @@ export async function createTeam(
       updatedAt: now,
       members: memberUserIds || [],
       siteIds: siteIds || [],
+      siteRole,
     });
   } catch (error) {
     request.log.error({ err: error }, "Error creating team");

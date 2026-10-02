@@ -130,8 +130,21 @@ export async function authedFetch<T>(
     return response.data;
   } catch (error: any) {
     if (error?.response?.data?.error) {
-      throw new Error(error.response.data.error);
+      throw new ApiError(error.response.data.error, error.response.status, error.response.data);
     }
     throw error;
+  }
+}
+
+/** A backend error response: its public message, plus the status and body for callers that branch on them. */
+export class ApiError extends Error {
+  status: number | undefined;
+  body: unknown;
+
+  constructor(message: string, status: number | undefined, body: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
   }
 }

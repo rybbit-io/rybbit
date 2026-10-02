@@ -1,6 +1,7 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
+import { getOrgMembership } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 import { SiteLifecycleError, siteConfigurationLifecycle } from "../../services/sites/siteConfigurationLifecycle.js";
 
@@ -38,7 +39,7 @@ export async function claimSite(
   const { privateLinkKey, organizationId } = parsed.data;
 
   const membership = await getOrgMembership(userId, organizationId);
-  if (!isOrgAdmin(membership)) {
+  if (!roleHasPermission(membership?.role, "sites:create")) {
     return reply.status(403).send({ error: "You must be an admin of the organization to claim a site into it" });
   }
 

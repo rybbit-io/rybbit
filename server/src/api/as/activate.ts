@@ -1,9 +1,11 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { eq, sql } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { asLicenses } from "../../db/postgres/schema-appsumo.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { IS_CLOUD } from "../../lib/const.js";
+import { usageService } from "../../services/usageService.js";
 
 /**
  * Check if AppSumo integration is enabled
@@ -106,7 +108,8 @@ export async function activateAppSumoLicense(
       });
     }
 
-    // Verify user is a member of the organization
+    // A license changes the organization's plan: the same owner-only
+    // permission as every other billing action.
     const member = await db.query.member.findFirst({
       where: (member, { and, eq }) =>
         and(eq(member.userId, session.user.id), eq(member.organizationId, organizationId)),
@@ -115,6 +118,12 @@ export async function activateAppSumoLicense(
     if (!member) {
       return reply.status(403).send({
         error: "You are not a member of this organization",
+      });
+    }
+
+    if (!roleHasPermission(member.role, "billing:manage")) {
+      return reply.status(403).send({
+        error: "Only an organization owner can activate a license",
       });
     }
 
@@ -190,6 +199,9 @@ export async function activateAppSumoLicense(
         )
       `);
     }
+
+    // Turn on sites that were waiting for a plan without waiting for the usage check.
+    usageService.requestOrganizationRefresh(organizationId);
 
     return reply.status(200).send({
       success: true,

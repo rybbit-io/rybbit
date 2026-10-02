@@ -39,7 +39,8 @@ export const googleAnalyticsComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "18KB", competitorValue: "371KB" },
+      // Compressed transfer sizes of app.rybbit.io/api/script.js and googletagmanager.com/gtag/js, measured 2026-09-28.
+      { name: "Script size (compressed)", rybbitValue: "~11KB", competitorValue: "~150KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: false },
       { name: "API access", rybbitValue: true, competitorValue: true },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "Free" },
@@ -114,9 +115,9 @@ export const googleAnalyticsExtendedData = {
           <>
             On top of consent loss, GA4 applies sampling to complex reports on busy properties, holds standard-property
             event data for at most 14 months, and locks unsampled exploration behind GA360, which starts around
-            $50,000 per year. Rybbit&apos;s <Link href="/pricing">pricing</Link> is a flat, events-based subscription:
-            every feature on every plan, no sampling at any traffic level, and your data is never used for anything
-            except showing you your analytics.
+            $50,000 per year. Rybbit&apos;s <Link href="/pricing">pricing</Link> is a flat, events-based subscription
+            with no sampling at any traffic level (session replay comes with the Pro plan), and your data is never used
+            for anything except showing you your analytics.
           </>,
         ],
       },
@@ -212,6 +213,16 @@ export const googleAnalyticsExtendedData = {
       title: "The 9 Best Google Analytics Alternatives in 2026",
       href: "/blog/best-google-analytics-alternatives",
       description: "How Rybbit and 8 other GA4 alternatives compare on pricing, privacy, and features",
+    },
+    {
+      title: "Matomo vs Google Analytics",
+      href: "/compare/matomo-vs-google-analytics",
+      description: "The two most common options, compared feature by feature",
+    },
+    {
+      title: "Google Analytics pricing",
+      href: "/blog/google-analytics-pricing",
+      description: "What GA4 and GA 360 cost, and the hidden costs of free",
     },
     {
       title: "Rybbit vs Plausible",

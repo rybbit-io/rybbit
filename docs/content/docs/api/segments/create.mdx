@@ -1,6 +1,6 @@
 ---
 title: Create Segment
-description: Creates a saved segment. Members create site segments they own; admins and owners can also create organization-wide segments.
+description: Creates a saved segment. Members create site segments they own; editors, admins and owners can also create organization-wide segments.
 full: true
 method: POST
 ---
@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/sites/:site/segments
 ```
 
-Creates a saved segment. Members create site segments they own; admins and owners can also create organization-wide segments.
+Creates a saved segment. Members create site segments they own; editors, admins and owners can also create organization-wide segments.
 
 ### Path Parameters
 
@@ -50,7 +50,7 @@ Creates a saved segment. Members create site segments they own; admins and owner
       required: false,
     },
     scope: {
-      description: 'Where the segment is available. Organization-wide segments require an admin or owner',
+      description: 'Where the segment is available. Organization-wide segments need the editor role or above in the organization',
       type: 'string',
       typeDescription: '"site" | "organization"',
       default: 'site',

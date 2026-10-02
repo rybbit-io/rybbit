@@ -1,7 +1,8 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { cancellationFeedback } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgOwner } from "../../lib/access.js";
+import { getOrgMembership } from "../../lib/access.js";
 
 interface CancellationFeedbackBody {
   organizationId: string;
@@ -45,7 +46,7 @@ export async function submitCancellationFeedback(
     // Verify user has permission (owner only)
     const membership = await getOrgMembership(userId, organizationId);
 
-    if (!isOrgOwner(membership)) {
+    if (!roleHasPermission(membership?.role, "billing:manage")) {
       return reply.status(403).send({
         error: "Only organization owners can submit cancellation feedback",
       });

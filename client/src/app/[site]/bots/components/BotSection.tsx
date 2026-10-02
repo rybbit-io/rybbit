@@ -91,7 +91,7 @@ function BotRow({
           <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400">
             {item.percentage.toFixed(1)}%
           </div>
-          <NumberFlow respectMotionPreference={false} value={item.count} format={{ notation: "compact" }} />
+          <NumberFlow value={item.count} format={{ notation: "compact" }} />
         </div>
       </div>
     </div>

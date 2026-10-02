@@ -1,8 +1,9 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { eq, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { team, teamMember, teamSiteAccess, sites, user } from "../../db/postgres/schema.js";
-import { getOrgMembership, isOrgAdmin } from "../../lib/access.js";
+import { effectiveOrgRole, getOrgMembership } from "../../lib/access.js";
 import { getUserIdFromRequest } from "../../lib/auth-utils.js";
 
 export async function listTeams(
@@ -15,8 +16,11 @@ export async function listTeams(
     const { organizationId } = request.params;
     const userId = request.user?.id ?? (await getUserIdFromRequest(request));
 
-    // Get user's membership in this org
-    const isAdminOrOwner = isOrgAdmin(await getOrgMembership(userId, organizationId));
+    // Team managers see every team; everyone else sees the teams they are on.
+    const isAdminOrOwner = roleHasPermission(
+      effectiveOrgRole(await getOrgMembership(userId, organizationId)),
+      "teams:manage"
+    );
 
     // Get all teams in the org
     let teamsData = await db.select().from(team).where(eq(team.organizationId, organizationId));
@@ -56,6 +60,7 @@ export async function listTeams(
           siteId: sites.siteId,
           domain: sites.domain,
           name: sites.name,
+          role: teamSiteAccess.role,
         })
         .from(teamSiteAccess)
         .innerJoin(sites, eq(teamSiteAccess.siteId, sites.siteId))
@@ -74,12 +79,18 @@ export async function listTeams(
       membersMap.set(m.teamId, existing);
     }
 
-    const sitesMap = new Map<string, { siteId: number; domain: string; name: string }[]>();
+    const sitesMap = new Map<string, { siteId: number; domain: string; name: string; role: string | null }[]>();
     for (const s of sitesData) {
       const existing = sitesMap.get(s.teamId) || [];
-      existing.push({ siteId: s.siteId, domain: s.domain, name: s.name });
+      existing.push({ siteId: s.siteId, domain: s.domain, name: s.name, role: s.role });
       sitesMap.set(s.teamId, existing);
     }
+    // The role every one of a team's site grants carries; null when they carry
+    // none (each member's organization role applies) or differ.
+    const sharedSiteRole = (teamId: string) => {
+      const roles = new Set((sitesMap.get(teamId) || []).map(site => site.role));
+      return roles.size === 1 ? [...roles][0] : null;
+    };
 
     return reply.send({
       teams: teamsData.map(t => ({
@@ -90,6 +101,7 @@ export async function listTeams(
         updatedAt: t.updatedAt,
         members: membersMap.get(t.id) || [],
         sites: sitesMap.get(t.id) || [],
+        siteRole: sharedSiteRole(t.id),
       })),
     });
   } catch (error) {

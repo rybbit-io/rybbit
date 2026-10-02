@@ -206,8 +206,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
 
   const hasActiveImport = IS_CLOUD && sortedImports.some(imp => imp.completedAt === null);
 
-  const isImportDisabled =
-    !selectedFile || !selectedPlatform || !!fileError || createImportMutation.isPending || disabled || hasActiveImport;
+  const isImportDisabled = !selectedFile || !selectedPlatform || !!fileError || disabled || hasActiveImport;
 
   return (
     <DisabledOverlay message="Data Import" requiredPlan="standard">
@@ -267,18 +266,15 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
             </div>
 
             {/* Import Button */}
-            <Button type="submit" disabled={isImportDisabled} className="w-full sm:w-auto">
-              {createImportMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t("Importing...")}
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4" />
-                  {t("Import")}
-                </>
-              )}
+            <Button
+              type="submit"
+              disabled={isImportDisabled}
+              loading={createImportMutation.isPending}
+              loadingLabel={t("Importing...")}
+              className="w-full sm:w-auto"
+            >
+              <Upload className="h-4 w-4" />
+              {t("Import")}
             </Button>
           </form>
 

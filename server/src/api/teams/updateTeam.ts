@@ -1,3 +1,4 @@
+import { isSiteGrantRole, SITE_GRANT_ROLES } from "@rybbit/shared";
 import { eq, and, inArray } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
@@ -9,6 +10,8 @@ interface UpdateTeamBody {
   name?: string;
   memberUserIds?: string[];
   siteIds?: number[];
+  /** Role the team's members get on its sites (editor, member or viewer); null for each member's organization role; omit to keep. */
+  siteRole?: string | null;
 }
 
 export async function updateTeam(
@@ -19,8 +22,12 @@ export async function updateTeam(
   reply: FastifyReply
 ) {
   const { organizationId, teamId } = request.params;
-  const { name, siteIds } = request.body;
+  const { name, siteIds, siteRole } = request.body;
   const memberUserIds = request.body.memberUserIds === undefined ? undefined : [...new Set(request.body.memberUserIds)];
+
+  if (siteRole !== undefined && siteRole !== null && !isSiteGrantRole(siteRole)) {
+    return reply.status(400).send({ error: `siteRole must be one of: ${SITE_GRANT_ROLES.join(", ")}` });
+  }
 
   try {
     // Verify team belongs to org
@@ -98,17 +105,30 @@ export async function updateTeam(
         }
       }
 
-      // Replace sites if provided
+      // Replace sites if provided, keeping the team's site role unless a new
+      // one was given.
       if (siteIds !== undefined) {
+        let role: string | null = siteRole ?? null;
+        if (siteRole === undefined) {
+          const [current] = await tx
+            .select({ role: teamSiteAccess.role })
+            .from(teamSiteAccess)
+            .where(eq(teamSiteAccess.teamId, teamId))
+            .limit(1);
+          role = current?.role ?? null;
+        }
         await tx.delete(teamSiteAccess).where(eq(teamSiteAccess.teamId, teamId));
         if (siteIds.length > 0) {
           await tx.insert(teamSiteAccess).values(
             siteIds.map(siteId => ({
               teamId,
               siteId,
+              role,
             }))
           );
         }
+      } else if (siteRole !== undefined) {
+        await tx.update(teamSiteAccess).set({ role: siteRole }).where(eq(teamSiteAccess.teamId, teamId));
       }
     });
 

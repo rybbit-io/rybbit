@@ -1,6 +1,6 @@
 ---
 title: Update Segment
-description: Updates a saved segment. Admins and owners can edit any segment; members can edit segments they created. Only the fields you send change.
+description: Updates a saved segment. Editors, admins and owners can edit any segment; members can edit segments they created. Only the fields you send change.
 full: true
 method: PUT
 ---
@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 PUT /api/sites/:site/segments/:segmentId
 ```
 
-Updates a saved segment. Admins and owners can edit any segment; members can edit segments they created. Only the fields you send change.
+Updates a saved segment. Editors, admins and owners can edit any segment; members can edit segments they created. Only the fields you send change.
 
 ### Path Parameters
 
@@ -55,7 +55,7 @@ Updates a saved segment. Admins and owners can edit any segment; members can edi
       required: false,
     },
     scope: {
-      description: 'Where the segment is available. Organization-wide segments require an admin or owner',
+      description: 'Where the segment is available. Organization-wide segments need the editor role or above in the organization',
       type: 'string',
       typeDescription: '"site" | "organization"',
       default: 'site',

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   checkApiKey: vi.fn(),
-  getUserIsInOrg: vi.fn(),
+  getUserOrgRole: vi.fn(),
   getSessionFromReq: vi.fn(),
   getSitesUserHasAccessTo: vi.fn(),
   siteIdsInOrganization: vi.fn(),
@@ -14,7 +14,7 @@ vi.mock("../../lib/access.js", () => ({ ...mocks }));
 vi.mock("../../lib/siteConfig.js", () => ({ siteConfig: {} }));
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({ clickhouse: { query: mocks.query } }));
 
-import { requireOrgMember } from "../../lib/auth-middleware.js";
+import { requireOrgPermission } from "../../lib/auth-middleware.js";
 import { getSiteCards, getSiteCardsLite } from "./getSiteCards.js";
 
 let app: FastifyInstance;
@@ -25,7 +25,7 @@ beforeEach(async () => {
   vi.resetAllMocks();
   vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-20T20:41:33Z"));
   mocks.checkApiKey.mockResolvedValue({ valid: false, role: null, statements: null });
-  mocks.getUserIsInOrg.mockResolvedValue(true);
+  mocks.getUserOrgRole.mockResolvedValue("member");
   mocks.getSessionFromReq.mockResolvedValue({ user: { id: "user-1" } });
   mocks.getSitesUserHasAccessTo.mockResolvedValue(allIds.map(siteId => ({ siteId, organizationId: "org-1" })));
   mocks.siteIdsInOrganization.mockImplementation(async ids => ids);
@@ -56,14 +56,12 @@ beforeEach(async () => {
   app = Fastify();
   app.post<{ Params: { organizationId: string }; Querystring: unknown; Body: unknown }>(
     "/organizations/:organizationId/site-cards-lite",
-    {
-      preHandler: [requireOrgMember({ resource: "analytics", action: "read" })],
-    },
+    { preHandler: [requireOrgPermission("analytics:read")] },
     getSiteCardsLite
   );
   app.post<{ Params: { organizationId: string }; Querystring: unknown; Body: unknown }>(
     "/organizations/:organizationId/site-cards",
-    { preHandler: [requireOrgMember({ resource: "analytics", action: "read" })] },
+    { preHandler: [requireOrgPermission("analytics:read")] },
     getSiteCards
   );
   await app.ready();
@@ -204,10 +202,15 @@ describe.each(["site-cards", "site-cards-lite"])("batched %s", endpoint => {
   });
 
   it("rejects unauthenticated callers and keys without analytics:read", async () => {
-    mocks.getUserIsInOrg.mockResolvedValue(false);
+    mocks.getUserOrgRole.mockResolvedValue(null);
     mocks.getSessionFromReq.mockResolvedValue(null);
-    expect((await request()).statusCode).toBe(403);
-    mocks.checkApiKey.mockResolvedValue({ valid: true, userId: "user-1", statements: { org: ["read"] } });
+    expect((await request()).statusCode).toBe(401);
+    mocks.checkApiKey.mockResolvedValue({
+      valid: true,
+      role: "member",
+      userId: "user-1",
+      statements: { org: ["read"] },
+    });
     const denied = await request();
     expect(denied.statusCode).toBe(403);
     expect(denied.json().required).toBe("analytics:read");
@@ -215,9 +218,14 @@ describe.each(["site-cards", "site-cards-lite"])("batched %s", endpoint => {
   });
 
   it("supports organization-owned analytics keys without a session user", async () => {
-    mocks.getUserIsInOrg.mockResolvedValue(false);
+    mocks.getUserOrgRole.mockResolvedValue(null);
     mocks.getSessionFromReq.mockResolvedValue(null);
-    mocks.checkApiKey.mockResolvedValue({ valid: true, organizationId: "org-1", statements: { analytics: ["read"] } });
+    mocks.checkApiKey.mockResolvedValue({
+      valid: true,
+      role: "admin",
+      organizationId: "org-1",
+      statements: { analytics: ["read"] },
+    });
     expect((await request()).statusCode).toBe(200);
     expect(mocks.getSitesUserHasAccessTo.mock.calls[0][0].apiKeyOrganizationId).toBe("org-1");
   });

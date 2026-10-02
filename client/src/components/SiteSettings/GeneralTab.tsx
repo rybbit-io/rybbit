@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/sonner";
 
+import { HoldToConfirm } from "@/components/interior/hold-to-confirm";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { deleteSite, moveSite, updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
 import { adminMoveSite } from "@/api/admin/endpoints/adminSites";
@@ -32,10 +34,16 @@ import { RemoteOrganizationCombobox } from "@/app/admin/components/shared/Remote
 import { normalizeDomain } from "@/lib/utils";
 
 import { SettingRow, SettingsSection, SettingsSections } from "./SettingsSection";
+import { TransferSiteSection } from "./TransferSiteSection";
 
 interface GeneralTabProps {
   siteMetadata: SiteResponse;
+  /** No sites:configure: the name, domain and privacy settings are read-only. */
   disabled?: boolean;
+  /** sites:delete on this site. */
+  canDelete?: boolean;
+  /** sites:transfer on this site. */
+  canTransfer?: boolean;
   onClose?: () => void;
   onPublicChange?: (checked: boolean) => void;
   adminMode?: boolean;
@@ -56,6 +64,8 @@ interface ToggleConfig {
 export function GeneralTab({
   siteMetadata,
   disabled = false,
+  canDelete = false,
+  canTransfer = false,
   onClose,
   onPublicChange,
   adminMode = false,
@@ -77,10 +87,10 @@ export function GeneralTab({
   const [targetOrgName, setTargetOrgName] = useState("");
   const [isMoving, setIsMoving] = useState(false);
 
-  // Organizations the user can move the site into: those they administer,
-  // excluding the site's current organization.
+  // Organizations the user can move the site into: those they may create
+  // sites in, excluding the site's current organization.
   const moveTargets = (userOrganizations ?? []).filter(
-    org => (org.role === "admin" || org.role === "owner") && org.id !== siteMetadata.organizationId
+    org => org.permissions?.includes("sites:create") && org.id !== siteMetadata.organizationId
   );
 
   const [toggleStates, setToggleStates] = useState({
@@ -173,19 +183,20 @@ export function GeneralTab({
   };
 
   const handleDelete = async () => {
+    setIsDeleting(true);
     try {
-      setIsDeleting(true);
       await deleteSite(siteMetadata.siteId);
-      toast.success(t("Site deleted successfully"));
-      router.push("/");
-      onClose?.();
-      refreshSiteLists();
     } catch (error) {
       console.error("Error deleting site:", error);
       toast.error(t("Failed to delete site"));
-    } finally {
       setIsDeleting(false);
+      return;
     }
+    // Stays pending on success: the dialog closes and we navigate away, so the button must not re-arm meanwhile.
+    toast.success(t("Site deleted successfully"));
+    router.push("/");
+    onClose?.();
+    refreshSiteLists();
   };
 
   const handleMove = async () => {
@@ -279,9 +290,11 @@ export function GeneralTab({
             <Button
               variant="outline"
               onClick={handleNameChange}
-              disabled={isChangingName || newName === siteMetadata.name || disabled}
+              loading={isChangingName}
+              loadingLabel={t("Updating...")}
+              disabled={newName === siteMetadata.name || disabled}
             >
-              {isChangingName ? t("Updating...") : t("Update")}
+              {t("Update")}
             </Button>
           </div>
         </div>
@@ -310,9 +323,11 @@ export function GeneralTab({
             <Button
               variant="outline"
               onClick={handleDomainChange}
-              disabled={isChangingDomain || newDomain === siteMetadata.domain || disabled}
+              loading={isChangingDomain}
+              loadingLabel={t("Updating...")}
+              disabled={newDomain === siteMetadata.domain || disabled}
             >
-              {isChangingDomain ? t("Updating...") : t("Update")}
+              {t("Update")}
             </Button>
           </div>
         </div>
@@ -339,7 +354,7 @@ export function GeneralTab({
         ))}
       </SettingsSection>
 
-      {!disabled && (adminMode || moveTargets.length > 0) && (
+      {canTransfer && (adminMode || moveTargets.length > 0) && (
         <SettingsSection
           title={t("Move to Organization")}
           description={t(
@@ -375,8 +390,8 @@ export function GeneralTab({
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={!targetOrgId || isMoving}>
-                  {isMoving ? t("Moving...") : t("Move")}
+                <Button variant="outline" loading={isMoving} loadingLabel={t("Moving...")} disabled={!targetOrgId}>
+                  {t("Move")}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -394,8 +409,9 @@ export function GeneralTab({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+                  {/* Closes on click; the Move button shows the request as it runs. */}
                   <AlertDialogAction onClick={handleMove} disabled={isMoving}>
-                    {isMoving ? t("Moving...") : t("Yes, move site")}
+                    {t("Yes, move site")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -403,6 +419,9 @@ export function GeneralTab({
           </div>
         </SettingsSection>
       )}
+
+      {/* A person-to-person hand-off; the admin panel moves sites directly instead. */}
+      {canTransfer && !adminMode && <TransferSiteSection siteId={siteMetadata.siteId} />}
 
       <SettingsSection>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 px-4 py-3 dark:border-red-500/25">
@@ -413,13 +432,32 @@ export function GeneralTab({
             </p>
           </div>
           <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={disabled}>
-                <AlertTriangle className="h-4 w-4" />
-                {t("Delete Site")}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
+            {canDelete ? (
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  {t("Delete Site")}
+                </Button>
+              </AlertDialogTrigger>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* A disabled button gets no pointer events, so the tooltip hangs off this wrapper. */}
+                  <span tabIndex={0} className="inline-flex">
+                    <Button variant="destructive" disabled>
+                      <AlertTriangle className="h-4 w-4" />
+                      {t("Delete Site")}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{t("Your role can't delete sites")}</TooltipContent>
+              </Tooltip>
+            )}
+            <AlertDialogContent
+              onEscapeKeyDown={event => {
+                if (isDeleting) event.preventDefault();
+              }}
+            >
               <AlertDialogHeader>
                 <AlertDialogTitle>{t("Are you absolutely sure?")}</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -430,10 +468,10 @@ export function GeneralTab({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} disabled={isDeleting} variant="destructive">
-                  {isDeleting ? t("Deleting...") : t("Yes, delete site")}
-                </AlertDialogAction>
+                <AlertDialogCancel disabled={isDeleting}>{t("Cancel")}</AlertDialogCancel>
+                <HoldToConfirm onConfirm={handleDelete} pending={isDeleting} pendingLabel={t("Deleting...")}>
+                  {t("Hold to delete site")}
+                </HoldToConfirm>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

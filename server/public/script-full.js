@@ -166,7 +166,7 @@
       return null;
     }
     const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
-    const visitorId = getOrCreateVisitorId(namespace);
+    const visitorId = createVisitorId();
     const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
     const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
     const sessionReplayMaskTextSelectors = parseJsonSafely(
@@ -264,7 +264,8 @@
       console.warn("Error fetching tracking config:", error);
     }
     if (resolvedConfig.featureFlagsEnabled) {
-      const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId);
+      resolvedConfig.visitorId = getOrCreateVisitorId(namespace);
+      const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, resolvedConfig.visitorId);
       resolvedConfig.featureFlagsEnabled = result.enabled;
       resolvedConfig.featureFlags = result.flags;
     }
@@ -1552,6 +1553,7 @@
     }
     handleChange(event) {
       const target = event.target;
+      if (!(target instanceof Element)) return;
       const tagName = target.tagName.toUpperCase();
       if (!["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
       if (target.disabled) return;

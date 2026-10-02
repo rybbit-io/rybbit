@@ -20,12 +20,17 @@ import { Card, CardDescription, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { MultiSelect } from "../../components/ui/multi-select";
 import { Pagination } from "../../components/pagination";
+import { useOrgPermissions } from "../../hooks/usePermissions";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
+import { IS_CLOUD } from "../../lib/const";
 import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../lib/store";
+import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { useSyncStateWithUrl } from "../../lib/urlParams";
 import { AddSite } from "../components/AddSite";
+import { PlanRequiredNotice, useCheckoutReturn } from "../components/PlanRequired";
 import { SiteCards } from "./SiteCards";
+import { StartTrial } from "./StartTrial";
 
 // Bound both rendering and the lite analytics batch for large organizations.
 const PAGE_SIZE = 20;
@@ -41,7 +46,17 @@ export default function Home() {
   const { time, setTime } = useStore();
   const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
 
-  const { data: sites, refetch: refetchSites, isLoading: isLoadingSites } = useGetSitesFromOrg(activeOrganization?.id);
+  // Back from checkout started from the banner below: keep asking until the sites are on.
+  const checkoutReturnPending = useCheckoutReturn();
+  const {
+    data: sites,
+    refetch: refetchSites,
+    isLoading: isLoadingSites,
+  } = useGetSitesFromOrg(activeOrganization?.id, {
+    refetchInterval: checkoutReturnPending
+      ? query => (query.state.data?.sites.some(site => site.requiresPlan) ? 3000 : false)
+      : undefined,
+  });
 
   const {
     data: userOrganizationsData,
@@ -49,22 +64,29 @@ export default function Home() {
     refetch: refetchOrganizations,
   } = useUserOrganizations();
 
+  // On cloud an organization without a trial or plan can't track anything, so an empty
+  // home page asks for a website and a plan instead of offering "Add Website".
+  const { data: subscription, isLoading: isLoadingSubscription } = useStripeSubscription();
+  const hasNoPlan =
+    IS_CLOUD && !!subscription && subscription.status !== "active" && subscription.status !== "trialing";
+
   // Consolidated loading state
-  const isLoading = isLoadingOrganizations || isPending || isLoadingSites;
+  const isLoading = isLoadingOrganizations || isPending || isLoadingSites || (IS_CLOUD && isLoadingSubscription);
 
   // Check if user has organizations
   const hasOrganizations = Array.isArray(userOrganizationsData) && userOrganizationsData.length > 0;
   const hasNoOrganizations = !isLoading && !hasOrganizations;
 
-  // Check user permissions for the active organization
-  const activeOrgMembership = userOrganizationsData?.find(org => org.id === activeOrganization?.id);
-
-  const isUserMember = activeOrgMembership?.role === "member";
-  const canAddSites = hasOrganizations && !isUserMember;
+  // What the user may do in the active organization
+  const { can } = useOrgPermissions(activeOrganization?.id);
+  const canAddSites = hasOrganizations && can("sites:create");
+  const cantAddSitesReason = t("You don't have permission to add sites to this organization");
 
   // Check if we should show sites content
   const shouldShowSites = hasOrganizations && !isLoading;
   const hasNoSites = shouldShowSites && (!sites?.sites || sites.sites.length === 0);
+  const sitesRequirePlan =
+    shouldShowSites && !checkoutReturnPending && !!sites?.sites?.some(site => site.requiresPlan);
 
   const { data: teamsData } = useTeams(activeOrganization?.id);
 
@@ -131,7 +153,7 @@ export default function Home() {
       teams={teams}
       value={selectedTeamFilter}
       onValueChange={setSelectedTeamFilter}
-      canCreateTeam={!isUserMember && hasOrganizations}
+      canCreateTeam={hasOrganizations && can("teams:manage")}
     />
   );
 
@@ -187,7 +209,7 @@ export default function Home() {
         </div>
       )}
       <div className="hidden md:block">
-        <AddSite disabled={!canAddSites} />
+        <AddSite disabled={!canAddSites} disabledReason={cantAddSitesReason} />
       </div>
     </div>
   ) : null;
@@ -196,7 +218,13 @@ export default function Home() {
     <div className="flex flex-col gap-2">
       <SiteCards
         organizationId={activeOrganization?.id ?? ""}
-        sites={paginatedSites?.map(site => ({ ...site, tags: site.tags ?? [] })) ?? []}
+        sites={
+          paginatedSites?.map(site => ({
+            ...site,
+            tags: site.tags ?? [],
+            canEditTags: site.permissions?.includes("sites:configure") ?? false,
+          })) ?? []
+        }
         allTags={allTags}
         onTagsUpdated={refetchSites}
         selectedTags={selectedTags}
@@ -208,11 +236,16 @@ export default function Home() {
           <CardDescription>{t("Try adjusting your filters")}</CardDescription>
         </Card>
       ) : null}
-      {hasNoSites ? (
+      {hasNoSites && hasNoPlan && activeOrganization ? (
+        <StartTrial organizationId={activeOrganization.id} onSiteCreated={refetchSites} />
+      ) : null}
+      {hasNoSites && !hasNoPlan ? (
         <Card className="p-6 flex flex-col items-center text-center">
           <CardTitle className="mb-2 text-xl">{t("No websites yet")}</CardTitle>
           <CardDescription className="mb-4">{t("Add your first website to start tracking analytics")}</CardDescription>
           <AddSite
+            disabled={!canAddSites}
+            disabledReason={cantAddSitesReason}
             trigger={
               <Button variant="success" disabled={!canAddSites}>
                 <Plus className="h-4 w-4" />
@@ -242,6 +275,9 @@ export default function Home() {
   const content = (
     <>
       {hasNoOrganizations && <NoOrganization />}
+      {sitesRequirePlan && activeOrganization ? (
+        <PlanRequiredNotice organizationId={activeOrganization.id} returnPath="/" className="mb-4" />
+      ) : null}
       {filterBar}
       {siteCards}
       {pagination}

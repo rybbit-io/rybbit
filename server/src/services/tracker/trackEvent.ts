@@ -42,6 +42,10 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       return reply.status(200).send("Site over monthly limit, event not tracked");
     }
 
+    if (outcome.status === "no_plan") {
+      return reply.status(200).send("Site has no plan, event not tracked");
+    }
+
     if (outcome.status === "excluded") {
       return reply.status(200).send({
         success: true,

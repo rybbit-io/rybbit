@@ -48,7 +48,7 @@ const faqSchema = {
       name: "How does Rybbit compare to Google Analytics?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Rybbit is far less bloated than Google Analytics, both in the tracking script and the dashboard. It's one dashboard instead of 150+ reports, and the script is 18KB against GA4's 371KB.",
+        text: "Rybbit is far less bloated than Google Analytics, both in the tracking script and the dashboard. It's one dashboard instead of 150+ reports, and the script is about 11KB against GA4's 150KB, both compressed.",
       },
     },
     {

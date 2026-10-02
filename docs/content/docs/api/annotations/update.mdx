@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 PUT /api/sites/:site/annotations/:annotationId
 ```
 
-Partial update: only the fields you send change. Admins and owners can edit any annotation on their sites; members can edit only the annotations they created. Changing `scope` requires an admin or owner role.
+Partial update: only the fields you send change. Editors, admins and owners can edit any annotation on their sites; members can edit only the annotations they created. Changing `scope` needs the editor role or above in the organization.
 
 ### Path Parameters
 

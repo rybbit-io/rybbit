@@ -43,9 +43,8 @@ export const user = pgTable(
     // deprecated
     monthlyEventCount: integer().default(0),
     sendAutoEmailReports: boolean().default(true),
-    // deprecated - Resend email IDs from the retired pre-scheduled tip sequence; kept so
-    // unsubscribe can still cancel tips already scheduled for users who signed up before
-    // the lifecycle email system replaced it
+    // deprecated - Resend IDs from the retired tip sequence; retained until the
+    // separate contract migration audits and drops the legacy data
     scheduledTipEmailIds: jsonb("scheduled_tip_email_ids").$type<string[]>().default([]),
   },
   table => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)]
@@ -274,6 +273,8 @@ export const invitation = pgTable("invitation", {
   // Site access restriction for the invited member
   hasRestrictedSiteAccess: boolean("has_restricted_site_access").default(false).notNull(),
   siteIds: jsonb("site_ids").default([]).$type<number[]>(), // Array of site IDs to grant access to
+  // Raises the invited role on those sites (editor, member or viewer); null = no raise
+  siteRole: text("site_role"),
   teamId: text().references(() => team.id, { onDelete: "set null" }),
 });
 
@@ -289,6 +290,8 @@ export const memberSiteAccess = pgTable(
     siteId: integer("site_id")
       .notNull()
       .references(() => sites.siteId, { onDelete: "cascade" }),
+    // Raises the member's role on this site (editor, member or viewer); null or lower = their organization role
+    role: text("role"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
   },
@@ -329,6 +332,8 @@ export const teamSiteAccess = pgTable(
     siteId: integer("site_id")
       .notNull()
       .references(() => sites.siteId, { onDelete: "cascade" }),
+    // Raises the team members' role on this site (editor, member or viewer); null or lower = each one's organization role
+    role: text("role"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
   },
   (table) => [
@@ -777,6 +782,29 @@ export const telemetry = pgTable("telemetry", {
 });
 
 // Google Search Console connections table
+// A pending hand-over of a site to someone outside its organization. The
+// site's admin names a recipient by email; the recipient accepts into an
+// organization they administer. The id is the secret in the emailed link. At
+// most one per site; the row is deleted when the transfer is accepted,
+// declined, cancelled or superseded, or when the site moves by other means.
+export const siteTransfers = pgTable(
+  "site_transfers",
+  {
+    id: text("id").primaryKey().notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.siteId, { onDelete: "cascade" }),
+    sourceOrganizationId: text("source_organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    recipientEmail: text("recipient_email").notNull(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { mode: "string" }).notNull(),
+  },
+  table => [unique("site_transfers_site_unique").on(table.siteId)]
+);
+
 export const gscConnections = pgTable("gsc_connections", {
   siteId: integer("site_id")
     .primaryKey()

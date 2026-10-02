@@ -1,3 +1,4 @@
+import type { SiteGrantRole } from "@rybbit/shared";
 import { authedFetch } from "../../utils";
 
 export type GetOrganizationMembersResponse = {
@@ -15,6 +16,10 @@ export type GetOrganizationMembersResponse = {
     siteAccess: {
       hasRestrictedSiteAccess: boolean;
       siteIds: number[];
+      /** The role all the member's site grants carry; null when they carry none (their organization role applies) or differ. */
+      siteRole: SiteGrantRole | null;
+      /** Each direct grant with its own role (null: the member's organization role applies on that site). */
+      siteGrants?: { siteId: number; role: SiteGrantRole | null }[];
     };
     teams: {
       id: string;
@@ -47,14 +52,15 @@ export function getOrgApiUsage(organizationId: string) {
 export function updateMemberSiteAccess(
   organizationId: string,
   memberId: string,
-  data: { hasRestrictedSiteAccess: boolean; siteIds: number[] }
+  data: {
+    hasRestrictedSiteAccess: boolean;
+    siteIds: number[];
+    /** Raises the member's role on those sites; null leaves their organization role. */
+    siteRole?: SiteGrantRole | null;
+  }
 ) {
-  return authedFetch(
-    `/organizations/${organizationId}/members/${memberId}/sites`,
-    undefined,
-    {
-      method: "PUT",
-      data,
-    }
-  );
+  return authedFetch(`/organizations/${organizationId}/members/${memberId}/sites`, undefined, {
+    method: "PUT",
+    data,
+  });
 }

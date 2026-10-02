@@ -200,6 +200,12 @@ describe("mcp endpoint", () => {
           return { success: true };
         });
 
+        fastify.put("/organizations/:organizationId/members/:memberId/sites", async request => {
+          captured.url = request.url;
+          captured.body = request.body;
+          return { memberId: "m_1", hasRestrictedSiteAccess: true, siteAccess: [] };
+        });
+
         fastify.post("/organizations/:organizationId/members", async request => {
           captured.url = request.url;
           captured.body = request.body;
@@ -657,6 +663,25 @@ describe("mcp endpoint", () => {
     expect(captured.body).toEqual({ anonymous_id: "anon_1", user_id: "app_user_9", traits: { plan: "pro" } });
   });
 
+  it("update_member_site_access leaves the site role alone unless asked", async () => {
+    await callTool(app, "update_member_site_access", {
+      organization_id: "org_1",
+      member_id: "m_1",
+      has_restricted_site_access: true,
+      site_ids: [5],
+    });
+    expect(captured.body).toEqual({ hasRestrictedSiteAccess: true, siteIds: [5] });
+
+    await callTool(app, "update_member_site_access", {
+      organization_id: "org_1",
+      member_id: "m_1",
+      has_restricted_site_access: true,
+      site_ids: [5],
+      site_role: "editor",
+    });
+    expect(captured.body).toEqual({ hasRestrictedSiteAccess: true, siteIds: [5], siteRole: "editor" });
+  });
+
   it("analyze_funnel sends steps as the POST body", async () => {
     const steps = [
       { type: "page", value: "/pricing" },
@@ -676,7 +701,7 @@ describe("mcp endpoint", () => {
     expect(result.content[0].text).toContain("403");
     expect(result.content[0].text).toContain("You don't have access to this site");
     expect(result.content[0].text).toContain("list_sites");
-    expect(result.content[0].text).toContain("admin/owner role");
+    expect(result.content[0].text).toContain("Insufficient role");
   });
 
   it("rejects invalid tool arguments before hitting the API", async () => {

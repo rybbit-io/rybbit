@@ -39,7 +39,7 @@ export const simpleAnalyticsComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "18KB", competitorValue: "~6KB" },
+      { name: "Script size", rybbitValue: "~11KB", competitorValue: "~6KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: true },
       { name: "API access", rybbitValue: true, competitorValue: true },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "$20/mo per user" },

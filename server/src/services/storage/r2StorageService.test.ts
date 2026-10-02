@@ -1,4 +1,3 @@
-import { gzipSync } from "node:zlib";
 import { Readable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -255,15 +254,6 @@ describe("r2Storage.getBatch", () => {
 
     await expect(storage.getBatch("1/session/batch.json.zst")).resolves.toEqual([{ type: "identify" }]);
     expect(mocks.decompress).toHaveBeenCalledWith(compressed);
-  });
-
-  it("uses gzip decompression for legacy .gz objects", async () => {
-    const events = [{ type: "pageview", pathname: "/legacy" }];
-    mocks.send.mockResolvedValue({ Body: Readable.from([gzipSync(JSON.stringify(events))]) });
-    const storage = await loadStorage();
-
-    await expect(storage.getBatch("1/session/legacy.json.gz")).resolves.toEqual(events);
-    expect(mocks.decompress).not.toHaveBeenCalled();
   });
 
   it("defaults unknown extensions to zstd decompression", async () => {

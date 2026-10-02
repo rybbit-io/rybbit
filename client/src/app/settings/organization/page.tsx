@@ -1,21 +1,26 @@
 "use client";
+
+import { DateTime } from "luxon";
+import Link from "next/link";
 import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
-import { toast } from "@/components/ui/sonner";
-import { useOrganizationMembers } from "../../../api/admin/hooks/useOrganizationMembers";
-import { useOrganizationInvitations } from "../../../api/admin/hooks/useOrganizations";
-import { NoOrganization } from "../../../components/NoOrganization";
-import { Button } from "../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Input } from "../../../components/ui/input";
-import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
-import { authClient } from "../../../lib/auth";
-import { ApiKeyManager } from "../account/components/ApiKeyManager";
-import { DeleteOrganizationDialog } from "./components/DeleteOrganizationDialog";
-import { Invitations } from "./components/Invitations";
-import { MembersTable } from "./components/MembersTable";
 
-// Types for our component
+import { useOrganizationMembers } from "@/api/admin/hooks/useOrganizationMembers";
+import { useOrganizationInvitations } from "@/api/admin/hooks/useOrganizations";
+import { CopyText } from "@/components/CopyText";
+import { NoOrganization } from "@/components/NoOrganization";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/sonner";
+import { useOrgPermissions } from "@/hooks/usePermissions";
+import { useSetPageTitle } from "@/hooks/useSetPageTitle";
+import { authClient } from "@/lib/auth";
+import { getTimezone } from "@/lib/store";
+
+import { ApiKeyManager } from "../account/components/ApiKeyManager";
+import { DangerRow, DangerZone, LedgerRow, LedgerRows, LedgerSaveBar, LedgerSection } from "../components/Ledger";
+import { DeleteOrganizationDialog, useHasActiveSubscription } from "./components/DeleteOrganizationDialog";
+import { PeopleTable } from "./components/PeopleTable";
+
 export type Organization = {
   id: string;
   name: string;
@@ -23,34 +28,7 @@ export type Organization = {
   slug: string;
 };
 
-export type Member = {
-  id: string;
-  role: string;
-  userId: string;
-  organizationId: string;
-  createdAt: string;
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-  };
-  siteAccess?: {
-    hasRestrictedSiteAccess: boolean;
-    siteIds: number[];
-  };
-};
-
-// Organization Component with Members Table
-function Organization({
-  org,
-}: {
-  org: {
-    id: string;
-    name: string;
-    slug: string;
-    createdAt: Date;
-  };
-}) {
+function Organization({ org }: { org: Organization }) {
   const t = useExtracted();
   const [name, setName] = useState(org.name);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -60,11 +38,16 @@ function Organization({
   }, [org.name]);
 
   const { data: members, refetch, isLoading: membersLoading } = useOrganizationMembers(org.id);
-  const { refetch: refetchInvitations } = useOrganizationInvitations(org.id);
-  const { data } = authClient.useSession();
-
-  const isOwner = !!members?.data.find(member => member.role === "owner" && member.userId === data?.user?.id);
-  const isAdmin = !!members?.data.find(member => member.role === "admin" && member.userId === data?.user?.id) || isOwner;
+  const {
+    data: invitations,
+    refetch: refetchInvitations,
+    isLoading: invitationsLoading,
+  } = useOrganizationInvitations(org.id);
+  const { can, assignableRoles } = useOrgPermissions(org.id);
+  const hasActiveSubscription = useHasActiveSubscription();
+  const canRename = can("org:rename");
+  const canDelete = can("org:delete");
+  const isNameDirty = canRename && name !== org.name;
 
   const handleRefresh = () => {
     refetch();
@@ -102,50 +85,108 @@ function Organization({
 
   return (
     <>
-      {isOwner && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">{t("Organization")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">{t("Organization Name")}</h4>
-              <p className="text-xs text-neutral-500">{t("Update your organization name")}</p>
-              <div className="flex space-x-2">
-                <Input id="name" value={name} onChange={({ target }) => setName(target.value)} placeholder="name" />
-                <Button variant="outline" onClick={handleOrganizationNameUpdate} disabled={name === org.name}>
-                  {isUpdating ? t("Updating...") : t("Update")}
-                </Button>
-              </div>
+      <LedgerSection title={t("General")}>
+        <LedgerRows>
+          <LedgerRow
+            label={t("Name")}
+            description={t("Shown in the nav and on invitations.")}
+            htmlFor={canRename ? "organization-name" : undefined}
+          >
+            {canRename ? (
+              <>
+                <Input
+                  id="organization-name"
+                  value={name}
+                  onChange={({ target }) => setName(target.value)}
+                  onKeyDown={event => {
+                    if (event.key === "Enter" && isNameDirty && !isUpdating) handleOrganizationNameUpdate();
+                  }}
+                  autoComplete="off"
+                  className="md:max-w-[340px]"
+                />
+                {isNameDirty && (
+                  <p className="mt-1 text-xs leading-4 text-neutral-500 dark:text-neutral-400">
+                    {t.rich("Was <old>{name}</old>", {
+                      name: org.name,
+                      old: chunks => (
+                        <span className="font-medium text-neutral-700 dark:text-neutral-300">{chunks}</span>
+                      ),
+                    })}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="flex min-h-9 items-center text-sm">{org.name}</p>
+            )}
+          </LedgerRow>
+          <LedgerRow label={t("Slug")} description={t("Set at creation. It can't be changed.")}>
+            <div className="flex min-h-9 items-center">
+              <CopyText text={org.slug} className="text-neutral-700 dark:text-neutral-300" />
             </div>
-            <div className="pt-4 border-t mt-4 space-y-2">
-              <h4 className="text-sm font-medium">{t("Delete Organization")}</h4>
-              <p className="text-xs text-neutral-500">{t("Permanently delete this organization and all its data")}</p>
-              <div className="w-[200px]">
-                <DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          </LedgerRow>
+          <LedgerRow label={t("Created")}>
+            <p className="flex min-h-9 items-center text-sm tabular-nums">
+              {DateTime.fromJSDate(new Date(org.createdAt)).setZone(getTimezone()).toLocaleString(DateTime.DATE_MED)}
+            </p>
+          </LedgerRow>
+        </LedgerRows>
+        <LedgerSaveBar
+          dirty={isNameDirty}
+          saving={isUpdating}
+          onCancel={() => setName(org.name)}
+          onSave={handleOrganizationNameUpdate}
+        />
+      </LedgerSection>
 
-      <MembersTable
-        org={org}
-        members={members}
-        membersLoading={membersLoading}
-        isOwner={isOwner}
-        isAdmin={isAdmin}
+      <PeopleTable
+        organizationId={org.id}
+        members={members?.data}
+        invitations={invitations?.filter(invitation => invitation.status === "pending")}
+        isLoading={membersLoading || invitationsLoading}
+        canManageMembers={can("members:manage")}
+        assignableRoles={assignableRoles}
         onRefresh={handleRefresh}
+        onInvitationsChanged={refetchInvitations}
       />
 
-      <Invitations organizationId={org.id} isOwner={isOwner} />
+      {can("apikeys:manage") && <ApiKeyManager organizationId={org.id} />}
 
-      {isAdmin && <ApiKeyManager organizationId={org.id} />}
+      {canDelete && (
+        <DangerZone>
+          <DangerRow
+            label={t("Delete organization")}
+            description={t("Permanent. There is no undo.")}
+            consequence={
+              <>
+                {t(
+                  "Deletes {name} and all its data, including its teams and organization API keys, and removes all its members.",
+                  { name: org.name }
+                )}
+                {hasActiveSubscription && (
+                  <>
+                    {" "}
+                    {t.rich("Cancel your subscription in <link>Billing</link> first.", {
+                      link: chunks => (
+                        <Link
+                          href="/settings/billing"
+                          className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-50"
+                        >
+                          {chunks}
+                        </Link>
+                      ),
+                    })}
+                  </>
+                )}
+              </>
+            }
+            action={<DeleteOrganizationDialog organization={org} onSuccess={handleRefresh} />}
+          />
+        </DangerZone>
+      )}
     </>
   );
 }
 
-// Main Organizations component
 export default function MembersPage() {
   useSetPageTitle("Organization Members");
   const t = useExtracted();
@@ -165,9 +206,5 @@ export default function MembersPage() {
     );
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <Organization key={activeOrganization.id} org={activeOrganization} />
-    </div>
-  );
+  return <Organization key={activeOrganization.id} org={activeOrganization} />;
 }

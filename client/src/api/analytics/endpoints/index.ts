@@ -17,6 +17,11 @@ export type {
   NewEventsResponse,
   CursorEventsResponse,
   EventName,
+  EventNameStat,
+  EventNameStats,
+  EventTrendBucket,
+  EventsOverview,
+  SilentEvent,
   EventProperty,
   AutocaptureEvent,
   AutocaptureValue,
@@ -45,13 +50,9 @@ export type {
 export type {
   ErrorNameItem,
   ErrorNamesPaginatedResponse,
-  ErrorNamesStandardResponse,
   ErrorEvent,
   ErrorEventsPaginatedResponse,
-  ErrorEventsStandardResponse,
   GetErrorBucketedResponse,
-  ErrorNamesParams,
-  ErrorEventsParams,
   ErrorBucketedParams,
 } from "./errors";
 
@@ -61,6 +62,9 @@ export type {
   Goal,
   GoalType,
   GoalConfig,
+  GoalDefinition,
+  GoalPreview,
+  GoalsSummary,
   GoalTimeSeriesPoint,
   PaginationMeta,
   GoalsResponse,
@@ -108,6 +112,8 @@ export type {
   FunnelRequest,
   SaveFunnelRequest,
   FunnelResponse,
+  FunnelSummary,
+  FunnelSummariesResponse,
   AnalyzeFunnelParams,
   FunnelStepSessionsParams,
   SaveFunnelParams,
@@ -122,6 +128,7 @@ export type {
   PerformanceTimeSeriesParams,
   PerformanceByDimensionParams,
   PaginatedPerformanceResponse,
+  WebVitalRatingCounts,
 } from "./performance";
 
 // Bots types
@@ -148,14 +155,19 @@ export type {
   SessionDetails,
   SessionEvent,
   SessionEventProps,
+  SessionGoal,
   SessionPageviewsAndEvents,
+  SessionSort,
+  SessionsSummary,
+  SessionView,
+  SessionViewCounts,
   LiveSessionLocation,
   SessionsParams,
   SessionDetailsParams,
 } from "./sessions";
 
 // Users endpoints
-export { fetchUsers, identifyUser, updateUserTraits, deleteUser } from "./users";
+export { identifyUser, updateUserTraits, deleteUser } from "./users";
 export type {
   UsersResponse,
   UserInfo,
@@ -164,10 +176,8 @@ export type {
   UserDeviceBreakdown,
   LinkedDevice,
   UserSessionCountResponse,
-  UsersParams,
-  UserSessionsParams,
-  UserSessionCountParams,
   UsersListResponse,
+  UsersSummary,
   IdentifyUserPayload,
 } from "./users";
 
@@ -178,11 +188,12 @@ export type {
   RetentionMode,
   Journey,
   JourneysResponse,
+  JourneyGrouping,
+  JourneySummary,
   RetentionParams,
   JourneysParams,
   PageTitleItem,
   PageTitlesPaginatedResponse,
-  PageTitlesStandardResponse,
   PageTitlesParams,
   OrgEventCountResponse,
   GetOrgEventCountResponse,
@@ -201,16 +212,7 @@ export type {
 } from "./sessionReplay";
 
 // User Traits types
-export type {
-  TraitKey,
-  TraitKeysResponse,
-  TraitValue,
-  TraitValuesResponse,
-  TraitValuesParams,
-  TraitValueUser,
-  TraitValueUsersResponse,
-  TraitValueUsersParams,
-} from "./userTraits";
+export type { TraitKey, TraitKeysResponse, TraitGroupStats, TraitValueGroup, TraitBreakdown } from "./userTraits";
 
 // Export endpoints
 export { exportPdfReport } from "./export";

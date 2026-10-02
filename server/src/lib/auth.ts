@@ -8,13 +8,15 @@ import dotenv from "dotenv";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import pg from "pg";
 import { dash } from "@better-auth/infra";
-import { apiKey } from "@better-auth/api-key"
+import { apiKey } from "@better-auth/api-key";
 
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
+import { isAdminRole, isOrgRole, isSiteGrantRole, ORG_ROLES, SITE_GRANT_ROLES, type OrgRole } from "@rybbit/shared";
 import { siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
+import { getMemberLimitError, getPlanMemberLimit } from "./memberLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
 import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
 import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
@@ -42,11 +44,18 @@ const orgAccessControl = createAccessControl({
   ...defaultStatements,
   apiKey: [...ORG_API_KEY_ACTIONS],
 });
+//
+// Every role in ORG_ROLES (@rybbit/shared) must be registered here or
+// better-auth rejects it on invite and role change. Editors and viewers hold
+// no better-auth statements beyond a member's: what separates them is Rybbit's
+// own permission map, which the route guards enforce.
 const orgRoles = {
   owner: orgAccessControl.newRole({ ...ownerAc.statements, apiKey: [...ORG_API_KEY_ACTIONS] }),
   admin: orgAccessControl.newRole({ ...adminAc.statements, apiKey: [...ORG_API_KEY_ACTIONS] }),
+  editor: orgAccessControl.newRole({ ...memberAc.statements }),
   member: orgAccessControl.newRole({ ...memberAc.statements }),
-};
+  viewer: orgAccessControl.newRole({ ...memberAc.statements }),
+} satisfies Record<OrgRole, unknown>;
 
 // Rate limiting moved out of the plugin and into lib/apiRateLimit.ts, which
 // enforces a burst tier and a daily quota per credential *owner* rather than a
@@ -84,6 +93,10 @@ const pluginList = [
   dash(),
   organization({
     allowUserToCreateOrganization: true,
+    // better-auth checks this whenever it adds a member itself — including
+    // accepting an invitation, which the invite-time check below can't
+    // cover. 100 is better-auth's own default, kept for unlimited plans.
+    membershipLimit: async (_user, org) => (await getPlanMemberLimit(org.id)) ?? 100,
     creatorRole: "owner",
     ac: orgAccessControl,
     roles: orgRoles,
@@ -106,6 +119,7 @@ const pluginList = [
         const invite = newInvitation as typeof newInvitation & {
           hasRestrictedSiteAccess?: boolean;
           siteIds?: number[];
+          siteRole?: string | null;
         };
         const hasRestrictedSiteAccess = invite.hasRestrictedSiteAccess === true;
 
@@ -114,13 +128,21 @@ const pluginList = [
             data: {
               hasRestrictedSiteAccess: false,
               siteIds: [],
+              siteRole: null,
             },
           };
         }
 
-        if (invite.role !== "member") {
+        const siteRole = invite.siteRole ?? null;
+        if (siteRole !== null && !isSiteGrantRole(siteRole)) {
           throw new APIError("BAD_REQUEST", {
-            message: "Site access restrictions can only be applied to member invitations",
+            message: `siteRole must be one of: ${SITE_GRANT_ROLES.join(", ")}`,
+          });
+        }
+
+        if (isAdminRole(invite.role)) {
+          throw new APIError("BAD_REQUEST", {
+            message: "Site access restrictions cannot be applied to admin or owner invitations",
           });
         }
 
@@ -144,6 +166,7 @@ const pluginList = [
           data: {
             hasRestrictedSiteAccess: true,
             siteIds: uniqueSiteIds,
+            siteRole,
           },
         };
       },
@@ -183,6 +206,13 @@ const pluginList = [
             required: false,
             defaultValue: [],
             fieldName: "site_ids",
+          },
+          // Role on those sites; null = the invited role. Validated in
+          // beforeCreateInvitation.
+          siteRole: {
+            type: "string",
+            required: false,
+            fieldName: "site_role",
           },
         },
       },
@@ -227,11 +257,11 @@ const pluginList = [
   // Add Cloudflare Turnstile captcha (cloud only)
   ...(IS_CLOUD && process.env.TURNSTILE_SECRET_KEY && process.env.NODE_ENV === "production"
     ? [
-      captcha({
-        provider: "cloudflare-turnstile",
-        secretKey: process.env.TURNSTILE_SECRET_KEY,
-      }),
-    ]
+        captcha({
+          provider: "cloudflare-turnstile",
+          secretKey: process.env.TURNSTILE_SECRET_KEY,
+        }),
+      ]
     : []),
 ];
 
@@ -260,14 +290,7 @@ export const auth = betterAuth({
     disableSignUp: DISABLE_SIGNUP,
   },
   emailVerification: {
-    sendVerificationEmail: async ({
-      user,
-      url,
-    }: {
-      user: { email: string };
-      url: string;
-      token: string;
-    }) => {
+    sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string; token: string }) => {
       await sendEmailVerificationLink(user.email, url);
     },
   },
@@ -289,11 +312,6 @@ export const auth = betterAuth({
         defaultValue: true,
         input: true,
       },
-      // scheduledTipEmailIds: {
-      //   type: "string[]",
-      //   required: false,
-      //   defaultValue: [],
-      // },
     },
     deleteUser: {
       enabled: true,
@@ -378,7 +396,19 @@ export const auth = betterAuth({
     },
   },
   hooks: {
-    before: createAuthMiddleware(async (ctx) => {
+    before: createAuthMiddleware(async ctx => {
+      // better-auth accepts several roles at once (an array, stored
+      // comma-joined). Rybbit gives each membership exactly one role, and the
+      // access resolver denies anything else, so refuse it at the door.
+      if (ctx.path === "/organization/invite-member" || ctx.path === "/organization/update-member-role") {
+        const role = (ctx.body as { role?: unknown } | undefined)?.role;
+        if (!isOrgRole(role)) {
+          throw new APIError("BAD_REQUEST", {
+            message: `role must be one of: ${ORG_ROLES.join(", ")}`,
+          });
+        }
+      }
+
       // Gate API key creation on better-auth's own /api-key/create route. This
       // is the only choke point that covers direct client calls — the Fastify
       // endpoints (createUserApiKey / createOrgApiKey) do richer plan checks
@@ -453,22 +483,9 @@ export const auth = betterAuth({
         const organizationId = body?.organizationId;
 
         if (organizationId) {
-          // Lazy import to avoid circular dependency
-          const { getSubscriptionInner } = await import("../api/stripe/getSubscription.js");
-          const subscription = await getSubscriptionInner(organizationId);
-          const memberLimit = subscription?.memberLimit ?? null;
-
-          if (memberLimit !== null) {
-            const members = await db
-              .select({ id: member.id })
-              .from(member)
-              .where(eq(member.organizationId, organizationId));
-
-            if (members.length >= memberLimit) {
-              throw new APIError("FORBIDDEN", {
-                message: `You have reached the limit of ${memberLimit} member${memberLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`,
-              });
-            }
+          const memberLimitError = await getMemberLimitError(organizationId);
+          if (memberLimitError) {
+            throw new APIError("FORBIDDEN", { message: memberLimitError });
           }
         }
       }
@@ -487,13 +504,14 @@ export const auth = betterAuth({
               email: invitation.email,
               hasRestrictedSiteAccess: invitation.hasRestrictedSiteAccess,
               siteIds: invitation.siteIds,
+              siteRole: invitation.siteRole,
             })
             .from(invitation)
             .where(eq(invitation.id, invitationId))
             .limit(1);
 
           if (invitationRecord.length === 0) return;
-          const { organizationId, email, hasRestrictedSiteAccess, siteIds } = invitationRecord[0];
+          const { organizationId, email, hasRestrictedSiteAccess, siteIds, siteRole } = invitationRecord[0];
           if (!hasRestrictedSiteAccess) return;
 
           const userRecord = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
@@ -539,6 +557,7 @@ export const auth = betterAuth({
               grantableSiteIds.map(siteId => ({
                 memberId,
                 siteId,
+                role: isSiteGrantRole(siteRole) ? siteRole : null,
               }))
             );
           }

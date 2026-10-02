@@ -8,7 +8,7 @@ import { Badge } from "./ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { EventUsageChart } from "./EventUsageChart";
 
-const PERIODS = [
+export const PERIODS = [
   { value: "7", label: "7D" },
   { value: "14", label: "14D" },
   { value: "30", label: "30D" },
@@ -16,9 +16,9 @@ const PERIODS = [
   { value: "all", label: "All" },
 ] as const;
 
-type PeriodValue = (typeof PERIODS)[number]["value"];
+export type PeriodValue = (typeof PERIODS)[number]["value"];
 
-function getPeriodDates(period: PeriodValue): { startDate?: string; endDate?: string } {
+export function getPeriodDates(period: PeriodValue): { startDate?: string; endDate?: string } {
   if (period === "all") return {};
   const end = DateTime.now().toFormat("yyyy-MM-dd");
   const start = DateTime.now().minus({ days: Number(period) }).toFormat("yyyy-MM-dd");
