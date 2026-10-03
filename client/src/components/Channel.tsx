@@ -1,6 +1,9 @@
 import {
+  Bell,
   Bot,
+  Briefcase,
   Calendar,
+  CornerDownRight,
   DollarSign,
   ExternalLink,
   FileQuestion,
@@ -10,7 +13,11 @@ import {
   HelpCircle,
   Link,
   Mail,
+  Megaphone,
+  MessageSquare,
   Monitor,
+  Network,
+  Newspaper,
   Search,
   ShoppingCart,
   Users,
@@ -24,6 +31,8 @@ export function getChannelIconComponent(channel: string) {
   switch (channel) {
     case "Direct":
       return Link;
+    case "Internal":
+      return CornerDownRight;
     case "Organic Search":
     case "Paid Search":
       return Search;
@@ -41,17 +50,33 @@ export function getChannelIconComponent(channel: string) {
     case "Display":
       return Monitor;
     case "Organic Video":
+    case "Paid Video":
       return Video;
     case "Affiliate":
       return Handshake;
     case "Content":
       return FileText;
     case "Organic Shopping":
+    case "Paid Shopping":
       return ShoppingCart;
     case "Event":
       return Calendar;
     case "Audio":
+    case "Paid Audio":
       return Headphones;
+    case "Influencer":
+    case "Paid Influencer":
+      return Megaphone;
+    case "Push":
+      return Bell;
+    case "SMS":
+      return MessageSquare;
+    case "News":
+      return Newspaper;
+    case "Productivity":
+      return Briefcase;
+    case "Cross-Network":
+      return Network;
     case "AI":
     case "Paid AI":
       return Bot;
@@ -116,6 +141,21 @@ export const getDisplayName = (hostname: string): string => {
     "claude.ai": "Claude",
     "gemini.google.com": "Gemini",
     "copilot.microsoft.com": "Copilot",
+    "copilot.cloud.microsoft": "Copilot",
+    "m365.cloud.microsoft": "Copilot",
+    "edgeservices.bing.com": "Copilot",
+    "aistudio.google.com": "Google AI Studio",
+    "notebooklm.google.com": "NotebookLM",
+    "duck.ai": "Duck.ai",
+    "kimi.com": "Kimi",
+    "doubao.com": "Doubao",
+    "manus.im": "Manus",
+    "threads.com": "Threads",
+    "www.threads.com": "Threads",
+    "threads.net": "Threads",
+    "www.threads.net": "Threads",
+    "bsky.app": "Bluesky",
+    "outlook.live.com": "Outlook",
     "chat.deepseek.com": "DeepSeek",
     "deepseek.com": "DeepSeek",
     "chat.mistral.ai": "Mistral",

@@ -20,18 +20,23 @@
 export const AI_OPERATOR_REFERRER_DOMAINS: Record<string, string[]> = {
   OpenAI: ["chatgpt.com", "chat.openai.com"],
   Anthropic: ["claude.ai"],
-  Google: ["gemini.google.com"],
-  Microsoft: ["copilot.microsoft.com"],
+  Google: ["gemini.google.com", "aistudio.google.com", "notebooklm.google.com"],
+  // edgeservices.bing.com is Copilot in the Edge sidebar; the *.cloud.microsoft
+  // hosts are the Microsoft 365 Copilot web app (m365 → copilot redirect, 2026).
+  Microsoft: ["copilot.microsoft.com", "copilot.cloud.microsoft", "m365.cloud.microsoft", "edgeservices.bing.com"],
   Perplexity: ["perplexity.ai"],
   Meta: ["meta.ai"],
   Mistral: ["chat.mistral.ai", "mistral.ai"],
   xAI: ["grok.com"],
   "You.com": ["you.com"],
-  // DuckDuckGo is deliberately absent: DuckAssistBot crawls, but a referral
-  // from duckduckgo.com is organic search, not an AI chat hand-off, and
-  // listing it here would reclassify every DuckDuckGo visit as AI traffic.
+  // Only duck.ai, DuckDuckGo's chat: a referral from duckduckgo.com is organic
+  // search, not an AI chat hand-off, and listing it here would reclassify
+  // every DuckDuckGo visit as AI traffic.
+  DuckDuckGo: ["duck.ai"],
   Cursor: ["cursor.com"],
   Cohere: ["coral.cohere.com"],
+  Manus: ["manus.im"],
+  ByteDance: ["doubao.com"],
 };
 
 /**
@@ -64,6 +69,14 @@ export const AI_CHAT_ONLY_DOMAINS: string[] = [
   "phind.com",
   "andi.com",
   "codeium.com",
+  "kimi.com",
+  "kimi.moonshot.cn",
+  "chat.qwen.ai",
+  "chat.z.ai",
+  "chatglm.cn",
+  "yuanbao.tencent.com",
+  "genspark.ai",
+  "t3.chat",
 ];
 
 /** Every domain that counts as AI chat traffic, for channel classification. */
