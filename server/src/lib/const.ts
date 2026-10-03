@@ -9,6 +9,9 @@ export const DISABLE_TELEMETRY = process.env.DISABLE_TELEMETRY === "true";
 export const LITE_DASHBOARD = process.env.LITE_DASHBOARD === "true";
 export const SECRET = process.env.BETTER_AUTH_SECRET;
 export const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN;
+// Google Search Console is optional on self-hosted installs. The dashboard only
+// offers the integration when both halves of the OAuth client are configured.
+export const GSC_ENABLED = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
 // Trial constants (commented out as we're replacing with free tier)
 // export const TRIAL_DURATION_DAYS = 14;
