@@ -52,6 +52,7 @@ MAPBOX_TOKEN=your_mapbox_token
 # HOST_CLIENT_PORT="3002:3002"
 
 # Optional: Database credentials (defaults work fine)
+# CLICKHOUSE_USER=default
 # CLICKHOUSE_PASSWORD=frog
 # POSTGRES_USER=frog
 # POSTGRES_PASSWORD=frog
@@ -334,6 +335,7 @@ services:
       - NODE_ENV=production
       - CLICKHOUSE_HOST=http://clickhouse:8123
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
