@@ -3,19 +3,29 @@
 import { AlignLeft, Loader2, Play } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useTheme } from "next-themes";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import sql from "react-syntax-highlighter/dist/esm/languages/hljs/sql";
 import { vs, vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { CopyButton } from "../../../../components/interior/copy-button";
 import { Button } from "../../../../components/ui/button";
 import { cn } from "../../../../lib/utils";
 
 SyntaxHighlighter.registerLanguage("sql", sql);
 
+// The platform never changes, so there is nothing to subscribe to. The server snapshot is null:
+// the shortcut hint renders after hydration instead of guessing the platform on the server.
+const subscribeToNothing = () => () => {};
+const getIsApplePlatform = () => /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent);
+const getServerPlatform = () => null;
+
 type QueryEditorProps = {
   value: string;
   disabled: boolean;
   isRunning: boolean;
+  /** Keeps the editor focusable but blocks edits, Format and Run (e.g. while a run is in flight). */
+  readOnly?: boolean;
+  textareaRef?: React.Ref<HTMLTextAreaElement>;
   onChange: (value: string) => void;
   onFormat: () => void;
   onRun: () => void;
@@ -27,6 +37,8 @@ export function QueryEditor({
   value,
   disabled,
   isRunning,
+  readOnly = false,
+  textareaRef,
   onChange,
   onFormat,
   onRun,
@@ -35,13 +47,25 @@ export function QueryEditor({
   const t = useExtracted();
   const { resolvedTheme } = useTheme();
   const [isDark, setIsDark] = useState(false);
+  const isApplePlatform = useSyncExternalStore<boolean | null>(
+    subscribeToNothing,
+    getIsApplePlatform,
+    getServerPlatform
+  );
   const highlightRef = useRef<HTMLDivElement>(null);
   const lineNumberRef = useRef<HTMLDivElement>(null);
   const lineCount = Math.max(1, value.split("\n").length);
+  const actionsDisabled = disabled || readOnly || !value.trim();
 
   useEffect(() => {
     setIsDark(resolvedTheme === "dark" || document.documentElement.classList.contains("dark"));
   }, [resolvedTheme]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey) || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    if (!actionsDisabled) onRun();
+  };
 
   const handleScroll = (event: React.UIEvent<HTMLTextAreaElement>) => {
     const { scrollLeft, scrollTop } = event.currentTarget;
@@ -54,7 +78,7 @@ export function QueryEditor({
   };
 
   return (
-    <div className="flex min-h-[280px] flex-col overflow-hidden rounded-lg border border-neutral-150 bg-white shadow-sm dark:border-neutral-850 dark:bg-neutral-900">
+    <div className="flex min-h-[280px] flex-col overflow-hidden rounded-lg border border-neutral-150 bg-white dark:border-neutral-850 dark:bg-neutral-900">
       <div className="flex h-10 items-center justify-between border-b border-neutral-150 bg-neutral-50 px-3 dark:border-neutral-800 dark:bg-neutral-950">
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -65,20 +89,29 @@ export function QueryEditor({
         </div>
         <div className="flex items-center gap-1.5">
           {headerActions}
+          <CopyButton value={value} iconOnly size="sm" tooltip label={t("Copy SQL")} disabled={!value.trim()} />
           <Button
             type="button"
             size="smIcon"
             variant="ghost"
             onClick={onFormat}
-            disabled={disabled || !value.trim()}
-            title="Format query"
-            aria-label="Format query"
+            disabled={actionsDisabled}
+            title={t("Format query")}
+            aria-label={t("Format query")}
           >
             <AlignLeft className="h-4 w-4" />
           </Button>
-          <Button size="sm" onClick={onRun} disabled={disabled || !value.trim()}>
+          <Button size="sm" onClick={onRun} disabled={actionsDisabled} aria-keyshortcuts="Meta+Enter Control+Enter">
             {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             {t("Run")}
+            {isApplePlatform !== null && (
+              <kbd
+                aria-hidden
+                className="hidden h-4 items-center rounded-[2.8px] bg-neutral-100 px-1 font-sans text-[10px] font-medium text-neutral-500 md:inline-flex dark:bg-neutral-800 dark:text-neutral-400"
+              >
+                {isApplePlatform ? "⌘↵" : `${t("Ctrl")} ↵`}
+              </kbd>
+            )}
           </Button>
         </div>
       </div>
@@ -133,10 +166,14 @@ export function QueryEditor({
             </div>
           </div>
           <textarea
+            ref={textareaRef}
             value={value}
             onChange={event => onChange(event.target.value)}
+            onKeyDown={handleKeyDown}
             onScroll={handleScroll}
             disabled={disabled}
+            readOnly={readOnly}
+            aria-label={t("SQL query")}
             spellCheck={false}
             wrap="off"
             className={cn(
