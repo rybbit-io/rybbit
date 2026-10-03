@@ -3,6 +3,7 @@ export interface RybbitEvent {
   timestamp: string;
   session_id: string;
   user_id: string;
+  identified_user_id?: string;
   hostname: string;
   pathname: string;
   querystring: string;

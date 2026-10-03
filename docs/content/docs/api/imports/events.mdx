@@ -41,7 +41,7 @@ Upload events in batches. The request body limit is 50 MB, so split large export
 <TypeTable
   type={{
     events: {
-      description: 'Raw, platform-specific event objects whose shape matches the platform chosen when the import was created (Umami, Simple Analytics, or Plausible export rows)',
+      description: 'Raw, platform-specific event objects whose shape matches the platform chosen when the import was created (Umami, Simple Analytics, or Plausible export rows; for Matomo, one object per visit action, described below)',
       type: 'object[]',
       required: true,
     },
@@ -52,6 +52,13 @@ Upload events in batches. The request body limit is 50 MB, so split large export
     },
   }}
 />
+
+### Matomo Events
+
+A Matomo export has one row per visit, so for a Matomo import send one object per action in the visit instead of one per row. Every field is a string and must be present; send `""` when a value is unknown.
+
+- **Visit:** `idVisit`, `visitorId`, `userId`, `referrerUrl`, `browserName`, `browserVersion`, `operatingSystemName`, `operatingSystemVersion`, `deviceType`, `languageCode`, `countryCode`, `regionCode`, `city`, `latitude`, `longitude`, `resolution`, copied from the visit's columns
+- **Action:** `type` (`action`, `search`, `outlink`, `download` or `event`), `timestamp` (Unix seconds), `url` and `pageTitle` (the page the action happened on), `linkUrl` (the target of an outlink or download), and `eventCategory`, `eventAction`, `eventName`, `eventValue` for events
 
 ### Response
 

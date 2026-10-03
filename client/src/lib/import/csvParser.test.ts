@@ -1,3 +1,4 @@
+import Papa from "papaparse";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportPlatform } from "@/types/import";
 
@@ -173,10 +174,277 @@ describe("simple analytics rows", () => {
     expect(sent[0].events.map(e => e.uuid)).toEqual(["offset", "zulu"]);
   });
 
-  it("treats any platform other than umami as simple analytics", async () => {
-    await runImport(SA_HEADER + SA_ROW, { platform: "plausible" });
+  it("uploads no rows for plausible, which is parsed from its ZIP export instead", async () => {
+    const sent = await runImport(SA_HEADER + SA_ROW, { platform: "plausible" });
 
-    expect(events()[0]).toMatchObject({ added_iso: "2024-03-15T10:00:00.000Z", uuid: "uuid-1" });
+    expect(sent).toEqual([{ events: [], isLastBatch: true }]);
+  });
+});
+
+describe("matomo visits", () => {
+  const VISIT = {
+    idVisit: "4821",
+    visitorId: "9dc9cf8485eecd5d",
+    userId: "",
+    referrerType: "search",
+    referrerName: "Google",
+    referrerKeyword: "",
+    referrerUrl: "https://www.google.com/",
+    browserName: "Chrome",
+    browserVersion: "125.0",
+    operatingSystemName: "Mac",
+    operatingSystemVersion: "10.15",
+    deviceType: "Desktop",
+    languageCode: "en-us",
+    countryCode: "us",
+    regionCode: "CA",
+    city: "San Francisco",
+    latitude: "37.770000",
+    longitude: "-122.420000",
+    resolution: "1920x1080",
+  };
+
+  // Matomo flattens each visit's actions into actionDetails_<n>_<field> columns
+  function action(index: number, fields: Record<string, string>): Record<string, string> {
+    return Object.fromEntries(
+      Object.entries(fields).map(([field, value]) => [`actionDetails_${index}_${field}`, value])
+    );
+  }
+
+  function matomoCsv(...visits: Record<string, string>[]): string {
+    const columns = Array.from(new Set(visits.flatMap(visit => Object.keys(visit))));
+    const quote = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const rows = visits.map(visit => columns.map(column => quote(visit[column] ?? "")).join(","));
+    return [columns.join(","), ...rows].join("\n") + "\n";
+  }
+
+  const pageview = (index: number, path: string, title: string, timestamp: string) =>
+    action(index, { type: "action", url: `https://example.com${path}`, pageTitle: title, timestamp });
+
+  it("unrolls a visit into one event per action, each carrying the visit's fields", async () => {
+    await runImport(
+      matomoCsv({
+        ...VISIT,
+        ...pageview(0, "/", "Home", "1718461800"),
+        ...pageview(1, "/pricing", "Pricing", "1718461865"),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(events()).toHaveLength(2);
+    expect(events()[0]).toEqual({
+      idVisit: "4821",
+      visitorId: "9dc9cf8485eecd5d",
+      userId: "",
+      type: "action",
+      url: "https://example.com/",
+      pageTitle: "Home",
+      linkUrl: "",
+      eventCategory: "",
+      eventAction: "",
+      eventName: "",
+      eventValue: "",
+      timestamp: "1718461800",
+      referrerUrl: "https://www.google.com/",
+      browserName: "Chrome",
+      browserVersion: "125.0",
+      operatingSystemName: "Mac",
+      operatingSystemVersion: "10.15",
+      deviceType: "Desktop",
+      languageCode: "en-us",
+      countryCode: "us",
+      regionCode: "CA",
+      city: "San Francisco",
+      latitude: "37.770000",
+      longitude: "-122.420000",
+      resolution: "1920x1080",
+    });
+    expect(events()[1]).toMatchObject({ url: "https://example.com/pricing", timestamp: "1718461865" });
+  });
+
+  it("orders actions numerically, so actionDetails_10 follows actionDetails_2", async () => {
+    await runImport(
+      matomoCsv({
+        ...VISIT,
+        ...pageview(10, "/later", "Later", "1718461865"),
+        ...pageview(2, "/first", "First", "1718461800"),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(events().map(e => e.url)).toEqual(["https://example.com/first", "https://example.com/later"]);
+  });
+
+  it("gives outlinks and downloads the page they were clicked from", async () => {
+    await runImport(
+      matomoCsv({
+        ...VISIT,
+        ...pageview(0, "/pricing", "Pricing", "1718461800"),
+        ...action(1, { type: "outlink", url: "https://github.com/rybbit-io/rybbit", timestamp: "1718461810" }),
+        ...action(2, { type: "download", url: "https://example.com/report.pdf", timestamp: "1718461820" }),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(events().slice(1)).toMatchObject([
+      {
+        type: "outlink",
+        url: "https://example.com/pricing",
+        pageTitle: "Pricing",
+        linkUrl: "https://github.com/rybbit-io/rybbit",
+      },
+      {
+        type: "download",
+        url: "https://example.com/pricing",
+        pageTitle: "Pricing",
+        linkUrl: "https://example.com/report.pdf",
+      },
+    ]);
+  });
+
+  it("sends an outlink that precedes every pageview with no page", async () => {
+    await runImport(
+      matomoCsv({ ...VISIT, ...action(0, { type: "outlink", url: "https://github.com/", timestamp: "1718461800" }) }),
+      { platform: "matomo" }
+    );
+
+    expect(events()[0]).toMatchObject({ type: "outlink", url: "", pageTitle: "", linkUrl: "https://github.com/" });
+  });
+
+  it("sends event fields only for events, on the page the event fired on", async () => {
+    await runImport(
+      matomoCsv({
+        ...VISIT,
+        ...pageview(0, "/", "Home", "1718461800"),
+        ...action(1, {
+          type: "event",
+          url: "https://example.com/",
+          eventCategory: "Videos",
+          eventAction: "Play",
+          eventName: "Intro",
+          eventValue: "30",
+          timestamp: "1718461810",
+        }),
+        ...action(2, {
+          type: "event",
+          url: "https://example.com/app",
+          eventCategory: "Videos",
+          eventAction: "Pause",
+          timestamp: "1718461820",
+        }),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(events()[0]).toMatchObject({ eventCategory: "", eventAction: "", eventName: "", eventValue: "" });
+    expect(events().slice(1)).toMatchObject([
+      {
+        type: "event",
+        url: "https://example.com/",
+        pageTitle: "Home",
+        eventCategory: "Videos",
+        eventAction: "Play",
+        eventName: "Intro",
+        eventValue: "30",
+      },
+      { type: "event", url: "https://example.com/app", pageTitle: "", eventAction: "Pause" },
+    ]);
+  });
+
+  it("skips goals, ecommerce and actions without a timestamp", async () => {
+    await runImport(
+      matomoCsv({
+        ...VISIT,
+        ...pageview(0, "/", "Home", "1718461800"),
+        ...action(1, { type: "goal", url: "https://example.com/", timestamp: "1718461810" }),
+        ...action(2, { type: "ecommerceOrder", url: "https://example.com/", timestamp: "1718461820" }),
+        ...pageview(3, "/no-timestamp", "Missing", ""),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(events().map(e => e.type)).toEqual(["action"]);
+  });
+
+  it("falls back to the visitor and first timestamp when the export has no idVisit", async () => {
+    const { idVisit: _idVisit, ...visitWithoutId } = VISIT;
+    await runImport(
+      matomoCsv({
+        ...visitWithoutId,
+        ...action(0, { type: "goal", url: "https://example.com/", timestamp: "1718461790" }),
+        ...pageview(1, "/", "Home", "1718461800"),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(events()[0].idVisit).toBe("9dc9cf8485eecd5d-1718461790");
+  });
+
+  it("rebuilds campaign parameters on the landing page only", async () => {
+    await runImport(
+      matomoCsv({
+        ...VISIT,
+        referrerType: "campaign",
+        referrerName: "spring sale",
+        referrerKeyword: "analytics",
+        ...action(0, {
+          type: "action",
+          url: "https://example.com/?ref=hn#top",
+          pageTitle: "Home",
+          timestamp: "1718461800",
+        }),
+        ...action(1, { type: "outlink", url: "https://github.com/", timestamp: "1718461805" }),
+        ...pageview(2, "/pricing", "Pricing", "1718461810"),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(events().map(e => e.url)).toEqual([
+      "https://example.com/?ref=hn&utm_campaign=spring+sale&utm_term=analytics#top",
+      "https://example.com/?ref=hn#top",
+      "https://example.com/pricing",
+    ]);
+  });
+
+  it("keeps campaign parameters the landing page already has", async () => {
+    await runImport(
+      matomoCsv({
+        ...VISIT,
+        referrerType: "campaign",
+        referrerName: "from-matomo",
+        campaignSource: "newsletter",
+        ...action(0, {
+          type: "action",
+          url: "https://example.com/?utm_campaign=original",
+          pageTitle: "Home",
+          timestamp: "1718461800",
+        }),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(events()[0].url).toBe("https://example.com/?utm_campaign=original&utm_source=newsletter");
+  });
+
+  it("leaves URLs alone for visits that didn't come from a campaign", async () => {
+    await runImport(matomoCsv({ ...VISIT, referrerKeyword: "analytics", ...pageview(0, "/", "Home", "1718461800") }), {
+      platform: "matomo",
+    });
+
+    expect(events()[0].url).toBe("https://example.com/");
+  });
+
+  it("filters each action by its own timestamp", async () => {
+    const sent = await runImport(
+      matomoCsv({
+        ...VISIT,
+        ...pageview(0, "/last-year", "Before", "1704067199"),
+        ...pageview(1, "/new-year", "After", "1704067200"),
+      }),
+      { platform: "matomo" }
+    );
+
+    expect(sent[0].events.map(e => e.url)).toEqual(["https://example.com/new-year"]);
   });
 });
 
@@ -277,6 +545,31 @@ describe("malformed and awkward csv", () => {
     const sent = await runImport("");
 
     expect(sent).toEqual([{ events: [], isLastBatch: true }]);
+  });
+});
+
+describe("file encoding", () => {
+  // Papa needs a browser FileReader to read a File, so stub it and inspect the
+  // config it would have been given.
+  async function papaConfigFor(bytes: number[]): Promise<unknown> {
+    const parse = vi.spyOn(Papa, "parse").mockImplementation(() => undefined as never);
+    try {
+      const parser = new CsvParser(SITE_ID, IMPORT_ID, "matomo", "2024-01-01", "2024-12-31");
+      await parser.startImport(new File([new Uint8Array(bytes)], "export.csv"));
+      return parse.mock.calls[0][1];
+    } finally {
+      parse.mockRestore();
+    }
+  }
+
+  it("names the encoding of a UTF-16 export so every chunk decodes alike", async () => {
+    expect(await papaConfigFor([0xff, 0xfe, 0x69, 0x00])).toMatchObject({ encoding: "utf-16le" });
+    expect(await papaConfigFor([0xfe, 0xff, 0x00, 0x69])).toMatchObject({ encoding: "utf-16be" });
+  });
+
+  it("leaves UTF-8 files to Papa's default decoding", async () => {
+    expect(await papaConfigFor([0xef, 0xbb, 0xbf, 0x69])).toHaveProperty("encoding", undefined);
+    expect(await papaConfigFor([0x69, 0x64])).toHaveProperty("encoding", undefined);
   });
 });
 

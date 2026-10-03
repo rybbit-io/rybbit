@@ -43,13 +43,18 @@ interface SimpleAnalyticsEvent {
 }
 
 interface MatomoEvent {
+  idVisit: string;
   visitorId: string;
-  fingerprint: string;
-  siteName: string;
+  userId: string;
 
   type: string;
   url: string;
   pageTitle: string;
+  linkUrl: string;
+  eventCategory: string;
+  eventAction: string;
+  eventName: string;
+  eventValue: string;
   timestamp: string;
 
   referrerUrl: string;
@@ -67,6 +72,65 @@ interface MatomoEvent {
   latitude: string;
   longitude: string;
   resolution: string;
+}
+
+// Matomo action types with a Rybbit equivalent. Goals, ecommerce and content
+// interactions have none and are skipped.
+const MATOMO_ACTION_TYPES = new Set(["action", "search", "outlink", "download", "event"]);
+
+// Matomo strips campaign parameters from the URLs it stores, but Rybbit reads
+// campaigns from utm_* parameters, so they're rebuilt from the visit's columns.
+function withMatomoCampaign(url: string, row: Record<string, string>): string {
+  if (row.referrerType !== "campaign") {
+    return url;
+  }
+
+  try {
+    const existing = new URL(url).searchParams;
+    const campaign = new URLSearchParams();
+    const candidates: [string, string | undefined][] = [
+      ["utm_campaign", row.campaignName || row.referrerName],
+      ["utm_source", row.campaignSource],
+      ["utm_medium", row.campaignMedium],
+      ["utm_term", row.campaignKeyword || row.referrerKeyword],
+      ["utm_content", row.campaignContent],
+    ];
+    for (const [key, value] of candidates) {
+      if (value && !existing.has(key)) {
+        campaign.set(key, value);
+      }
+    }
+
+    const query = campaign.toString();
+    if (!query) {
+      return url;
+    }
+
+    const hashIndex = url.indexOf("#");
+    const base = hashIndex === -1 ? url : url.slice(0, hashIndex);
+    const hash = hashIndex === -1 ? "" : url.slice(hashIndex);
+    return `${base}${base.includes("?") ? "&" : "?"}${query}${hash}`;
+  } catch {
+    return url;
+  }
+}
+
+// Papa decodes each chunk of a file separately, so a byte order mark only
+// reaches the first one and later chunks fall back to UTF-8. Matomo exports
+// UTF-16 by default, so the encoding has to be named up front.
+async function detectUtf16Encoding(file: File): Promise<string | undefined> {
+  try {
+    const [first, second] = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+    if (first === 0xff && second === 0xfe) {
+      return "utf-16le";
+    }
+    if (first === 0xfe && second === 0xff) {
+      return "utf-16be";
+    }
+  } catch {
+    // Leave unreadable input to Papa's default decoding and error reporting
+  }
+  return undefined;
 }
 
 export class CsvParser {
@@ -96,12 +160,15 @@ export class CsvParser {
     }
   }
 
-  startImport(file: File): void {
+  async startImport(file: File): Promise<void> {
     if (this.cancelled) {
       return;
     }
 
+    const encoding = await detectUtf16Encoding(file);
+
     Papa.parse(file, {
+      encoding,
       header: true,
       skipEmptyLines: "greedy",
       worker: true,
@@ -260,14 +327,32 @@ export class CsvParser {
     return null;
   }
 
+  // A Matomo export has one row per visit, with its actions flattened into
+  // actionDetails_<n>_<field> columns; each supported action becomes an event.
   private unrollMatomoVisit(rawEvent: Record<string, string>): MatomoEvent[] {
     const events: MatomoEvent[] = [];
 
+    // Find all action indices by scanning for actionDetails_N_* columns
+    const actionIndices = new Set<number>();
+    for (const key of Object.keys(rawEvent)) {
+      const match = key.match(/^actionDetails_(\d+)_/);
+      if (match) {
+        actionIndices.add(parseInt(match[1], 10));
+      }
+    }
+    const sortedIndices = Array.from(actionIndices).sort((a, b) => a - b);
+    const actionField = (index: number, field: string) => rawEvent[`actionDetails_${index}_${field}`] || "";
+
+    const firstTimestamp = sortedIndices.map(index => actionField(index, "timestamp")).find(Boolean);
+    const visitorId = rawEvent.visitorId || "";
+
     // Extract visit-level metadata
     const visitMetadata = {
-      visitorId: rawEvent.visitorId || "",
-      fingerprint: rawEvent.fingerprint || "",
-      siteName: rawEvent.siteName || "",
+      // An export trimmed with showColumns can lack idVisit. Each row is one
+      // visit, so its visitor and first timestamp identify it just as well.
+      idVisit: rawEvent.idVisit || (visitorId && firstTimestamp ? `${visitorId}-${firstTimestamp}` : ""),
+      visitorId,
+      userId: rawEvent.userId || "",
       referrerUrl: rawEvent.referrerUrl || "",
       browserName: rawEvent.browserName || "",
       browserVersion: rawEvent.browserVersion || "",
@@ -283,57 +368,46 @@ export class CsvParser {
       resolution: rawEvent.resolution || "",
     };
 
-    // Find all action indices by scanning for actionDetails_N_* columns
-    const actionIndices = new Set<number>();
-    for (const key of Object.keys(rawEvent)) {
-      const match = key.match(/^actionDetails_(\d+)_/);
-      if (match) {
-        actionIndices.add(parseInt(match[1], 10));
-      }
-    }
+    // Matomo records only the target of an outlink or download, so those take
+    // the page the visitor was last on
+    let page = { url: "", title: "" };
+    let isLandingPage = true;
 
-    // Track most recent "action" type's url and pageTitle for outlinks
-    let lastActionUrl = "";
-    let lastActionPageTitle = "";
-
-    // Create one MatomoEvent per action (sorted by index)
-    for (const index of Array.from(actionIndices).sort((a, b) => a - b)) {
-      const type = rawEvent[`actionDetails_${index}_type`] || "";
-      const timestamp = rawEvent[`actionDetails_${index}_timestamp`] || "";
-
-      // Only process "action" and "outlink" types
-      if ((type !== "action" && type !== "outlink") || !timestamp) {
+    for (const index of sortedIndices) {
+      const type = actionField(index, "type");
+      const timestamp = actionField(index, "timestamp");
+      if (!MATOMO_ACTION_TYPES.has(type) || !timestamp) {
         continue;
       }
 
-      const actionUrl = rawEvent[`actionDetails_${index}_url`] || "";
-      const actionPageTitle = rawEvent[`actionDetails_${index}_pageTitle`] || "";
+      const actionUrl = actionField(index, "url");
+      let url = page.url;
+      let pageTitle = page.title;
 
-      // For "action" type, update tracking and use its own url/pageTitle
-      // For "outlink" type, use the most recent "action"'s url/pageTitle
-      let url: string;
-      let pageTitle: string;
-
-      if (type === "action") {
-        lastActionUrl = actionUrl;
-        lastActionPageTitle = actionPageTitle;
+      if (type === "action" || type === "search") {
+        page = { url: actionUrl, title: actionField(index, "pageTitle") };
+        url = isLandingPage ? withMatomoCampaign(actionUrl, rawEvent) : actionUrl;
+        pageTitle = page.title;
+        isLandingPage = false;
+      } else if (type === "event" && actionUrl && actionUrl !== page.url) {
+        // An event reports the page it fired on, which can differ from the last pageview
         url = actionUrl;
-        pageTitle = actionPageTitle;
-      } else {
-        // outlink - use last action's url/pageTitle
-        url = lastActionUrl;
-        pageTitle = lastActionPageTitle;
+        pageTitle = "";
       }
 
-      const event: MatomoEvent = {
+      const isEvent = type === "event";
+      events.push({
         ...visitMetadata,
         type,
         url,
         pageTitle,
+        linkUrl: type === "outlink" || type === "download" ? actionUrl : "",
+        eventCategory: isEvent ? actionField(index, "eventCategory") : "",
+        eventAction: isEvent ? actionField(index, "eventAction") : "",
+        eventName: isEvent ? actionField(index, "eventName") : "",
+        eventValue: isEvent ? actionField(index, "eventValue") : "",
         timestamp,
-      };
-
-      events.push(event);
+      });
     }
 
     return events;

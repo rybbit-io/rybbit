@@ -15,11 +15,12 @@ Currently, Rybbit supports importing data from:
 - Umami
 - Simple Analytics
 - Plausible
+- Matomo
 
 Additional platforms may be added in the future based on user demand.
 
 <Callout type="info">
-  Umami and Simple Analytics are imported from a CSV export, while Plausible is imported from its ZIP export. The Import dialog automatically expects the correct file type for the platform you select.
+  Umami, Simple Analytics and Matomo are imported from a CSV export, while Plausible is imported from its ZIP export. The Import dialog automatically expects the correct file type for the platform you select.
 </Callout>
 
 ## Plan Requirements
@@ -90,6 +91,10 @@ Self-hosted users have no concurrent import restrictions.
 2. Use the CSV export option to download your data
 3. Keep the exported **ZIP** archive as-is — do not unzip it
 
+**Matomo:**
+1. Export your visits as CSV with Matomo's API — see [Exporting from Matomo](#exporting-from-matomo)
+2. Keep one CSV per export; don't merge the files
+
 </Step>
 
 <Step>
@@ -107,7 +112,7 @@ Self-hosted users have no concurrent import restrictions.
 ### Select Platform and Upload File
 
 1. Select your source platform from the dropdown
-2. Click "Choose File" and select your exported file (a **CSV** for Umami and Simple Analytics, or a **ZIP** for Plausible)
+2. Click "Choose File" and select your exported file (a **CSV** for Umami, Simple Analytics and Matomo, or a **ZIP** for Plausible)
 3. Click the **Import** button
 
 <Callout type="warn">
@@ -131,6 +136,75 @@ Your import will begin processing in the background. You can:
 
 </Step>
 </Steps>
+
+## Exporting from Matomo
+
+Export your data with the `Live.getLastVisitsDetails` method of Matomo's Reporting API, which returns each visit with all of its actions.
+
+### Create an API Token
+
+1. In Matomo, open **Administration** (gear icon) → **Personal** → **Security**
+2. Under **Auth tokens**, create a new token
+
+<Callout type="warn">
+  The token grants access to your Matomo data. Don't share URLs or commands that contain it.
+</Callout>
+
+### Export Your Visits
+
+Request a date range that has already ended, so new visits can't shift the results between requests:
+
+```bash
+curl -X POST "https://matomo.example.com/index.php" \
+  -d "module=API" \
+  -d "method=Live.getLastVisitsDetails" \
+  -d "idSite=1" \
+  -d "period=range" \
+  -d "date=2025-01-01,2025-01-31" \
+  -d "format=csv" \
+  -d "flat=1" \
+  -d "convertToUnicode=0" \
+  -d "filter_limit=10000" \
+  -d "filter_offset=0" \
+  -d "token_auth=YOUR_API_TOKEN" \
+  -o matomo-2025-01-part1.csv
+```
+
+- `flat=1` is required. It puts each visit's actions in `actionDetails_0_type`, `actionDetails_0_url`, … columns, which is where Rybbit reads them.
+- `convertToUnicode=0` returns UTF-8 instead of Matomo's default UTF-16, which halves the file size. Rybbit reads either.
+- `filter_limit` caps the visits per file. If the range has more, request the next file with `filter_offset=10000`, then `20000`, and so on until a request returns no visits.
+
+Matomo Cloud users can call the same API on their `matomo.cloud` address.
+
+<Callout type="warn">
+  Import each file on its own instead of merging them. Each export's columns depend on its longest visit, so the files' headers differ, and merged rows would land in the wrong columns.
+</Callout>
+
+Rybbit reads the following columns, so if you trim the export with `showColumns` or `hideColumns`, keep these:
+
+| Columns | Used for |
+|---------|----------|
+| `idVisit`, `visitorId`, `userId` | Session, user and identified user |
+| `actionDetails_N_type`, `_timestamp`, `_url`, `_pageTitle` | Pageviews, outbound links and downloads |
+| `actionDetails_N_eventCategory`, `_eventAction`, `_eventName`, `_eventValue` | Custom events |
+| `referrerUrl`, `referrerType`, `referrerName`, `referrerKeyword`, `campaignName`, `campaignSource`, `campaignMedium`, `campaignKeyword`, `campaignContent` | Referrer and campaign |
+| `browserName`, `browserVersion`, `operatingSystemName`, `operatingSystemVersion`, `deviceType`, `resolution` | Browser and device |
+| `languageCode`, `countryCode`, `regionCode`, `city`, `latitude`, `longitude` | Language and location |
+
+### What Gets Imported
+
+Each Matomo visit becomes a Rybbit session, and its actions become events:
+
+| Matomo | Rybbit |
+|--------|--------|
+| Pageview | Pageview |
+| Site search | Pageview of the search results page |
+| Outlink | Outbound link click, on the page it was clicked from |
+| Download | Custom event named `File Download`, with the file in its `url` property |
+| Event | Custom event named after the event category, with `action`, `name` and `value` properties |
+| Goals, ecommerce, content and media tracking | Not imported |
+
+Campaign visits get their campaign back as `utm_*` parameters on the landing page, because Matomo removes campaign parameters from the URLs it stores. Goals aren't imported because Rybbit evaluates goals against your pageviews and events, so recreate them in Rybbit and they apply to the imported data too.
 
 ## Import History
 
@@ -203,6 +277,15 @@ Each import shows three key metrics:
 2. Check that your CSV export includes all required fields
 3. Look for special characters or malformed data in the CSV
 4. Try importing a small sample file (first 100 rows) to test
+
+### Matomo Import Has Few or No Events
+
+**Cause:** The export didn't put actions in `actionDetails_*` columns, or it left out columns Rybbit reads.
+
+**Solution:**
+- Export again with `flat=1` (see [Exporting from Matomo](#exporting-from-matomo))
+- If you used `showColumns` or `hideColumns`, keep the columns listed in that section
+- Remember that goals, ecommerce, content and media tracking aren't imported, so a site that mostly records those will show fewer events
 
 ### Import Appears Stuck
 

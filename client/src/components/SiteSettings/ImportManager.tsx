@@ -144,7 +144,9 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
               allowedDateRange.latestAllowedDate
             );
             workerManagerRef.current = parser;
-            parser.startImport(selectedFile);
+            parser.startImport(selectedFile).catch(err => {
+              console.error("CSV import failed:", err);
+            });
           }
 
           setSelectedFile(null);
@@ -248,8 +250,8 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
                   <SelectItem value="umami">Umami</SelectItem>
                   <SelectItem value="simple_analytics">Simple Analytics</SelectItem>
                   <SelectItem value="plausible">Plausible</SelectItem>
-                    <SelectItem value="matomo">Matomo</SelectItem>
-                  </SelectContent>
+                  <SelectItem value="matomo">Matomo</SelectItem>
+                </SelectContent>
               </Select>
             </div>
 
