@@ -53,13 +53,17 @@ Follow the official Docker Engine installation instructions for your Linux distr
 </Step>
 
 <Step>
-### Clone the Rybbit Repository
+### Download the Deployment Files
 
-Clone the project repository from GitHub (Git is usually pre-installed on most server distributions):
+Rybbit runs from prebuilt Docker images, so you only need the compose file and scripts from the root of the repository, not the source code. This sparse clone downloads just those files (Git is usually pre-installed on most server distributions):
 ```bash
-git clone https://github.com/rybbit-io/rybbit.git
+git clone --depth 1 --filter=blob:none --sparse https://github.com/rybbit-io/rybbit.git
 cd rybbit
 ```
+
+<Callout type="info">
+  A plain `git clone https://github.com/rybbit-io/rybbit.git` works too, it just downloads the whole codebase.
+</Callout>
 </Step>
 
 <Step>
