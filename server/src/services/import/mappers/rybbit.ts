@@ -1,6 +1,7 @@
 export interface RybbitEvent {
   site_id: number;
   timestamp: string;
+  timestamp_ms?: string;
   session_id: string;
   user_id: string;
   identified_user_id?: string;
@@ -21,11 +22,16 @@ export interface RybbitEvent {
   city: string;
   lat: number;
   lon: number;
+  timezone?: string;
   screen_width: number;
   screen_height: number;
   device_type: string;
   type: string;
   event_name: string;
   props: Record<string, unknown>;
+  lcp?: number | null;
+  cls?: number | null;
+  inp?: number | null;
+  fcp?: number | null;
   import_id: string;
 }

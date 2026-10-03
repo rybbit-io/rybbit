@@ -55,6 +55,7 @@ function formatPlatformName(platform: ImportPlatform): string {
     simple_analytics: "Simple Analytics",
     plausible: "Plausible",
     matomo: "Matomo",
+    posthog: "PostHog",
   };
   return platformNames[platform];
 }
@@ -251,6 +252,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
                   <SelectItem value="simple_analytics">Simple Analytics</SelectItem>
                   <SelectItem value="plausible">Plausible</SelectItem>
                   <SelectItem value="matomo">Matomo</SelectItem>
+                  <SelectItem value="posthog">PostHog</SelectItem>
                 </SelectContent>
               </Select>
             </div>

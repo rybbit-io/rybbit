@@ -74,6 +74,14 @@ interface MatomoEvent {
   resolution: string;
 }
 
+interface PostHogEvent {
+  event: string;
+  timestamp: string;
+  distinct_id: string;
+  $session_id: string;
+  properties: string;
+}
+
 // Matomo action types with a Rybbit equivalent. Goals, ecommerce and content
 // interactions have none and are skipped.
 const MATOMO_ACTION_TYPES = new Set(["action", "search", "outlink", "download", "event"]);
@@ -112,6 +120,56 @@ function withMatomoCampaign(url: string, row: Record<string, string>): string {
     return `${base}${base.includes("?") ? "&" : "?"}${query}${hash}`;
   } catch {
     return url;
+  }
+}
+
+// PostHog events with a Rybbit equivalent besides the developer's own events,
+// which don't start with $
+const POSTHOG_EVENTS = new Set(["$pageview", "$autocapture", "$web_vitals", "$exception"]);
+
+// The properties Rybbit reads from a PostHog event. posthog-js records many
+// more, so uploading only these shrinks each row several times over.
+const POSTHOG_PROPERTIES = new Set([
+  "$session_id",
+  "$device_id",
+  "$is_identified",
+  "$current_url",
+  "title",
+  "$referrer",
+  "$raw_user_agent",
+  "$browser",
+  "$browser_version",
+  "$os",
+  "$os_version",
+  "$device_type",
+  "$screen_width",
+  "$screen_height",
+  "$browser_language",
+  "$geoip_country_code",
+  "$geoip_subdivision_1_code",
+  "$geoip_city_name",
+  "$geoip_latitude",
+  "$geoip_longitude",
+  "$geoip_time_zone",
+  "$external_click_url",
+  "$el_text",
+  "$web_vitals_LCP_value",
+  "$web_vitals_CLS_value",
+  "$web_vitals_INP_value",
+  "$web_vitals_FCP_value",
+  "$exception_list",
+  "$exception_type",
+  "$exception_message",
+]);
+
+function parseJsonObject(value: string | undefined): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(value ?? "");
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
   }
 }
 
@@ -216,6 +274,17 @@ export class CsvParser {
             if (validEvents.length > 0) {
               await this.uploadChunk(validEvents, false);
             }
+          } else if (this.platform === "posthog") {
+            const validEvents: PostHogEvent[] = [];
+            for (const row of results.data) {
+              const event = this.transformPostHogRow(row as Record<string, string>);
+              if (event) {
+                validEvents.push(event);
+              }
+            }
+            if (validEvents.length > 0) {
+              await this.uploadChunk(validEvents, false);
+            }
           }
         } catch (error) {
           console.error("Error uploading chunk:", error);
@@ -241,7 +310,7 @@ export class CsvParser {
   }
 
   private isDateInRange(dateStr: string, isUnixTimestamp: boolean = false): boolean {
-    // Handle Unix timestamp (Matomo), "yyyy-MM-dd HH:mm:ss" (Umami), and ISO (Simple Analytics)
+    // Handle Unix timestamp (Matomo), "yyyy-MM-dd HH:mm:ss" (Umami), and ISO (Simple Analytics, PostHog)
     let createdAt: DateTime;
 
     if (isUnixTimestamp) {
@@ -413,8 +482,43 @@ export class CsvParser {
     return events;
   }
 
+  private transformPostHogRow(rawEvent: Record<string, string>): PostHogEvent | null {
+    const { event, timestamp } = rawEvent;
+    // PostHog's SQL export separates the date and time with a space instead of a T
+    if (!event || !timestamp || !this.isDateInRange(timestamp.replace(" ", "T"))) {
+      return null;
+    }
+
+    const isCustomEvent = !event.startsWith("$");
+    const properties = parseJsonObject(rawEvent.properties);
+    // Only autocaptured clicks that leave the site become outbound links
+    const isImported =
+      isCustomEvent || (POSTHOG_EVENTS.has(event) && (event !== "$autocapture" || !!properties?.$external_click_url));
+    if (!isImported) {
+      return null;
+    }
+
+    return {
+      event,
+      timestamp,
+      distinct_id: rawEvent.distinct_id || "",
+      // Without the column, the server reads the session from the properties
+      $session_id: rawEvent.$session_id || "",
+      // Properties that don't parse go up as they are, so the import counts the row as invalid
+      properties: properties
+        ? JSON.stringify(
+            Object.fromEntries(
+              Object.entries(properties).filter(
+                ([key]) => POSTHOG_PROPERTIES.has(key) || (isCustomEvent && !key.startsWith("$"))
+              )
+            )
+          )
+        : rawEvent.properties || "",
+    };
+  }
+
   private async uploadChunk(
-    events: UmamiEvent[] | SimpleAnalyticsEvent[] | MatomoEvent[],
+    events: UmamiEvent[] | SimpleAnalyticsEvent[] | MatomoEvent[] | PostHogEvent[],
     isLastBatch: boolean
   ): Promise<void> {
     // Skip empty chunks unless it's the last one (needed for finalization)

@@ -6,6 +6,7 @@ import { UmamiEvent, UmamiImportMapper } from "../../services/import/mappers/uma
 import { SimpleAnalyticsEvent, SimpleAnalyticsImportMapper } from "../../services/import/mappers/simpleAnalytics.js";
 import { PlausibleEvent, PlausibleImportMapper } from "../../services/import/mappers/plausible.js";
 import { MatomoEvent, MatomoImportMapper } from "../../services/import/mappers/matomo.js";
+import { PostHogEvent, PostHogImportMapper } from "../../services/import/mappers/posthog.js";
 import { importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
@@ -25,6 +26,7 @@ const batchImportRequestSchema = z
         z.array(SimpleAnalyticsImportMapper.simpleAnalyticsEventKeyOnlySchema),
         z.array(PlausibleImportMapper.plausibleEventKeyOnlySchema),
         z.array(MatomoImportMapper.matomoEventKeyOnlySchema),
+        z.array(PostHogImportMapper.postHogEventKeyOnlySchema),
       ]),
       isLastBatch: z.boolean().optional(),
     }),
@@ -95,6 +97,8 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
         transformedEvents = PlausibleImportMapper.transform(events as PlausibleEvent[], siteId, importId);
       } else if (importRecord.platform === "matomo") {
         transformedEvents = MatomoImportMapper.transform(events as MatomoEvent[], siteId, importId);
+      } else if (importRecord.platform === "posthog") {
+        transformedEvents = PostHogImportMapper.transform(events as PostHogEvent[], siteId, importId);
       } else {
         return reply.status(400).send({ error: "Unsupported platform" });
       }

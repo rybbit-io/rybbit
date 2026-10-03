@@ -41,7 +41,7 @@ Upload events in batches. The request body limit is 50 MB, so split large export
 <TypeTable
   type={{
     events: {
-      description: 'Raw, platform-specific event objects whose shape matches the platform chosen when the import was created (Umami, Simple Analytics, or Plausible export rows; for Matomo, one object per visit action, described below)',
+      description: 'Raw, platform-specific event objects whose shape matches the platform chosen when the import was created (Umami, Simple Analytics, Plausible, or PostHog export rows; for Matomo, one object per visit action, described below)',
       type: 'object[]',
       required: true,
     },
@@ -59,6 +59,10 @@ A Matomo export has one row per visit, so for a Matomo import send one object pe
 
 - **Visit:** `idVisit`, `visitorId`, `userId`, `referrerUrl`, `browserName`, `browserVersion`, `operatingSystemName`, `operatingSystemVersion`, `deviceType`, `languageCode`, `countryCode`, `regionCode`, `city`, `latitude`, `longitude`, `resolution`, copied from the visit's columns
 - **Action:** `type` (`action`, `search`, `outlink`, `download` or `event`), `timestamp` (Unix seconds), `url` and `pageTitle` (the page the action happened on), `linkUrl` (the target of an outlink or download), and `eventCategory`, `eventAction`, `eventName`, `eventValue` for events
+
+### PostHog Events
+
+For a PostHog import, send the rows of the SQL export described in [Data Import](/docs/data-import#exporting-from-posthog): `event`, `timestamp`, `distinct_id`, `$session_id`, and `properties` (the event's properties as a JSON string). Every field is a string and must be present. When `$session_id` is `""`, the session is read from the `$session_id` property.
 
 ### Response
 

@@ -16,11 +16,12 @@ Currently, Rybbit supports importing data from:
 - Simple Analytics
 - Plausible
 - Matomo
+- PostHog
 
 Additional platforms may be added in the future based on user demand.
 
 <Callout type="info">
-  Umami, Simple Analytics and Matomo are imported from a CSV export, while Plausible is imported from its ZIP export. The Import dialog automatically expects the correct file type for the platform you select.
+  Umami, Simple Analytics, Matomo and PostHog are imported from a CSV export, while Plausible is imported from its ZIP export. The Import dialog automatically expects the correct file type for the platform you select.
 </Callout>
 
 ## Plan Requirements
@@ -95,6 +96,10 @@ Self-hosted users have no concurrent import restrictions.
 1. Export your visits as CSV with Matomo's API — see [Exporting from Matomo](#exporting-from-matomo)
 2. Keep one CSV per export; don't merge the files
 
+**PostHog:**
+1. Export your events as CSV from PostHog's SQL editor — see [Exporting from PostHog](#exporting-from-posthog)
+2. Import each CSV as it was downloaded, without opening and saving it in a spreadsheet app
+
 </Step>
 
 <Step>
@@ -112,7 +117,7 @@ Self-hosted users have no concurrent import restrictions.
 ### Select Platform and Upload File
 
 1. Select your source platform from the dropdown
-2. Click "Choose File" and select your exported file (a **CSV** for Umami, Simple Analytics and Matomo, or a **ZIP** for Plausible)
+2. Click "Choose File" and select your exported file (a **CSV** for Umami, Simple Analytics, Matomo and PostHog, or a **ZIP** for Plausible)
 3. Click the **Import** button
 
 <Callout type="warn">
@@ -206,6 +211,55 @@ Each Matomo visit becomes a Rybbit session, and its actions become events:
 
 Campaign visits get their campaign back as `utm_*` parameters on the landing page, because Matomo removes campaign parameters from the URLs it stores. Goals aren't imported because Rybbit evaluates goals against your pageviews and events, so recreate them in Rybbit and they apply to the imported data too.
 
+## Exporting from PostHog
+
+Export your events from PostHog's [SQL editor](https://posthog.com/docs/data-warehouse/sql), one date range at a time.
+
+### Export Your Events
+
+1. In PostHog, open the **SQL editor**
+2. Run this query for the first date range you want to import:
+
+```sql
+SELECT event, timestamp, distinct_id, $session_id, properties
+FROM events
+WHERE timestamp >= '2025-01-01' AND timestamp < '2025-02-01'
+  AND (event IN ('$pageview', '$web_vitals', '$exception')
+    OR (event = '$autocapture' AND properties.$external_click_url IS NOT NULL)
+    OR event NOT LIKE '$%')
+ORDER BY timestamp
+```
+
+3. Export the results as **CSV**
+4. Repeat for the next date range
+
+The `event` filter leaves out events Rybbit doesn't import, which keeps the files small. Rybbit reads the `event`, `timestamp`, `distinct_id`, `$session_id` and `properties` columns and ignores any others.
+
+<Callout type="warn">
+  PostHog exports at most 300,000 rows per file, and a file that hits the limit is missing the rest of its range. If one has exactly 300,000 rows, export that range again in smaller parts.
+</Callout>
+
+<Callout type="warn">
+  Don't open the CSV in Excel or another spreadsheet app before importing it. They cut off cells longer than 32,767 characters, which breaks the `properties` column of long events.
+</Callout>
+
+### What Gets Imported
+
+PostHog sessions become Rybbit sessions, and events become:
+
+| PostHog | Rybbit |
+|---------|--------|
+| `$pageview` | Pageview |
+| Your own events | Custom event, with the event's properties |
+| `$autocapture` click on a link to another site | Outbound link click |
+| `$web_vitals` | Web vitals in the Performance view |
+| `$exception` | Error |
+| Other PostHog events, such as `$pageleave`, `$rageclick`, `$dead_click` and autocaptured clicks that stay on the site | Not imported |
+
+Events without a session ID aren't imported. Those usually come from PostHog's server-side SDKs, which don't track sessions.
+
+Browsers, operating systems and devices are read from each event's user agent the same way Rybbit's tracking script reads them, so imported and newly tracked visitors line up. Visitors you identified with `posthog.identify()` keep their distinct ID as their identified user ID.
+
 ## Import History
 
 The Import History section displays all your past and current imports.
@@ -286,6 +340,15 @@ Each import shows three key metrics:
 - Export again with `flat=1` (see [Exporting from Matomo](#exporting-from-matomo))
 - If you used `showColumns` or `hideColumns`, keep the columns listed in that section
 - Remember that goals, ecommerce, content and media tracking aren't imported, so a site that mostly records those will show fewer events
+
+### PostHog Import Has Few or No Events
+
+**Cause:** The export is missing columns Rybbit reads, it was saved again by a spreadsheet app, or its events have no session ID.
+
+**Solution:**
+- Export again with the query in [Exporting from PostHog](#exporting-from-posthog), and import the CSV as downloaded
+- Check that the date range in the query covers the events you expect
+- Remember that only the events listed in that section are imported, and that events from server-side SDKs have no session
 
 ### Import Appears Stuck
 

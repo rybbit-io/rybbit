@@ -448,6 +448,149 @@ describe("matomo visits", () => {
   });
 });
 
+describe("posthog rows", () => {
+  const SESSION_ID = "01972d6a-896e-791b-9660-9cfd4b1c886c";
+
+  interface PostHogRow {
+    event: string;
+    timestamp?: string;
+    properties?: Record<string, unknown> | string;
+  }
+
+  // The columns of PostHog's SQL export, in its order
+  function posthogCsv(
+    rows: PostHogRow[],
+    columns = "uuid,event,properties,timestamp,distinct_id,$session_id,person_id"
+  ) {
+    const quote = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const lines = rows.map(row => {
+      const values: Record<string, string> = {
+        uuid: "01972d6a-97b1-72f6-b75d-b0d2d0b00a69",
+        event: row.event,
+        properties: typeof row.properties === "string" ? row.properties : JSON.stringify(row.properties ?? {}),
+        timestamp: row.timestamp ?? "2024-06-15 14:30:00.123000+00:00",
+        distinct_id: "device-1",
+        $session_id: SESSION_ID,
+        person_id: "0197aa00-0000-7000-8000-000000000001",
+      };
+      return columns
+        .split(",")
+        .map(column => quote(values[column]))
+        .join(",");
+    });
+    return [columns, ...lines].join("\n") + "\n";
+  }
+
+  const runPostHogImport = (rows: PostHogRow[], opts: { columns?: string; earliest?: string; latest?: string } = {}) =>
+    runImport(posthogCsv(rows, opts.columns), { platform: "posthog", earliest: opts.earliest, latest: opts.latest });
+
+  it("uploads each row with only the properties Rybbit reads", async () => {
+    await runPostHogImport([
+      {
+        event: "$pageview",
+        properties: {
+          $current_url: "https://example.com/pricing",
+          title: "Pricing",
+          $session_id: SESSION_ID,
+          $browser: "Chrome",
+          $geoip_country_code: "DE",
+          token: "phc_test",
+          utm_source: null,
+          $lib: "web",
+          $insert_id: "d57sfevi8gzj4h9b",
+          $active_feature_flags: [],
+        },
+      },
+    ]);
+
+    expect(events()).toHaveLength(1);
+    const { properties, ...columns } = events()[0];
+    expect(columns).toEqual({
+      event: "$pageview",
+      timestamp: "2024-06-15 14:30:00.123000+00:00",
+      distinct_id: "device-1",
+      $session_id: SESSION_ID,
+    });
+    expect(JSON.parse(properties)).toEqual({
+      $current_url: "https://example.com/pricing",
+      title: "Pricing",
+      $session_id: SESSION_ID,
+      $browser: "Chrome",
+      $geoip_country_code: "DE",
+    });
+  });
+
+  it("keeps the developer's own properties on custom events", async () => {
+    await runPostHogImport([
+      { event: "signed up", properties: { plan: "pro", seats: 3, $current_url: "https://example.com/", $lib: "web" } },
+    ]);
+
+    expect(JSON.parse(events()[0].properties)).toEqual({ plan: "pro", seats: 3, $current_url: "https://example.com/" });
+  });
+
+  it("skips PostHog events Rybbit doesn't import", async () => {
+    await runPostHogImport([
+      { event: "$pageleave" },
+      { event: "$rageclick" },
+      { event: "$identify" },
+      { event: "$autocapture", properties: { $el_text: "Menu" } },
+      { event: "$autocapture", properties: { $external_click_url: "https://github.com/", $el_text: "GitHub" } },
+      { event: "$web_vitals", properties: { $web_vitals_LCP_value: 1200 } },
+      { event: "$exception", properties: { $exception_list: [] } },
+    ]);
+
+    expect(events().map(e => e.event)).toEqual(["$autocapture", "$web_vitals", "$exception"]);
+    expect(JSON.parse(events()[0].properties)).toEqual({
+      $external_click_url: "https://github.com/",
+      $el_text: "GitHub",
+    });
+  });
+
+  it("leaves the session to the properties when the export has no $session_id column", async () => {
+    await runPostHogImport([{ event: "$pageview", properties: { $session_id: SESSION_ID } }], {
+      columns: "event,properties,timestamp,distinct_id",
+    });
+
+    expect(events()[0].$session_id).toBe("");
+    expect(JSON.parse(events()[0].properties)).toEqual({ $session_id: SESSION_ID });
+  });
+
+  it("filters by date range in UTC, reading the export's space-separated timestamps", async () => {
+    await runPostHogImport(
+      [
+        { event: "$pageview", timestamp: "2024-02-29 23:59:59.999000+00:00" },
+        { event: "$pageview", timestamp: "2024-03-01 00:00:00+00:00" },
+        { event: "$pageview", timestamp: "2024-03-01 01:00:00+02:00" },
+        { event: "$pageview", timestamp: "2024-03-31 23:59:59.999999+00:00" },
+        { event: "$pageview", timestamp: "2024-04-01 00:00:00+00:00" },
+      ],
+      { earliest: "2024-03-01", latest: "2024-03-31" }
+    );
+
+    expect(events().map(e => e.timestamp)).toEqual(["2024-03-01 00:00:00+00:00", "2024-03-31 23:59:59.999999+00:00"]);
+  });
+
+  it("uploads properties that don't parse as they are, so the import counts the row as invalid", async () => {
+    await runPostHogImport([
+      { event: "$pageview", properties: '{"$current_url": "https://example.com/' },
+      { event: "$autocapture", properties: "not json" },
+    ]);
+
+    expect(events()).toHaveLength(1);
+    expect(events()[0]).toMatchObject({ event: "$pageview", properties: '{"$current_url": "https://example.com/' });
+  });
+
+  it("drops rows with no event or timestamp", async () => {
+    await runPostHogImport([
+      { event: "", timestamp: "2024-06-15 14:30:00+00:00" },
+      { event: "$pageview", timestamp: "" },
+      { event: "$pageview", timestamp: "2024-06-15 14:30:00+00:00" },
+    ]);
+
+    expect(events()).toHaveLength(1);
+  });
+});
+
 describe("date range", () => {
   it("keeps rows on the boundary days and drops rows outside them", async () => {
     const sent = await runImport(
