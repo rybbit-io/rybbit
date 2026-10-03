@@ -5,6 +5,7 @@ import { updateImportProgress, completeImport, getImportById } from "../../servi
 import { UmamiEvent, UmamiImportMapper } from "../../services/import/mappers/umami.js";
 import { SimpleAnalyticsEvent, SimpleAnalyticsImportMapper } from "../../services/import/mappers/simpleAnalytics.js";
 import { PlausibleEvent, PlausibleImportMapper } from "../../services/import/mappers/plausible.js";
+import { MatomoEvent, MatomoImportMapper } from "../../services/import/mappers/matomo.js";
 import { importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
@@ -23,6 +24,7 @@ const batchImportRequestSchema = z
         z.array(UmamiImportMapper.umamiEventKeyOnlySchema),
         z.array(SimpleAnalyticsImportMapper.simpleAnalyticsEventKeyOnlySchema),
         z.array(PlausibleImportMapper.plausibleEventKeyOnlySchema),
+        z.array(MatomoImportMapper.matomoEventKeyOnlySchema),
       ]),
       isLastBatch: z.boolean().optional(),
     }),
@@ -91,6 +93,8 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
         transformedEvents = SimpleAnalyticsImportMapper.transform(events as SimpleAnalyticsEvent[], siteId, importId);
       } else if (importRecord.platform === "plausible") {
         transformedEvents = PlausibleImportMapper.transform(events as PlausibleEvent[], siteId, importId);
+      } else if (importRecord.platform === "matomo") {
+        transformedEvents = MatomoImportMapper.transform(events as MatomoEvent[], siteId, importId);
       } else {
         return reply.status(400).send({ error: "Unsupported platform" });
       }
