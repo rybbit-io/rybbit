@@ -1,27 +1,25 @@
 "use client";
 
-import { useExtracted } from "next-intl";
 import { ReactNode } from "react";
 import { BOT_AVAILABLE_FILTERS } from "../../../api/analytics/hooks/bots/constants";
-import { SegmentedControl } from "../../../components/interior/segmented-control";
 import { useInView } from "../../../hooks/useInView";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { useStore } from "../../../lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
-import { BotChart } from "./components/BotChart";
-import { BotsOverview } from "./components/BotsOverview";
-import { AiBots } from "./components/ai/AiBots";
-import { AiChart } from "./components/ai/AiChart";
-import { AiCoverageNote } from "./components/ai/AiCoverageNote";
 import { AiOperatorTable } from "./components/ai/AiOperatorTable";
-import { AiOverview } from "./components/ai/AiOverview";
 import { AiPages } from "./components/ai/AiPages";
+import { AiSources } from "./components/ai/AiSources";
+import { BotsAnalysisBar } from "./components/BotsAnalysisBar";
+import { BotsChart } from "./components/BotsChart";
+import { BlockingOffNotice, UnnamedAutomationInsight } from "./components/BotsNotices";
+import { BotsStatBand } from "./components/BotsStatBand";
+import { DetectionLayers } from "./components/DetectionLayers";
 import { BotCountries } from "./components/sections/BotCountries";
 import { BotDevices } from "./components/sections/BotDevices";
 import { BotMetadata } from "./components/sections/BotMetadata";
 import { BotPages } from "./components/sections/BotPages";
 import { BotReferrers } from "./components/sections/BotReferrers";
-import { type BotsLens, useBotsStore } from "./botsStore";
+import { useBotsStore } from "./botsStore";
 
 function LazySection({ children, height = "405px" }: { children: ReactNode; height?: string }) {
   const { ref, isInView } = useInView({ persistVisibility: true, rootMargin: "100px 0px" });
@@ -35,23 +33,20 @@ function LazySection({ children, height = "405px" }: { children: ReactNode; heig
 /**
  * Which AI systems read the site, what they read, and what they sent back.
  * Leads the page because it is the question people arrive with; the detection
- * layers below answer a different one — how the traffic was caught.
+ * layers under the other lens answer a different one: how the traffic was
+ * caught.
  */
 function AiLens() {
   return (
     <>
-      <div className="space-y-4">
-        <AiOverview />
-        <AiCoverageNote />
-        <AiChart />
-        <AiOperatorTable />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
-        <LazySection>
-          <AiBots />
-        </LazySection>
+      <BotsChart lens="ai" />
+      <AiOperatorTable />
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <LazySection>
           <AiPages />
+        </LazySection>
+        <LazySection>
+          <AiSources />
         </LazySection>
       </div>
     </>
@@ -61,25 +56,23 @@ function AiLens() {
 function AllBotsLens() {
   return (
     <>
-      <div className="space-y-4">
-        <BotsOverview />
-        <BotChart />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+      <BotsChart lens="all" />
+      <DetectionLayers />
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <LazySection>
-          <BotReferrers />
+          <BotMetadata />
         </LazySection>
         <LazySection>
           <BotPages />
         </LazySection>
         <LazySection>
-          <BotDevices />
+          <BotReferrers />
         </LazySection>
         <LazySection>
           <BotCountries />
         </LazySection>
         <LazySection>
-          <BotMetadata />
+          <BotDevices />
         </LazySection>
       </div>
     </>
@@ -87,9 +80,8 @@ function AllBotsLens() {
 }
 
 export default function BotsPage() {
-  const t = useExtracted();
   const { site } = useStore();
-  const { lens, setLens } = useBotsStore();
+  const lens = useBotsStore(state => state.lens);
   useSetPageTitle("Bots");
 
   if (!site) {
@@ -97,17 +89,12 @@ export default function BotsPage() {
   }
 
   return (
-    <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
+    <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
       <SubHeader availableFilters={BOT_AVAILABLE_FILTERS} />
-      <SegmentedControl<BotsLens>
-        aria-label={t("Bot traffic view")}
-        options={[
-          { value: "ai", label: t("AI & agents") },
-          { value: "all", label: t("All bots") },
-        ]}
-        value={lens}
-        onValueChange={setLens}
-      />
+      <BotsStatBand />
+      <BotsAnalysisBar />
+      <BlockingOffNotice />
+      <UnnamedAutomationInsight />
       {lens === "ai" ? <AiLens /> : <AllBotsLens />}
     </div>
   );

@@ -1,9 +1,18 @@
 import { FilterParameter } from "../types.js";
 import { getFilterStatement, getSqlParam } from "../utils/getFilterStatement.js";
+import { SESSION_CHANNEL_AGG } from "../utils/sessionAttribution.js";
 
 // Condition rendering is shared with the events surface; re-exported here for
 // existing importers and tests.
 export { buildStringFilterCondition } from "../utils/getFilterStatement.js";
+
+/**
+ * Where a site's detections are written. Enforced detections (blocking on) are
+ * diverted to `bot_events`; with blocking off the event is tracked as normal
+ * and the detection lands in `bot_observations` instead. The two tables carry
+ * the same columns, so every query here runs against either.
+ */
+export type BotSourceTable = "bot_events" | "bot_observations";
 
 export const BOT_LAYER_COLUMNS = {
   ua_pattern: "detected_ua_pattern",
@@ -147,3 +156,35 @@ export function getBotFilterStatement(filters?: string) {
   });
 }
 
+/**
+ * The ids of the sessions an AI product sent: sessions whose first attributed
+ * channel is AI, the same rule the channel filter and the Sessions page use.
+ * Counting event rows with `channel = 'AI'` instead counts every pageview of
+ * such a visit, which is how "visits sent back" came to overstate.
+ *
+ * Only a session with at least one AI-channel event can qualify, so the inner
+ * lookup narrows the grouping to those rather than aggregating every session
+ * in the window. Expects `{siteId:Int32}` to be bound by the caller.
+ */
+export function buildAiSessionIdsQuery(timeStatement: string) {
+  return `
+    SELECT session_id
+    FROM (
+      SELECT
+        session_id,
+        ${SESSION_CHANNEL_AGG} AS session_channel
+      FROM events
+      WHERE site_id = {siteId:Int32}
+        ${timeStatement}
+        AND session_id IN (
+          SELECT session_id
+          FROM events
+          WHERE site_id = {siteId:Int32}
+            AND channel = 'AI'
+            ${timeStatement}
+        )
+      GROUP BY session_id
+    )
+    WHERE session_channel = 'AI'
+  `;
+}
