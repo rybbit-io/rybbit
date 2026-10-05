@@ -1,103 +1,104 @@
 /**
  * Frog avatars: deterministic SVG portraits seeded from a visitor id.
  *
- * Same contract as the boring-avatars `beam` variant this replaces — one string
- * in, one stable image out — but drawn here so the palette and the features are
- * ours. Everything is derived from a hash of the id; the only values that reach
- * the markup are numbers and `hsl()` strings, so the result is safe to inject.
+ * One string in, one stable image out. Everything is derived from the id; the
+ * only values that reach the markup are numbers and hex colours, so the result
+ * is safe to inject.
  *
- * The frog is drawn as a free-standing silhouette on a transparent ground, so
- * every shape has to fit inside the viewBox on its own — nothing is hidden by a
- * disc any more — and the frog's own colour is what has to stay legible against
- * both the dark and the light app background.
+ * The frog is one drawn head shape, varied only within narrow bounds, with a
+ * small set of discrete parts (eyes, pupils, mouth, jaw, cheeks) on top. Its
+ * colour is the colour word in the visitor's generated name, so "Coral Hamster"
+ * is a coral frog.
+ *
+ * The markup references nothing by id: no clipPath, mask or gradient. The
+ * sessions ledger renders every avatar twice, once in a layout a container
+ * query hides, and Chrome and Firefox resolve a repeated `url(#id)` to whichever
+ * copy comes first, hidden or not; when that copy was hidden the clip silently
+ * dropped. Every shape here is built to sit inside the head on its own.
  */
 
 type Rng = () => number;
-
-interface Species {
-  h: number;
-  s: number;
-  l: number;
-}
+type Point = readonly [number, number];
+type Cubic = readonly [Point, Point, Point, Point];
 
 /**
- * Hand-tuned rather than swept around the wheel: equal-lightness hues turn the
- * warm half of the spectrum to mud, so each entry carries its own saturation
- * and lightness. Greens and blues are deliberately a minority of the ring.
+ * One skin per word in unique-names-generator's `colors` dictionary, in the
+ * dictionary's order. [OKLCH lightness, chroma, hue], tuned to read as the
+ * word while staying clear of both app grounds (dark L .18, light L .97).
+ * Words that name skin tones (peach, beige, tan, moccasin) lean towards khaki,
+ * so those frogs read as frogs rather than faces.
  */
-const SPECIES: Species[] = [
-  { h: 78, s: 72, l: 52 }, // lime
-  { h: 96, s: 62, l: 46 }, // grass
-  { h: 128, s: 56, l: 44 }, // leaf
-  { h: 148, s: 64, l: 44 }, // emerald
-  { h: 162, s: 54, l: 58 }, // mint
-  { h: 176, s: 64, l: 42 }, // jade
-  { h: 188, s: 70, l: 46 }, // teal
-  { h: 198, s: 78, l: 52 }, // cyan
-  { h: 210, s: 80, l: 56 }, // sky
-  { h: 224, s: 74, l: 60 }, // azure
-  { h: 240, s: 64, l: 64 }, // periwinkle
-  { h: 262, s: 60, l: 62 }, // violet
-  { h: 282, s: 58, l: 58 }, // purple
-  { h: 300, s: 60, l: 56 }, // orchid
-  { h: 318, s: 70, l: 58 }, // magenta
-  { h: 334, s: 80, l: 62 }, // pink
-  { h: 348, s: 76, l: 58 }, // rose
-  { h: 6, s: 76, l: 54 }, // red
-  { h: 18, s: 84, l: 58 }, // coral
-  { h: 28, s: 90, l: 54 }, // orange
-  { h: 38, s: 92, l: 52 }, // amber
-  { h: 48, s: 92, l: 52 }, // gold
-  { h: 58, s: 86, l: 52 }, // citron
-  { h: 68, s: 78, l: 50 }, // chartreuse
+const SKINS: readonly (readonly [string, number, number, number])[] = [
+  ["amaranth", 0.63, 0.19, 8],
+  ["amber", 0.8, 0.16, 75],
+  ["amethyst", 0.62, 0.15, 305],
+  ["apricot", 0.78, 0.13, 62],
+  ["aqua", 0.8, 0.12, 200],
+  ["aquamarine", 0.83, 0.12, 172],
+  ["azure", 0.64, 0.17, 252],
+  ["beige", 0.84, 0.06, 100],
+  ["black", 0.42, 0.02, 250],
+  ["blue", 0.58, 0.19, 262],
+  ["blush", 0.7, 0.13, 2],
+  ["bronze", 0.64, 0.12, 72],
+  ["brown", 0.54, 0.1, 52],
+  ["chocolate", 0.5, 0.09, 48],
+  ["coffee", 0.52, 0.06, 70],
+  ["copper", 0.63, 0.13, 50],
+  ["coral", 0.72, 0.15, 36],
+  ["crimson", 0.57, 0.2, 18],
+  ["cyan", 0.74, 0.13, 220],
+  ["emerald", 0.72, 0.16, 155],
+  ["fuchsia", 0.65, 0.24, 330],
+  ["gold", 0.84, 0.15, 92],
+  ["gray", 0.64, 0.01, 250],
+  ["green", 0.72, 0.19, 142],
+  ["harlequin", 0.8, 0.22, 136],
+  ["indigo", 0.5, 0.16, 280],
+  ["ivory", 0.93, 0.045, 108],
+  ["jade", 0.66, 0.13, 162],
+  ["lavender", 0.78, 0.09, 295],
+  ["lime", 0.86, 0.19, 125],
+  ["magenta", 0.62, 0.24, 345],
+  ["maroon", 0.48, 0.13, 18],
+  ["moccasin", 0.87, 0.08, 90],
+  ["olive", 0.6, 0.11, 112],
+  ["orange", 0.76, 0.17, 62],
+  ["peach", 0.79, 0.12, 46],
+  ["pink", 0.8, 0.1, 355],
+  ["plum", 0.52, 0.12, 330],
+  ["purple", 0.56, 0.19, 302],
+  ["red", 0.62, 0.22, 27],
+  ["rose", 0.67, 0.19, 8],
+  ["salmon", 0.74, 0.13, 28],
+  ["sapphire", 0.54, 0.16, 262],
+  ["scarlet", 0.64, 0.23, 33],
+  ["silver", 0.8, 0.01, 250],
+  ["tan", 0.75, 0.07, 92],
+  ["teal", 0.6, 0.1, 192],
+  ["tomato", 0.69, 0.19, 34],
+  ["turquoise", 0.8, 0.13, 185],
+  ["violet", 0.62, 0.19, 300],
+  ["white", 0.95, 0.008, 100],
+  ["yellow", 0.9, 0.17, 102],
 ];
 
-type Morph = "classic" | "dusk" | "dart" | "chalk";
-type Pupil = "round" | "slit" | "wide" | "pin";
-type Iris = "paper" | "cream" | "mist" | "shell";
-type Belly = "none" | "light" | "cream" | "contrast";
-type Marks = "none" | "saddle" | "mask" | "stripe" | "blaze" | "halves";
-type Mouth = "smile" | "wide" | "open" | "smirk";
+export const FROG_COLOR_WORDS: readonly string[] = SKINS.map(([word]) => word);
 
-interface FrogFeatures {
-  species: Species;
-  morph: Morph;
-  /** Spare jitter, reused wherever a shape needs a nudge that nothing else owns. */
-  jitter: [number, number, number, number];
-  headRx: number;
-  headRy: number;
-  headCy: number;
-  domeOffset: number;
-  domeY: number;
-  domeRadius: number;
-  eyeScale: number;
-  gazeX: number;
-  gazeY: number;
-  pupil: Pupil;
-  iris: Iris;
-  lid: boolean;
-  brow: boolean;
-  cheeks: boolean;
-  belly: Belly;
-  marks: Marks;
-  mouth: Mouth;
-  mouthY: number;
-  /** Half-width of the head at the mouth's height — every mouth is sized from this. */
-  mouthReach: number;
-  mouthCurve: number;
-}
-
-interface FrogPalette {
-  lightness: number;
-  skin: string;
-  edge: string;
-  dark: string;
-  light: string;
-  line: string;
-  mark: string;
-  cream: string;
-  contrast: string;
-  bright: string;
+/**
+ * The colour word `generateName` puts first, without pulling in the name
+ * generator. With a string seed, unique-names-generator 4.x picks the first
+ * word from the sum of the seed's char codes plus one, run through its own
+ * mulberry32 variant; this mirrors that. A test holds it to the library.
+ */
+export function frogColorWord(id: string): string {
+  let sum = 1;
+  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i);
+  let a = (1831565813 + (sum | 0)) | 0;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  const x = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  return SKINS[Math.floor(x * SKINS.length)][0];
 }
 
 function hashCode(str: string): number {
@@ -138,289 +139,322 @@ function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-function hsl(h: number, s: number, l: number): string {
-  const hue = (((h % 360) + 360) % 360).toFixed(1);
-  return `hsl(${hue} ${s.toFixed(1)}% ${l.toFixed(1)}%)`;
-}
-
 /** Two decimals is plenty at avatar sizes and keeps the markup short. */
 function r2(v: number): number {
   return Math.round(v * 100) / 100;
 }
 
-function smile(cx: number, y: number, width: number, curve: number, color: string, strokeWidth: number): string {
+const pt = (p: Point) => `${r2(p[0])} ${r2(p[1])}`;
+const mirror = (p: Point): Point => [100 - p[0], p[1]];
+
+function oklchToLinearRgb(l: number, c: number, h: number): [number, number, number] {
+  const a = c * Math.cos((h * Math.PI) / 180);
+  const b = c * Math.sin((h * Math.PI) / 180);
+  const lc = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const mc = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const sc = (l - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return [
+    4.0767416621 * lc - 3.3077115913 * mc + 0.2309699292 * sc,
+    -1.2684380046 * lc + 2.6097574011 * mc - 0.3413193965 * sc,
+    -0.0041960863 * lc - 0.7034186147 * mc + 1.707614701 * sc,
+  ];
+}
+
+const inGamut = (rgb: readonly number[]) => rgb.every(v => v >= -0.0005 && v <= 1.0005);
+
+/** OKLCH to sRGB hex, giving up chroma (never lightness or hue) to stay in gamut. */
+function oklch(l: number, c: number, h: number): string {
+  l = clamp(l, 0, 1);
+  let rgb = oklchToLinearRgb(l, c, h);
+  if (!inGamut(rgb)) {
+    let lo = 0;
+    let hi = c;
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2;
+      if (inGamut(oklchToLinearRgb(l, mid, h))) lo = mid;
+      else hi = mid;
+    }
+    rgb = oklchToLinearRgb(l, lo, h);
+  }
+  const encode = (v: number) => {
+    v = clamp(v, 0, 1);
+    return v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055;
+  };
   return (
-    `<path d="M${r2(cx - width / 2)} ${r2(y)} Q ${r2(cx)} ${r2(y + curve)} ${r2(cx + width / 2)} ${r2(y)}"` +
-    ` fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`
+    "#" +
+    rgb
+      .map(v =>
+        Math.round(encode(v) * 255)
+          .toString(16)
+          .padStart(2, "0")
+      )
+      .join("")
   );
 }
 
-/**
- * Geometry is chained rather than drawn independently: with no disc to clip
- * against, a head and a pair of eye domes rolled separately can drift apart or
- * off the edge of the viewBox. Sizing the domes and the mouth off the head
- * keeps the silhouette one connected blob inside `0 0 100 100`, whatever the
- * seed rolls.
- */
-function frogFeatures(r: Rng): FrogFeatures {
-  const species = pick(r, SPECIES);
-  const morph = weighted<Morph>(r, [
-    ["classic", 54],
-    ["dusk", 16],
-    ["dart", 15],
-    ["chalk", 15],
-  ]);
-  const jitter: [number, number, number, number] = [r(), r(), r(), r()];
-  const headRx = 33 + r() * 5;
-  const headRy = 30 + r() * 6;
-  const headCy = 58 + r() * 3;
-  // Under 0.72 of the head's width, so the domes always straddle skin, never air.
-  const domeOffset = headRx * (0.58 + r() * 0.12);
-  const domeRadius = 15 + r() * 4;
-  // Above the head's centre by more than the ellipse's own height at that x, so
-  // the domes sit proud of the skull while still overlapping it.
-  const domeY = headCy - headRy * (0.72 + r() * 0.18);
-  const mouthY = headCy + headRy * (0.12 + r() * 0.22);
-  const mouthReach = headRx * Math.sqrt(Math.max(0, 1 - ((mouthY - headCy) / headRy) ** 2));
+interface Geometry {
+  domeDx: number;
+  domeCy: number;
+  domeR: number;
+  hw: number;
+  hy: number;
+  hh: number;
+  saddleY: number;
+}
+
+/** Three builds of the one head; each frog jitters its build only slightly. */
+const BUILDS = {
+  round: { domeDx: 23, domeCy: 33, domeR: 16, hw: 41, hy: 61, hh: 26 },
+  wide: { domeDx: 25, domeCy: 35, domeR: 15, hw: 44, hy: 62, hh: 23 },
+  bug: { domeDx: 24, domeCy: 32, domeR: 17.5, hw: 41, hy: 62, hh: 25 },
+} as const;
+
+type Build = keyof typeof BUILDS;
+type Eyes = "open" | "bead";
+type Pupil = "s" | "m" | "l";
+type Mouth = "smile" | "grin" | "small" | "flat";
+
+interface FrogFeatures {
+  word: string;
+  skin: readonly [number, number, number];
+  g: Geometry;
+  eyes: Eyes;
+  gaze: Point;
+  pupil: Pupil;
+  mouth: Mouth;
+  jaw: boolean;
+  cheeks: boolean;
+}
+
+function frogFeatures(id: string): FrogFeatures {
+  const r = makeRng(hashCode(id));
+  const build =
+    BUILDS[
+      weighted<Build>(r, [
+        ["round", 45],
+        ["wide", 30],
+        ["bug", 25],
+      ])
+    ];
+  const jitter = () => (r() - 0.5) * 2;
+  const g: Geometry = {
+    domeDx: build.domeDx + jitter() * 0.7,
+    domeCy: build.domeCy + jitter() * 0.7,
+    domeR: build.domeR + jitter() * 0.5,
+    hw: build.hw + jitter() * 0.8,
+    hy: build.hy,
+    hh: build.hh + jitter() * 0.8,
+    saddleY: 0,
+  };
+  g.saddleY = g.domeCy + g.domeR * 0.16;
+  const word = frogColorWord(id);
+  const [, l, c, h] = SKINS.find(([w]) => w === word) ?? SKINS[0];
 
   return {
-    species,
-    morph,
-    jitter,
-    headRx,
-    headRy,
-    headCy,
-    domeOffset,
-    domeY,
-    domeRadius,
-    eyeScale: 0.56 + r() * 0.13,
-    gazeX: pick(r, [-1, 0, 0, 1]),
-    gazeY: pick(r, [-1, 0, 0, 1]),
+    word,
+    skin: [l, c, h],
+    g,
+    eyes: weighted<Eyes>(r, [
+      ["open", 76],
+      ["bead", 24],
+    ]),
+    gaze: pick<Point>(r, [
+      [0, 0],
+      [0, 0],
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [-1, -1],
+      [1, -1],
+    ]),
     pupil: weighted<Pupil>(r, [
-      ["round", 38],
-      ["slit", 26],
-      ["wide", 20],
-      ["pin", 16],
-    ]),
-    iris: weighted<Iris>(r, [
-      ["paper", 40],
-      ["cream", 22],
-      ["mist", 20],
-      ["shell", 18],
-    ]),
-    lid: r() < 0.18,
-    brow: r() < 0.3,
-    cheeks: r() < 0.32,
-    belly: weighted<Belly>(r, [
-      ["none", 24],
-      ["light", 34],
-      ["cream", 22],
-      ["contrast", 20],
-    ]),
-    marks: weighted<Marks>(r, [
-      ["none", 26],
-      ["saddle", 16],
-      ["mask", 15],
-      ["stripe", 15],
-      ["blaze", 14],
-      ["halves", 14],
+      ["m", 45],
+      ["l", 30],
+      ["s", 25],
     ]),
     mouth: weighted<Mouth>(r, [
-      ["smile", 40],
-      ["wide", 20],
-      ["open", 22],
-      ["smirk", 18],
+      ["smile", 45],
+      ["grin", 20],
+      ["small", 20],
+      ["flat", 15],
     ]),
-    mouthY,
-    mouthReach,
-    mouthCurve: headRy * (0.26 + r() * 0.32),
+    jaw: r() < 0.6,
+    cheeks: r() < 0.3,
   };
 }
 
-/**
- * With the ground gone, the skin is the only thing standing between the frog
- * and the page. The app's dark background is 8% lightness and its light
- * background is 97%, so a frog outside this band disappears into one theme or
- * the other. The morphs express themselves through saturation and markings
- * instead of running to the ends of the lightness scale.
- */
-const SKIN_MIN_L = 40;
-const SKIN_MAX_L = 68;
+const rad = (deg: number) => (deg * Math.PI) / 180;
+const onCircle = (cx: number, cy: number, r: number, deg: number): Point => [
+  cx + r * Math.cos(rad(deg)),
+  cy + r * Math.sin(rad(deg)),
+];
+const tangentAt = (deg: number): Point => [-Math.sin(rad(deg)), Math.cos(rad(deg))];
 
-function frogPalette(f: FrogFeatures): FrogPalette {
-  const h = f.species.h;
-  let s = f.species.s;
-  let l = f.species.l;
-
-  if (f.morph === "dart") {
-    l = 43 + f.jitter[0] * 4;
-    s = Math.min(s * 1.15, 92);
-  } else if (f.morph === "chalk") {
-    l = 63 + f.jitter[0] * 5;
-    s = s * 0.38;
-  } else if (f.morph === "dusk") {
-    l = 46 + f.jitter[0] * 5;
-    s = s * 0.5;
-  }
-  l = clamp(l, SKIN_MIN_L, SKIN_MAX_L);
-
-  const bright = hsl(h, Math.min(s + 18, 94), 64);
-  const deep = hsl(h + 8, Math.min(s * 0.85, 74), clamp(l - 32, 8, 40));
-
-  return {
-    lightness: l,
-    skin: hsl(h, s, l),
-    // Reads as shading on the dark theme and as the outline that keeps a pale
-    // frog from dissolving into the page on the light one.
-    edge: hsl(h + 8, Math.min(s * 0.9, 80), clamp(l - 22, 24, 48)),
-    dark: hsl(h + 4, s * 0.95, clamp(l - 15, 6, 92)),
-    light: hsl(h - 6, s * 0.78, clamp(l + 16, 20, 92)),
-    line: f.morph === "dart" ? bright : deep,
-    mark: f.morph === "dart" ? bright : hsl(h + 4, s * 0.95, clamp(l > 66 ? l - 26 : l - 22, 6, 92)),
-    cream: hsl(h - 12, 38, 88),
-    contrast: hsl(h + 148, 42, 72),
-    bright,
-  };
+/** One cubic for a circular arc of at most 90°; angles run clockwise on screen. */
+function arc(cx: number, cy: number, r: number, from: number, to: number): Cubic {
+  const k = (4 / 3) * Math.tan(rad(to - from) / 4) * r;
+  const p0 = onCircle(cx, cy, r, from);
+  const p3 = onCircle(cx, cy, r, to);
+  const t0 = tangentAt(from);
+  const t3 = tangentAt(to);
+  return [p0, [p0[0] + k * t0[0], p0[1] + k * t0[1]], [p3[0] - k * t3[0], p3[1] - k * t3[1]], p3];
 }
 
 /**
- * Real frogs have gold and copper irises. At 20px a saturated iris reads as a
- * bloodshot eye rather than an amphibian one, so these stay near-white — the
- * variation is in the tint of that white, not its hue.
+ * The head as cubic segments, right half first, then that half mirrored.
+ * The forehead leaves the centre level and meets each eye dome on the dome's
+ * own tangent, so the dip between the eyes is a valley, not a notch; the dome
+ * then follows its circle over the top and drops into the cheek and jaw.
  */
-const IRIS: Record<Iris, (h: number) => string> = {
-  paper: h => hsl(h, 10, 96),
-  cream: () => hsl(44, 42, 93),
-  mist: h => hsl(h + 180, 16, 93),
-  shell: () => hsl(18, 34, 93),
-};
-
-function drawEyes(f: FrogFeatures, c: FrogPalette): string {
-  const xs = [50 - f.domeOffset, 50 + f.domeOffset];
-  const rad = f.domeRadius * f.eyeScale;
-  const iris = IRIS[f.iris](f.species.h);
-  const pupilColor = hsl(f.species.h + 10, 40, 9);
-  const pr = rad * 0.5;
-  const gx = f.gazeX * rad * 0.2;
-  const gy = f.gazeY * rad * 0.16;
-  let o = "";
-
-  if (f.brow) {
-    for (const x of xs) {
-      o +=
-        `<path d="M${r2(x - f.domeRadius * 0.8)} ${r2(f.domeY - f.domeRadius * 0.55)}` +
-        ` Q ${r2(x)} ${r2(f.domeY - f.domeRadius * 1.1)} ${r2(x + f.domeRadius * 0.8)} ${r2(f.domeY - f.domeRadius * 0.55)}"` +
-        ` fill="none" stroke="${c.dark}" stroke-width="3.2" stroke-linecap="round"/>`;
-    }
-  }
-
-  for (const x of xs) {
-    o += `<circle cx="${r2(x)}" cy="${r2(f.domeY)}" r="${r2(rad)}" fill="${iris}"/>`;
-    if (f.pupil === "slit") {
-      o += `<ellipse cx="${r2(x + gx)}" cy="${r2(f.domeY + gy)}" rx="${r2(pr * 1.15)}" ry="${r2(pr * 0.62)}" fill="${pupilColor}"/>`;
-    } else if (f.pupil === "wide") {
-      o += `<circle cx="${r2(x + gx)}" cy="${r2(f.domeY + gy)}" r="${r2(pr * 1.25)}" fill="${pupilColor}"/>`;
-    } else if (f.pupil === "pin") {
-      o += `<circle cx="${r2(x + gx)}" cy="${r2(f.domeY + gy)}" r="${r2(pr * 0.62)}" fill="${pupilColor}"/>`;
-    } else {
-      o += `<circle cx="${r2(x + gx)}" cy="${r2(f.domeY + gy)}" r="${r2(pr)}" fill="${pupilColor}"/>`;
-    }
-    o += `<circle cx="${r2(x + gx - pr * 0.44)}" cy="${r2(f.domeY + gy - pr * 0.52)}" r="${r2(pr * 0.3)}" fill="#fff" opacity=".8"/>`;
-    if (f.lid) {
-      o +=
-        `<path d="M${r2(x - rad - 0.4)} ${r2(f.domeY - rad * 0.25)} A ${r2(rad)} ${r2(rad)} 0 0 1 ` +
-        `${r2(x + rad + 0.4)} ${r2(f.domeY - rad * 0.25)} Z" fill="${c.skin}"/>`;
-      o +=
-        `<path d="M${r2(x - rad)} ${r2(f.domeY - rad * 0.25)} H ${r2(x + rad)}"` +
-        ` stroke="${c.dark}" stroke-width="1.8" stroke-linecap="round"/>`;
-    }
-  }
-  return o;
+function headOutline(g: Geometry): { right: Cubic[]; left: Cubic[]; domeX: number } {
+  const cx = 50 + g.domeDx;
+  const cy = g.domeCy;
+  const r = g.domeR;
+  const join = 196;
+  const j = onCircle(cx, cy, r, join);
+  const tj = tangentAt(join);
+  const lift = g.saddleY - j[1];
+  const outer: Point = [cx + r, cy];
+  const wide: Point = [50 + g.hw, g.hy];
+  const chin: Point = [50, g.hy + g.hh];
+  const right: Cubic[] = [
+    [
+      [50, g.saddleY],
+      [50 + (j[0] - 50) * 0.55, g.saddleY],
+      [j[0] - tj[0] * lift * 0.62, j[1] - tj[1] * lift * 0.62],
+      j,
+    ],
+    arc(cx, cy, r, join, 270),
+    arc(cx, cy, r, 270, 360),
+    [outer, [outer[0], cy + r * 0.5], [wide[0], g.hy - (g.hy - cy) * 0.42], wide],
+    [wide, [wide[0], g.hy + g.hh * 0.56], [50 + g.hw * 0.58, chin[1]], chin],
+  ];
+  const left = right.map(([a, b, c, d]): Cubic => [mirror(d), mirror(c), mirror(b), mirror(a)]).reverse();
+  return { right, left, domeX: cx };
 }
 
-function drawFrog(f: FrogFeatures, clipId: string): string {
-  const c = frogPalette(f);
-  const x1 = 50 - f.domeOffset;
-  const x2 = 50 + f.domeOffset;
+function pathOf(segs: readonly Cubic[]): string {
+  let d = `M${pt(segs[0][0])}`;
+  for (const [, c1, c2, p] of segs) d += `C${pt(c1)} ${pt(c2)} ${pt(p)}`;
+  return d + "Z";
+}
 
-  const head =
-    `<ellipse cx="50" cy="${r2(f.headCy)}" rx="${r2(f.headRx)}" ry="${r2(f.headRy)}"/>` +
-    `<circle cx="${r2(x1)}" cy="${r2(f.domeY)}" r="${r2(f.domeRadius)}"/>` +
-    `<circle cx="${r2(x2)}" cy="${r2(f.domeY)}" r="${r2(f.domeRadius)}"/>`;
+/** de Casteljau split of a cubic at t; returns the second half. */
+function cubicTail([p0, p1, p2, p3]: Cubic, t: number): Cubic {
+  const lerp = (a: Point, b: Point): Point => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  const a = lerp(p0, p1);
+  const b = lerp(p1, p2);
+  const c = lerp(p2, p3);
+  const d = lerp(a, b);
+  const e = lerp(b, c);
+  return [lerp(d, e), e, c, p3];
+}
 
-  // Stroke the three shapes, then lay the fills over the top: the seams where
-  // the domes cross the head are covered and only the outward half of the
-  // stroke survives, which outlines the union without tracing its parts.
-  let o = `<defs><clipPath id="${clipId}">${head}</clipPath></defs>`;
-  o += `<g fill="${c.edge}" stroke="${c.edge}" stroke-width="3" stroke-linejoin="round">${head}</g>`;
-  o += `<g fill="${c.skin}">${head}</g>`;
+/**
+ * The lighter lower jaw: the outline's own bottom curve from jaw to jaw,
+ * closed by a soft lip line, so it never needs clipping to the head.
+ */
+function jawPath(right: readonly Cubic[]): string {
+  const low = cubicTail(right[right.length - 1], 0.36);
+  const lowLeft = [...low].map(mirror).reverse();
+  return (
+    `M${pt(low[0])}C${pt(low[1])} ${pt(low[2])} ${pt(low[3])}` +
+    `C${pt(lowLeft[1])} ${pt(lowLeft[2])} ${pt(lowLeft[3])}Q50 ${r2(low[0][1] + 8)} ${pt(low[0])}Z`
+  );
+}
 
-  // Markings and belly, clipped to the frog's own silhouette.
-  let inner = "";
-  if (f.marks === "saddle") {
-    inner += `<ellipse cx="50" cy="${r2(f.domeY - 4)}" rx="62" ry="${r2(24 + f.jitter[3] * 10)}" fill="${c.mark}" opacity=".7"/>`;
-  } else if (f.marks === "mask") {
-    inner += `<rect x="-2" y="${r2(f.domeY - f.domeRadius * 0.75)}" width="104" height="${r2(f.domeRadius * 1.5)}" fill="${c.mark}" opacity=".65"/>`;
-  } else if (f.marks === "stripe") {
-    inner += `<rect x="${r2(43 + f.jitter[3] * 3)}" y="-2" width="${r2(12 + f.jitter[0] * 6)}" height="104" fill="${c.mark}" opacity=".6"/>`;
-  } else if (f.marks === "blaze") {
-    inner += `<polygon points="50,${r2(f.mouthY - 15)} ${r2(38 - f.jitter[0] * 5)},-2 ${r2(62 + f.jitter[0] * 5)},-2" fill="${c.mark}" opacity=".55"/>`;
-  } else if (f.marks === "halves") {
-    inner += `<rect x="${f.jitter[3] > 0.5 ? "-2" : "50"}" y="-2" width="52" height="104" fill="${c.mark}" opacity=".5"/>`;
+interface FrogPalette {
+  skin: string;
+  jaw: string;
+  line: string;
+  pupil: string;
+  sclera: string;
+  cheek: string;
+}
+
+/** One palette per colour word, so a list of avatars does the colour maths at most 52 times. */
+const palettes = new Map<string, FrogPalette>();
+
+function frogPalette(word: string, [l, c, h]: readonly [number, number, number]): FrogPalette {
+  let palette = palettes.get(word);
+  if (!palette) {
+    palette = {
+      skin: oklch(l, c, h),
+      // Paler and warmer than the skin, except on frogs already near white.
+      jaw: l > 0.86 ? oklch(l - 0.07, c * 0.8, h - 10) : oklch(Math.min(l + 0.1, 0.95), c * 0.55, h - 14),
+      line: oklch(l < 0.45 ? 0.15 : 0.27, Math.min(c * 0.55, 0.08), h),
+      pupil: oklch(0.2, 0.02, h),
+      sclera: oklch(0.975, 0.012, 95),
+      cheek: oklch(clamp(l + 0.02, 0.62, 0.82), 0.13, 12),
+    };
+    palettes.set(word, palette);
   }
+  return palette;
+}
 
-  if (f.belly !== "none") {
-    const bellyColor =
-      f.belly === "cream" ? c.cream : f.belly === "contrast" ? c.contrast : c.lightness > 70 ? c.dark : c.light;
-    inner +=
-      `<ellipse cx="50" cy="${r2(f.headCy + f.headRy * 0.66)}" rx="${r2(f.headRx * 0.72)}" ry="${r2(f.headRy * 0.52)}"` +
-      ` fill="${bellyColor}" opacity="${f.belly === "contrast" ? ".72" : ".62"}"/>`;
-  }
+const PUPIL_SCALE: Record<Pupil, number> = { s: 0.4, m: 0.5, l: 0.6 };
+const MOUTH_WIDTH: Record<Mouth, number> = { smile: 14, grin: 19, small: 8.5, flat: 11 };
+const MOUTH_DEPTH: Record<Mouth, number> = { smile: 6.5, grin: 8.5, small: 4.6, flat: 1.8 };
+
+function drawFrog(f: FrogFeatures, size: number): string {
+  const c = frogPalette(f.word, f.skin);
+  const { right, left, domeX } = headOutline(f.g);
+  const d = pathOf([...right, ...left]);
+  // Below this the highlights turn to noise and thin strokes to blur.
+  const small = size < 28;
+
+  // A rim under the fill. Translucent black vanishes on the dark theme and
+  // edges a pale frog on the light one; dark frogs get the inverse.
+  let o =
+    `<path d="${d}" fill="none" stroke="${f.skin[0] >= 0.5 ? "#000" : "#fff"}" stroke-opacity=".16"` +
+    ` stroke-width="${small ? 6 : 4}" stroke-linejoin="round"/>`;
+  o += `<path d="${d}" fill="${c.skin}"/>`;
+  if (f.jaw) o += `<path d="${jawPath(right)}" fill="${c.jaw}"/>`;
   if (f.cheeks) {
-    inner += `<ellipse cx="${r2(50 - f.headRx * 0.74)}" cy="${r2(f.headCy + 2)}" rx="10" ry="8" fill="${c.light}" opacity=".45"/>`;
-    inner += `<ellipse cx="${r2(50 + f.headRx * 0.74)}" cy="${r2(f.headCy + 2)}" rx="10" ry="8" fill="${c.light}" opacity=".45"/>`;
+    for (const x of [50 - f.g.hw * 0.64, 50 + f.g.hw * 0.64]) {
+      o += `<ellipse cx="${r2(x)}" cy="${r2(f.g.hy + 1)}" rx="6.6" ry="4.4" fill="${c.cheek}" opacity=".8"/>`;
+    }
   }
-  if (inner) o += `<g clip-path="url(#${clipId})">${inner}</g>`;
 
-  o += drawEyes(f, c);
-
-  const nostrilY = f.mouthY - f.headRy * 0.38;
-  o += `<circle cx="${r2(50 - f.headRx * 0.17)}" cy="${r2(nostrilY)}" r="2" fill="${c.line}" opacity=".5"/>`;
-  o += `<circle cx="${r2(50 + f.headRx * 0.17)}" cy="${r2(nostrilY)}" r="2" fill="${c.line}" opacity=".5"/>`;
-
-  // Every mouth is scaled to the head's width at its own height, so nothing
-  // runs past the jawline now that there is no disc to hide the overshoot.
-  if (f.mouth === "open") {
-    const half = f.mouthReach * 0.74;
-    const depth = f.mouthCurve * 1.3;
-    o +=
-      `<path d="M${r2(50 - half)},${r2(f.mouthY)} Q50,${r2(f.mouthY + depth)} ${r2(50 + half)},${r2(f.mouthY)} Z"` +
-      ` fill="${c.line}"/>`;
-    o += `<ellipse cx="50" cy="${r2(f.mouthY + depth * 0.42)}" rx="${r2(half * 0.34)}" ry="${r2(half * 0.21)}" fill="hsl(348 62% 60%)"/>`;
-  } else if (f.mouth === "wide") {
-    o += smile(50, f.mouthY, f.mouthReach * 1.8, f.mouthCurve * 0.35, c.line, 4.2);
-  } else if (f.mouth === "smirk") {
-    o +=
-      `<path d="M${r2(50 - f.mouthReach * 0.82)} ${r2(f.mouthY + f.headRy * 0.11)}` +
-      ` Q 50 ${r2(f.mouthY + f.mouthCurve)} ${r2(50 + f.mouthReach * 0.82)} ${r2(f.mouthY - f.headRy * 0.17)}"` +
-      ` fill="none" stroke="${c.line}" stroke-width="4.4" stroke-linecap="round"/>`;
-  } else {
-    o += smile(50, f.mouthY, f.mouthReach * 1.5, f.mouthCurve, c.line, 4.4);
+  // Eyes fill their domes; a small eye in a big dome reads as an ear.
+  const cy = f.g.domeCy;
+  const er = f.g.domeR * 0.74;
+  const pr = er * PUPIL_SCALE[f.pupil];
+  const gx = f.gaze[0] * er * 0.28;
+  const gy = f.gaze[1] * er * 0.22;
+  for (const x of [100 - domeX, domeX]) {
+    // Bead eyes vanish into dark skin, so those frogs keep the whites.
+    if (f.eyes === "bead" && f.skin[0] >= 0.6) {
+      const br = er * 0.82;
+      const bx = x + gx * 0.4;
+      const by = cy + gy * 0.4;
+      o += `<circle cx="${r2(bx)}" cy="${r2(by)}" r="${r2(br)}" fill="${c.pupil}"/>`;
+      o += `<circle cx="${r2(bx - br * 0.32)}" cy="${r2(by - br * 0.34)}" r="${r2(br * (small ? 0.36 : 0.3))}" fill="#fff"/>`;
+    } else {
+      o += `<circle cx="${r2(x)}" cy="${r2(cy)}" r="${r2(er)}" fill="${c.sclera}"/>`;
+      o += `<circle cx="${r2(x + gx)}" cy="${r2(cy + gy)}" r="${r2(pr)}" fill="${c.pupil}"/>`;
+      if (!small) {
+        o +=
+          `<circle cx="${r2(x + gx - pr * 0.36)}" cy="${r2(cy + gy - pr * 0.38)}"` +
+          ` r="${r2(Math.max(pr * 0.32, 1.6))}" fill="#fff"/>`;
+      }
+    }
   }
+
+  const my = f.g.hy + (f.jaw ? 2 : 4);
+  const w = MOUTH_WIDTH[f.mouth];
+  o +=
+    `<path d="M${r2(50 - w)} ${r2(my)}Q50 ${r2(my + MOUTH_DEPTH[f.mouth] * 2)} ${r2(50 + w)} ${r2(my)}"` +
+    ` fill="none" stroke="${c.line}" stroke-width="${small ? 5.6 : 4.4}" stroke-linecap="round"/>`;
   return o;
 }
 
 /**
  * The contents of a `0 0 100 100` viewBox, ready for dangerouslySetInnerHTML.
- *
- * The clip-path id is derived from the id rather than from useId or a counter,
- * so the same visitor produces byte-identical markup everywhere — server and
- * client render the same string, and the same frog drawn twice on one page
- * shares a mask it would have duplicated anyway.
+ * `size` is the rendered size in px; it only decides how much detail to draw.
  */
-export function frogAvatarMarkup(id: string): string {
-  const clipId = `frog${hashCode(`${id}clip`).toString(36)}`;
-  return drawFrog(frogFeatures(makeRng(hashCode(id))), clipId);
+export function frogAvatarMarkup(id: string, size = 20): string {
+  return drawFrog(frogFeatures(id), size);
 }
 
 /**
@@ -430,6 +464,6 @@ export function frogAvatarMarkup(id: string): string {
 export function frogAvatarSVG(id: string, size: number): string {
   return (
     `<svg width="${size}" height="${size}" viewBox="0 0 100 100" role="img"` +
-    ` xmlns="http://www.w3.org/2000/svg" style="display:block">${frogAvatarMarkup(id)}</svg>`
+    ` xmlns="http://www.w3.org/2000/svg" style="display:block">${frogAvatarMarkup(id, size)}</svg>`
   );
 }

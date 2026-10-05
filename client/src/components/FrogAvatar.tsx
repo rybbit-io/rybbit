@@ -9,7 +9,7 @@ export function FrogAvatar({ id, size = 20 }: { id: string; size?: number }) {
       role="img"
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: "block" }}
-      dangerouslySetInnerHTML={{ __html: frogAvatarMarkup(id) }}
+      dangerouslySetInnerHTML={{ __html: frogAvatarMarkup(id, size) }}
     />
   );
 }
