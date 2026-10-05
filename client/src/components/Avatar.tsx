@@ -11,6 +11,8 @@ export function Avatar({ id, size = 20, lastActiveTime }: { id: string; size?: n
   const { formatRelative } = useDateTimeFormat();
   const timeSinceEnd = lastActiveTime ? -lastActiveTime.setZone(getTimezone()).diffNow().toMillis() / 1000 : 0;
   const online = lastActiveTime ? timeSinceEnd < 300 : false;
+  // Half the avatar, ring included: big enough to read, small enough to leave the face alone.
+  const dot = Math.max(8, Math.round(size / 2));
   return (
     <div className="relative">
       <FrogAvatar id={id} size={size} />
@@ -18,8 +20,8 @@ export function Avatar({ id, size = 20, lastActiveTime }: { id: string; size?: n
         <Tooltip>
           <TooltipTrigger asChild>
             <div
-              className="absolute -bottom-1 -right-1 bg-green-500 rounded-full border border-2 border-white dark:border-neutral-900"
-              style={{ width: size / 1.7, height: size / 1.7 }}
+              className="absolute -bottom-0.5 -right-0.5 bg-green-500 rounded-full border-2 border-white dark:border-neutral-900"
+              style={{ width: dot, height: dot }}
             />
           </TooltipTrigger>
           <TooltipContent>
