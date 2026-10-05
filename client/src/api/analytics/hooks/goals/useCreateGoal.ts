@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createGoal, GoalConfig, GoalType } from "../../endpoints";
+import { invalidateGoalDependents } from "./invalidateGoalDependents";
 
 export interface CreateGoalRequest {
   siteId: number;
@@ -35,6 +36,7 @@ export function useCreateGoal() {
       queryClient.invalidateQueries({
         queryKey: ["goal-time-series", variables.siteId.toString()],
       });
+      invalidateGoalDependents(queryClient);
     },
   });
 }

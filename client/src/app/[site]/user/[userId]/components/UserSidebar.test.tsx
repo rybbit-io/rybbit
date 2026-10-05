@@ -97,7 +97,7 @@ describe("UserSidebar", () => {
   it("is one ledger with traits first and web vitals last", () => {
     showSidebar();
 
-    expect(sectionTitles()).toEqual(["Traits", "Acquisition", "Location & device", "Linked devices", "Web vitals"]);
+    expect(sectionTitles()).toEqual(["Traits", "Acquisition", "Location & device", "Web vitals"]);
   });
 
   it("lists custom traits and leaves out the ones the header shows as identity", () => {
@@ -109,14 +109,13 @@ describe("UserSidebar", () => {
     expect(traits.queryByText("mara@northpine.io")).toBeNull();
   });
 
-  it("draws the linked devices the API returns, with the day each was linked", () => {
+  it("does not list the anonymous IDs merged into the identity", () => {
     showSidebar();
 
-    const linked = within(section("Linked devices"));
-    expect(linked.getByText("5be2c07f41d9")).toBeTruthy();
-    expect(linked.getByText("linked Aug 14")).toBeTruthy();
-    expect(linked.getByText("c84a19e6d370")).toBeTruthy();
-    expect(linked.getByText("linked Aug 19")).toBeTruthy();
+    // Each IP and browser pair an identified user is seen on becomes an alias,
+    // so a regular user collects hundreds; they are not devices.
+    expect(screen.queryByText("Linked devices")).toBeNull();
+    expect(screen.queryByText("5be2c07f41d9")).toBeNull();
   });
 
   it("takes first-touch facts from the user's first day, not from the selected period", () => {
@@ -185,7 +184,7 @@ describe("UserSidebar", () => {
     expect(segments.queryByRole("link")).toBeNull();
   });
 
-  it("shows no traits or linked devices for an anonymous visitor", () => {
+  it("shows no traits for an anonymous visitor", () => {
     showSidebar({ data: { ...base, identified_user_id: "", traits: null } as UserInfo });
 
     expect(sectionTitles()).toEqual(["Acquisition", "Location & device", "Web vitals"]);

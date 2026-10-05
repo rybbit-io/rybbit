@@ -310,8 +310,6 @@ describe("funnelRefs", () => {
     steps,
     createdAt: "",
     updatedAt: "",
-    conversionRate: null,
-    totalVisitors: null,
   });
   const funnels = [
     funnel(1, [

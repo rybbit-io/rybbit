@@ -104,8 +104,6 @@ interface TableContextValue {
   domain: string | undefined;
   expanded: ReadonlySet<string>;
   onToggleSection: (section: string) => void;
-  focusSection: string | null;
-  onFocusHandled: () => void;
 }
 
 const TableContext = createContext<TableContextValue | null>(null);
@@ -260,25 +258,12 @@ function PageTableRow({ row, figures, child }: { row: PageRow; figures: RowFigur
 
 function SectionTableRow({ row, figures }: { row: PageRow; figures: RowFigures }) {
   const t = useExtracted();
-  const { expanded, onToggleSection, focusSection, onFocusHandled } = useTableContext();
+  const { expanded, onToggleSection } = useTableContext();
   const isOpen = expanded.has(row.key);
   const label = formatSection(row.key);
 
   return (
-    <TableRow
-      // Scrolls to the section the insight row points at, once it is on screen.
-      ref={
-        focusSection === row.key
-          ? node => {
-              if (!node) return;
-              node.scrollIntoView({ block: "center", behavior: "smooth" });
-              onFocusHandled();
-            }
-          : undefined
-      }
-      onClick={() => onToggleSection(row.key)}
-      className="cursor-pointer bg-neutral-50 dark:bg-neutral-850/60"
-    >
+    <TableRow onClick={() => onToggleSection(row.key)} className="cursor-pointer bg-neutral-50 dark:bg-neutral-850/60">
       <TableCell className="py-1.5 pl-2 pr-3">
         <div className="flex min-w-0 items-center gap-1">
           <Button
@@ -530,9 +515,6 @@ export interface PagesTableProps {
   onPageChange: (page: number) => void;
   expanded: ReadonlySet<string>;
   onExpandedChange: (expanded: Set<string>) => void;
-  /** A section to scroll to when its row appears. */
-  focusSection: string | null;
-  onFocusHandled: () => void;
 }
 
 export function PagesTable({
@@ -546,8 +528,6 @@ export function PagesTable({
   onPageChange,
   expanded,
   onExpandedChange,
-  focusSection,
-  onFocusHandled,
 }: PagesTableProps) {
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
@@ -585,8 +565,6 @@ export function PagesTable({
       if (!next.delete(section)) next.add(section);
       onExpandedChange(next);
     },
-    focusSection,
-    onFocusHandled,
   };
 
   if (isError) {

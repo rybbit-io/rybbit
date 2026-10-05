@@ -13,8 +13,6 @@ import { ErrorState } from "@/components/ErrorState";
 import { ExternalLink } from "@/components/ExternalLink";
 import { NothingFound } from "@/components/NothingFound";
 import { AnalysisBar } from "@/components/site/AnalysisBar";
-import { InsightRow } from "@/components/site/InsightRow";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,19 +23,10 @@ import { useComparisonEnabled, useStore, useTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { CreateFunnelDialog } from "./components/CreateFunnel";
-import {
-  biggestDecline,
-  FunnelRowData,
-  FunnelSort,
-  metricsFromSummary,
-  searchFunnels,
-  sortFunnels,
-  stepLabel,
-} from "./components/funnelMetrics";
+import { FunnelRowData, FunnelSort, metricsFromSummary, searchFunnels, sortFunnels } from "./components/funnelMetrics";
 import { FUNNEL_ROW_GRID, FunnelRow } from "./components/FunnelRow";
 import { FunnelSortControl } from "./components/FunnelSortControl";
 import { FunnelStatBand } from "./components/FunnelStatBand";
-import { useStepTypeLabels } from "./components/useStepTypeLabels";
 
 const FunnelRowSkeleton = () => (
   <Card className="@container">
@@ -69,7 +58,6 @@ export default function FunnelsPage() {
   const comparisonEnabled = useComparisonEnabled();
   const canWrite = useCanOnSite("funnels:write");
   const search = useSearchParams().toString();
-  const typeLabels = useStepTypeLabels();
 
   const { data: funnels, isLoading, error } = useGetFunnels(site);
   const current = useGetFunnelSummaries();
@@ -122,15 +110,6 @@ export default function FunnelsPage() {
     setSearchQuery(next);
   };
 
-  const openFunnel = (id: number) => {
-    setSearchQuery("");
-    setOpenIds(effectiveOpenIds.includes(id) ? effectiveOpenIds : [...effectiveOpenIds, id]);
-    // After the row has rendered open.
-    requestAnimationFrame(() =>
-      document.getElementById(`funnel-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" })
-    );
-  };
-
   // Goals are only read to link an open funnel's last step.
   const { data: goals } = useGetFunnelGoals({ enabled: effectiveOpenIds.length > 0 });
 
@@ -139,12 +118,6 @@ export default function FunnelsPage() {
   const links = { goals: `${base}/goals${query}`, journeys: `${base}/journeys${query}` };
 
   const comparisonLabel = comparisonEnabled ? describeComparisonWindow(previousTime, time, zone) : null;
-
-  const decline = previousData ? biggestDecline(rows) : null;
-  const declineStep = (offset: number) => {
-    const step = decline!.row.funnel.steps[decline!.stepIndex + offset];
-    return stepLabel(step, typeLabels[step.type] ?? typeLabels.event);
-  };
 
   const hasFunnels = !!funnels?.length;
 
@@ -184,39 +157,6 @@ export default function FunnelsPage() {
               </p>
             )}
           </>
-        )}
-
-        {decline && (
-          <InsightRow
-            action={
-              <Button variant="ghost" size="xs" onClick={() => openFunnel(decline.row.funnel.id)}>
-                {t("Open funnel")}
-              </Button>
-            }
-          >
-            {decline.enteredDelta
-              ? t.rich(
-                  "<name>{funnel}</name> converts {change} lower than the comparison period while sessions entering it are up {entered}. The largest fall is between {from} and {to}.",
-                  {
-                    funnel: decline.row.funnel.name,
-                    change: decline.delta.text,
-                    entered: decline.enteredDelta.text,
-                    from: declineStep(0),
-                    to: declineStep(1),
-                    name: chunks => <span className="font-medium text-neutral-900 dark:text-neutral-50">{chunks}</span>,
-                  }
-                )
-              : t.rich(
-                  "<name>{funnel}</name> converts {change} lower than the comparison period. The largest fall is between {from} and {to}.",
-                  {
-                    funnel: decline.row.funnel.name,
-                    change: decline.delta.text,
-                    from: declineStep(0),
-                    to: declineStep(1),
-                    name: chunks => <span className="font-medium text-neutral-900 dark:text-neutral-50">{chunks}</span>,
-                  }
-                )}
-          </InsightRow>
         )}
 
         {isLoading || !funnels ? (

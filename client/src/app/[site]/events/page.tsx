@@ -18,7 +18,6 @@ import { EventLog } from "./components/EventLog";
 import { EventNamesCard } from "./components/EventNames/EventNamesCard";
 import { EVENT_LIMIT_OPTIONS, EventsBreakdown, EventsChart } from "./components/EventsChart";
 import { EventsStatBand } from "./components/EventsStatBand";
-import { SilentEventNotice } from "./components/SilentEventNotice";
 import { buildEventNameRows, countNewEventNames } from "./utils/eventNameRows";
 import { trendBucketFor } from "./utils/trendBucket";
 
@@ -76,7 +75,6 @@ export default function EventsPage() {
           )}
         </AnalysisBar>
         <EventsChart breakdown={breakdown} eventLimit={eventLimit} />
-        <SilentEventNotice events={silentEvents} />
         <EventNamesCard
           rows={rows}
           isLoading={stats.isPending}

@@ -89,7 +89,6 @@ import {
   getSiteEventCount,
   getUserGoals,
   getUserInfo,
-  getUserRepeatedError,
   getUserSegments,
   getUserSessionCount,
   getUserSessionGoals,
@@ -345,7 +344,6 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/users/:userId/goals", publicUsersRead, getUserGoals);
   fastify.get("/sites/:siteId/users/:userId/session-goals", publicUsersRead, getUserSessionGoals);
   fastify.get("/sites/:siteId/users/:userId/segments", publicUsersRead, getUserSegments);
-  fastify.get("/sites/:siteId/users/:userId/repeated-error", publicUsersRead, getUserRepeatedError);
   fastify.post("/sites/:siteId/users/identify", site("users:write"), identifyUser);
   fastify.put("/sites/:siteId/users/:userId/traits", site("users:write"), updateUserTraits);
   fastify.delete("/sites/:siteId/users/:userId", site("users:delete"), deleteUser);

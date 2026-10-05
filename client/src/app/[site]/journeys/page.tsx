@@ -3,7 +3,7 @@
 import { FolderTree, LogIn, LogOut, Route, Target } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useGetSite } from "@/api/admin/hooks/useSites";
 import { JourneyGrouping } from "@/api/analytics/endpoints";
 import { useGetGoals } from "@/api/analytics/hooks/goals/useGetGoals";
@@ -13,7 +13,6 @@ import { DisabledOverlay } from "@/components/DisabledOverlay";
 import { ErrorState } from "@/components/ErrorState";
 import { AnalysisBar } from "@/components/site/AnalysisBar";
 import { ChartLegend } from "@/components/site/ChartLegend";
-import { InsightRow } from "@/components/site/InsightRow";
 import { Button } from "@/components/ui/button";
 import { Card, CardLoader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,9 +29,8 @@ import {
   StepsStepper,
 } from "./components/JourneyControls";
 import { JourneyStats } from "./components/JourneyStats";
-import { formatShare, largestExit, pathKey, sectionOfPage } from "./components/journeyUtils";
+import { formatShare, pathKey, sectionOfPage } from "./components/journeyUtils";
 import { PathActionHandlers, PathActions } from "./components/PathActions";
-import { PathChips } from "./components/PathChips";
 import { PathSessionsSheet, PathSessionsTarget } from "./components/PathSessionsSheet";
 import { PinnedPath } from "./components/PinnedPath";
 import { SankeyDiagram } from "./components/SankeyDiagram";
@@ -162,7 +160,6 @@ export default function JourneysPage() {
   const isLoading = isLoadingGoals || journeysQuery.isLoading || !siteMetadata;
   const covered = journeys.reduce((total, journey) => total + journey.count, 0);
   const pinnedJourney = journeys.find(journey => pathKey(journey.path) === pinnedKey);
-  const exit = exitsKnown && !isLoading ? largestExit(journeys, steps) : null;
 
   const previousJourneys = previousJourneysQuery.data?.journeys;
   const previousCounts = useMemo(
@@ -198,10 +195,6 @@ export default function JourneysPage() {
     // Public and private-link viewers hold no permissions.
     saveAsFunnel: canWriteFunnels && !privateKey ? setFunnelPath : undefined,
   };
-
-  const strong = (chunks: ReactNode) => (
-    <span className="font-medium tabular-nums text-neutral-900 dark:text-neutral-50">{chunks}</span>
-  );
 
   return (
     <DisabledOverlay message="User Journeys" featurePath="journeys">
@@ -243,21 +236,6 @@ export default function JourneysPage() {
             ]}
           />
         </AnalysisBar>
-
-        {exit && (
-          <InsightRow action={<PathActions path={exit.path} handlers={handlers} hideFunnel className="shrink-0" />}>
-            {t.rich(
-              "<b>{percent}</b> of sessions that start <path></path> end there ({exits} of {sessions}), the largest exit on the paths shown.",
-              {
-                percent: `${((exit.exits / exit.sessions) * 100).toFixed(1)}%`,
-                exits: exit.exits.toLocaleString(),
-                sessions: exit.sessions.toLocaleString(),
-                b: strong,
-                path: () => <PathChips path={exit.path} pageHref={pageHref} className="mx-0.5 align-middle" />,
-              }
-            )}
-          </InsightRow>
-        )}
 
         <Card>
           {journeysQuery.isFetching && !isLoading && <CardLoader />}

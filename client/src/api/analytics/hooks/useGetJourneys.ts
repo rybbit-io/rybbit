@@ -104,14 +104,15 @@ export const useJourneySummary = ({
 export const useJourneySessions = ({
   path,
   replaysOnly = false,
-  page = 1,
+  offset = 0,
   limit = 25,
   enabled = true,
   ...shape
 }: JourneyShape & {
   path: string[];
   replaysOnly?: boolean;
-  page?: number;
+  /** Rows to skip. */
+  offset?: number;
   limit?: number;
   enabled?: boolean;
 }) => {
@@ -125,7 +126,7 @@ export const useJourneySessions = ({
       ...journeyShapeParams(shape),
       path: JSON.stringify(path),
       replays_only: replaysOnly ? "true" : undefined,
-      page,
+      offset,
       limit,
     },
     enabled: enabled && path.length > 0,

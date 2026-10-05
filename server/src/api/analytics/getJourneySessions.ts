@@ -37,6 +37,8 @@ interface GetJourneySessionsRequest {
       replays_only?: string;
       limit?: string;
       page?: string;
+      /** Rows to skip, in place of `(page - 1) * limit`: lets a caller read one row past its page. */
+      offset?: string;
     }
   >;
 }
@@ -45,7 +47,7 @@ interface JourneySessionsOptions {
   path: string[];
   replaysOnly: boolean;
   limit: number;
-  page: number;
+  offset: number;
 }
 
 /**
@@ -57,7 +59,7 @@ export const buildJourneySessionsQuery = (
   query: GetJourneySessionsRequest["Querystring"],
   siteId: number,
   options: JourneyOptions,
-  { path, replaysOnly, limit, page }: JourneySessionsOptions
+  { path, replaysOnly, limit, offset }: JourneySessionsOptions
 ): JourneyQuerySpec => {
   const { ctes, params } = buildJourneyFragments(query, siteId, options);
   const timeStatement = getTimeStatement(query);
@@ -135,7 +137,7 @@ export const buildJourneySessionsQuery = (
     ORDER BY a.session_end DESC
     LIMIT {limit:Int32} OFFSET {offset:Int32}
     `,
-    params: { ...params, journeyPath: path, limit, offset: (page - 1) * limit },
+    params: { ...params, journeyPath: path, limit, offset },
   };
 };
 
@@ -165,13 +167,17 @@ export const getJourneySessions = analyticsRoute<GetJourneySessionsRequest>(
     if (isNaN(page) || page < 1) {
       return reply.status(400).send({ error: "Invalid page number" });
     }
+    const offset = request.query.offset === undefined ? (page - 1) * limit : Number(request.query.offset);
+    if (!Number.isInteger(offset) || offset < 0) {
+      return reply.status(400).send({ error: "Invalid offset" });
+    }
 
     const data = await runAnalyticsQuery<Omit<GetSessionsResponse[number], "traits">>(
       buildJourneySessionsQuery(request.query, siteId, parsed.options, {
         path,
         replaysOnly: request.query.replays_only === "true",
         limit,
-        page,
+        offset,
       })
     );
 

@@ -161,7 +161,7 @@ export const getSession = analyticsRoute<GetSessionRequest>(
 
     // The same conditions the Goals page counts with, so an event marked here
     // is one that page counted as a conversion.
-    const matcher = await getSessionGoalMatcher(Number(siteId));
+    const matcher = await getSessionGoalMatcher(Number(siteId), req);
     const { sessionQuery, countQuery, eventsQuery } = buildSessionQueries(req.query, matcher.expression);
 
     // Execute queries in parallel

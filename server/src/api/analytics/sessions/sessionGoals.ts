@@ -1,6 +1,8 @@
 import { asc, eq } from "drizzle-orm";
+import { FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
+import { hasScope } from "../../../lib/scopes.js";
 import { buildGoalCondition } from "../goals/goalConditions.js";
 
 /** A goal as the session endpoints report it: enough to name it and link to it. */
@@ -58,7 +60,19 @@ export function buildSessionGoalMatcher(siteGoals: GoalRow[]): SessionGoalMatche
   };
 }
 
-export async function getSessionGoalMatcher(siteId: number): Promise<SessionGoalMatcher> {
+const GOALS_READ = { resource: "goals", action: "read" } as const;
+
+/**
+ * The site's goal matcher for a session request. The session routes are
+ * guarded by sessions:read alone, so a scoped bearer credential without
+ * goals:read gets no goals: it would otherwise read goal names and
+ * conversions it cannot list directly.
+ */
+export async function getSessionGoalMatcher(siteId: number, req: FastifyRequest): Promise<SessionGoalMatcher> {
+  if (req.bearerAuth && !hasScope(req.bearerStatements ?? null, GOALS_READ)) {
+    return buildSessionGoalMatcher([]);
+  }
+
   const siteGoals = await db
     .select({ goalId: goals.goalId, name: goals.name, goalType: goals.goalType, config: goals.config })
     .from(goals)

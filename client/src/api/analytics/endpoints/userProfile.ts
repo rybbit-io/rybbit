@@ -44,15 +44,3 @@ export interface UserSegments {
   /** The site has more segments than one request evaluates. */
   truncated: boolean;
 }
-
-/** The latest session in the window in which one error message was thrown twice or more. */
-export interface UserRepeatedError {
-  message: string;
-  session_id: string;
-  occurrences: number;
-  /** Page the first of them was thrown on. */
-  pathname: string;
-  first_seen: string;
-  last_seen: string;
-  has_replay: boolean;
-}

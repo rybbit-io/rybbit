@@ -194,7 +194,7 @@ export function EventNamesTable({
                         type="button"
                         title={t("Filter by {name}", { name: row.eventName })}
                         onClick={() => addFilter(eventFilter(row.eventName)[0])}
-                        className="min-w-0 cursor-pointer truncate text-left font-medium text-neutral-900 hover:underline dark:text-neutral-100"
+                        className="min-w-0 cursor-pointer truncate text-left text-xs font-medium text-neutral-900 hover:underline dark:text-neutral-100"
                       >
                         {row.eventName}
                       </button>

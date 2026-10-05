@@ -189,7 +189,7 @@ export const getSessions = analyticsRoute<GetSessionsRequest>(
 
     // Goals are matched only for a request that shows or filters on them.
     const wantsGoals = parsed.params.include_goals === "true" || parsed.params.view === "converted";
-    const matcher = wantsGoals ? await getSessionGoalMatcher(siteId) : NO_GOALS;
+    const matcher = wantsGoals ? await getSessionGoalMatcher(siteId, req) : NO_GOALS;
     const rows = await runAnalyticsQuery<SessionRow>(buildSessionsQuery(req.query, siteId, matcher));
 
     const withReplay = await findSessionsWithReplay(

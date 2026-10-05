@@ -3,7 +3,6 @@ import { ProcessedRetentionData } from "../../../api/analytics/endpoints";
 import {
   buildRetentionModel,
   defaultRetentionMode,
-  findCohortOutlier,
   HEAT_STEPS,
   heatStep,
   lastPeriodProgress,
@@ -158,52 +157,6 @@ describe("statOffsets", () => {
     expect(statOffsets("week", buildRetentionModel(sample()))).toEqual([1, 2, 3]);
     expect(statOffsets("week", null)).toEqual([1, 4, 8]);
     expect(statOffsets("day", null)).toEqual([1, 7, 30]);
-  });
-});
-
-describe("findCohortOutlier", () => {
-  it("reports the largest cohort when it is clearly larger and retains differently", () => {
-    const outlier = findCohortOutlier(buildRetentionModel(sample()));
-
-    expect(outlier?.cohort.key).toBe("2026-09-14");
-    expect(outlier?.pct).toBe(10);
-    expect(outlier?.difference).toBe(-2.5);
-  });
-
-  it("stays quiet when no cohort stands out in size", () => {
-    const model = buildRetentionModel(
-      response({
-        "2026-08-31": [1000, 200, 100, 80, 20],
-        "2026-09-07": [1050, 100, 60, 10],
-        "2026-09-14": [1000, 150, 30],
-        "2026-09-21": [1000, 40],
-        "2026-09-28": [400],
-      })
-    );
-    expect(findCohortOutlier(model)).toBeNull();
-  });
-
-  it("stays quiet when the largest cohort retains like the rest", () => {
-    const model = buildRetentionModel(
-      response({
-        "2026-08-31": [1000, 125, 100, 80, 20],
-        "2026-09-07": [1000, 125, 60, 10],
-        "2026-09-14": [2000, 250, 30],
-        "2026-09-21": [1000, 40],
-        "2026-09-28": [400],
-      })
-    );
-    expect(findCohortOutlier(model)).toBeNull();
-  });
-
-  it("needs at least three cohorts with a finished period 1", () => {
-    const model = buildRetentionModel(
-      response(
-        { "2026-09-14": [2000, 200, 30], "2026-09-21": [1000, 40], "2026-09-28": [400] },
-        { periods: ["2026-09-14", "2026-09-21", "2026-09-28"] }
-      )
-    );
-    expect(findCohortOutlier(model)).toBeNull();
   });
 });
 

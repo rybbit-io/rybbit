@@ -13,7 +13,6 @@ import { EnableWebVitals } from "./components/EnableWebVitals";
 import { PercentileSelector } from "./components/PercentileSelector";
 import { PerformanceByDimensions } from "./components/PerformanceByDimensions";
 import { PerformanceChart } from "./components/PerformanceChart";
-import { PerformanceInsight } from "./components/PerformanceInsight";
 import { PerformanceOverview } from "./components/PerformanceOverview";
 import { usePerformanceStore } from "./performanceStore";
 import { useVisibleAnnotations } from "./utils/useVisibleAnnotations";
@@ -55,7 +54,6 @@ export default function PerformancePage() {
           <PercentileSelector />
           <BucketSelection />
         </AnalysisBar>
-        <PerformanceInsight />
         <PerformanceChart />
         <PerformanceByDimensions />
       </div>
