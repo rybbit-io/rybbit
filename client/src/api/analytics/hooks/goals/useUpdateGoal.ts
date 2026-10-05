@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useStore } from "../../../../lib/store";
 import { GoalConfig, GoalType, updateGoal } from "../../endpoints";
+import { invalidateGoalDependents } from "./invalidateGoalDependents";
 
 export interface UpdateGoalRequest {
   goalId: number;
@@ -43,6 +44,7 @@ export function useUpdateGoal() {
       queryClient.invalidateQueries({
         queryKey: ["goal-sessions", goalData.goalId],
       });
+      invalidateGoalDependents(queryClient);
     },
   });
 }

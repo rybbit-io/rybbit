@@ -2,7 +2,7 @@ import { Query } from "@tanstack/react-query";
 import { Time } from "../../../components/DateSelector/types";
 import { USER_DETAIL_PAGE_FILTERS } from "../../../lib/filterGroups";
 import { getFilteredFilters } from "../../../lib/store";
-import { UserGoal, UserRepeatedError, UserSegments, UserSessionGoals, UserSummary } from "../endpoints/userProfile";
+import { UserGoal, UserSegments, UserSessionGoals, UserSummary } from "../endpoints/userProfile";
 import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
 // Every profile panel applies the page's own filter set, the way useUserInfo
@@ -76,16 +76,5 @@ export function useUserSegments(userId: string) {
     ...profileFilters(),
     enabled: !!userId,
     props: { placeholderData: sameUserPlaceholder<UserSegments>(userId) },
-  });
-}
-
-export function useUserRepeatedError(userId: string) {
-  return useAnalyticsQuery<UserRepeatedError | null>({
-    key: ["user-repeated-error", userId],
-    path: userPath(userId, "repeated-error"),
-    ...profileFilters(),
-    // An insight about one period must not linger over the next.
-    placeholder: false,
-    enabled: !!userId,
   });
 }

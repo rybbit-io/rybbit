@@ -87,7 +87,6 @@ export { getSessionsSummary } from "./sessions/getSessionsSummary.js";
 export { deleteUser } from "./users/deleteUser.js";
 export { getUserGoals, getUserSessionGoals } from "./users/getUserGoals.js";
 export { getUserInfo } from "./users/getUserInfo.js";
-export { getUserRepeatedError } from "./users/getUserRepeatedError.js";
 export { getUserSegments } from "./users/getUserSegments.js";
 export { getUserSessionCount } from "./users/getUserSessionCount.js";
 export { getUserSummary } from "./users/getUserSummary.js";

@@ -172,10 +172,10 @@ describe("buildEventCondition", () => {
 
   it("compares numeric property filters as floats with an unquoted literal", () => {
     expect(buildEventCondition("purchase", [{ key: "amount", value: 42 }])).toBe(
-      "type = 'custom_event' AND event_name = 'purchase' AND toFloat64(JSONExtractString(toString(props), 'amount')) = 42"
+      "type = 'custom_event' AND event_name = 'purchase' AND toFloat64OrNull(JSONExtractString(toString(props), 'amount')) = 42"
     );
     expect(buildEventCondition("purchase", [{ key: "amount", value: 9.5 }])).toBe(
-      "type = 'custom_event' AND event_name = 'purchase' AND toFloat64(JSONExtractString(toString(props), 'amount')) = 9.5"
+      "type = 'custom_event' AND event_name = 'purchase' AND toFloat64OrNull(JSONExtractString(toString(props), 'amount')) = 9.5"
     );
   });
 
@@ -195,7 +195,7 @@ describe("buildEventCondition", () => {
         { key: "seats", value: 3 },
       ])
     ).toBe(
-      "type = 'custom_event' AND event_name = 'purchase' AND JSONExtractString(toString(props), 'plan') = 'pro' AND toFloat64(JSONExtractString(toString(props), 'seats')) = 3"
+      "type = 'custom_event' AND event_name = 'purchase' AND JSONExtractString(toString(props), 'plan') = 'pro' AND toFloat64OrNull(JSONExtractString(toString(props), 'seats')) = 3"
     );
   });
 
@@ -301,7 +301,7 @@ describe("buildAutocaptureCondition", () => {
       ])
     ).toBe(
       "type = 'button_click' AND JSONExtractString(toString(props), 'id') = 'cta'" +
-        " AND toFloat64(JSONExtractString(toString(props), 'count')) = 2"
+        " AND toFloat64OrNull(JSONExtractString(toString(props), 'count')) = 2"
     );
   });
 

@@ -1,5 +1,5 @@
 import { FunnelResponse, FunnelStep, FunnelSummariesResponse, Goal, SavedFunnel } from "@/api/analytics/endpoints";
-import { DeltaValue, percentDelta, pointDelta } from "@/lib/delta";
+import { DeltaValue, pointDelta } from "@/lib/delta";
 import { resolvePropertyFilters } from "@/lib/events";
 
 /** One step of a funnel over one period. Rates are fractions (0 to 1). */
@@ -187,43 +187,6 @@ function biggestMove(rows: FunnelRowData[], direction: "up" | "down") {
 }
 
 export const biggestGain = (rows: FunnelRowData[]) => biggestMove(rows, "up");
-
-export interface FunnelDecline {
-  row: FunnelRowData;
-  delta: DeltaValue;
-  /** Change in sessions entering the funnel, when they rose while conversion fell. */
-  enteredDelta: DeltaValue | null;
-  /** Index of the step whose continue rate fell the most. */
-  stepIndex: number;
-}
-
-/** The funnel whose conversion fell the most, and the step transition that lost the most ground. */
-export function biggestDecline(rows: FunnelRowData[]): FunnelDecline | null {
-  const worst = biggestMove(rows, "down");
-  if (!worst) return null;
-
-  const { current, previous } = worst.row;
-  let stepIndex: number | null = null;
-  let largestFall = 0;
-  current!.steps.forEach((step, index) => {
-    const before = previous!.steps[index]?.continueRate;
-    if (step.continueRate === null || before == null) return;
-    const fall = before - step.continueRate;
-    if (fall > largestFall) {
-      largestFall = fall;
-      stepIndex = index;
-    }
-  });
-  if (stepIndex === null) return null;
-
-  const enteredDelta = percentDelta(current!.entered, previous!.entered);
-  return {
-    row: worst.row,
-    delta: worst.delta,
-    enteredDelta: enteredDelta?.direction === "up" ? enteredDelta : null,
-    stepIndex,
-  };
-}
 
 /** The funnel with the highest conversion this period: the stat band's third cell when there is no comparison. */
 export function highestConversion(rows: FunnelRowData[]): FunnelRowData | null {

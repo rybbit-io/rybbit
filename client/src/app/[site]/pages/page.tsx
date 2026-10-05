@@ -12,9 +12,8 @@ import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { useStore } from "@/lib/store";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { SubHeader } from "../components/SubHeader/SubHeader";
-import { PagesInsight } from "./components/PagesInsight";
 import { PagesStatBand } from "./components/PagesStatBand";
-import { PAGE_SIZE, PagesTable } from "./components/PagesTable";
+import { PagesTable } from "./components/PagesTable";
 
 type Breakdown = "section" | "none";
 
@@ -42,7 +41,6 @@ export default function Pages() {
   const page = paging.scope === scope ? paging.page : 1;
   const setPage = (next: number) => setPaging({ page: next, scope });
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const [focusSection, setFocusSection] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search.trim(), 300);
   // Typing waits for a pause; clearing the box applies at once.
@@ -54,11 +52,8 @@ export default function Pages() {
     return null;
   }
 
-  // Any change to what is listed starts again from the first page, and drops a pending scroll.
-  const restart = () => {
-    setPage(1);
-    setFocusSection(null);
-  };
+  // Any change to what is listed starts again from the first page.
+  const restart = () => setPage(1);
 
   return (
     <DisabledOverlay message={t("pages")} featurePath="pages">
@@ -114,19 +109,6 @@ export default function Pages() {
             ]}
           />
         </AnalysisBar>
-        <PagesInsight
-          onShowSection={({ section, rank }) => {
-            if (rank === null) return;
-            // The section's place among the rows sorted by views is its place in the default table.
-            setBreakdown("section");
-            setMode("all");
-            setSorting({ sort: "pageviews", order: "desc" });
-            setSearch("");
-            setPage(Math.floor(rank / PAGE_SIZE) + 1);
-            setExpanded(current => new Set(current).add(section));
-            setFocusSection(section);
-          }}
-        />
         <PagesTable
           // A search lists the matching pages themselves: a rollup of a few matches would read as the section's total.
           group={breakdown === "section" && !activeSearch ? "section" : "page"}
@@ -145,8 +127,6 @@ export default function Pages() {
           onPageChange={setPage}
           expanded={expanded}
           onExpandedChange={setExpanded}
-          focusSection={focusSection}
-          onFocusHandled={() => setFocusSection(null)}
         />
       </div>
     </DisabledOverlay>

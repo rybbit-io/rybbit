@@ -17,7 +17,6 @@ import {
   parseSessionIds,
   toGoalConditions,
 } from "./getUserGoals.js";
-import { buildUserRepeatedErrorQuery } from "./getUserRepeatedError.js";
 import { buildUserSegmentsQuery } from "./getUserSegments.js";
 import { buildUserSummaryQuery } from "./getUserSummary.js";
 
@@ -106,20 +105,6 @@ describe("user goals queries", () => {
     expect(parseSessionIds(JSON.stringify([1, 2]))).toBeNull();
     expect(parseSessionIds(JSON.stringify("a"))).toBeNull();
     expect(parseSessionIds(JSON.stringify(Array.from({ length: MAX_SESSION_IDS + 1 }, (_, i) => `s${i}`)))).toBeNull();
-  });
-});
-
-describe("user repeated error query", () => {
-  it("returns the latest session in which one message was thrown at least twice", () => {
-    const sql = buildUserRepeatedErrorQuery(range(), 1);
-
-    expect(sql).toContain("type = 'error'");
-    expect(sql).toContain("error_message,\n        session_id");
-    expect(sql).toContain("occurrences >= 2");
-    expect(sql).toContain("last_seen DESC");
-    expect(sql).toContain("LIMIT 1");
-    expect(sql).toContain(USER_PREDICATE);
-    expect(sql).toContain("toDateTime('2026-09-01', 'Europe/Stockholm')");
   });
 });
 

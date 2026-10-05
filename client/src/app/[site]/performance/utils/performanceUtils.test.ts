@@ -1,14 +1,7 @@
 import type { Annotation } from "@rybbit/shared";
 import { describe, expect, it } from "vitest";
 import { annotationsInWindow } from "./annotationWindow";
-import {
-  findOnlyPoorRow,
-  formatMetric,
-  formatShare,
-  getMetricRating,
-  getRatingSplit,
-  PERFORMANCE_METRICS,
-} from "./performanceUtils";
+import { formatMetric, formatShare, getMetricRating, getRatingSplit, PERFORMANCE_METRICS } from "./performanceUtils";
 
 describe("getMetricRating", () => {
   it("rates a value on the limit as the better of the two", () => {
@@ -74,35 +67,6 @@ describe("formatShare", () => {
     expect(formatShare(77.34)).toBe("77.3%");
     expect(formatShare(100)).toBe("100.0%");
     expect(formatShare(0)).toBe("0.0%");
-  });
-});
-
-describe("findOnlyPoorRow", () => {
-  const rows = (values: (number | null)[]) => values.map((lcp_p75, index) => ({ pathname: `/page-${index}`, lcp_p75 }));
-  const value = (row: { lcp_p75: number | null }) => row.lcp_p75;
-
-  it("finds the single poor row", () => {
-    expect(findOnlyPoorRow(rows([2100, 4100, 1800, 3900]), "lcp", value)).toEqual({
-      pathname: "/page-1",
-      lcp_p75: 4100,
-    });
-  });
-
-  it("says nothing when no row or several rows are poor", () => {
-    expect(findOnlyPoorRow(rows([2100, 3900, 1800]), "lcp", value)).toBeNull();
-    expect(findOnlyPoorRow(rows([4100, 4700, 1800]), "lcp", value)).toBeNull();
-  });
-
-  it("needs three rated rows to single one out", () => {
-    expect(findOnlyPoorRow(rows([4100, 1800]), "lcp", value)).toBeNull();
-    expect(findOnlyPoorRow(rows([4100, 1800, null]), "lcp", value)).toBeNull();
-    expect(findOnlyPoorRow(rows([4100, 1800, null, 2000]), "lcp", value)?.pathname).toBe("/page-0");
-  });
-
-  it("rates against the metric it is asked about", () => {
-    // 600 is a poor INP but a good LCP.
-    expect(findOnlyPoorRow(rows([600, 100, 150]), "inp", value)?.pathname).toBe("/page-0");
-    expect(findOnlyPoorRow(rows([600, 100, 150]), "lcp", value)).toBeNull();
   });
 });
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FunnelSummariesResponse, Goal, SavedFunnel } from "@/api/analytics/endpoints";
 import {
-  biggestDecline,
   biggestDropOff,
   biggestGain,
   computeFunnelMetrics,
@@ -212,22 +211,6 @@ describe("the stat band's picks", () => {
   it("has no biggest gain when nothing improved or there is no comparison", () => {
     expect(biggestGain([rows[1], rows[2]])).toBeNull();
     expect(biggestGain([row(1, "No comparison", [10, 5])])).toBeNull();
-  });
-
-  it("picks the funnel whose conversion fell the most and the step transition that lost the most ground", () => {
-    const decline = biggestDecline(rows);
-
-    expect(decline?.row.funnel.name).toBe("Docs activation");
-    expect(decline?.delta).toMatchObject({ direction: "down", text: "10.0 pp" });
-    // Step 1 to 2 fell from 50% to 40%, step 2 to 3 from 60% to 50%: the first transition wins the tie.
-    expect(decline?.stepIndex).toBe(0);
-    // Entries rose from 400 to 500 while conversion fell.
-    expect(decline?.enteredDelta).toMatchObject({ direction: "up", text: "25.0%" });
-  });
-
-  it("only mentions entries when they rose", () => {
-    expect(biggestDecline([rows[2]])?.enteredDelta).toBeNull();
-    expect(biggestDecline([rows[0]])).toBeNull();
   });
 
   it("picks the single leakiest step across all funnels", () => {

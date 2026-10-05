@@ -163,7 +163,7 @@ export const getSessionsSummary = analyticsRoute<GetSessionsSummaryRequest>(
       return res.status(400).send({ error: parsed.error });
     }
 
-    const matcher = await getSessionGoalMatcher(siteId);
+    const matcher = await getSessionGoalMatcher(siteId, req);
     const rows = await runAnalyticsQuery<SummaryRow>(buildSessionsSummaryQuery(req.query, siteId, matcher));
 
     return res.send({ data: toSessionsSummary(rows, matcher.goals.length > 0) });

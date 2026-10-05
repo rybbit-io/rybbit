@@ -164,41 +164,6 @@ export function buildRetentionModel(data: ProcessedRetentionData): RetentionMode
   };
 }
 
-export interface CohortOutlier {
-  cohort: RetentionCohortRow;
-  /** The cohort's period-1 retention, in percent. */
-  pct: number;
-  /** Percentage points above (positive) or below the all-cohort average. */
-  difference: number;
-}
-
-const OUTLIER_SIZE_RATIO = 1.15;
-const OUTLIER_MIN_DIFFERENCE = 1;
-const OUTLIER_MIN_COHORTS = 3;
-
-/**
- * The largest cohort, when it is clearly larger than usual and its period-1
- * retention sits at least a point away from the average: the case where a
- * spike in new users (a launch, a campaign) retained differently. Fixed
- * thresholds, no judgement: null whenever the data does not meet them.
- */
-export function findCohortOutlier(model: RetentionModel): CohortOutlier | null {
-  const average = model.average[1];
-  if (!average || model.averageSize === null) return null;
-
-  const measured = model.cohorts.filter(cohort => cohort.size > 0 && cohort.cells[1] && !cohort.cells[1].partial);
-  if (measured.length < OUTLIER_MIN_COHORTS) return null;
-
-  const largest = measured.reduce((winner, cohort) => (cohort.size > winner.size ? cohort : winner));
-  if (largest.size < model.averageSize * OUTLIER_SIZE_RATIO) return null;
-
-  const pct = largest.cells[1].pct;
-  const difference = pct - average.pct;
-  if (Math.abs(difference) < OUTLIER_MIN_DIFFERENCE) return null;
-
-  return { cohort: largest, pct, difference };
-}
-
 /**
  * Stepped opacity ramp of the data hue. The jump from 0.44 to 0.64 skips the
  * band where neither light nor dark text reaches 4.5:1 on the dark panel, so

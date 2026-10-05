@@ -72,13 +72,16 @@ export function AutocaptureTable({ rows, maxCount, total, valueLabel, links = fa
                         target="_blank"
                         rel="noopener noreferrer"
                         title={row.value}
-                        className="truncate font-medium text-neutral-900 hover:underline dark:text-neutral-100"
+                        className="truncate text-xs font-medium text-neutral-900 hover:underline dark:text-neutral-100"
                       >
                         {truncateUrl(row.value)}
                       </a>
                     </div>
                   ) : (
-                    <div className="truncate font-medium text-neutral-900 dark:text-neutral-100" title={row.value}>
+                    <div
+                      className="truncate text-xs font-medium text-neutral-900 dark:text-neutral-100"
+                      title={row.value}
+                    >
                       {truncateString(row.value, 120)}
                     </div>
                   )}

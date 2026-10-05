@@ -154,21 +154,3 @@ export const getRatingSplit = (
 
 /** A percentage of loads to one decimal: 77.34 → "77.3%". */
 export const formatShare = (share: number): string => `${share.toFixed(1)}%`;
-
-/**
- * The one row rated poor in a list, or null when none or several are. Fewer
- * than three rated rows is not a list worth singling one out of.
- */
-export const findOnlyPoorRow = <T>(
-  rows: T[],
-  metric: PerformanceMetric,
-  getValue: (row: T) => number | null | undefined
-): T | null => {
-  const rated = rows.filter(row => {
-    const value = getValue(row);
-    return typeof value === "number" && Number.isFinite(value);
-  });
-  if (rated.length < 3) return null;
-  const poor = rated.filter(row => getMetricRating(metric, getValue(row) as number) === "poor");
-  return poor.length === 1 ? poor[0] : null;
-};

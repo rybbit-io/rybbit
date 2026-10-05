@@ -184,17 +184,13 @@ describe("RetentionPage", () => {
     expect(within(popover).getByText("Average for Week 2").nextElementSibling?.textContent).toBe("8.0%");
   });
 
-  it("calls out the largest cohort when it retains differently, and highlights it on request", () => {
+  it("highlights a cohort when its row is picked, with no insight sentence above the grid", () => {
     render(<RetentionPage />);
 
-    expect(
-      screen.getByText(
-        "The Sep 14 – Sep 20 cohort is your largest at 2,000 new users, but only 10.0% came back in week 1, 2.5 pp under average."
-      )
-    ).toBeTruthy();
+    expect(screen.queryByText(/cohort is your largest/)).toBeNull();
     const row = screen.getByRole("button", { name: "Sep 14 – Sep 20" });
     expect(row.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(screen.getByRole("button", { name: "View cohort" }));
+    fireEvent.click(row);
     expect(row.getAttribute("aria-pressed")).toBe("true");
   });
 

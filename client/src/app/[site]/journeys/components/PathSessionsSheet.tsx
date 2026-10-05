@@ -34,7 +34,7 @@ function PathSessions({ target, shape }: { target: PathSessionsTarget; shape: Jo
     ...shape,
     path: target.path,
     replaysOnly,
-    page,
+    offset: (page - 1) * PAGE_SIZE,
     limit: PAGE_SIZE + 1,
   });
   const sessions = data ?? [];

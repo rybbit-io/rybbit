@@ -195,33 +195,6 @@ export function pathContinuation(journeys: JourneyRow[], path: string[]): Contin
   });
 }
 
-export interface PathExit {
-  path: string[];
-  /** Sessions that took exactly this path and ended there. */
-  exits: number;
-  /** Sessions on the shown paths that started with this path. */
-  sessions: number;
-}
-
-/**
- * The shown path where the most sessions ended while others carried on: a
- * journey shorter than `steps` (so the session ended on its last page) that at
- * least one other shown journey continues.
- */
-export function largestExit(journeys: JourneyRow[], steps: number): PathExit | null {
-  let best: PathExit | null = null;
-  for (const journey of journeys) {
-    if (journey.path.length >= steps || journey.path.length < 2) continue;
-    if (best && journey.count <= best.exits) continue;
-    const sessions = journeys.reduce(
-      (total, other) => (startsWithPath(other.path, journey.path) ? total + other.count : total),
-      0
-    );
-    if (sessions > journey.count) best = { path: journey.path, exits: journey.count, sessions };
-  }
-  return best;
-}
-
 // ───────── layout ─────────
 
 export interface LaidOutNode extends SankeyNode {

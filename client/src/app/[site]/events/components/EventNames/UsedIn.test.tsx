@@ -52,8 +52,6 @@ const funnel = (id: number, name: string): SavedFunnel => ({
   steps: [{ type: "event", value: "signup" }],
   createdAt: "2026-01-01",
   updatedAt: "2026-01-01",
-  conversionRate: null,
-  totalVisitors: null,
 });
 
 const renderUsedIn = (props: Partial<Parameters<typeof UsedIn>[0]> = {}) =>

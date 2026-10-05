@@ -1,9 +1,8 @@
 "use client";
 
-import { Clock, Rewind, Video } from "lucide-react";
+import { Clock, Video } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted, useLocale } from "next-intl";
-import Link from "next/link";
 import { useState } from "react";
 import { UserInfo } from "../../../../../api/analytics/endpoints";
 import { Avatar } from "../../../../../components/Avatar";
@@ -18,7 +17,6 @@ import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
 import { useReplayAvailable } from "../../../../../hooks/useReplayAvailable";
 import { getTimezone } from "../../../../../lib/store";
 import { userStore } from "../../../../../lib/userStore";
-import { useProfileHref, userFilter } from "./profileLinks";
 import { UserActions } from "./UserActions";
 import { headlineTraits, traitLabel } from "./userTraits";
 
@@ -84,8 +82,6 @@ function LatestReplayButton({ sessionId }: { sessionId: string }) {
 interface UserHeaderProps {
   /** The id in the URL: what the avatar, the copy button and the delete action refer to. */
   userId: string;
-  /** The identity the profile's panels query: the identified id when there is one. */
-  queryUserId: string;
   displayName: string;
   data: UserInfo | undefined;
   isLoading: boolean;
@@ -93,19 +89,11 @@ interface UserHeaderProps {
   latestReplaySessionId?: string;
 }
 
-export function UserHeader({
-  userId,
-  queryUserId,
-  displayName,
-  data,
-  isLoading,
-  latestReplaySessionId,
-}: UserHeaderProps) {
+export function UserHeader({ userId, displayName, data, isLoading, latestReplaySessionId }: UserHeaderProps) {
   const t = useExtracted();
   const locale = useLocale();
   const { user } = userStore();
   const { formatRelative, formatDateTime, hour12 } = useDateTimeFormat();
-  const profileHref = useProfileHref();
 
   const isIdentified = !!data?.identified_user_id;
   const traitsEmail = data?.traits?.email as string | undefined;
@@ -211,14 +199,6 @@ export function UserHeader({
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-1.5">
         {latestReplaySessionId && <LatestReplayButton sessionId={latestReplaySessionId} />}
-        {data && (
-          <Button asChild variant="outline" size="sm">
-            <Link href={profileHref("sessions", [userFilter(queryUserId)])} prefetch={false}>
-              <Rewind />
-              {t("Open in Sessions")}
-            </Link>
-          </Button>
-        )}
         {user && data && <UserActions userId={userId} data={data} />}
       </div>
     </header>

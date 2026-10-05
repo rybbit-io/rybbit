@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Goal, SavedFunnel, SiteEventCountPoint } from "../../../../api/analytics/endpoints";
 import { DEFAULT_HIDDEN_TYPES, EVENT_TYPE_SERIES, SERIES_COLORS, seriesColor, totalsByType } from "./eventTypes";
 import { formatShare, groupProperties } from "./properties";
-import { funnelsForEvent, goalsForEvent, silentEventDailyAverage } from "./usedIn";
+import { funnelsForEvent, goalsForEvent } from "./usedIn";
 
 const goal = (goalId: number, goalType: Goal["goalType"], config: Goal["config"]): Goal => ({
   goalId,
@@ -21,8 +21,6 @@ const funnel = (id: number, steps: SavedFunnel["steps"]): SavedFunnel => ({
   steps,
   createdAt: "2026-01-01",
   updatedAt: "2026-01-01",
-  conversionRate: null,
-  totalVisitors: null,
 });
 
 describe("goalsForEvent", () => {
@@ -64,16 +62,6 @@ describe("funnelsForEvent", () => {
   it("ignores page and autocapture steps that happen to share the text", () => {
     expect(funnelsForEvent([funnels[1]], "signup")).toEqual([]);
     expect(funnelsForEvent(undefined, "signup")).toEqual([]);
-  });
-});
-
-describe("silentEventDailyAverage", () => {
-  it("averages over the days between the first and last occurrence", () => {
-    expect(silentEventDailyAverage({ total: 66, spanDays: 22 })).toBe(3);
-  });
-
-  it("does not divide by zero", () => {
-    expect(silentEventDailyAverage({ total: 5, spanDays: 0 })).toBe(0);
   });
 });
 

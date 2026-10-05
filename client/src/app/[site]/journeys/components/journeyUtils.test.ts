@@ -3,7 +3,6 @@ import {
   buildSankeyGraph,
   connectedLinkIds,
   JourneyRow,
-  largestExit,
   layoutSankey,
   linkId,
   nodeId,
@@ -175,28 +174,6 @@ describe("pathContinuation", () => {
       { page: "/nowhere", sessions: 0, continued: null },
       { page: "/else", sessions: 0, continued: null },
     ]);
-  });
-});
-
-describe("largestExit", () => {
-  it("picks the path where the most sessions ended while others carried on", () => {
-    expect(largestExit(JOURNEYS, 4)).toEqual({ path: ["/", "/pricing"], exits: 300, sessions: 450 });
-  });
-
-  it("skips a path nobody on the shown paths continues: nothing to compare the exits with", () => {
-    expect(largestExit([journey(["/blog", "/pricing"], 900), ...JOURNEYS], 4)).toEqual({
-      path: ["/", "/pricing"],
-      exits: 300,
-      sessions: 450,
-    });
-  });
-
-  it("skips paths that fill every step, which may not have ended", () => {
-    expect(largestExit([journey(["/", "/a"], 10), journey(["/", "/b"], 5)], 2)).toBeNull();
-  });
-
-  it("is null without journeys", () => {
-    expect(largestExit([], 4)).toBeNull();
   });
 });
 

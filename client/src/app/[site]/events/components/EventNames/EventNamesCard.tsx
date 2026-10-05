@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { ReactNode, useState } from "react";
 
@@ -12,20 +12,19 @@ import { useGetGoals } from "@/api/analytics/hooks/goals/useGetGoals";
 import { ErrorState } from "@/components/ErrorState";
 import { ExternalLink } from "@/components/ExternalLink";
 import { SegmentedControl } from "@/components/interior/segmented-control";
-import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/pagination";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCanOnSite } from "@/hooks/usePermissions";
 import { useComparisonEnabled, useStore } from "@/lib/store";
 import { EventNameRow, EventNameSortKey, filterEventNameRows, sortEventNameRows } from "../../utils/eventNameRows";
-import { formatShare } from "../../utils/properties";
 import { AutocaptureRow, AutocaptureTable } from "./AutocaptureTable";
 import { EventNamesSort, EventNamesTable, EventNamesTableSkeleton } from "./EventNamesTable";
 
 type Kind = "events" | "outbound" | "button_click" | "form_submit" | "copy";
 
-// Rows on show before "Show all".
-const ROW_LIMIT = 8;
+// Rows on one page of the table.
+const PAGE_SIZE = 10;
 // The goals endpoint's largest page.
 const GOALS_PAGE_SIZE = 100;
 
@@ -48,43 +47,39 @@ function Message({ title, children }: { title: string; children?: ReactNode }) {
   );
 }
 
-/** "8 of 24. The other 16 account for …" and the switch between the short list and all of it. */
-function ListFooter({
-  shown,
+/** The page of rows on show, and the page control under them once there is more than one. */
+function pageOf<T>(rows: T[], page: number) {
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  // The rows can shrink under the page (a new period, a narrower search).
+  const current = Math.min(page, pageCount);
+  return { pageCount, current, shown: rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE) };
+}
+
+function PageFooter({
+  page,
+  pageCount,
   total,
-  restEvents,
-  restShare,
-  expanded,
-  onToggle,
+  itemName,
+  onPageChange,
 }: {
-  shown: number;
+  page: number;
+  pageCount: number;
   total: number;
-  /** Events in the rows that are not on show. */
-  restEvents: number;
-  restShare: number;
-  expanded: boolean;
-  onToggle: () => void;
+  itemName: string;
+  onPageChange: (page: number) => void;
 }) {
-  const t = useExtracted();
-  if (total <= ROW_LIMIT) return null;
+  if (pageCount <= 1) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 px-4 py-2 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
-      <span>
-        {expanded
-          ? t("All {total} shown.", { total: total.toLocaleString() })
-          : t("{shown} of {total}. The other {rest} account for {events} events ({share}).", {
-              shown: shown.toLocaleString(),
-              total: total.toLocaleString(),
-              rest: (total - shown).toLocaleString(),
-              events: restEvents.toLocaleString(),
-              share: formatShare(restShare),
-            })}
-      </span>
-      <Button type="button" variant="ghost" size="xs" className="gap-1" onClick={onToggle}>
-        {expanded ? t("Show fewer") : t("Show all {total}", { total: total.toLocaleString() })}
-        {expanded ? <ChevronUp /> : <ChevronDown />}
-      </Button>
+    <div className="border-t border-neutral-100 px-3 py-2 dark:border-neutral-800">
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        totalItems={total}
+        pageSize={PAGE_SIZE}
+        onPageChange={onPageChange}
+        itemName={itemName}
+      />
     </div>
   );
 }
@@ -113,7 +108,7 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
 
   const [kind, setKind] = useState<Kind>("events");
   const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(1);
   const [sort, setSort] = useState<EventNamesSort>({ key: "count", direction: "desc" });
 
   const goals = useGetGoals({ pageSize: GOALS_PAGE_SIZE });
@@ -125,31 +120,35 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
 
   const autocapture: Record<
     Exclude<Kind, "events">,
-    { rows: AutocaptureRow[] | undefined; isLoading: boolean; isError: boolean; valueLabel: string }
+    { rows: AutocaptureRow[] | undefined; isLoading: boolean; isError: boolean; valueLabel: string; itemName: string }
   > = {
     outbound: {
       rows: outbound.data?.map(link => ({ value: String(link.url), count: link.count, lastSeen: link.lastClicked })),
       isLoading: outbound.isPending,
       isError: outbound.isError,
       valueLabel: t("Link"),
+      itemName: t("links"),
     },
     button_click: {
       rows: buttons.data?.map(row => ({ value: row.value, count: row.count, lastSeen: row.lastOccurred })),
       isLoading: buttons.isPending,
       isError: buttons.isError,
       valueLabel: t("Button text"),
+      itemName: t("buttons"),
     },
     form_submit: {
       rows: forms.data?.map(row => ({ value: row.value, count: row.count, lastSeen: row.lastOccurred })),
       isLoading: forms.isPending,
       isError: forms.isError,
       valueLabel: t("Form"),
+      itemName: t("forms"),
     },
     copy: {
       rows: copies.data?.map(row => ({ value: row.value, count: row.count, lastSeen: row.lastOccurred })),
       isLoading: copies.isPending,
       isError: copies.isError,
       valueLabel: t("Copied text"),
+      itemName: t("copies"),
     },
   };
 
@@ -167,12 +166,14 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
     { value: "copy", label: tab(t("Copies"), autocapture.copy.rows?.length) },
   ];
 
-  const changeSort = (key: EventNameSortKey) =>
+  const changeSort = (key: EventNameSortKey) => {
     setSort(current =>
       current.key === key
         ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
         : { key, direction: FIRST_DIRECTION[key] }
     );
+    setPage(1);
+  };
 
   const errorState = (
     <ErrorState
@@ -185,9 +186,7 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
   let body: ReactNode;
   if (kind === "events") {
     const matching = sortEventNameRows(filterEventNameRows(rows, search), sort.key, sort.direction);
-    const shown = expanded ? matching : matching.slice(0, ROW_LIMIT);
-    const total = rows.reduce((sum, row) => sum + row.count, 0);
-    const restEvents = matching.slice(shown.length).reduce((sum, row) => sum + row.count, 0);
+    const { pageCount, current, shown } = pageOf(matching, page);
 
     body = isLoading ? (
       <EventNamesTableSkeleton />
@@ -219,13 +218,12 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
           silentEvents={silentEvents}
           showChange={comparisonEnabled}
         />
-        <ListFooter
-          shown={shown.length}
+        <PageFooter
+          page={current}
+          pageCount={pageCount}
           total={matching.length}
-          restEvents={restEvents}
-          restShare={total > 0 ? restEvents / total : 0}
-          expanded={expanded}
-          onToggle={() => setExpanded(current => !current)}
+          itemName={t("event names")}
+          onPageChange={setPage}
         />
       </>
     );
@@ -234,9 +232,8 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
     const all = list.rows ?? [];
     const query = search.trim().toLowerCase();
     const matching = query ? all.filter(row => row.value.toLowerCase().includes(query)) : all;
-    const shown = expanded ? matching : matching.slice(0, ROW_LIMIT);
+    const { pageCount, current, shown } = pageOf(matching, page);
     const total = all.reduce((sum, row) => sum + row.count, 0);
-    const restEvents = matching.slice(shown.length).reduce((sum, row) => sum + row.count, 0);
 
     body = list.isLoading ? (
       <EventNamesTableSkeleton />
@@ -257,13 +254,12 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
           valueLabel={list.valueLabel}
           links={kind === "outbound"}
         />
-        <ListFooter
-          shown={shown.length}
+        <PageFooter
+          page={current}
+          pageCount={pageCount}
           total={matching.length}
-          restEvents={restEvents}
-          restShare={total > 0 ? restEvents / total : 0}
-          expanded={expanded}
-          onToggle={() => setExpanded(current => !current)}
+          itemName={list.itemName}
+          onPageChange={setPage}
         />
       </>
     );
@@ -282,7 +278,7 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
               value={kind}
               onValueChange={next => {
                 setKind(next);
-                setExpanded(false);
+                setPage(1);
                 setSearch("");
               }}
             />
@@ -294,7 +290,10 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
             inputSize="sm"
             className="h-8"
             value={search}
-            onChange={event => setSearch(event.target.value)}
+            onChange={event => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
             placeholder={kind === "events" ? t("Search event names") : t("Search")}
             aria-label={kind === "events" ? t("Search event names") : t("Search")}
           />

@@ -187,7 +187,7 @@ describe("buildJourneySessionsQuery", () => {
       path: ["/", "/pricing"],
       replaysOnly,
       limit: 25,
-      page: 3,
+      offset: 50,
     });
 
   it("selects the sessions whose journey is exactly the path", () => {

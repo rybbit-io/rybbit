@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, Fingerprint, Pencil, Plus } from "lucide-react";
+import { Bookmark, Pencil, Plus } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
@@ -99,7 +99,6 @@ export function UserSidebar({
   const vitals = data?.vitals ?? null;
   const vitalsToShow = vitals ? VITALS_ORDER.filter(metric => vitals[`${metric}_p75`] != null) : [];
   const showMap = !!configs?.mapboxToken && !!data?.country;
-  const linkedDevices = isIdentified ? (data?.linked_devices ?? []) : [];
 
   const truncated = (value: string) => (
     <span className="inline-block max-w-[170px] truncate align-bottom" title={value}>
@@ -300,64 +299,6 @@ export function UserSidebar({
           )}
           <LocationDevices data={data} isLoading={isLoading} getRegionName={getRegionName} />
         </SidebarSection>
-
-        {/* Devices that were merged into this identity. The API has always
-            returned them; the page never drew them. */}
-        {linkedDevices.length > 0 && (
-          <SidebarSection>
-            <SidebarHeader
-              title={t("Linked devices")}
-              right={<SidebarHint>{linkedDevices.length.toLocaleString()}</SidebarHint>}
-            />
-            <div>
-              {linkedDevices.map(device => {
-                const linkedAt = parseUtc(device.created_at)?.setZone(zone) ?? null;
-                return (
-                  <InfoRow
-                    key={device.anonymous_id}
-                    label={
-                      <span className="inline-flex items-center gap-1.5">
-                        <Fingerprint className="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
-                        <span
-                          className="inline-block max-w-[110px] truncate font-mono text-neutral-700 dark:text-neutral-200"
-                          title={device.anonymous_id}
-                        >
-                          {device.anonymous_id}
-                        </span>
-                      </span>
-                    }
-                    value={
-                      linkedAt ? (
-                        <span
-                          className="whitespace-nowrap text-neutral-500 dark:text-neutral-400"
-                          title={formatDateTime(linkedAt, {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                            timeZone: zone,
-                          })}
-                        >
-                          {t("linked {date}", {
-                            date: formatDateTime(linkedAt, {
-                              month: "short",
-                              day: "numeric",
-                              year: linkedAt.year === DateTime.now().year ? undefined : "numeric",
-                              timeZone: zone,
-                            }),
-                          })}
-                        </span>
-                      ) : (
-                        "—"
-                      )
-                    }
-                  />
-                );
-              })}
-            </div>
-          </SidebarSection>
-        )}
 
         {/* Web vitals (p75 across this user's performance events) */}
         {vitals && vitalsToShow.length > 0 && (

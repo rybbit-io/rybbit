@@ -30,7 +30,6 @@ import { MobileSidebar } from "../../components/Sidebar/MobileSidebar";
 import { ActivityCalendar } from "./components/ActivityCalendar";
 import { firstActiveDay } from "./components/calendarLayout";
 import { SessionBreakdown } from "./components/sessionGroups";
-import { UserErrorInsight } from "./components/UserErrorInsight";
 import { UserGoals } from "./components/UserGoals";
 import { UserHeader } from "./components/UserHeader";
 import { SESSIONS_PAGE_SIZE, UserSessions } from "./components/UserSessions";
@@ -174,7 +173,6 @@ export default function UserPage() {
 
       <UserHeader
         userId={userId}
-        queryUserId={queryUserId}
         displayName={displayName}
         data={data}
         isLoading={isLoading}
@@ -196,8 +194,6 @@ export default function UserPage() {
           />
         }
       />
-
-      <UserErrorInsight userId={queryUserId} />
 
       {/* Main content leads in the DOM so activity comes first on mobile;
           row-reverse puts the profile rail back on the left on desktop */}

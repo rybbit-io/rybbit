@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  ArrowRight,
-  CalendarClock,
-  CalendarRange,
-  ChartColumnDecreasing,
-  Download,
-  Repeat,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { CalendarClock, CalendarRange, ChartColumnDecreasing, Download, Repeat, Trophy, Users } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { ReactNode, useCallback, useMemo, useState } from "react";
@@ -22,7 +13,6 @@ import { ErrorState } from "../../../components/ErrorState";
 import { SegmentedControl } from "../../../components/interior/segmented-control";
 import { NothingFound } from "../../../components/NothingFound";
 import { AnalysisBar } from "../../../components/site/AnalysisBar";
-import { InsightRow } from "../../../components/site/InsightRow";
 import { StatBand, StatBandCell } from "../../../components/site/StatBand";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
@@ -39,7 +29,6 @@ import { RetentionCard } from "./RetentionCard";
 import {
   buildRetentionModel,
   defaultRetentionMode,
-  findCohortOutlier,
   formatPercent,
   periodDays,
   retentionCsv,
@@ -121,7 +110,6 @@ export default function RetentionPage() {
     dataMode === "week" ? t("week {index}", { index: String(offset) }) : t("day {index}", { index: String(offset) });
 
   const hasGrid = !!model && model.cohorts.length >= 2 && model.totalNew > 0;
-  const outlier = hasGrid ? findCohortOutlier(model) : null;
   const comparisonWindow = previousModel ? describeComparisonWindow(previousTime, time, timezone) : null;
 
   const periodStat = (offset: number, icon: ReactNode): StatBandCell => {
@@ -196,17 +184,6 @@ export default function RetentionPage() {
     downloadCSV(`retention-${model.mode === "week" ? "weekly" : "daily"}-${first}-to-${last}.csv`, rows, columns);
   };
 
-  const outlierName = (chunks: ReactNode) => (
-    <span className="font-medium text-neutral-900 dark:text-neutral-50">{chunks}</span>
-  );
-  const outlierValues = outlier && {
-    cohort: cohortLabel(outlier.cohort.key),
-    size: outlier.cohort.size.toLocaleString(),
-    value: formatPercent(outlier.pct),
-    difference: `${Math.abs(outlier.difference).toFixed(1)} pp`,
-    name: outlierName,
-  };
-
   return (
     <DisabledOverlay message="Retention" featurePath="retention">
       <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
@@ -241,37 +218,6 @@ export default function RetentionPage() {
             onValueChange={setChosenMode}
           />
         </AnalysisBar>
-
-        {outlier && outlierValues && (
-          <InsightRow
-            action={
-              <Button variant="ghost" size="xs" className="gap-1" onClick={() => setPinnedCohort(outlier.cohort.key)}>
-                {t("View cohort")}
-                <ArrowRight />
-              </Button>
-            }
-          >
-            {isWeekly
-              ? outlier.difference < 0
-                ? t.rich(
-                    "The <name>{cohort}</name> cohort is your largest at {size} new users, but only {value} came back in week 1, {difference} under average.",
-                    outlierValues
-                  )
-                : t.rich(
-                    "The <name>{cohort}</name> cohort is your largest at {size} new users, and {value} came back in week 1, {difference} above average.",
-                    outlierValues
-                  )
-              : outlier.difference < 0
-                ? t.rich(
-                    "The <name>{cohort}</name> cohort is your largest at {size} new users, but only {value} came back on day 1, {difference} under average.",
-                    outlierValues
-                  )
-                : t.rich(
-                    "The <name>{cohort}</name> cohort is your largest at {size} new users, and {value} came back on day 1, {difference} above average.",
-                    outlierValues
-                  )}
-          </InsightRow>
-        )}
 
         {isError ? (
           <Card>
