@@ -122,6 +122,41 @@ describe("CORS policy", () => {
     }
   });
 
+  it("allows opaque origins on public tracking endpoints without credentials", async () => {
+    const app = await buildCorsTestApp({
+      NODE_ENV: "production",
+      BASE_URL: "https://rybbit.example.com",
+    });
+
+    try {
+      const preflight = await app.inject({
+        method: "OPTIONS",
+        url: "/api/track",
+        headers: {
+          origin: "null",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "content-type",
+        },
+      });
+
+      expect(preflight.statusCode).toBe(204);
+      expect(preflight.headers["access-control-allow-origin"]).toBe("null");
+      expect(preflight.headers["access-control-allow-credentials"]).toBeUndefined();
+
+      const actual = await app.inject({
+        method: "POST",
+        url: "/api/track",
+        headers: { origin: "null" },
+      });
+
+      expect(actual.statusCode).toBe(200);
+      expect(actual.headers["access-control-allow-origin"]).toBe("null");
+      expect(actual.headers["access-control-allow-credentials"]).toBeUndefined();
+    } finally {
+      await app.close();
+    }
+  });
+
   it("allows public version checks without credentials", async () => {
     const app = await buildCorsTestApp({
       NODE_ENV: "production",
