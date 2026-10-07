@@ -288,9 +288,9 @@ export const wentQuiet = (sitesIn: QuietSite[], name?: string | null): Lifecycle
       subject: `We stopped hearing from ${domain}`,
       text: `${greeting(name)}
 
-${domain} was sending data to Rybbit, but we haven't received anything since ${lastEventAt}. If you redeployed recently, the tracking snippet may have been dropped from the new build - that's the usual cause.
+${domain} was sending data to Rybbit, but we haven't received anything since ${lastEventAt}.
 
-Check that the snippet is still in your <head>, or see your dashboard: ${appUrl()}/${siteId}
+A quiet period can be normal if your site has fewer visits. If you expected traffic, check that the tracking snippet is still loading on your site, or see your dashboard: ${appUrl()}/${siteId}
 
 If you removed it on purpose, ignore this - I won't email about it again.${signoff}`,
     };
@@ -308,7 +308,7 @@ ${sitesIn.length} of your sites were sending data to Rybbit, but we haven't rece
 
 ${listed}${overflowLine(sitesIn.length, "site")}
 
-If you redeployed recently, the tracking snippet may have been dropped from the new build - that's the usual cause. Check that the snippet is still in each site's <head>.
+A quiet period can be normal for sites with fewer visits. If you expected traffic, check that the tracking snippet is still loading on each site.
 
 If you removed it on purpose, ignore this - I won't email about these sites again.${signoff}`,
   };
