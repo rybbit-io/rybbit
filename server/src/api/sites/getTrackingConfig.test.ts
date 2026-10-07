@@ -31,6 +31,7 @@ describe("getTrackingConfig", () => {
       trackErrors: false,
       trackOutbound: true,
       trackUrlParams: true,
+      trackUrlFragments: false,
       trackInitialPageView: true,
       trackSpaNavigation: true,
       trackButtonClicks: false,
@@ -49,5 +50,18 @@ describe("getTrackingConfig", () => {
 
     expect(mocks.hasFeatureFlagsForRuntime).toHaveBeenCalledWith(123, "client");
     expect(reply.send).toHaveBeenCalledWith(expect.objectContaining({ featureFlagsEnabled: false }));
+  });
+
+  it.each([true, false])("returns URL fragment tracking set to %s", async enabled => {
+    mocks.getConfig.mockResolvedValue({
+      ...(await mocks.getConfig()),
+      trackUrlFragments: enabled,
+    });
+    const request = { params: { siteId: "123" }, log: { error: vi.fn() } } as any;
+    const reply = { send: vi.fn(), status: vi.fn().mockReturnThis() } as any;
+
+    await getTrackingConfig(request, reply);
+
+    expect(reply.send).toHaveBeenCalledWith(expect.objectContaining({ trackUrlFragments: enabled }));
   });
 });

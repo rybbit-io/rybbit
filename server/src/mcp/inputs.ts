@@ -243,6 +243,7 @@ export const siteFeatureInputs = {
   trackErrors: z.boolean().optional().describe("Capture JavaScript errors"),
   trackOutbound: z.boolean().optional().describe("Track outbound link clicks"),
   trackUrlParams: z.boolean().optional().describe("Keep URL query parameters in analytics"),
+  trackUrlFragments: z.boolean().optional().describe("Keep ordinary URL fragments such as #shipping in tracked paths"),
   trackInitialPageView: z.boolean().optional(),
   trackSpaNavigation: z.boolean().optional(),
   trackIp: z.boolean().optional().describe("Store visitor IP addresses"),

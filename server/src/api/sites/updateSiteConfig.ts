@@ -56,6 +56,7 @@ const updateSiteConfigSchema = z.object({
   trackErrors: z.boolean().optional(),
   trackOutbound: z.boolean().optional(),
   trackUrlParams: z.boolean().optional(),
+  trackUrlFragments: z.boolean().optional(),
   trackInitialPageView: z.boolean().optional(),
   trackSpaNavigation: z.boolean().optional(),
   trackIp: z.boolean().optional(),

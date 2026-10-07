@@ -74,6 +74,13 @@ beforeEach(() => {
 });
 
 describe("siteConfigurationLifecycle", () => {
+  it.each([true, false])("persists URL fragment tracking set to %s and invalidates the cache", async enabled => {
+    await siteConfigurationLifecycle.update(1, { trackUrlFragments: enabled });
+
+    expect(state.updates).toEqual([expect.objectContaining({ trackUrlFragments: enabled })]);
+    expect(mocks.invalidate).toHaveBeenCalledWith(state.site);
+  });
+
   it("updates persistence once, invalidates the Site, and reloads its configuration", async () => {
     const result = await siteConfigurationLifecycle.update(1, { name: "Renamed" });
 

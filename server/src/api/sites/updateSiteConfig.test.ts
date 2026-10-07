@@ -198,6 +198,7 @@ describe("updateSiteConfig — non-gated fields update without subscription chec
         blockBots: false,
         webVitals: true,
         trackErrors: true,
+        trackUrlFragments: true,
         excludedCountries: ["US", "GB"],
         tags: ["prod"],
       }),
@@ -212,6 +213,7 @@ describe("updateSiteConfig — non-gated fields update without subscription chec
       blockBots: false,
       webVitals: true,
       trackErrors: true,
+      trackUrlFragments: true,
       excludedCountries: ["US", "GB"],
       tags: ["prod"],
     });

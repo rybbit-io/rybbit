@@ -33,6 +33,7 @@ export type CreateSiteInput = {
   trackErrors?: boolean;
   trackOutbound?: boolean;
   trackUrlParams?: boolean;
+  trackUrlFragments?: boolean;
   trackInitialPageView?: boolean;
   trackSpaNavigation?: boolean;
   trackIp?: boolean;
@@ -64,6 +65,7 @@ export type UpdateSiteConfigurationInput = {
   trackErrors?: boolean;
   trackOutbound?: boolean;
   trackUrlParams?: boolean;
+  trackUrlFragments?: boolean;
   trackInitialPageView?: boolean;
   trackSpaNavigation?: boolean;
   trackIp?: boolean;
@@ -130,6 +132,7 @@ const DIRECT_UPDATE_FIELDS = [
   "trackErrors",
   "trackOutbound",
   "trackUrlParams",
+  "trackUrlFragments",
   "trackInitialPageView",
   "trackSpaNavigation",
   "trackIp",
@@ -281,6 +284,7 @@ class SiteConfigurationLifecycle {
             ...(input.trackErrors !== undefined && { trackErrors: input.trackErrors }),
             ...(input.trackOutbound !== undefined && { trackOutbound: input.trackOutbound }),
             ...(input.trackUrlParams !== undefined && { trackUrlParams: input.trackUrlParams }),
+            ...(input.trackUrlFragments !== undefined && { trackUrlFragments: input.trackUrlFragments }),
             ...(input.trackInitialPageView !== undefined && { trackInitialPageView: input.trackInitialPageView }),
             ...(input.trackSpaNavigation !== undefined && { trackSpaNavigation: input.trackSpaNavigation }),
             ...(input.trackIp !== undefined && { trackIp: input.trackIp }),

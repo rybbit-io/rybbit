@@ -22,6 +22,7 @@ type SiteRow = {
   trackErrors: boolean | null;
   trackOutbound: boolean | null;
   trackUrlParams: boolean | null;
+  trackUrlFragments: boolean | null;
   trackInitialPageView: boolean | null;
   trackSpaNavigation: boolean | null;
   trackIp: boolean | null;
@@ -72,6 +73,7 @@ function createSiteRow(overrides: Partial<SiteRow>): SiteRow {
     trackErrors: false,
     trackOutbound: true,
     trackUrlParams: true,
+    trackUrlFragments: false,
     trackInitialPageView: true,
     trackSpaNavigation: true,
     trackIp: false,
@@ -132,6 +134,12 @@ beforeEach(() => {
 });
 
 describe("siteConfig.getConfig", () => {
+  it.each([true, false, null])("defaults or preserves URL fragment tracking set to %s", async value => {
+    dbMock.rows.push(createSiteRow({ trackUrlFragments: value }));
+    const config = await siteConfig.getConfig(123);
+    expect(config?.trackUrlFragments).toBe(value ?? false);
+  });
+
   it("resolves digit-only string site IDs by exact sites.id before legacy site_id fallback", async () => {
     dbMock.rows.push(
       createSiteRow({
