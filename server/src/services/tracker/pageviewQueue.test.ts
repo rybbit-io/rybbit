@@ -44,7 +44,7 @@ function makePayload(overrides: Partial<TotalTrackingPayload & { sessionId: stri
     type: "pageview",
     ipAddress: "203.0.113.10",
     timestamp: new Date().toISOString(),
-    ua: { browser: {}, os: {} } as UAParser.IResult,
+    ua: { browser: {}, os: {}, device: {} } as UAParser.IResult,
     userAgent: "Mozilla/5.0",
     userId: "fingerprint-abc",
     identifiedUserId: "",

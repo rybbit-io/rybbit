@@ -1,21 +1,10 @@
-import { Laptop, Smartphone } from "lucide-react";
 import { Browser } from "../../app/[site]/components/shared/icons/Browser";
 import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
+import { DeviceIcon } from "../../app/[site]/components/shared/icons/Device";
 import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
 import { getRegionName } from "../../lib/geo";
 import { getCountryName } from "../../lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-
-// DeviceIcon component for displaying mobile/desktop icons
-function DeviceIcon({ deviceType, size = 16 }: { deviceType: string; size?: number }) {
-  const type = deviceType.toLowerCase();
-
-  if (type.includes("mobile") || type.includes("tablet")) {
-    return <Smartphone width={size} height={size} />;
-  }
-
-  return <Laptop width={size} height={size} />;
-}
 
 export function CountryFlagTooltipIcon({
   country,

@@ -82,7 +82,7 @@
     "safe-regex2": "^5.0.0",
     "sqlstring": "2.3.3",
     "stripe": "18.1.0",
-    "ua-parser-js": "2.0.3",
+    "ua-parser-js": "2.0.10",
     "web-vitals": "^5.0.3",
     "zod": "^3.25.76"
   },
