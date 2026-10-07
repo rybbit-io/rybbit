@@ -64,6 +64,7 @@ CREATE TABLE sites (
   "trackErrors" boolean DEFAULT false,
   "trackOutbound" boolean DEFAULT true,
   "trackUrlParams" boolean DEFAULT true,
+  "trackUrlFragments" boolean DEFAULT false,
   "trackInitialPageView" boolean DEFAULT true,
   "trackSpaNavigation" boolean DEFAULT true,
   "trackIp" boolean DEFAULT false,

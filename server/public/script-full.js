@@ -66,6 +66,17 @@
     }
   }
 
+  // url.ts
+  function getTrackedPathname(url, trackUrlFragments = false) {
+    if (url.hash.startsWith("#/")) {
+      return url.hash.substring(1);
+    }
+    if (url.hash.startsWith("#!/")) {
+      return url.hash.substring(2);
+    }
+    return url.pathname + (trackUrlFragments ? url.hash : "");
+  }
+
   // config.ts
   var FEATURE_FLAG_REQUEST_TIMEOUT_MS = 2e3;
   function createVisitorId() {
@@ -96,13 +107,7 @@
       return void 0;
     }
   }
-  function getEvaluationPathname(url) {
-    if (url.hash && url.hash.startsWith("#/")) {
-      return url.hash.substring(1);
-    }
-    return url.pathname;
-  }
-  async function fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId) {
+  async function fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId, trackUrlFragments) {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS);
     try {
@@ -118,7 +123,7 @@
           anonymousId: visitorId,
           identifiedUserId: getIdentifiedUserId(namespace),
           hostname: url.hostname,
-          pathname: getEvaluationPathname(url),
+          pathname: getTrackedPathname(url, trackUrlFragments),
           querystring: url.search,
           query: Object.fromEntries(url.searchParams.entries()),
           referrer: document.referrer,
@@ -209,6 +214,7 @@
       autoTrackPageview: true,
       autoTrackSpa: true,
       trackQuerystring: true,
+      trackUrlFragments: false,
       trackOutbound: true,
       enableWebVitals: false,
       trackErrors: false,
@@ -248,6 +254,7 @@
           autoTrackPageview: apiConfig.trackInitialPageView ?? defaultConfig.autoTrackPageview,
           autoTrackSpa: apiConfig.trackSpaNavigation ?? defaultConfig.autoTrackSpa,
           trackQuerystring: apiConfig.trackUrlParams ?? defaultConfig.trackQuerystring,
+          trackUrlFragments: apiConfig.trackUrlFragments ?? defaultConfig.trackUrlFragments,
           trackOutbound: apiConfig.trackOutbound ?? defaultConfig.trackOutbound,
           enableWebVitals: apiConfig.webVitals ?? defaultConfig.enableWebVitals,
           trackErrors: apiConfig.trackErrors ?? defaultConfig.trackErrors,
@@ -265,7 +272,13 @@
     }
     if (resolvedConfig.featureFlagsEnabled) {
       resolvedConfig.visitorId = getOrCreateVisitorId(namespace);
-      const result = await fetchFeatureFlags(analyticsHost, siteId, namespace, resolvedConfig.visitorId);
+      const result = await fetchFeatureFlags(
+        analyticsHost,
+        siteId,
+        namespace,
+        resolvedConfig.visitorId,
+        resolvedConfig.trackUrlFragments
+      );
       resolvedConfig.featureFlagsEnabled = result.enabled;
       resolvedConfig.featureFlags = result.flags;
     }
@@ -684,6 +697,7 @@
       this.errorDedupeLastCleanup = 0;
       this.exposedFeatureFlags = /* @__PURE__ */ new Set();
       this.config = config;
+      this.lastPageviewUrl = this.getPageviewUrl();
       this.loadUserId();
       if (config.enableSessionReplay) {
         this.initializeSessionReplay();
@@ -708,7 +722,7 @@
     }
     getCurrentUrlContext() {
       const url = new URL(window.location.href);
-      const pathname = url.hash && url.hash.startsWith("#/") ? url.hash.substring(1) : url.pathname;
+      const pathname = getTrackedPathname(url, this.config.trackUrlFragments);
       return {
         hostname: url.hostname,
         pathname,
@@ -791,10 +805,7 @@
     }
     createBasePayload() {
       const url = new URL(window.location.href);
-      let pathname = url.pathname;
-      if (url.hash && url.hash.startsWith("#/")) {
-        pathname = url.hash.substring(1);
-      }
+      let pathname = getTrackedPathname(url, this.config.trackUrlFragments);
       if (findMatchingPattern(pathname, this.config.skipPatterns)) {
         return null;
       }
@@ -869,7 +880,21 @@
       this.sendTrackingData(payload);
     }
     trackPageview() {
+      this.lastPageviewUrl = this.getPageviewUrl();
       this.track("pageview");
+    }
+    trackPageviewIfUrlChanged() {
+      if (this.getPageviewUrl() !== this.lastPageviewUrl) {
+        this.trackPageview();
+      }
+    }
+    getPageviewUrl() {
+      const url = new URL(window.location.href);
+      return JSON.stringify([
+        url.hostname,
+        getTrackedPathname(url, this.config.trackUrlFragments),
+        this.config.trackQuerystring ? url.search : ""
+      ]);
     }
     trackEvent(name, properties = {}) {
       this.track("custom_event", name, properties);
@@ -1688,7 +1713,7 @@
         });
       });
     }
-    const trackPageview = () => tracker.trackPageview();
+    const trackPageview = () => tracker.trackPageviewIfUrlChanged();
     const debouncedTrackPageview = config.debounceDuration > 0 ? debounce(trackPageview, config.debounceDuration) : trackPageview;
     function setupEventListeners() {
       document.addEventListener("click", function(e2) {

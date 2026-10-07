@@ -94,6 +94,7 @@ export const sites = pgTable(
     trackErrors: boolean().default(false),
     trackOutbound: boolean().default(true),
     trackUrlParams: boolean().default(true),
+    trackUrlFragments: boolean().default(false),
     trackInitialPageView: boolean().default(true),
     trackSpaNavigation: boolean().default(true),
     trackIp: boolean().default(false),

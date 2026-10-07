@@ -31,6 +31,7 @@ export async function getTrackingConfig(request: FastifyRequest<{ Params: { site
       trackErrors: config.trackErrors,
       trackOutbound: config.trackOutbound,
       trackUrlParams: config.trackUrlParams,
+      trackUrlFragments: config.trackUrlFragments,
       trackInitialPageView: config.trackInitialPageView,
       trackSpaNavigation: config.trackSpaNavigation,
       trackButtonClicks: config.trackButtonClicks,

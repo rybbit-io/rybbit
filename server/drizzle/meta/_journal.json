@@ -162,6 +162,13 @@
       "when": 1790741724744,
       "tag": "0022_site_transfers",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791346537258,
+      "tag": "0023_track_url_fragments",
+      "breakpoints": true
     }
   ]
 }

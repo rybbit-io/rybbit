@@ -77,6 +77,7 @@ export async function getSite(request: FastifyRequest<GetSiteParams>, reply: Fas
       trackErrors: site.trackErrors,
       trackOutbound: site.trackOutbound,
       trackUrlParams: site.trackUrlParams,
+      trackUrlFragments: site.trackUrlFragments,
       trackInitialPageView: site.trackInitialPageView,
       trackSpaNavigation: site.trackSpaNavigation,
       trackButtonClicks: site.trackButtonClicks,

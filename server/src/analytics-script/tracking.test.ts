@@ -92,6 +92,7 @@ describe("Tracker", () => {
       autoTrackPageview: true,
       autoTrackSpa: true,
       trackQuerystring: true,
+      trackUrlFragments: false,
       trackOutbound: true,
       trackErrors: false,
       enableWebVitals: false,
@@ -139,6 +140,27 @@ describe("Tracker", () => {
       mockLocation.hash = "#/dashboard/users";
       const payload = tracker.createBasePayload();
       expect(payload?.pathname).toBe("/dashboard/users");
+    });
+
+    it("handles hashbang routes without changing slash-prefixed hash routes", () => {
+      mockLocation.hash = "#!/shipping";
+      expect(tracker.createBasePayload()?.pathname).toBe("/shipping");
+    });
+
+    it("ignores ordinary fragments by default", () => {
+      mockLocation.pathname = "/checkout/";
+      mockLocation.hash = "#shipping";
+      expect(tracker.createBasePayload()?.pathname).toBe("/checkout/");
+    });
+
+    it("preserves checkout stages when URL fragment tracking is enabled", () => {
+      config.trackUrlFragments = true;
+      tracker = new Tracker(config);
+      mockLocation.pathname = "/checkout/";
+      mockLocation.hash = "#shipping";
+      expect(tracker.createBasePayload()?.pathname).toBe("/checkout/#shipping");
+      mockLocation.hash = "#payment";
+      expect(tracker.createBasePayload()?.pathname).toBe("/checkout/#payment");
     });
 
     it("should skip tracking for matching skip patterns", () => {

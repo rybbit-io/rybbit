@@ -32,6 +32,7 @@ export type SiteResponse = {
   trackErrors?: boolean;
   trackOutbound?: boolean;
   trackUrlParams?: boolean;
+  trackUrlFragments?: boolean;
   trackInitialPageView?: boolean;
   trackSpaNavigation?: boolean;
   trackIp?: boolean;
@@ -105,6 +106,7 @@ export function addSite(
     trackErrors?: boolean;
     trackOutbound?: boolean;
     trackUrlParams?: boolean;
+    trackUrlFragments?: boolean;
     trackInitialPageView?: boolean;
     trackSpaNavigation?: boolean;
     trackButtonClicks?: boolean;
@@ -128,6 +130,7 @@ export function addSite(
       trackErrors: settings?.trackErrors,
       trackOutbound: settings?.trackOutbound,
       trackUrlParams: settings?.trackUrlParams,
+      trackUrlFragments: settings?.trackUrlFragments,
       trackInitialPageView: settings?.trackInitialPageView,
       trackSpaNavigation: settings?.trackSpaNavigation,
       trackButtonClicks: settings?.trackButtonClicks,
@@ -177,6 +180,7 @@ export function updateSiteConfig(
     trackErrors?: boolean;
     trackOutbound?: boolean;
     trackUrlParams?: boolean;
+    trackUrlFragments?: boolean;
     trackInitialPageView?: boolean;
     trackSpaNavigation?: boolean;
     trackIp?: boolean;
