@@ -140,3 +140,20 @@ describe("getChannel - self-referrals", () => {
     expect(getChannel("https://blog.example.org/a", "", "app.example.org")).toBe("Referral");
   });
 });
+
+describe("getChannel - paid medium detection", () => {
+  it("does not treat mediums that merely contain a paid keyword as paid", () => {
+    expect(getChannel("", "utm_source=github&utm_medium=readme")).toBe("Referral");
+    expect(getChannel("", "utm_source=partner&utm_medium=download")).toBe("Referral");
+    expect(getChannel("", "utm_source=shields&utm_medium=badge")).toBe("Referral");
+    expect(getChannel("", "utm_source=partner&utm_medium=lead_magnet")).toBe("Referral");
+    expect(getChannel("", "utm_source=partner&utm_medium=seminar")).toBe("Event");
+  });
+
+  it("still detects paid keywords in delimited mediums", () => {
+    expect(getChannel("", "utm_source=google&utm_medium=cpc")).toBe("Paid Search");
+    expect(getChannel("", "utm_source=facebook&utm_medium=paid_social")).toBe("Paid Social");
+    expect(getChannel("", "utm_source=partner&utm_medium=display-ads")).toBe("Display");
+    expect(getChannel("", "utm_source=partner&utm_medium=facebook ads")).toBe("Paid Unknown");
+  });
+});
