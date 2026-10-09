@@ -34,6 +34,8 @@ const METRIC_FILES: { param: FilterParameter; filename: string }[] = [
   { param: "timezone", filename: "timezones.csv" },
 ];
 
+const METRIC_EXPORT_LIMIT = 10000;
+
 type ExportDescriptor = {
   filename: string;
   path: string;
@@ -46,7 +48,8 @@ const EXPORTS: ExportDescriptor[] = [
   ...METRIC_FILES.map(({ param, filename }) => ({
     filename,
     path: "metric",
-    params: { parameter: param },
+    // The metric endpoint defaults to the top 100 rows; an export wants the long tail.
+    params: { parameter: param, limit: METRIC_EXPORT_LIMIT },
     rows: (payload: { data: Record<string, unknown>[] }) => payload.data,
   })),
   { filename: "overview-timeseries.csv", path: "overview/time-series", params: { bucket: "day" } },

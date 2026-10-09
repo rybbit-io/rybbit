@@ -195,18 +195,23 @@ function SidebarContent() {
             icon={<Gauge className="w-4 h-4" />}
           />
         )}
-        {/* API Playground is desktop-only, so on self-hosted builds without Query/Dashboards the header must hide with it */}
-        <div className={IS_CLOUD || DEPLOYMENT ? undefined : "hidden md:block"}>
-          <SidebarComponents.SectionHeader>{t("Explore")}</SidebarComponents.SectionHeader>
-        </div>
-        <div className="hidden md:block">
-          <SidebarComponents.Item
-            label={t("API Playground")}
-            active={isActiveTab("api-playground")}
-            href={getTabPath("api-playground")}
-            icon={<Code className="w-4 h-4" />}
-          />
-        </div>
+        {/* API Playground is desktop-only, and it and Dashboards have no private-link route, so the header
+            hides with whatever is left: Query, else API Playground on desktop, else nothing */}
+        {(IS_CLOUD || DEPLOYMENT || !privateKey) && (
+          <div className={IS_CLOUD || DEPLOYMENT ? undefined : "hidden md:block"}>
+            <SidebarComponents.SectionHeader>{t("Explore")}</SidebarComponents.SectionHeader>
+          </div>
+        )}
+        {!privateKey && (
+          <div className="hidden md:block">
+            <SidebarComponents.Item
+              label={t("API Playground")}
+              active={isActiveTab("api-playground")}
+              href={getTabPath("api-playground")}
+              icon={<Code className="w-4 h-4" />}
+            />
+          </div>
+        )}
         {(IS_CLOUD || DEPLOYMENT) && (
           <>
             <SidebarComponents.Item
@@ -215,12 +220,14 @@ function SidebarContent() {
               href={getTabPath("query")}
               icon={<Database className="w-4 h-4" />}
             />
-            <SidebarComponents.Item
-              label={t("Dashboards")}
-              active={isActiveTab("dashboards")}
-              href={getTabPath("dashboards")}
-              icon={<LayoutGrid className="w-4 h-4" />}
-            />
+            {!privateKey && (
+              <SidebarComponents.Item
+                label={t("Dashboards")}
+                active={isActiveTab("dashboards")}
+                href={getTabPath("dashboards")}
+                icon={<LayoutGrid className="w-4 h-4" />}
+              />
+            )}
           </>
         )}
         {/* <SidebarComponents.Item

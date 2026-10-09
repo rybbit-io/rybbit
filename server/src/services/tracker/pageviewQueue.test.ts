@@ -69,6 +69,18 @@ describe("pageviewQueue", () => {
     Settings.defaultZone = originalZone;
   });
 
+  it("drain flushes everything buffered without waiting for the interval", async () => {
+    for (let i = 0; i < 5001; i++) {
+      await pageviewQueue.add(makePayload());
+    }
+
+    await pageviewQueue.drain();
+
+    expect(mocks.insert).toHaveBeenCalledTimes(2);
+    expect(mocks.insert.mock.calls[0][0].values).toHaveLength(5000);
+    expect(mocks.insert.mock.calls[1][0].values).toHaveLength(1);
+  });
+
   it("stores the ASN, org, and datacenter classification for a recognized IP", async () => {
     mocks.lookupAsn.mockReturnValue({ asn: 16509, organization: "AMAZON-02" });
     mocks.isDatacenterAsn.mockReturnValue(true);

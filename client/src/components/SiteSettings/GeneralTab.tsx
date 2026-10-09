@@ -110,6 +110,13 @@ export function GeneralTab({
     }
   }, [adminMode, queryClient, refetch]);
 
+  // After an edit: the header, site selector and this dialog read the single-site query, not the
+  // lists. Prefix match so both string- and number-keyed useGetSite instances update.
+  const refreshSite = useCallback(() => {
+    refreshSiteLists();
+    queryClient.invalidateQueries({ queryKey: ["get-site"] });
+  }, [queryClient, refreshSiteLists]);
+
   const handleToggle = useCallback(
     async (
       key: keyof typeof toggleStates,
@@ -129,7 +136,7 @@ export function GeneralTab({
             : successMessage.disabled
           : `${key.replace(/([A-Z])/g, " $1").toLowerCase()} ${checked ? "enabled" : "disabled"}`;
         toast.success(message);
-        refreshSiteLists();
+        refreshSite();
       } catch (error) {
         console.error(`Error updating ${key}:`, error);
         toast.error(`Failed to update ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`);
@@ -138,7 +145,7 @@ export function GeneralTab({
         setLoadingStates(prev => ({ ...prev, [key]: false }));
       }
     },
-    [siteMetadata.siteId, onPublicChange, refreshSiteLists]
+    [siteMetadata.siteId, onPublicChange, refreshSite]
   );
 
   const handleNameChange = async () => {
@@ -152,7 +159,7 @@ export function GeneralTab({
       await updateSiteConfig(siteMetadata.siteId, { name: newName.trim() });
       toast.success(t("Name updated successfully"));
       router.refresh();
-      refreshSiteLists();
+      refreshSite();
     } catch (error) {
       console.error("Error changing name:", error);
       toast.error(t("Failed to update name"));
@@ -173,7 +180,7 @@ export function GeneralTab({
       await updateSiteConfig(siteMetadata.siteId, { domain: normalizedDomain });
       toast.success(isMobileSite ? t("App identifier updated successfully") : t("Domain updated successfully"));
       router.refresh();
-      refreshSiteLists();
+      refreshSite();
     } catch (error) {
       console.error("Error changing domain:", error);
       toast.error(t("Failed to update domain"));

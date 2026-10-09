@@ -3,6 +3,7 @@
 import { Clock, Files, LogOut, Rewind, Target, TriangleAlert } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { SessionsSummary } from "@/api/analytics/endpoints";
+import { ErrorState } from "@/components/ErrorState";
 import { StatBand } from "@/components/site/StatBand";
 import { formatShortDuration } from "@/lib/dateTimeUtils";
 import { percentDelta, pointDelta } from "@/lib/delta";
@@ -22,15 +23,26 @@ interface SessionsStatBandProps {
   /** The comparison period's summary; undefined while it loads or when the comparison is off. */
   previous: SessionsSummary | undefined;
   isLoading: boolean;
+  isError?: boolean;
+  refetch?: () => void;
 }
 
 /**
  * The period at a glance. These figures describe every session the filters
  * allow; the ranges and the saved views narrow the ledger below, not the band.
  */
-export function SessionsStatBand({ summary, previous, isLoading }: SessionsStatBandProps) {
+export function SessionsStatBand({ summary, previous, isLoading, isError, refetch }: SessionsStatBandProps) {
   const t = useExtracted();
   const comparisonEnabled = useComparisonEnabled();
+
+  // Without this the band would wait on a summary that never arrives and skeleton forever.
+  if (isError) {
+    return (
+      <div className="flex rounded-lg border border-neutral-100 bg-white dark:border-neutral-850 dark:bg-neutral-900">
+        <ErrorState title="" message="" refetch={refetch} />
+      </div>
+    );
+  }
 
   // With the comparison on, the line is reserved while the previous period loads.
   const previousLine = (format: (period: SessionsSummary) => string) =>

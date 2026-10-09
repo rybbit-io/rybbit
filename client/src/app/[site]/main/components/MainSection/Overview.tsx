@@ -1,12 +1,14 @@
 "use client";
 
 import { ValueFlash, type ValueFlashProps } from "@/components/interior/value-flash";
+import { Delta } from "@/components/site/Delta";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { percentDelta } from "@/lib/delta";
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
-import { AlertCircle, ArrowDown, ArrowUp, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
@@ -32,34 +34,13 @@ export const ChangePercentage = ({
   reverseColor?: boolean;
 }) => {
   const comparisonEnabled = useComparisonEnabled();
-  const change = ((current - previous) / previous) * 100;
 
   // Nothing to compare against: a delta here would be a percentage of a period
   // the user has explicitly stopped asking for.
   if (!comparisonEnabled) return null;
 
-  if (previous === 0) {
-    if (current === 0) {
-      return <div className="text-sm">0%</div>;
-    }
-    return <div className="text-sm">+999%</div>;
-  }
-
-  if (change === 0) {
-    return <div className="text-sm">0%</div>;
-  }
-
-  return (
-    <div
-      className={cn(
-        "text-xs flex items-center gap-0.5",
-        (reverseColor ? -change : change) > 0 ? "text-green-400" : "text-red-400"
-      )}
-    >
-      {change > 0 ? <ArrowUp className="w-3 h-3" strokeWidth={3} /> : <ArrowDown className="w-3 h-3" strokeWidth={3} />}
-      {Math.abs(change).toFixed(1)}%
-    </div>
-  );
+  // An empty comparison period draws "—" rather than an invented percentage.
+  return <Delta value={percentDelta(current, previous)} upIsGood={!reverseColor} />;
 };
 
 const Stat = ({

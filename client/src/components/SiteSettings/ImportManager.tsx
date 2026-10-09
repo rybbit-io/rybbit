@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef } from "react";
 import { DateTime } from "luxon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +66,6 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<ImportPlatform | "">("");
   const [fileError, setFileError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const workerManagerRef = useRef<CsvParser | PlausibleCsvParser | null>(null);
 
   function validateFile(file: File | null, platform: ImportPlatform | ""): string {
     if (!file) {
@@ -90,12 +89,6 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   const { data, isLoading, error } = useGetSiteImports(siteId);
   const createImportMutation = useCreateSiteImport(siteId);
   const deleteMutation = useDeleteSiteImport(siteId);
-
-  useEffect(() => {
-    return () => {
-      workerManagerRef.current?.cancel();
-    };
-  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -130,7 +123,9 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
               allowedDateRange.earliestAllowedDate,
               allowedDateRange.latestAllowedDate
             );
-            workerManagerRef.current = parser;
+            // The parser is deliberately not tied to this component: switching settings tabs or
+            // closing the dialog unmounts it, and cancelling then would strand the import
+            // "In Progress" forever (blocking new imports). It runs until done or the page unloads.
             parser.startImport(selectedFile).catch(err => {
               console.error("Plausible import failed:", err);
             });
@@ -142,7 +137,6 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
               allowedDateRange.earliestAllowedDate,
               allowedDateRange.latestAllowedDate
             );
-            workerManagerRef.current = parser;
             parser.startImport(selectedFile);
           }
 

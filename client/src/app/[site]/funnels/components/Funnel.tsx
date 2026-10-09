@@ -65,7 +65,7 @@ function StepSessions({
   const time = useStore(state => state.time);
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useGetFunnelStepSessions({
+  const { data, isLoading, isError, refetch } = useGetFunnelStepSessions({
     steps,
     stepNumber: panel.stepIndex + 1,
     siteId: Number(site),
@@ -89,6 +89,8 @@ function StepSessions({
       <SessionsList
         sessions={sessions.slice(0, LIMIT)}
         isLoading={isLoading}
+        isError={isError}
+        onRetry={refetch}
         page={page}
         onPageChange={setPage}
         hasNextPage={sessions.length > LIMIT}

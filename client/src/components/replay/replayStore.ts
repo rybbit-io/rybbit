@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+export const DEFAULT_MIN_DURATION = 30;
+
 interface ActivityPeriod {
   start: number;
   end: number;
@@ -36,7 +38,7 @@ export const useReplayStore = create<{
   // Reset all player state when session changes
   resetPlayerState: () => void;
 }>(set => ({
-  minDuration: 30,
+  minDuration: DEFAULT_MIN_DURATION,
   setMinDuration: minDuration => set({ minDuration }),
 
   // Session selection

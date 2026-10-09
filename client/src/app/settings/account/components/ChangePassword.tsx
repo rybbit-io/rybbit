@@ -149,6 +149,7 @@ export function ChangePassword() {
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
                 type="password"
+                autoComplete="current-password"
                 placeholder={t("Your current password")}
                 className="pr-10"
               />
@@ -184,6 +185,7 @@ export function ChangePassword() {
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 type="password"
+                autoComplete="new-password"
                 placeholder={t("Your new password")}
                 className="pr-10"
               />
@@ -240,6 +242,7 @@ export function ChangePassword() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 type="password"
+                autoComplete="new-password"
                 placeholder={t("Confirm your new password")}
                 className="pr-10"
               />

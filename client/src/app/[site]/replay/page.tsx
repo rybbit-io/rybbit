@@ -11,9 +11,10 @@ import { NothingFound } from "../../../components/NothingFound";
 import { ReplayBreadcrumbs } from "@/components/replay/ReplayBreadcrumbs";
 import { ReplayPlayer } from "@/components/replay/player/ReplayPlayer";
 import { ReplayDrawer } from "@/components/Sessions/ReplayDrawer";
-import { useReplayStore } from "@/components/replay/replayStore";
+import { DEFAULT_MIN_DURATION, useReplayStore } from "@/components/replay/replayStore";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { SESSION_REPLAY_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { useStore } from "../../../lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { EnableSessionReplay } from "./components/EnableSessionReplay";
 import { ReplayList } from "./components/ReplayList";
@@ -29,8 +30,13 @@ export default function SessionReplayPage() {
     useShallow(s => ({ minDuration: s.minDuration, sessionId: s.sessionId }))
   );
 
-  const { data, isLoading } = useGetSessionReplays({ minDuration });
-  const hasNoReplays = !isLoading && !data?.pages[0].data?.length;
+  const { data, isLoading, error } = useGetSessionReplays({ minDuration });
+  const hasFilters = useStore(state => state.filters.length > 0);
+  // The "enable replay" state is only for a site with no replays at all. With an
+  // error, filters or a custom Min duration, keep the list (which holds the Min
+  // input) mounted so it shows its own error/empty state and stays undoable.
+  const hasNoReplays =
+    !isLoading && !error && !hasFilters && minDuration === DEFAULT_MIN_DURATION && !data?.pages[0].data?.length;
 
   // On narrow screens the player can't sit beside the list, so selecting a
   // replay opens the fullscreen drawer (player + timeline) instead.

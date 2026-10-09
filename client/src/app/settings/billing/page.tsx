@@ -2,6 +2,7 @@
 
 import { useExtracted } from "next-intl";
 import { useEffect } from "react";
+import { ErrorState } from "@/components/ErrorState";
 import { NoOrganization } from "@/components/NoOrganization";
 import { AppSumoPlan } from "@/components/subscription/AppSumoPlan";
 import { CustomPlan } from "@/components/subscription/CustomPlan";
@@ -50,7 +51,12 @@ function BillingSkeleton() {
 export default function OrganizationBillingPage() {
   useSetPageTitle("Organization Billing");
   const t = useExtracted();
-  const { data: activeSubscription, isLoading: isLoadingSubscription } = useStripeSubscription();
+  const {
+    data: activeSubscription,
+    isLoading: isLoadingSubscription,
+    isError: isSubscriptionError,
+    refetch: refetchSubscription,
+  } = useStripeSubscription();
 
   const { data: activeOrg, isPending } = authClient.useActiveOrganization();
   const { data: session } = authClient.useSession();
@@ -82,6 +88,19 @@ export default function OrganizationBillingPage() {
             <p className="text-sm text-neutral-700 md:pt-2 dark:text-neutral-300">
               {t("Only the owner of the organization can manage the subscription.")}
             </p>
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+    );
+  }
+
+  // A failed fetch leaves no subscription either; without this a paying owner would be told their trial expired.
+  if (isSubscriptionError && !activeSubscription) {
+    return (
+      <LedgerSection title={t("Plan")}>
+        <LedgerRows>
+          <LedgerRow label={t("Current plan")}>
+            <ErrorState title={t("Couldn't load your subscription")} message="" refetch={refetchSubscription} />
           </LedgerRow>
         </LedgerRows>
       </LedgerSection>

@@ -1,9 +1,9 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useSitePath } from "@/app/[site]/sessions/components/useSitePath";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/basic-tabs";
 import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { useGetSessionDetailsInfinite } from "../../../api/analytics/hooks/useGetUserSessions";
@@ -28,7 +28,7 @@ export function SessionDetails({ session, userId, highlightedEventTimestamp }: S
     hasNextPage,
     isFetchingNextPage,
   } = useGetSessionDetailsInfinite(session.session_id);
-  const { site } = useParams();
+  const sitePath = useSitePath();
   const t = useExtracted();
 
   // Flatten all events into a single array
@@ -98,9 +98,9 @@ export function SessionDetails({ session, userId, highlightedEventTimestamp }: S
             </TabsList>
             {!userId && (
               <Link
-                href={`/${site}/user/${encodeURIComponent(
+                href={sitePath(`user/${encodeURIComponent(
                   isIdentified ? session.identified_user_id : session.user_id
-                )}`}
+                )}`)}
               >
                 <Button size={"sm"} variant={"success"}>
                   {t("View User")} <ArrowRight className="w-4 h-4" />

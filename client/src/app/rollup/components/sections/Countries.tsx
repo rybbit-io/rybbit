@@ -11,20 +11,11 @@ import {
 } from "@/components/ui/basic-tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useSubdivisions } from "@/lib/geo";
+import { parseCityValue, useSubdivisions } from "@/lib/geo";
 import { getCountryName, getLanguageName } from "@/lib/utils";
 import { RollupSection } from "./RollupSection";
 
 type Tab = "countries" | "regions" | "cities" | "languages" | "timezones";
-
-function getCountryCity(value: string) {
-  if (value.split("-").length === 2) {
-    const [country, city] = value.split("-");
-    return { country, region: "", city };
-  }
-  const [country, region, city] = value.split("-");
-  return { country, region, city };
-}
 
 const getCountryFromLanguage = (languageCode: string): string | null => {
   if (languageCode.includes("-")) {
@@ -122,7 +113,7 @@ export function Countries({ siteIds }: { siteIds: number[] }) {
               getValue={(e) => e.value}
               getLabel={(e) => {
                 if (!e.value || e.value === "-") return t("Unknown");
-                const { country, region, city } = getCountryCity(e.value) ?? {};
+                const { country, region, city } = parseCityValue(e.value);
                 const region_ = subdivisions?.features.find(
                   (f) => f.properties.iso_3166_2 === `${country}-${region}`
                 )?.properties;

@@ -1,7 +1,7 @@
 "use client";
 import { ChevronRight, Globe } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useSubdivisions } from "../../../../../lib/geo";
+import { parseCityValue, useSubdivisions } from "../../../../../lib/geo";
 import { getCountryName, getLanguageName } from "../../../../../lib/utils";
 import { MapComponent } from "../../../components/shared/Map/MapComponent";
 import {
@@ -11,15 +11,6 @@ import {
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 
 type Tab = "countries" | "regions" | "languages" | "cities" | "map" | "timezones";
-
-function getCountryCity(value: string) {
-  if (value.split("-").length === 2) {
-    const [country, city] = value.split("-");
-    return { country, region: "", city };
-  }
-  const [country, region, city] = value.split("-");
-  return { country, region, city };
-}
 
 // Helper to extract country code from language code
 const getCountryFromLanguage = (languageCode: string): string | null => {
@@ -96,7 +87,7 @@ export function Countries() {
             return t("Unknown");
           }
 
-          const { country, region, city } = getCountryCity(e.value) ?? {};
+          const { country, region, city } = parseCityValue(e.value);
           const region_ = subdivisions?.features.find(
             feature => feature.properties.iso_3166_2 === `${country}-${region}`
           )?.properties;

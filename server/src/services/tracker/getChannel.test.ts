@@ -9,6 +9,21 @@ describe("getChannel - UTM parameter fallback", () => {
     expect(getChannel("", "utm_campaign=custom_campaign")).toBe("Referral");
   });
 
+  it("does not read paid intent into mediums that merely contain an ad keyword", () => {
+    for (const medium of ["readme", "download", "badge", "header", "lead_magnet", "alternatives", "leads"]) {
+      expect(getChannel("", `utm_source=github&utm_medium=${medium}`)).not.toMatch(/^Paid/);
+    }
+    expect(getChannel("", "utm_source=devconf&utm_medium=seminar")).toBe("Event");
+  });
+
+  it("still treats paid mediums as paid when they are whole words", () => {
+    expect(getChannel("", "utm_source=google&utm_medium=cpc")).toBe("Paid Search");
+    expect(getChannel("", "utm_source=newsletter_partner&utm_medium=display_ad")).toMatch(/^Paid/);
+    expect(getChannel("", "utm_source=facebook&utm_medium=paid_social")).toBe("Paid Social");
+    expect(getChannel("", "utm_source=facebook&utm_medium=paidsocial")).toBe("Paid Social");
+    expect(getChannel("", "utm_source=github&utm_medium=ads")).toMatch(/^Paid/);
+  });
+
   it("retains Direct classification when no referrer and no UTM parameters exist", () => {
     expect(getChannel("", "")).toBe("Direct");
   });

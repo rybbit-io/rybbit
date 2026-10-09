@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Arrivals, NO_ARRIVALS, recordArrivals } from "@/components/interior/use-arrival-highlight";
 import { Event } from "../../../../../api/analytics/endpoints";
 import { useGetEventsCursor, useNewEventsPoll } from "../../../../../api/analytics/hooks/events/useGetEvents";
+import { useStore } from "../../../../../lib/store";
 import { getEventKey } from "./eventLogUtils";
 
 const MAX_EVENTS = 10_000;
@@ -56,9 +57,13 @@ export function useEventLogState(
   const cursorEvents = useMemo(() => cursorData?.pages.flatMap(p => p.data) ?? [], [cursorData]);
 
   // --- Combined event list ---
+  // The cursor query refetches (staleTime 0, window refocus) and then returns events that already
+  // arrived live, so drop those from the prepended rows.
   const mergedEvents = useMemo(() => {
     if (prependedEvents.length === 0) return cursorEvents;
-    return [...prependedEvents, ...cursorEvents].slice(0, MAX_EVENTS);
+    const cursorKeys = new Set(cursorEvents.map(getEventKey));
+    const liveOnly = prependedEvents.filter(ev => !cursorKeys.has(getEventKey(ev)));
+    return [...liveOnly, ...cursorEvents].slice(0, MAX_EVENTS);
   }, [prependedEvents, cursorEvents]);
 
   // --- Client-side type filter ---
@@ -124,7 +129,9 @@ export function useEventLogState(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollData]);
 
-  // --- Reset on mode toggle ---
+  // --- Reset on mode toggle, and when the site or filters change (live rows were fetched for the old ones) ---
+  const site = useStore(state => state.site);
+  const filters = useStore(state => state.filters);
   useEffect(() => {
     setPrependedEvents([]);
     seenKeysRef.current.clear();
@@ -133,7 +140,7 @@ export function useEventLogState(
     setBufferedCount(0);
     setIsLive(true);
     setArrivals(prev => (prev.size ? NO_ARRIVALS : prev));
-  }, [isRealtime]);
+  }, [isRealtime, site, filters]);
 
   // --- Callback ref: capture viewport whenever ScrollArea mounts ---
   const scrollAreaCallbackRef = useCallback((node: HTMLDivElement | null) => {

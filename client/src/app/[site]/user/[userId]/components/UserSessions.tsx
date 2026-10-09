@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import { useGetSessions } from "../../../../../api/analytics/hooks/useGetUserSessions";
 import { useUserGoals, useUserSessionGoals } from "../../../../../api/analytics/hooks/useUserProfile";
 import { Time } from "../../../../../components/DateSelector/types";
+import { ErrorState } from "../../../../../components/ErrorState";
 import { NothingFound } from "../../../../../components/NothingFound";
 import { Pagination } from "../../../../../components/pagination";
 import { SessionsList } from "../../../../../components/Sessions/SessionsList";
@@ -50,7 +51,7 @@ export function UserSessions({ userId, breakdown, selectedDay, onClearDay, total
   const dayTime: Time | undefined = selectedDay ? { mode: "day", day: selectedDay } : undefined;
 
   // One row past the page size tells whether there is a next page.
-  const { data, isLoading } = useGetSessions({
+  const { data, isLoading, isError, refetch } = useGetSessions({
     userId,
     page,
     limit: SESSIONS_PAGE_SIZE + 1,
@@ -168,6 +169,10 @@ export function UserSessions({ userId, breakdown, selectedDay, onClearDay, total
 
           {isLoading ? (
             <LedgerSkeleton />
+          ) : isError && !data ? (
+            <Card>
+              <ErrorState title="" message="" refetch={refetch} />
+            </Card>
           ) : sessions.length === 0 ? (
             <NothingFound
               icon={<Rewind className="w-10 h-10" />}
@@ -217,6 +222,8 @@ export function UserSessions({ userId, breakdown, selectedDay, onClearDay, total
         <SessionsList
           sessions={sessions}
           isLoading={isLoading}
+          isError={isError}
+          onRetry={refetch}
           page={page}
           onPageChange={changePage}
           hasNextPage={hasNextPage}
@@ -227,7 +234,7 @@ export function UserSessions({ userId, breakdown, selectedDay, onClearDay, total
         />
       )}
 
-      {!isLoading && sessions.length >= 10 && (hasNextPage || hasPrevPage) && (
+      {!isLoading && !isError && sessions.length >= 10 && (hasNextPage || hasPrevPage) && (
         <Pagination
           page={page}
           onPageChange={changePageFromBottom}

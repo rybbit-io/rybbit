@@ -145,6 +145,7 @@ export default function ResetPasswordPage() {
                 id="new-password"
                 label={t("New Password")}
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 required
                 value={newPassword}
@@ -177,6 +178,7 @@ export default function ResetPasswordPage() {
                 id="email"
                 label={t("Email")}
                 type="email"
+                autoComplete="email"
                 placeholder="example@email.com"
                 required
                 value={email}

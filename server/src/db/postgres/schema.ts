@@ -112,7 +112,12 @@ export const sites = pgTable(
     // privateLinkKey until it is claimed; the cleanup cron deletes it after this.
     claimExpiresAt: timestamp("claim_expires_at", { mode: "string" }),
   },
-  table => [check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`)]
+  table => [
+    check("sites_type_check", sql`${table.type} IS NULL OR ${table.type} IN ('web', 'mobile')`),
+    // Tracking and the route guards resolve a Site by its text id on every
+    // cache miss.
+    index("sites_id_idx").on(table.id),
+  ]
 );
 
 // Active sessions table.
