@@ -73,6 +73,13 @@ Optional variables that can be added:
 # Mapbox token for 3D map visualizations
 MAPBOX_TOKEN=your_mapbox_token
 
+# Google Search Console integration. Create a "Web application" OAuth client in
+# Google Cloud with the redirect URI https://your.domain.com/api/gsc/callback and
+# enable the Search Console API. The Search Console section appears on the
+# dashboard once both values are set.
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
+
 # Database configuration (uses defaults if not specified)
 CLICKHOUSE_PASSWORD=frog
 POSTGRES_USER=frog
