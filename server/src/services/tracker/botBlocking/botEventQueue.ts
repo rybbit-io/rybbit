@@ -42,7 +42,7 @@ class BotEventQueue {
       const geoData = await getLocation(ips);
 
       const processedBotEvents = batch.map(event => {
-        const dataForIp = geoData?.[event.ipAddress];
+        const dataForIp = event.location ?? geoData?.[event.ipAddress];
 
         const countryCode = dataForIp?.countryIso || "";
         const regionCode = dataForIp?.region || "";

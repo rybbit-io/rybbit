@@ -59,7 +59,7 @@ class PageviewQueue {
           return true;
         })
         .map(pv => {
-          const dataForIp = geoData?.[pv.ipAddress];
+          const dataForIp = pv.location ?? geoData?.[pv.ipAddress];
 
           const countryCode = dataForIp?.countryIso || "";
           const regionCode = dataForIp?.region || "";
