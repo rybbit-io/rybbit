@@ -209,6 +209,13 @@ export function filterParamError(filters: unknown): string | null {
     return "filters must be a JSON array";
   }
   try {
+    // An empty value list builds `AND ()`, which ClickHouse rejects.
+    const empty = validateFilters(filters).find(
+      filter => filter.type !== "is_null" && filter.type !== "is_not_null" && filter.value.length === 0
+    );
+    if (empty) {
+      return `filter on "${empty.parameter}" needs at least one value`;
+    }
     getFilterStatement(filters);
     return null;
   } catch (error) {

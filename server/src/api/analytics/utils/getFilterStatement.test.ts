@@ -698,5 +698,9 @@ describe("filterParamError", () => {
       /Invalid numeric value/
     );
     expect(filterParamError(["array"])).toBe("filters must be a JSON array");
+    expect(filterParamError(JSON.stringify([{ parameter: "pathname", type: "equals", value: [] }]))).toMatch(
+      /needs at least one value/
+    );
+    expect(filterParamError(JSON.stringify([{ parameter: "pathname", type: "is_null", value: [] }]))).toBeNull();
   });
 });

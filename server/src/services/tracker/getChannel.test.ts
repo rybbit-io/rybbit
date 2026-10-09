@@ -22,6 +22,9 @@ describe("getChannel - UTM parameter fallback", () => {
     expect(getChannel("", "utm_source=facebook&utm_medium=paid_social")).toBe("Paid Social");
     expect(getChannel("", "utm_source=facebook&utm_medium=paidsocial")).toBe("Paid Social");
     expect(getChannel("", "utm_source=github&utm_medium=ads")).toMatch(/^Paid/);
+    expect(getChannel("", "utm_source=google&utm_medium=ecpc")).toBe("Paid Search");
+    expect(getChannel("", "utm_source=partner&utm_medium=rich-media-campaign")).toMatch(/^Paid/);
+    expect(getChannel("", "utm_source=facebook&utm_medium=facebookads")).toBe("Paid Social");
   });
 
   it("retains Direct classification when no referrer and no UTM parameters exist", () => {

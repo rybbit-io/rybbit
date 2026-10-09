@@ -73,6 +73,21 @@ export function useEventLogState(
     return mergedEvents.filter(ev => visibleTypes.has(ev.type));
   }, [mergedEvents, visibleTypes]);
 
+  // --- Reset on mode toggle, and when the site or filters change (live rows were fetched for the old ones) ---
+  // Declared before the rebuild effect below: effects run in order, so when the new query's rows arrive
+  // in the same commit (cached results) the reset happens first and the rebuild re-seeds the poll cursor.
+  const site = useStore(state => state.site);
+  const filters = useStore(state => state.filters);
+  useEffect(() => {
+    setPrependedEvents([]);
+    seenKeysRef.current.clear();
+    latestTimestampRef.current = null;
+    bufferedEventsRef.current = [];
+    setBufferedCount(0);
+    setIsLive(true);
+    setArrivals(prev => (prev.size ? NO_ARRIVALS : prev));
+  }, [isRealtime, site, filters]);
+
   // --- Rebuild seenKeys + set latestTimestamp when cursor data changes ---
   useEffect(() => {
     seenKeysRef.current = new Set(cursorEvents.map(getEventKey));
@@ -128,19 +143,6 @@ export function useEventLogState(
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollData]);
-
-  // --- Reset on mode toggle, and when the site or filters change (live rows were fetched for the old ones) ---
-  const site = useStore(state => state.site);
-  const filters = useStore(state => state.filters);
-  useEffect(() => {
-    setPrependedEvents([]);
-    seenKeysRef.current.clear();
-    latestTimestampRef.current = null;
-    bufferedEventsRef.current = [];
-    setBufferedCount(0);
-    setIsLive(true);
-    setArrivals(prev => (prev.size ? NO_ARRIVALS : prev));
-  }, [isRealtime, site, filters]);
 
   // --- Callback ref: capture viewport whenever ScrollArea mounts ---
   const scrollAreaCallbackRef = useCallback((node: HTMLDivElement | null) => {
