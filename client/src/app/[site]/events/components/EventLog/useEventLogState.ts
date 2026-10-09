@@ -73,32 +73,39 @@ export function useEventLogState(
     return mergedEvents.filter(ev => visibleTypes.has(ev.type));
   }, [mergedEvents, visibleTypes]);
 
-  // --- Reset on mode toggle, and when the site or filters change (live rows were fetched for the old ones) ---
-  // Declared before the rebuild effect below: effects run in order, so when the new query's rows arrive
-  // in the same commit (cached results) the reset happens first and the rebuild re-seeds the poll cursor.
+  // --- Reset key: live rows were fetched for one mode, site and filter set ---
+  // Filters are compared by content: URL hydration re-sets an equal array on date changes.
   const site = useStore(state => state.site);
-  const filters = useStore(state => state.filters);
-  useEffect(() => {
-    setPrependedEvents([]);
-    seenKeysRef.current.clear();
-    latestTimestampRef.current = null;
-    bufferedEventsRef.current = [];
-    setBufferedCount(0);
-    setIsLive(true);
-    setArrivals(prev => (prev.size ? NO_ARRIVALS : prev));
-  }, [isRealtime, site, filters]);
+  const filtersKey = useStore(state => JSON.stringify(state.filters));
+  const resetKey = `${isRealtime}|${site}|${filtersKey}`;
+  const resetKeyRef = useRef(resetKey);
 
-  // --- Rebuild seenKeys + set latestTimestamp when cursor data changes ---
+  // --- Rebuild seenKeys + set latestTimestamp when cursor data changes, resetting live state first on a new key ---
+  // One effect, so a reset always re-seeds the poll cursor from the rows on screen and never re-adds the
+  // keys of live rows it just discarded.
   useEffect(() => {
+    const isReset = resetKeyRef.current !== resetKey;
+    resetKeyRef.current = resetKey;
+    if (isReset) {
+      setPrependedEvents([]);
+      latestTimestampRef.current = null;
+      bufferedEventsRef.current = [];
+      setBufferedCount(0);
+      setIsLive(true);
+      setArrivals(prev => (prev.size ? NO_ARRIVALS : prev));
+    }
+
     seenKeysRef.current = new Set(cursorEvents.map(getEventKey));
-    for (const ev of prependedEvents) {
-      seenKeysRef.current.add(getEventKey(ev));
+    if (!isReset) {
+      for (const ev of prependedEvents) {
+        seenKeysRef.current.add(getEventKey(ev));
+      }
     }
     if (cursorEvents.length > 0 && !latestTimestampRef.current) {
       latestTimestampRef.current = cursorEvents[0].timestamp;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cursorEvents]);
+  }, [cursorEvents, resetKey]);
 
   // --- Poll query (realtime only) ---
   const getSinceTimestamp = useCallback(() => latestTimestampRef.current, []);
