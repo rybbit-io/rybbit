@@ -122,6 +122,7 @@ export function CreateUserDialog({ organizationId, onSuccess, assignableRoles }:
             <Input
               id="password"
               type="password"
+              autoComplete="new-password"
               placeholder="********"
               value={password}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}

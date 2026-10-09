@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getFilterStatement, getSqlParam } from "./getFilterStatement.js";
+import { filterParamError, getFilterStatement, getSqlParam } from "./getFilterStatement.js";
 import { FilterParameter } from "../types.js";
 
 describe("getSqlParam", () => {
@@ -676,5 +676,31 @@ describe("getFilterStatement", () => {
       });
       expect(result).toBe("AND page_title = 'url_parameters[\\'utm_source\\']'");
     });
+  });
+});
+
+describe("filterParamError", () => {
+  it("accepts absent and valid filters", () => {
+    expect(filterParamError(undefined)).toBeNull();
+    expect(filterParamError("")).toBeNull();
+    expect(filterParamError(JSON.stringify([{ parameter: "pathname", type: "equals", value: ["/"] }]))).toBeNull();
+  });
+
+  it("explains malformed JSON, unknown parameters, bad regexes and non-numeric comparisons", () => {
+    expect(filterParamError("not json")).toBe("Invalid JSON format");
+    expect(filterParamError(JSON.stringify([{ parameter: "nope", type: "equals", value: ["x"] }]))).toMatch(
+      /0\.parameter/
+    );
+    expect(
+      filterParamError(JSON.stringify([{ parameter: "pathname", type: "regex", value: ["[invalid"] }]))
+    ).toBeTruthy();
+    expect(filterParamError(JSON.stringify([{ parameter: "pathname", type: "greater_than", value: ["abc"] }]))).toMatch(
+      /Invalid numeric value/
+    );
+    expect(filterParamError(["array"])).toBe("filters must be a JSON array");
+    expect(filterParamError(JSON.stringify([{ parameter: "pathname", type: "equals", value: [] }]))).toMatch(
+      /needs at least one value/
+    );
+    expect(filterParamError(JSON.stringify([{ parameter: "pathname", type: "is_null", value: [] }]))).toBeNull();
   });
 });

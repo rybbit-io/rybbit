@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "sites_id_idx" ON "sites" USING btree ("id");

@@ -265,6 +265,13 @@ const pluginList = [
     : []),
 ];
 
+// Duck-typed: the api-key plugin can resolve its own copy of APIError.
+function isApiErrorLike(value: unknown): boolean {
+  return (
+    typeof value === "object" && value !== null && typeof (value as { statusCode?: unknown }).statusCode === "number"
+  );
+}
+
 export const auth = betterAuth({
   basePath: "/api/auth",
   baseURL: getAuthBaseUrl(),
@@ -273,6 +280,12 @@ export const auth = betterAuth({
     log: (level, message, ...args) => {
       // Route better-auth's internal logs (e.g. API key rate-limit errors)
       // through the project's pino logger instead of console.
+      // better-auth logs every unknown or expired API key at error level; a
+      // caller presenting a bad credential isn't a server fault (#1095).
+      if (message.startsWith("Failed to validate API key") && isApiErrorLike(args[0])) {
+        authLogger.debug({ args }, message);
+        return;
+      }
       authLogger[level]({ args }, message);
     },
   },
@@ -357,7 +370,8 @@ export const auth = betterAuth({
       create: {
         after: async u => {
           authLogger.info({ userId: u.id }, "User created");
-          const users = await db.select().from(schema.user).orderBy(asc(user.createdAt));
+          // Two rows are enough to tell whether this is the first user.
+          const users = await db.select({ id: user.id }).from(user).orderBy(asc(user.createdAt)).limit(2);
 
           // If this is the first user, make them an admin
           if (users.length === 1) {

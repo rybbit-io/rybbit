@@ -32,6 +32,20 @@ class BotEventQueue {
     this.queue.push(botEvent);
   }
 
+  /**
+   * Flushes everything still buffered. Only for shutdown: process exit would
+   * otherwise drop up to a flush interval of events on every deploy.
+   */
+  async drain(): Promise<void> {
+    while (this.processing || this.queue.length > 0) {
+      if (this.processing) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } else {
+        await this.processQueue();
+      }
+    }
+  }
+
   private async processQueue() {
     if (this.processing || this.queue.length === 0) return;
     this.processing = true;

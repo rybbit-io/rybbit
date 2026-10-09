@@ -60,7 +60,12 @@ export default function SessionsPage() {
     includeGoals: true,
     ...rangeParams,
   });
-  const { data: summary, isLoading: isSummaryLoading } = useGetSessionsSummary(rangeParams);
+  const {
+    data: summary,
+    isLoading: isSummaryLoading,
+    isError: isSummaryError,
+    refetch: refetchSummary,
+  } = useGetSessionsSummary(rangeParams);
   // The band describes the whole period, so its comparison takes no ranges.
   const { data: previousSummary } = useGetSessionsSummary({ periodTime: "previous" });
 
@@ -79,6 +84,8 @@ export default function SessionsPage() {
           summary={summary}
           previous={comparisonEnabled ? previousSummary : undefined}
           isLoading={isSummaryLoading}
+          isError={isSummaryError && !summary}
+          refetch={refetchSummary}
         />
         <AnalysisBar
           end={

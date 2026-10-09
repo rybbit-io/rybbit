@@ -78,6 +78,7 @@ export function Signup({ callbackURL }: SignupProps) {
           id="email"
           label={t("Email")}
           type="email"
+          autoComplete="email"
           placeholder="email@example.com"
           required
           value={email}
@@ -88,6 +89,7 @@ export function Signup({ callbackURL }: SignupProps) {
           id="password"
           label={t("Password")}
           type="password"
+          autoComplete="new-password"
           placeholder="••••••••"
           required
           value={password}

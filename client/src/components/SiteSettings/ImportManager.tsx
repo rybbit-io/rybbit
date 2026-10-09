@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef } from "react";
 import { DateTime } from "luxon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +66,6 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<ImportPlatform | "">("");
   const [fileError, setFileError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const workerManagerRef = useRef<CsvParser | PlausibleCsvParser | null>(null);
 
   function validateFile(file: File | null, platform: ImportPlatform | ""): string {
     if (!file) {
@@ -91,12 +90,6 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   const createImportMutation = useCreateSiteImport(siteId);
   const deleteMutation = useDeleteSiteImport(siteId);
 
-  useEffect(() => {
-    return () => {
-      workerManagerRef.current?.cancel();
-    };
-  }, []);
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setSelectedFile(file);
@@ -114,49 +107,54 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
     }
   };
 
-  const executeImport = () => {
+  const executeImport = async () => {
     if (!selectedFile || !selectedPlatform) return;
-
-    createImportMutation.mutate(
-      { platform: selectedPlatform },
-      {
-        onSuccess: response => {
-          const { importId, allowedDateRange } = response.data;
-
-          if (selectedPlatform === "plausible") {
-            const parser = new PlausibleCsvParser(
-              siteId,
-              importId,
-              allowedDateRange.earliestAllowedDate,
-              allowedDateRange.latestAllowedDate
-            );
-            workerManagerRef.current = parser;
-            parser.startImport(selectedFile).catch(err => {
-              console.error("Plausible import failed:", err);
-            });
-          } else {
-            const parser = new CsvParser(
-              siteId,
-              importId,
-              selectedPlatform,
-              allowedDateRange.earliestAllowedDate,
-              allowedDateRange.latestAllowedDate
-            );
-            workerManagerRef.current = parser;
-            parser.startImport(selectedFile);
-          }
-
-          setSelectedFile(null);
-          setSelectedPlatform("");
-          setFileError("");
-          if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-          }
-        },
-      }
-    );
-
+    const file = selectedFile;
+    const platform = selectedPlatform;
     setShowConfirmDialog(false);
+
+    // mutateAsync rather than a per-call onSuccess: React Query drops per-call callbacks once the
+    // component unmounts (closing the dialog mid-request), which would leave the import created
+    // on the server with no parser feeding it.
+    let response;
+    try {
+      response = await createImportMutation.mutateAsync({ platform });
+    } catch (error) {
+      console.error("Failed to create import:", error);
+      return;
+    }
+    const { importId, allowedDateRange } = response.data;
+
+    if (platform === "plausible") {
+      const parser = new PlausibleCsvParser(
+        siteId,
+        importId,
+        allowedDateRange.earliestAllowedDate,
+        allowedDateRange.latestAllowedDate
+      );
+      // The parser is deliberately not tied to this component: switching settings tabs or
+      // closing the dialog unmounts it, and cancelling then would strand the import
+      // "In Progress" forever (blocking new imports). It runs until done or the page unloads.
+      parser.startImport(file).catch(err => {
+        console.error("Plausible import failed:", err);
+      });
+    } else {
+      const parser = new CsvParser(
+        siteId,
+        importId,
+        platform,
+        allowedDateRange.earliestAllowedDate,
+        allowedDateRange.latestAllowedDate
+      );
+      parser.startImport(file);
+    }
+
+    setSelectedFile(null);
+    setSelectedPlatform("");
+    setFileError("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleDeleteClick = (importId: string) => {

@@ -374,15 +374,7 @@ const aiChatSources = [
 ];
 
 // AI chat mediums (utm_medium values)
-const aiChatMediums = [
-  "ai",
-  "ai-chat",
-  "chatbot",
-  "llm",
-  "ai-assistant",
-  "gen-ai",
-  "ai-search",
-];
+const aiChatMediums = ["ai", "ai-chat", "chatbot", "llm", "ai-assistant", "gen-ai", "ai-search"];
 
 // AI chat mobile app IDs
 export const aiChatAppIds = [
@@ -1226,7 +1218,7 @@ function getDomainSourceType(source: string): string | null {
     for (const domain of domains) {
       const length = Math.max(
         domainMatchLength(host, domain),
-        countrylessHost ? domainMatchLength(countrylessHost, domain) : 0,
+        countrylessHost ? domainMatchLength(countrylessHost, domain) : 0
       );
       if (length > bestLength) {
         bestType = type;
@@ -1291,6 +1283,24 @@ export function getMediumType(medium: string): string {
   return "organic";
 }
 
+// Run-together paid mediums that whole-word matching would otherwise miss.
+const compactPaidMediums = new Set([
+  "ecpc",
+  "googleads",
+  "bingads",
+  "fbads",
+  "facebookads",
+  "metaads",
+  "instagramads",
+  "linkedinads",
+  "tiktokads",
+  "socialads",
+  "searchads",
+  "displayads",
+  "bannerads",
+  "videoads",
+]);
+
 // Helper function to check if traffic is paid
 export function isPaidTraffic(medium: string, source: string): boolean {
   const lowerMedium = medium.toLowerCase();
@@ -1323,5 +1333,18 @@ export function isPaidTraffic(medium: string, source: string): boolean {
     "pinterest ads",
   ];
 
-  return paidMediums.some(pm => lowerMedium.includes(pm)) || paidSources.some(ps => lowerSource.includes(ps));
+  // Match whole words and phrases, not substrings: "ad" is inside "readme" and
+  // "download", "sem" inside "seminar" (#1262). Run-together spellings that
+  // substring matching used to catch are listed explicitly.
+  const tokens = lowerMedium.split(/[^a-z0-9]+/).filter(Boolean);
+  const containsPhrase = (phrase: string) => {
+    const words = phrase.split(/[^a-z0-9]+/).filter(Boolean);
+    return tokens.some((_, start) => words.every((word, offset) => tokens[start + offset] === word));
+  };
+  const isPaidMedium =
+    lowerMedium.startsWith("paid") ||
+    tokens.some(token => compactPaidMediums.has(token)) ||
+    paidMediums.some(containsPhrase);
+
+  return isPaidMedium || paidSources.some(ps => lowerSource.includes(ps));
 }

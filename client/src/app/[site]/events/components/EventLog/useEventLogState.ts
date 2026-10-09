@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Arrivals, NO_ARRIVALS, recordArrivals } from "@/components/interior/use-arrival-highlight";
 import { Event } from "../../../../../api/analytics/endpoints";
 import { useGetEventsCursor, useNewEventsPoll } from "../../../../../api/analytics/hooks/events/useGetEvents";
+import { useStore } from "../../../../../lib/store";
 import { getEventKey } from "./eventLogUtils";
 
 const MAX_EVENTS = 10_000;
@@ -56,9 +57,13 @@ export function useEventLogState(
   const cursorEvents = useMemo(() => cursorData?.pages.flatMap(p => p.data) ?? [], [cursorData]);
 
   // --- Combined event list ---
+  // The cursor query refetches (staleTime 0, window refocus) and then returns events that already
+  // arrived live, so drop those from the prepended rows.
   const mergedEvents = useMemo(() => {
     if (prependedEvents.length === 0) return cursorEvents;
-    return [...prependedEvents, ...cursorEvents].slice(0, MAX_EVENTS);
+    const cursorKeys = new Set(cursorEvents.map(getEventKey));
+    const liveOnly = prependedEvents.filter(ev => !cursorKeys.has(getEventKey(ev)));
+    return [...liveOnly, ...cursorEvents].slice(0, MAX_EVENTS);
   }, [prependedEvents, cursorEvents]);
 
   // --- Client-side type filter ---
@@ -68,17 +73,39 @@ export function useEventLogState(
     return mergedEvents.filter(ev => visibleTypes.has(ev.type));
   }, [mergedEvents, visibleTypes]);
 
-  // --- Rebuild seenKeys + set latestTimestamp when cursor data changes ---
+  // --- Reset key: live rows were fetched for one mode, site and filter set ---
+  // Filters are compared by content: URL hydration re-sets an equal array on date changes.
+  const site = useStore(state => state.site);
+  const filtersKey = useStore(state => JSON.stringify(state.filters));
+  const resetKey = `${isRealtime}|${site}|${filtersKey}`;
+  const resetKeyRef = useRef(resetKey);
+
+  // --- Rebuild seenKeys + set latestTimestamp when cursor data changes, resetting live state first on a new key ---
+  // One effect, so a reset always re-seeds the poll cursor from the rows on screen and never re-adds the
+  // keys of live rows it just discarded.
   useEffect(() => {
+    const isReset = resetKeyRef.current !== resetKey;
+    resetKeyRef.current = resetKey;
+    if (isReset) {
+      setPrependedEvents([]);
+      latestTimestampRef.current = null;
+      bufferedEventsRef.current = [];
+      setBufferedCount(0);
+      setIsLive(true);
+      setArrivals(prev => (prev.size ? NO_ARRIVALS : prev));
+    }
+
     seenKeysRef.current = new Set(cursorEvents.map(getEventKey));
-    for (const ev of prependedEvents) {
-      seenKeysRef.current.add(getEventKey(ev));
+    if (!isReset) {
+      for (const ev of prependedEvents) {
+        seenKeysRef.current.add(getEventKey(ev));
+      }
     }
     if (cursorEvents.length > 0 && !latestTimestampRef.current) {
       latestTimestampRef.current = cursorEvents[0].timestamp;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cursorEvents]);
+  }, [cursorEvents, resetKey]);
 
   // --- Poll query (realtime only) ---
   const getSinceTimestamp = useCallback(() => latestTimestampRef.current, []);
@@ -123,17 +150,6 @@ export function useEventLogState(
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollData]);
-
-  // --- Reset on mode toggle ---
-  useEffect(() => {
-    setPrependedEvents([]);
-    seenKeysRef.current.clear();
-    latestTimestampRef.current = null;
-    bufferedEventsRef.current = [];
-    setBufferedCount(0);
-    setIsLive(true);
-    setArrivals(prev => (prev.size ? NO_ARRIVALS : prev));
-  }, [isRealtime]);
 
   // --- Callback ref: capture viewport whenever ScrollArea mounts ---
   const scrollAreaCallbackRef = useCallback((node: HTMLDivElement | null) => {

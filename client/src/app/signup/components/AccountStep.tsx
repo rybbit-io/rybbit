@@ -55,6 +55,7 @@ export function AccountStep({
             id="email"
             label={t("Email")}
             type="email"
+            autoComplete="email"
             placeholder="email@example.com"
             required
             value={email}
@@ -64,6 +65,7 @@ export function AccountStep({
             id="password"
             label={t("Password")}
             type="password"
+            autoComplete="new-password"
             placeholder="••••••••"
             required
             value={password}

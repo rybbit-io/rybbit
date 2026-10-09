@@ -35,6 +35,17 @@ vi.mock("../../db/postgres/postgres.js", () => ({
         state.deletes += 1;
       },
     })),
+    // Rolls back the counted deletes when the callback throws.
+    transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const { db } = await import("../../db/postgres/postgres.js");
+      const deletesBefore = state.deletes;
+      try {
+        return await fn(db);
+      } catch (error) {
+        state.deletes = deletesBefore;
+        throw error;
+      }
+    }),
   },
 }));
 
@@ -109,15 +120,24 @@ describe("siteConfigurationLifecycle", () => {
     expect(mocks.invalidate).toHaveBeenCalledWith(state.site);
   });
 
-  it("deletes replay data before the Site row and then invalidates the Site", async () => {
+  it("deletes the import rows and the Site row, wipes replay data, then invalidates the Site", async () => {
     await siteConfigurationLifecycle.delete(1);
 
+    expect(state.deletes).toBe(2);
     expect(mocks.clickhouseCommand).toHaveBeenCalledTimes(2);
-    expect(state.deletes).toBe(1);
     expect(mocks.invalidate).toHaveBeenCalledWith(state.site);
   });
 
-  it("does not report deletion when replay cleanup fails", async () => {
+  it("keeps replay data when the Postgres delete fails", async () => {
+    state.deleteError = new Error("foreign key violation");
+
+    await expect(siteConfigurationLifecycle.delete(1)).rejects.toThrow("foreign key violation");
+
+    expect(mocks.clickhouseCommand).not.toHaveBeenCalled();
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+  });
+
+  it("rolls the Site back when replay cleanup fails", async () => {
     mocks.clickhouseCommand.mockRejectedValueOnce(new Error("clickhouse unavailable"));
 
     await expect(siteConfigurationLifecycle.delete(1)).rejects.toThrow("clickhouse unavailable");

@@ -3,7 +3,7 @@ import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { getSubscriptionInner } from "../../api/stripe/getSubscription.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
-import { sites } from "../../db/postgres/schema.js";
+import { importStatus, sites } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { validateIPPattern } from "../../lib/ipUtils.js";
 import { detectPlatform } from "../lifecycleEmails/platformDetect.js";
@@ -533,8 +533,9 @@ class SiteConfigurationLifecycle {
         .for("update");
       if (!site) return false;
 
-      await this.deleteReplayData(siteId);
+      await tx.delete(importStatus).where(eq(importStatus.siteId, siteId));
       await tx.delete(sites).where(eq(sites.siteId, siteId));
+      await this.deleteReplayData(siteId);
       siteConfig.invalidate(site);
       return true;
     });
@@ -555,8 +556,15 @@ class SiteConfigurationLifecycle {
 
   async delete(siteId: number): Promise<void> {
     const site = await this.findSite(siteId);
-    await this.deleteReplayData(siteId);
-    await db.delete(sites).where(eq(sites.siteId, siteId));
+    // Delete the Postgres rows first so a constraint failure can't leave the
+    // Site in place with its replays already wiped. import_status is the one
+    // table whose foreign key to sites doesn't cascade. Replay cleanup runs
+    // inside the transaction, so a ClickHouse failure rolls the Site back.
+    await db.transaction(async tx => {
+      await tx.delete(importStatus).where(eq(importStatus.siteId, siteId));
+      await tx.delete(sites).where(eq(sites.siteId, siteId));
+      await this.deleteReplayData(siteId);
+    });
     siteConfig.invalidate(site);
   }
 }

@@ -1,4 +1,5 @@
 import SqlString from "sqlstring";
+import { ZodError } from "zod";
 import { filterParamSchema, validateFilters } from "./query-validation.js";
 import { SESSION_CHANNEL_AGG } from "./sessionAttribution.js";
 import { FilterParameter, FilterType } from "../types.js";
@@ -194,6 +195,38 @@ export const getSqlParam = (parameter: FilterParameter) => {
   }
   return filterParamSchema.parse(parameter);
 };
+
+/**
+ * Returns why a request's `filters` param can't be used, or null when it is
+ * valid or absent. Builds the statement once so regex and numeric checks run
+ * too: handlers throw on the same input, which surfaced as a 500.
+ */
+export function filterParamError(filters: unknown): string | null {
+  if (filters === undefined || filters === "") {
+    return null;
+  }
+  if (typeof filters !== "string") {
+    return "filters must be a JSON array";
+  }
+  try {
+    // An empty value list builds `AND ()`, which ClickHouse rejects.
+    const empty = validateFilters(filters).find(
+      filter => filter.type !== "is_null" && filter.type !== "is_not_null" && filter.value.length === 0
+    );
+    if (empty) {
+      return `filter on "${empty.parameter}" needs at least one value`;
+    }
+    getFilterStatement(filters);
+    return null;
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return error.issues
+        .map(issue => (issue.path.length ? `${issue.path.join(".")}: ` : "") + issue.message)
+        .join("; ");
+    }
+    return error instanceof Error ? error.message : "Invalid filters";
+  }
+}
 
 export function getFilterStatement(
   filters: string,

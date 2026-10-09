@@ -19,7 +19,9 @@ import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./li
 import { IS_CLOUD } from "./lib/const.js";
 import { logger } from "./lib/logger/logger.js";
 import { registerRequestLogging } from "./lib/logger/requestLogging.js";
+import { botEventQueue, botObservationQueue } from "./services/tracker/botBlocking/botEventQueue.js";
 import { identityBackfillQueue } from "./services/tracker/identityBackfillQueue.js";
+import { pageviewQueue } from "./services/tracker/pageviewQueue.js";
 import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmailService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
@@ -205,8 +207,10 @@ const shutdown = async (signal: string) => {
     await server.close();
     server.log.info("Server closed");
 
-    // Identity backfills are buffered for several minutes to keep mutation
+    // Flush events still buffered for the next batch insert, then the
+    // identity backfills, which are held for several minutes to keep mutation
     // submissions rare; without this, a deploy drops whatever is still pending.
+    await Promise.all([pageviewQueue.drain(), botEventQueue.drain(), botObservationQueue.drain()]);
     await identityBackfillQueue.drainCompletely();
 
     // Clear the timeout since we're done

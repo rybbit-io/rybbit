@@ -6,9 +6,9 @@ import { ArrowRight, ChevronDown, ChevronRight, Video } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { memo, useCallback, useState } from "react";
 import { GetSessionsResponse } from "../../api/analytics/endpoints";
+import { useSitePath } from "@/app/[site]/sessions/components/useSitePath";
 import { useDateTimeFormat } from "@/hooks/useDateTimeFormat";
 import { formatShortDuration } from "../../lib/dateTimeUtils";
 import { cn, formatter, getUserDisplayName, truncateString } from "../../lib/utils";
@@ -36,7 +36,7 @@ interface SessionCardProps {
 }
 
 export function SessionCard({ session, onClick, userId, expandedByDefault, highlightedEventTimestamp }: SessionCardProps) {
-  const { site } = useParams();
+  const sitePath = useSitePath();
   const t = useExtracted();
   const { hour12, formatDateTime } = useDateTimeFormat();
   const [expanded, setExpanded] = useState(expandedByDefault || false);
@@ -181,9 +181,9 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
         <div className="hidden md:flex items-center gap-2">
           {!userId && (
             <Link
-              href={`/${site}/user/${encodeURIComponent(
+              href={sitePath(`user/${encodeURIComponent(
                 isIdentified ? session.identified_user_id : session.user_id
-              )}`}
+              )}`)}
               onClick={e => e.stopPropagation()}
               className="flex items-center gap-2"
             >

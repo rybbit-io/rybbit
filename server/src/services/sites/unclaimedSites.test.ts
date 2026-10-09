@@ -77,6 +77,12 @@ CREATE TABLE sites (
   "detected_platform" text,
   "claim_expires_at" timestamp
 );
+-- The real foreign key has no ON DELETE CASCADE.
+CREATE TABLE import_status (
+  "import_id" text PRIMARY KEY,
+  "site_id" integer NOT NULL REFERENCES sites(site_id),
+  "organization_id" text NOT NULL
+);
 `);
 });
 afterAll(async () => {
@@ -86,7 +92,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   state.isCloud = false;
   mocks.getSubscriptionInner.mockResolvedValue({ siteLimit: 1 });
-  await (client as any).exec("TRUNCATE sites RESTART IDENTITY");
+  await (client as any).exec("TRUNCATE sites, import_status RESTART IDENTITY");
 });
 
 async function unclaimed() {
@@ -217,6 +223,14 @@ describe("cleanup", () => {
     expect(await cleanup.deleteExpiredSites()).toBe(0);
     expect(await readSite(site.siteId)).toBeDefined();
     expect(await cleanup.deleteExpiredSites()).toBe(1);
+  });
+  it("deletes a Site that has import history", async () => {
+    const site = await unclaimed();
+    await lifecycle.claim(claimInput(site));
+    await (client as any).query("INSERT INTO import_status VALUES ('imp_1', $1, 'org_1')", [site.siteId]);
+    await lifecycle.delete(site.siteId);
+    expect(await readSite(site.siteId)).toBeUndefined();
+    expect(mocks.clickhouseCommand).toHaveBeenCalledTimes(2);
   });
   it("does nothing when there are no expired sites", async () => {
     expect(await cleanup.deleteExpiredSites()).toBe(0);

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionsSummary } from "@/api/analytics/endpoints";
 import { SessionsStatBand } from "./SessionsStatBand";
@@ -136,5 +136,15 @@ describe("SessionsStatBand", () => {
     expect(labels()).toContain("Sessions");
     expect(screen.queryByText("0s")).toBeNull();
     expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+  });
+
+  it("shows an error with a retry instead of loading forever when the summary fails", () => {
+    const refetch = vi.fn();
+    render(<SessionsStatBand summary={undefined} previous={undefined} isLoading={false} isError refetch={refetch} />);
+
+    expect(screen.getByText("Failed to load data")).toBeTruthy();
+    expect(document.querySelectorAll(".animate-pulse")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: /Try Again/ }));
+    expect(refetch).toHaveBeenCalledOnce();
   });
 });

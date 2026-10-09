@@ -3,6 +3,7 @@ import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
 import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
+import { ErrorState } from "../../../../../components/ErrorState";
 import { Tabs, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Card, CardContent, CardLoader } from "../../../../../components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/ui/select";
@@ -18,7 +19,7 @@ export function Weekdays() {
   const timezone = getTimezone();
   const t = useExtracted();
 
-  const { data, isFetching, error } = useGetOverviewBucketed({
+  const { data, isFetching, error, refetch } = useGetOverviewBucketed({
     site,
     bucket: "hour",
   });
@@ -167,82 +168,86 @@ export function Weekdays() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex mt-1 p-2">
-          <div className="w-12">
-            {/* Empty top-left cell */}
-            <div className="h-5"></div>
+        {error && !data ? (
+          <ErrorState title="" message="" refetch={refetch} />
+        ) : (
+          <div className="flex mt-1 p-2">
+            <div className="w-12">
+              {/* Empty top-left cell */}
+              <div className="h-5"></div>
 
-            {/* Time labels - only display every other hour */}
-            {Array(24)
-              .fill(0)
-              .map((_, hour) => (
-                <div
-                  key={hour}
-                  className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-600 dark:text-neutral-400"
-                >
-                  {hour % 2 === 1 ? hourLabels[hour] : ""}
-                </div>
-              ))}
-          </div>
-
-          <div className="flex-1">
-            {/* Day labels */}
-            <div className="flex h-5">
-              {shortDayNames.map((day, i) => (
-                <div key={i} className="flex-1 text-center text-xs text-neutral-600 dark:text-neutral-400">
-                  {day}
-                </div>
-              ))}
+              {/* Time labels - only display every other hour */}
+              {Array(24)
+                .fill(0)
+                .map((_, hour) => (
+                  <div
+                    key={hour}
+                    className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-600 dark:text-neutral-400"
+                  >
+                    {hour % 2 === 1 ? hourLabels[hour] : ""}
+                  </div>
+                ))}
             </div>
 
-            {/* Heatmap grid */}
-            {Array(24)
-              .fill(0)
-              .map((_, hour) => (
-                <div key={hour} className="flex h-4">
-                  {Array(7)
-                    .fill(0)
-                    .map((_, day) => {
-                      const value =
-                        heatmapData &&
-                        heatmapData.length > day &&
-                        Array.isArray(heatmapData[day]) &&
-                        heatmapData[day].length > hour
-                          ? heatmapData[day][hour]
-                          : 0;
-                      const colorClass = value > 0 ? getColorIntensity(value) : "bg-neutral-50 dark:bg-neutral-850";
-                      return (
-                        <Tooltip key={day}>
-                          <TooltipTrigger asChild>
-                            <div
-                              className={cn(
-                                "flex-1 mx-0.5 hover:ring-1 hover:ring-emerald-300 transition-all rounded-sm my-0.5",
-                                colorClass
-                              )}
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent className="p-0 border-0 bg-transparent">
-                            <ChartTooltip>
-                              <div className="flex flex-col gap-1 p-2">
-                                <div className="font-medium text-sm">
-                                  {longDayNames[day]} {formatLocalTime(hour, 0)} - {formatLocalTime(hour, 59)}
+            <div className="flex-1">
+              {/* Day labels */}
+              <div className="flex h-5">
+                {shortDayNames.map((day, i) => (
+                  <div key={i} className="flex-1 text-center text-xs text-neutral-600 dark:text-neutral-400">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Heatmap grid */}
+              {Array(24)
+                .fill(0)
+                .map((_, hour) => (
+                  <div key={hour} className="flex h-4">
+                    {Array(7)
+                      .fill(0)
+                      .map((_, day) => {
+                        const value =
+                          heatmapData &&
+                          heatmapData.length > day &&
+                          Array.isArray(heatmapData[day]) &&
+                          heatmapData[day].length > hour
+                            ? heatmapData[day][hour]
+                            : 0;
+                        const colorClass = value > 0 ? getColorIntensity(value) : "bg-neutral-50 dark:bg-neutral-850";
+                        return (
+                          <Tooltip key={day}>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={cn(
+                                  "flex-1 mx-0.5 hover:ring-1 hover:ring-emerald-300 transition-all rounded-sm my-0.5",
+                                  colorClass
+                                )}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent className="p-0 border-0 bg-transparent">
+                              <ChartTooltip>
+                                <div className="flex flex-col gap-1 p-2">
+                                  <div className="font-medium text-sm">
+                                    {longDayNames[day]} {formatLocalTime(hour, 0)} - {formatLocalTime(hour, 59)}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold">{formatMetricValue(value)}</span>
+                                    <span className="text-neutral-500 dark:text-neutral-400 text-xs">
+                                      {getMetricDisplayName(metric)}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold">{formatMetricValue(value)}</span>
-                                  <span className="text-neutral-500 dark:text-neutral-400 text-xs">
-                                    {getMetricDisplayName(metric)}
-                                  </span>
-                                </div>
-                              </div>
-                            </ChartTooltip>
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                </div>
-              ))}
+                              </ChartTooltip>
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                  </div>
+                ))}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
