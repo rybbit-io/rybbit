@@ -27,6 +27,7 @@ exports[`API route table > pins the access each route requires 1`] = `
   "GET    /api/admin/sites → system-admin",
   "GET    /api/admin/subscription-plans → system-admin",
   "GET    /api/config → public",
+  "GET    /api/favicon → public",
   "GET    /api/gsc/callback → public",
   "GET    /api/health → public",
   "GET    /api/mcp → public",

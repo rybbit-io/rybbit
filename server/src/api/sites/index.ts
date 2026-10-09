@@ -9,6 +9,7 @@ export { checkInstall } from "./checkInstall.js";
 export { getSiteIsPublic } from "./getSiteIsPublic.js";
 export { getSiteUsage } from "./getSiteUsage.js";
 export { getEmbedStats } from "./getEmbedStats.js";
+export { getFavicon } from "./getFavicon.js";
 export { getSitesFromOrg } from "./getSitesFromOrg.js";
 export { moveSite } from "./moveSite.js";
 export { updateSiteConfig } from "./updateSiteConfig.js";

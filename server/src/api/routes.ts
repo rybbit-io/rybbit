@@ -143,6 +143,7 @@ import {
   deleteSite,
   deleteSiteImport,
   getEmbedStats,
+  getFavicon,
   getSite,
   getSiteExcludedCountries,
   getSiteExcludedHostnames,
@@ -446,6 +447,11 @@ async function sessionReplayRoutes(fastify: FastifyInstance) {
 }
 
 async function sitesRoutes(fastify: FastifyInstance) {
+  fastify.get(
+    "/favicon",
+    { config: { access: "public" as RouteAccess, rateLimit: { max: 120, timeWindow: "1 minute" } } },
+    getFavicon
+  );
   // Sites
   fastify.get("/sites/:siteId", publicSitesRead, getSite);
   fastify.put("/sites/:siteId/config", site("sites:configure"), updateSiteConfig);
