@@ -34,7 +34,7 @@ export async function createOrgApiKey(
 
   // Org keys must be minted by a person — better-auth validates that user's
   // org role, and the key records them as createdBy. The guard
-  // (requireOrgAdminFromParams, deny-scoped) attaches request.user for every
+  // (requireOrgPermission("apikeys:manage"), deny-scoped) attaches request.user for every
   // credential it lets through: sessions and unrestricted user API keys. Org
   // keys carry no user and are rejected at the guard, so they can't mint keys.
   const userId = request.user?.id;

@@ -163,6 +163,18 @@ describe("mcp endpoint", () => {
           return reply.status(403).send({ error: "You don't have access to this site" });
         });
 
+        fastify.get("/sites/:siteId/gsc/status", async () => {
+          return { connected: true, gscPropertyUrl: "sc-domain:acme.com" };
+        });
+
+        fastify.get("/sites/:siteId/gsc/data", async request => {
+          captured.url = request.url;
+          captured.query = request.query as Record<string, unknown>;
+          return {
+            data: [{ query: "acme\u202Eanalytics", page: "https://acme.com/pricing", clicks: 12, impressions: 300, ctr: 0.04, position: 3.2 }],
+          };
+        });
+
         fastify.get("/sites/:siteId/annotations", async request => {
           captured.url = request.url;
           captured.query = request.query as Record<string, unknown>;
@@ -186,6 +198,12 @@ describe("mcp endpoint", () => {
           captured.url = request.url;
           captured.method = request.method;
           return { success: true };
+        });
+
+        fastify.put("/organizations/:organizationId/members/:memberId/sites", async request => {
+          captured.url = request.url;
+          captured.body = request.body;
+          return { memberId: "m_1", hasRestrictedSiteAccess: true, siteAccess: [] };
         });
 
         fastify.post("/organizations/:organizationId/members", async request => {
@@ -327,11 +345,11 @@ describe("mcp endpoint", () => {
     expect(result.instructions).toContain("run_query");
   });
 
-  it("lists all 42 tools with output schemas", async () => {
+  it("lists all 44 tools with output schemas", async () => {
     const tools = await listTools(app);
     const names = tools.map(tool => tool.name);
 
-    expect(tools).toHaveLength(42);
+    expect(tools).toHaveLength(44);
     expect(names).toContain("list_sites");
     expect(names).toContain("get_overview");
     expect(names).toContain("get_breakdown");
@@ -343,6 +361,8 @@ describe("mcp endpoint", () => {
     expect(names).toContain("get_users");
     expect(names).toContain("list_members");
     expect(names).toContain("get_annotations");
+    expect(names).toContain("get_search_console_status");
+    expect(names).toContain("get_search_console_data");
 
     const overview = tools.find(tool => tool.name === "get_overview");
     expect(overview?.outputSchema).toBeTruthy();
@@ -369,11 +389,12 @@ describe("mcp endpoint", () => {
     expect(names).not.toContain("get_sessions");
     expect(names).not.toContain("create_goal");
     expect(names).not.toContain("run_query");
+    expect(names).not.toContain("get_search_console_data");
   });
 
   it("legacy OAuth grants with only standard scopes stay unrestricted", async () => {
     const tools = await listTools(app, "Bearer oauth_valid_token");
-    expect(tools).toHaveLength(42);
+    expect(tools).toHaveLength(44);
   });
 
   it("partitions tools into reads, writes, and destructive deletes", async () => {
@@ -494,6 +515,43 @@ describe("mcp endpoint", () => {
     });
   });
 
+  it("get_search_console_status reports the connected property", async () => {
+    const result = await callTool(app, "get_search_console_status", { site_id: 5 });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toEqual({ connected: true, gscPropertyUrl: "sc-domain:acme.com" });
+  });
+
+  it("get_search_console_data maps dimensions, filters, and the default row limit onto REST params", async () => {
+    const result = await callTool(app, "get_search_console_data", {
+      site_id: 5,
+      start_date: "2026-08-01",
+      end_date: "2026-08-31",
+      dimensions: ["query", "page"],
+      filters: [{ dimension: "page", operator: "contains", expression: "/pricing" }],
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(captured.url).toContain("/api/sites/5/gsc/data");
+    expect(captured.query).toEqual({
+      start_date: "2026-08-01",
+      end_date: "2026-08-31",
+      dimensions: "query,page",
+      filters: JSON.stringify([{ dimension: "page", operator: "contains", expression: "/pricing" }]),
+      row_limit: "100",
+    });
+    // Search queries are typed by strangers: bidi overrides are stripped like other analytics labels.
+    expect(result.structuredContent).toEqual({
+      data: [{ query: "acme analytics", page: "https://acme.com/pricing", clicks: 12, impressions: 300, ctr: 0.04, position: 3.2 }],
+    });
+  });
+
+  it("get_search_console_data defaults to the query dimension", async () => {
+    await callTool(app, "get_search_console_data", { site_id: 5, start_date: "2026-08-01", end_date: "2026-08-31" });
+
+    expect(captured.query).toMatchObject({ dimensions: "query", row_limit: "100" });
+  });
+
   it("get_sessions passes rows through but strips bidi control characters", async () => {
     const result = await callTool(app, "get_sessions", { site_id: 5 });
 
@@ -605,6 +663,25 @@ describe("mcp endpoint", () => {
     expect(captured.body).toEqual({ anonymous_id: "anon_1", user_id: "app_user_9", traits: { plan: "pro" } });
   });
 
+  it("update_member_site_access leaves the site role alone unless asked", async () => {
+    await callTool(app, "update_member_site_access", {
+      organization_id: "org_1",
+      member_id: "m_1",
+      has_restricted_site_access: true,
+      site_ids: [5],
+    });
+    expect(captured.body).toEqual({ hasRestrictedSiteAccess: true, siteIds: [5] });
+
+    await callTool(app, "update_member_site_access", {
+      organization_id: "org_1",
+      member_id: "m_1",
+      has_restricted_site_access: true,
+      site_ids: [5],
+      site_role: "editor",
+    });
+    expect(captured.body).toEqual({ hasRestrictedSiteAccess: true, siteIds: [5], siteRole: "editor" });
+  });
+
   it("analyze_funnel sends steps as the POST body", async () => {
     const steps = [
       { type: "page", value: "/pricing" },
@@ -624,7 +701,7 @@ describe("mcp endpoint", () => {
     expect(result.content[0].text).toContain("403");
     expect(result.content[0].text).toContain("You don't have access to this site");
     expect(result.content[0].text).toContain("list_sites");
-    expect(result.content[0].text).toContain("admin/owner role");
+    expect(result.content[0].text).toContain("Insufficient role");
   });
 
   it("rejects invalid tool arguments before hitting the API", async () => {

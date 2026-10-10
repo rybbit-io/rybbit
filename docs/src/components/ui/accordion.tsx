@@ -44,12 +44,16 @@ const AccordionContent = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Content
-    ref={ref}
-    className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
-    {...props}
-  >
-    <div className={cn("px-6 pb-4 pt-0 text-neutral-700 dark:text-neutral-300", className)}>{children}</div>
+  // forceMount keeps closed panels in the server HTML so crawlers can read every FAQ answer.
+  // Closed panels collapse via CSS; `invisible` also takes them out of the tab order and the
+  // accessibility tree. The transition lives on a child because Radix zeroes the Content
+  // element's transition-duration while it measures on every toggle.
+  <AccordionPrimitive.Content ref={ref} forceMount className="text-sm" {...props}>
+    <div className="grid grid-rows-[1fr] transition-[grid-template-rows,visibility] duration-200 ease-out motion-reduce:transition-none [[data-state=closed]>&]:invisible [[data-state=closed]>&]:grid-rows-[0fr]">
+      <div className="min-h-0 overflow-hidden">
+        <div className={cn("px-6 pb-4 pt-0 text-neutral-700 dark:text-neutral-300", className)}>{children}</div>
+      </div>
+    </div>
   </AccordionPrimitive.Content>
 ))
 

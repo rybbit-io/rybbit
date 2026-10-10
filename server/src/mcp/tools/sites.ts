@@ -45,7 +45,7 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
     {
       title: "List sites",
       description:
-        "List the organizations and sites this API key can access. Call this first: it resolves the numeric site_id used by site tools and the organization_id used by organization tools, and its role field shows the key's role per organization (write tools need member access; site/org management needs admin or owner).",
+        "List the organizations and sites this API key can access. Call this first: it resolves the numeric site_id used by site tools and the organization_id used by organization tools, and its role field shows the key's role per organization (report-building tools need member or above, site configuration needs editor, site creation/deletion and member management need admin; site grants and teams can raise the role on individual sites).",
       inputSchema: {},
       outputSchema: listSitesOutput,
       annotations: readOnly,
@@ -127,7 +127,7 @@ export function registerSiteTools(server: McpServer, api: RybbitApiClient, guard
     {
       title: "Update site configuration",
       description:
-        "Update a site's settings; only the fields you pass are changed. Requires the API key's user to be an org admin or owner. Use get_site first to see current values.",
+        "Update a site's settings; only the fields you pass are changed. Requires the API key's user to hold the editor role or above on the site. Use get_site first to see current values.",
       inputSchema: {
         site_id: siteIdInput,
         name: z.string().optional(),

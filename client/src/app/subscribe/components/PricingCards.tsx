@@ -1,6 +1,8 @@
 "use client";
 
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { PricingCard } from "@/components/pricing/PricingCard";
+import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "@/components/ui/sonner";
 import { authClient } from "@/lib/auth";
@@ -19,6 +21,7 @@ import {
 } from "./utils";
 
 import { CheckoutModal } from "@/components/subscription/components/CheckoutModal";
+import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 
@@ -33,6 +36,9 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [showTestPlan, setShowTestPlan] = useState(false);
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
   const { data: activeOrg } = authClient.useActiveOrganization();
+  const { data: subscription } = useStripeSubscription();
+  // Checkout skips the trial for an organization that already had a subscription.
+  const subscribeLabel = subscription?.trialEligible === false ? t("Subscribe") : t("Start free trial");
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -182,7 +188,8 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
       <div className="max-w-[1300px] mx-auto">
         {/* Shared controls section */}
         <div className="max-w-xl mx-auto mb-8">
-          <div className="flex justify-between mb-6 items-center">
+          {/* Wraps: on narrow screens the billing toggle drops under the count. */}
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-3 mb-6 items-center">
             <div>
               <h3 className="font-semibold mb-2">{t("Monthly pageviews")}</h3>
               <div className="text-3xl font-bold text-emerald-400">
@@ -190,35 +197,22 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
               </div>
             </div>
             <div className="flex flex-col items-end">
-              {/* Billing toggle */}
-              <div className="relative flex items-center">
-                <div className="flex bg-neutral-150 dark:bg-neutral-850 border border-neutral-250 dark:border-neutral-750 rounded-full p-1 text-sm">
-                  <button
-                    onClick={() => setIsAnnual(false)}
-                    className={cn(
-                      "px-3 py-1 rounded-full transition-colors cursor-pointer",
-                      !isAnnual
-                        ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                        : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
-                    )}
-                  >
-                    {t("Monthly")}
-                  </button>
-                  <button
-                    onClick={() => setIsAnnual(true)}
-                    className={cn(
-                      "px-3 py-1 rounded-full transition-colors cursor-pointer",
-                      isAnnual
-                        ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                        : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
-                    )}
-                  >
-                    {t("Annual")}
-                  </button>
-                </div>
-                <span className="absolute -top-3 -right-12 text-xs text-white bg-emerald-500 border border-emerald-500 rounded-full px-2 py-0.5 whitespace-nowrap">
+              {/* Billing toggle. The savings chip sits beside it so it never
+                  covers a segment: emerald while Annual is picked, neutral
+                  otherwise. */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <SegmentedControl
+                  aria-label={t("Billing period")}
+                  options={[
+                    { value: "monthly", label: t("Monthly") },
+                    { value: "annual", label: t("Annual") },
+                  ]}
+                  value={isAnnual ? "annual" : "monthly"}
+                  onValueChange={value => setIsAnnual(value === "annual")}
+                />
+                <Badge variant={isAnnual ? "success" : "secondary"} className="whitespace-nowrap">
                   {t("4 months free")}
-                </span>
+                </Badge>
               </div>
             </div>
           </div>
@@ -256,7 +250,7 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
             annualPrice={standardAnnualPrice}
             isAnnual={isAnnual}
             isCustomTier={isCustomTier}
-            buttonText={isLoading ? t("Processing...") : isCustomTier ? t("Contact us") : t("Start free trial")}
+            buttonText={isLoading ? t("Processing...") : isCustomTier ? t("Contact us") : subscribeLabel}
             features={STANDARD_FEATURES}
             onClick={() => handleSubscribe("standard")}
             disabled={isLoading}
@@ -268,7 +262,7 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
             monthlyPrice={proMonthlyPrice}
             annualPrice={proAnnualPrice}
             isAnnual={isAnnual}
-            buttonText={isLoading ? t("Processing...") : isCustomTier ? t("Contact us") : t("Start free trial")}
+            buttonText={isLoading ? t("Processing...") : isCustomTier ? t("Contact us") : subscribeLabel}
             features={PRO_FEATURES}
             recommended={true}
             onClick={() => handleSubscribe("pro")}

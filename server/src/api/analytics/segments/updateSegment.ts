@@ -34,7 +34,7 @@ export async function updateSegment(
       return reply.status(404).send({ error: "Segment not found" });
     }
 
-    const actor = await resolveSegmentActor(request, siteId, loaded.organizationId);
+    const actor = await resolveSegmentActor(request, siteId, loaded.organizationId, { forWrite: true });
     if (!canReadSegment(loaded.segment, actor)) {
       return reply.status(404).send({ error: "Segment not found" });
     }
@@ -43,7 +43,7 @@ export async function updateSegment(
     }
 
     const becomesOrgWide = body.scope === "organization" && loaded.segment.siteId !== null;
-    if (becomesOrgWide && !actor.isAdmin) {
+    if (becomesOrgWide && !actor.canManage) {
       return reply.status(403).send({ error: "Only organization admins can share a segment with every site" });
     }
 

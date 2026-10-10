@@ -4,6 +4,8 @@
 # emitting into a dist the context no longer carries.
 .git
 **/node_modules
+**/.env
+**/.env.*
 **/*.tsbuildinfo
 client/.next
 server/dist

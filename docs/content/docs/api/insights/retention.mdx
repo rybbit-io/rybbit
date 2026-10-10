@@ -17,6 +17,8 @@ GET /api/sites/:site/retention
 
 Returns cohort-based retention analysis data. Users are grouped into cohorts based on their first visit, and retention is tracked over subsequent time periods.
 
+A user joins a cohort only when the requested time range holds their first visit: anyone seen in the 90 days before the range starts is a returning visitor and is left out. Returns are counted up to the end of the range. Filters select users by their first visit; any later activity counts as a return.
+
 ### Path Parameters
 
 <TypeTable
@@ -31,21 +33,25 @@ Returns cohort-based retention analysis data. Users are grouped into cohorts bas
 
 ### Query Parameters
 
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
 <TypeTable
   type={{
     mode: {
-      description: 'Retention period granularity',
+      description: 'Retention period granularity. Weeks start on Monday, in the requested time zone',
       type: 'string',
       typeDescription: '"day" | "week"',
       default: 'week',
     },
     range: {
-      description: 'Number of days to analyze (7-365)',
+      description: 'Number of trailing days to analyze (7-365). Only used when no time range is sent',
       type: 'number',
       default: 90,
     },
   }}
 />
+
+A range longer than 53 weeks (weekly) or 92 days (daily) is cut to its most recent periods, and `truncated` is `true` in the response.
 
 ### Response
 
@@ -79,6 +85,42 @@ Returns cohort-based retention analysis data. Users are grouped into cohorts bas
       description: 'Time range in days',
       type: 'number',
     },
+    periods: {
+      description: 'First day of every cohort period in the range, oldest first, including periods with no new users',
+      type: 'string[]',
+    },
+    windowStart: {
+      description: 'Start of the analyzed range (UTC, inclusive)',
+      type: 'string',
+    },
+    windowEnd: {
+      description: 'End of the analyzed range (UTC, exclusive). Never later than now',
+      type: 'string',
+    },
+    timeZone: {
+      description: 'Time zone the periods are counted in',
+      type: 'string',
+    },
+    firstPeriodPartial: {
+      description: 'The range starts partway through its first period, so that cohort is missing its first days',
+      type: 'boolean',
+    },
+    lastPeriodPartial: {
+      description: 'The range ends partway through its last period, so figures for that period are not final',
+      type: 'boolean',
+    },
+    lastPeriodInProgress: {
+      description: 'The last period is partial because it is still going on',
+      type: 'boolean',
+    },
+    truncated: {
+      description: 'The range held more periods than the limit and was cut to the most recent ones',
+      type: 'boolean',
+    },
+    lookbackDays: {
+      description: 'Days before the range in which a visit makes a user returning rather than new',
+      type: 'number',
+    },
   }}
 />
 
@@ -93,7 +135,12 @@ Returns cohort-based retention analysis data. Users are grouped into cohorts bas
     percentages: {
       description: 'Retention percentages for each period (index 0 = period 0, etc.)',
       type: '(number | null)[]',
-      typeDescription: 'null indicates no data for that period yet',
+      typeDescription: 'null indicates a period after the end of the range; 0 means nobody came back',
+    },
+    counts: {
+      description: 'Retained users for each period (index 0 is the cohort size)',
+      type: '(number | null)[]',
+      typeDescription: 'null indicates a period after the end of the range',
     },
   }}
 />
@@ -222,31 +269,47 @@ var data = await response.Content.ReadAsStringAsync();
     "cohorts": {
       "2024-01-01": {
         "size": 1250,
-        "percentages": [100, 45.2, 32.1, 28.5, 25.3, 22.1]
+        "percentages": [100, 45.2, 32.08, 28.48, 12.4],
+        "counts": [1250, 565, 401, 356, 155]
       },
       "2024-01-08": {
         "size": 1420,
-        "percentages": [100, 48.5, 35.2, 30.1, 26.8, null]
+        "percentages": [100, 48.52, 35.21, 14.08, null],
+        "counts": [1420, 689, 500, 200, null]
       },
       "2024-01-15": {
         "size": 1380,
-        "percentages": [100, 46.8, 33.5, 29.2, null, null]
+        "percentages": [100, 46.81, 15.94, null, null],
+        "counts": [1380, 646, 220, null, null]
       },
       "2024-01-22": {
         "size": 1510,
-        "percentages": [100, 44.2, 31.8, null, null, null]
+        "percentages": [100, 17.02, null, null, null],
+        "counts": [1510, 257, null, null, null]
       },
       "2024-01-29": {
-        "size": 1290,
-        "percentages": [100, 47.1, null, null, null, null]
+        "size": 540,
+        "percentages": [100, null, null, null, null],
+        "counts": [540, null, null, null, null]
       }
     },
-    "maxPeriods": 5,
+    "maxPeriods": 4,
     "mode": "week",
-    "range": 90
+    "range": 31,
+    "periods": ["2024-01-01", "2024-01-08", "2024-01-15", "2024-01-22", "2024-01-29"],
+    "windowStart": "2024-01-01T00:00:00.000Z",
+    "windowEnd": "2024-01-31T14:05:00.000Z",
+    "timeZone": "UTC",
+    "firstPeriodPartial": false,
+    "lastPeriodPartial": true,
+    "lastPeriodInProgress": true,
+    "truncated": false,
+    "lookbackDays": 90
   }
 }
 ```
+
+In this example the range ends on a Wednesday, so the week of Jan 29 is in progress: the last value of every cohort (the one that falls in that week) is not final.
 
 ### Understanding Retention Data
 
@@ -257,7 +320,7 @@ The retention data shows how many users from each cohort return in subsequent pe
 - **Period 2**: Users who returned 2 weeks later
 - etc.
 
-A `null` value indicates that period hasn't occurred yet for that cohort.
+A `null` value indicates that the period falls after the end of the range for that cohort. A value of `0` means the period has been observed and nobody came back.
 
 ### Visualization Example
 

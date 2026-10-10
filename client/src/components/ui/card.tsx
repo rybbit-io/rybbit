@@ -3,7 +3,6 @@
 import { cn } from "@/lib/utils";
 import { Zoomies } from "ldrs/react";
 import "ldrs/react/Zoomies.css";
-import { useTheme } from "next-themes";
 import * as React from "react";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
@@ -18,17 +17,22 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
 ));
 Card.displayName = "Card";
 
+// The color comes from CSS (currentColor + dark:), so it follows the resolved theme class. Reading
+// next-themes' `theme` returned "system" for most users and painted the light color in dark mode.
+// Under reduced motion the sweeping bar is swapped for a static one, in CSS so the markup never branches.
 const CardLoader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => {
-    const { theme } = useTheme();
-    const loaderColor = theme === "dark" ? "hsl(var(--neutral-400))" : "hsl(var(--neutral-200))";
-
-    return (
-      <div ref={ref} className={cn("mt-[-15px] absolute top-0 left-0 w-full", className)} {...props}>
-        <Zoomies size={1400} stroke="3" bg-opacity="0.1" speed="1.4" color={loaderColor} />
-      </div>
-    );
-  }
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("mt-[-15px] absolute top-0 left-0 w-full text-neutral-200 dark:text-neutral-400", className)}
+      {...props}
+    >
+      <span className="motion-reduce:hidden">
+        <Zoomies size={1400} stroke="3" bg-opacity="0.1" speed="1.4" color="currentColor" />
+      </span>
+      <span className="hidden motion-reduce:inline-block h-[3px] w-full bg-current opacity-50" />
+    </div>
+  )
 );
 CardLoader.displayName = "CardLoader";
 

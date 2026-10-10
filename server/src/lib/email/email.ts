@@ -5,6 +5,7 @@ import { ApproachingLimitEmail } from "./templates/ApproachingLimitEmail.js";
 import { InvitationEmail } from "./templates/InvitationEmail.js";
 import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
 import { OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
+import { SiteTransferEmail } from "./templates/SiteTransferEmail.js";
 import { WeeklyReportEmail } from "./templates/WeeklyReportEmail.js";
 import type { SiteReport } from "../../services/weekyReports/weeklyReportTypes.js";
 import { signExpiringPayload } from "../signedToken.js";
@@ -155,6 +156,17 @@ export const sendInvitationEmail = async (
   await sendEmail(email, "You're Invited to Join an Organization on Rybbit", html);
 };
 
+export const sendSiteTransferEmail = async (props: {
+  email: string;
+  sentBy: string;
+  siteDomain: string;
+  organizationName: string;
+  transferLink: string;
+}) => {
+  const html = await render(SiteTransferEmail(props));
+  await sendEmail(props.email, `${props.siteDomain} is being transferred to you on Rybbit`, html);
+};
+
 export const sendLimitExceededEmail = async (
   email: string,
   organizationName: string,
@@ -239,16 +251,6 @@ Bill`;
     });
   } catch (error) {
     console.error("Failed to send welcome email:", error);
-  }
-};
-
-// Cancel a scheduled email
-export const cancelScheduledEmail = async (emailId: string): Promise<void> => {
-  if (!resend) return;
-  try {
-    await resend.emails.cancel(emailId);
-  } catch (error) {
-    console.error("Failed to cancel scheduled email:", error);
   }
 };
 

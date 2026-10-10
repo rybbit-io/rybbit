@@ -96,6 +96,7 @@ function LoginPage() {
                   id="email"
                   label={t("Email")}
                   type="email"
+                  autoComplete="email"
                   placeholder="example@email.com"
                   required
                   value={email}
@@ -106,6 +107,7 @@ function LoginPage() {
                   id="password"
                   label={t("Password")}
                   type="password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   required
                   value={password}

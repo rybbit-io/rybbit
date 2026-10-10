@@ -22,15 +22,15 @@ export async function createSegment(
       return reply.status(404).send({ error: "Site not found" });
     }
 
-    // Site access is enforced by the requireSiteAccess preHandler; the actor
-    // is still resolved because org-wide scope is an admin decision.
-    const actor = await resolveSegmentActor(request, siteId, organizationId);
+    // The route guard requires segments:write on the site; the actor is still
+    // resolved because org-wide scope needs segments:manage in the organization.
+    const actor = await resolveSegmentActor(request, siteId, organizationId, { forWrite: true });
     if (!actor.hasSiteAccess) {
       return reply.status(403).send({ error: "Forbidden" });
     }
 
     const orgWide = body.scope === "organization";
-    if (orgWide && !actor.isAdmin) {
+    if (orgWide && !actor.canManage) {
       return reply.status(403).send({ error: "Only organization admins can create organization-wide segments" });
     }
 

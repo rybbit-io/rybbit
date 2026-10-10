@@ -63,7 +63,7 @@ export function AnnotationFormDialog({
   const t = useExtracted();
   const { site } = useStore();
   const timezone = getTimezone();
-  const { isAdmin } = useAnnotationPermissions();
+  const { canManageAll } = useAnnotationPermissions();
   const createAnnotation = useCreateAnnotation();
   const updateAnnotation = useUpdateAnnotation();
 
@@ -322,7 +322,7 @@ export function AnnotationFormDialog({
                   </FormItem>
                 )}
               />
-              {isAdmin && (
+              {canManageAll && (
                 <FormField
                   control={form.control}
                   name="scope"

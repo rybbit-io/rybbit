@@ -1,10 +1,11 @@
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { PlanRow } from "@/components/subscription/components/PlanRow";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 
-import { cn } from "../../../lib/utils";
 import { EVENT_TIERS, formatEventTier } from "../../subscribe/components/utils";
 
 interface PlanStepProps {
@@ -16,6 +17,8 @@ interface PlanStepProps {
   setSelectedPlan: (v: "standard" | "pro") => void;
   onSubscribe: () => void;
   isLoading: boolean;
+  // False for an organization that already had a subscription: checkout charges straight away.
+  trialEligible?: boolean;
 }
 
 export function PlanStep({
@@ -27,43 +30,34 @@ export function PlanStep({
   setSelectedPlan,
   onSubscribe,
   isLoading,
+  trialEligible = true,
 }: PlanStepProps) {
   const t = useExtracted();
   const eventLimit = EVENT_TIERS[eventLimitIndex];
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      {/* Wraps: when the heading, toggle and chip don't fit on one line, the
+          toggle group drops under the heading instead of crowding it. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
         <h2 className="text-2xl font-semibold">{t("Choose your plan")}</h2>
-        {/* Monthly/Annual toggle */}
-        <div className="relative flex bg-neutral-150 dark:bg-neutral-850 border border-neutral-250 dark:border-neutral-750 rounded-full p-0.5 text-sm">
-          <button
-            onClick={() => setIsAnnual(false)}
-            className={cn(
-              "px-2.5 py-1 rounded-full transition-colors cursor-pointer",
-              !isAnnual
-                ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
-            )}
-          >
-            {t("Monthly")}
-          </button>
-          <button
-            onClick={() => setIsAnnual(true)}
-            className={cn(
-              "px-2.5 py-1 rounded-full transition-colors cursor-pointer",
-              isAnnual
-                ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
-            )}
-          >
-            {t("Annual")}
-          </button>
-          {isAnnual && (
-            <span className="absolute -top-3 -right-12 text-[10px] text-white bg-emerald-500 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-              {t("4 months free")}
-            </span>
-          )}
+        {/* Monthly/Annual toggle. The savings chip sits beside it so it never
+            covers a segment, and it keeps its place in both states so the
+            toggle never shifts under the pointer: emerald while Annual is
+            picked, neutral otherwise. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <SegmentedControl
+            aria-label={t("Billing period")}
+            options={[
+              { value: "monthly", label: t("Monthly") },
+              { value: "annual", label: t("Annual") },
+            ]}
+            value={isAnnual ? "annual" : "monthly"}
+            onValueChange={value => setIsAnnual(value === "annual")}
+          />
+          <Badge variant={isAnnual ? "success" : "secondary"} className="whitespace-nowrap">
+            {t("4 months free")}
+          </Badge>
         </div>
       </div>
       <div className="space-y-6">
@@ -141,7 +135,7 @@ export function PlanStep({
               disabled={isLoading}
               variant="success"
             >
-              {isLoading ? t("Loading...") : t("Start free trial")}
+              {isLoading ? t("Loading...") : trialEligible ? t("Start free trial") : t("Continue to checkout")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
@@ -149,7 +143,9 @@ export function PlanStep({
           {/* Footer text */}
           {eventLimit !== "Custom" && (
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("Your card won't be charged until your 7-day trial has ended. You can cancel anytime.")}
+              {trialEligible
+                ? t("Your card won't be charged until your 7-day trial has ended. You can cancel anytime.")
+                : t("You'll be charged when you subscribe. You can cancel anytime.")}
             </p>
           )}
         </div>

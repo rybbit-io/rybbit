@@ -30,7 +30,7 @@ Sends an invitation email inviting a user to join an organization with a given r
       required: true,
     },
     role: {
-      description: 'Role(s) to assign. One of `owner`, `admin`, `member` (or an array of roles).',
+      description: 'Role to assign: `owner`, `admin`, `editor`, `member` or `viewer`. You cannot assign a role above your own.',
       type: 'string | string[]',
       required: true,
     },
@@ -50,7 +50,7 @@ Sends an invitation email inviting a user to join an organization with a given r
       required: false,
     },
     hasRestrictedSiteAccess: {
-      description: 'Rybbit extension: restrict the invited member to specific sites. Only valid when role is `member`.',
+      description: 'Rybbit extension: restrict the invited member to specific sites. Not valid for `admin` or `owner`.',
       type: 'boolean',
       required: false,
     },
@@ -59,10 +59,16 @@ Sends an invitation email inviting a user to join an organization with a given r
       type: 'number[]',
       required: false,
     },
+    siteRole: {
+      description: "Rybbit extension: raises the member's role on those sites. Never lowers it.",
+      type: 'string',
+      typeDescription: '"editor" | "member" | "viewer" | null',
+      required: false,
+    },
   }}
 />
 
-<Callout>`hasRestrictedSiteAccess` and `siteIds` are Rybbit-specific extensions to the invitation. Site-access restrictions can only be applied to invitations with the `member` role.</Callout>
+<Callout>`hasRestrictedSiteAccess`, `siteIds` and `siteRole` are Rybbit-specific extensions to the invitation. Site-access restrictions cannot be applied to `admin` or `owner` invitations, who always reach every site.</Callout>
 
 ### Response
 

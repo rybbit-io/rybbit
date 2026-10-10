@@ -1,31 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import type { PageTitleItem } from "@/api/analytics/endpoints";
-import { getPageItemFilters, getPageItemKey } from "./pageIdentity";
-
-const pageItem = (overrides: Partial<PageTitleItem> = {}): PageTitleItem => ({
-  value: "Pricing",
-  pathname: "/pricing",
-  count: 1,
-  percentage: 100,
-  ...overrides,
-});
+import { formatSection, getPageFilters, getRowId, getTrendKeys } from "./pageIdentity";
 
 describe("page identity", () => {
-  it("identifies and filters titled rows by page title", () => {
-    const item = pageItem();
-
-    expect(getPageItemKey(item)).toBe("title:Pricing");
-    expect(getPageItemFilters(item)).toEqual([{ parameter: "page_title", value: ["Pricing"], type: "equals" }]);
+  it("tells a page from the section of the same name", () => {
+    expect(getRowId({ kind: "page", key: "/docs" })).toBe("page:/docs");
+    expect(getRowId({ kind: "section", key: "/docs" })).toBe("section:/docs");
   });
 
-  it("identifies and filters untitled rows by pathname", () => {
-    const item = pageItem({ value: "", pathname: "/docs/getting-started" });
+  it("writes sections with a trailing slash", () => {
+    expect(formatSection("/docs")).toBe("/docs/");
+    expect(formatSection("/")).toBe("/");
+  });
 
-    expect(getPageItemKey(item)).toBe("pathname:/docs/getting-started");
-    expect(getPageItemFilters(item)).toEqual([
-      { parameter: "page_title", value: [], type: "is_null" },
-      { parameter: "pathname", value: ["/docs/getting-started"], type: "equals" },
+  it("filters by path, or by entry or exit page on those lists", () => {
+    expect(getPageFilters("/pricing", "all")).toEqual([{ parameter: "pathname", value: ["/pricing"], type: "equals" }]);
+    expect(getPageFilters("/pricing", "entry")).toEqual([
+      { parameter: "entry_page", value: ["/pricing"], type: "equals" },
     ]);
+    expect(getPageFilters("/pricing", "exit")).toEqual([
+      { parameter: "exit_page", value: ["/pricing"], type: "equals" },
+    ]);
+  });
+
+  it("splits a batch of rows into paths and sections", () => {
+    expect(
+      getTrendKeys([
+        { kind: "page", key: "/" },
+        { kind: "section", key: "/docs" },
+        { kind: "page", key: "/pricing" },
+      ])
+    ).toEqual({ paths: ["/", "/pricing"], sections: ["/docs"] });
   });
 });

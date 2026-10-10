@@ -1,10 +1,23 @@
-import { useState } from "react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { BACKEND_URL } from "@/lib/const";
 import { cn } from "../lib/utils";
 
 export function Favicon({ domain, className }: { domain: string; className?: string }) {
-  const [imageError, setImageError] = useState(false);
-  const firstLetter = domain.charAt(0).toUpperCase();
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const src = `${BACKEND_URL}/favicon?domain=${encodeURIComponent(domain)}&v=${refreshVersion}`;
 
+  useEffect(() => {
+    const timer = setInterval(() => setRefreshVersion(Date.now()), 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return <FaviconImage key={src} src={src} domain={domain} className={className} />;
+}
+
+function FaviconImage({ src, domain, className }: { src: string; domain: string; className?: string }) {
+  const [imageError, setImageError] = useState(false);
   if (imageError) {
     return (
       <div
@@ -13,14 +26,14 @@ export function Favicon({ domain, className }: { domain: string; className?: str
           className ?? "w-4 h-4"
         )}
       >
-        {firstLetter}
+        {domain.charAt(0).toUpperCase()}
       </div>
     );
   }
 
   return (
     <img
-      src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
+      src={src}
       className={cn(className ?? "w-4 h-4")}
       alt={`Favicon for ${domain}`}
       onError={() => setImageError(true)}

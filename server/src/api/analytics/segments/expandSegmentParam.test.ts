@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   loaded: null as null | { segment: any; organizationId: string },
-  actor: { userId: null as string | null, hasSiteAccess: false, isAdmin: false },
+  actor: { userId: null as string | null, hasSiteAccess: false, canManage: false },
 }));
 
 vi.mock("./segmentAccess.js", async () => {
@@ -46,10 +46,17 @@ function run(
 
 beforeEach(() => {
   state.loaded = {
-    segment: { segmentId: 7, siteId: 1, organizationId: "org_1", userId: "u", isPublic: false, filters: [mobile, germany] },
+    segment: {
+      segmentId: 7,
+      siteId: 1,
+      organizationId: "org_1",
+      userId: "u",
+      isPublic: false,
+      filters: [mobile, germany],
+    },
     organizationId: "org_1",
   };
-  state.actor = { userId: "u", hasSiteAccess: true, isAdmin: false };
+  state.actor = { userId: "u", hasSiteAccess: true, canManage: false };
 });
 
 describe("mergeSegmentFilters", () => {
@@ -94,7 +101,7 @@ describe("expandSegmentParam", () => {
   });
 
   it("hides a private segment from a public-dashboard viewer but expands a public one", async () => {
-    state.actor = { userId: null, hasSiteAccess: false, isAdmin: false };
+    state.actor = { userId: null, hasSiteAccess: false, canManage: false };
     const privateResult = await run({ segment_id: "7" });
     expect(privateResult.reply.statusCode).toBe(404);
 
@@ -110,7 +117,11 @@ describe("expandSegmentParam", () => {
     expect(denied.reply.statusCode).toBe(403);
     expect(denied.reply.payload).toEqual({ error: "Insufficient scope", required: "segments:read" });
 
-    const allowed = await run({ segment_id: "7" }, { siteId: "1" }, { bearerAuth: true, bearerStatements: { segments: ["read"] } });
+    const allowed = await run(
+      { segment_id: "7" },
+      { siteId: "1" },
+      { bearerAuth: true, bearerStatements: { segments: ["read"] } }
+    );
     expect(allowed.reply.status).not.toHaveBeenCalled();
 
     const legacy = await run({ segment_id: "7" }, { siteId: "1" }, { bearerAuth: true, bearerStatements: null });

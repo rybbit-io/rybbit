@@ -14,6 +14,17 @@ export {
 } from "./sites";
 export type { SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse, UnclaimedSiteResponse } from "./sites";
 
+// Site transfer endpoints
+export {
+  acceptSiteTransfer,
+  cancelSiteTransfer,
+  createSiteTransfer,
+  declineSiteTransfer,
+  fetchIncomingSiteTransfer,
+  fetchSiteTransfer,
+} from "./siteTransfers";
+export type { IncomingSiteTransfer, SiteTransfer } from "./siteTransfers";
+
 // Organizations endpoints
 export {
   getUserOrganizations,

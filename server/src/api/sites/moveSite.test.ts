@@ -6,11 +6,15 @@ const state = vi.hoisted(() => ({
   targetOrg: null as Record<string, unknown> | null,
   targetMembership: null as { role: string } | null,
   targetOrgSiteCount: 0,
+  // The caller's role in the site's current organization, re-checked under the site lock.
+  sourceRole: "admin" as string | null,
+  // The site's organization as the lock reads it (a concurrent move changes it).
+  lockedOrganizationId: "org_source" as string | null,
 }));
 
 const mocks = vi.hoisted(() => ({
   getSubscriptionInner: vi.fn(),
-  applySiteMove: vi.fn(async () => {}),
+  applySiteMove: vi.fn(async () => true),
 }));
 
 // The membership check now goes through the shared Site Access module.
@@ -18,9 +22,19 @@ vi.mock("../../lib/access.js", async importOriginal => {
   const actual = await importOriginal<typeof import("../../lib/access.js")>();
   return {
     ...actual,
-    getOrgMembership: vi.fn(async () => state.targetMembership as any),
+    // The target check, and the re-check against the site's current (source)
+    // organization under the site lock.
+    getOrgMembership: vi.fn(async (_userId: string, organizationId: string) =>
+      organizationId === "org_source"
+        ? state.sourceRole && { role: state.sourceRole, hasRestrictedSiteAccess: false }
+        : (state.targetMembership as any)
+    ),
   };
 });
+
+vi.mock("../../lib/auth-utils.js", () => ({
+  getIsUserAdmin: vi.fn(async () => false),
+}));
 
 vi.mock("../../db/postgres/postgres.js", () => ({
   db: {
@@ -58,6 +72,10 @@ vi.mock("../stripe/getSubscription.js", () => ({
 vi.mock("./applySiteMove.js", () => ({
   applySiteMove: mocks.applySiteMove,
   invalidateSiteMoveAccess: vi.fn(async () => {}),
+  // The site row lock reads the organization the site is in at that moment.
+  lockSiteOwnership: vi.fn(async () =>
+    state.site ? { organizationId: state.lockedOrganizationId, domain: "example.com" } : null
+  ),
 }));
 
 import { moveSite } from "./moveSite.js";
@@ -95,6 +113,8 @@ beforeEach(() => {
   state.targetOrg = { id: "org_target", name: "Target Org" };
   state.targetMembership = { role: "admin" };
   state.targetOrgSiteCount = 0;
+  state.sourceRole = "admin";
+  state.lockedOrganizationId = "org_source";
   mocks.getSubscriptionInner.mockResolvedValue({ planName: "pro-1m", status: "active", siteLimit: null });
 });
 
@@ -156,6 +176,28 @@ describe("moveSite — target-organization authorization (sole gate)", () => {
 });
 
 describe("moveSite — target-organization site limit (cloud)", () => {
+  it("re-checks the caller against the site's organization under the site lock", async () => {
+    // The guard passed, but by the time the lock is held the caller is no
+    // longer an admin where the site is.
+    state.sourceRole = "member";
+    const reply = replyStub();
+
+    await moveSite(makeRequest(), reply);
+
+    expect(reply.statusCode).toBe(403);
+    expect(mocks.applySiteMove).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the site moved between the guard and the lock", async () => {
+    state.lockedOrganizationId = "org_elsewhere";
+    const reply = replyStub();
+
+    await moveSite(makeRequest(), reply);
+
+    expect(reply.statusCode).toBe(409);
+    expect(mocks.applySiteMove).not.toHaveBeenCalled();
+  });
+
   it("rejects the move when the target org is at its site limit", async () => {
     mocks.getSubscriptionInner.mockResolvedValue({ planName: "standard-250k", status: "active", siteLimit: 5 });
     state.targetOrgSiteCount = 5;

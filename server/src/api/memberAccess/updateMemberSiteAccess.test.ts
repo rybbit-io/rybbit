@@ -49,6 +49,7 @@ CREATE TABLE "member_site_access" (
   "id" serial PRIMARY KEY,
   "member_id" text NOT NULL REFERENCES "member"("id") ON DELETE CASCADE,
   "site_id" integer NOT NULL REFERENCES "sites"("site_id") ON DELETE CASCADE,
+  "role" text,
   "created_at" timestamp NOT NULL DEFAULT now(),
   "created_by" text REFERENCES "user"("id") ON DELETE SET NULL,
   UNIQUE ("member_id", "site_id")
@@ -130,7 +131,7 @@ describe("updateMemberSiteAccess", () => {
     expect(reply.body).toEqual({
       memberId: "membership_member",
       hasRestrictedSiteAccess: true,
-      siteAccess: [{ siteId: 2, name: "One B", domain: "b.example.com" }],
+      siteAccess: [{ siteId: 2, role: null, name: "One B", domain: "b.example.com" }],
     });
     expect(await rows(`SELECT has_restricted_site_access FROM member WHERE id = 'membership_member'`)).toEqual([
       { has_restricted_site_access: true },
@@ -148,13 +149,65 @@ describe("updateMemberSiteAccess", () => {
     await updateMemberSiteAccess(requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [1, 2] } }), reply);
 
     expect(reply.body.siteAccess).toEqual([
-      { siteId: 1, name: "One A", domain: "a.example.com" },
-      { siteId: 2, name: "One B", domain: "b.example.com" },
+      { siteId: 1, role: null, name: "One A", domain: "a.example.com" },
+      { siteId: 2, role: null, name: "One B", domain: "b.example.com" },
     ]);
     expect(await rows(`SELECT site_id FROM member_site_access ORDER BY site_id`)).toEqual([
       { site_id: 1 },
       { site_id: 2 },
     ]);
+  });
+
+  it("stores the role the grants carry", async () => {
+    const reply = replyStub();
+
+    await updateMemberSiteAccess(
+      requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [2], siteRole: "editor" } }),
+      reply
+    );
+
+    expect(reply.statusCode).toBe(200);
+    expect(reply.body.siteAccess).toEqual([{ siteId: 2, role: "editor", name: "One B", domain: "b.example.com" }]);
+    expect(await rows(`SELECT site_id, role FROM member_site_access`)).toEqual([{ site_id: 2, role: "editor" }]);
+  });
+
+  it("keeps the role the grants carry when the request doesn't mention it", async () => {
+    await (pgClient as any).exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'membership_member'`);
+    const reply = replyStub();
+
+    // Site 1 stays, site 2 is new: both carry the member's existing site role.
+    await updateMemberSiteAccess(requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [1, 2] } }), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(await rows(`SELECT site_id, role FROM member_site_access ORDER BY site_id`)).toEqual([
+      { site_id: 1, role: "editor" },
+      { site_id: 2, role: "editor" },
+    ]);
+  });
+
+  it("clears the site role when the request sends null", async () => {
+    await (pgClient as any).exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'membership_member'`);
+    const reply = replyStub();
+
+    await updateMemberSiteAccess(
+      requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [1], siteRole: null } }),
+      reply
+    );
+
+    expect(await rows(`SELECT site_id, role FROM member_site_access`)).toEqual([{ site_id: 1, role: null }]);
+  });
+
+  it("refuses a grant role above editor", async () => {
+    const reply = replyStub();
+
+    await updateMemberSiteAccess(
+      requestStub({ body: { hasRestrictedSiteAccess: true, siteIds: [2], siteRole: "admin" } }),
+      reply
+    );
+
+    expect(reply.statusCode).toBe(400);
+    // The existing grant is untouched.
+    expect(await rows(`SELECT site_id, role FROM member_site_access`)).toEqual([{ site_id: 1, role: null }]);
   });
 
   it("can restrict a member to no sites", async () => {
@@ -230,6 +283,21 @@ describe("updateMemberSiteAccess", () => {
       { id: "membership_owner", has_restricted_site_access: false },
     ]);
     expect(mocks.invalidateSitesAccessCache).not.toHaveBeenCalled();
+  });
+
+  it("clears a restriction left over from before a promotion", async () => {
+    await (pgClient as any).exec(`
+      UPDATE member SET role = 'admin' WHERE id = 'membership_member';
+    `);
+    const reply = replyStub();
+
+    await updateMemberSiteAccess(requestStub({ body: { hasRestrictedSiteAccess: false, siteIds: [] } }), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(await rows(`SELECT has_restricted_site_access FROM member WHERE id = 'membership_member'`)).toEqual([
+      { has_restricted_site_access: false },
+    ]);
+    expect(await rows(`SELECT * FROM member_site_access`)).toEqual([]);
   });
 
   it("rejects foreign and nonexistent site IDs without changing existing access", async () => {

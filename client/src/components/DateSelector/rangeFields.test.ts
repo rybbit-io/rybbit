@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { describe, expect, it } from "vitest";
 import {
   describeBounds,
+  describeComparisonWindow,
   rangeFieldsForTime,
   timeFromRangeFields,
   timeFromSelectedDays,
@@ -265,5 +266,29 @@ describe("describeBounds", () => {
       end: DateTime.fromISO("2024-03-08T17:00", { zone: ZONE }),
     };
     expect(describeBounds(bounds)).toBe("Mar 8 – Mar 8");
+  });
+});
+
+describe("describeComparisonWindow", () => {
+  const march: Time = { mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" };
+
+  it("leaves the year out when the window ends in the same year as the period", () => {
+    const previous: Time = { mode: "range", startDate: "2024-03-01", endDate: "2024-03-07" };
+    expect(describeComparisonWindow(previous, march, ZONE)).toBe("Mar 1 – Mar 7");
+  });
+
+  it("names the year when the window ends in another one", () => {
+    const lastYear: Time = { mode: "range", startDate: "2023-03-08", endDate: "2023-03-14" };
+    expect(describeComparisonWindow(lastYear, march, ZONE)).toBe("Mar 8 – Mar 14, 2023");
+  });
+
+  it("has nothing to say without a window", () => {
+    expect(describeComparisonWindow(null, march, ZONE)).toBeNull();
+    expect(describeComparisonWindow({ mode: "all-time" }, march, ZONE)).toBeNull();
+  });
+
+  it("still describes the window when the period itself has no bounds", () => {
+    const custom: Time = { mode: "range", startDate: "2023-03-08", endDate: "2023-03-14" };
+    expect(describeComparisonWindow(custom, { mode: "all-time" }, ZONE)).toBe("Mar 8 – Mar 14");
   });
 });

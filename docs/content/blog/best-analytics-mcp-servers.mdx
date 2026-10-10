@@ -1,0 +1,163 @@
+---
+title: "Best Analytics MCP Servers in 2026: GA4, PostHog, Mixpanel"
+description: "Compare analytics MCP servers from Google Analytics, PostHog, Amplitude, Mixpanel, Clarity and more: hosting, auth, read/write access, limits and plans."
+keyword: "analytics mcp server"
+date: 2026-09-27
+tags: ["mcp", "ai", "comparisons", "tools"]
+author: Rybbit Team
+---
+
+An analytics MCP server connects an AI assistant (Claude, ChatGPT, Cursor, Codex and others) to your analytics through the Model Context Protocol. You ask "which pages lost the most traffic last week?" and the assistant calls the vendor's tools instead of you exporting a CSV. Most major analytics vendors now ship one, and they differ more than the name suggests. PostHog, Amplitude, Mixpanel, Contentsquare and Rybbit run hosted servers you connect with a URL and a login. Google Analytics and Microsoft Clarity ship local servers you install yourself, and both are read-only. Matomo's runs inside your own Matomo. Google Search Console has no official server, and Plausible's docs point to one built by Sentry.
+
+Disclosure: we build [Rybbit](/features/web-analytics), which has its own MCP server and is listed first. Every claim about the other servers comes from that vendor's own documentation or pricing pages (for the two community projects, their GitHub READMEs), linked inline and checked in September 2026. Tool counts are what each vendor's docs listed on the day we checked, and they change often.
+
+## Analytics MCP servers compared
+
+| Server | Hosting | Auth | Read / write | Standout | Plan needed |
+| --- | --- | --- | --- | --- | --- |
+| [Rybbit](#rybbit-mcp-server) | Hosted, or your own server if self-hosted | OAuth or scoped API key | Read + write (44 tools) | Read-only SQL and Search Console in one server | Any Cloud plan, from $19/mo; self-hosting free |
+| [Google Analytics](#google-analytics-ga4-mcp-server) | Local (Python) | Google Cloud credentials | Read only (7 tools) | Funnel and realtime reports | GA4 is free; needs a Google Cloud project |
+| [PostHog](#posthog-mcp-server) | Hosted (US/EU) | OAuth or personal API key | Read + write, optional read-only mode | 1,000+ tools: flags, experiments, SQL, replay | Free to connect; normal usage billing |
+| [Amplitude](#amplitude-mcp-server) | Hosted (US/EU) | OAuth 2.0 | Read + write (45 tools) | Edits charts, experiments and the tracking plan | All plans, including Free |
+| [Mixpanel](#mixpanel-mcp-server) | Hosted (US/EU/India) | OAuth or service account (beta) | Read + write (63 tools) | Lexicon and data-quality cleanup | All plans; older accounts need an admin to enable it |
+| [Google Search Console](#google-search-console-mcp) | No official server; community servers run locally | Your own Google Cloud OAuth client or service account | mcp-gsc: read + write | URL inspection and sitemaps (community) | Free, self-managed |
+| [Microsoft Clarity](#microsoft-clarity-mcp-server) | Local (Node.js) | Data Export API token | Read only (3 tools) | Lists session recordings | Free; 10 requests per project per day |
+| [Contentsquare (Hotjar)](#contentsquare-hotjar-mcp-server) | Hosted | OAuth | Read only for now | Funnel, journey and impact analysis | All plans; Free has 300 tool calls/mo |
+| [Matomo](#matomo-mcp-server) | Inside your Matomo | `token_auth` or OAuth 2.0 | Read; write if an admin allows it | Runs on your own infrastructure | Included in Cloud; GPL plugin on-premise |
+| [Plausible](#plausible-mcp-server) | Sentry-built: hosted or local | Stats API key | Read only (4 tools) | Period-over-period comparisons | Business plan (Stats API) |
+
+## Rybbit MCP server
+
+Rybbit is open-source, cookieless web and product analytics. Its [MCP server](/features/mcp) is hosted at `https://app.rybbit.io/api/mcp`, and self-hosted installations serve the same endpoint from their own domain. It has 44 tools: 28 read-only and 16 that write. The read tools cover traffic overviews and breakdowns, live visitors, custom events, JavaScript errors, Web Vitals, retention, [user journeys](/features/user-journeys), sessions and raw events. The write tools create and edit [goals](/features/goals), [funnels](/features/funnels), sites, members and teams, and [user profiles](/features/user-profiles), including GDPR erasure of one person's data.
+
+Two tools set it apart. `run_query` runs read-only ClickHouse SQL against a site-scoped events table, capped at 1,000 rows and 60 seconds of execution, for questions the fixed tools can't answer. And on Rybbit Cloud, once a site admin connects Google Search Console under Site settings > Integrations, `get_search_console_data` returns clicks, impressions, CTR and average position by query, page, country, device or date, with filters and up to 25,000 rows, through the same connection as your on-site data.
+
+Claude Code, Claude Desktop, Codex and opencode connect with OAuth. Other clients (Cursor, VS Code, anything that speaks Streamable HTTP) use an API key, which you can limit to `resource:action` scopes such as `analytics:read`; the tool list then shrinks to match. Every call re-runs the dashboard API's role checks and rate limits, and the delete tools carry the MCP destructive hint so well-behaved clients confirm first. The server contains no AI model and sends nothing to an AI provider on its own.
+
+The limits: the MCP server has no tools for feature flags, experiments, dashboards or [session replay](/features/session-replay), so an agent can't review recordings through it. The Search Console tools read Search Analytics only (no URL Inspection, sitemaps or indexing requests) and need Rybbit Cloud. The server comes with every Cloud plan: Standard from $19/month for 100k events, or Pro from $39/month with higher API rate limits, per the [pricing page](/pricing). Plans start with a 7-day trial, and the card is collected at signup. Self-hosting is free under AGPL-3.0.
+
+- **Setup:** `claude mcp add --transport http rybbit https://app.rybbit.io/api/mcp` in Claude Code; the [MCP docs](/docs/mcp) cover other clients
+- **Skip it if:** you want an agent to manage feature flags and experiments or dig through session replays; PostHog, Amplitude and Mixpanel expose tools for both.
+
+## Google Analytics (GA4) MCP server
+
+Google's [Google Analytics MCP server](https://github.com/googleanalytics/google-analytics-mcp) is official (it's published under the `googleanalytics` GitHub organization and linked from Google's [developer guide](https://developers.google.com/analytics/devguides/MCP)) but still labeled experimental. It's a local server: a Python package you start with `pipx run analytics-mcp`. There is no hosted URL, and Analytics isn't on Google's [list of its remote MCP servers](https://docs.cloud.google.com/mcp/supported-products).
+
+It has seven tools: account summaries, property details, Google Ads links, custom dimensions and metrics, and three report runners over the Data API (`run_report`, `run_funnel_report` and `run_realtime_report`). Google's guide is explicit that the server "is available for read requests only. It can't edit your Google Analytics configuration or settings."
+
+Setup is where it costs you; our [Google Analytics MCP setup guide](/blog/google-analytics-mcp) walks through each step. You need a Google Cloud project with the Analytics Admin API and Analytics Data API enabled, Application Default Credentials that carry the `analytics.readonly` scope (from your own OAuth client, or by impersonating a service account through `gcloud`), and Python with pipx. The README documents Gemini CLI, Gemini Code Assist and Claude Code. GA4 itself is ["free of charge"](https://marketingplatform.google.com/about/analytics/), and the server's calls draw on [Data API quotas](https://developers.google.com/analytics/devguides/reporting/data/v1/quotas): 200,000 core tokens per property per day on a standard property. For how the products compare, see [Rybbit vs Google Analytics](/compare/google-analytics).
+
+**Setup:** the Google Cloud, credential and client steps are in the [README](https://github.com/googleanalytics/google-analytics-mcp).
+
+## PostHog MCP server
+
+[PostHog's MCP server](https://posthog.com/docs/model-context-protocol) is the broadest one here. It's hosted at `https://mcp.posthog.com/mcp` and routes you to the US or EU region based on the account you log in with. Its [tools reference](https://posthog.com/docs/model-context-protocol/tools) lists more than 1,000 tools in about 70 categories, spanning product and web analytics, SQL (`execute-sql`), feature flags, experiments, error tracking, session recordings, surveys, logs and data pipelines. To keep that list from flooding the model's context, most clients get a "CLI mode" with a single `exec` tool that finds and calls the others on demand; Cursor registers every tool.
+
+It reads and writes by default. The [FAQ](https://posthog.com/docs/model-context-protocol/faq) documents a read-only switch (the `x-posthog-read-only` header or `?readonly=true`), filters by feature category or tool name, and headers that pin a session to one organization or project. You log in with OAuth, or use a personal API key created with the "MCP Server" preset; enterprise plans can manage access through an identity provider.
+
+On cost, PostHog's FAQ says: "Connecting to the MCP server and calling its MCP tools is free. Standard PostHog usage and billing still apply to the underlying data your queries consume." A few AI-powered tools are billed as PostHog AI spend and only appear when AI data processing is enabled. PostHog's [pricing](https://posthog.com/pricing) includes the first 1 million product analytics events each month free. If you land on the `PostHog/mcp` GitHub repo, it's [archived](https://github.com/PostHog/mcp); the server now lives in PostHog's main repository. For the products themselves, see [Rybbit vs PostHog](/compare/posthog).
+
+**Setup:** `npx @posthog/wizard mcp add`, or add the URL by hand using the [client guides](https://posthog.com/docs/model-context-protocol).
+
+## Amplitude MCP server
+
+[Amplitude's MCP server](https://amplitude.com/docs/amplitude-ai/amplitude-mcp) is hosted at `https://mcp.amplitude.com/mcp`, with `https://mcp.eu.amplitude.com/mcp` for EU data residency, and authenticates with OAuth 2.0. Its docs list 45 tools. On the read side it searches charts, dashboards, notebooks, experiments and cohorts, runs ad-hoc segmentation, funnel and retention queries, and finds session replays from the last 30 days. On the write side it creates and edits charts, dashboards, notebooks, cohorts, experiments, feature flags and metrics, and manages the tracking plan, with a two-step confirmation before deleting events or properties.
+
+Access is on by default for every user in the organization. Admins can block it under Settings > Content Access > MCP, and two role actions, Use MCP (read) and Use MCP (write), limit what an agent can do per project. ChatGPT gets a curated subset of about 25 tools that leaves out session replay. The docs say "any existing Amplitude customer" can use it, and the [pricing page](https://amplitude.com/pricing) lists "AI Agents and MCP" on the Free plan, which covers 2M events a month.
+
+**Setup:** add the URL as a remote server in your client; the [Amplitude MCP docs](https://amplitude.com/docs/amplitude-ai/amplitude-mcp) have guides for Claude, ChatGPT, Cursor, Codex, Gemini CLI and others.
+
+## Mixpanel MCP server
+
+[Mixpanel's MCP server](https://docs.mixpanel.com/docs/mcp) is hosted in three regions: `https://mcp.mixpanel.com/mcp` plus EU and India endpoints. Its docs list 63 tools: insights, funnel, flow and retention queries; dashboards (create, update, duplicate, delete); cohorts, custom properties, lookup tables and saved metrics; a tool that analyzes one user's replays alongside their events; and a large set of Lexicon tools that edit event descriptions, merge duplicate event names and mark PII. Experiment and feature flag tools are in open beta.
+
+You connect with OAuth, or with a service account (in beta) sent as a static header for CI jobs and shared agents. Mixpanel's docs are direct about the trade-offs: "the AI assistant can both read and write to Mixpanel on your behalf," your data goes to whichever AI provider you use, and "The MCP server does not currently support HIPAA requirements." Each user gets up to 600 MCP requests per hour.
+
+Whether it's switched on depends on account age. Free and Growth accounts created after August 1, 2026 have MCP enabled by default; on every other account, an organization admin has to enable it under Settings > Org > Overview. The [pricing page](https://mixpanel.com/pricing/) lists a Free plan with up to 1M events a month.
+
+**Setup:** add your region's URL to your client; the [Mixpanel MCP docs](https://docs.mixpanel.com/docs/mcp) cover OAuth and service-account configs per client.
+
+## Google Search Console MCP
+
+As of September 2026, Google doesn't publish a Search Console MCP server. It isn't on Google's [list of Google and Google Cloud MCP servers](https://docs.cloud.google.com/mcp/supported-products), which covers products like BigQuery, Maps and Workspace, and the "Google Search Console MCP" servers you'll find are third-party projects built on the public Search Console API. Our [Google Search Console MCP guide](/blog/google-search-console-mcp) compares them, with setup steps and example prompts.
+
+One widely used option is [mcp-gsc](https://github.com/AminForou/mcp-gsc) (MIT). It runs locally via `uvx mcp-search-console` and authenticates with an OAuth desktop client you create in your own Google Cloud project, or with a service account you add to the property. Its 20 tools go past reporting: URL inspection (up to 10 URLs per batch), indexing-issue checks, sitemap submission and deletion, and adding or removing properties. That's useful, and it also means an agent can change your Search Console setup, so review the tools before you let one run.
+
+There are two other routes to search data. GA4's [Data API](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema), which the GA server's `run_report` calls, exposes organic Google Search clicks, impressions, CTR and average position for properties with an active Search Console link. And Rybbit's hosted Search Console tools, covered [above](#rybbit-mcp-server), need no Google Cloud project, but they cover Search Analytics only (no URL inspection or sitemaps) and only on Rybbit Cloud.
+
+**Setup:** credential and client steps are in the [mcp-gsc README](https://github.com/AminForou/mcp-gsc).
+
+## Microsoft Clarity MCP server
+
+Microsoft's [Clarity MCP server](https://learn.microsoft.com/en-us/clarity/third-party-integrations/clarity-mcp-server) is official and local: you run it with `npx @microsoft/clarity-mcp-server --clarity_api_token=...` or install it as a Claude Desktop extension. It authenticates with a Data Export API token that a project admin generates under Settings > Data Export. The [GitHub repo](https://github.com/microsoft/clarity-mcp-server) lists three read-only tools: `query-analytics-dashboard` (traffic, scroll depth, engagement time and other dashboard metrics), `list-session-recordings` (recordings filtered by URL, device, browser, OS, country, city and more) and `query-documentation-resources` (answers from Clarity's docs).
+
+The limits come from the API underneath. Microsoft's MCP guide states: "Each project permits up to 10 API requests per day, with a maximum of 3 days' data and up to 3 dimensions per request." The [Data Export API docs](https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-data-export-api) add that a response is capped at 1,000 rows, with no pagination. Ten requests covers a morning check-in; an agent that iterates will use them up quickly. Microsoft lists higher limits as a planned improvement. Clarity itself is, per its [FAQ](https://learn.microsoft.com/en-us/clarity/faq), "a free service forever."
+
+**Setup:** token and client config are in the [Microsoft Learn guide](https://learn.microsoft.com/en-us/clarity/third-party-integrations/clarity-mcp-server).
+
+## Contentsquare (Hotjar) MCP server
+
+Hotjar doesn't have its own MCP server. Contentsquare's [Hotjar page](https://contentsquare.com/hotjar/) says the two products "have merged into a single, more powerful experience intelligence platform" and that new users sign up on Contentsquare, so for "Hotjar MCP" the official route is [Contentsquare's MCP server](https://support.contentsquare.com/hc/en-us/articles/41563169756945-How-to-set-up-and-use-Model-Context-Protocol-MCP). Contentsquare's help center doesn't say whether legacy Hotjar accounts can connect.
+
+The server is hosted and uses OAuth, with access tokens that expire hourly and refresh automatically. Only Customer Admins can set it up (Analysis setup > Model Context Protocol) and grant access to other users. It supports funnel, journey and impact analysis, page comparison, site and page metrics, and error analysis, which requires Experience Monitoring; the help center's capability list doesn't mention session replay or heatmaps. It's read-only for now: the Write permission is "reserved for future MCP tools" and selecting it "now has no effect."
+
+It's the only server here with a published tool-call allowance per plan. Only calls that return analytics count, and the pool is shared across the whole account:
+
+| Contentsquare plan | MCP tool calls |
+| --- | --- |
+| Free | Up to 300 per month |
+| Growth | Up to 36k per year |
+| Pro | Up to 72k per year |
+| Enterprise | Up to 108k per year |
+
+When the allowance runs out, the server stops processing new requests until it resets, unless you're on Pro or Enterprise and buy more capacity.
+
+**Setup:** an admin follows the in-app steps for each AI client, as described in the [help center](https://support.contentsquare.com/hc/en-us/articles/41563169756945-How-to-set-up-and-use-Model-Context-Protocol-MCP).
+
+## Matomo MCP server
+
+Matomo's [MCP Server plugin](https://github.com/matomo-org/plugin-McpServer) is official, licensed GPL-3.0, and runs inside your Matomo, so the endpoint is your own instance. According to Matomo's [setup guide](https://matomo.org/faq/how-to/how-to-configure-the-matomo-mcp-server/), "The MCP is included with Matomo Cloud. For Matomo On-Premise, you must first install and activate the MCP Server plugin." Either way, a superuser has to switch it on under Administration > System > General settings.
+
+Out of the box it's read-oriented, with tools for sites, reports and report metadata, processed report data, goals, segments and dimensions. Raw Matomo API access is off by default. An admin can open it partially, with separate checkboxes for read, create, update and delete methods, or fully, at which point an agent can call state-changing methods such as creating segments. Admins can also cap the highest privilege level usable over MCP.
+
+You authenticate with a Matomo `token_auth` sent as a Bearer token, or with OAuth 2.0 through Matomo's OAuth2 plugin. The OAuth path has caveats: tokens last 3,600 seconds by default, refresh "must currently be handled manually," and clients that expect fully spec-compliant discovery endpoints may not connect. See [Rybbit vs Matomo](/compare/matomo) for the analytics side.
+
+**Setup:** enable it, copy the endpoint from the admin screen, then follow Matomo's [setup guide](https://matomo.org/faq/how-to/how-to-configure-the-matomo-mcp-server/) and its per-client guides.
+
+## Plausible MCP server
+
+Plausible doesn't maintain an MCP server itself. Its [data access docs](https://plausible.io/docs/data-access) point to one "built by the Sentry team": [getsentry/plausible-mcp](https://github.com/getsentry/plausible-mcp) (MIT). It has four read-only tools (`get_timeseries`, `get_breakdown`, `get_conversions` and `compare_periods`) and runs either locally over stdio or on Sentry's hosted instance at `https://plausible-mcp.sentry.dev/mcp`, where you pass your own Plausible API key as a Bearer token.
+
+That key is the catch. The server needs a Stats API key, and per the [Stats API docs](https://plausible.io/docs/stats-api), "Stats API is a Business plan feature," with a default limit of 600 requests per hour. On Plausible's lower plans, there's no key to connect with. For the analytics products themselves, see [Rybbit vs Plausible](/compare/plausible).
+
+**Setup:** hosted and local configs are in the [getsentry/plausible-mcp README](https://github.com/getsentry/plausible-mcp).
+
+## How to choose an analytics MCP server
+
+Most teams use the server that comes with the analytics tool they already have; few switch vendors for an MCP server. If you're choosing both, or connecting more than one tool, these are the differences that matter:
+
+- **Product-analytics depth:** PostHog, Amplitude and Mixpanel have the deepest servers, with funnels, retention, cohorts, experiments, feature flags and replay tools, and write access to match. PostHog covers the most products; Amplitude and Mixpanel add tracking-plan and Lexicon cleanup that data teams will use.
+- **Web analytics and search:** For traffic, sources, pages and conversions, look at Rybbit, GA4, Matomo or Plausible. Rybbit has dedicated Search Console tools, and GA4's server reaches Search Console metrics if the property is linked. GA4's is reporting only; Rybbit's also manages goals, funnels and sites.
+- **Least setup:** Hosted servers with OAuth (Rybbit, PostHog, Amplitude, Mixpanel, Contentsquare) connect with a URL and a browser login. GA4 needs a Google Cloud project, two APIs, `gcloud` credentials and Python; Clarity needs Node.js and a token.
+- **Privacy and data control:** Self-hosting keeps the analytics side on your infrastructure, and Rybbit and Matomo both serve their MCP endpoint from your own server when self-hosted. Whatever you pick, query results go to your AI provider.
+- **Guardrails:** GA4, Clarity, Contentsquare and the Plausible server can't change anything. For the rest, restrict the agent with PostHog's read-only mode, Rybbit's scoped keys, Amplitude's role actions or Matomo's API access setting.
+- **Quotas:** Clarity's 10 requests a day is the tightest limit here, followed by the 300 tool calls a month on Contentsquare's Free plan. Mixpanel allows 600 MCP requests per user per hour, and Plausible's Stats API 600 per hour per key.
+
+## FAQ
+
+**What is an analytics MCP server?**
+It's a service that exposes an analytics product's data and actions as tools an AI assistant can call through the [Model Context Protocol](https://modelcontextprotocol.io/), an open standard. A hosted server is a URL you add to your client; a local server is a program your client starts on your machine. Either way, the assistant picks a tool, the server runs it with your credentials, and the result comes back into the conversation.
+
+**Is it safe to connect an AI assistant to my analytics?**
+It can be, with the care you'd give any API key. Give each integration its own revocable credential with the narrowest access that works, such as PostHog's read-only mode, Rybbit's scoped keys, Amplitude's MCP role actions or a dedicated low-privilege Matomo user, and keep confirmations on for anything that deletes. Watch for prompt injection too: page titles, referrers and event names are written by your visitors, and PostHog's FAQ warns that "LLMs can be tricked into following untrusted commands." Rybbit strips control and bidirectional-override characters from tracked text, but an agent should still treat that text as data, never as instructions.
+
+**Does my analytics data leave the vendor?**
+Yes. Whatever a tool returns goes to the model provider behind your AI client. Mixpanel's docs say so directly, and Amplitude's docs note that "The AI service you're using (for example, Claude or Gemini) processes your Amplitude data." The servers differ in what they do with it themselves: PostHog says its server "does not store your analytics data," Contentsquare says it is "not training any third-party models with data accessed through the MCP server," and Rybbit's server contains no AI model and returns data only to the client you connect. Mixpanel's MCP server isn't covered by its HIPAA BAA, so check compliance scope before connecting regulated data.
+
+**How much do analytics MCP servers cost?**
+Usually nothing beyond the analytics plan. Google Analytics, Clarity and the community Search Console server are free but self-run; PostHog's server is free to connect (some AI-powered tools bill as PostHog AI spend); Amplitude and Mixpanel include theirs on their Free plans. The exceptions: Contentsquare meters tool calls by plan, and the Sentry-built Plausible server needs Plausible's Business plan. Your AI client's subscription is a separate cost.
+
+Rybbit's server comes with Cloud plans from $19/month, or at no cost when self-hosted.
+
+**Is "MCP analytics" the same thing?**
+No. "MCP analytics" usually means measuring how AI agents use your own MCP server: which tools they call and where calls fail. PostHog's [MCP Analytics](https://posthog.com/docs/mcp-analytics) (in beta) is one example. This guide covers the reverse: servers that let an agent read your analytics.

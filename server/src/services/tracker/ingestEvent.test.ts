@@ -9,13 +9,14 @@ const mocks = vi.hoisted(() => ({
   checkBotBlocking: vi.fn(),
   decideSiteExclusion: vi.fn(),
   isSiteOverLimit: vi.fn(),
+  isSiteWithoutPlan: vi.fn(),
   updateSession: vi.fn(),
   generateUserId: vi.fn(),
   generateUserIdFromClientId: vi.fn(),
 }));
 
 vi.mock("../usageService.js", () => ({
-  usageService: { isSiteOverLimit: mocks.isSiteOverLimit },
+  usageService: { isSiteOverLimit: mocks.isSiteOverLimit, isSiteWithoutPlan: mocks.isSiteWithoutPlan },
 }));
 
 vi.mock("./pageviewQueue.js", () => ({
@@ -92,6 +93,7 @@ describe("ingestEvent", () => {
     vi.clearAllMocks();
     mocks.decideSiteExclusion.mockResolvedValue({ excluded: false });
     mocks.isSiteOverLimit.mockReturnValue(false);
+    mocks.isSiteWithoutPlan.mockReturnValue(false);
     mocks.checkBotBlocking.mockResolvedValue(null);
     mocks.updateSession.mockResolvedValue({ sessionId: "session-alice" });
     mocks.generateUserId.mockResolvedValue("shared-fingerprint");
@@ -184,6 +186,17 @@ describe("ingestEvent", () => {
 
     expect(outcome).toEqual({ status: "over_limit" });
     expect(mocks.checkBotBlocking).not.toHaveBeenCalled();
+    expect(mocks.addPageview).not.toHaveBeenCalled();
+  });
+
+  it("drops every event for a site whose organization has no plan", async () => {
+    mocks.isSiteWithoutPlan.mockReturnValue(true);
+
+    const outcome = await ingestEvent(trackingRequest());
+
+    expect(outcome).toEqual({ status: "no_plan" });
+    expect(mocks.checkBotBlocking).not.toHaveBeenCalled();
+    expect(mocks.generateUserId).not.toHaveBeenCalled();
     expect(mocks.addPageview).not.toHaveBeenCalled();
   });
 

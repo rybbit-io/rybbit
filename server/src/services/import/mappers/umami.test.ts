@@ -39,7 +39,7 @@ describe("UmamiImportMapper", () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         site_id: 1,
-        timestamp: "2024-06-15 14:30:00",
+        timestamp: "2024-06-15T14:30:00.000Z",
         session_id: TEST_SESSION_ID,
         user_id: "visitor-1",
         hostname: "example.com",
@@ -248,6 +248,19 @@ describe("UmamiImportMapper", () => {
         const result = UmamiImportMapper.transform([makeEvent({ country: "" })], 1, "i");
         expect(result).toHaveLength(1);
         expect(result[0].country).toBe("");
+      });
+
+      it("drops a well-shaped impossible date without losing the rest of the batch", () => {
+        const result = UmamiImportMapper.transform(
+          [
+            makeEvent({ created_at: "2024-06-15 14:30:00" }),
+            makeEvent({ created_at: "2024-02-31 12:00:00" }),
+            makeEvent({ created_at: "2024-06-16 09:00:00" }),
+          ],
+          1,
+          "i"
+        );
+        expect(result.map(row => row.timestamp)).toEqual(["2024-06-15T14:30:00.000Z", "2024-06-16T09:00:00.000Z"]);
       });
 
       it("should drop rows with an invalid timestamp format", () => {

@@ -13,11 +13,11 @@ Access organization settings by clicking on "Organization" or going to [app.rybb
 
 ### Organization Name
 
-Update your organization's display name. Only the organization owner can change this setting.
+Update your organization's display name. Owners and admins can change this setting.
 
 ### Delete Organization
 
-Permanently delete the organization and all associated data including sites, analytics, reports, and member associations.
+Permanently delete the organization and all associated data including sites, analytics, reports, and member associations. Only owners can delete an organization.
 
 <Callout type="warn">
   This action cannot be undone. You must type the organization name to confirm deletion. If you have an active subscription, you must cancel it before deleting the organization.
@@ -28,21 +28,29 @@ Permanently delete the organization and all associated data including sites, ana
 View and manage all members in your organization. The members table shows:
 - **Name** - Member's display name
 - **Email** - Member's email address
-- **Role** - Owner, Admin, or Member
+- **Role** - Owner, Admin, Editor, Member, or Viewer
 - **Site Access** - Which sites the member can access
 - **Joined** - When they joined the organization
 
 ### Member Roles
 
-| Role | Permissions |
+Each role can do everything the roles below it can.
+
+| Role | What it adds |
 |------|-------------|
-| **Owner** | Full access to all features, can manage members, billing, and delete the organization |
-| **Admin** | Can manage members and access all sites, cannot delete the organization or manage billing |
-| **Member** | Can view analytics for assigned sites only, cannot manage settings or other members |
+| **Owner** | Billing and plans, deleting the organization, making other owners |
+| **Admin** | Inviting and managing members and teams, organization API keys, creating, deleting and [transferring](/docs/site-settings#transfer-site) sites |
+| **Editor** | Site configuration: tracking settings, exclusions, public and private links, feature flags, experiments, data imports, Google Search Console, deleting session replays and tracked users, and editing anyone's segments and annotations |
+| **Member** | Building reports: goals, funnels, dashboards, and their own segments and annotations |
+| **Viewer** | Viewing analytics, sessions, replays and reports, without changing anything |
+
+Admins and owners always reach every site in the organization. Editors, members and viewers reach every site too, unless you [restrict them to specific sites](/docs/inviting-users#restricting-site-access) or the site belongs to a [team](/docs/teams) they aren't on.
+
+A member's role can also be raised on individual sites: when you restrict someone to specific sites, or add a site to a team, you can give them a higher role on just those sites. For example, a client can be a **Viewer** in your organization and an **Editor** on their own site. Nobody can give a role above their own, and only owners can make owners.
 
 ### Inviting Members
 
-Owners can invite new members or create user accounts. See the [Inviting Users](/docs/inviting-users) guide for detailed instructions.
+Owners and admins can invite new members or create user accounts. See the [Inviting Users](/docs/inviting-users) guide for detailed instructions. A person can belong to several organizations.
 
 ### Teams
 

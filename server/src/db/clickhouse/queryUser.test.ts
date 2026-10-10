@@ -10,7 +10,7 @@ describe("buildQueryUserStatements", () => {
     const profile = statements.find(s => s.startsWith("ALTER SETTINGS PROFILE"))!;
     for (const setting of [
       "readonly = 2",
-      "max_execution_time = 10",
+      "max_execution_time = 60",
       "max_memory_usage = 4000000000",
       "max_threads = 4",
       "max_result_rows = 1000",

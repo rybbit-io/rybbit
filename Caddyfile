@@ -17,7 +17,11 @@
     # Enable compression
     encode zstd gzip
 
-    request_body max_size 10MB
+    # Match Fastify's largest route limit (event imports). Fastify still
+    # enforces the smaller limits configured for other routes.
+    request_body {
+        max_size 50MiB
+    }
     handle /api/* {
         reverse_proxy backend:3001
     }

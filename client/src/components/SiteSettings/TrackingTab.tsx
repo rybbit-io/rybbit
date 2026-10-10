@@ -52,6 +52,7 @@ export function TrackingTab({
     trackErrors: siteMetadata.trackErrors || false,
     trackOutbound: siteMetadata.trackOutbound ?? true,
     trackUrlParams: siteMetadata.trackUrlParams ?? true,
+    trackUrlFragments: siteMetadata.trackUrlFragments ?? false,
     trackInitialPageView: siteMetadata.trackInitialPageView ?? true,
     trackSpaNavigation: siteMetadata.trackSpaNavigation ?? true,
     trackButtonClicks: siteMetadata.trackButtonClicks ?? false,
@@ -161,6 +162,17 @@ export function TrackingTab({
             key: "trackUrlParams",
             enabledMessage: t("URL parameters tracking enabled"),
             disabledMessage: t("URL parameters tracking disabled"),
+          } as ToggleConfig,
+          {
+            id: "trackUrlFragments",
+            label: t("Track URL fragments"),
+            description: t(
+              "Keep fragments such as #shipping in page paths to track checkout stages or tabs separately"
+            ),
+            value: toggleStates.trackUrlFragments,
+            key: "trackUrlFragments",
+            enabledMessage: t("URL fragment tracking enabled"),
+            disabledMessage: t("URL fragment tracking disabled"),
           } as ToggleConfig,
         ]
       : []),

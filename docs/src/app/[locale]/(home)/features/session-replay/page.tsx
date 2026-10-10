@@ -1,5 +1,6 @@
 import { createOGImageUrl } from "@/lib/metadata";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FeaturePage } from "../components/FeaturePage";
 import {
   capabilities,
@@ -94,7 +95,9 @@ export default function SessionReplayPage() {
             Numbers tell you <em>what</em> happened. Session replay shows you <strong className="text-neutral-900 dark:text-white">why</strong>. When your conversion rate drops, you don&apos;t need to guess: just watch the sessions where users abandoned your funnel and see the exact moment they got confused, frustrated, or lost.
           </>,
           <>
-            Unlike standalone tools like Hotjar or FullStory, Rybbit&apos;s session replay is <strong className="text-neutral-900 dark:text-white">built directly into your analytics platform</strong>. There&apos;s no separate tool to manage, no additional billing, and no data silos. Filter your analytics by any dimension, then watch the matching sessions.
+            Unlike standalone tools like Hotjar or FullStory, Rybbit&apos;s session replay is <strong className="text-neutral-900 dark:text-white">built directly into your analytics platform</strong>. There&apos;s no separate tool to manage, no additional billing, and no data silos. Filter your analytics by any dimension, then watch the matching sessions. If you&apos;re weighing a switch,
+            see our guides to <Link href="/blog/hotjar-alternatives">Hotjar alternatives</Link> and{" "}
+            <Link href="/blog/fullstory-alternatives">FullStory alternatives</Link>.
           </>,
           <>
             Privacy comes first. Sensitive form inputs are <strong className="text-neutral-900 dark:text-white">automatically masked</strong>, the capture script loads asynchronously with <strong className="text-neutral-900 dark:text-white">zero performance impact</strong>, and because Rybbit is open source, you can self-host everything and keep full control over your data. No third-party ever touches your replays.

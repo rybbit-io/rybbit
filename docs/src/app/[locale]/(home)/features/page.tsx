@@ -5,6 +5,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeftRight,
+  ArrowRight,
   Bot,
   Cookie,
   Database,
@@ -27,6 +28,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Smartphone,
   Tag,
   Target,
@@ -39,6 +41,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createMetadata, createOGImageUrl } from "@/lib/metadata";
 
 export const metadata: Metadata = createMetadata({
@@ -61,6 +64,7 @@ interface FeatureGridProps {
     icon: React.ReactNode;
     title: string;
     description: string;
+    href?: string;
   }>;
 }
 
@@ -74,11 +78,26 @@ function FeatureGrid({ title, description, features }: FeatureGridProps) {
             <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">{description}</p>
           </div>
         </div>
-        <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2">
+        <div className="grid gap-px bg-neutral-200 dark:bg-neutral-800 lg:col-span-8 md:grid-cols-2 md:[&>article:last-child:nth-child(odd)]:col-span-2">
           {features.map((feature) => (
             <article key={feature.title} className="bg-white px-5 py-9 dark:bg-neutral-950 sm:px-8 lg:px-10">
               <div className="mb-5 text-neutral-500 dark:text-neutral-400">{feature.icon}</div>
-              <h3 className="font-semibold tracking-tight">{feature.title}</h3>
+              <h3 className="font-semibold tracking-tight">
+                {feature.href ? (
+                  <Link
+                    href={feature.href}
+                    className="group/feature inline-flex items-center gap-1.5 rounded-sm transition-colors hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:hover:text-emerald-400"
+                  >
+                    {feature.title}
+                    <ArrowRight
+                      className="size-3.5 text-neutral-400 transition-transform group-hover/feature:translate-x-0.5 motion-reduce:transition-none"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                ) : (
+                  feature.title
+                )}
+              </h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600 dark:text-neutral-400">{feature.description}</p>
             </article>
           ))}
@@ -140,6 +159,7 @@ export default function FeaturesPage() {
     {
       icon: <MousePointerClick className="w-5 h-5" />,
       title: t("Custom events"),
+      href: "/features/custom-events",
       description: t("Track sign-ups, purchases, downloads, and any custom user interaction."),
     },
     {
@@ -160,6 +180,7 @@ export default function FeaturesPage() {
     {
       icon: <Bot className="w-5 h-5" />,
       title: t("Bot blocking"),
+      href: "/features/bot-detection",
       description: t("Automatically filter out bots and crawlers to keep your data clean."),
     },
   ];
@@ -168,26 +189,31 @@ export default function FeaturesPage() {
     {
       icon: <Video className="w-5 h-5" />,
       title: t("Session replay"),
+      href: "/features/session-replay",
       description: t("Watch real user sessions to spot usability issues and improvement opportunities."),
     },
     {
       icon: <Gauge className="w-5 h-5" />,
       title: t("Web vitals"),
+      href: "/features/web-vitals",
       description: t("Monitor Core Web Vitals to maintain fast, smooth user experiences."),
     },
     {
       icon: <Funnel className="w-5 h-5" />,
       title: t("Funnels"),
+      href: "/features/funnels",
       description: t("Visualize conversion paths and pinpoint exactly where visitors drop off."),
     },
     {
       icon: <Target className="w-5 h-5" />,
       title: t("Goals"),
+      href: "/features/goals",
       description: t("Set and monitor conversion goals to track business objectives."),
     },
     {
       icon: <Route className="w-5 h-5" />,
       title: t("Journey"),
+      href: "/features/user-journeys",
       description: t("Map how users navigate your site from landing to conversion."),
     },
     {
@@ -198,11 +224,13 @@ export default function FeaturesPage() {
     {
       icon: <AlertTriangle className="w-5 h-5" />,
       title: t("Error tracking"),
+      href: "/features/error-tracking",
       description: t("Catch JavaScript errors as they happen with full context to fix them fast."),
     },
     {
       icon: <Rewind className="w-5 h-5" />,
       title: t("User sessions"),
+      href: "/features/sessions",
       description: t("Follow complete user journeys from first visit to conversion."),
     },
     {
@@ -218,11 +246,13 @@ export default function FeaturesPage() {
     {
       icon: <Users className="w-5 h-5" />,
       title: t("User profiles"),
+      href: "/features/user-profiles",
       description: t("View complete user histories including all sessions, events, and interactions across their lifetime."),
     },
     {
       icon: <UserCheck className="w-5 h-5" />,
       title: t("Retention"),
+      href: "/features/retention",
       description: t("Track returning visitors to measure loyalty and engagement."),
     },
   ];
@@ -236,6 +266,7 @@ export default function FeaturesPage() {
     {
       icon: <Globe2 className="w-5 h-5" />,
       title: t("Public dashboards"),
+      href: "/features/dashboard-sharing",
       description: t("Make your dashboards publicly accessible with a single click. No login required."),
     },
     {
@@ -302,7 +333,14 @@ export default function FeaturesPage() {
     {
       icon: <Plug className="w-5 h-5" />,
       title: t("API access"),
+      href: "/features/api",
       description: t("Full API access to query your data and build custom integrations."),
+    },
+    {
+      icon: <Sparkles className="w-5 h-5" />,
+      title: t("MCP Server"),
+      href: "/features/mcp",
+      description: t("Your analytics in your AI assistant"),
     },
   ];
 

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { BACKEND_URL } from "@/lib/const";
 
 const ALLOWED_MINUTES = new Set([30, 1440, 10080]);
 
@@ -7,11 +8,6 @@ const MINUTES_LABEL: Record<number, string> = {
   1440: "LAST 24 HOURS",
   10080: "LAST 7 DAYS",
 };
-
-function getBackendUrl() {
-  const raw = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-  return raw === "http://localhost:3001" ? "http://localhost:3001/api" : `${raw}/api`;
-}
 
 interface Config {
   siteId: string;
@@ -191,6 +187,9 @@ function renderHTML(c: Config) {
     0%   { transform: scale(1); opacity: 0.5; }
     100% { transform: scale(2.2); opacity: 0; }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse::before { animation: none; }
+  }
 </style>
 </head>
 <body>
@@ -320,7 +319,10 @@ export async function GET(
     theme,
     accent,
     variant,
-    backendUrl: getBackendUrl(),
+    // The widget's script fetches from the browser inside the iframe, which is served from this
+    // app's origin, so the dashboard's URL works here too, including the relative "/api" that
+    // self-hosted images are built with (an empty NEXT_PUBLIC_BACKEND_URL).
+    backendUrl: BACKEND_URL,
     windowLabel: MINUTES_LABEL[minutes],
   });
 

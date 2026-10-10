@@ -1,3 +1,4 @@
+import type { SiteGrantRole } from "@rybbit/shared";
 import { authedFetch } from "../../utils";
 
 export type TeamMember = {
@@ -10,6 +11,7 @@ export type TeamSite = {
   siteId: number;
   domain: string;
   name: string;
+  role: SiteGrantRole | null;
 };
 
 export type Team = {
@@ -20,6 +22,8 @@ export type Team = {
   updatedAt: string | null;
   members: TeamMember[];
   sites: TeamSite[];
+  /** The role the team's members get on its sites; null when each member's own role applies (or the grants differ). */
+  siteRole: SiteGrantRole | null;
 };
 
 export type ListTeamsResponse = {
@@ -30,18 +34,20 @@ export type CreateTeamInput = {
   name: string;
   memberUserIds?: string[];
   siteIds?: number[];
+  /** Raises members' role on the team's sites; null leaves each member's own role. */
+  siteRole?: SiteGrantRole | null;
 };
 
 export type UpdateTeamInput = {
   name?: string;
   memberUserIds?: string[];
   siteIds?: number[];
+  /** Raises members' role on the team's sites; null leaves each member's own role; omit to keep. */
+  siteRole?: SiteGrantRole | null;
 };
 
 export function fetchTeams(organizationId: string) {
-  return authedFetch<ListTeamsResponse>(
-    `/organizations/${organizationId}/teams`
-  );
+  return authedFetch<ListTeamsResponse>(`/organizations/${organizationId}/teams`);
 }
 
 export function createTeam(organizationId: string, data: CreateTeamInput) {
@@ -52,26 +58,16 @@ export function createTeam(organizationId: string, data: CreateTeamInput) {
   });
 }
 
-export function updateTeam(
-  organizationId: string,
-  teamId: string,
-  data: UpdateTeamInput
-) {
-  return authedFetch<{ success: boolean }>(
-    `/organizations/${organizationId}/teams/${teamId}`,
-    undefined,
-    {
-      method: "PUT",
-      data,
-      headers: { "Content-Type": "application/json" },
-    }
-  );
+export function updateTeam(organizationId: string, teamId: string, data: UpdateTeamInput) {
+  return authedFetch<{ success: boolean }>(`/organizations/${organizationId}/teams/${teamId}`, undefined, {
+    method: "PUT",
+    data,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 export function deleteTeam(organizationId: string, teamId: string) {
-  return authedFetch<{ success: boolean }>(
-    `/organizations/${organizationId}/teams/${teamId}`,
-    undefined,
-    { method: "DELETE" }
-  );
+  return authedFetch<{ success: boolean }>(`/organizations/${organizationId}/teams/${teamId}`, undefined, {
+    method: "DELETE",
+  });
 }

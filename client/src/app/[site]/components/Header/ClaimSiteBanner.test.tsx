@@ -181,7 +181,7 @@ describe("claim flow", () => {
     expect(state.createOrg).not.toHaveBeenCalled();
   });
   it("lets an existing admin claim into their organization", async () => {
-    state.organizations = [{ id: "org_1", name: "Existing", role: "admin" }];
+    state.organizations = [{ id: "org_1", name: "Existing", role: "admin", permissions: ["sites:create"] }];
     show();
     await openClaim();
     fireEvent.click(await screen.findByRole("button", { name: "Claim site" }));

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { CheckCircle2, KeyRound, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/sonner";
@@ -130,10 +130,7 @@ export function ChangePassword() {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
-          <KeyRound className="h-4 w-4 mr-2" />
-          {t("Change Password")}
-        </Button>
+        <Button size="sm">{t("Change password")}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -152,6 +149,7 @@ export function ChangePassword() {
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
                 type="password"
+                autoComplete="current-password"
                 placeholder={t("Your current password")}
                 className="pr-10"
               />
@@ -187,6 +185,7 @@ export function ChangePassword() {
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 type="password"
+                autoComplete="new-password"
                 placeholder={t("Your new password")}
                 className="pr-10"
               />
@@ -243,6 +242,7 @@ export function ChangePassword() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 type="password"
+                autoComplete="new-password"
                 placeholder={t("Confirm your new password")}
                 className="pr-10"
               />

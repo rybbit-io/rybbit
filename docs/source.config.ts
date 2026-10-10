@@ -37,6 +37,8 @@ export const blog = defineDocs({
       author: z.string().optional(),
       image: z.string().optional(),
       tags: z.array(z.string()).optional(),
+      // Primary search query the post targets; a row in ops/seo/keywords.csv. Checked by `npm run lint:blog`.
+      keyword: z.string().optional(),
     }),
   },
 });

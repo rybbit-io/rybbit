@@ -25,7 +25,7 @@ const searchDomains = [
   "qwant.com",
   "search.",
   "ecosia.org",
-  "brave.com",
+  "search.brave.com",
   "startpage.com",
   "searchencrypt.com",
   "searx.",
@@ -50,10 +50,12 @@ const searchDomains = [
   "sogou.com",
   "goo.ne.jp",
   "rambler.ru",
+  "sm.cn",
+  "petalsearch.com",
 
   // Other search engines
-  "neeva.com",
   "kagi.com",
+  "presearch.com",
 ];
 
 const socialDomains = [
@@ -84,8 +86,6 @@ const socialDomains = [
   // Other global social platforms
   "snapchat.com",
   "snap.com",
-  "youtube.com",
-  "youtu.be",
   "discord.com",
   "discord.gg",
   "whatsapp.com",
@@ -97,19 +97,26 @@ const socialDomains = [
   "tmblr.co",
   "quora.com",
   "threads.net",
+  "threads.com",
   "mastodon.social",
   "mastodon.",
+  "mstdn.",
+  "mas.to",
+  "fosstodon.org",
+  "hachyderm.io",
+  "infosec.exchange",
   "slack.com",
   "nextdoor.com",
   "clubhouse.com",
-  "twitch.tv",
   "news.ycombinator.com",
   "hn.algolia.com",
 
   // Newer/emerging platforms
   "bluesky.app",
   "bsky.app",
-  "post.news",
+  "farcaster.xyz",
+  "warpcast.com",
+  "lobste.rs",
   "truth.social",
   "truthsocial.com",
   "gettr.com",
@@ -118,7 +125,6 @@ const socialDomains = [
   "minds.com",
   "diaspora.",
   "lemmy.",
-  "kbin.social",
   "bereal.com",
   "vsco.co",
   "flickr.com",
@@ -140,6 +146,11 @@ const socialDomains = [
   "qq.com",
   "weibo.com",
   "weibo.cn",
+  "xiaohongshu.com",
+  "xhslink.com",
+  "douyin.com",
+  "zhihu.com",
+  "tieba.baidu.com",
   "line.me",
   "kakaotalk.com",
   "viber.com",
@@ -163,25 +174,20 @@ const videoDomains = [
   "max.com",
   "peacocktv.com",
   "primevideo.com",
-  "amazon.com/prime-video",
   "paramountplus.com",
   "discoveryplus.com",
   "crunchyroll.com",
-  "funimation.com",
   "curiositystream.com",
   "mubi.com",
   "appletv.com",
   "tv.apple.com",
 
   // Video sharing
-  "tiktok.com",
-  "vm.tiktok.com",
   "vevo.com",
   "streamable.com",
   "bitchute.com",
   "rumble.com",
   "odysee.com",
-  "lbry.tv",
   "reels.instagram.com",
 
   // Educational
@@ -192,27 +198,18 @@ const videoDomains = [
   "masterclass.com",
   "coursera.org",
   "pluralsight.com",
-  "lynda.com",
-  "linkedin.com/learning",
 
   // Live streaming
-  "facebook.com/gaming",
-  "youtube.com/live",
   "kick.com",
-  "caffeine.tv",
-  "mixer.com",
 
   // Regional platforms
   "bilibili.com",
   "niconico.jp",
-  "vlive.tv",
   "youku.com",
   "tudou.com",
   "iqiyi.com",
 
   // Short-form video
-  "vine.co",
-  "byte.co",
   "triller.co",
   "likee.video",
 ];
@@ -252,8 +249,6 @@ const shoppingDomains = [
   "bestbuy.com",
   "newegg.com",
   "bhphotovideo.com",
-  "apple.com/shop",
-  "samsung.com/shop",
   "microcenter.com",
   "tigerdirect.com",
 
@@ -301,6 +296,51 @@ const shoppingDomains = [
 // dashboard has to spell an operator's name the same way the bot patterns do.
 const aiChatDomains = AI_CHAT_DOMAINS;
 
+// Webmail. More specific than the search entries they sit under ("google.",
+// "yahoo."), so a click from an inbox is Email rather than Organic Search.
+const emailDomains = [
+  "mail.google.com",
+  "inbox.google.com",
+  "com.google.android.gm", // Gmail app, via android-app:// referrers
+  "outlook.live.com",
+  "outlook.office.com",
+  "outlook.office365.com",
+  "outlook.cloud.microsoft",
+  "mail.yahoo.com",
+  "mail.yahoo.co.jp",
+  "mail.aol.com",
+  "mail.proton.me",
+  "mail.protonmail.com",
+  "app.fastmail.com",
+  "app.hey.com",
+  "mail.superhuman.com",
+  "mail.zoho.com",
+  "mail.zoho.eu",
+  "mail.yandex.ru",
+  "mail.yandex.com",
+  "e.mail.ru",
+  "mail.qq.com",
+  "mail.163.com",
+  "mail.126.com",
+  "mail.naver.com",
+  "mail.daum.net",
+  "email.seznam.cz",
+  "webmail.",
+];
+
+// Hosts under a search engine's domain that are products, not search results.
+// Listing them here stops "google." from claiming them as Organic Search.
+const nonSearchDomains = [
+  "accounts.google.com",
+  "docs.google.com",
+  "drive.google.com",
+  "sites.google.com",
+  "calendar.google.com",
+  "classroom.google.com",
+  "meet.google.com",
+  "translate.google.com",
+];
+
 // AI chat sources (utm_source values)
 const aiChatSources = [
   "chatgpt",
@@ -334,15 +374,7 @@ const aiChatSources = [
 ];
 
 // AI chat mediums (utm_medium values)
-const aiChatMediums = [
-  "ai",
-  "ai-chat",
-  "chatbot",
-  "llm",
-  "ai-assistant",
-  "gen-ai",
-  "ai-search",
-];
+const aiChatMediums = ["ai", "ai-chat", "chatbot", "llm", "ai-assistant", "gen-ai", "ai-search"];
 
 // AI chat mobile app IDs
 export const aiChatAppIds = [
@@ -395,7 +427,6 @@ const searchSources = [
   "rambler",
 
   // Other search engines
-  "neeva",
   "kagi",
 ];
 
@@ -403,6 +434,7 @@ const socialSources = [
   // Major social platforms
   "facebook",
   "twitter",
+  "x",
   "linkedin",
   "instagram",
   "tiktok",
@@ -411,7 +443,6 @@ const socialSources = [
 
   // Other platforms
   "snapchat",
-  "youtube",
   "discord",
   "whatsapp",
   "telegram",
@@ -423,7 +454,6 @@ const socialSources = [
   "slack",
   "nextdoor",
   "clubhouse",
-  "twitch",
   "hacker news",
   "hackernews",
   "ycombinator",
@@ -434,12 +464,17 @@ const socialSources = [
   "pin",
   "li",
   "tw",
-  "yt",
+
+  // Meta ads {{site_source_name}} values (fb and ig are above)
+  "meta",
+  "msg",
+  "an",
 
   // Newer/emerging platforms
   "bluesky",
   "bsky",
-  "post",
+  "farcaster",
+  "lobsters",
   "truth social",
   "gettr",
   "parler",
@@ -467,6 +502,10 @@ const socialSources = [
   "vk",
   "qq",
   "weibo",
+  "xiaohongshu",
+  "rednote",
+  "douyin",
+  "zhihu",
   "line",
   "kakao",
   "kakaotalk",
@@ -478,6 +517,7 @@ const socialSources = [
 const videoSources = [
   // Major video platforms
   "youtube",
+  "yt",
   "vimeo",
   "twitch",
   "dailymotion",
@@ -494,7 +534,6 @@ const videoSources = [
   "paramount+",
   "discovery+",
   "crunchyroll",
-  "funimation",
   "curiositystream",
   "mubi",
   "apple tv",
@@ -506,7 +545,6 @@ const videoSources = [
   "bitchute",
   "rumble",
   "odysee",
-  "lbry",
   "reels",
 
   // Educational
@@ -517,24 +555,18 @@ const videoSources = [
   "masterclass",
   "coursera",
   "pluralsight",
-  "lynda",
 
   // Live streaming
   "kick",
-  "caffeine",
-  "mixer",
 
   // Regional platforms
   "bilibili",
   "niconico",
-  "vlive",
   "youku",
   "tudou",
   "iqiyi",
 
   // Short-form video
-  "vine",
-  "byte",
   "triller",
   "likee",
 ];
@@ -1135,16 +1167,74 @@ export function isMobileAppId(source: string): boolean {
   return /^[a-z0-9_]+(\.([a-z0-9_]+))+$/.test(source);
 }
 
+// Domain lists by source type. Order breaks ties between equally specific
+// matches (AI before search, so an AI host under a search domain stays AI).
+const domainSourceTypes: [string, string[]][] = [
+  ["ai", aiChatDomains],
+  ["email", emailDomains],
+  ["referral", nonSearchDomains],
+  ["search", searchDomains],
+  ["social", socialDomains],
+  ["video", videoDomains],
+  ["shopping", shoppingDomains],
+];
+
+// How specifically `entry` matches `host`: the entry's length, or 0 for no
+// match. A plain entry matches that domain and its subdomains ("facebook.com"
+// matches "l.facebook.com" but not "notfacebook.com"). An entry ending in "."
+// is a brand across TLDs and matches at a label boundary ("google." matches
+// "google.de" and "www.google.co.uk" but not "googleusercontent.com").
+function domainMatchLength(host: string, entry: string): number {
+  if (entry.endsWith(".")) {
+    return host.startsWith(entry) || host.includes("." + entry) ? entry.length : 0;
+  }
+  return host === entry || host.endsWith("." + entry) ? entry.length : 0;
+}
+
+// The most specific entry wins, so "mail.google.com" (email) beats "google."
+// (search) and "tieba.baidu.com" (social) beats "baidu." (search).
+// UTM sources are sometimes a URL ("https://facebook.com/", "//facebook.com")
+// or a host with a path; referring domains arrive as bare hosts.
+function getSourceHost(source: string): string {
+  if (source.includes("//")) {
+    try {
+      return new URL(source.startsWith("//") ? `https:${source}` : source).hostname;
+    } catch {
+      // Not a URL: match the literal source
+    }
+  }
+  return source.split(/[/?#]/)[0];
+}
+
+function getDomainSourceType(source: string): string | null {
+  const host = getSourceHost(source);
+  // A ".com" entry also covers its ".com.<country>" sites ("shopee.com" matches
+  // "shopee.com.my"). Limited to ".com." so "pi.ai.uk" never becomes "pi.ai".
+  const countrylessHost = /\.com\.[a-z]{2}$/.test(host) ? host.slice(0, -3) : "";
+
+  let bestType: string | null = null;
+  let bestLength = 0;
+  for (const [type, domains] of domainSourceTypes) {
+    for (const domain of domains) {
+      const length = Math.max(
+        domainMatchLength(host, domain),
+        countrylessHost ? domainMatchLength(countrylessHost, domain) : 0
+      );
+      if (length > bestLength) {
+        bestType = type;
+        bestLength = length;
+      }
+    }
+  }
+  return bestType;
+}
+
 // Helper function to categorize traffic source type
 export function getSourceType(source: string): string {
   const lowerSource = source.toLowerCase();
 
-  // Check domains first (AI before search to avoid misclassification)
-  if (aiChatDomains.some(domain => lowerSource.includes(domain))) return "ai";
-  if (searchDomains.some(domain => lowerSource.includes(domain))) return "search";
-  if (socialDomains.some(domain => lowerSource.includes(domain))) return "social";
-  if (videoDomains.some(domain => lowerSource.includes(domain))) return "video";
-  if (shoppingDomains.some(domain => lowerSource.includes(domain))) return "shopping";
+  const domainSourceType = getDomainSourceType(lowerSource);
+  if (domainSourceType) return domainSourceType;
 
   // Check source names (AI before search)
   if (aiChatSources.includes(lowerSource)) return "ai";
@@ -1193,6 +1283,24 @@ export function getMediumType(medium: string): string {
   return "organic";
 }
 
+// Run-together paid mediums that whole-word matching would otherwise miss.
+const compactPaidMediums = new Set([
+  "ecpc",
+  "googleads",
+  "bingads",
+  "fbads",
+  "facebookads",
+  "metaads",
+  "instagramads",
+  "linkedinads",
+  "tiktokads",
+  "socialads",
+  "searchads",
+  "displayads",
+  "bannerads",
+  "videoads",
+]);
+
 // Helper function to check if traffic is paid
 export function isPaidTraffic(medium: string, source: string): boolean {
   const lowerMedium = medium.toLowerCase();
@@ -1225,5 +1333,18 @@ export function isPaidTraffic(medium: string, source: string): boolean {
     "pinterest ads",
   ];
 
-  return paidMediums.some(pm => lowerMedium.includes(pm)) || paidSources.some(ps => lowerSource.includes(ps));
+  // Match whole words and phrases, not substrings: "ad" is inside "readme" and
+  // "download", "sem" inside "seminar" (#1262). Run-together spellings that
+  // substring matching used to catch are listed explicitly.
+  const tokens = lowerMedium.split(/[^a-z0-9]+/).filter(Boolean);
+  const containsPhrase = (phrase: string) => {
+    const words = phrase.split(/[^a-z0-9]+/).filter(Boolean);
+    return tokens.some((_, start) => words.every((word, offset) => tokens[start + offset] === word));
+  };
+  const isPaidMedium =
+    lowerMedium.startsWith("paid") ||
+    tokens.some(token => compactPaidMediums.has(token)) ||
+    paidMediums.some(containsPhrase);
+
+  return isPaidMedium || paidSources.some(ps => lowerSource.includes(ps));
 }

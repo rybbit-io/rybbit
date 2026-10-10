@@ -1,8 +1,9 @@
 import { TimeBucket } from "@rybbit/shared";
 import { useQueries } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { buildAnalyticsRequest, fetchAnalytics } from "@/api/analytics/analyticsRequest";
 import { GetOverviewBucketedResponse } from "@/api/analytics/endpoints";
-import { useAnalyticsContext } from "@/api/analytics/useAnalyticsQuery";
+import { querySignature, useRollupQueryContext, useSettledSnapshot } from "./useRollupQueryContext";
 
 export type RollupSeries = {
   siteId: number;
@@ -25,9 +26,7 @@ export function useRollupBucketed({
   bucket: TimeBucket;
   lite?: boolean;
 }): UseRollupBucketedResult {
-  // Lite endpoints don't accept filters; drop them so the request and the
-  // query key stay clean.
-  const { context } = useAnalyticsContext({ useFilters: !lite });
+  const context = useRollupQueryContext(lite);
   const request = buildAnalyticsRequest(
     { path: lite ? "overview-bucketed-lite" : "overview/time-series", params: { bucket } },
     context
@@ -41,13 +40,19 @@ export function useRollupBucketed({
     })),
   });
 
-  const series: RollupSeries[] = queries
-    .map((q, i) => ({ siteId: siteIds[i], data: q.data }))
-    .filter((s): s is RollupSeries => Array.isArray(s.data));
+  const signature = querySignature(siteIds, queries);
+  const series = useMemo(
+    () =>
+      queries
+        .map((q, i) => ({ siteId: siteIds[i], data: q.data }))
+        .filter((s): s is RollupSeries => Array.isArray(s.data)),
+    [signature]
+  );
+  const settled = useSettledSnapshot(series, queries);
 
   return {
-    series,
-    isLoading: queries.some((q) => q.isLoading),
+    series: settled.data ?? [],
+    isLoading: settled.isLoading,
     isFetching: queries.some((q) => q.isFetching),
     error: (queries.find((q) => q.error)?.error as Error) ?? null,
   };

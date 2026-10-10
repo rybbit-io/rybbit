@@ -54,6 +54,33 @@ export interface GoalTimeSeriesPoint {
   conversion_rate: number;
 }
 
+/**
+ * Every goal of the site (up to the server's bound) with its conversions in
+ * the window, most conversions first, plus the totals the summary band shows.
+ */
+export interface GoalsSummary {
+  goals: Goal[];
+  total_sessions: number;
+  /** Sessions that completed at least one goal. */
+  converting_sessions: number;
+  /** Goals the site has; larger than `goals.length` when the bound was hit. */
+  total_goals: number;
+}
+
+/** A goal before it is saved: its type and what it matches. */
+export interface GoalDefinition {
+  goalType: GoalType;
+  config: GoalConfig;
+}
+
+/** What an unsaved goal would have counted in the window. */
+export interface GoalPreview {
+  conversions: number;
+  total_sessions: number;
+  conversion_rate: number;
+  series: { time: string; conversions: number }[];
+}
+
 export interface GoalsParams extends CommonApiParams, PaginationParams, SortParams {
   pageSize?: number;
   sort?: "goalId" | "name" | "goalType" | "createdAt";

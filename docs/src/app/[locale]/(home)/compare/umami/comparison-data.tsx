@@ -1,6 +1,17 @@
 import Link from "next/link";
-import { ComparisonSection, DeepDive, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
+import {
+  ComparisonSection,
+  DeepDive,
+  FAQItem,
+  OtherAlternatives,
+  PricingInfo,
+  RelatedResource,
+} from "../components/ComparisonPage";
+import { pickAlternatives } from "../components/competitorSummaries";
 
+// Umami claims were checked against umami.is/pricing and docs.umami.is on 2026-09-27 (Umami v3.4.0).
+// Script sizes are compressed transfer sizes of cloud.umami.is/script.js and app.rybbit.io/api/script.js,
+// measured the same day; Umami doesn't publish a figure.
 export const umamiComparisonData: ComparisonSection[] = [
   {
     title: "Analytics Features",
@@ -8,22 +19,27 @@ export const umamiComparisonData: ComparisonSection[] = [
       { name: "Real-time analytics", rybbitValue: true, competitorValue: true },
       { name: "Custom events", rybbitValue: "With attributes", competitorValue: "With properties" },
       { name: "Funnels", rybbitValue: true, competitorValue: true },
-      { name: "User journeys (Sankey)", rybbitValue: true, competitorValue: true },
+      { name: "User journeys", rybbitValue: true, competitorValue: true },
+      { name: "Retention", rybbitValue: true, competitorValue: true },
       { name: "Conversion goals", rybbitValue: true, competitorValue: true },
       { name: "Saved segments", rybbitValue: true, competitorValue: true },
       { name: "UTM tracking", rybbitValue: true, competitorValue: true },
+      { name: "Revenue and attribution reports", rybbitValue: false, competitorValue: true },
       { name: "Public dashboards", rybbitValue: true, competitorValue: true },
     ],
   },
   {
     title: "Advanced Features",
     features: [
-      { name: "Session Replay", rybbitValue: true, competitorValue: false },
-      { name: "User profiles", rybbitValue: true, competitorValue: true },
-      { name: "Web Vitals monitoring", rybbitValue: true, competitorValue: false },
+      { name: "Session replay", rybbitValue: "Pro plan, from $39/mo", competitorValue: "Business plan, $200/mo" },
+      { name: "Click and scroll heatmaps", rybbitValue: false, competitorValue: "Business plan, $200/mo" },
+      { name: "Web Vitals monitoring", rybbitValue: true, competitorValue: true },
       { name: "Error tracking", rybbitValue: true, competitorValue: false },
-      { name: "Real-time globe view", rybbitValue: true, competitorValue: false },
-      { name: "Autocapture", rybbitValue: true, competitorValue: false },
+      { name: "User profiles", rybbitValue: true, competitorValue: true },
+      { name: "Autocapture (clicks, forms, copy)", rybbitValue: true, competitorValue: false },
+      { name: "Bot filtering", rybbitValue: "5 layers + Bots report", competitorValue: "Excludes bots by default" },
+      { name: "MCP server for AI assistants", rybbitValue: "Read and write, 44 tools", competitorValue: "Read-only" },
+      { name: "Google Search Console data", rybbitValue: "Yes (Cloud)", competitorValue: false },
     ],
   },
   {
@@ -31,47 +47,52 @@ export const umamiComparisonData: ComparisonSection[] = [
     features: [
       { name: "Cookie-free tracking", rybbitValue: true, competitorValue: true },
       { name: "No personal data collection", rybbitValue: true, competitorValue: true },
-      { name: "Daily rotating salt", rybbitValue: true, competitorValue: false },
-      { name: "Open source", rybbitValue: true, competitorValue: true },
+      { name: "Visitor ID salt rotation", rybbitValue: "Daily (opt-in)", competitorValue: "Monthly (default)" },
+      { name: "Open-source license", rybbitValue: "AGPL-3.0", competitorValue: "MIT" },
       { name: "Self-hostable", rybbitValue: true, competitorValue: true },
     ],
   },
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "18KB", competitorValue: "~2KB" },
-      { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: true },
+      { name: "Script size (compressed)", rybbitValue: "~11KB", competitorValue: "~2.4KB" },
+      { name: "Self-hosted database", rybbitValue: "ClickHouse + Postgres", competitorValue: "PostgreSQL" },
+      { name: "Ad-blocker bypass via proxy", rybbitValue: true, competitorValue: true },
       { name: "API access", rybbitValue: true, competitorValue: true },
-      { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "Free (Hobby)" },
+      { name: "Cloud starting price", rybbitValue: "$19/mo", competitorValue: "Free (Hobby)" },
     ],
   },
 ];
 
 export const umamiExtendedData = {
-  subtitle: "Both are open source and privacy-first, but Rybbit offers session replay, funnels, and user journeys that Umami doesn't.",
+  subtitle:
+    "Both are open source and cookieless, and both now have session replay and Web Vitals. Rybbit adds error tracking, five-layer bot detection, and a read-write MCP server; Umami adds heatmaps and a free cloud tier.",
 
   introHeading: "Why consider Rybbit over Umami?",
   introParagraphs: [
-    "Umami is a popular open-source analytics tool known for its tiny 2KB script and simple, clean interface. It's a solid choice for personal blogs and small sites that just need basic traffic metrics. But Umami's simplicity comes at the cost of advanced features: no session replay, no error tracking, no Web Vitals monitoring, and limited organization support for teams.",
-    "Rybbit shares Umami's open-source DNA and privacy-first values but offers a much deeper feature set. You get session replay to watch how users interact with your site, funnel analysis to find conversion bottlenecks, user journey visualization with Sankey diagrams, and error tracking to catch issues before your users report them, without giving up the clean dashboard that draws people to simpler tools.",
-    "On the technical side, Rybbit uses ClickHouse for analytics queries, delivering fast performance even at high traffic volumes. Umami supports PostgreSQL and MySQL for self-hosting, which may be more familiar but can struggle with large datasets. Rybbit also offers a mature managed cloud service, so you don't have to maintain infrastructure if you'd rather not. If you've outgrown Umami's basic metrics and need analytics that can grow with your product, Rybbit is the natural next step.",
+    "Umami has grown well past pageview counts. Version 3.1.0 added session replays and Core Web Vitals, and 3.2.0 added click and scroll heatmaps. It also has funnels, journeys, retention, revenue, and attribution reports, so the two products now cover a lot of the same ground.",
+    "The differences that remain are specific. Rybbit tracks JavaScript errors; Umami doesn't. Rybbit filters bots through five detection layers and keeps what it blocked in a Bots report. Its MCP server has 44 tools and can create goals, save funnels, and manage sites, while Umami's MCP server is read-only. And on Rybbit Cloud, Google Search Console clicks and impressions sit in the main dashboard.",
+    "Price and setup differ too. On Umami Cloud, replays and heatmaps start with the $200/mo Business plan, while Rybbit Pro includes session replay from $39/mo. Umami is cheaper per event and has a free Hobby tier. Self-hosted, Umami is a Node.js app and one PostgreSQL database; Rybbit is a Docker Compose stack built around ClickHouse, a columnar database designed for large event tables.",
   ],
 
   chooseRybbit: [
-    "You need session replay to see how users interact with your site",
-    "You want error tracking and Web Vitals monitoring built in",
-    "You need organization support with team roles and permissions",
-    "You want a daily rotating salt option for extra privacy",
-    "You need ClickHouse performance for high-traffic analytics",
-    "You want a real-time globe view of your visitors",
+    "You want JavaScript error tracking next to your traffic and sessions",
+    "You want session replay without a $200/mo plan (Rybbit Pro starts at $39/mo)",
+    "You want bots filtered by five detection layers, with a report of what was blocked",
+    "You want an MCP server with write access (44 tools, including goals, funnels, and sites)",
+    "You want Google Search Console data in your analytics dashboard (Rybbit Cloud)",
+    "You want to bring your Umami history with you through the built-in importer",
+    "You self-host at high volume and want your events in ClickHouse",
   ],
 
   chooseCompetitor: [
-    "You want the smallest possible tracking script (2KB)",
-    "You prefer PostgreSQL or MySQL over ClickHouse for self-hosting",
-    "You only need basic pageview and event tracking",
-    "You want a completely free self-hosted solution with no limits",
-    "You're running a personal blog or lightweight content site",
+    "You want a free cloud tier (Hobby covers 100K events a month on one website)",
+    "You need click and scroll heatmaps",
+    "You want revenue and attribution reports built in",
+    "You prefer the MIT license to AGPL-3.0",
+    "You want the smallest tracking script (about 2.4KB compressed)",
+    "You'd rather self-host a Node.js app and one PostgreSQL database",
+    "You track millions of events a month and want the lowest price per event",
   ],
 
   rybbitPricing: {
@@ -79,22 +100,22 @@ export const umamiExtendedData = {
     model: "Events-based pricing",
     startingPrice: "$19/mo",
     highlights: [
-      "7-day free trial, card charged after the trial",
-      "All features included on every plan",
-      "Session replay available on Pro plan",
-      "Unlimited team members",
+      "7-day free trial, card required at signup",
+      "Standard: 100k events, up to 5 sites and 3 team members",
+      "Pro ($39/mo) adds session replay (10,000 a month) and unlimited sites and members",
+      "Error tracking, funnels, journeys, and Web Vitals on both plans",
     ],
   } satisfies PricingInfo,
 
   competitorPricing: {
     name: "Umami",
-    model: "Free tier + paid cloud",
+    model: "Free tier + usage-based cloud",
     startingPrice: "Free",
     highlights: [
-      "Cloud Hobby plan is free forever",
-      "Pro plan at $20/mo for 1M events",
-      "14-day free trial on paid plans",
-      "Self-hosted version is completely free (MIT)",
+      "Hobby: $0 for 100K events a month on 1 website",
+      "Pro: $20/mo for 1M events, with API and MCP access",
+      "Replays and heatmaps need Business at $200/mo",
+      "14-day trial on paid plans; self-hosting is free (MIT)",
     ],
   } satisfies PricingInfo,
 
@@ -102,23 +123,50 @@ export const umamiExtendedData = {
     title: "Umami vs Rybbit, in depth",
     sections: [
       {
-        heading: "Both open source, built for different jobs",
+        heading: "Two open-source tools with a lot of overlap",
         paragraphs: [
           <>
-            This isn&apos;t an open-vs-proprietary comparison: both tools are open source and self-hostable, and
-            that shapes what the real question is. Umami is a deliberately minimal analytics tool: a small,
-            MIT-licensed Node app with a database behind it, famously easy to run yourself, with reporting that stays
-            intentionally lean: pageviews, referrers, custom events, and a set of basic reports. That
-            minimalism is a philosophy, not a shortcoming, and it&apos;s why Umami is so widely deployed on personal
-            sites and side projects.
+            Until Umami 3.1, the split between these two was easy to describe: both had traffic stats and reports,
+            and Rybbit added session replay and Web Vitals. That&apos;s no longer accurate. Umami 3.1.0 (April 2026)
+            added session replays and Core Web Vitals (LCP, INP, CLS, FCP, and TTFB), and 3.2.0 added click and
+            scroll heatmaps. Its docs also cover funnels, journeys, retention, goals, segments, cohorts, revenue,
+            attribution, boards, and teams.
           </>,
           <>
-            Rybbit makes the other bet: a full analytics platform that happens to also be open source. Alongside the
-            traffic stats you&apos;d expect, it ships <Link href="/features/session-replay">session replay</Link>,{" "}
-            <Link href="/features/funnels">funnels</Link>, user journey visualization, error tracking, Web Vitals
-            monitoring, and user profiles. Both tools can show you a funnel; the difference appears when a number
-            raises a question. In Umami the report is where the trail ends. In Rybbit you can open the sessions behind
-            a drop-off, watch the replays, and see whether a JavaScript error or a confusing form is the culprit.
+            Rybbit covers most of that list too, with{" "}
+            <Link href="/features/session-replay">session replay</Link>,{" "}
+            <Link href="/features/funnels">funnels</Link>,{" "}
+            <Link href="/features/user-journeys">user journeys</Link>, retention,{" "}
+            <Link href="/features/web-vitals">Web Vitals</Link>, and user profiles. Both tools are cookieless and
+            free to self-host. What separates them now is a shorter list of specific features, plus price, license,
+            and how much infrastructure you want to run.
+          </>,
+        ],
+      },
+      {
+        heading: "Where Rybbit goes further",
+        paragraphs: [
+          <>
+            Error tracking is the clearest gap. Rybbit captures uncaught JavaScript errors and unhandled promise
+            rejections from your own domain, groups them in an{" "}
+            <Link href="/features/error-tracking">Errors report</Link>, and shows each one in the session timeline
+            next to the pages and events around it. Umami has no error tracking. Rybbit&apos;s replays don&apos;t
+            record console output, so errors show up in the Errors report and the session timeline rather than
+            inside the replay.
+          </>,
+          <>
+            Bot filtering is the second. Umami excludes bots by default. Rybbit runs each tracking request through
+            five{" "}
+            <Link href="/features/bot-detection">detection layers</Link>{" "}
+            (user-agent patterns, header checks, browser signals, ASN data, and rate anomalies), keeps what it
+            blocked in a separate Bots report, and doesn&apos;t bill you for bot traffic.
+          </>,
+          <>
+            Both ship an MCP server for AI assistants, and Umami&apos;s is read-only. Rybbit&apos;s{" "}
+            <Link href="/features/mcp">MCP server</Link>{" "}
+            has 44 tools, including ones that create goals, save funnels, manage sites and team members, and run
+            read-only SQL. On Rybbit Cloud, Google Search Console clicks, impressions, and keywords also appear in
+            the main dashboard.
           </>,
         ],
       },
@@ -126,21 +174,32 @@ export const umamiExtendedData = {
         heading: "Pricing and self-hosting, honestly",
         paragraphs: [
           <>
-            Umami&apos;s cloud has a Hobby plan that is free forever, and the Pro plan is $20/mo for 1M events with a
-            14-day trial, though most Umami adoption is the free tier or self-hosting, and for basic traffic
-            stats at $0 that is genuinely hard to beat. Rybbit starts at $19/mo for 100k events with a 7-day trial,
-            and every plan includes every feature. Per event, Umami Pro is cheaper; what you&apos;re paying Rybbit for
-            is depth of reporting, not the traffic counting. See the full breakdown on the{" "}
+            Umami Cloud&apos;s Hobby plan is free for 100K events a month on one website, with six months of data
+            retention. Pro is $20/mo for 1M events, 20 websites, and 10 team members, and adds API and MCP access.
+            Session replays and heatmaps start at Business: $200/mo for 10M events, with 5,000 replays included.
+            Paid plans have a 14-day trial.
+          </>,
+          <>
+            Rybbit Cloud starts with a 7-day trial, and the card is collected at signup. Standard is $19/mo for
+            100k events, 5 sites, and 3 team members, with error tracking, funnels, journeys, retention, and Web
+            Vitals included. Pro is $39/mo at the same volume and adds session replay (10,000 replays a month) plus
+            unlimited sites and members.
+          </>,
+          <>
+            Per event, Umami is cheaper: 1M events a month costs $20 on Umami Pro and $69 on Rybbit Standard.
+            Replays change the math. Rybbit Pro costs less than Umami Business up to about 2M events a month ($39/mo
+            at 100k, $139/mo at 1M), and Umami Business has the lower list price beyond that. Replay volume differs
+            too: Umami Business includes 5,000 replays a month and charges $0.005 for each extra one, while Rybbit
+            Pro includes 10,000 replays for every 100k events in your plan. The full breakdown is on the{" "}
             <Link href="/pricing">pricing page</Link>.
           </>,
           <>
-            Both self-host for free. Umami is the lighter operational lift: a small Node app plus a Postgres or
-            MySQL database you probably already know how to run. Rybbit&apos;s{" "}
-            <Link href="/docs/self-hosting">self-hosted deployment</Link> is a Docker Compose stack with more moving
-            parts, because features like session replay and fast queries over large event volumes need more
-            infrastructure behind them. If your goal is the smallest possible thing to maintain, Umami wins that
-            trade; if you want the full platform on your own hardware, Rybbit&apos;s setup is still a single Docker
-            install.
+            Both self-host for free, and both include session replay when self-hosted. Umami is the lighter lift:
+            a Node.js app and one PostgreSQL database. Rybbit&apos;s{" "}
+            <Link href="/docs/self-hosting">self-hosted deployment</Link>{" "}
+            is a Docker Compose stack with ClickHouse, Postgres, Redis, and a Caddy web server, installed by a setup
+            script on a VPS (the guide recommends at least 2GB of RAM). ClickHouse is a columnar database built for
+            aggregating large event tables, and that&apos;s what the extra services buy you.
           </>,
         ],
       },
@@ -148,28 +207,26 @@ export const umamiExtendedData = {
         heading: "Switching from Umami to Rybbit",
         paragraphs: [
           <>
-            Unlike most analytics migrations, you don&apos;t have to start from zero: Rybbit ships a data importer for
-            Umami (imports are supported for Plausible, Umami, and Simple Analytics), so your historical traffic comes
-            with you. A low-risk path looks like this:
+            You don&apos;t have to start from zero. Rybbit&apos;s importer reads Umami&apos;s CSV export (it also
+            handles Plausible and Simple Analytics), so your historical traffic comes with you. A low-risk path looks
+            like this:
           </>,
-          <ol>
+          <ol key="migration-steps">
             <li>
-              Add the Rybbit tracking script and leave Umami running. Both are lightweight and cookieless, and the two
-              scripts don&apos;t conflict, so running them side by side costs you nothing.
+              Add the Rybbit tracking script and leave Umami running. Both are cookieless and the two scripts
+              don&apos;t conflict, so running them side by side is safe.
             </li>
             <li>
-              Import your Umami history with the built-in importer (see the{" "}
-              <Link href="/docs">docs</Link> for the walkthrough) so your Rybbit dashboard starts with
-              continuity instead of a blank chart.
+              Import your Umami history with the built-in importer (the{" "}
+              <Link href="/docs/data-import">import guide</Link>{" "}
+              walks through it). On Rybbit Cloud, imported events count toward your monthly event limit, and
+              imports reach back 3 years on Standard and 5 on Pro.
             </li>
             <li>
-              Recreate your custom events and goals. Umami&apos;s event model maps cleanly onto Rybbit&apos;s custom
-              events with attributes.
+              Recreate your custom events and goals. Umami&apos;s events with properties map onto Rybbit&apos;s
+              custom events with attributes.
             </li>
-            <li>
-              Compare the two dashboards for a week or two. Once the numbers line up, remove the Umami script,
-              or keep the instance around; a self-hosted Umami costs nothing to leave running.
-            </li>
+            <li>Compare the two dashboards for a week or two. Once the numbers line up, remove the Umami script.</li>
           </ol>,
         ],
       },
@@ -177,13 +234,14 @@ export const umamiExtendedData = {
         heading: "When Umami is the better choice",
         paragraphs: [
           <>
-            Plenty of sites should just use Umami. If you&apos;re running a personal blog or hobby project and your
-            analytics budget is $0, Umami&apos;s free-forever cloud tier or a tiny self-hosted instance is the right
-            answer; Rybbit&apos;s extra features would sit unused. The same goes if you want the lightest
-            possible footprint (Umami&apos;s ~2KB script is about as small as tracking gets), or if you specifically
-            want an MIT license for your stack. Where the calculus changes is when a project becomes a business:
-            the moment you need to know <em>why</em> a conversion rate dropped, rather than only that it did,
-            you&apos;ve outgrown minimal analytics. For a wider survey of the options, see our guide to the{" "}
+            Plenty of sites should pick Umami. If your budget is $0, its Hobby tier covers 100K events a month on
+            one site, while Rybbit Cloud starts at $19/mo. If you want heatmaps, Umami has click and scroll heatmaps
+            and Rybbit has none. Umami also has revenue and attribution reports, which Rybbit doesn&apos;t, an MIT
+            license instead of AGPL-3.0, and a smaller tracking script (about 2.4KB compressed against
+            Rybbit&apos;s 11KB). Rybbit is the better fit when you want error tracking beside your analytics,
+            layered bot filtering with a report of what it blocked, replays without a $200/mo plan, or an MCP server
+            that can make changes. For a
+            wider survey of the options, see our guide to the{" "}
             <Link href="/blog/best-web-analytics-tools">best web analytics tools</Link>.
           </>,
         ],
@@ -191,26 +249,43 @@ export const umamiExtendedData = {
     ],
   } satisfies DeepDive,
 
+  otherAlternatives: {
+    title: "Other Umami alternatives",
+    intro:
+      "Rybbit isn't the only option. These are the other Umami alternatives people weigh most often, with the main trade-off of each and a link to the full comparison.",
+    items: pickAlternatives(["plausible", "posthog", "matomo", "fathom", "simpleanalytics", "cloudflare-analytics"]),
+  } satisfies OtherAlternatives,
+
   faqItems: [
     {
       question: "How is Rybbit different from Umami?",
-      answer: "Both are open-source and privacy-first, but Rybbit includes advanced features Umami lacks: session replay, error tracking, Web Vitals monitoring, real-time globe view, and organization support. Rybbit also uses ClickHouse for better performance at scale.",
+      answer:
+        "Both are open source and cookieless, and both have funnels, journeys, retention, session replay, and Web Vitals. Rybbit adds JavaScript error tracking, five-layer bot filtering with a Bots report, an MCP server with write tools, and Google Search Console data on Rybbit Cloud. Umami has click and scroll heatmaps, revenue and attribution reports, an MIT license, and a free Hobby tier.",
+    },
+    {
+      question: "Does Umami have session replay?",
+      answer:
+        "Yes. Umami added session replays in v3.1.0 and click and scroll heatmaps in v3.2.0. On Umami Cloud, both need the Business plan ($200/mo, with 5,000 replays included); self-hosted Umami includes them. Rybbit includes session replay on its Pro plan, from $39/mo with 10,000 replays a month, and on self-hosted installs. Rybbit doesn't have heatmaps.",
     },
     {
       question: "Can I migrate from Umami to Rybbit?",
-      answer: "Yes. Just add Rybbit's script tag to your site and data starts flowing immediately. You can run both tools in parallel during the transition. Historical Umami data won't transfer, but new data collection begins instantly.",
+      answer:
+        "Yes, history included. Export your Umami data as CSV and load it with Rybbit's built-in importer, then add the Rybbit script and run both tools in parallel until the numbers line up. On Rybbit Cloud, imported events count toward your monthly event limit.",
     },
     {
       question: "Which is easier to self-host?",
-      answer: "Both are straightforward to self-host with Docker. Umami supports PostgreSQL/MySQL which may be more familiar. Rybbit uses ClickHouse which offers better analytics query performance at scale but is a less common database.",
+      answer:
+        "Umami. It's a Node.js app with one PostgreSQL database. Rybbit runs as a Docker Compose stack with ClickHouse, Postgres, and Redis, which is more to operate. ClickHouse is a columnar database built for aggregating large event tables, and that's the reason for the extra pieces.",
     },
     {
       question: "Does Rybbit have a larger script than Umami?",
-      answer: "Yes, Rybbit's script is 18KB compared to Umami's 2KB. The additional size enables features like session replay, error tracking, and Web Vitals monitoring. Both are small enough to have negligible impact on page load.",
+      answer:
+        "Yes. Rybbit's tracking script is about 11KB compressed and Umami's is about 2.4KB (measured in September 2026). Rybbit's also carries error tracking, autocapture, and the browser signals its bot detection uses. Session replay needs a separate recorder in both: Rybbit fetches its recorder only for sessions sampled for replay, and Umami's replays and heatmaps use a recorder script you add to your pages.",
     },
     {
       question: "Are both GDPR compliant?",
-      answer: "Yes. Both Rybbit and Umami are cookie-free and don't collect personal data. Rybbit adds an extra privacy option with daily rotating salt for user ID hashing, ensuring visitors can't be tracked across days.",
+      answer:
+        "Both are cookieless, don't collect personal data by default, and say you can run them without a cookie banner. Umami rotates its session salt monthly by default. Rybbit has an opt-in daily salt for user IDs, which stops a visitor from being linked across days. Rybbit Cloud stores analytics data in the EU; Umami says its cloud servers are in the US and EU.",
     },
   ] satisfies FAQItem[],
 
@@ -221,14 +296,14 @@ export const umamiExtendedData = {
       description: "The privacy-first alternative to GA4",
     },
     {
-      title: "Rybbit vs Plausible",
-      href: "/compare/plausible",
-      description: "Compare two privacy-first analytics platforms",
+      title: "Import your Umami data",
+      href: "/docs/data-import",
+      description: "Bring your Umami history over from a CSV export",
     },
     {
-      title: "Rybbit vs Fathom",
-      href: "/compare/fathom",
-      description: "Open source vs proprietary privacy analytics",
+      title: "Best web analytics tools",
+      href: "/blog/best-web-analytics-tools",
+      description: "Ten tools compared by use case",
     },
     {
       title: "Getting started with Rybbit",

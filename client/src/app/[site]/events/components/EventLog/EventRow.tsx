@@ -1,41 +1,77 @@
 "use client";
 
+import { IdCard } from "lucide-react";
+import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { DateTime } from "luxon";
+import { useRef } from "react";
+import { useArrivalHighlight } from "@/components/interior/use-arrival-highlight";
 import { Event } from "../../../../../api/analytics/endpoints";
 import { Avatar } from "../../../../../components/Avatar";
-import { EventTypeIcon } from "../../../../../components/EventIcons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../components/ui/tooltip";
 import { useDateTimeFormat } from "../../../../../hooks/useDateTimeFormat";
-import { useEventDisplayName } from "../../../../../lib/events";
 import { getTimezone } from "../../../../../lib/store";
-import { getCountryName, getUserDisplayName, truncateString } from "../../../../../lib/utils";
+import { cn, getCountryName, getUserDisplayName } from "../../../../../lib/utils";
 import { Browser } from "../../../components/shared/icons/Browser";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
-import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
-import { buildEventPath, getEventTypeLabel, getMainData, parseEventProperties } from "./eventLogUtils";
 import { DeviceIcon } from "../../../components/shared/icons/Device";
+import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
+import { EventTypeMark } from "../EventTypeMark";
+import { buildEventPath, getEventRowData, parseEventProperties, PropertyToken } from "./eventLogUtils";
+
+/**
+ * The log's columns, shared by the header and every row so they line up. They
+ * follow the width of the log itself (its `@container`), not the window: a
+ * narrow log keeps time, event and user; properties and device join at 760px,
+ * the page at 980px. Everything is still in the details sheet a row opens.
+ */
+export const EVENT_LOG_GRID =
+  "grid items-center gap-x-2 px-3 md:gap-x-3 md:px-4 grid-cols-[92px_minmax(0,1fr)_minmax(0,112px)] @min-[760px]:grid-cols-[104px_minmax(0,172px)_minmax(0,1fr)_150px_84px] @min-[980px]:grid-cols-[104px_minmax(0,172px)_minmax(0,1fr)_150px_minmax(0,164px)_84px]";
+/** Shown from the width the properties and device columns appear at. */
+export const EVENT_LOG_WIDE = "hidden @min-[760px]:flex";
+/** Shown from the width the page column appears at. */
+export const EVENT_LOG_WIDEST = "hidden @min-[980px]:block";
+
+export const EVENT_LOG_ROW_HEIGHT = 32;
+
+function Token({ token }: { token: PropertyToken }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center whitespace-nowrap rounded border border-neutral-200 bg-neutral-50 px-1.5 py-px font-mono text-[11px] leading-4 dark:border-neutral-800 dark:bg-neutral-850"
+      title={`${token.key}=${token.value}`}
+    >
+      <span className="text-neutral-500 dark:text-neutral-400">{token.key}</span>
+      <span className="px-px text-neutral-400 dark:text-neutral-500">=</span>
+      <span className="max-w-[28ch] truncate text-neutral-900 dark:text-neutral-100">{token.value}</span>
+    </span>
+  );
+}
 
 interface EventRowProps {
   event: Event;
   site: string;
+  /** Set on a private-link view, so the user link stays inside it. */
+  privateKey: string | null;
+  /** The event's type as a word, for rows that have no name of their own. */
+  typeLabel: string;
   onClick: (event: Event) => void;
+  /** performance.now() when the row arrived from a poll; it gets a brief neutral highlight. */
+  arrivedAt?: number;
 }
 
-export function EventRow({ event, site, onClick }: EventRowProps) {
+export function EventRow({ event, site, privateKey, typeLabel, onClick, arrivedAt }: EventRowProps) {
   const t = useExtracted();
-  const getEventDisplayName = useEventDisplayName();
+  const rowRef = useRef<HTMLDivElement>(null);
+  useArrivalHighlight(rowRef, arrivedAt);
   const { locale, hour12, formatRelative } = useDateTimeFormat();
   const eventProperties = parseEventProperties(event);
-  const eventTime = DateTime.fromSQL(event.timestamp, { zone: "utc" })
-    .setLocale(locale)
-    .setZone(getTimezone());
+  const eventTime = DateTime.fromSQL(event.timestamp, { zone: "utc" }).setLocale(locale).setZone(getTimezone());
+  const isToday = eventTime.hasSame(DateTime.now().setZone(getTimezone()), "day");
   const pagePath = buildEventPath(event);
   const pageUrl = `https://${event.hostname}${pagePath}`;
-  const isPageview = event.type === "pageview";
-  const eventData = isPageview ? null : getMainData(event, eventProperties, getEventDisplayName);
+  const data = getEventRowData(event, eventProperties);
   const userProfileId = event.identified_user_id || event.user_id;
+  const userHref = `/${site}/${privateKey ? `${privateKey}/` : ""}user/${encodeURIComponent(userProfileId)}`;
   const displayName = getUserDisplayName({
     identified_user_id: event.identified_user_id || undefined,
     user_id: event.user_id,
@@ -44,45 +80,95 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
 
   return (
     <div
-      className="grid grid-cols-[28px_145px_180px_100px_1fr_1fr] border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50/60 dark:hover:bg-neutral-800/40 cursor-pointer"
+      ref={rowRef}
+      className={cn(
+        EVENT_LOG_GRID,
+        "h-8 cursor-pointer border-b border-neutral-100 text-xs hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800/40 [--arrival-bg:hsl(var(--neutral-100))] dark:[--arrival-bg:hsl(var(--neutral-800))]"
+      )}
       onClick={() => onClick(event)}
     >
-      <div className="flex items-center justify-center py-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <EventTypeIcon type={event.type} />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <span>{getEventTypeLabel(event.type)}</span>
-          </TooltipContent>
-        </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="truncate tabular-nums text-neutral-500 dark:text-neutral-400">
+            {/* Today's rows drop the date: in the live log it would repeat on every line. */}
+            {isToday
+              ? eventTime.toFormat(hour12 ? "h:mm:ss a" : "HH:mm:ss")
+              : eventTime.toFormat(hour12 ? "MMM d, h:mm a" : "dd MMM, HH:mm")}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span>
+            {eventTime.toFormat(hour12 ? "MMM d, h:mm:ss a" : "dd MMM, HH:mm:ss")} · {formatRelative(eventTime)}
+          </span>
+        </TooltipContent>
+      </Tooltip>
+
+      <div className="flex min-w-0 items-center gap-2">
+        <EventTypeMark type={event.type} className="h-3.5 w-3.5" />
+        {event.type === "custom_event" && event.event_name ? (
+          <span className="truncate font-medium text-neutral-900 dark:text-neutral-100" title={event.event_name}>
+            {event.event_name}
+          </span>
+        ) : (
+          <span className="truncate text-neutral-600 dark:text-neutral-300">{typeLabel}</span>
+        )}
       </div>
 
-      <div className="text-neutral-500 dark:text-neutral-400 px-2 py-1 flex items-center">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span>{eventTime.toFormat(hour12 ? "MMM d, h:mm:ss a" : "dd MMM, HH:mm:ss")}</span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <span>{formatRelative(eventTime)}</span>
-          </TooltipContent>
-        </Tooltip>
+      <div
+        className={cn(
+          EVENT_LOG_WIDE,
+          "min-w-0 items-center gap-1.5 overflow-hidden",
+          // Tokens keep their width and fade out where they run past the column; the sheet has them all.
+          data.kind === "tokens" && "[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]"
+        )}
+      >
+        {data.kind === "link" ? (
+          <Link
+            href={data.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="truncate text-neutral-600 hover:underline dark:text-neutral-300"
+            title={data.url}
+          >
+            {data.url.replace(/^https?:\/\//, "")}
+          </Link>
+        ) : data.kind === "message" ? (
+          <span className="truncate font-mono text-[11px] text-neutral-600 dark:text-neutral-300" title={data.text}>
+            {data.text}
+          </span>
+        ) : (
+          data.tokens.map(token => <Token key={token.key} token={token} />)
+        )}
       </div>
 
-      <div className="px-2 py-1">
-        <Link
-          href={`/${site}/user/${encodeURIComponent(userProfileId)}`}
-          onClick={e => e.stopPropagation()}
-          className="flex items-center gap-2"
-        >
-          <Avatar size={18} id={event.user_id} lastActiveTime={eventTime} />
-          <div className="text-neutral-700 dark:text-neutral-200 truncate max-w-[160px] hover:underline">{displayName}</div>
-        </Link>
-      </div>
+      <Link
+        href={userHref}
+        onClick={e => e.stopPropagation()}
+        className="flex min-w-0 items-center gap-2 hover:underline"
+      >
+        <Avatar size={18} id={event.user_id} lastActiveTime={eventTime} />
+        <span className="truncate text-neutral-700 dark:text-neutral-200">{displayName}</span>
+        {event.identified_user_id && (
+          <IdCard
+            className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400"
+            aria-label={t("Identified user")}
+          />
+        )}
+      </Link>
 
-      <div className="flex space-x-1 items-center px-2 py-1">
+      <Link
+        href={pageUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={e => e.stopPropagation()}
+        className={cn(EVENT_LOG_WIDEST, "truncate text-neutral-600 hover:underline dark:text-neutral-300")}
+        title={pagePath}
+      >
+        {pagePath}
+      </Link>
+
+      <div className={cn(EVENT_LOG_WIDE, "items-center gap-1")}>
         {event.country && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -125,40 +211,6 @@ export function EventRow({ event, site, onClick }: EventRowProps) {
             <p>{event.device_type || t("Unknown device")}</p>
           </TooltipContent>
         </Tooltip>
-      </div>
-
-      <div className="text-neutral-600 dark:text-neutral-300 px-2 py-1 truncate">
-        <Link
-          href={pageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="hover:underline"
-          title={pagePath}
-        >
-          {truncateString(pagePath, 60)}
-        </Link>
-      </div>
-
-      <div className="text-neutral-600 dark:text-neutral-300 px-2 py-1 truncate">
-        {eventData && (
-          eventData.url ? (
-            <Link
-              href={eventData.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              className="hover:underline"
-              title={eventData.label}
-            >
-              {truncateString(eventData.label, 60)}
-            </Link>
-          ) : (
-            <span title={eventData.label}>
-              {truncateString(eventData.label, 60)}
-            </span>
-          )
-        )}
       </div>
     </div>
   );

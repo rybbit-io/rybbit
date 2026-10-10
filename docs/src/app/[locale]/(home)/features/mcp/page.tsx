@@ -1,5 +1,6 @@
 import { createOGImageUrl } from "@/lib/metadata";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FeaturePage } from "../components/FeaturePage";
 import {
   capabilities,
@@ -12,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: "MCP Server - Rybbit | Analytics for AI Assistants",
   description:
-    "Connect Claude, Cursor, Codex, and any MCP client to your analytics. 39 tools for querying traffic, managing goals and funnels, and running read-only SQL, with dashboard-grade permissions.",
+    "Connect Claude, Cursor, Codex, and any MCP client to your analytics and Search Console data. 44 tools for querying traffic, managing goals and funnels, and running read-only SQL, with dashboard-grade permissions.",
   openGraph: {
     title: "MCP Server - Rybbit",
     description:
@@ -94,12 +95,18 @@ export default function McpPage() {
             answers the ones you ask: connect an AI assistant and it can explore your traffic, behavior, errors, and performance data through the same API the dashboard uses, in plain language, from wherever you already work.
           </>,
           <>
-            This isn&apos;t a read-only feed. <strong className="text-neutral-900 dark:text-white">39 tools</strong>{" "}
-            span analytics queries, live stats, sessions and raw events, read-only ClickHouse SQL, and management of sites, goals, funnels, user profiles, organization members, and teams. A coding agent can verify that the error you just fixed has stopped occurring in production, or check which pages matter before a refactor.
+            This isn&apos;t a read-only feed. <strong className="text-neutral-900 dark:text-white">44 tools</strong>{" "}
+            span analytics queries, live stats, sessions and raw events, Google Search Console performance, read-only ClickHouse SQL, and management of sites, goals, funnels, user profiles, organization members, and teams. A coding agent can verify that the error you just fixed has stopped occurring in production, or check which pages matter before a refactor.
           </>,
           <>
             Access is as controlled as the dashboard itself: connect with{" "}
             <strong className="text-neutral-900 dark:text-white">OAuth or scoped, revocable API keys</strong>, and every tool call is authorized against your role, site access, and rate limits. Rybbit runs no AI model of its own. Your data goes only to the client you configure, on cloud or self-hosted.
+          </>,
+          <>
+            Weighing your options? We compare the{" "}
+            <Link href="/blog/best-analytics-mcp-servers">best analytics MCP servers</Link>, walk through
+            setting up the <Link href="/blog/google-analytics-mcp">Google Analytics MCP server</Link>, and show how
+            to get <Link href="/blog/google-search-console-mcp">Google Search Console data over MCP</Link>.
           </>,
         ]}
         capabilities={capabilities}
@@ -108,7 +115,7 @@ export default function McpPage() {
         faqItems={faqItems}
         relatedFeatures={relatedFeatures}
         ctaTitle="Plug your analytics into your AI workflow"
-        ctaDescription="One endpoint, 39 tools, dashboard-grade permissions. Works with Claude, Cursor, Codex, and any MCP client."
+        ctaDescription="One endpoint, 44 tools, dashboard-grade permissions. Works with Claude, Cursor, Codex, and any MCP client."
       />
     </>
   );

@@ -1,3 +1,4 @@
+import type { OrgRole } from "@rybbit/shared";
 import { authedFetch } from "../../utils";
 
 export interface AdminOrganizationData {
@@ -95,7 +96,7 @@ export interface AdminOrganizationMemberDetail {
   };
   membership: {
     id: string;
-    role: "owner" | "admin" | "member";
+    role: OrgRole;
     hasRestrictedSiteAccess: boolean;
     siteIds: number[];
   };
@@ -107,7 +108,7 @@ export function getAdminOrganizationMember(organizationId: string, memberId: str
 }
 
 export interface UpdateAdminOrganizationMemberInput {
-  role: "owner" | "admin" | "member";
+  role: OrgRole;
   hasRestrictedSiteAccess: boolean;
   siteIds: number[];
 }

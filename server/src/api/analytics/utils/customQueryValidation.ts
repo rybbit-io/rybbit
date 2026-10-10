@@ -1,3 +1,5 @@
+import { QUERY_USER_LIMITS } from "../../../db/clickhouse/queryLimits.js";
+
 export const MAX_CUSTOM_QUERY_LENGTH = 20_000;
 
 const blockedKeywords = [
@@ -519,17 +521,13 @@ const userFacingClickhouseErrorCodes = new Set([
   70, // CANNOT_CONVERT_TYPE
   117, // INCORRECT_DATA
   158, // TOO_MANY_ROWS
-  159, // TIMEOUT_EXCEEDED
-  160, // TOO_SLOW
   164, // READONLY
   179, // MULTIPLE_EXPRESSIONS_FOR_ALIAS
   182, // ILLEGAL_PREWHERE
   184, // ILLEGAL_AGGREGATION
   215, // NOT_AN_AGGREGATE
-  241, // MEMORY_LIMIT_EXCEEDED
   306, // TOO_DEEP_RECURSION
   386, // NO_COMMON_TYPE
-  394, // QUERY_WAS_CANCELLED
   452, // SETTING_CONSTRAINT_VIOLATION
   497, // ACCESS_DENIED (handled separately, listed for clarity)
 ]);
@@ -539,9 +537,37 @@ export function sanitizeClickhouseError(error: unknown): string {
   if (!raw) {
     return "Failed to run query";
   }
-  const code = Number(/^Code: (\d+)\./.exec(raw)?.[1]);
+  // The SDK removes "Code: ..." from message and puts it on error.code.
+  // Also accept unparsed ClickHouse errors returned while reading a response.
+  const errorCode = error instanceof Error && "code" in error ? error.code : undefined;
+  const code = Number(
+    (typeof errorCode === "string" || typeof errorCode === "number") && /^\d+$/.test(String(errorCode))
+      ? errorCode
+      : /^Code: (\d+)\./.exec(raw)?.[1]
+  );
   if (code === 497 || /Not enough privileges/i.test(raw)) {
     return "Query references data outside scoped_events";
+  }
+  if (code === 159 || code === 160) {
+    return `Query exceeded the ${QUERY_USER_LIMITS.maxExecutionTimeSeconds}-second time limit. Try a shorter date range or simplify the query.`;
+  }
+  if (code === 241) {
+    return "Query exceeded the memory limit. Try a shorter date range or simplify the query.";
+  }
+  if (code === 202) {
+    return "Too many queries are running at once. Wait a moment and try again.";
+  }
+  if (code === 394) {
+    return "Query was cancelled. Try running it again.";
+  }
+  if (raw === "Timeout error." || errorCode === "ETIMEDOUT") {
+    return "Timed out waiting for the database. Try again or use a shorter date range.";
+  }
+  if (
+    typeof errorCode === "string" &&
+    ["ECONNREFUSED", "ECONNRESET", "ENOTFOUND", "EAI_AGAIN", "EPIPE"].includes(errorCode)
+  ) {
+    return "Could not connect to the database. Please try again shortly.";
   }
   if (!Number.isFinite(code) || !userFacingClickhouseErrorCodes.has(code)) {
     return Number.isFinite(code) ? `Query failed (ClickHouse error ${code})` : "Failed to run query";

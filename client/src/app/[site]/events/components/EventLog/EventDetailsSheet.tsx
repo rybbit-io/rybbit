@@ -6,18 +6,19 @@ import { DateTime } from "luxon";
 import Link from "next/link";
 import { Event } from "../../../../../api/analytics/endpoints";
 import { fetchSessions } from "../../../../../api/analytics/endpoints/sessions";
-import { EventTypeIcon } from "../../../../../components/EventIcons";
+import { CopyButton } from "../../../../../components/interior/copy-button";
 import { SessionCard, SessionCardSkeleton } from "../../../../../components/Sessions/SessionCard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../../../../../components/ui/sheet";
 import { hour12, userLocale } from "../../../../../lib/dateTimeUtils";
 import { getRegionName } from "../../../../../lib/geo";
-import { getTimezone } from "../../../../../lib/store";
+import { getTimezone, useStore } from "../../../../../lib/store";
 import { getCountryName, getUserDisplayName, truncateString } from "../../../../../lib/utils";
 import { Browser } from "../../../components/shared/icons/Browser";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 import { DeviceIcon } from "../../../components/shared/icons/Device";
 import { OperatingSystem } from "../../../components/shared/icons/OperatingSystem";
-import { buildEventPath, getEventTypeLabel, parseEventProperties } from "./eventLogUtils";
+import { EventTypeMark, useEventTypeLabels } from "../EventTypeMark";
+import { buildEventPath, parseEventProperties } from "./eventLogUtils";
 
 interface EventDetailsSheetProps {
   open: boolean;
@@ -28,7 +29,12 @@ interface EventDetailsSheetProps {
 
 export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDetailsSheetProps) {
   const t = useExtracted();
+  const { singular: typeLabels } = useEventTypeLabels();
+  // Set on a private-link view, so the user link stays inside it.
+  const privateKey = useStore(state => state.privateKey);
   const selectedEventProperties = event ? parseEventProperties(event) : {};
+  const propertiesJson =
+    Object.keys(selectedEventProperties).length > 0 ? JSON.stringify(selectedEventProperties, null, 2) : "";
 
   const sessionQuery = useQuery({
     queryKey: ["event-session", site, event?.session_id],
@@ -47,7 +53,7 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
 
   const timestamp = DateTime.fromSQL(event?.timestamp || "", { zone: "utc" })
     .setLocale(userLocale)
-    .setZone(getTimezone())
+    .setZone(getTimezone());
 
   return (
     <Sheet
@@ -60,8 +66,12 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
         <SheetHeader className="mb-4">
           <SheetTitle>
             <div className="flex items-center gap-2">
-              <EventTypeIcon type={event?.type || ""} className="w-5 h-5" />
-              <span className="font-medium">{getEventTypeLabel(event?.type || "")}</span>
+              <EventTypeMark type={event?.type || ""} className="w-5 h-5" />
+              <span className="font-medium">
+                {event?.type === "custom_event" && event.event_name
+                  ? event.event_name
+                  : (typeLabels[event?.type || ""] ?? typeLabels.custom_event)}
+              </span>
             </div>
           </SheetTitle>
         </SheetHeader>
@@ -75,14 +85,12 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
                 <div className="grid grid-cols-1 gap-1 text-sm">
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Timestamp")}</span>
-                    <span>
-                      {timestamp.toFormat(hour12 ? "MMM d, h:mm:ss a" : "dd MMM, HH:mm:ss")}
-                    </span>
+                    <span>{timestamp.toFormat(hour12 ? "MMM d, h:mm:ss a" : "dd MMM, HH:mm:ss")}</span>
                   </div>
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                     <span className="text-neutral-500 dark:text-neutral-400">{t("User")}</span>
                     <Link
-                      href={`/${site}/user/${encodeURIComponent(event.identified_user_id || event.user_id)}`}
+                      href={`/${site}/${privateKey ? `${privateKey}/` : ""}user/${encodeURIComponent(event.identified_user_id || event.user_id)}`}
                       className="hover:underline"
                     >
                       {getUserDisplayName({
@@ -120,14 +128,16 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Browser")}</span>
                     <span className="flex items-center gap-1">
                       <Browser browser={event.browser || "Unknown"} />
-                      {event.browser || t("Unknown")}{event.browser_version ? ` ${event.browser_version}` : ""}
+                      {event.browser || t("Unknown")}
+                      {event.browser_version ? ` ${event.browser_version}` : ""}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Operating System")}</span>
                     <span className="flex items-center gap-1">
                       <OperatingSystem os={event.operating_system || ""} />
-                      {event.operating_system || t("Unknown")}{event.operating_system_version ? ` ${event.operating_system_version}` : ""}
+                      {event.operating_system || t("Unknown")}
+                      {event.operating_system_version ? ` ${event.operating_system_version}` : ""}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
@@ -139,7 +149,11 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
                   </div>
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Screen")}</span>
-                    <span>{event.screen_width && event.screen_height ? `${event.screen_width} × ${event.screen_height}` : "-"}</span>
+                    <span>
+                      {event.screen_width && event.screen_height
+                        ? `${event.screen_width} × ${event.screen_height}`
+                        : "-"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Language")}</span>
@@ -147,33 +161,54 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
                   </div>
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Location")}</span>
-                    <span className="flex items-center gap-1">{event.country && <CountryFlag country={event.country} />}{[event.city, getRegionName(event.region), getCountryName(event.country)].filter(Boolean).join(", ") || "-"}</span>
+                    <span className="flex items-center gap-1">
+                      {event.country && <CountryFlag country={event.country} />}
+                      {[event.city, getRegionName(event.region), getCountryName(event.country)]
+                        .filter(Boolean)
+                        .join(", ") || "-"}
+                    </span>
                   </div>
-                  {(isFinite(event.lat) && isFinite(event.lon)) && (
+                  {isFinite(event.lat) && isFinite(event.lon) && (
                     <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
                       <span className="text-neutral-500 dark:text-neutral-400">{t("Coordinates")}</span>
-                      <span>{event.lat.toFixed(4)}, {event.lon.toFixed(4)}</span>
+                      <span>
+                        {event.lat.toFixed(4)}, {event.lon.toFixed(4)}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            {Object.keys(selectedEventProperties).length > 0 &&
+            {propertiesJson && (
               <div>
                 <div className="text-sm font-medium mb-2">{t("Properties")}</div>
-                <pre className="text-xs bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md p-3 overflow-auto max-h-64">
-                  {JSON.stringify(selectedEventProperties, null, 2)}
-                </pre>
+                <div className="relative">
+                  <pre className="text-xs bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md p-3 pr-10 overflow-auto max-h-64">
+                    {propertiesJson}
+                  </pre>
+                  <CopyButton
+                    iconOnly
+                    size="xs"
+                    tooltip
+                    value={propertiesJson}
+                    label={t("Copy properties as JSON")}
+                    className="absolute right-2 top-2"
+                  />
+                </div>
               </div>
-            }
+            )}
 
             <div>
               <div className="text-sm font-medium mb-2">{t("Session")}</div>
               {sessionQuery.isLoading ? (
                 <SessionCardSkeleton count={1} />
               ) : sessionQuery.data ? (
-                <SessionCard session={sessionQuery.data} expandedByDefault highlightedEventTimestamp={timestamp.toMillis()} />
+                <SessionCard
+                  session={sessionQuery.data}
+                  expandedByDefault
+                  highlightedEventTimestamp={timestamp.toMillis()}
+                />
               ) : (
                 <div className="text-xs text-neutral-500 dark:text-neutral-400">{t("No session data")}</div>
               )}

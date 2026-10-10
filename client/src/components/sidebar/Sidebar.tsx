@@ -39,7 +39,11 @@ function Item({
   icon?: React.ReactNode;
 }) {
   return (
-    <Link href={href} className="focus:outline-none">
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className="block rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300"
+    >
       <div
         className={cn(
           "px-3 py-2 rounded-lg transition-colors w-full",

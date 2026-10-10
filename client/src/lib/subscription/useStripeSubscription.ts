@@ -18,26 +18,31 @@ export interface SubscriptionData {
   trialDaysRemaining?: number;
   message?: string; // For expired trial message
   isOverride?: boolean;
+  // Only on "free": false once the organization has had any subscription, so it is offered
+  // plans instead of another trial (checkout skips the trial too).
+  trialEligible?: boolean;
   memberLimit: number | null;
   siteLimit: number | null;
 }
 
-export function useStripeSubscription(): UseQueryResult<SubscriptionData | undefined, Error> {
+/** The subscription of `organizationId`, or of the active organization when omitted. */
+export function useStripeSubscription(organizationId?: string): UseQueryResult<SubscriptionData | undefined, Error> {
   const { data: activeOrg } = authClient.useActiveOrganization();
+  const orgId = organizationId ?? activeOrg?.id;
 
   const fetchSubscription = async () => {
-    if (!activeOrg || !IS_CLOUD) {
+    if (!orgId || !IS_CLOUD) {
       return undefined;
     }
 
-    return authedFetch<SubscriptionData>(`/stripe/subscription?organizationId=${activeOrg.id}`);
+    return authedFetch<SubscriptionData>(`/stripe/subscription?organizationId=${orgId}`);
   };
 
   return useQuery<SubscriptionData | undefined>({
-    queryKey: ["stripe-subscription", activeOrg?.id],
+    queryKey: ["stripe-subscription", orgId],
     queryFn: fetchSubscription,
     staleTime: 5 * 60 * 1000,
     retry: false,
-    enabled: !!activeOrg,
+    enabled: !!orgId,
   });
 }

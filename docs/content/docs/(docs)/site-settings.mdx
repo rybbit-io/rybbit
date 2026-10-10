@@ -119,9 +119,20 @@ Connect your Google Search Console account to see search performance data alongs
 
 Update the domain for your site. Changing domains does not affect existing data - all historical analytics are preserved.
 
+## Transfer Site
+
+Admins and owners can move a site to another organization. Its analytics data, goals, funnels, dashboards, segments, annotations and settings go with it, and the tracking script keeps working unchanged. Site access granted in the old organization (restricted-member grants and team assignments) stays behind.
+
+- **To another organization you manage:** pick the organization under **Transfer Site** and confirm. You need to be an admin or owner of both organizations.
+- **To someone else:** enter their email under **Transfer to someone else**. They get an email with a link (you can also copy it and send it yourself); they open it signed in with that address (on Rybbit Cloud it must be verified; the page offers to send the verification email), choose one of their organizations, and accept. The link is valid for 7 days, and you can cancel it until it's accepted. Neither of you needs to join the other's organization.
+
+<Callout type="info">
+  When someone else accepts a transfer, the site's Google Search Console connection is removed, since it uses the sender's Google account; the new owner can connect their own. On Rybbit Cloud the receiving organization's plan must have room for another site.
+</Callout>
+
 ## Delete Site
 
-Permanently delete a site and all associated data.
+Permanently delete a site and all associated data. Only admins and owners can delete sites.
 
 <Callout type="warn">
   This action cannot be undone. All analytics data, reports, funnels, and goals will be permanently deleted.

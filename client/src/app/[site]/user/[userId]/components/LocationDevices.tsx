@@ -35,7 +35,8 @@ function ShareRow({
           {icon}
           <span className="truncate text-neutral-700 dark:text-neutral-200">{label}</span>
         </div>
-        <span className="shrink-0 text-neutral-500 dark:text-neutral-400">{Math.round(share)}%</span>
+        {/* Sits on the bar fill, so it takes foreground text. */}
+        <span className="shrink-0 tabular-nums text-neutral-900 dark:text-neutral-100">{Math.round(share)}%</span>
       </div>
     </div>
   );
@@ -167,6 +168,16 @@ export function LocationDevices({
       )}
 
       <InfoRow label={t("Language")} value={data?.language ? getLanguageName(data.language) : "—"} />
+      {data?.timezone && (
+        <InfoRow
+          label={t("Timezone")}
+          value={
+            <span className="inline-block max-w-[170px] truncate align-bottom" title={data.timezone}>
+              {data.timezone}
+            </span>
+          }
+        />
+      )}
 
       {multiDevice ? (
         <BreakdownList

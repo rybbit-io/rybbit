@@ -4,11 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-- Client: `cd client && npm run dev` (NextJS with Turbopack on port 3002)
-- Server: `cd server && npm run dev` (TypeScript backend)
-- Lint: `cd client && npm run lint` or `cd server && npm run build`
-- TypeCheck: `cd client && tsc --noEmit` or `cd server && tsc`
-- Database: `cd server && npm run db:generate` (generate migration files after schema changes; applied with `npm run db:migrate`)
+The root pnpm workspace contains `client`, `server`, and `shared`; docs is separate.
+Run `pnpm install` at the root. Root `pnpm dev`, `pnpm build`, `pnpm test`, and
+`pnpm typecheck` build shared code before running the apps.
+
+- Client: `pnpm dev:client` (NextJS with Turbopack on port 3002)
+- Server: `pnpm dev:server` (TypeScript backend)
+- Lint: `cd client && pnpm run lint` or `pnpm build:server`
+- TypeCheck: `pnpm --filter client typecheck` or `pnpm --filter rybbit-backend typecheck`
+- Database: `cd server && pnpm run db:generate` (generate migration files after schema changes; applied with `pnpm run db:migrate`)
 
 ## Code Conventions
 

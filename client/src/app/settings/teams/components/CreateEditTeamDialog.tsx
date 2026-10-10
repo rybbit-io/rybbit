@@ -1,5 +1,6 @@
 "use client";
 
+import type { SiteGrantRole } from "@rybbit/shared";
 import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/sonner";
@@ -8,6 +9,7 @@ import { Team } from "@/api/admin/endpoints/teams";
 import { useCreateTeam, useUpdateTeam } from "@/api/admin/hooks/useTeams";
 import { useOrganizationMembers } from "@/api/admin/hooks/useOrganizationMembers";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
+import { SiteRoleSelect } from "@/app/settings/organization/components/RoleSelect";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -22,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth";
+import { SITE_GRANT_ROLES } from "@/lib/roles";
 
 interface CreateEditTeamDialogProps {
   team?: Team;
@@ -53,6 +56,7 @@ export function CreateEditTeamDialog({
   const [name, setName] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [siteRole, setSiteRole] = useState<SiteGrantRole | null>(null);
 
   const isEditing = !!existingTeam;
 
@@ -61,12 +65,14 @@ export function CreateEditTeamDialog({
     if (open) {
       if (existingTeam) {
         setName(existingTeam.name);
-        setSelectedMemberIds(existingTeam.members.map((m) => m.userId));
-        setSelectedSiteIds(existingTeam.sites.map((s) => s.siteId));
+        setSelectedMemberIds(existingTeam.members.map(m => m.userId));
+        setSelectedSiteIds(existingTeam.sites.map(s => s.siteId));
+        setSiteRole(existingTeam.siteRole ?? null);
       } else {
         setName("");
         setSelectedMemberIds([]);
         setSelectedSiteIds([]);
+        setSiteRole(null);
       }
     }
   }, [open, existingTeam]);
@@ -75,26 +81,18 @@ export function CreateEditTeamDialog({
   const sites = sitesData?.sites || [];
 
   const handleMemberToggle = (userId: string) => {
-    setSelectedMemberIds((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
-    );
+    setSelectedMemberIds(prev => (prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]));
   };
 
   const handleSiteToggle = (siteId: number) => {
-    setSelectedSiteIds((prev) =>
-      prev.includes(siteId)
-        ? prev.filter((id) => id !== siteId)
-        : [...prev, siteId]
-    );
+    setSelectedSiteIds(prev => (prev.includes(siteId) ? prev.filter(id => id !== siteId) : [...prev, siteId]));
   };
 
   const handleSelectAllMembers = () => {
     if (selectedMemberIds.length === members.length) {
       setSelectedMemberIds([]);
     } else {
-      setSelectedMemberIds(members.map((m) => m.userId));
+      setSelectedMemberIds(members.map(m => m.userId));
     }
   };
 
@@ -102,7 +100,7 @@ export function CreateEditTeamDialog({
     if (selectedSiteIds.length === sites.length) {
       setSelectedSiteIds([]);
     } else {
-      setSelectedSiteIds(sites.map((s) => s.siteId));
+      setSelectedSiteIds(sites.map(s => s.siteId));
     }
   };
 
@@ -123,6 +121,7 @@ export function CreateEditTeamDialog({
             name: name.trim(),
             memberUserIds: selectedMemberIds,
             siteIds: selectedSiteIds,
+            siteRole,
           },
         });
         toast.success(t("Team updated successfully"));
@@ -133,6 +132,7 @@ export function CreateEditTeamDialog({
             name: name.trim(),
             memberUserIds: selectedMemberIds,
             siteIds: selectedSiteIds,
+            siteRole,
           },
         });
         toast.success(t("Team created successfully"));
@@ -141,11 +141,7 @@ export function CreateEditTeamDialog({
       onSuccess?.();
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : isEditing
-            ? t("Failed to update team")
-            : t("Failed to create team")
+        error instanceof Error ? error.message : isEditing ? t("Failed to update team") : t("Failed to create team")
       );
     }
   };
@@ -155,15 +151,11 @@ export function CreateEditTeamDialog({
   const dialogContent = (
     <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>
-          {isEditing ? t("Edit Team") : t("Create Team")}
-        </DialogTitle>
+        <DialogTitle>{isEditing ? t("Edit Team") : t("Create Team")}</DialogTitle>
         <DialogDescription>
           {isEditing
             ? t("Update team name, members, and site assignments.")
-            : t(
-              "Create a new team to group sites and control member access."
-            )}
+            : t("Create a new team to group sites and control member access.")}
         </DialogDescription>
       </DialogHeader>
 
@@ -174,7 +166,7 @@ export function CreateEditTeamDialog({
           <Input
             id="team-name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
             placeholder={t("Enter team name")}
           />
         </div>
@@ -182,23 +174,15 @@ export function CreateEditTeamDialog({
         {/* Members */}
         <div className="space-y-2">
           <Label className="font-medium">{t("Members")}</Label>
-          <p className="text-xs text-muted-foreground">
-            {t("Select which members belong to this team.")}
-          </p>
+          <p className="text-xs text-muted-foreground">{t("Select which members belong to this team.")}</p>
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="select-all-members"
-                checked={
-                  members.length > 0 &&
-                  selectedMemberIds.length === members.length
-                }
+                checked={members.length > 0 && selectedMemberIds.length === members.length}
                 onCheckedChange={handleSelectAllMembers}
               />
-              <Label
-                htmlFor="select-all-members"
-                className="text-sm font-medium cursor-pointer"
-              >
+              <Label htmlFor="select-all-members" className="text-sm font-medium cursor-pointer">
                 {t("Select all")} ({members.length})
               </Label>
             </div>
@@ -218,28 +202,16 @@ export function CreateEditTeamDialog({
                   {t("No members in this organization")}
                 </div>
               ) : (
-                members.map((m) => (
-                  <div
-                    key={m.userId}
-                    className="flex items-center space-x-3 p-2.5 hover:bg-muted/50"
-                  >
+                members.map(m => (
+                  <div key={m.userId} className="flex items-center space-x-3 p-2.5 hover:bg-muted/50">
                     <Checkbox
                       id={`member-${m.userId}`}
                       checked={selectedMemberIds.includes(m.userId)}
                       onCheckedChange={() => handleMemberToggle(m.userId)}
                     />
-                    <Label
-                      htmlFor={`member-${m.userId}`}
-                      className="flex-1 cursor-pointer text-sm"
-                    >
-                      <span className="font-medium">
-                        {m.user?.name || m.user?.email}
-                      </span>
-                      {m.user?.name && (
-                        <span className="text-muted-foreground ml-2">
-                          {m.user.email}
-                        </span>
-                      )}
+                    <Label htmlFor={`member-${m.userId}`} className="flex-1 cursor-pointer text-sm">
+                      <span className="font-medium">{m.user?.name || m.user?.email}</span>
+                      {m.user?.name && <span className="text-muted-foreground ml-2">{m.user.email}</span>}
                     </Label>
                   </div>
                 ))
@@ -260,16 +232,10 @@ export function CreateEditTeamDialog({
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="select-all-sites"
-                checked={
-                  sites.length > 0 &&
-                  selectedSiteIds.length === sites.length
-                }
+                checked={sites.length > 0 && selectedSiteIds.length === sites.length}
                 onCheckedChange={handleSelectAllSites}
               />
-              <Label
-                htmlFor="select-all-sites"
-                className="text-sm font-medium cursor-pointer"
-              >
+              <Label htmlFor="select-all-sites" className="text-sm font-medium cursor-pointer">
                 {t("Select all")} ({sites.length})
               </Label>
             </div>
@@ -286,20 +252,14 @@ export function CreateEditTeamDialog({
                   {t("No sites in this organization")}
                 </div>
               ) : (
-                sites.map((site) => (
-                  <div
-                    key={site.siteId}
-                    className="flex items-center space-x-3 p-2.5 hover:bg-muted/50"
-                  >
+                sites.map(site => (
+                  <div key={site.siteId} className="flex items-center space-x-3 p-2.5 hover:bg-muted/50">
                     <Checkbox
                       id={`site-${site.siteId}`}
                       checked={selectedSiteIds.includes(site.siteId)}
                       onCheckedChange={() => handleSiteToggle(site.siteId)}
                     />
-                    <Label
-                      htmlFor={`site-${site.siteId}`}
-                      className="flex-1 cursor-pointer text-sm"
-                    >
+                    <Label htmlFor={`site-${site.siteId}`} className="flex-1 cursor-pointer text-sm">
                       <span className="font-medium">{site.name}</span>
                     </Label>
                   </div>
@@ -307,6 +267,21 @@ export function CreateEditTeamDialog({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Site role */}
+        <div className="space-y-2">
+          <Label htmlFor="team-site-role" className="font-medium">
+            {t("Role on the team's sites")}
+          </Label>
+          <SiteRoleSelect
+            id="team-site-role"
+            value={siteRole}
+            roles={SITE_GRANT_ROLES}
+            ownRoleLabel={t("Each member's own role")}
+            onValueChange={setSiteRole}
+          />
+          <p className="text-xs text-muted-foreground">{t("Raises members' role on these sites; never lowers it.")}</p>
         </div>
       </div>
 

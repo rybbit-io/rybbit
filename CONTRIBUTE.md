@@ -41,6 +41,67 @@ Pull requests are welcome! Please keep in mind:
 - Include relevant context or links to issues/discussions.
 - PRs will be reviewed and merged by the maintainers once they meet quality standards and align with the project direction.
 
+### Local development
+
+The application is a pnpm workspace containing `client/`, `server/`, and `shared/`.
+The docs app and React Native SDK are separate projects and keep their own tooling.
+Use Node.js 24 (`nvm use`) and the pnpm version pinned in the root `package.json`:
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+Configure the backend environment and its Postgres, ClickHouse, and Redis services
+before starting the app. The client runs on port 3002 and the backend on port 3001.
+`pnpm dev` builds shared code first, then starts its TypeScript watcher alongside
+both apps. The backend's existing dev command compiles once; restart it after
+backend changes.
+
+Run these commands from the repository root:
+
+| Command             | Purpose                                                  |
+| ------------------- | -------------------------------------------------------- |
+| `pnpm dev:client`   | Start the client and shared-code watcher                 |
+| `pnpm dev:server`   | Start the backend and shared-code watcher                |
+| `pnpm build`        | Build shared code, then both apps                        |
+| `pnpm build:client` | Build shared code and the client                         |
+| `pnpm build:server` | Build shared code and the backend, including the tracker |
+| `pnpm test`         | Build shared code and run both test suites once          |
+| `pnpm typecheck`    | Build shared code and type-check both apps               |
+| `pnpm lint`         | Run the client's ESLint command                          |
+
+The root test command runs one package at a time with four workers to bound the
+memory used by the backend's in-memory Postgres tests.
+
+Package scripts also work inside their respective directories. Build `shared`
+first with `pnpm --filter @rybbit/shared build` when running a package directly
+from a fresh checkout. Add dependencies to the package that uses them, for example
+`pnpm --filter client add <package>` or `pnpm --filter rybbit-backend add <package>`.
+Commit the root `pnpm-lock.yaml`; do not generate npm lockfiles for these packages.
+Dependency overrides and allowed dependency build scripts live in
+`pnpm-workspace.yaml`.
+
+Both Dockerfiles use the repository root as their build context and require
+BuildKit (enabled by default in current Docker versions):
+
+```bash
+docker build -f client/Dockerfile \
+  --build-arg NEXT_PUBLIC_BACKEND_URL=https://analytics.example.com \
+  -t rybbit-client .
+docker build -f server/Dockerfile -t rybbit-backend .
+```
+
+Use your deployment's public backend URL. Docker Compose supplies this build
+argument from `BASE_URL`; local `.env` files are excluded from Docker images.
+
+The client image uses Next.js standalone output. The backend image uses
+`pnpm deploy --legacy --prod` to create a portable package while keeping normal
+workspace symlinks for local development. Its production dependencies include
+Drizzle Kit because container startup applies migrations. Database commands are
+explicit operations; installs, builds, and tests do not apply migrations.
+
 ---
 
 ## Join Our Community

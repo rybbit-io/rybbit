@@ -1,5 +1,6 @@
 "use client";
 
+import type { OrgRole, SiteGrantRole } from "@rybbit/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -25,17 +26,26 @@ import { Alert } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { authClient } from "@/lib/auth";
 import { IS_CLOUD } from "@/lib/const";
+import { isAdminRole, siteRolesAbove } from "@/lib/roles";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 
+import { RoleSelect, SiteRoleSelect } from "./RoleSelect";
 import { SiteAccessMultiSelect } from "./SiteAccessMultiSelect";
 
 interface InviteMemberDialogProps {
   organizationId: string;
   onSuccess: () => void;
   memberCount: number;
+  /** Roles the current user may give, from the server. */
+  assignableRoles: OrgRole[];
 }
 
-export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: InviteMemberDialogProps) {
+export function InviteMemberDialog({
+  organizationId,
+  onSuccess,
+  memberCount,
+  assignableRoles,
+}: InviteMemberDialogProps) {
   const { data: subscription } = useStripeSubscription();
   const queryClient = useQueryClient();
   const t = useExtracted();
@@ -51,23 +61,30 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
   const teams = teamsData?.teams || [];
 
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "member" | "owner">("member");
+  const [role, setRole] = useState<OrgRole>("member");
+  const isRestrictable = !isAdminRole(role);
   const [restrictSiteAccess, setRestrictSiteAccess] = useState(false);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [siteRole, setSiteRole] = useState<SiteGrantRole | null>(null);
+  // A site role only raises the invited role, so only roles above it are offered.
+  const siteRoleOptions = siteRolesAbove(role);
+  const effectiveSiteRole = siteRole && siteRoleOptions.includes(siteRole) ? siteRole : null;
   const [selectedTeamId, setSelectedTeamId] = useState<string>("none");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
 
   const inviteMutation = useMutation({
     mutationFn: async () => {
-      const hasSiteRestrictions = role === "member" && restrictSiteAccess;
+      const hasSiteRestrictions = isRestrictable && restrictSiteAccess;
       const result = await authClient.organization.inviteMember({
         email,
-        role,
+        // better-auth's client types only know its default roles; the server's access control defines ours.
+        role: role as "owner" | "admin" | "member",
         organizationId,
         ...(selectedTeamId && selectedTeamId !== "none" ? { teamId: selectedTeamId } : {}),
         hasRestrictedSiteAccess: hasSiteRestrictions,
         siteIds: hasSiteRestrictions ? selectedSiteIds : [],
+        siteRole: (hasSiteRestrictions && effectiveSiteRole) || undefined,
       });
 
       if (result.error) {
@@ -85,6 +102,7 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
       setRole("member");
       setRestrictSiteAccess(false);
       setSelectedSiteIds([]);
+      setSiteRole(null);
       setSelectedTeamId("none");
       setError("");
     },
@@ -101,7 +119,7 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
       return;
     }
 
-    if (role === "member" && restrictSiteAccess && selectedSiteIds.length === 0) {
+    if (isRestrictable && restrictSiteAccess && selectedSiteIds.length === 0) {
       setError(t("Please select at least one site or disable site restrictions"));
       return;
     }
@@ -114,14 +132,16 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
       <Tooltip>
         <TooltipTrigger asChild>
           <span>
-            <Button disabled size="sm" variant="outline" title={t("Upgrade to Pro to add more members")}>
-              <UserPlus className="h-4 w-4 mr-1" />
-              {t("Invite Member")}
+            <Button disabled size="sm" variant="success" title={t("Upgrade to Pro to add more members")}>
+              <UserPlus />
+              {t("Invite people")}
             </Button>
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          {t("You have reached the limit of {limit} members. Upgrade to add more members", { limit: String(memberLimit) })}
+          {t("You have reached the limit of {limit} members. Upgrade to add more members", {
+            limit: String(memberLimit),
+          })}
         </TooltipContent>
       </Tooltip>
     );
@@ -130,9 +150,9 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <UserPlus className="h-4 w-4 mr-1" />
-          {t("Invite Member")}
+        <Button size="sm" variant="success">
+          <UserPlus />
+          {t("Invite people")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
@@ -153,28 +173,21 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
           </div>
           <div className="grid gap-2">
             <Label htmlFor="role">{t("Role")}</Label>
-            <Select
+            <RoleSelect
+              id="role"
               value={role}
+              roles={assignableRoles}
               onValueChange={value => {
-                setRole(value as "admin" | "member" | "owner");
-                if (value !== "member") {
+                setRole(value);
+                if (isAdminRole(value)) {
                   setRestrictSiteAccess(false);
                   setSelectedSiteIds([]);
                 }
               }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("Select a role")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">{t("Owner")}</SelectItem>
-                <SelectItem value="admin">{t("Admin")}</SelectItem>
-                <SelectItem value="member">{t("Member")}</SelectItem>
-              </SelectContent>
-            </Select>
+            />
           </div>
 
-          {role === "member" && (
+          {isRestrictable && (
             <div className="grid gap-3">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -197,6 +210,21 @@ export function InviteMemberDialog({ organizationId, onSuccess, memberCount }: I
                   <p className="text-xs text-muted-foreground mt-2">
                     {t("This member will only have access to the selected sites.")}
                   </p>
+                  {siteRoleOptions.length > 0 && (
+                    <div className="grid gap-2 mt-4">
+                      <Label htmlFor="invite-site-role">{t("Role on these sites")}</Label>
+                      <SiteRoleSelect
+                        id="invite-site-role"
+                        value={effectiveSiteRole}
+                        roles={siteRoleOptions}
+                        ownRoleLabel={t("Their organization role")}
+                        onValueChange={setSiteRole}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t("Raises their role on the selected sites only.")}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

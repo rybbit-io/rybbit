@@ -31,7 +31,9 @@ export const useSyncStateWithUrl = () => {
   } = useStore();
 
   const routeContext = React.useMemo(() => getSiteRouteContext(pathname), [pathname]);
-  const shouldSyncUrl = isSyncedAnalyticsRoute(routeContext.route);
+  const isHomepage = pathname === "/";
+  const shouldSyncUrl = isHomepage || isSyncedAnalyticsRoute(routeContext.route);
+  const isRouteReady = isHomepage || site === routeContext.siteId;
   const hydrationKey = shouldSyncUrl
     ? `${routeContext.siteId ?? ""}:${routeContext.privateKey ?? ""}:${routeContext.route ?? ""}?${searchParams.toString()}`
     : null;
@@ -49,9 +51,9 @@ export const useSyncStateWithUrl = () => {
     shallow: true,
   });
 
-  // Initialize from URL params after site is set
+  // Site dashboards wait for their context; the homepage has no selected Site.
   useEffect(() => {
-    if (!hydrationKey || site !== routeContext.siteId || hydratedUrlKey === hydrationKey) return;
+    if (!hydrationKey || !isRouteReady || hydratedUrlKey === hydrationKey) return;
 
     // The comparison is restored before the period so the window it resolves
     // to is the shared link's, not the default period's.
@@ -71,21 +73,19 @@ export const useSyncStateWithUrl = () => {
       setBucket(urlParams.bucket);
     }
 
-    if (urlParams.stat) {
-      setSelectedStat(urlParams.stat);
-    } else {
-      setSelectedStat("users");
-    }
+    if (!isHomepage) {
+      setSelectedStat(urlParams.stat ?? "users");
 
-    setFilters(urlParams.filters ?? []);
-    setSegmentId(urlParams.segment ?? null);
+      setFilters(urlParams.filters ?? []);
+      setSegmentId(urlParams.segment ?? null);
+    }
 
     setHydratedUrlKey(hydrationKey);
   }, [
     hydrationKey,
     hydratedUrlKey,
-    routeContext.siteId,
-    site,
+    isHomepage,
+    isRouteReady,
     setTime,
     setBucket,
     setSelectedStat,
@@ -97,7 +97,7 @@ export const useSyncStateWithUrl = () => {
 
   // Update URL when state changes
   useEffect(() => {
-    if (!hydrationKey || hydratedUrlKey !== hydrationKey || site !== routeContext.siteId) return;
+    if (!hydrationKey || hydratedUrlKey !== hydrationKey || !isRouteReady) return;
 
     // Build params object to update - values, not parsers
     const newParams: Record<string, any> = {
@@ -107,9 +107,11 @@ export const useSyncStateWithUrl = () => {
       startDateTime: null,
       endDateTime: null,
       bucket,
-      stat: selectedStat,
-      filters: filters.length > 0 ? filters : null,
-      segment: segmentId,
+      ...(!isHomepage && {
+        stat: selectedStat,
+        filters: filters.length > 0 ? filters : null,
+        segment: segmentId,
+      }),
     };
 
     // Note: embed params are automatically preserved by nuqs
@@ -121,10 +123,10 @@ export const useSyncStateWithUrl = () => {
     filters,
     segmentId,
     comparison,
-    site,
+    isHomepage,
+    isRouteReady,
     setUrlParams,
     hydrationKey,
     hydratedUrlKey,
-    routeContext.siteId,
   ]);
 };

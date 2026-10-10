@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/sites/:site/imports/:importId/events
 ```
 
-Uploads a batch of raw events to an in-progress import. Requires an admin or owner API key. On Rybbit Cloud, this requires a paid plan.
+Uploads a batch of raw events to an in-progress import. Requires the editor role or above on the site. On Rybbit Cloud, this requires a paid plan.
 
 Upload events in batches. The request body limit is 50 MB, so split large exports across multiple requests. Set `isLastBatch` to `true` on the final batch to finalize the import.
 

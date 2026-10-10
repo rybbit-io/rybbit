@@ -39,7 +39,7 @@ export const simpleAnalyticsComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "18KB", competitorValue: "~6KB" },
+      { name: "Script size", rybbitValue: "~11KB", competitorValue: "~6KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: true },
       { name: "API access", rybbitValue: true, competitorValue: true },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "$20/mo per user" },
@@ -162,7 +162,7 @@ export const simpleAnalyticsExtendedData = {
           <>
             Unusually for an analytics migration, you don&apos;t have to start from zero: Rybbit ships a data importer
             for Simple Analytics, and your historical stats come with you. See the{" "}
-            <Link href="/docs">docs</Link> for the import walkthrough.
+            <Link href="/docs/data-import">import guide</Link> for the walkthrough.
           </>,
           <ol>
             <li>

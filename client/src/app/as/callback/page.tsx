@@ -300,6 +300,7 @@ export default function AppSumoSignupPage() {
                 id="email"
                 label="Email"
                 type="email"
+                autoComplete="email"
                 placeholder="email@example.com"
                 required
                 value={email}
@@ -310,6 +311,7 @@ export default function AppSumoSignupPage() {
                 id="password"
                 label="Password"
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 required
                 value={password}

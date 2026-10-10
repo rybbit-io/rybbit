@@ -168,9 +168,11 @@ export function getChannel(referrer: string, querystring: string, hostname?: str
     }
   }
 
-  // If it's a self-referral and has no UTM parameters, treat it as internal traffic
-  if (!referrer && !utmSource && !utmMedium && !utmCampaign && !gclid && !gadSource) {
-    return selfReferral ? "Internal" : "Direct";
+  if (!utmSource && !utmMedium && !utmCampaign && !gclid && !gadSource) {
+    if (!referrer) return "Direct";
+    // Navigation between the site's own hosts (www ↔ apex, subdomain → parent)
+    // is internal traffic, not a new acquisition.
+    if (selfReferral) return "Internal";
   }
 
   // Use utility functions for better categorization

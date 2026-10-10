@@ -39,7 +39,7 @@ export const posthogComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "18KB", competitorValue: "~60KB" },
+      { name: "Script size", rybbitValue: "~11KB", competitorValue: "~60KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: "With proxy" },
       { name: "API access", rybbitValue: true, competitorValue: true },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "Free" },
@@ -61,7 +61,7 @@ export const posthogExtendedData = {
     "You want focused web analytics without the bloat",
     "You need a dashboard your non-technical team can use immediately",
     "You want privacy-first analytics that's cookie-free by default",
-    "You prefer a lightweight script (18KB vs ~60KB)",
+    "You prefer a lightweight script (~11KB vs ~60KB)",
     "You want simple, predictable pricing without usage surprises",
     "You need fast self-hosting without complex infrastructure",
   ],
@@ -118,7 +118,7 @@ export const posthogExtendedData = {
             opposite bet: web analytics your whole team actually opens. One dashboard covers traffic,{" "}
             <Link href="/features/funnels">funnels</Link>,{" "}
             <Link href="/features/session-replay">session replay</Link>, user journeys, error tracking, Web Vitals, and
-            user profiles, from an ~18KB script, with nothing to configure and no query language to learn.
+            user profiles, from an ~11KB script, with nothing to configure and no query language to learn.
           </>,
         ],
       },
@@ -138,7 +138,7 @@ export const posthogExtendedData = {
             autocapture-heavy pages all show up on the bill, so teams at scale end up watching billing limits alongside
             their dashboards. Rybbit&apos;s <Link href="/pricing">pricing</Link>{" "}
             is a flat subscription from $19/mo for
-            100k events, every feature on every plan, with a 7-day trial. And if you&apos;d rather pay nothing,
+            100k events (session replay is included from the $39/mo Pro plan), with a 7-day trial. And if you&apos;d rather pay nothing,
             the open-source version is <Link href="/docs/self-hosting">free to self-host</Link>.
           </>,
         ],
@@ -197,6 +197,11 @@ export const posthogExtendedData = {
   ] satisfies FAQItem[],
 
   relatedResources: [
+    {
+      title: "PostHog pricing, explained",
+      href: "/blog/posthog-pricing",
+      description: "Free tiers, per-unit rates, and worked examples",
+    },
     {
       title: "Rybbit vs Google Analytics",
       href: "/compare/google-analytics",

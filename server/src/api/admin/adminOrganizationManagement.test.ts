@@ -58,6 +58,7 @@ CREATE TABLE "member_site_access" (
   "id" serial PRIMARY KEY,
   "member_id" text NOT NULL REFERENCES "member"("id") ON DELETE CASCADE,
   "site_id" integer NOT NULL REFERENCES "sites"("site_id") ON DELETE CASCADE,
+  "role" text,
   "created_at" timestamp NOT NULL DEFAULT now(),
   "created_by" text
 );
@@ -175,6 +176,22 @@ describe("admin member management", () => {
     expect(members.rows[0]).toEqual({ role: "admin", has_restricted_site_access: false });
     expect(grants.rows).toHaveLength(0);
     expect(mocks.invalidateSitesAccessCache).toHaveBeenCalledWith("u_member");
+  });
+
+  it("keeps the role a site grant carries when the admin panel saves the member", async () => {
+    await (pgClient as any).exec(`UPDATE member_site_access SET role = 'editor' WHERE member_id = 'm_member'`);
+    const reply = replyStub();
+    await updateAdminOrganizationMember(
+      requestStub({
+        params: { organizationId: "org_new", memberId: "m_member" },
+        body: { role: "viewer", hasRestrictedSiteAccess: true, siteIds: [2] },
+      }),
+      reply
+    );
+
+    expect(reply.statusCode).toBe(200);
+    const grants = await (pgClient as any).query(`SELECT site_id, role FROM member_site_access`);
+    expect(grants.rows).toEqual([{ site_id: 2, role: "editor" }]);
   });
 
   it("rejects grants for a site in another organization", async () => {

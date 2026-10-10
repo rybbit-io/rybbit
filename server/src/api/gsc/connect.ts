@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ConnectGSCRequest } from "./types.js";
-import { getSessionFromReq, getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
+import { getSessionFromReq, getUserHasSitePermission } from "../../lib/auth-utils.js";
 import { signGSCState } from "./utils.js";
 
 /**
@@ -19,7 +19,7 @@ export async function connectGSC(req: FastifyRequest<ConnectGSCRequest>, res: Fa
     // Require admin access to match the callback, which writes OAuth tokens and
     // demands admin. A member who could start the flow would be stranded on a
     // 403 after Google consent.
-    const hasAccess = await getUserHasAdminAccessToSite(req, numericSiteId);
+    const hasAccess = await getUserHasSitePermission(req, numericSiteId, "gsc:write");
     if (!hasAccess) {
       return res.status(403).send({ error: "Access denied" });
     }

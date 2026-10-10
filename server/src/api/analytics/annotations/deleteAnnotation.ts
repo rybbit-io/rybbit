@@ -38,7 +38,7 @@ export async function deleteAnnotation(
       return reply.status(404).send({ error: "Annotation not found" });
     }
 
-    if (!(await canManageAnnotation(request, siteId, existing))) {
+    if (!(await canManageAnnotation(request, existing))) {
       return reply.status(403).send({ error: "You can only delete annotations you created" });
     }
 

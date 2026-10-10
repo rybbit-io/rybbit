@@ -1,0 +1,292 @@
+---
+title: "Google Analytics MCP Server: Setup Guide and Alternatives"
+description: "How to set up Google's official Google Analytics MCP server in Claude Code, Claude Desktop or Gemini CLI, plus its 9 tools, common errors and alternatives."
+keyword: "google analytics mcp"
+date: 2026-09-27
+tags: ["google analytics", "mcp", "ai"]
+author: Rybbit Team
+---
+
+The Google Analytics MCP server is Google's official, open-source bridge between GA4 and AI assistants. It runs on your own computer, reads your properties through the Google Analytics Admin and Data APIs, and lets Claude, Gemini and other MCP clients answer questions like "how many users did I have yesterday?" It is free, read-only and still labeled experimental. Setup takes Python and pipx, the gcloud CLI, a Google Cloud project with two APIs enabled, an OAuth client and one entry in your AI client's config.
+
+This guide covers that setup in Claude Code, Claude Desktop and Gemini CLI using Google's documented configuration, then the nine tools (the README names seven), fixes for common errors, the server's limits, and hosted alternatives.
+
+Disclosure: we build [Rybbit](/features/web-analytics), a privacy-first analytics tool with its own hosted MCP server, which appears in the alternatives. Every claim about Google's server, Stape and Zapier comes from that vendor's own documentation, repository or pricing page, linked inline and checked in September 2026.
+
+## Google Analytics MCP at a glance
+
+| Detail | Google Analytics MCP server |
+| --- | --- |
+| Publisher | Google, in the [googleanalytics GitHub organization](https://github.com/googleanalytics/google-analytics-mcp); Apache-2.0 license |
+| Package | [`analytics-mcp` on PyPI](https://pypi.org/project/analytics-mcp/), version 0.7.0 (29 July 2026) |
+| Status | "Experimental" in the README title; support through GitHub issues and a Discord channel |
+| Where it runs | On your machine, as a local process your AI client starts. Google doesn't host it |
+| Access | Read-only: it "can't edit your Google Analytics configuration or settings" |
+| Tools | 9: account and property info, annotations, custom definitions, and core, realtime, funnel and conversions reports |
+| Documented clients | Gemini CLI, Gemini Code Assist, Claude Code |
+| Price | Free; requests count against GA's [Data API quotas](https://developers.google.com/analytics/devguides/reporting/data/v1/quotas) |
+
+## What the Google Analytics MCP server is
+
+MCP (Model Context Protocol) lets an AI application call tools on a server. Google's server wraps the [Google Analytics Admin API](https://developers.google.com/analytics/devguides/config/admin/v1) and [Data API](https://developers.google.com/analytics/devguides/reporting/data/v1) as tools, so an assistant can find your property, pull a report and explain it in one conversation.
+
+It is official: the Google Analytics team maintains it, the [Analytics developer docs](https://developers.google.com/analytics/devguides/MCP) link to it, and Google's [list of official MCP servers](https://github.com/google/mcp) includes it among the open-source servers you run yourself. Two design choices shape everything below:
+
+- **It is read-only.** Google's developer page says: "The MCP server is available for read requests only. It can't edit your Google Analytics configuration or settings."
+- **It runs locally.** Your AI client launches it as a subprocess. Google hosts [remote MCP servers](https://docs.cloud.google.com/mcp/supported-products) for BigQuery, Cloud SQL and dozens of other products, but that list (updated 25 September 2026) has no Analytics entry, and Anthropic's [connector docs](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp) say local servers aren't available on claude.ai or in Cowork, only in Claude Desktop.
+
+One naming trap: Google's package is `analytics-mcp`. The similarly named [`google-analytics-mcp`](https://pypi.org/project/google-analytics-mcp/) on PyPI is a separate community project by a different author.
+
+## What you need before you start
+
+- **A Google account with access to the GA4 properties** you want to query. The server sees exactly what that account can see.
+- **Python 3.10 or newer**, the package's [minimum](https://github.com/googleanalytics/google-analytics-mcp/blob/main/pyproject.toml), and [pipx](https://pipx.pypa.io/stable/how-to/install-pipx.html), which runs the server in an isolated environment.
+- **The [Google Cloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk)** (`gcloud`), used to create credentials.
+- **A Google Cloud project** where you can enable APIs and create an OAuth client. It hosts nothing; it owns the OAuth client and the API quota.
+
+## How to set up the Google Analytics MCP server
+
+Steps 1 to 5 are the same for every AI client. They follow Google's [README](https://github.com/googleanalytics/google-analytics-mcp), plus the Google Cloud pages it links to.
+
+### Step 1: Install pipx
+
+On macOS with Homebrew:
+
+```bash
+brew install pipx
+pipx ensurepath
+```
+
+On Ubuntu or Debian use `sudo apt install pipx`, and on Windows `scoop install pipx`, then run `pipx ensurepath` and open a new terminal ([pipx docs](https://pipx.pypa.io/stable/how-to/install-pipx.html)). If you use uv, a Google maintainer [confirmed](https://github.com/googleanalytics/google-analytics-mcp/issues/165) that `uvx analytics-mcp` works too.
+
+### Step 2: Enable the Admin and Data APIs
+
+In your Google Cloud project, enable the [Google Analytics Admin API](https://console.cloud.google.com/apis/library/analyticsadmin.googleapis.com) and the [Google Analytics Data API](https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com), or do both from the terminal with [`gcloud services enable`](https://docs.cloud.google.com/sdk/gcloud/reference/services/enable):
+
+```bash
+gcloud services enable analyticsadmin.googleapis.com analyticsdata.googleapis.com --project=YOUR_PROJECT_ID
+```
+
+### Step 3: Create an OAuth client
+
+The login in step 4 needs an OAuth client of your own: Google's [ADC troubleshooting page](https://docs.cloud.google.com/docs/authentication/troubleshoot-adc) explains that gcloud's default login can block scopes for services outside Google Cloud, and that you add them with your own client ID.
+
+1. Open the Google Auth Platform **Clients** page in the same project ([Google's guide](https://support.google.com/cloud/answer/15549257)). If the project isn't registered with Google Auth yet, you'll be asked to do that first.
+2. Click **Create client**, pick the **Desktop app** type, and create it.
+3. Download the client's JSON file.
+
+If you chose an External audience, the app starts in **Testing**, which only accepts listed test users, so add your own Google account under **Audience**. Google also [expires test users' authorizations seven days after consent](https://support.google.com/cloud/answer/15549945), refresh tokens included, so a setup left in Testing stops working after a week until you log in again. Publishing the app removes that expiry.
+
+### Step 4: Log in with Application Default Credentials
+
+Run Google's documented command, pointing `--client-id-file` at the JSON from step 3:
+
+```bash
+gcloud auth application-default login \
+  --scopes https://www.googleapis.com/auth/analytics.readonly,https://www.googleapis.com/auth/cloud-platform \
+  --client-id-file=YOUR_CLIENT_JSON_FILE
+```
+
+Sign in with the Google account that can see your GA4 properties. gcloud then prints `Credentials saved to file: [PATH_TO_CREDENTIALS_JSON]`. Copy that path: it is the file the server reads, not the client JSON you downloaded. By default it is `$HOME/.config/gcloud/application_default_credentials.json` on macOS and Linux and `%APPDATA%\gcloud\application_default_credentials.json` on Windows ([Google Cloud docs](https://docs.cloud.google.com/docs/authentication/application-default-credentials)).
+
+Then give the credentials a quota project, the Google Cloud project that API usage from user credentials counts against ([troubleshooting page](https://docs.cloud.google.com/docs/authentication/troubleshoot-adc)). The APIs from step 2 must be enabled there, and your account needs the `serviceusage.services.use` permission, which the Service Usage Consumer role includes:
+
+```bash
+gcloud auth application-default set-quota-project YOUR_PROJECT_ID
+```
+
+The README's other route is impersonating a service account, but Google [notes](https://docs.cloud.google.com/docs/authentication/troubleshoot-adc) that locally impersonated credentials aren't supported by every authentication library, so the OAuth route is simpler for a personal setup.
+
+### Step 5: Test the credentials with one API call
+
+Before involving an AI client, check that the credentials, APIs and property access work with a call a Google maintainer [suggests in the issue tracker](https://github.com/googleanalytics/google-analytics-mcp/issues/31) (macOS and Linux shells). Your numeric property ID is under **Admin > Property Settings** in GA ([Google's docs](https://developers.google.com/analytics/devguides/reporting/data/v1/property-id)):
+
+```bash
+curl \
+  -H "x-goog-user-project: YOUR_CLOUD_PROJECT_ID" \
+  -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
+  https://analyticsdata.googleapis.com/v1beta/properties/YOUR_PROPERTY_ID/metadata
+```
+
+A JSON list of dimensions and metrics means you're ready. Any error here would also break the server inside Claude or Gemini, where it's harder to read; the [errors section](#common-errors-and-fixes) maps the usual ones to fixes.
+
+## Add the GA4 MCP server to Claude Code, Claude Desktop or Gemini CLI
+
+Every client needs the same three things: the command `pipx run analytics-mcp`, the full path to your credentials file, and your project ID. On Windows, JSON strings need doubled backslashes (`C:\\Users\\...`).
+
+### Claude Code
+
+Google's README gives a one-command setup:
+
+```bash
+claude mcp add analytics-mcp \
+  --scope user \
+  -e "GOOGLE_APPLICATION_CREDENTIALS=PATH_TO_CREDENTIALS_JSON" \
+  -e "GOOGLE_PROJECT_ID=YOUR_PROJECT_ID" \
+  -- pipx run analytics-mcp
+```
+
+`--scope user` makes the server available in all your projects, not just the current one ([Claude Code docs](https://code.claude.com/docs/en/mcp)). Run `claude mcp list`, or `/mcp` inside a session, to confirm it connected.
+
+### Claude Desktop
+
+The README doesn't cover Claude Desktop, but Google's maintainers say they [tested it with Claude](https://github.com/googleanalytics/google-analytics-mcp/issues/40), including on Windows. Open **Settings > Developer > Edit Config** from the Claude menu, which opens `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows ([MCP docs](https://modelcontextprotocol.io/docs/develop/connect-local-servers)), and add Google's server block:
+
+```json
+{
+  "mcpServers": {
+    "analytics-mcp": {
+      "command": "pipx",
+      "args": ["run", "analytics-mcp"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "PATH_TO_CREDENTIALS_JSON",
+        "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID"
+      }
+    }
+  }
+}
+```
+
+Quit Claude Desktop completely and reopen it (on Windows, quit from the system tray, the maintainers note). `analytics-mcp` then appears in the chat box's connectors menu. If it doesn't, its log says why: `~/Library/Logs/Claude/mcp-server-analytics-mcp.log` on macOS, or the same file name under `%APPDATA%\Claude\logs` on Windows.
+
+### Gemini CLI and Gemini Code Assist
+
+This is the path Google documents first. Add the same `analytics-mcp` block to `~/.gemini/settings.json`, merged into any existing `mcpServers` object, then start Gemini and type `/mcp`; `analytics-mcp` should be listed with its tools.
+
+### Cursor, VS Code, Codex and other clients
+
+Any client that launches local servers takes the same command, arguments and environment variables. Asked about Google's Antigravity IDE, a maintainer [answered](https://github.com/googleanalytics/google-analytics-mcp/issues/171): "The config is the same as in the setup in the readme." Clients that only connect to remote URLs need a [hosted alternative](#alternatives-to-googles-server).
+
+## The 9 Google Analytics MCP tools
+
+The README lists seven tools, but release 0.7.0 registers nine in its [tool list](https://github.com/googleanalytics/google-analytics-mcp/blob/main/analytics_mcp/coordinator.py), adding `list_property_annotations` and `run_conversions_report`.
+
+| Tool | What it returns |
+| --- | --- |
+| `get_account_summaries` | Every Google Analytics account and property your credentials can access |
+| `get_property_details` | Details of one property |
+| `list_google_ads_links` | Google Ads accounts linked to a property |
+| `list_property_annotations` | The property's annotations: notes on dates or periods such as releases or campaign launches |
+| `get_custom_dimensions_and_metrics` | The property's custom dimensions and metrics |
+| `run_report` | A Data API report: dimensions, metrics, date ranges, filters and sort order, [10,000 rows by default and up to 250,000](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/runReport) |
+| `run_realtime_report` | Activity from the last 30 minutes; realtime reports can't use custom metrics |
+| `run_funnel_report` | A funnel from event or filter steps, with optional breakdowns, next actions and segments |
+| `run_conversions_report` | Attributed conversions, ad clicks, ad cost and return on ad spend, with data-driven or last-click attribution |
+
+The realtime tool doesn't expose minute ranges, so it always gets the API's default window of the last 30 minutes ([realtime docs](https://developers.google.com/analytics/devguides/reporting/data/v1/realtime-basics)). Funnel and conversions reports use the Data API's alpha version: Google warns that funnel reporting may see breaking changes and that conversion reporting "may not be available to your Google Analytics property" ([funnel docs](https://developers.google.com/analytics/devguides/reporting/data/v1/funnels), [conversions docs](https://developers.google.com/analytics/devguides/reporting/data/v1/conversions-api-basics)).
+
+### Questions to ask it
+
+Google's developer page and README suggest prompts like "How many users did I have yesterday?", "What were my top selling products yesterday?" and "Were most of my users in the last 6 months logged in?" The newer tools open up a few more:
+
+- "Build a funnel from `view_item` to `add_to_cart` to `purchase` for last month, broken down by device category." (`run_funnel_report`)
+- "Traffic dropped in the second week of August. Are there annotations for that week?" (`list_property_annotations`, then `run_report`)
+- "Compare return on ad spend by campaign under last-click and data-driven attribution for Q3." (`run_conversions_report`)
+
+Start by asking for your account summary, so the assistant picks up the numeric property IDs every other tool needs.
+
+## Common errors and fixes
+
+Each fix comes from Google's documentation or a Google maintainer's answer in the repository's issue tracker.
+
+**"This app is blocked" or "Access blocked: Authorization Error" at login.** Usually the Analytics scope went through gcloud's default client. Create your own OAuth client (step 3) and pass it with `--client-id-file` ([ADC troubleshooting](https://docs.cloud.google.com/docs/authentication/troubleshoot-adc)).
+
+**"Access blocked: [app] has not completed the Google verification process."** The OAuth app is in Testing and your account isn't a test user. Add it under **Audience** ([audience docs](https://support.google.com/cloud/answer/15549945)).
+
+**"Unrecognized credential type."** `GOOGLE_APPLICATION_CREDENTIALS` points at the OAuth client JSON you downloaded; Google says "Client ID files are not supported to provide credentials for ADC." Point it at the file gcloud wrote in step 4.
+
+**Errors about a missing quota project, an API that isn't enabled, or project 764086051850.** Your credentials have no quota project (764086051850 is gcloud's own project). Run `gcloud auth application-default set-quota-project YOUR_PROJECT_ID`, or set `GOOGLE_CLOUD_QUOTA_PROJECT` in the server's `env`, which Google's auth library [reads](https://googleapis.dev/python/google-auth/latest/reference/google.auth.environment_vars.html) as the quota project.
+
+**Permission errors on one property while others work.** The account behind the credentials has no access to it. The README requires "a user with access to your Google Analytics accounts or properties", so grant access in GA's Admin settings or log in as a different account.
+
+**It worked for a week, then stopped authenticating.** The OAuth app is still in Testing, where authorizations expire after seven days. Rerun the step 4 login, or publish the app.
+
+**The server is missing in Claude Desktop, or tool calls hang.** A maintainer's [checklist](https://github.com/googleanalytics/google-analytics-mcp/issues/40): use the full path in `GOOGLE_APPLICATION_CREDENTIALS`, set the project variable, quit Claude completely and reopen it, and check that pipx works with `pipx run cowsay -t mooooo`. If the log says `pipx` can't be found, use its full path (from `which pipx`) as the command. Release 0.4.0 fixed tool-call deadlocks and 0.6.0 a Windows-specific one (both May 2026), so make sure you're on a current version.
+
+**Gemini CLI seems to hang after your question.** It is probably waiting on its "Allow execution of MCP tool" prompt; a maintainer [notes](https://github.com/googleanalytics/google-analytics-mcp/issues/31) that Gemini won't proceed until you pick an option. Run `gemini --debug` for detail.
+
+**Answers cut off, or Claude Code warns about output size.** Claude Code warns above 10,000 tokens of tool output and caps it at 25,000 by default ([Claude Code docs](https://code.claude.com/docs/en/mcp)). A `run_report` with no limit returns up to 10,000 rows, so ask for the top 20 or 50, or raise `MAX_MCP_OUTPUT_TOKENS`.
+
+## Limitations of Google's GA4 MCP server
+
+- **Read-only by design.** It can't create key events, custom dimensions, audiences or annotations, or change any setting.
+- **Local only.** Everyone who wants it installs Python, the gcloud CLI and their own credentials. There's no shared endpoint for a team, and claude.ai, Claude's mobile apps and other remote-only clients can't use it.
+- **Experimental, and moving.** Eight releases shipped between August 2025 and July 2026 ([PyPI history](https://pypi.org/project/analytics-mcp/#history)), and the annotations, funnel and conversions tools call alpha APIs.
+- **Broader credentials than it needs.** gcloud's login requires the `cloud-platform` scope alongside the Analytics one. The server asks for read-only Analytics access, but a Google maintainer [explains](https://github.com/googleanalytics/google-analytics-mcp/issues/187) that this narrowing only applies to service account credentials; user credentials keep every scope they were created with. Treat the credentials file like a password.
+- **GA's quotas apply.** A standard property gets [200,000 core tokens a day](https://developers.google.com/analytics/devguides/reporting/data/v1/quotas), 40,000 an hour (at most 14,000 from any one Cloud project) and 10 concurrent requests, with separate, equal buckets for realtime and funnel requests. Most requests cost 10 tokens or fewer; long date ranges and high-cardinality dimensions such as `pagePath` cost more, and every reporting tool accepts `return_property_quota` to show the cost. Analytics 360 gets ten times the token quota (our [Google Analytics pricing guide](/blog/google-analytics-pricing) covers what 360 costs).
+- **GA's data caveats come along.** Results can be sampled, thresholded or folded into an "(other)" row, and each response flags these in its [metadata](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/ResponseMetaData) (`samplingMetadatas`, `subjectToThresholding`, `dataLossFromOtherRow`). Ask the assistant to check before quoting a number.
+- **Consent gaps stay in the data.** GA4 identifies visitors with a `_ga` cookie that lasts two years ([cookie docs](https://support.google.com/analytics/answer/11397207)). Where you ask for consent, visitors who decline are missing from every report, unless your property qualifies for Consent Mode's [behavioral modeling](https://support.google.com/analytics/answer/11161109), which requires, among other things, at least 1,000 denied events and 1,000 consenting users a day.
+- **Analytics only.** None of the nine tools reads Google Search Console. For search data, see our [Google Search Console MCP guide](/blog/google-search-console-mcp).
+
+## Alternatives to Google's server
+
+| | Google's server | Stape | Zapier MCP | Rybbit MCP |
+| --- | --- | --- | --- | --- |
+| Where it runs | Your machine | Stape's servers | Zapier's servers | Rybbit Cloud, or your own server if you self-host |
+| Login | gcloud credentials plus your own OAuth client | Google OAuth in the browser | Zapier account with Google Analytics connected | OAuth, or an API key in any client |
+| Data it reads | Your GA4 properties | Your GA4 properties | Your GA4 properties | Rybbit's own tracking, plus Search Console |
+| Can it write? | No | No | Some GA4 actions | Goals, funnels, sites, members, teams, user traits |
+| Tools | 9 | The same 9 | 6 GA4 actions | 44 |
+| Price | Free | Free | Included in Zapier plans; 2 tasks per tool call | API access on Standard (from $19/month) and Pro; free to self-host |
+
+### Stape: Google's server, hosted for you
+
+[Stape](https://stape.io/solutions/mcp-server-ga4), a server-side tagging company, hosts a version at `https://mcp-google-analytics.stape.io/mcp`. Its [repository](https://github.com/stape-io/google-analytics-mcp) describes a fork of Google's server under the same Apache-2.0 license, with the same nine tools, read-only through the `analytics.readonly` scope. You log in with Google OAuth in the browser, so there's no Google Cloud project, gcloud or pipx, and Stape says it is "available for free". It works wherever remote servers do, including as a custom connector on claude.ai, and in Claude Code:
+
+```bash
+claude mcp add --transport http ga4-mcp-server https://mcp-google-analytics.stape.io/mcp
+```
+
+The trade-off is spelled out in Stape's own README: with the hosted server, your data passes through `mcp-google-analytics.stape.io`; with a local install, it goes straight from your machine to Google.
+
+### Zapier MCP: a few GA4 write actions
+
+Zapier's [Google Analytics 4 MCP](https://zapier.com/mcp/google-analytics-4) exposes six actions: Create Conversion Event for a Property, Create Measurement (a measurement secret), Run Report for a Property, Send Measurement Events for an Application, Find Conversion, and a beta raw API Request. It's the only option here that can change something in GA4, though reporting is a single action rather than nine specialized tools.
+
+[Zapier MCP](https://zapier.com/mcp) is included in every Zapier plan, and "each tool call uses two tasks" from your plan's quota. Zapier's [pricing page](https://zapier.com/pricing) lists a Free plan with 100 tasks a month, about 50 tool calls, and paid plans from $19.99 a month billed yearly.
+
+### Ask Advisor, inside Google Analytics
+
+For quick questions about one property, Google's [Ask Advisor](https://support.google.com/analytics/answer/16675569) is a Gemini-powered assistant built into GA, with nothing to install. It's in beta, currently limited to properties whose language is English, and it doesn't feed GA data into Claude or your own agents.
+
+### Rybbit: a hosted MCP server for cookieless analytics
+
+Rybbit's [MCP server](/features/mcp) isn't a Google Analytics connector: it reads what Rybbit, the analytics tool we build, collects with its own script. It suits people who'd rather not run a local server with Google Cloud credentials, and people wondering whether GA's consent-banner gaps are worth keeping.
+
+- **Hosted, with OAuth.** Claude Code, Claude Desktop (as a custom connector, which also works on claude.ai and mobile), Codex and opencode log in with OAuth; other clients use an API key, optionally scoped to `resource:action` permissions such as analytics read-only ([MCP docs](/docs/mcp)). In Claude Code: `claude mcp add --transport http rybbit https://app.rybbit.io/api/mcp`.
+- **44 tools that read and write.** Overviews, breakdowns, [funnels](/features/funnels), retention, journeys, Web Vitals, errors, sessions and user profiles; write tools for goals, funnels, sites, members, teams and user traits; and `run_query`, read-only ClickHouse SQL. Session replay isn't available over MCP.
+- **Search Console in the same chat.** On Rybbit Cloud, once a site admin connects Search Console under Site settings > Integrations, `get_search_console_status` and `get_search_console_data` return clicks, impressions, CTR and position by query, page, country, device or date, with filters, up to 25,000 rows per call. No URL Inspection, sitemaps or indexing requests.
+- **Cookieless tracking.** Rybbit is cookieless by default, so its own tracking needs no consent banner, and the cloud is EU-hosted.
+
+The limits, plainly. Rybbit can't import GA history: its [importers](/docs/data-import) cover Plausible, Umami and Simple Analytics only, so switching means running both side by side for a while. If your reporting leans on GA's Google Ads data, keep GA. [Standard](/pricing) starts at $19 a month for 100k events and Pro at $39, after a 7-day trial with the card collected at signup. Rybbit is open source under AGPL-3.0, and self-hosted installs include the MCP endpoint (the Search Console tools are Cloud-only). Our [Google Analytics comparison](/compare/google-analytics) goes feature by feature, and the [best Google Analytics alternatives](/blog/best-google-analytics-alternatives) roundup covers the rest of the field.
+
+## Which option should you use?
+
+For servers beyond GA4 (PostHog, Mixpanel, Amplitude and others), see our comparison of the [best analytics MCP servers](/blog/best-analytics-mcp-servers).
+
+- **Google's server** if you're comfortable with gcloud, want requests to go straight from your machine to Google, and only need to read.
+- **Stape** for the same nine tools on claude.ai or without a local install, if a third party in the data path is acceptable.
+- **Zapier** if you already pay for it, or need a GA4 write action such as creating a conversion event.
+- **Ask Advisor** for quick questions inside GA.
+- **Rybbit** if you're open to changing the analytics tool itself and want a hosted MCP server with write tools and Search Console. Not if you need your GA history or Google Ads data in one place.
+
+## FAQ
+
+**Is there an official Google Analytics MCP server?**
+Yes. Google's Analytics team publishes it on GitHub as `googleanalytics/google-analytics-mcp` and on PyPI as `analytics-mcp`, and Google lists it among its official MCP servers. The README labels it experimental.
+
+**Is the Google Analytics MCP server free?**
+Yes. It's open source under Apache-2.0. Requests count against the Data API's token quotas: 200,000 core tokens a day on a standard property.
+
+**Can the GA4 MCP server change my Google Analytics settings?**
+No. Google says it is "available for read requests only" and "can't edit your Google Analytics configuration or settings." Of the options above, only Zapier's GA4 MCP has write actions.
+
+**How do I use the GA4 MCP server with Claude?**
+In Claude Code, run Google's `claude mcp add analytics-mcp` command with your credentials path and project ID. In Claude Desktop, add the `analytics-mcp` block to `claude_desktop_config.json` and restart. Claude on the web and mobile can't run local servers, and Google doesn't host one, so use a hosted server such as Stape's there.
+
+**Does it work with Universal Analytics?**
+No. It uses the Data API, which Google says doesn't support Universal Analytics properties.
+
+---
+
+*Want an MCP server with no Google Cloud project to set up? [Start a Rybbit trial](https://app.rybbit.io/signup), connect it to Claude with one command, or read the [MCP docs](/docs/mcp) first.*

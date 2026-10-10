@@ -143,7 +143,7 @@ declare global {
   }
 
   // Create debounced pageview tracker
-  const trackPageview = () => tracker.trackPageview();
+  const trackPageview = () => tracker.trackPageviewIfUrlChanged();
   const debouncedTrackPageview =
     config!.debounceDuration > 0 ? debounce(trackPageview, config!.debounceDuration) : trackPageview;
 

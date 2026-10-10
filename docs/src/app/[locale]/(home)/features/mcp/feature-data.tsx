@@ -7,6 +7,7 @@ import {
   Monitor,
   Plug,
   Rocket,
+  Search,
   Settings,
   ShieldCheck,
   Terminal,
@@ -40,10 +41,16 @@ export const capabilities: FeatureCapability[] = [
       "Let your assistant write ClickHouse SQL against a site-scoped events table, with a schema tool, row limits, and execution-time caps. Ad-hoc questions without a BI tool.",
   },
   {
+    icon: <Search className="w-5 h-5" />,
+    title: "Search Console in the same chat",
+    description:
+      "With Google Search Console connected, your assistant can pull queries, pages, countries, and daily trends, filter to a page or keyword, and line them up against on-site behavior. No Google Cloud project or separate MCP server to set up.",
+  },
+  {
     icon: <Settings className="w-5 h-5" />,
     title: "Manage as well as read",
     description:
-      "39 tools mirror the dashboard: create goals, save funnels, configure sites, identify users and update traits, and manage organization members and teams.",
+      "44 tools mirror the dashboard: create goals, save funnels, configure sites, identify users and update traits, and manage organization members and teams.",
   },
   {
     icon: <KeyRound className="w-5 h-5" />,

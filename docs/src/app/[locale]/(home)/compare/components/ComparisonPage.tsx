@@ -51,6 +51,18 @@ export interface DeepDive {
   sections: DeepDiveSection[];
 }
 
+export interface OtherAlternative {
+  name: string;
+  href: string;
+  summary: string;
+}
+
+export interface OtherAlternatives {
+  title: string;
+  intro: string;
+  items: OtherAlternative[];
+}
+
 export interface ComparisonPageProps {
   competitorName: string;
   sections: ComparisonSection[];
@@ -63,6 +75,7 @@ export interface ComparisonPageProps {
   rybbitPricing?: PricingInfo;
   competitorPricing?: PricingInfo;
   deepDive?: DeepDive;
+  otherAlternatives?: OtherAlternatives;
   faqItems?: FAQItem[];
   relatedResources?: RelatedResource[];
 }
@@ -79,6 +92,7 @@ export function ComparisonPage({
   rybbitPricing,
   competitorPricing,
   deepDive,
+  otherAlternatives,
   faqItems,
   relatedResources,
 }: ComparisonPageProps) {
@@ -284,6 +298,36 @@ export function ComparisonPage({
                     ))}
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {otherAlternatives && otherAlternatives.items.length > 0 && (
+        <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="other-alternatives-title">
+          <div className="mx-auto grid max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+            <div className="border-b border-neutral-200 px-5 py-12 dark:border-neutral-800 sm:px-8 lg:col-span-4 lg:border-b-0 lg:border-r lg:px-10 lg:py-16">
+              <div className="lg:sticky lg:top-24">
+                <h2 id="other-alternatives-title" className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+                  {otherAlternatives.title}
+                </h2>
+                <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
+                  {otherAlternatives.intro}
+                </p>
+              </div>
+            </div>
+            <div className="lg:col-span-8">
+              {otherAlternatives.items.map((alternative) => (
+                <Link
+                  key={alternative.href}
+                  href={alternative.href}
+                  className="group grid border-b border-neutral-200 px-5 py-7 last:border-b-0 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-500 dark:border-neutral-800 dark:hover:bg-neutral-900/60 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-center sm:gap-6 sm:px-8 lg:px-10"
+                >
+                  <span className="font-semibold">{alternative.name}</span>
+                  <span className="mt-1 text-sm leading-6 text-neutral-500 dark:text-neutral-400 sm:mt-0">{alternative.summary}</span>
+                  <ArrowRight className="mt-4 size-4 text-neutral-400 transition-transform group-hover:translate-x-1 sm:mt-0" aria-hidden="true" />
+                </Link>
               ))}
             </div>
           </div>

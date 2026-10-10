@@ -1,3 +1,4 @@
+import type { OrgRole, Permission } from "@rybbit/shared";
 import { authedFetch } from "../../utils";
 
 export type SiteResponse = {
@@ -19,12 +20,19 @@ export type SiteResponse = {
   blockBots: boolean;
   firstPartyProxy?: boolean;
   isOwner: boolean;
+  /** The viewer's role on this site; null for public and private-link viewers. */
+  role: OrgRole | null;
+  /** What that role allows here. Read through useSitePermissions, not directly. */
+  permissions: Permission[];
+  // Cloud only: the site collects nothing until its organization starts a trial or plan.
+  requiresPlan?: boolean;
   // Analytics features
   sessionReplay?: boolean;
   webVitals?: boolean;
   trackErrors?: boolean;
   trackOutbound?: boolean;
   trackUrlParams?: boolean;
+  trackUrlFragments?: boolean;
   trackInitialPageView?: boolean;
   trackSpaNavigation?: boolean;
   trackIp?: boolean;
@@ -46,6 +54,9 @@ export type GetSitesFromOrgResponse = {
     monthlyEventCount: number | null;
     overMonthlyLimit: boolean | null;
   } | null;
+  /** The viewer's role in the organization and what it allows. */
+  role: OrgRole | null;
+  permissions: Permission[];
   sites: Array<{
     id: string | null;
     siteId: number;
@@ -61,8 +72,12 @@ export type GetSitesFromOrgResponse = {
     blockBots: boolean;
     sessionsLast24Hours: number;
     isOwner: boolean;
+    role: OrgRole;
+    permissions: Permission[];
     tags?: string[] | null;
     teams?: { id: string; name: string }[];
+    // Cloud only: the site collects nothing until its organization starts a trial or plan.
+    requiresPlan?: boolean;
   }>;
   subscription: {
     monthlyEventCount: number;
@@ -91,6 +106,7 @@ export function addSite(
     trackErrors?: boolean;
     trackOutbound?: boolean;
     trackUrlParams?: boolean;
+    trackUrlFragments?: boolean;
     trackInitialPageView?: boolean;
     trackSpaNavigation?: boolean;
     trackButtonClicks?: boolean;
@@ -114,6 +130,7 @@ export function addSite(
       trackErrors: settings?.trackErrors,
       trackOutbound: settings?.trackOutbound,
       trackUrlParams: settings?.trackUrlParams,
+      trackUrlFragments: settings?.trackUrlFragments,
       trackInitialPageView: settings?.trackInitialPageView,
       trackSpaNavigation: settings?.trackSpaNavigation,
       trackButtonClicks: settings?.trackButtonClicks,
@@ -163,6 +180,7 @@ export function updateSiteConfig(
     trackErrors?: boolean;
     trackOutbound?: boolean;
     trackUrlParams?: boolean;
+    trackUrlFragments?: boolean;
     trackInitialPageView?: boolean;
     trackSpaNavigation?: boolean;
     trackIp?: boolean;

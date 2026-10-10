@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BACKEND_URL } from "../lib/const";
 import { setPrivateKeyResolver } from "./requestContext";
-import { authedFetch } from "./utils";
+import { ApiError, authedFetch } from "./utils";
 
 vi.mock("axios", () => ({ default: vi.fn() }));
 
@@ -109,6 +109,17 @@ describe("authedFetch", () => {
     });
 
     await expect(authedFetch("/sites/42")).rejects.toThrow("You do not have access to this site");
+  });
+
+  it("keeps the status and body of a backend error for callers that branch on them", async () => {
+    const body = { error: "This transfer was sent to a different email address", recipientEmail: "ada@example.com" };
+    axiosMock.mockRejectedValue({ response: { status: 403, data: body } });
+
+    const error = await authedFetch("/site-transfers/abc").catch((error: ApiError) => error);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({ message: body.error, status: 403, body });
   });
 
   it("rethrows transport and malformed-response failures unchanged", async () => {

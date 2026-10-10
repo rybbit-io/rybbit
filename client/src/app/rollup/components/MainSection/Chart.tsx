@@ -3,7 +3,7 @@ import { TimeBucket } from "@rybbit/shared";
 import { ResponsiveBar } from "@nivo/bar";
 import { useWindowSize } from "@uidotdev/usehooks";
 import { DateTime } from "luxon";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { Time } from "@/components/DateSelector/types";
@@ -95,40 +95,49 @@ export function Chart({
   const timezone = getTimezone();
   const maxTicks = Math.max(1, Math.round((width ?? Infinity) / 75));
 
-  // Each site becomes a stacked/grouped key in every time-bucket row.
-  const labelForSeries = (s: RollupSeries) => {
-    const meta = siteMetaById.get(s.siteId);
-    return meta?.name || meta?.domain || `Site ${s.siteId}`;
-  };
+  // Each site becomes a stacked/grouped key in every time-bucket row. Pivoting
+  // is memoised: the hover tooltip re-renders this component on every mouse
+  // move, and re-pivoting (and re-laying-out every bar) each time is the lag.
+  // Future buckets are dropped; re-pivot when the minute turns so one that has
+  // become current appears on the next render (hover, refetch), as before.
+  const nowMinute = DateTime.now().startOf("minute").toMillis();
+  const { keys, colors, chartData } = useMemo(() => {
+    const labelForSeries = (s: RollupSeries) => {
+      const meta = siteMetaById.get(s.siteId);
+      return meta?.name || meta?.domain || `Site ${s.siteId}`;
+    };
 
-  const keys = series.map(labelForSeries);
-  const colors = series.map(
-    (s) => siteColorMap.get(s.siteId) ?? FALLBACK_COLOR
-  );
+    const keys = series.map(labelForSeries);
+    const colors = series.map(
+      (s) => siteColorMap.get(s.siteId) ?? FALLBACK_COLOR
+    );
 
-  // Pivot series → one row per time bucket with a value per site key.
-  const buckets = new Map<string, Record<string, string | number>>();
-  series.forEach((s) => {
-    const key = labelForSeries(s);
-    s.data.forEach((point) => {
-      const ts = DateTime.fromSQL(point.time, { zone: timezone }).toUTC();
-      if (ts > DateTime.now()) return;
-      const timeStr = ts.toFormat("yyyy-MM-dd HH:mm:ss");
-      let row = buckets.get(timeStr);
-      if (!row) {
-        row = { time: timeStr };
-        keys.forEach((k) => {
-          row![k] = 0;
-        });
-        buckets.set(timeStr, row);
-      }
-      row[key] = point[selectedStat];
+    // Pivot series → one row per time bucket with a value per site key.
+    const now = DateTime.fromMillis(nowMinute).endOf("minute");
+    const buckets = new Map<string, Record<string, string | number>>();
+    series.forEach((s) => {
+      const key = labelForSeries(s);
+      s.data.forEach((point) => {
+        const ts = DateTime.fromSQL(point.time, { zone: timezone }).toUTC();
+        if (ts > now) return;
+        const timeStr = ts.toFormat("yyyy-MM-dd HH:mm:ss");
+        let row = buckets.get(timeStr);
+        if (!row) {
+          row = { time: timeStr };
+          keys.forEach((k) => {
+            row![k] = 0;
+          });
+          buckets.set(timeStr, row);
+        }
+        row[key] = point[selectedStat];
+      });
     });
-  });
 
-  const chartData = Array.from(buckets.values()).sort((a, b) =>
-    String(a.time).localeCompare(String(b.time))
-  );
+    const chartData = Array.from(buckets.values()).sort((a, b) =>
+      String(a.time).localeCompare(String(b.time))
+    );
+    return { keys, colors, chartData };
+  }, [series, siteMetaById, siteColorMap, selectedStat, timezone, nowMinute]);
 
   const groupMode: "grouped" | "stacked" = ADDITIVE_STATS.includes(selectedStat)
     ? "stacked"
@@ -160,6 +169,70 @@ export function Chart({
         .sort((a, b) => b.value - a.value)
     : [];
 
+  // setHover is stable, so the bars only re-render when the data does.
+  const bars = useMemo(
+    () => (
+      <ResponsiveBar
+        data={chartData}
+        keys={keys}
+        indexBy="time"
+        groupMode={groupMode}
+        theme={nivoTheme}
+        margin={{ top: 10, right: 15, bottom: 30, left: 40 }}
+        padding={0.2}
+        innerPadding={groupMode === "grouped" ? 1 : 0}
+        valueScale={{ type: "linear" }}
+        indexScale={{ type: "band", round: true }}
+        colors={colors}
+        enableGridX={false}
+        enableGridY={true}
+        enableLabel={false}
+        borderRadius={1}
+        animate={false}
+        axisTop={null}
+        axisRight={null}
+        axisBottom={{
+          tickSize: 5,
+          tickPadding: 10,
+          tickRotation: 0,
+          format: (value: string) => {
+            const idx = chartData.findIndex((d) => d.time === value);
+            if (idx === -1 || idx % tickStep !== 0) return "";
+            const dt = DateTime.fromFormat(value, "yyyy-MM-dd HH:mm:ss", {
+              zone: "utc",
+            })
+              .setZone(getTimezone())
+              .setLocale(userLocale);
+            if (time.mode === "past-minutes") {
+              if (time.pastMinutesStart < 1440)
+                return dt.toFormat(hour12 ? "h:mm" : "HH:mm");
+              return dt.toFormat(hour12 ? "ha" : "HH:mm");
+            }
+            if (time.mode === "day")
+              return dt.toFormat(hour12 ? "ha" : "HH:mm");
+            return dt.toFormat(hour12 ? "MMM d" : "dd MMM");
+          },
+        }}
+        axisLeft={{
+          tickSize: 5,
+          tickPadding: 10,
+          tickRotation: 0,
+          format: formatter,
+        }}
+        onMouseEnter={(datum, event) =>
+          setHover({
+            indexValue: String(datum.indexValue),
+            x: event.clientX,
+            y: event.clientY,
+          })
+        }
+        onMouseLeave={() => setHover(null)}
+        tooltip={() => <></>}
+      />
+    ),
+    [chartData, keys, colors, groupMode, nivoTheme, tickStep, time]
+  );
+
   const tooltipWidth = 240;
   const tooltipOffset = 14;
   const viewportW = typeof window !== "undefined" ? window.innerWidth : 0;
@@ -180,63 +253,7 @@ export function Chart({
         }
         onMouseLeave={() => setHover(null)}
       >
-        <ResponsiveBar
-          data={chartData}
-          keys={keys}
-          indexBy="time"
-          groupMode={groupMode}
-          theme={nivoTheme}
-          margin={{ top: 10, right: 15, bottom: 30, left: 40 }}
-          padding={0.2}
-          innerPadding={groupMode === "grouped" ? 1 : 0}
-          valueScale={{ type: "linear" }}
-          indexScale={{ type: "band", round: true }}
-          colors={colors}
-          enableGridX={false}
-          enableGridY={true}
-          enableLabel={false}
-          borderRadius={1}
-          animate={false}
-          axisTop={null}
-          axisRight={null}
-          axisBottom={{
-            tickSize: 5,
-            tickPadding: 10,
-            tickRotation: 0,
-            format: (value: string) => {
-              const idx = chartData.findIndex((d) => d.time === value);
-              if (idx === -1 || idx % tickStep !== 0) return "";
-              const dt = DateTime.fromFormat(value, "yyyy-MM-dd HH:mm:ss", {
-                zone: "utc",
-              })
-                .setZone(getTimezone())
-                .setLocale(userLocale);
-              if (time.mode === "past-minutes") {
-                if (time.pastMinutesStart < 1440)
-                  return dt.toFormat(hour12 ? "h:mm" : "HH:mm");
-                return dt.toFormat(hour12 ? "ha" : "HH:mm");
-              }
-              if (time.mode === "day")
-                return dt.toFormat(hour12 ? "ha" : "HH:mm");
-              return dt.toFormat(hour12 ? "MMM d" : "dd MMM");
-            },
-          }}
-          axisLeft={{
-            tickSize: 5,
-            tickPadding: 10,
-            tickRotation: 0,
-            format: formatter,
-          }}
-          onMouseEnter={(datum, event) =>
-            setHover({
-              indexValue: String(datum.indexValue),
-              x: event.clientX,
-              y: event.clientY,
-            })
-          }
-          onMouseLeave={() => setHover(null)}
-          tooltip={() => <></>}
-        />
+        {bars}
       </div>
       {hover && hoverRow && typeof document !== "undefined" &&
         createPortal(
