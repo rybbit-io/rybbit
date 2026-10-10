@@ -14,6 +14,12 @@ const invitationSiteAccessFields = {
     required: false,
     defaultValue: [] as number[],
   },
+  // Role on those sites (editor, member or viewer); absent means the invited role.
+  siteRole: {
+    type: "string" as const,
+    // Literal, so the invite input types the field as optional.
+    required: false as const,
+  },
 };
 
 export const authClient = createAuthClient({

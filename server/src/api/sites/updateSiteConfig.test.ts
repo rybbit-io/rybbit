@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   getConfig: vi.fn(async () => ({ siteId: 1 })),
 }));
 
+vi.mock("../../services/usageService.js", () => ({
+  usageService: { requestOrganizationRefresh: vi.fn() },
+}));
+
 vi.mock("../../db/postgres/postgres.js", () => ({
   db: {
     query: {
@@ -194,6 +198,7 @@ describe("updateSiteConfig — non-gated fields update without subscription chec
         blockBots: false,
         webVitals: true,
         trackErrors: true,
+        trackUrlFragments: true,
         excludedCountries: ["US", "GB"],
         tags: ["prod"],
       }),
@@ -208,6 +213,7 @@ describe("updateSiteConfig — non-gated fields update without subscription chec
       blockBots: false,
       webVitals: true,
       trackErrors: true,
+      trackUrlFragments: true,
       excludedCountries: ["US", "GB"],
       tags: ["prod"],
     });

@@ -2,12 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { useAdminOrganizations } from "@/api/admin/hooks/useAdminOrganizations";
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/interior/copy-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
 import { cn, formatter } from "@/lib/utils";
 import { DateTime } from "luxon";
-import { Copy } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { ErrorAlert } from "../shared/ErrorAlert";
 import { GrowthChart } from "../shared/GrowthChart";
@@ -83,20 +82,17 @@ export function Organizations() {
     return { total: orgs.length, active, events24h, events30d };
   }, [filteredOrganizations]);
 
-  if (isError) {
-    return <ErrorAlert message={t("Failed to load organizations data. Please try again later.")} />;
-  }
-
-  const copyOwnerEmails = () => {
-    if (!filteredOrganizations?.length) return;
-    const emails = [...filteredOrganizations]
+  const ownerEmails = useMemo(() => {
+    const emails = [...(filteredOrganizations ?? [])]
       .sort((a, b) => a.name.localeCompare(b.name))
       .flatMap(org => org.members.filter(m => m.role === "owner").map(m => m.email))
       .filter(Boolean);
-    const unique = [...new Set(emails)];
-    navigator.clipboard.writeText(unique.join("\n"));
-    toast.success(t("Copied {count} owner emails", { count: String(unique.length) }));
-  };
+    return [...new Set(emails)];
+  }, [filteredOrganizations]);
+
+  if (isError) {
+    return <ErrorAlert message={t("Failed to load organizations data. Please try again later.")} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -176,15 +172,15 @@ export function Organizations() {
           selectedTiers={selectedTiers}
           setSelectedTiers={setSelectedTiers}
           actions={
-            <Button
+            <CopyButton
               variant="outline"
               size="sm"
-              onClick={copyOwnerEmails}
-              disabled={isLoading || !filteredOrganizations?.length}
-            >
-              <Copy className="h-3.5 w-3.5" />
-              {t("Copy owner emails")}
-            </Button>
+              value={ownerEmails.join("\n")}
+              label={t("Copy owner emails")}
+              disabled={isLoading || ownerEmails.length === 0}
+              onCopy={() => toast.success(t("Copied {count} owner emails", { count: String(ownerEmails.length) }))}
+              onError={() => toast.error(t("Couldn't copy to clipboard"))}
+            />
           }
         />
         <OrganizationsTable organizations={filteredOrganizations} isLoading={isLoading} searchQuery={searchQuery} />

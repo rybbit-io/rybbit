@@ -685,3 +685,20 @@
   --color-chart-ring-background: var(----chart-ring-background);
   --color-chart-label: var(----chart-label);
 }
+
+/*
+  ---break---
+*/
+/* PRODUCT.md: honor prefers-reduced-motion on every animation. Framer animations
+   are handled by <MotionConfig reducedMotion="user">; this covers CSS ones
+   (Tailwind animate-*, transitions, keyframes, ldrs). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

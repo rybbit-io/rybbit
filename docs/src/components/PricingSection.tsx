@@ -130,7 +130,7 @@ export function PricingSection({
     t("Unlimited team members"),
     t("Session replays"),
     t("5 year data retention"),
-    t("10x higher API rate limit"),
+    t("5x higher API rate limit"),
     t("Priority support"),
   ];
 

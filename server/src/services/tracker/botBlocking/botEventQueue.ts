@@ -1,5 +1,5 @@
-import { DateTime } from "luxon";
 import { clickhouse } from "../../../db/clickhouse/clickhouse.js";
+import { toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
 import { getLocation } from "../../../db/geolocation/geolocation.js";
 import { createServiceLogger } from "../../../lib/logger/logger.js";
 import { getDeviceType } from "../../../utils.js";
@@ -32,6 +32,20 @@ class BotEventQueue {
     this.queue.push(botEvent);
   }
 
+  /**
+   * Flushes everything still buffered. Only for shutdown: process exit would
+   * otherwise drop up to a flush interval of events on every deploy.
+   */
+  async drain(): Promise<void> {
+    while (this.processing || this.queue.length > 0) {
+      if (this.processing) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } else {
+        await this.processQueue();
+      }
+    }
+  }
+
   private async processQueue() {
     if (this.processing || this.queue.length === 0) return;
     this.processing = true;
@@ -50,7 +64,7 @@ class BotEventQueue {
 
         return {
           site_id: event.site_id,
-          timestamp: DateTime.fromISO(event.timestamp).toFormat("yyyy-MM-dd HH:mm:ss"),
+          timestamp: toClickHouseDateTime(event.timestamp),
           session_id: event.sessionId,
           user_id: event.userId,
           hostname: event.hostname || "",

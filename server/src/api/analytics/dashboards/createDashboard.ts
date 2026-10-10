@@ -19,7 +19,7 @@ export async function createDashboard(
   try {
     const { name, config } = createDashboardSchema.parse(request.body);
 
-    // Site access is enforced by the `authSite` (requireSiteAccess) preHandler.
+    // The route guard enforces dashboards:write on the site.
     const result = await db
       .insert(dashboards)
       .values({

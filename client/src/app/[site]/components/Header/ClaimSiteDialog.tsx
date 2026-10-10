@@ -86,7 +86,8 @@ export function ClaimSiteDialog({
   const returnPath = `/${siteId}/${privateLinkKey}?claim=1`;
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>("");
 
-  const adminOrganizations = (organizations ?? []).filter(org => org.role === "owner" || org.role === "admin");
+  // Organizations the user may add sites to.
+  const adminOrganizations = (organizations ?? []).filter(org => org.permissions?.includes("sites:create"));
   const hasExistingOrganization = !!user && adminOrganizations.length > 0;
 
   // Step 1 = account (skipped when signed in), step 2 = claim (existing org only), step 3 = plan (cloud only)

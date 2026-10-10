@@ -69,6 +69,7 @@ CREATE TABLE "team_site_access" (
   "id" serial PRIMARY KEY,
   "team_id" text NOT NULL REFERENCES "team"("id") ON DELETE CASCADE,
   "site_id" integer NOT NULL REFERENCES "sites"("site_id") ON DELETE CASCADE,
+  "role" text,
   "created_at" timestamp NOT NULL DEFAULT now(),
   UNIQUE ("team_id", "site_id")
 );
@@ -169,6 +170,25 @@ describe("createTeam", () => {
     expect(mocks.invalidateSitesAccessCache.mock.calls).toEqual([["member_1"], ["member_2"]]);
   });
 
+  it("gives the team's site grants the requested role", async () => {
+    const reply = replyStub();
+
+    await createTeam(requestStub({ body: { name: "Clients", siteIds: [1], siteRole: "editor" } }), reply);
+
+    expect(reply.statusCode).toBe(201);
+    expect(reply.body).toMatchObject({ siteRole: "editor" });
+    expect(await rows(`SELECT site_id, role FROM team_site_access`)).toEqual([{ site_id: 1, role: "editor" }]);
+  });
+
+  it("refuses a team site role above editor", async () => {
+    const reply = replyStub();
+
+    await createTeam(requestStub({ body: { name: "Clients", siteIds: [1], siteRole: "owner" } }), reply);
+
+    expect(reply.statusCode).toBe(400);
+    expect(await rows(`SELECT * FROM team`)).toEqual([]);
+  });
+
   it("rejects blank names before querying or writing", async () => {
     const reply = replyStub();
     const selectSpy = vi.spyOn(db, "select");
@@ -258,8 +278,8 @@ describe("listTeams", () => {
             { userId: "member_2", userName: "Member Two", userEmail: "two@example.com" },
           ]),
           sites: expect.arrayContaining([
-            { siteId: 1, domain: "a.example.com", name: "One A" },
-            { siteId: 2, domain: "b.example.com", name: "One B" },
+            { siteId: 1, domain: "a.example.com", name: "One A", role: null },
+            { siteId: 2, domain: "b.example.com", name: "One B", role: null },
           ]),
         }),
         expect.objectContaining({
@@ -347,6 +367,35 @@ describe("updateTeam", () => {
     expect(await rows(`SELECT site_id FROM team_site_access WHERE team_id = 'team_a'`)).toEqual([{ site_id: 2 }]);
     expect(mocks.invalidateSitesAccessCache).toHaveBeenCalledTimes(2);
     expect(mocks.invalidateSitesAccessCache.mock.calls).toEqual(expect.arrayContaining([["member_1"], ["member_2"]]));
+  });
+
+  it("keeps the team's site role when its sites are replaced", async () => {
+    await (pgClient as any).exec(`UPDATE team_site_access SET role = 'viewer' WHERE team_id = 'team_a'`);
+    const reply = replyStub();
+
+    await updateTeam(
+      requestStub({ params: { organizationId: "org_1", teamId: "team_a" }, body: { siteIds: [1, 2] } }),
+      reply
+    );
+
+    expect(reply.statusCode).toBe(200);
+    expect(await rows(`SELECT site_id, role FROM team_site_access ORDER BY site_id`)).toEqual([
+      { site_id: 1, role: "viewer" },
+      { site_id: 2, role: "viewer" },
+    ]);
+  });
+
+  it("changes the site role alone, and refreshes the members' access", async () => {
+    const reply = replyStub();
+
+    await updateTeam(
+      requestStub({ params: { organizationId: "org_1", teamId: "team_a" }, body: { siteRole: "editor" } }),
+      reply
+    );
+
+    expect(reply.statusCode).toBe(200);
+    expect(await rows(`SELECT site_id, role FROM team_site_access`)).toEqual([{ site_id: 1, role: "editor" }]);
+    expect(mocks.invalidateSitesAccessCache).toHaveBeenCalledWith("member_1");
   });
 
   it("preserves members and sites when those fields are omitted", async () => {

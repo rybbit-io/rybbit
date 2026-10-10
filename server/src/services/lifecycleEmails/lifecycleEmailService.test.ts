@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * The lifecycle cron is a state machine: every email is triggered by a state
@@ -14,7 +14,6 @@ const daysAgo = (d: number) => now().minus({ days: d }).toSQL({ includeOffset: f
 
 const state = vi.hoisted(() => ({
   users: [] as Array<{ id: string; email: string; name: string; createdAt: string }>,
-  legacyTipUsers: [] as Array<{ id: string; scheduledTipEmailIds: string[] }>,
   memberships: [] as Array<{ userId: string; organizationId: string; role: string }>,
   sites: [] as Array<{
     siteId: number;
@@ -23,7 +22,7 @@ const state = vi.hoisted(() => ({
     organizationId: string;
     detectedPlatform: string | null;
   }>,
-  logs: [] as Array<{ userId: string; emailKey: string; sentAt: string }>,
+  logs: [] as Array<{ userId: string; emailKey: string; siteId?: number | null; sentAt: string }>,
   recentQuietLogs: [] as Array<{ siteId: number; userId: string; sentAt: string }>,
   goals: [] as Array<{ siteId: number }>,
   owners: [] as Array<{ organizationId: string; userId: string; email: string; name: string }>,
@@ -44,13 +43,11 @@ const state = vi.hoisted(() => ({
   establishedSites: [] as Array<{ site_id: number; total: number }>,
   /** unique-key guard mirroring the DB constraint */
   sentKeys: new Set<string>(),
-  clearedTipUsers: [] as string[],
 }));
 
 const mocks = vi.hoisted(() => ({
   sendLifecycleEmail: vi.fn(async (_email: string, _subject: string, _text: string, _idempotencyKey?: string) => true),
   isContactUnsubscribed: vi.fn(async (_email: string) => false),
-  cancelScheduledEmail: vi.fn(async (_id: string) => undefined),
   detectPlatform: vi.fn(async () => null),
 }));
 
@@ -73,8 +70,17 @@ vi.mock("../../db/postgres/postgres.js", () => {
       // Reads are told apart by the columns each one selects.
       select: (fields: Record<string, unknown>) =>
         chain(() => {
-          if ("scheduledTipEmailIds" in fields) return state.legacyTipUsers;
-          if ("siteId" in fields && "userId" in fields && "sentAt" in fields) return state.recentQuietLogs;
+          if ("siteId" in fields && "userId" in fields && "sentAt" in fields) {
+            return [
+              ...state.recentQuietLogs,
+              ...state.logs.filter(
+                l =>
+                  l.emailKey.startsWith("went_quiet:") &&
+                  l.siteId != null &&
+                  DateTime.fromISO(l.sentAt) > now().minus({ days: 30 })
+              ),
+            ];
+          }
           if ("emailKey" in fields && "userId" in fields) return state.logs;
           if ("role" in fields) return state.memberships;
           if ("createdAt" in fields && "email" in fields) return state.users;
@@ -84,7 +90,7 @@ vi.mock("../../db/postgres/postgres.js", () => {
           return state.goals;
         }),
       insert: () => ({
-        values: (rows: Array<{ userId: string; emailKey: string }>) => ({
+        values: (rows: Array<{ userId: string; emailKey: string; siteId: number | null }>) => ({
           onConflictDoNothing: () => ({
             returning: async () => {
               const claimed: string[] = [];
@@ -94,7 +100,7 @@ vi.mock("../../db/postgres/postgres.js", () => {
                 if (state.sentKeys.has(key)) continue; // unique-index conflict
                 state.sentKeys.add(key);
                 // Mirror the real table: the row is now visible to later reads
-                state.logs.push({ userId: row.userId, emailKey: row.emailKey, sentAt: new Date().toISOString() });
+                state.logs.push({ ...row, sentAt: new Date().toISOString() });
                 claimed.push(key);
                 returned.push({ id: state.sentKeys.size, emailKey: row.emailKey });
               }
@@ -105,10 +111,8 @@ vi.mock("../../db/postgres/postgres.js", () => {
         }),
       }),
       update: () => ({
-        set: (values: Record<string, unknown>) => ({
-          where: async () => {
-            if ("scheduledTipEmailIds" in values) state.clearedTipUsers.push("cleared");
-          },
+        set: () => ({
+          where: async () => {},
         }),
       }),
       // The service only deletes the rows it just inserted (send-failure
@@ -132,14 +136,23 @@ vi.mock("../../db/postgres/postgres.js", () => {
 
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({
   clickhouse: {
-    query: async ({ query }: { query: string }) => {
+    query: async ({ query, query_params }: { query: string; query_params?: Record<string, unknown> }) => {
       const rows = (() => {
         if (query.includes("custom_events")) return state.siteStats;
         if (query.includes("ORDER BY timestamp ASC")) return state.firstPageview;
         if (query.includes("uniq(session_id)")) return state.overview;
         if (query.includes("GROUP BY value")) return state.topRows;
         if (query.includes("INTERVAL 14 DAY")) return state.convertingPaths;
-        if (query.includes("HAVING last_event")) return state.quietCandidates;
+        if (query.includes("HAVING last_event")) {
+          // Apply the candidate window so a deferred site can age out, just as
+          // it would in ClickHouse.
+          const windowStart = DateTime.fromSeconds(Number(query_params?.windowStart));
+          const quietBefore = DateTime.fromSeconds(Number(query_params?.quietBefore));
+          return state.quietCandidates.filter(row => {
+            const lastEvent = DateTime.fromSQL(row.last_event, { zone: "utc" });
+            return lastEvent > windowStart && lastEvent < quietBefore;
+          });
+        }
         if (query.includes("INTERVAL 21 DAY")) return state.establishedSites;
         return [];
       })();
@@ -151,7 +164,6 @@ vi.mock("../../db/clickhouse/clickhouse.js", () => ({
 vi.mock("../../lib/email/email.js", () => ({
   sendLifecycleEmail: mocks.sendLifecycleEmail,
   isContactUnsubscribed: mocks.isContactUnsubscribed,
-  cancelScheduledEmail: mocks.cancelScheduledEmail,
 }));
 
 vi.mock("../../lib/const.js", () => ({ IS_CLOUD: true, SECRET: "test-secret" }));
@@ -193,8 +205,11 @@ beforeEach(() => {
   insertedStack.length = 0;
   // Reset singleton run-state between tests
   (lifecycleEmailService as any).lastWentQuietAt = null;
-  (lifecycleEmailService as any).legacyTipsCancelled = true;
   (lifecycleEmailService as any).negativeCache.clear();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("state: signed up, no site", () => {
@@ -411,6 +426,11 @@ describe("state: data flowing", () => {
 });
 
 describe("state: went quiet", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-07T12:00:00Z"));
+  });
+
   const quietSite = () => {
     state.quietCandidates.push({ site_id: 7, last_event: hoursAgo(50) });
     state.establishedSites.push({ site_id: 7, total: 5000 });
@@ -457,19 +477,63 @@ describe("state: went quiet", () => {
     expect(state.logs.map(l => l.emailKey).filter(k => k.startsWith("went_quiet:")).length).toBe(2);
   });
 
-  it("waits 24h after an owner's last went-quiet email before alerting about another site", async () => {
+  it.each([25, 6 * 24, 7 * 24 - 1 / 60])(
+    "holds another site's alert when the owner's previous email is %s hours old",
+    async lastSentHours => {
+      quietSite();
+      state.recentQuietLogs.push({ siteId: 99, userId: "owner1", sentAt: hoursAgo(lastSentHours) });
+      await run();
+      expect(mocks.sendLifecycleEmail).not.toHaveBeenCalled();
+      expect(state.logs).toHaveLength(0);
+    }
+  );
+
+  it("allows another site's alert exactly seven days after the owner's previous email", async () => {
     quietSite();
-    // A different site of the same owner was reported 3 hours ago
-    state.recentQuietLogs.push({ siteId: 99, userId: "owner1", sentAt: hoursAgo(3) });
+    state.recentQuietLogs.push({ siteId: 99, userId: "owner1", sentAt: daysAgo(7) });
+    await run();
+    expect(sentSubjects()).toEqual(["We stopped hearing from quiet.com"]);
+  });
+
+  it("bundles sites that stayed quiet during the weekly cooldown, including sites in another organization", async () => {
+    quietSite();
+    await run();
+
+    // The next day, two more sites become eligible for the same owner.
+    vi.setSystemTime(new Date("2026-10-08T12:00:00Z"));
+    for (const [siteId, domain, organizationId] of [
+      [8, "quiet2.com", "org-x"],
+      [9, "quiet3.com", "org-y"],
+    ] as const) {
+      state.quietCandidates.push({ site_id: siteId, last_event: hoursAgo(50) });
+      state.establishedSites.push({ site_id: siteId, total: 3000 });
+      state.sites.push({ siteId, domain, createdAt: daysAgo(200), organizationId, detectedPlatform: null });
+    }
+    state.owners.push({ organizationId: "org-y", userId: "owner1", email: "owner1@example.com", name: "Ada" });
+    await run();
+    expect(mocks.sendLifecycleEmail).toHaveBeenCalledTimes(1);
+
+    // At the weekly boundary, those sites have had no events for over eight
+    // days. They must remain candidates and share one message.
+    vi.setSystemTime(new Date("2026-10-14T12:00:00Z"));
+    await run();
+    expect(sentSubjects()).toEqual([
+      "We stopped hearing from quiet.com",
+      "We stopped hearing from quiet2.com and 1 other site",
+    ]);
+    expect(state.logs.filter(l => l.emailKey.startsWith("went_quiet:")).map(l => l.siteId)).toEqual([7, 8, 9]);
+  });
+
+  it("does not alert about a deferred site that resumed sending events before the cooldown ended", async () => {
+    quietSite();
+    state.recentQuietLogs.push({ siteId: 99, userId: "owner1", sentAt: daysAgo(6) });
     await run();
     expect(mocks.sendLifecycleEmail).not.toHaveBeenCalled();
 
-    // Once the day has passed, the held site is reported
-    state.recentQuietLogs.length = 0;
-    state.recentQuietLogs.push({ siteId: 99, userId: "owner1", sentAt: hoursAgo(25) });
-    (lifecycleEmailService as any).lastWentQuietAt = null;
+    vi.setSystemTime(new Date("2026-10-08T12:00:00Z"));
+    state.quietCandidates[0].last_event = hoursAgo(1);
     await run();
-    expect(sentSubjects()).toEqual(["We stopped hearing from quiet.com"]);
+    expect(mocks.sendLifecycleEmail).not.toHaveBeenCalled();
   });
 });
 
@@ -607,16 +671,5 @@ describe("multi-site owners", () => {
     addUser("u1", hoursAgo(4));
     await run();
     expect(mocks.sendLifecycleEmail.mock.calls[0][3]).toBe("lifecycle:u1:no_site_1");
-  });
-});
-
-describe("rollout", () => {
-  it("cancels tips the retired drip already scheduled in Resend", async () => {
-    (lifecycleEmailService as any).legacyTipsCancelled = false;
-    state.legacyTipUsers.push({ id: "u9", scheduledTipEmailIds: ["re_1", "re_2", "re_3"] });
-    await run();
-    expect(mocks.cancelScheduledEmail).toHaveBeenCalledTimes(3);
-    expect(mocks.cancelScheduledEmail).toHaveBeenCalledWith("re_1");
-    expect(state.clearedTipUsers.length).toBe(1);
   });
 });

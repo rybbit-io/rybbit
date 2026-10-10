@@ -44,7 +44,7 @@ export function CreateFunnelDialog() {
       { steps, name },
       {
         onSuccess: () => {
-          setOpen(false);
+          handleOpenChange(false);
           toast?.success(t("Funnel saved successfully"));
         },
         onError: error => {
@@ -55,7 +55,8 @@ export function CreateFunnelDialog() {
     );
   };
 
-  // Reset form when the editor closes
+  // Reset form when the editor closes. Radix only calls this for its own dismissals (Esc, overlay),
+  // so save and cancel route through it too.
   const handleOpenChange = (open: boolean) => {
     setOpen(open);
     if (!open) {
@@ -67,8 +68,8 @@ export function CreateFunnelDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex gap-2">
-          <Plus className="w-4 h-4" /> {t("Create Funnel")}
+        <Button variant="accent" size="sm">
+          <Plus /> {t("Create funnel")}
         </Button>
       </DialogTrigger>
       <DialogContentFullScreen
@@ -85,7 +86,7 @@ export function CreateFunnelDialog() {
           steps={steps}
           setSteps={setSteps}
           onSave={handleSaveFunnel}
-          onCancel={() => setOpen(false)}
+          onCancel={() => handleOpenChange(false)}
           saveButtonText={t("Save Funnel")}
           isSaving={isSaving}
           isError={isError}

@@ -51,8 +51,13 @@ export function DeleteTeamDialog({ team, onSuccess }: DeleteTeamDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="smIcon">
-          <Trash2 className="h-3.5 w-3.5" />
+        <Button
+          variant="ghost"
+          size="smIcon"
+          className="text-neutral-500 dark:text-neutral-400"
+          aria-label={t("Delete {name}", { name: team.name })}
+        >
+          <Trash2 className="size-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">

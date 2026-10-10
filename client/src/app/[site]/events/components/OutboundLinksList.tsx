@@ -136,7 +136,7 @@ export function OutboundLinksList({ outboundLinks, isLoading, size = "small" }: 
                   {/* <div className="hidden group-hover:block text-neutral-600 dark:text-neutral-400 text-xs">
                     {lastClicked.toRelative()}
                   </div> */}
-                  <NumberFlow respectMotionPreference={false} value={link.count} format={{ notation: "compact" }} />
+                  <NumberFlow value={link.count} format={{ notation: "compact" }} />
                 </div>
               </div>
             </div>

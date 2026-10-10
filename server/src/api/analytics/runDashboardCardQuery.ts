@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import SqlString from "sqlstring";
 import { z } from "zod";
 import { clickhouseQuery } from "../../db/clickhouse/clickhouse.js";
+import { QUERY_USER_LIMITS } from "../../db/clickhouse/queryLimits.js";
 import {
   MAX_CUSTOM_QUERY_LENGTH,
   normalizeCustomQuery,
@@ -10,10 +11,6 @@ import {
 } from "./utils/customQueryValidation.js";
 import { validateHttpTimeParams } from "./utils/query-validation.js";
 import { bucketIntervalMap, getTimeStatement } from "./utils/timeWindow.js";
-
-// Mirrors the rybbit_query ClickHouse profile (docker-compose clickhouse_user_settings).
-const MAX_EXECUTION_TIME_SECONDS = 10;
-const MAX_RESULT_ROWS = 1000;
 
 const BUCKET_TOKEN = /\{\{\s*bucket\s*\}\}/gi;
 const TZ_TOKEN = /\{\{\s*tz\s*\}\}/gi;
@@ -81,9 +78,7 @@ export async function runDashboardCardQuery(
   // so day buckets align to local calendar days, matching the standard charts.
   const bucketInterval = bucketIntervalMap[body.data.bucket ?? "hour"];
   const timeZoneLiteral = SqlString.escape(body.data.timeZone || "UTC");
-  const substitutedQuery = body.data.query
-    .replace(BUCKET_TOKEN, bucketInterval)
-    .replace(TZ_TOKEN, timeZoneLiteral);
+  const substitutedQuery = body.data.query.replace(BUCKET_TOKEN, bucketInterval).replace(TZ_TOKEN, timeZoneLiteral);
 
   const validationError = validateScopedQuery(substitutedQuery);
   if (validationError) {
@@ -115,7 +110,7 @@ export async function runDashboardCardQuery(
       format: "JSONEachRow",
       query_params: {
         siteIds: [siteId],
-        limit: MAX_RESULT_ROWS,
+        limit: QUERY_USER_LIMITS.maxResultRows,
       },
       // Execution limits (readonly, max_execution_time, max_memory_usage,
       // max_result_rows, …) come from the rybbit_query settings profile and are
@@ -128,8 +123,8 @@ export async function runDashboardCardQuery(
       meta: {
         queryId: result.query_id,
         rowCount: data.length,
-        maxExecutionTimeSeconds: MAX_EXECUTION_TIME_SECONDS,
-        maxRows: MAX_RESULT_ROWS,
+        maxExecutionTimeSeconds: QUERY_USER_LIMITS.maxExecutionTimeSeconds,
+        maxRows: QUERY_USER_LIMITS.maxResultRows,
       },
     });
   } catch (error) {

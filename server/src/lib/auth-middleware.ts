@@ -1,19 +1,52 @@
-import { FastifyRequest, FastifyReply } from "fastify";
+import { FastifyRequest, FastifyReply, type RouteOptions } from "fastify";
+import { PERMISSIONS, roleHasPermission, type OrgRole, type Permission } from "@rybbit/shared";
 import {
   getSessionFromReq,
   checkApiKey,
-  getUserHasAccessToSite,
-  getUserHasAdminAccessToSite,
-  getUserHasAccessToSitePublic,
   getIsUserAdmin,
-  getUserIsInOrg,
+  getSiteIsPubliclyReadable,
+  getUserOrgRole,
+  getUserSiteRole,
   type BearerAuthResult,
 } from "./auth-utils.js";
-import { getOrgMembership, isOrgAdmin } from "./access.js";
 import { hasScope, scopeToString, type ScopeRequirement } from "./scopes.js";
 import { siteConfig } from "./siteConfig.js";
 
 type AuthMiddleware = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+
+/**
+ * Who may call a route. Every /api route declares one in `config.access`;
+ * {@link assertRouteAccessDeclared} refuses to register a route without it.
+ * - a permission on a site (:siteId) or organization (:organizationId),
+ *   enforced by {@link requireSitePermission} / {@link requireOrgPermission}
+ * - "authenticated": any signed-in user or credential (user-level surfaces)
+ * - "system-admin": Better Auth system admins only
+ * - "public": no guard — tracking, webhooks, signed links, and handlers that
+ *   authenticate the caller themselves
+ */
+export type RouteAccess =
+  | { level: "site"; permission: Permission; allowPublic: boolean }
+  | { level: "org"; permission: Permission }
+  | "authenticated"
+  | "system-admin"
+  | "public";
+
+declare module "fastify" {
+  interface FastifyContextConfig {
+    access?: RouteAccess;
+  }
+}
+
+/** onRoute hook: a route that doesn't say who may call it never registers. */
+export function assertRouteAccessDeclared(route: RouteOptions): void {
+  const access = (route.config as { access?: RouteAccess } | undefined)?.access;
+  if (!access) {
+    throw new Error(`Route ${route.method} ${route.url} does not declare config.access`);
+  }
+  if (typeof access === "object" && !(access.permission in PERMISSIONS)) {
+    throw new Error(`Route ${route.method} ${route.url} declares unknown permission "${access.permission}"`);
+  }
+}
 
 /**
  * Scope requirement for a route. Scopes constrain BEARER credentials only —
@@ -192,30 +225,57 @@ export const requireAdmin: AuthMiddleware = async (request, reply) => {
   if (session?.user) request.user = session.user;
 };
 
+const sendInsufficientRole = (reply: FastifyReply, permission: Permission) =>
+  reply.status(403).send({ error: "Insufficient role", required: PERMISSIONS[permission].minRole });
+
+export interface SitePermissionOptions {
+  /**
+   * Also admit callers with no role on the site when the site is public or the
+   * request carries its private link key. Only for read permissions.
+   */
+  allowPublic?: boolean;
+}
+
 /**
- * Requires access to site (via session or API key).
+ * Requires a permission on the site named by the :siteId param. The caller's
+ * role on that site — from their membership, their site grants and teams, or
+ * admin authority for org-owned keys and system-admin sessions — must hold the
+ * permission, and a bearer credential must also carry the permission's scope.
  */
-export function requireSiteAccess(scope?: RouteScope): AuthMiddleware {
+export function requireSitePermission(permission: Permission, options: SitePermissionOptions = {}): AuthMiddleware {
+  const scope = PERMISSIONS[permission].scope;
+  // Reads (every viewer permission) may use the short-lived per-worker role
+  // cache; anything a viewer can't do re-reads the role, so revoking access
+  // takes effect immediately for writes and admin actions.
+  const fresh = PERMISSIONS[permission].minRole !== "viewer";
   return async (request, reply) => {
     const siteId = getSiteIdFromParams(request);
     if (!siteId) {
       return reply.status(400).send({ error: "Site ID required" });
     }
 
-    // Check API key first.
+    // Bearer credential first. A key whose role or scope falls short falls
+    // through to the session, so a browser tab holding both still works.
     let scopeDenied = false;
-    const apiKeyResult = await checkApiKey(request, { siteId });
-    if (apiKeyResult.valid) {
+    const apiKeyResult = await checkApiKey(request, { siteId, fresh });
+    if (apiKeyResult.valid && roleHasPermission(apiKeyResult.role, permission)) {
       if (bearerScopeOk(apiKeyResult, scope)) {
         attachApiKeyUser(request, reply, apiKeyResult);
+        request.accessRole = apiKeyResult.role as OrgRole;
         return;
       }
       scopeDenied = true;
     }
 
-    // Check session-based access
-    const hasAccess = await getUserHasAccessToSite(request, siteId);
-    if (hasAccess) {
+    const role = await getUserSiteRole(request, siteId, { fresh });
+    if (roleHasPermission(role, permission)) {
+      const session = await getSessionFromReq(request);
+      if (session?.user) request.user = session.user;
+      request.accessRole = role!;
+      return;
+    }
+
+    if (options.allowPublic && (await getSiteIsPubliclyReadable(request, siteId))) {
       const session = await getSessionFromReq(request);
       if (session?.user) request.user = session.user;
       return;
@@ -225,108 +285,22 @@ export function requireSiteAccess(scope?: RouteScope): AuthMiddleware {
       return sendRateLimited(reply, apiKeyResult);
     }
     if (scopeDenied) {
-      return sendInsufficientScope(reply, scope!);
+      return sendInsufficientScope(reply, scope);
     }
-
+    if (role || (apiKeyResult.valid && apiKeyResult.role)) {
+      return sendInsufficientRole(reply, permission);
+    }
     return reply.status(403).send({ error: "Forbidden" });
   };
 }
 
 /**
- * Requires admin/owner access to site.
+ * Requires a permission in the organization named by the :organizationId
+ * param, held by the caller's organization role (system-admin sessions act as
+ * admin in every organization); bearer credentials also need the scope.
  */
-export function requireSiteAdminAccess(scope?: RouteScope): AuthMiddleware {
-  return async (request, reply) => {
-    const siteId = getSiteIdFromParams(request);
-    if (!siteId) {
-      return reply.status(400).send({ error: "Site ID required" });
-    }
-
-    // Check API key with admin/owner role first.
-    let scopeDenied = false;
-    const apiKeyResult = await checkApiKey(request, { siteId });
-    if (apiKeyResult.valid && (apiKeyResult.role === "admin" || apiKeyResult.role === "owner")) {
-      if (bearerScopeOk(apiKeyResult, scope)) {
-        attachApiKeyUser(request, reply, apiKeyResult);
-        return;
-      }
-      scopeDenied = true;
-    }
-
-    // Better Auth system admins have account-wide authority and do not need
-    // an admin/owner membership in the organization that owns the site.
-    const isSystemAdmin = await getIsUserAdmin(request);
-    if (isSystemAdmin) {
-      const session = await getSessionFromReq(request);
-      if (session?.user) request.user = session.user;
-      return;
-    }
-
-    // Check session-based admin access
-    const hasAdminAccess = await getUserHasAdminAccessToSite(request, siteId);
-    if (hasAdminAccess) {
-      const session = await getSessionFromReq(request);
-      if (session?.user) request.user = session.user;
-      return;
-    }
-
-    if (apiKeyResult.rateLimited) {
-      return sendRateLimited(reply, apiKeyResult);
-    }
-    if (scopeDenied) {
-      return sendInsufficientScope(reply, scope!);
-    }
-
-    return reply.status(403).send({ error: "Forbidden" });
-  };
-}
-
-/**
- * Allows public site access, private key, or authenticated access.
- */
-export function allowPublicSiteAccess(scope?: RouteScope): AuthMiddleware {
-  const requirement = scope && scope !== "deny-scoped" ? scope : undefined;
-  return async (request, reply) => {
-    const siteId = getSiteIdFromParams(request);
-    if (!siteId) {
-      return reply.status(400).send({ error: "Site ID required" });
-    }
-
-    let scopeDenied = false;
-    const apiKeyResult = await checkApiKey(request, { siteId });
-    if (apiKeyResult.valid) {
-      if (bearerScopeOk(apiKeyResult, scope)) {
-        attachApiKeyUser(request, reply, apiKeyResult);
-        return;
-      }
-      scopeDenied = true;
-    }
-
-    // Public/private-link/session access. The scope threads into this helper's
-    // own bearer fallback; a public site stays readable regardless (anonymous
-    // baseline).
-    const hasAccess = await getUserHasAccessToSitePublic(request, siteId, requirement);
-    if (hasAccess) {
-      const session = await getSessionFromReq(request);
-      if (session?.user) request.user = session.user;
-      return;
-    }
-
-    if (apiKeyResult.rateLimited) {
-      return sendRateLimited(reply, apiKeyResult);
-    }
-    if (scopeDenied) {
-      return sendInsufficientScope(reply, scope!);
-    }
-
-    return reply.status(403).send({ error: "Forbidden" });
-  };
-}
-
-/**
- * Requires membership in organization.
- */
-export function requireOrgMember(scope?: RouteScope): AuthMiddleware {
+export function requireOrgPermission(permission: Permission): AuthMiddleware {
+  const scope = PERMISSIONS[permission].scope;
   return async (request, reply) => {
     const params = request.params as Record<string, string>;
     const organizationId = params.organizationId;
@@ -337,80 +311,44 @@ export function requireOrgMember(scope?: RouteScope): AuthMiddleware {
 
     let scopeDenied = false;
     const apiKeyResult = await checkApiKey(request, { organizationId });
-    if (apiKeyResult.valid) {
+    if (apiKeyResult.valid && roleHasPermission(apiKeyResult.role, permission)) {
       if (bearerScopeOk(apiKeyResult, scope)) {
         attachApiKeyUser(request, reply, apiKeyResult);
+        request.accessRole = apiKeyResult.role as OrgRole;
         return;
       }
       scopeDenied = true;
     }
 
-    const isMember = await getUserIsInOrg(request, organizationId);
-    if (isMember) {
-      const session = await getSessionFromReq(request);
-      if (session?.user) request.user = session.user;
-      return;
+    const session = await getSessionFromReq(request);
+    if (session?.user?.id) {
+      const role = await getUserOrgRole(request, organizationId);
+      if (roleHasPermission(role, permission)) {
+        request.user = session.user;
+        request.accessRole = role!;
+        return;
+      }
+      if (apiKeyResult.rateLimited) {
+        return sendRateLimited(reply, apiKeyResult);
+      }
+      if (scopeDenied) {
+        return sendInsufficientScope(reply, scope);
+      }
+      if (role) {
+        return sendInsufficientRole(reply, permission);
+      }
+      return reply.status(403).send({ error: "You are not a member of this organization" });
     }
 
     if (apiKeyResult.rateLimited) {
       return sendRateLimited(reply, apiKeyResult);
     }
     if (scopeDenied) {
-      return sendInsufficientScope(reply, scope!);
+      return sendInsufficientScope(reply, scope);
     }
-
-    return reply.status(403).send({ error: "Forbidden" });
-  };
-}
-
-/**
- * Requires org admin/owner access via session or API key.
- * Extracts organizationId from request params (orgId).
- * Use for endpoints that create resources in an org (like addSite).
- */
-export function requireOrgAdminFromParams(scope?: RouteScope): AuthMiddleware {
-  return async (request, reply) => {
-    const params = request.params as Record<string, string>;
-    const organizationId = params.organizationId;
-
-    if (!organizationId) {
-      return reply.status(400).send({ error: "Organization ID required in path" });
+    if (apiKeyResult.valid) {
+      return sendInsufficientRole(reply, permission);
     }
-
-    // Check API key first - must have admin/owner role
-    let scopeDenied = false;
-    const apiKeyResult = await checkApiKey(request, { organizationId });
-    if (apiKeyResult.valid && (apiKeyResult.role === "admin" || apiKeyResult.role === "owner")) {
-      if (bearerScopeOk(apiKeyResult, scope)) {
-        attachApiKeyUser(request, reply, apiKeyResult);
-        return;
-      }
-      scopeDenied = true;
-    }
-
-    // Check session-based access - must be admin/owner of org
-    const session = await getSessionFromReq(request);
-    if (!session?.user?.id) {
-      if (apiKeyResult.rateLimited) {
-        return sendRateLimited(reply, apiKeyResult);
-      }
-      if (scopeDenied) {
-        return sendInsufficientScope(reply, scope!);
-      }
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-
-    // Check org membership and role
-    const membership = await getOrgMembership(session.user.id, organizationId);
-
-    if (!membership) {
-      return reply.status(403).send({ error: "You are not a member of this organization" });
-    }
-
-    if (!isOrgAdmin(membership)) {
-      return reply.status(403).send({ error: "You must be an admin or owner" });
-    }
-
-    request.user = session.user;
+    return reply.status(401).send({ error: "Unauthorized" });
   };
 }

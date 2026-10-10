@@ -7,6 +7,12 @@ describe("onboarding routes", () => {
     const response = await proxy(new NextRequest("https://app.rybbit.io/try?domain=acme.dev"));
     expect(response.headers.get("location")).toBeNull();
   });
+  it("serves site transfer links instead of treating them as site routes", async () => {
+    for (const path of ["/transfer", "/transfer/Zk3v-9Q_aBcDeFgHiJkLmNoPqRsTuVwXyZ01234567"]) {
+      const response = await proxy(new NextRequest(`https://app.rybbit.io${path}`));
+      expect(response.headers.get("location")).toBeNull();
+    }
+  });
   it("preserves the OAuth claim flag when opening a private dashboard", async () => {
     const response = await proxy(new NextRequest("https://app.rybbit.io/7/aaaaaaaaaaaa?claim=1"));
     expect(response.headers.get("location")).toBe("https://app.rybbit.io/7/aaaaaaaaaaaa/main?claim=1");

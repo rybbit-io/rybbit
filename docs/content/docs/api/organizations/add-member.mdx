@@ -1,6 +1,6 @@
 ---
 title: Add Organization Member
-description: Adds a user to an organization with a specified role. The user must already exist in the system. Requires admin or owner role in the organization.
+description: Adds a user to an organization with a specified role. The user must already exist in the system. Requires admin or owner role in the organization. You cannot assign a role above your own.
 full: true
 method: POST
 ---
@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/organizations/:organizationId/members
 ```
 
-Adds a user to an organization with a specified role. The user must already exist in the system. Requires admin or owner role in the organization.
+Adds a user to an organization with a specified role. The user must already exist in the system. Requires admin or owner role in the organization. You cannot assign a role above your own.
 
 ### Path Parameters
 
@@ -42,7 +42,7 @@ Adds a user to an organization with a specified role. The user must already exis
     role: {
       description: 'Role to assign to the user',
       type: 'string',
-      typeDescription: '"admin" | "member" | "owner"',
+      typeDescription: '"owner" | "admin" | "editor" | "member" | "viewer"',
       required: true,
     },
   }}

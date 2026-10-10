@@ -1,42 +1,45 @@
 "use client";
 
-import { ChevronDown, Globe, Pencil, Users2 } from "lucide-react";
+import { Users2 } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Team } from "@/api/admin/endpoints/teams";
+import { useOrganizationMembers } from "@/api/admin/hooks/useOrganizationMembers";
+import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
 import { useTeams } from "@/api/admin/hooks/useTeams";
 import { NoOrganization } from "@/components/NoOrganization";
-import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { authClient } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { LedgerRows, LedgerSection } from "../components/Ledger";
 import { CreateEditTeamDialog } from "./components/CreateEditTeamDialog";
-import { DeleteTeamDialog } from "./components/DeleteTeamDialog";
+import { accessBySite } from "../components/siteAccess";
+import { SiteAccessList } from "./components/SiteAccessList";
+import { TeamsTable } from "./components/TeamsTable";
+
+const MUTED = "text-neutral-500 dark:text-neutral-400";
+const RULE = "border-neutral-100 dark:border-neutral-850";
 
 export default function TeamsPage() {
   useSetPageTitle("Organization Teams");
   const t = useExtracted();
-  const { data: activeOrganization, isPending } =
-    authClient.useActiveOrganization();
-  const { data: teamsData, isLoading: teamsLoading } = useTeams(
-    activeOrganization?.id
-  );
+  const { data: activeOrganization, isPending } = authClient.useActiveOrganization();
+  const organizationId = activeOrganization?.id;
+  const { data: teamsData, isLoading: teamsLoading, isError: teamsError } = useTeams(organizationId);
+  const { data: membersData, isError: membersError } = useOrganizationMembers(organizationId);
+  const { data: sitesData, isError: sitesError } = useGetSitesFromOrg(organizationId);
 
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
 
-  const toggleExpanded = (teamId: string) => {
-    setExpandedTeams((prev) => {
-      const next = new Set(prev);
-      if (next.has(teamId)) {
-        next.delete(teamId);
-      } else {
-        next.add(teamId);
-      }
-      return next;
-    });
-  };
+  const teams = teamsData?.teams;
+  const members = membersData?.data;
+  const sites = sitesData?.sites;
+  const access = useMemo(
+    () => (teams && members && sites ? accessBySite(sites, members, teams) : undefined),
+    [teams, members, sites]
+  );
 
   if (isPending) {
     return (
@@ -48,158 +51,69 @@ export default function TeamsPage() {
 
   if (!activeOrganization) {
     return (
-      <NoOrganization
-        message={t(
-          "You need to create or be added to an organization before you can manage teams."
-        )}
-      />
+      <NoOrganization message={t("You need to create or be added to an organization before you can manage teams.")} />
     );
   }
 
-  const teams = teamsData?.teams || [];
-
   return (
-    <div className="flex flex-col gap-4">
-      {teamsLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-20 bg-muted animate-pulse rounded-lg"
-            />
-          ))}
-        </div>
-      ) : teams.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <Users2 className="h-10 w-10 mx-auto mb-3 opacity-50" />
-          <p className="font-medium">{t("No teams yet")}</p>
-          <p className="text-sm mt-1">
-            {t(
-              "Create a team to group sites and manage member access."
-            )}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {teams.map((team) => {
-                const isExpanded = expandedTeams.has(team.id);
-                return (
-                  <div
-                    key={team.id}
-                    className="border rounded-lg transition-colors bg-white dark:bg-neutral-900/70"
-                  >
-                    <div
-                      className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
-                      onClick={() => toggleExpanded(team.id)}
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <ChevronDown
-                          className={cn(
-                            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                            !isExpanded && "-rotate-90"
-                          )}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium truncate">{team.name}</h3>
-                          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Users2 className="h-3.5 w-3.5" />
-                              {t("{count} members", {
-                                count: String(team.members.length),
-                              })}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Globe className="h-3.5 w-3.5" />
-                              {t("{count} sites", {
-                                count: String(team.sites.length),
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        className="flex items-center gap-2 ml-4"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="smIcon"
-                          onClick={() => setEditingTeam(team)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <DeleteTeamDialog team={team} />
-                      </div>
-                    </div>
-                    {isExpanded && (
-                      <div className="border-t px-4 py-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                              <Users2 className="h-3.5 w-3.5" />
-                              {t("Members")}
-                            </h4>
-                            {team.members.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">
-                                {t("No members")}
-                              </p>
-                            ) : (
-                              <div className="space-y-1">
-                                {team.members.map((member) => (
-                                  <div
-                                    key={member.userId}
-                                    className="text-sm py-1 px-5 rounded hover:bg-muted/50"
-                                  >
-                                    <span>{member.userName || member.userEmail}</span>
-                                    {member.userName && (
-                                      <span className="text-muted-foreground ml-2 text-xs">
-                                        {member.userEmail}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                              <Globe className="h-3.5 w-3.5" />
-                              {t("Sites")}
-                            </h4>
-                            {team.sites.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">
-                                {t("No sites")}
-                              </p>
-                            ) : (
-                              <div className="space-y-1">
-                                {team.sites.map((site) => (
-                                  <div
-                                    key={site.siteId}
-                                    className="text-sm py-1 px-5 rounded hover:bg-muted/50"
-                                  >
-                                    {site.name}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+    <>
+      <LedgerSection title={t("Teams")} count={teams?.length}>
+        {teamsLoading ? (
+          <LedgerRows>
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="flex h-[52px] items-center gap-10">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-56" />
+              </div>
+            ))}
+          </LedgerRows>
+        ) : !teams?.length ? (
+          <div className={cn("border-y py-10 text-center", RULE)}>
+            <Users2 aria-hidden="true" className={cn("mx-auto mb-3 size-8", MUTED)} />
+            <p className="font-medium">{t("No teams yet")}</p>
+            <p className={cn("mt-1 text-sm", MUTED)}>{t("Create a team to group sites and manage member access.")}</p>
+          </div>
+        ) : (
+          <TeamsTable teams={teams} access={access} members={members} onEdit={setEditingTeam} />
+        )}
+      </LedgerSection>
+
+      {(!sites || sites.length > 0) && (
+        <LedgerSection
+          title={t("Access by site")}
+          description={t("Who can open each site, with what role, and why. Owners and admins always reach every site.")}
+        >
+          {access ? (
+            <SiteAccessList access={access} onEditTeam={setEditingTeam} />
+          ) : teamsError || membersError || sitesError ? (
+            <p className={cn("border-y py-4 text-sm", RULE, MUTED)}>{t("Couldn't load who can open each site.")}</p>
+          ) : (
+            <LedgerRows>
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="grid gap-x-10 gap-y-2 py-4 md:grid-cols-[260px_minmax(0,1fr)]">
+                  <div className="space-y-2 md:pt-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-16" />
                   </div>
-                );
-              })}
-            </div>
+                  <div className="space-y-2 md:pt-2">
+                    <Skeleton className="h-4 w-56" />
+                    <Skeleton className="h-4 w-72" />
+                  </div>
+                </div>
+              ))}
+            </LedgerRows>
+          )}
+        </LedgerSection>
       )}
 
-      {/* Edit Team Dialog */}
       <CreateEditTeamDialog
         team={editingTeam || undefined}
         open={!!editingTeam}
-        onOpenChange={(open) => {
+        onOpenChange={open => {
           if (!open) setEditingTeam(null);
         }}
       />
-    </div>
+    </>
   );
 }

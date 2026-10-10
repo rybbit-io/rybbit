@@ -68,6 +68,16 @@ Available methods:
 
 See [Feature Flags](/docs/feature-flags) for targeting rules, remote config, and server-side evaluation. */}
 
+### Hash routes and URL fragments
+
+Rybbit automatically recognizes hash routes beginning with `#/` or `#!/`. For example, `/#/shipping` and `/#!/shipping` are both tracked as `/shipping`.
+
+Ordinary fragments such as `#shipping` are ignored by default. If your site uses them for checkout stages or tabs, enable **Track URL fragments** in your site's **Tracking** settings. Rybbit will then track `/checkout/#shipping` and `/checkout/#payment` as separate paths that you can use in funnels and goals. Enable **SPA Navigation** to automatically record changes between these stages.
+
+Automatic navigation records a pageview only when the tracked path or tracked query string changes. Ignored anchors and repeated navigation events do not add pageviews. Explicit calls to `rybbit.pageview()` still record a pageview for the current URL.
+
+This setting applies to future events; previously discarded fragments cannot be recovered.
+
 ### Session Replay Attributes
 
 These attributes configure rrweb session replay behavior. They only apply when session replay is enabled in your site settings.

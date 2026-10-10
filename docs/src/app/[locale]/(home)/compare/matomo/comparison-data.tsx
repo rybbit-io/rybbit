@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ComparisonSection, DeepDive, FAQItem, PricingInfo, RelatedResource } from "../components/ComparisonPage";
+import {
+  ComparisonSection,
+  DeepDive,
+  FAQItem,
+  OtherAlternatives,
+  PricingInfo,
+  RelatedResource,
+} from "../components/ComparisonPage";
+import { pickAlternatives } from "../components/competitorSummaries";
 
 export const matomoComparisonData: ComparisonSection[] = [
   {
@@ -39,7 +47,7 @@ export const matomoComparisonData: ComparisonSection[] = [
   {
     title: "Technical & Pricing",
     features: [
-      { name: "Script size", rybbitValue: "18KB", competitorValue: "20-50KB" },
+      { name: "Script size", rybbitValue: "~11KB", competitorValue: "20-50KB" },
       { name: "Bypasses ad blockers", rybbitValue: true, competitorValue: false },
       { name: "API access", rybbitValue: true, competitorValue: true },
       { name: "Starting price", rybbitValue: "$19/mo", competitorValue: "\u20AC29/mo (50k hits)" },
@@ -116,7 +124,7 @@ export const matomoExtendedData = {
             But two decades of accretion show up in the product. Matomo&apos;s interface spreads dozens of report types
             across many sections, and its architecture predates the tooling that makes modern analytics fast and
             pleasant. Rybbit is what this category looks like when it&apos;s designed in the 2020s: a single-page
-            dashboard, an ~18KB script, and <Link href="/features/funnels">funnels</Link>,{" "}
+            dashboard, an ~11KB script, and <Link href="/features/funnels">funnels</Link>,{" "}
             <Link href="/features/session-replay">session replay</Link>, user journeys, error tracking, Web Vitals, and
             user profiles built into the core product rather than bolted on over the years.
           </>,
@@ -185,6 +193,13 @@ export const matomoExtendedData = {
     ],
   } satisfies DeepDive,
 
+  otherAlternatives: {
+    title: "Other Matomo alternatives",
+    intro:
+      "Most teams leaving Matomo want less server upkeep or a simpler interface. These are the other Matomo alternatives worth a look, with the main trade-off of each and a link to the full comparison.",
+    items: pickAlternatives(["google-analytics", "plausible", "posthog", "umami", "fathom", "simpleanalytics"]),
+  } satisfies OtherAlternatives,
+
   faqItems: [
     {
       question: "Is Rybbit really simpler than Matomo?",
@@ -210,19 +225,19 @@ export const matomoExtendedData = {
 
   relatedResources: [
     {
-      title: "Rybbit vs Google Analytics",
-      href: "/compare/google-analytics",
-      description: "The privacy-first alternative to GA4",
+      title: "Matomo vs Google Analytics",
+      href: "/compare/matomo-vs-google-analytics",
+      description: "How the two compare on privacy, features, and cost",
     },
     {
-      title: "Rybbit vs PostHog",
-      href: "/compare/posthog",
-      description: "Focused analytics vs a full product suite",
+      title: "Best Google Analytics alternatives",
+      href: "/blog/best-google-analytics-alternatives",
+      description: "Nine GA4 alternatives compared on price, privacy, and features",
     },
     {
-      title: "Rybbit vs Umami",
-      href: "/compare/umami",
-      description: "Two open-source analytics tools compared",
+      title: "Best web analytics tools",
+      href: "/blog/best-web-analytics-tools",
+      description: "Ten tools compared by use case",
     },
     {
       title: "Getting started with Rybbit",

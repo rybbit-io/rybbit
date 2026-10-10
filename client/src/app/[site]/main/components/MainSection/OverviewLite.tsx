@@ -97,14 +97,12 @@ const Stat = ({
               <Tooltip>
                 <TooltipTrigger>
                   <NumberFlow
-                    respectMotionPreference={false}
                     value={decimals ? Number(value.toFixed(decimals)) : value}
                     format={{ notation: "compact" }}
                   />
                 </TooltipTrigger>
                 <TooltipContent>
                   <NumberFlow
-                    respectMotionPreference={false}
                     value={decimals ? Number(value.toFixed(decimals)) : value}
                     format={{ notation: "standard" }}
                   />

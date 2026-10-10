@@ -3,7 +3,7 @@
 import { IdCard } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { userStore } from "../lib/userStore";
+import { useCanOnSite } from "../hooks/usePermissions";
 import { EditTraitsDialog } from "./EditTraitsDialog";
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -11,19 +11,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 interface IdentifiedBadgeProps {
   className?: string;
   traits?: Record<string, unknown> | null;
-  // Identified user id; when set and the viewer is signed in, clicking the
-  // badge opens the trait editor
+  // Identified user id; when set and the viewer may edit users (users:write),
+  // clicking the badge opens the trait editor
   userId?: string;
 }
 
 export function IdentifiedBadge({ className, traits, userId }: IdentifiedBadgeProps) {
   const t = useExtracted();
-  const { user } = userStore();
+  const canWriteUsers = useCanOnSite("users:write");
   const [editOpen, setEditOpen] = useState(false);
   // Lazily mounted so lists full of badges don't each carry a dialog
   const [dialogMounted, setDialogMounted] = useState(false);
 
-  const canEdit = !!userId && !!user;
+  const canEdit = !!userId && canWriteUsers;
 
   // Filter out null/undefined values and format for display
   const traitEntries = traits

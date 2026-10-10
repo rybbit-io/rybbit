@@ -6,7 +6,8 @@ import { useInView } from "../../../hooks/useInView";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { IS_CLOUD, LITE_DASHBOARD } from "../../../lib/const";
 import { useStore } from "../../../lib/store";
-import { getMainPageFilters } from "../../../lib/filterGroups";
+import { SESSION_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { useSiteFilters } from "../../../hooks/useSiteFilters";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { MainSection } from "./components/MainSection/MainSection";
 import { MainSectionLite } from "./components/MainSection/MainSectionLite";
@@ -52,13 +53,14 @@ function MainPageContent() {
   const { data } = useGetLiveUserCount(5);
   const { data: siteMetadata } = useGetSite();
   const isApp = siteMetadata?.type === "mobile";
+  const mainFilters = useSiteFilters([...SESSION_PAGE_FILTERS, "timezone"]);
 
   useSetPageTitle(`${data?.count ?? "…"} user${data?.count === 1 ? "" : "s"} online`);
 
   if (LITE_DASHBOARD) {
     return (
       <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
-        <SubHeader availableFilters={getMainPageFilters(isApp)} />
+        <SubHeader availableFilters={mainFilters} />
         <MainSectionLite />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
           <LazySection>
@@ -80,7 +82,7 @@ function MainPageContent() {
 
   return (
     <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
-      <SubHeader availableFilters={getMainPageFilters(isApp)} />
+      <SubHeader availableFilters={mainFilters} />
       <MainSection />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
         {!isApp && (

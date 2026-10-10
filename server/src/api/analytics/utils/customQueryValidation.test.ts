@@ -1,3 +1,4 @@
+import { ClickHouseError } from "@clickhouse/client";
 import { describe, expect, it } from "vitest";
 import { sanitizeClickhouseError, validateScopedQuery } from "./customQueryValidation.js";
 
@@ -167,6 +168,67 @@ describe("validateScopedQuery lexer-mismatch bypasses", () => {
 });
 
 describe("sanitizeClickhouseError", () => {
+  it("uses the SDK's separate error code to preserve SQL diagnostics", () => {
+    const error = new ClickHouseError({
+      code: "47",
+      type: "UNKNOWN_IDENTIFIER",
+      message: "Unknown expression identifier 'missing_column' (from 10.0.0.1:8123)",
+    });
+    expect(sanitizeClickhouseError(error)).toBe("Unknown expression identifier 'missing_column'");
+  });
+
+  it("explains the execution timeout reported by the SDK", () => {
+    const error = new ClickHouseError({
+      code: "159",
+      type: "TIMEOUT_EXCEEDED",
+      message: "Timeout exceeded: elapsed 60040 ms, maximum: 60000 ms.",
+    });
+    expect(sanitizeClickhouseError(error)).toBe(
+      "Query exceeded the 60-second time limit. Try a shorter date range or simplify the query."
+    );
+  });
+
+  it.each(["sdk", "raw"])("explains %s memory errors without exposing storage paths", format => {
+    const message =
+      "Query memory limit exceeded: would use 3.73 GiB: (while reading from part /var/lib/clickhouse/store/private/).";
+    const error =
+      format === "sdk"
+        ? new ClickHouseError({ code: "241", type: "MEMORY_LIMIT_EXCEEDED", message })
+        : new Error(`Code: 241. DB::Exception: ${message}`);
+    expect(sanitizeClickhouseError(error)).toBe(
+      "Query exceeded the memory limit. Try a shorter date range or simplify the query."
+    );
+  });
+
+  it("explains the SDK's connection timeout", () => {
+    expect(sanitizeClickhouseError(new Error("Timeout error."))).toBe(
+      "Timed out waiting for the database. Try again or use a shorter date range."
+    );
+  });
+
+  it("explains connection failures without exposing the database address", () => {
+    const error = Object.assign(new Error("connect ECONNREFUSED 10.0.0.1:8123"), { code: "ECONNREFUSED" });
+    expect(sanitizeClickhouseError(error)).toBe("Could not connect to the database. Please try again shortly.");
+  });
+
+  it("explains the concurrent-query limit", () => {
+    const error = new ClickHouseError({
+      code: "202",
+      type: "TOO_MANY_SIMULTANEOUS_QUERIES",
+      message: "Too many simultaneous queries for user rybbit_query.",
+    });
+    expect(sanitizeClickhouseError(error)).toBe("Too many queries are running at once. Wait a moment and try again.");
+  });
+
+  it("keeps internal SDK errors private", () => {
+    const error = new ClickHouseError({
+      code: "1",
+      type: "UNSUPPORTED_METHOD",
+      message: "user rybbit_query failed reading /var/lib/clickhouse/store/x.bin on host ch-1",
+    });
+    expect(sanitizeClickhouseError(error)).toBe("Query failed (ClickHouse error 1)");
+  });
+
   it("strips version, table UUIDs and stack traces", () => {
     const message =
       "Code: 47. DB::Exception: Unknown expression identifier 'foo' (table default.events (072583d3-1467-4d46-89ff-3f6981180a16)). (UNKNOWN_IDENTIFIER) (version 26.7.4.58 (official build))";

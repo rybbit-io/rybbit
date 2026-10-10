@@ -48,7 +48,7 @@ const faqSchema = {
       name: "How does Rybbit compare to Google Analytics?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Rybbit is far less bloated than Google Analytics, both in the tracking script and the dashboard. It's one dashboard instead of 150+ reports, and the script is 18KB against GA4's 371KB.",
+        text: "Rybbit is far less bloated than Google Analytics, both in the tracking script and the dashboard. It's one dashboard instead of 150+ reports, and the script is about 11KB against GA4's 150KB, both compressed.",
       },
     },
     {
@@ -331,6 +331,16 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                     className="group inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-emerald-400 dark:hover:text-emerald-300 dark:focus-visible:ring-offset-neutral-950"
                   >
                     {t("Set up MCP")}
+                    <ArrowRight
+                      className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                  <Link
+                    href="/features/mcp"
+                    className="group inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-neutral-600 transition-colors duration-200 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-neutral-400 dark:hover:text-white dark:focus-visible:ring-offset-neutral-950"
+                  >
+                    {t("How it works")}
                     <ArrowRight
                       className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                       aria-hidden="true"

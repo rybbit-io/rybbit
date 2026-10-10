@@ -3,7 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../../db/postgres/postgres.js";
 import { annotations } from "../../../db/postgres/schema.js";
-import { getUserHasAdminAccessToSite } from "../../../lib/auth-utils.js";
+import { getUserHasOrgPermission } from "../../../lib/auth-utils.js";
 import {
   annotationBelongsToSite,
   canManageAnnotation,
@@ -44,7 +44,7 @@ export async function updateAnnotation(
       return reply.status(404).send({ error: "Annotation not found" });
     }
 
-    if (!(await canManageAnnotation(request, siteId, existing))) {
+    if (!(await canManageAnnotation(request, existing))) {
       return reply.status(403).send({ error: "You can only edit annotations you created" });
     }
 
@@ -59,7 +59,7 @@ export async function updateAnnotation(
     if (input.scope !== undefined) {
       const wantsOrgWide = input.scope === "organization";
       if (wantsOrgWide !== (existing.siteId === null)) {
-        if (!(await getUserHasAdminAccessToSite(request, siteId))) {
+        if (!(await getUserHasOrgPermission(request, organizationId, "annotations:manage"))) {
           return reply.status(403).send({ error: "Only organization admins can change an annotation's scope" });
         }
         nextSiteId = wantsOrgWide ? null : siteId;

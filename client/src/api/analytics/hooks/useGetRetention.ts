@@ -1,17 +1,23 @@
 import { ProcessedRetentionData, RetentionMode } from "../endpoints";
 import { useAnalyticsQuery } from "../useAnalyticsQuery";
 
-export function useGetRetention(mode: RetentionMode = "week", range: number = 90) {
+/**
+ * Cohort retention for the selected period and filters. `periodTime:
+ * "previous"` asks for the comparison period instead, and is disabled while
+ * the comparison is off.
+ */
+export function useGetRetention(
+  mode: RetentionMode,
+  options: { periodTime?: "current" | "previous"; enabled?: boolean } = {}
+) {
   return useAnalyticsQuery<ProcessedRetentionData>({
     key: "retention",
     path: "retention",
-    // Retention spans its own cohort range, not the selected period.
-    useTime: false,
-    useFilters: false,
-    params: { mode, range },
-    // Keyed by mode/range: refetch on mount and don't show the previous
-    // cohort grid while the new one loads.
-    staleTime: 0,
+    params: { mode },
+    periodTime: options.periodTime,
+    enabled: options.enabled,
+    // A new mode or range changes the grid's shape, so the old grid is not
+    // kept on screen while the new one loads.
     placeholder: false,
   });
 }

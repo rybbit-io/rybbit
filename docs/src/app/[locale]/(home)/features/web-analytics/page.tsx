@@ -94,7 +94,7 @@ export default function WebAnalyticsPage() {
             Most analytics tools make you choose between <strong className="text-neutral-900 dark:text-white">power and simplicity</strong>. Google Analytics has hundreds of reports but takes a PhD to navigate. Simple tools show you numbers but can&apos;t tell you <em>why</em> they changed. Rybbit gives you both: a single, real-time dashboard with every metric that matters, plus the ability to click into any dimension and drill down.
           </>,
           <>
-            There are <strong className="text-neutral-900 dark:text-white">no cookies, no personal data collection, and no consent banners</strong>. Your tracking script is just 18KB, compared to Google Analytics&apos; 371KB. That means faster page loads and <strong className="text-neutral-900 dark:text-white">100% visitor capture</strong> since no one gets blocked by ad blockers or cookie rejections.
+            There are <strong className="text-neutral-900 dark:text-white">no cookies, no personal data collection, and no consent banners</strong>. Your tracking script is about 11KB compressed, compared to about 150KB for Google Analytics&apos; gtag.js. That means faster page loads and <strong className="text-neutral-900 dark:text-white">100% visitor capture</strong> since no one gets blocked by ad blockers or cookie rejections.
           </>,
           <>
             From a personal blog to a portfolio of client sites, it&apos;s the same dashboard. Filter by country, device, referrer, or any custom property. Compare date ranges. Share public dashboards. And because it&apos;s <strong className="text-neutral-900 dark:text-white">100% open source</strong>, you can self-host and own every byte of your data.

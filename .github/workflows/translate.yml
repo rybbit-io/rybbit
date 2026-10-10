@@ -21,16 +21,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      - uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: cd client && npm ci
+        run: pnpm --filter client... install --frozen-lockfile
 
       - name: Extract messages
-        run: cd client && node scripts/extract-messages.mjs
+        run: pnpm --filter client extract
 
       - name: Check for untranslated strings
         id: changes
@@ -70,16 +74,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      - uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: cd client && npm ci
+        run: pnpm --filter client... install --frozen-lockfile
 
       - name: Extract messages
-        run: cd client && node scripts/extract-messages.mjs
+        run: pnpm --filter client extract
 
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
@@ -125,7 +133,7 @@ jobs:
             2. git commit -m "Update translations"
             3. git push origin master
           claude_args: >-
-            --model claude-sonnet-5
+            --model claude-sonnet-5-5
             --max-turns 50
             --allowedTools "Edit" "Read" "Write" "Glob" "Grep"
             "Bash(python3 *)" "Bash(git add *)"

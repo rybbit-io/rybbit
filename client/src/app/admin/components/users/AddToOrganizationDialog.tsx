@@ -1,5 +1,8 @@
 "use client";
 
+import type { OrgRole } from "@rybbit/shared";
+
+import { RoleSelect } from "@/app/settings/organization/components/RoleSelect";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,11 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import { Alert } from "@/components/ui/alert";
 import { useAddUserToOrganization } from "@/api/admin/hooks/useOrganizations";
+import { ORG_ROLES } from "@/lib/roles";
 import { useExtracted } from "next-intl";
 import { RemoteOrganizationCombobox } from "../shared/RemoteOrganizationCombobox";
 
@@ -28,7 +31,7 @@ interface AddToOrganizationDialogProps {
 export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange }: AddToOrganizationDialogProps) {
   const [organizationId, setOrganizationId] = useState<string>("");
   const [organizationName, setOrganizationName] = useState<string>("");
-  const [role, setRole] = useState<"admin" | "member" | "owner">("member");
+  const [role, setRole] = useState<OrgRole>("member");
   const [error, setError] = useState("");
 
   const t = useExtracted();
@@ -87,16 +90,7 @@ export function AddToOrganizationDialog({ userEmail, userId, open, onOpenChange 
           </div>
           <div className="grid gap-2">
             <Label htmlFor="role">{t("Role")}</Label>
-            <Select value={role} onValueChange={value => setRole(value as "admin" | "member" | "owner")}>
-              <SelectTrigger id="role">
-                <SelectValue placeholder={t("Select a role")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">{t("Owner")}</SelectItem>
-                <SelectItem value="admin">{t("Admin")}</SelectItem>
-                <SelectItem value="member">{t("Member")}</SelectItem>
-              </SelectContent>
-            </Select>
+            <RoleSelect id="role" value={role} roles={ORG_ROLES} onValueChange={setRole} />
           </div>
           {error && <Alert variant="destructive">{error}</Alert>}
         </div>

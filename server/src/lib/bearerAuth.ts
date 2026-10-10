@@ -110,13 +110,21 @@ async function applyRateLimit(identity: BearerIdentity, deps: BearerResolverDeps
   return { ...identity, rateLimit: decision };
 }
 
+// API keys are a prefix plus letters (prefixes allow only [A-Za-z0-9_-]), so a
+// dotted token is a JWT access token and can skip the API-key lookup.
+function looksLikeJwt(token: string): boolean {
+  return token.split(".").length === 3;
+}
+
 export async function resolveBearerIdentity(token: string, deps: BearerResolverDeps): Promise<BearerIdentity> {
   let verifyError = false;
   let verification: ApiKeyVerification | null = null;
-  try {
-    verification = await deps.verifyApiKey(token);
-  } catch {
-    verifyError = true;
+  if (!looksLikeJwt(token)) {
+    try {
+      verification = await deps.verifyApiKey(token);
+    } catch {
+      verifyError = true;
+    }
   }
 
   if (verification?.valid && verification.key?.referenceId) {

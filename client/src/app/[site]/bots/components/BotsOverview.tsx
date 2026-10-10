@@ -103,7 +103,7 @@ function StatCard({
           <Skeleton className="h-8 w-20 rounded-md" />
         ) : (
           <>
-            <NumberFlow respectMotionPreference={false} value={value} format={{ notation: "compact" }} />
+            <NumberFlow value={value} format={{ notation: "compact" }} />
             {suffix}
           </>
         )}

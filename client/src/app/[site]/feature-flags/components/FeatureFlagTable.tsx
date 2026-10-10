@@ -2,6 +2,17 @@
 
 import { useDeleteFeatureFlag, useUpdateFeatureFlag } from "@/api/analytics/hooks/featureFlags/useFeatureFlags";
 import type { FeatureFlag } from "@/api/analytics/endpoints";
+import { CopyButton } from "@/components/interior/copy-button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +28,7 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { getTimezone } from "@/lib/store";
 import {
+  type CellContext,
   createColumnHelper,
   flexRender,
   getCoreRowModel,
@@ -27,7 +39,7 @@ import {
 import { Edit2, MoreHorizontal, Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { formatFlagValue, getConditionSetPayload } from "../lib/form";
 import { useFlagTypeLabel, useRuntimeLabel } from "../lib/labels";
@@ -162,12 +174,14 @@ function RowActions({ flag }: { flag: FeatureFlag }) {
   const t = useExtracted();
   const deleteMutation = useDeleteFeatureFlag();
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const actionsTriggerRef = useRef<HTMLButtonElement>(null);
 
   const handleDelete = async () => {
-    if (!window.confirm(t("Delete this feature flag?"))) return;
     try {
       await deleteMutation.mutateAsync(flag.flagId);
       toast.success(t("Feature flag deleted"));
+      setConfirmDelete(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to delete feature flag"));
     }
@@ -177,7 +191,7 @@ function RowActions({ flag }: { flag: FeatureFlag }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="smIcon" variant="ghost" aria-label={t("Actions")}>
+          <Button ref={actionsTriggerRef} size="smIcon" variant="ghost" aria-label={t("Actions")}>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -189,7 +203,7 @@ function RowActions({ flag }: { flag: FeatureFlag }) {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             disabled={deleteMutation.isPending}
-            onSelect={handleDelete}
+            onSelect={() => setConfirmDelete(true)}
             className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
           >
             <Trash2 className="mr-2 h-4 w-4" />
@@ -198,11 +212,73 @@ function RowActions({ flag }: { flag: FeatureFlag }) {
         </DropdownMenuContent>
       </DropdownMenu>
       <FeatureFlagDialog flag={flag} open={editOpen} onOpenChange={setEditOpen} />
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent
+          onCloseAutoFocus={event => {
+            // Back to the row's actions button, as window.confirm did.
+            event.preventDefault();
+            actionsTriggerRef.current?.focus();
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Delete this feature flag?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('"{key}" will be permanently deleted. This cannot be undone.', { key: flag.key })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>{t("Cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={event => {
+                event.preventDefault();
+                void handleDelete();
+              }}
+            >
+              {deleteMutation.isPending ? t("Deleting...") : t("Delete flag")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
 
-export function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
+// Cells with state are module-level components: flexRender mounts a cell function
+// as a component, and the inline ones below are recreated on every table render,
+// which would reset a copy check or close an open dialog.
+function FlagKeyCell({ row }: CellContext<FeatureFlag, string>) {
+  const t = useExtracted();
+  const flag = row.original;
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-sm font-medium">{flag.key}</span>
+      <Badge variant="secondary">v{flag.version}</Badge>
+      {/* Shown on row hover or focus where hover exists; always shown on touch screens. */}
+      <CopyButton
+        iconOnly
+        size="xs"
+        tooltip
+        value={flag.key}
+        label={t("Copy flag key")}
+        className="-ml-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[status=copied]:opacity-100 data-[status=error]:opacity-100"
+      />
+    </div>
+  );
+}
+
+function RowActionsCell({ row }: CellContext<FeatureFlag, unknown>) {
+  return (
+    <div className="flex justify-end">
+      <RowActions flag={row.original} />
+    </div>
+  );
+}
+
+/** `canWrite` (flags:write) shows the on/off switch and the edit and delete actions; without it the table is read-only. */
+export function FeatureFlagTable({ flags, canWrite }: { flags: FeatureFlag[]; canWrite: boolean }) {
   const t = useExtracted();
   const getRuntimeLabel = useRuntimeLabel();
   const updateMutation = useUpdateFeatureFlag();
@@ -238,12 +314,7 @@ export function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
     columnHelper.accessor("key", {
       id: "key",
       header: ({ column }) => <SortHeader column={column}>{t("Flag")}</SortHeader>,
-      cell: info => (
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm font-medium">{info.getValue()}</span>
-          <Badge variant="secondary">v{info.row.original.version}</Badge>
-        </div>
-      ),
+      cell: FlagKeyCell,
     }),
     columnHelper.accessor("enabled", {
       id: "enabled",
@@ -252,11 +323,13 @@ export function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
         const flag = info.row.original;
         return (
           <div className="flex items-center gap-2">
-            <Switch
-              checked={flag.enabled}
-              disabled={updateMutation.isPending}
-              onCheckedChange={enabled => updateMutation.mutate({ flagId: flag.flagId, payload: { enabled } })}
-            />
+            {canWrite && (
+              <Switch
+                checked={flag.enabled}
+                disabled={updateMutation.isPending}
+                onCheckedChange={enabled => updateMutation.mutate({ flagId: flag.flagId, payload: { enabled } })}
+              />
+            )}
             <Badge variant={flag.enabled ? "success" : "secondary"}>{flag.enabled ? t("On") : t("Off")}</Badge>
             <Badge variant="outline">{getRuntimeLabel(flag.runtime)}</Badge>
           </div>
@@ -301,15 +374,15 @@ export function FeatureFlagTable({ flags }: { flags: FeatureFlag[] }) {
       header: ({ column }) => <SortHeader column={column}>{t("Updated")}</SortHeader>,
       cell: info => renderTimeCell(info.getValue()),
     }),
-    columnHelper.display({
-      id: "actions",
-      header: () => <span className="sr-only">{t("Actions")}</span>,
-      cell: info => (
-        <div className="flex justify-end">
-          <RowActions flag={info.row.original} />
-        </div>
-      ),
-    }),
+    ...(canWrite
+      ? [
+          columnHelper.display({
+            id: "actions",
+            header: () => <span className="sr-only">{t("Actions")}</span>,
+            cell: RowActionsCell,
+          }),
+        ]
+      : []),
   ];
 
   const table = useReactTable({

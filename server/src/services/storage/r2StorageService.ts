@@ -7,7 +7,6 @@ import {
 } from "@aws-sdk/client-s3";
 import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { Readable } from "stream";
-import { gunzipSync } from "zlib";
 import { compress as zstdCompress, decompress as zstdDecompress } from "@mongodb-js/zstd";
 import { IS_CLOUD } from "../../lib/const.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
@@ -150,18 +149,8 @@ class R2StorageService {
         }
       }
 
-      // Try to decompress based on file extension
-      let decompressed: Buffer;
-
       try {
-        if (key.endsWith(".zst")) {
-          decompressed = await zstdDecompress(buffer);
-        } else if (key.endsWith(".gz")) {
-          decompressed = gunzipSync(buffer);
-        } else {
-          // Assume zstd for unknown extensions
-          decompressed = await zstdDecompress(buffer);
-        }
+        const decompressed = await zstdDecompress(buffer);
         return JSON.parse(decompressed.toString());
       } catch (decompressionError: any) {
         // If decompression fails and we haven't tried JSON yet, try it now

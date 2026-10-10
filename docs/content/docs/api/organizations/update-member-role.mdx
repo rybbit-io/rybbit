@@ -27,7 +27,7 @@ Updates the role(s) assigned to an existing organization member.
 <TypeTable
   type={{
     role: {
-      description: 'The new role(s) to assign. One of `owner`, `admin`, `member` (or an array of roles).',
+      description: "The new role: `owner`, `admin`, `editor`, `member` or `viewer`. Requires the admin or owner role; only owners can make owners or change an owner's role.",
       type: 'string | string[]',
       required: true,
     },

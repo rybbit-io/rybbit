@@ -5,6 +5,7 @@ import {
   getLiteSessionFilter,
   hasLiteDatetimeRange,
   hasLiteFilters,
+  hasLiteRealtimeRange,
   liteBucket,
   wrapLiteLikeValue,
 } from "./utils.js";
@@ -180,12 +181,33 @@ describe("hasLiteDatetimeRange", () => {
   // and the lite fill used to ignore these params outright, answering with
   // all-time data and a 200.
   it("should be true only when both datetime bounds are present", () => {
-    expect(hasLiteDatetimeRange(params({ start_datetime: "2024-01-01 10:30:00", end_datetime: "2024-01-01 14:45:00" })))
-      .toBe(true);
+    expect(
+      hasLiteDatetimeRange(params({ start_datetime: "2024-01-01 10:30:00", end_datetime: "2024-01-01 14:45:00" }))
+    ).toBe(true);
     expect(hasLiteDatetimeRange(params({ start_datetime: "2024-01-01 10:30:00" }))).toBe(false);
     expect(hasLiteDatetimeRange(params({ end_datetime: "2024-01-01 14:45:00" }))).toBe(false);
     expect(hasLiteDatetimeRange(params({ start_date: "2024-01-01", end_date: "2024-01-31" }))).toBe(false);
     expect(hasLiteDatetimeRange(params({}))).toBe(false);
+  });
+});
+
+describe("hasLiteRealtimeRange", () => {
+  it.each([
+    [5, 0, true],
+    [30, 0, true],
+    [120, 0, true],
+    [240, 120, true],
+    [121, 0, false],
+    [1440, 0, false],
+    [2880, 1440, false],
+  ])("uses the window length for %i to %i minutes ago", (start, end, expected) => {
+    expect(hasLiteRealtimeRange(params({ past_minutes_start: start, past_minutes_end: end }))).toBe(expected);
+  });
+
+  it("accepts wire strings without treating missing bounds as realtime", () => {
+    expect(hasLiteRealtimeRange({ past_minutes_start: "60", past_minutes_end: "30" })).toBe(true);
+    expect(hasLiteRealtimeRange(params({ past_minutes_start: 30 }))).toBe(false);
+    expect(hasLiteRealtimeRange(params({}))).toBe(false);
   });
 });
 

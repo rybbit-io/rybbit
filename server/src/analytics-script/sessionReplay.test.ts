@@ -11,6 +11,7 @@ const config: ScriptConfig = {
   autoTrackPageview: true,
   autoTrackSpa: true,
   trackQuerystring: true,
+  trackUrlFragments: false,
   trackOutbound: true,
   enableWebVitals: false,
   trackErrors: false,

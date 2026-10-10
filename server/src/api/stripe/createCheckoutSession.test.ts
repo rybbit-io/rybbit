@@ -3,12 +3,14 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   customersCreate: vi.fn(),
   checkoutSessionsCreate: vi.fn(),
+  subscriptionsList: vi.fn(),
 }));
 
 vi.mock("../../lib/stripe.js", () => ({
   stripe: {
     customers: { create: mocks.customersCreate },
     checkout: { sessions: { create: mocks.checkoutSessionsCreate } },
+    subscriptions: { list: mocks.subscriptionsList },
   },
 }));
 
@@ -24,6 +26,7 @@ vi.mock("../../db/postgres/postgres.js", async () => {
 });
 
 import { sql } from "../../db/postgres/postgres.js";
+import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
 import { createCheckoutSession } from "./createCheckoutSession.js";
 
 const DDL = `
@@ -78,6 +81,47 @@ beforeEach(async () => {
   `);
   mocks.customersCreate.mockResolvedValue({ id: "cus_new" });
   mocks.checkoutSessionsCreate.mockResolvedValue({ client_secret: "cs_secret_123" });
+  mocks.subscriptionsList.mockResolvedValue({ data: [] });
+  invalidateStripeSubscriptionCache("cus_1");
+});
+
+describe("createCheckoutSession — one trial per organization", () => {
+  it("gives an organization with no subscription history the 7-day trial", async () => {
+    await createCheckoutSession(requestStub("u_owner", validBody), replyStub());
+
+    expect(mocks.checkoutSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ subscription_data: { trial_period_days: 7 } })
+    );
+  });
+
+  it("charges a returning customer straight away instead of starting another trial", async () => {
+    mocks.subscriptionsList.mockResolvedValue({ data: [{ id: "sub_old", status: "canceled" }] });
+
+    await createCheckoutSession(requestStub("u_owner", validBody), replyStub());
+
+    expect(mocks.subscriptionsList).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_1" }));
+    expect(mocks.checkoutSessionsCreate.mock.calls[0][0]).not.toHaveProperty("subscription_data");
+  });
+
+  it("fails the checkout instead of granting a trial when the customer's history can't be read", async () => {
+    mocks.subscriptionsList.mockRejectedValue(new Error("stripe unavailable"));
+    const reply = replyStub();
+
+    await createCheckoutSession({ ...requestStub("u_owner", validBody), log: { error: vi.fn() } }, reply);
+
+    expect(reply.statusCode).toBe(500);
+    expect(mocks.checkoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("still offers the trial after an abandoned checkout", async () => {
+    mocks.subscriptionsList.mockResolvedValue({ data: [{ id: "sub_abandoned", status: "incomplete_expired" }] });
+
+    await createCheckoutSession(requestStub("u_owner", validBody), replyStub());
+
+    expect(mocks.checkoutSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ subscription_data: { trial_period_days: 7 } })
+    );
+  });
 });
 
 describe("createCheckoutSession — authorization", () => {

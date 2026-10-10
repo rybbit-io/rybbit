@@ -29,7 +29,7 @@ Every segment has:
 
 - **Name** — what the group means to you, such as "Paid traffic" or "Logged-in users"
 - **Filters** — at least one. Every filter must match; multiple values inside one filter are alternatives
-- **Available on** — this site only, or every site in the organization (organization-wide segments can only be created by admins and owners)
+- **Available on** — this site only, or every site in the organization (organization-wide segments need the editor role or above in the organization)
 - **Description** — optional notes for your team
 - **Show on the public dashboard and private links** — off by default
 
@@ -53,9 +53,12 @@ Use the **⋯** menu on a segment in the Segments tab, or **Edit segment** from 
 
 | Role | Read and apply | Create | Edit and delete |
 | --- | --- | --- | --- |
-| Owner or admin | All segments | Site and organization-wide | Any segment |
+| Owner, admin or editor | All segments | Site and organization-wide | Any segment |
 | Member | All segments | Site segments | Segments they created |
+| Viewer | All segments | — | — |
 | Public dashboard or private-link viewer | Segments marked as shown on the public dashboard | — | — |
+
+A member restricted to specific sites counts as a viewer at the organization level, so they can't create or edit organization-wide segments whatever their role on their own sites.
 
 ## API and MCP
 

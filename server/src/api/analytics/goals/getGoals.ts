@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { goals } from "../../../db/postgres/schema.js";
-import { eq, desc, asc, sql } from "drizzle-orm";
+import { asc, count, desc, eq } from "drizzle-orm";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import SqlString from "sqlstring";
 import { FilterParams } from "@rybbit/shared";
@@ -125,9 +125,10 @@ export const getGoals = analyticsRoute<GetGoalsRequest>(
       return reply.status(400).send({ error: "Invalid page size, must be between 1 and 100" });
     }
 
-    // Count total goals for pagination metadata
+    // Count total goals for pagination metadata. Drizzle's count() maps the
+    // Postgres bigint to a number; a raw sql`count(*)` comes back as a string.
     const totalGoalsResult = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: count() })
       .from(goals)
       .where(eq(goals.siteId, Number(siteId)));
 

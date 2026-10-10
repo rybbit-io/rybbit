@@ -3,7 +3,7 @@ import { GSCCallbackRequest } from "./types.js";
 import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getGSCProperties, verifyGSCState } from "./utils.js";
-import { getSessionFromReq, getUserHasAdminAccessToSite } from "../../lib/auth-utils.js";
+import { getSessionFromReq, getUserHasSitePermission } from "../../lib/auth-utils.js";
 import { db } from "../../db/postgres/postgres.js";
 
 interface TokenResponse {
@@ -53,7 +53,7 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
 
     // Verify the caller actually has admin access to the target site before
     // writing OAuth tokens against it (prevents IDOR / connection hijack).
-    const hasAccess = await getUserHasAdminAccessToSite(req, siteId);
+    const hasAccess = await getUserHasSitePermission(req, siteId, "gsc:write");
     if (!hasAccess) {
       return res.status(403).send({ error: "Access denied" });
     }

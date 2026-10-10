@@ -10,7 +10,7 @@ echo "PostgreSQL is ready."
 
 # Run file-based migrations
 echo "Running database migrations..."
-npm run db:migrate
+./node_modules/.bin/drizzle-kit migrate --config=drizzle.config.ts
 
 # Start the application
 echo "Starting application..."

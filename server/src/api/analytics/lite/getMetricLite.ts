@@ -3,7 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { getMetric } from "../getMetric.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
-import { getLiteSessionFilter, hasLiteDatetimeRange, hasLiteFilters } from "./utils.js";
+import { getLiteSessionFilter, hasLiteDatetimeRange, hasLiteFilters, hasLiteRealtimeRange } from "./utils.js";
 
 // Lite metric supports only dimensions backed by MVs:
 //   - pathname → pathname_hourly_mv_target
@@ -172,8 +172,8 @@ export const getMetricLite = analyticsRoute<GetMetricLiteRequest>(
   async (req: FastifyRequest<GetMetricLiteRequest>, res: FastifyReply) => {
     const site = Number(req.params.siteId);
 
-    // The hourly rollups can't express a sub-hour window.
-    if (hasLiteDatetimeRange(req.query)) {
+    // Hourly rollups can't represent exact or short rolling windows.
+    if (hasLiteDatetimeRange(req.query) || hasLiteRealtimeRange(req.query)) {
       return getMetric(req as unknown as Parameters<typeof getMetric>[0], res);
     }
 

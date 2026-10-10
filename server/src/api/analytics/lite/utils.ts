@@ -104,8 +104,18 @@ export function liteBucket(bucket: TimeBucket | undefined): TimeBucket {
 // same escape hatch an unsupported filter takes. Before, both the lite time
 // statement and the lite fill simply ignored start_datetime/end_datetime, so the
 // request came back as all-time data with a 200.
-export function hasLiteDatetimeRange(
-  params: Pick<FilterParams, "start_datetime" | "end_datetime">
-): boolean {
+export function hasLiteDatetimeRange(params: Pick<FilterParams, "start_datetime" | "end_datetime">): boolean {
   return Boolean(params.start_datetime && params.end_datetime);
+}
+
+// Match the dashboard's minute-resolution rolling windows (up to two hours).
+// Hourly timestamps can all fall before the cutoff, and the refreshable
+// summary can omit the current hour entirely. Read exact events for these
+// windows, including shifted comparison periods; keep long ranges on the MVs.
+export function hasLiteRealtimeRange(params: {
+  past_minutes_start?: number | string;
+  past_minutes_end?: number | string;
+}): boolean {
+  const minutes = Number(params.past_minutes_start) - Number(params.past_minutes_end);
+  return minutes > 0 && minutes <= 120;
 }

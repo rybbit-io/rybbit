@@ -1,5 +1,5 @@
 {
-  "id": "65d40dda-4e19-44db-8b02-b62cb57c0e66",
+  "id": "6a0f4378-a2c9-4cd9-9298-853718fba5d8",
   "prevId": "0b0237da-9eb1-4b21-b26e-0db3bef8c568",
   "version": "7",
   "dialect": "postgresql",
@@ -1390,6 +1390,12 @@
           "notNull": false,
           "default": "'[]'::jsonb"
         },
+        "site_role": {
+          "name": "site_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "teamId": {
           "name": "teamId",
           "type": "text",
@@ -1665,6 +1671,12 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -3790,12 +3802,6 @@
           "notNull": false,
           "default": "'[]'::jsonb"
         },
-        "icon": {
-          "name": "icon",
-          "type": "bytea",
-          "primaryKey": false,
-          "notNull": false
-        },
         "detected_platform": {
           "name": "detected_platform",
           "type": "text",
@@ -4012,6 +4018,12 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

@@ -3,7 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { getOverview } from "../getOverview.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
-import { getLiteSessionFilter, hasLiteDatetimeRange, hasLiteFilters } from "./utils.js";
+import { getLiteSessionFilter, hasLiteDatetimeRange, hasLiteFilters, hasLiteRealtimeRange } from "./utils.js";
 
 type GetOverviewLiteResponse = {
   sessions: number;
@@ -95,8 +95,8 @@ export const getOverviewLite = analyticsRoute<GetOverviewLiteRequest>(
   async (req: FastifyRequest<GetOverviewLiteRequest>, res: FastifyReply) => {
     const site = Number(req.params.siteId);
 
-    // The hourly rollups can't express a sub-hour window.
-    if (hasLiteDatetimeRange(req.query)) {
+    // Hourly rollups can't represent exact or short rolling windows.
+    if (hasLiteDatetimeRange(req.query) || hasLiteRealtimeRange(req.query)) {
       return getOverview(req, res);
     }
 

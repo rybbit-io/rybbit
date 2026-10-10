@@ -3,8 +3,10 @@ import * as psl from "psl";
 
 const desktopOS = new Set([
   "AIX",
+  "Amiga OS",
   "macOS",
   "Windows",
+  "Windows RT",
   "Linux",
   "FreeBSD",
   "OpenBSD",
@@ -89,13 +91,32 @@ const tvOS = new Set([
   "Chromecast Linux",
   "Chromecast SmartSpeaker",
   "NetTV",
+  "Vega OS",
 ]);
 
 const gamingOS = new Set(["PlayStation", "Xbox", "Nintendo"]);
 
 const embeddedOS = new Set(["Windows IoT", "Contiki", "Raspbian", "Morph OS", "Pico", "NetRange"]);
 
+// ua-parser's own device classification. It is the only signal that tells a
+// tablet or TV apart from a phone running the same OS (Android, Tizen), so it
+// is consulted before the OS lists below.
+const uaDeviceTypes: Record<string, string> = {
+  mobile: "Mobile",
+  tablet: "Tablet",
+  smarttv: "TV",
+  console: "Console",
+  wearable: "Wearable",
+  xr: "XR",
+  embedded: "Embedded",
+};
+
 export function getDeviceType(screenWidth: number, screenHeight: number, ua: UAParser.IResult): string {
+  const uaDeviceType = ua.device.type ? uaDeviceTypes[ua.device.type] : undefined;
+  if (uaDeviceType) {
+    return uaDeviceType;
+  }
+
   if (ua.os.name) {
     if (desktopOS.has(ua.os.name)) {
       return "Desktop";
@@ -114,7 +135,7 @@ export function getDeviceType(screenWidth: number, screenHeight: number, ua: UAP
   const smallerDimension = Math.min(screenWidth, screenHeight);
   if (largerDimension > 1024) {
     return "Desktop";
-  } else if (largerDimension > 768 && smallerDimension > 1024) {
+  } else if (smallerDimension >= 600) {
     return "Tablet";
   }
   return "Mobile";

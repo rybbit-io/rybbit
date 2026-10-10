@@ -20,11 +20,13 @@ export function useMetric({
   limit = 1000,
   periodTime,
   useFilters = true,
+  enabled,
 }: {
   parameter: FilterParameter;
   limit?: number;
   periodTime?: PeriodTime;
   useFilters?: boolean;
+  enabled?: boolean;
 }): UseQueryResult<PaginatedResponse> {
   return useAnalyticsQuery<PaginatedResponse>({
     key: parameter,
@@ -32,6 +34,7 @@ export function useMetric({
     periodTime,
     doublePastMinutesForPrevious: true,
     useFilters,
+    enabled,
     params: { parameter, limit },
   });
 }

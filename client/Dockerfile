@@ -1,25 +1,24 @@
+# syntax=docker/dockerfile:1
+
 FROM node:24-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /app
 
 # Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
-WORKDIR /app
-
-# Copy shared package first
-COPY shared ./shared
-WORKDIR /app/shared
-RUN npm install && npm run build
-
-# Install client dependencies
-WORKDIR /app/client
-COPY client/package.json client/package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY client/package.json ./client/package.json
+COPY server/package.json ./server/package.json
+COPY shared/package.json ./shared/package.json
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm --filter client... install --frozen-lockfile --store-dir /pnpm/store
 
 # Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/shared ./shared
-COPY --from=deps /app/client/node_modules ./client/node_modules
+FROM deps AS builder
+COPY shared/ ./shared
 COPY client/ ./client
 
 # Next.js collects completely anonymous telemetry data about general usage.
@@ -40,22 +39,10 @@ ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
 ENV NEXT_PUBLIC_DEPLOYMENT=${NEXT_PUBLIC_DEPLOYMENT}
 ENV NEXT_PUBLIC_LITE_DASHBOARD=${NEXT_PUBLIC_LITE_DASHBOARD}
 
-WORKDIR /app/client
-
-# npm installs the file:../shared dependency as a relative symlink
-# (node_modules/@rybbit/shared -> ../../../shared). Turbopack treats
-# /app/client as the project root and won't resolve packages through a symlink
-# that escapes it, and Next's standalone output tracing re-homes node_modules
-# at runtime. Materialize the package into a real directory instead — same fix
-# as the server image (commit 00a52750).
-RUN rm -rf node_modules/@rybbit/shared \
- && mkdir -p node_modules/@rybbit/shared \
- && cp -r /app/shared/package.json /app/shared/dist node_modules/@rybbit/shared/
-
-RUN npm run build
+RUN pnpm run build:client
 
 # Production image, copy all the files and run next
-FROM base AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -64,16 +51,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/client/public ./public
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/client/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/client/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/client/public ./client/public
+COPY --from=builder --chown=nextjs:nodejs /app/client/.next/static ./client/.next/static
 
 USER nextjs
 
@@ -82,4 +64,4 @@ EXPOSE 3002
 ENV PORT=3002
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["node", "client/server.js"]

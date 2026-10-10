@@ -3,36 +3,48 @@ import { GetGSCDataRequest, GSCResponse } from "./types.js";
 import { gscConnections } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { refreshGSCToken } from "./utils.js";
-import { getUserHasAccessToSite } from "../../lib/auth-utils.js";
 import { db } from "../../db/postgres/postgres.js";
-import countries from "i18n-iso-countries";
+import {
+  buildSearchAnalyticsRequest,
+  describeUpstreamError,
+  GSCQueryError,
+  mapSearchAnalyticsRows,
+  type SearchAnalyticsRequest,
+} from "./searchAnalytics.js";
 
 /**
- * Fetches data from Google Search Console API with support for multiple dimensions
+ * Fetches Search Analytics data from Google Search Console. The dashboard
+ * sends a single `dimension`; API and MCP callers can also pass `dimensions`
+ * (including date), `filters`, `search_type`, `data_state`, `row_limit`, and
+ * `start_row`.
  */
 export async function getGSCData(req: FastifyRequest<GetGSCDataRequest>, res: FastifyReply) {
   try {
     const { siteId } = req.params;
-    const { start_date, end_date, dimension } = req.query;
     const numericSiteId = Number(siteId);
 
     if (isNaN(numericSiteId)) {
       return res.status(400).send({ error: "Invalid site ID" });
     }
 
-    if (!start_date || !end_date) {
-      return res.status(400).send({ error: "Missing start_date or end_date" });
-    }
-
-    if (!dimension) {
-      return res.status(400).send({ error: "Missing dimension parameter" });
+    let request: SearchAnalyticsRequest;
+    try {
+      request = buildSearchAnalyticsRequest(req.query);
+    } catch (error) {
+      if (error instanceof GSCQueryError) {
+        return res.status(400).send({ error: error.message });
+      }
+      throw error;
     }
 
     // Get connection
     const [connection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, numericSiteId));
 
     if (!connection) {
-      return res.status(404).send({ error: "GSC not connected for this site" });
+      return res.status(404).send({
+        error:
+          "GSC not connected for this site. Connect Google Search Console in the dashboard under Site settings > Integrations.",
+      });
     }
 
     // Refresh token if needed
@@ -50,42 +62,20 @@ export async function getGSCData(req: FastifyRequest<GetGSCDataRequest>, res: Fa
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          startDate: start_date,
-          endDate: end_date,
-          dimensions: [dimension],
-          rowLimit: 1000,
-        }),
+        body: JSON.stringify(request.body),
       }
     );
 
     if (!gscResponse.ok) {
       const errorText = await gscResponse.text();
       req.log.error({ responseBodyLength: errorText.length, statusCode: gscResponse.status }, "GSC request failed");
-      return res.status(gscResponse.status).send({ error: "Failed to fetch GSC data", details: errorText });
+      const { status, error } = describeUpstreamError(gscResponse.status, errorText);
+      return res.status(status).send({ error, details: errorText });
     }
 
     const data: GSCResponse = await gscResponse.json();
 
-    // Transform the response to a simpler format with unified "name" field
-    const results = (data.rows || []).map(row => {
-      let name = row.keys[0];
-
-      // Convert country codes from alpha-3 to alpha-2 for the "country" dimension
-      if (dimension === "country" && name) {
-        name = countries.alpha3ToAlpha2(name.toUpperCase()) || name;
-      }
-
-      return {
-        name,
-        clicks: row.clicks,
-        impressions: row.impressions,
-        ctr: row.ctr,
-        position: row.position,
-      };
-    });
-
-    return res.send({ data: results });
+    return res.send({ data: mapSearchAnalyticsRows(data.rows, request) });
   } catch (error) {
     req.log.error(error, "Error fetching GSC data");
     return res.status(500).send({ error: "Failed to fetch GSC data" });

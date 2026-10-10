@@ -1,3 +1,4 @@
+import { isAdminRole, isOrgRole } from "@rybbit/shared";
 import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { eq } from "drizzle-orm";
@@ -108,7 +109,10 @@ export const getMyOrganizations = async (request: FastifyRequest, reply: Fastify
         // and teams. Admins/owners see everything.
         let organizationSites = allOrgSites;
 
-        if (callerMemberRecord?.role === "member") {
+        if (callerMemberRecord && !isOrgRole(callerMemberRecord.role)) {
+          // A role Rybbit doesn't know reaches nothing.
+          organizationSites = [];
+        } else if (callerMemberRecord && !isAdminRole(callerMemberRecord.role)) {
           // getOrgMembership null-guards a missing userId, so a non-null
           // callerMemberRecord here means userId was set.
           organizationSites = await filterSitesByMemberAccess(

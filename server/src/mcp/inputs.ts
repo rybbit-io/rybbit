@@ -182,9 +182,13 @@ export const fieldsInput = z
 
 export const organizationIdInput = z.string().min(1).describe("Organization ID from list_sites");
 
+// Kept in sync with ORG_ROLES in @rybbit/shared permissions.ts (inlined like
+// the other enums here).
 export const memberRoleInput = z
-  .enum(["admin", "member", "owner"])
-  .describe("Role in the organization; only an owner key can grant 'owner'");
+  .enum(["owner", "admin", "editor", "member", "viewer"])
+  .describe(
+    "Role in the organization, highest first: owner, admin, editor (configures sites), member (builds reports), viewer (read only). Nobody can grant a role above their own."
+  );
 
 export const propertyFilterInput = z.object({
   key: z.string(),
@@ -239,6 +243,7 @@ export const siteFeatureInputs = {
   trackErrors: z.boolean().optional().describe("Capture JavaScript errors"),
   trackOutbound: z.boolean().optional().describe("Track outbound link clicks"),
   trackUrlParams: z.boolean().optional().describe("Keep URL query parameters in analytics"),
+  trackUrlFragments: z.boolean().optional().describe("Keep ordinary URL fragments such as #shipping in tracked paths"),
   trackInitialPageView: z.boolean().optional(),
   trackSpaNavigation: z.boolean().optional(),
   trackIp: z.boolean().optional().describe("Store visitor IP addresses"),

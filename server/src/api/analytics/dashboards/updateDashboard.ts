@@ -36,7 +36,7 @@ export async function updateDashboard(
       return reply.status(403).send({ error: "Dashboard does not belong to the specified site" });
     }
 
-    // Site access is enforced by the `authSite` (requireSiteAccess) preHandler.
+    // The route guard enforces dashboards:write on the site.
     const result = await db
       .update(dashboards)
       .set({

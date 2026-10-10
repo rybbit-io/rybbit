@@ -1,6 +1,8 @@
+"use client";
+
 import { Smartphone } from "lucide-react";
-import { useState } from "react";
-import { BACKEND_URL } from "../lib/const";
+import { useEffect, useState } from "react";
+import { BACKEND_URL } from "@/lib/const";
 import { cn } from "../lib/utils";
 import { useSiteIcons } from "../lib/siteIcons";
 
@@ -15,39 +17,56 @@ export function Favicon({
   siteType?: "web" | "mobile" | null;
   siteId?: number;
 }) {
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const iconVersion = useSiteIcons(state => (siteId === undefined ? 0 : (state.versions[siteId] ?? 0)));
-  const src =
-    siteType === "mobile"
-      ? `${BACKEND_URL}/sites/${siteId}/icon?v=${iconVersion}`
-      : `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const imageError = failedSrc === src;
-  const firstLetter = domain.charAt(0).toUpperCase();
 
+  useEffect(() => {
+    const timer = setInterval(() => setRefreshVersion(Date.now()), 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Mobile sites have a package name, not a domain, so there is no site to fetch an
+  // icon from - they use the icon uploaded in site settings instead.
   if (siteType && siteType !== "web") {
-    if (siteId !== undefined && !imageError) {
-      return (
-        <img
-          src={src}
-          className={cn("rounded", className ?? "w-4 h-4")}
-          alt={`Icon for ${domain}`}
-          onError={() => setFailedSrc(src)}
-        />
-      );
+    if (siteId === undefined) {
+      return <MobilePlaceholder className={className} />;
     }
-
-    return (
-      <div
-        className={cn(
-          "bg-neutral-700 rounded-full flex items-center justify-center text-white",
-          className ?? "w-4 h-4"
-        )}
-      >
-        <Smartphone className="w-[60%] h-[60%]" />
-      </div>
-    );
+    const src = `${BACKEND_URL}/sites/${siteId}/icon?v=${iconVersion}`;
+    return <AppIcon key={src} src={src} domain={domain} className={className} />;
   }
 
+  const src = `${BACKEND_URL}/favicon?domain=${encodeURIComponent(domain)}&v=${refreshVersion}`;
+  return <FaviconImage key={src} src={src} domain={domain} className={className} />;
+}
+
+function MobilePlaceholder({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("bg-neutral-700 rounded-full flex items-center justify-center text-white", className ?? "w-4 h-4")}
+    >
+      <Smartphone className="w-[60%] h-[60%]" />
+    </div>
+  );
+}
+
+function AppIcon({ src, domain, className }: { src: string; domain: string; className?: string }) {
+  const [imageError, setImageError] = useState(false);
+  if (imageError) {
+    return <MobilePlaceholder className={className} />;
+  }
+
+  return (
+    <img
+      src={src}
+      className={cn("rounded", className ?? "w-4 h-4")}
+      alt={`Icon for ${domain}`}
+      onError={() => setImageError(true)}
+    />
+  );
+}
+
+function FaviconImage({ src, domain, className }: { src: string; domain: string; className?: string }) {
+  const [imageError, setImageError] = useState(false);
   if (imageError) {
     return (
       <div
@@ -56,7 +75,7 @@ export function Favicon({
           className ?? "w-4 h-4"
         )}
       >
-        {firstLetter}
+        {domain.charAt(0).toUpperCase()}
       </div>
     );
   }
@@ -66,7 +85,7 @@ export function Favicon({
       src={src}
       className={cn(className ?? "w-4 h-4")}
       alt={`Favicon for ${domain}`}
-      onError={() => setFailedSrc(src)}
+      onError={() => setImageError(true)}
     />
   );
 }

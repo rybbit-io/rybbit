@@ -3,22 +3,28 @@ import { umamiComparisonData, umamiExtendedData } from "./comparison-data";
 import type { Metadata } from "next";
 import { createOGImageUrl } from "@/lib/metadata";
 
+const ogTitle = "Rybbit vs Umami: Open-Source Analytics Head-to-Head";
+const ogDescription =
+  "Two open-source, cookieless analytics tools compared on replay, heatmaps, error tracking, MCP, pricing, and self-hosting.";
+const twitterTitle = "Rybbit vs Umami Comparison";
+const twitterDescription = "Rybbit and Umami compared feature by feature, with current plan limits and prices.";
+
 export const metadata: Metadata = {
-  title: "Rybbit vs Umami: The Full-Featured Umami Alternative",
+  title: "Umami Alternative With Error Tracking & $39 Replay",
   description:
-    "Looking for an Umami alternative? Both are open-source and privacy-focused, but Rybbit adds session replay, funnels, and a managed cloud option.",
+    "Looking for an Umami alternative? Rybbit is also open source and cookieless, and adds error tracking, five-layer bot filtering and replay from $39/mo.",
   openGraph: {
-    title: "Rybbit vs Umami: Open-Source Analytics Head-to-Head",
-    description: "Two open-source analytics platforms compared. See which offers more features and flexibility.",
+    title: ogTitle,
+    description: ogDescription,
     type: "website",
     url: "https://rybbit.com/compare/umami",
-    images: [createOGImageUrl("Rybbit vs Umami: Open-Source Analytics Head-to-Head", "Two open-source analytics platforms compared. See which offers more features and flexibility.", "Compare")],
+    images: [createOGImageUrl(ogTitle, ogDescription, "Compare")],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Rybbit vs Umami Comparison",
-    description: "Open-source analytics showdown. Compare features, hosting options, and more.",
-    images: [createOGImageUrl("Rybbit vs Umami Comparison", "Open-source analytics showdown. Compare features, hosting options, and more.", "Compare")],
+    title: twitterTitle,
+    description: twitterDescription,
+    images: [createOGImageUrl(twitterTitle, twitterDescription, "Compare")],
   },
   alternates: {
     canonical: "https://rybbit.com/compare/umami",
@@ -42,48 +48,15 @@ const structuredData = {
     },
     {
       "@type": "FAQPage",
-      mainEntity: [
-        {
-          "@type": "Question",
-          name: "How is Rybbit different from Umami?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Both are open-source and privacy-first, but Rybbit includes advanced features Umami lacks: session replay, error tracking, Web Vitals monitoring, real-time globe view, and organization support. Rybbit also uses ClickHouse for better performance at scale.",
-          },
+      // Built from the visible FAQ so the JSON-LD can never drift from the page text.
+      mainEntity: umamiExtendedData.faqItems.map(({ question, answer }) => ({
+        "@type": "Question",
+        name: question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: answer,
         },
-        {
-          "@type": "Question",
-          name: "Can I migrate from Umami to Rybbit?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Yes. Just add Rybbit's script tag to your site and data starts flowing immediately. You can run both tools in parallel during the transition. Historical Umami data won't transfer, but new data collection begins instantly.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Which is easier to self-host?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Both are straightforward to self-host with Docker. Umami supports PostgreSQL/MySQL which may be more familiar. Rybbit uses ClickHouse which offers better analytics query performance at scale but is a less common database.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Does Rybbit have a larger script than Umami?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Yes, Rybbit's script is 18KB compared to Umami's 2KB. The additional size enables features like session replay, error tracking, and Web Vitals monitoring. Both are small enough to have negligible impact on page load.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Are both GDPR compliant?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Yes. Both Rybbit and Umami are cookie-free and don't collect personal data. Rybbit adds an extra privacy option with daily rotating salt for user ID hashing, ensuring visitors can't be tracked across days.",
-          },
-        },
-      ],
+      })),
     },
   ],
 };
@@ -103,6 +76,7 @@ export default function Umami() {
         rybbitPricing={umamiExtendedData.rybbitPricing}
         competitorPricing={umamiExtendedData.competitorPricing}
         deepDive={umamiExtendedData.deepDive}
+        otherAlternatives={umamiExtendedData.otherAlternatives}
         faqItems={umamiExtendedData.faqItems}
         relatedResources={umamiExtendedData.relatedResources}
       />

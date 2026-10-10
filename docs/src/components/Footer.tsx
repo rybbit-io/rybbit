@@ -57,6 +57,10 @@ export function Footer() {
         { href: "/features/web-vitals", label: t("Web Vitals") },
         { href: "/features/error-tracking", label: t("Error Tracking") },
         { href: "/features/user-profiles", label: t("User Profiles") },
+        { href: "/features/bot-detection", label: t("Bot Detection") },
+        { href: "/features/dashboard-sharing", label: t("Dashboard Sharing") },
+        { href: "/features/mcp", label: t("MCP Server") },
+        { href: "/features/api", label: t("Analytics API") },
       ],
     },
     {
@@ -87,6 +91,21 @@ export function Footer() {
         { href: "mailto:hello@rybbit.com", label: t("Support"), external: true },
       ],
     },
+  ];
+
+  // The header's use-case dropdown only mounts when opened, so these links are the
+  // only server-rendered path crawlers have to the persona pages.
+  const solutionLinks: FooterLink[] = [
+    { href: "/for-saas", label: t("SaaS") },
+    { href: "/for-startups", label: t("Startups") },
+    { href: "/for-small-business", label: t("Small businesses") },
+    { href: "/for-ecommerce", label: t("Ecommerce") },
+    { href: "/for-creators", label: t("Creators") },
+    { href: "/for-developers", label: t("Developers") },
+    { href: "/for-agencies", label: t("Agencies") },
+    { href: "/white-label", label: t("White label") },
+    { href: "/for-european-companies", label: t("European companies") },
+    { href: "/enterprise", label: t("Enterprise") },
   ];
 
   return (
@@ -146,35 +165,49 @@ export function Footer() {
             </div>
           </div>
 
-          <nav aria-label="Footer" className="grid grid-cols-2 lg:col-span-9 md:grid-cols-4">
-            {footerGroups.map(group => (
-              <section
-                key={group.title}
-                className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14"
-              >
-                <h2 className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">{group.title}</h2>
-                <ul className="mt-4">
-                  {group.links.map(link => (
-                    <li key={link.href}>
-                      {link.external ? (
-                        <a
-                          href={link.href}
-                          target={link.href.startsWith("http") ? "_blank" : undefined}
-                          rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                          className={footerLinkClassName}
-                        >
-                          {link.label}
-                        </a>
-                      ) : (
-                        <Link href={link.href} className={footerLinkClassName}>
-                          {link.label}
-                        </Link>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
+          <nav aria-label="Footer" className="lg:col-span-9">
+            <div className="grid grid-cols-2 md:grid-cols-4">
+              {footerGroups.map(group => (
+                <section
+                  key={group.title}
+                  className="border-b border-neutral-200 px-5 py-10 last:border-b-0 dark:border-neutral-800 sm:px-8 [&:nth-last-child(2)]:border-b-0 md:border-b-0 md:px-6 md:py-14"
+                >
+                  <h2 className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">{group.title}</h2>
+                  <ul className="mt-4">
+                    {group.links.map(link => (
+                      <li key={link.href}>
+                        {link.external ? (
+                          <a
+                            href={link.href}
+                            target={link.href.startsWith("http") ? "_blank" : undefined}
+                            rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                            className={footerLinkClassName}
+                          >
+                            {link.label}
+                          </a>
+                        ) : (
+                          <Link href={link.href} className={footerLinkClassName}>
+                            {link.label}
+                          </Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+            <section className="border-t border-neutral-200 px-5 py-8 dark:border-neutral-800 sm:px-8 md:px-6">
+              <h2 className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">{t("Solutions")}</h2>
+              <ul className="mt-3 flex flex-wrap gap-x-6">
+                {solutionLinks.map(link => (
+                  <li key={link.href}>
+                    <Link href={link.href} className={footerLinkClassName}>
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </nav>
         </div>
 

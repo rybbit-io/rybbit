@@ -214,7 +214,7 @@ async function main() {
     console.log(`\n=== ${table} → ${target} ===`);
 
     for await (const month of monthRanges(from, to)) {
-      const where = `WHERE timestamp >= toDateTime('${month.start}') AND timestamp < toDateTime('${month.end}')`;
+      const where = `WHERE timestamp >= toDateTime('${month.start}', 'UTC') AND timestamp < toDateTime('${month.end}', 'UTC')`;
       const select = buildSelectQuery(table, where);
       const insertSql = `INSERT INTO ${target}\n${select}`;
 

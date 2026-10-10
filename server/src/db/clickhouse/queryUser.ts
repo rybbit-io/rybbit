@@ -1,6 +1,9 @@
 import SqlString from "sqlstring";
 import { CLICKHOUSE_QUERY_USER, clickhouse, clickhouseQuery } from "./client.js";
 import { clickhouseInitLogger as logger } from "./initUtils.js";
+import { QUERY_USER_LIMITS } from "./queryLimits.js";
+
+export { QUERY_USER_LIMITS } from "./queryLimits.js";
 
 // Least-privilege ClickHouse user for user-authored SQL (custom query page and
 // dashboard cards). Provisioned with SQL at startup so every deployment type
@@ -13,15 +16,6 @@ import { clickhouseInitLogger as logger } from "./initUtils.js";
 // The SQL validator is defense-in-depth on top of this user: a validator bypass
 // must still land inside SELECT-on-events, with no table functions
 // (url/s3/file/remote…), no system tables, and the pinned resource limits.
-export const QUERY_USER_LIMITS = {
-  maxExecutionTimeSeconds: 10,
-  maxMemoryUsageBytes: 4_000_000_000,
-  maxThreads: 4,
-  maxResultRows: 1000,
-  maxConcurrentQueriesForUser: 8,
-  maxBytesBeforeExternalBytes: 2_000_000_000,
-} as const;
-
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export function buildQueryUserStatements(database: string, user: string, password: string): string[] {

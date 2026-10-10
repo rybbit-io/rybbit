@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/sites/:site/imports
 ```
 
-Starts a new data import from a supported platform. Requires an admin or owner API key. On Rybbit Cloud, this requires a paid plan.
+Starts a new data import from a supported platform. Requires the editor role or above on the site. On Rybbit Cloud, this requires a paid plan.
 
 Only one concurrent import is allowed per organization. Starting a second import while one is still running returns HTTP `429`.
 

@@ -1,5 +1,5 @@
-import { DateTime } from "luxon";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
+import { toClickHouseDateTime } from "../../db/clickhouse/dateTime.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { correctReplayClockSkew } from "./replayClockSkew.js";
@@ -98,7 +98,7 @@ export class SessionReplayIngestService {
           session_id: sessionId,
           user_id: userId,
           identified_user_id: identifiedUserId,
-          timestamp: event.timestamp,
+          timestamp: toClickHouseDateTime(event.timestamp),
           event_type: event.type,
           event_data: "", // Empty string when using R2
           event_data_key: r2BatchKey,
@@ -116,7 +116,7 @@ export class SessionReplayIngestService {
           session_id: sessionId,
           user_id: userId,
           identified_user_id: identifiedUserId,
-          timestamp: event.timestamp,
+          timestamp: toClickHouseDateTime(event.timestamp),
           event_type: event.type,
           event_data: serializedData,
           event_data_key: null,
@@ -209,8 +209,8 @@ export class SessionReplayIngestService {
           session_id: sessionId,
           user_id: userId,
           identified_user_id: identifiedUserId,
-          start_time: DateTime.fromJSDate(batchStats.startTime).toFormat("yyyy-MM-dd HH:mm:ss.SSS"),
-          end_time: DateTime.fromJSDate(batchStats.endTime).toFormat("yyyy-MM-dd HH:mm:ss.SSS"),
+          start_time: toClickHouseDateTime(batchStats.startTime),
+          end_time: toClickHouseDateTime(batchStats.endTime),
           event_count: batchStats.eventCount,
           compressed_size_bytes: batchStats.compressedSizeBytes,
           page_url: metadata.pageUrl || "",

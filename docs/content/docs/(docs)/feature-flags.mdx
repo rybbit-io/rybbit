@@ -143,6 +143,8 @@ All rules in a condition set must match. Multiple condition sets act as ordered 
 
 The tracking script automatically evaluates client and both-runtime flags when it loads. It sends context such as anonymous visitor ID, identified user ID, URL, referrer, language, screen size, IP-derived location, and saved user traits.
 
+The anonymous visitor ID is a random ID that keeps percentage rollouts stable across page loads. As soon as a site has at least one client or both-runtime flag, the script stores it in `localStorage` under `<namespace>-visitor-id` (`rybbit-visitor-id` by default). Sites without feature flags never read or write this visitor-ID key. If you use feature flags on sites with EU visitors, treat this stored ID like a cookie under Art. 5(3) ePrivacy when you assess consent requirements.
+
 Use `onReady()` before reading flags if you need the evaluated value during page initialization:
 
 ```javascript

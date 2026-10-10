@@ -5,6 +5,7 @@ import { ReactNode } from "react";
 
 interface AuthButtonProps {
   isLoading: boolean;
+  /** Screen-reader name while loading; the visible label stays under the spinner. */
   loadingText?: string;
   children: ReactNode;
   className?: string;
@@ -16,7 +17,7 @@ interface AuthButtonProps {
 
 export function AuthButton({
   isLoading,
-  loadingText = "Loading...",
+  loadingText,
   children,
   className = "",
   onClick,
@@ -24,9 +25,19 @@ export function AuthButton({
   variant = "success",
   disabled = false,
 }: AuthButtonProps) {
+  // Callers still pass `disabled={... || isLoading}`; Button lets loading win,
+  // so the button keeps focus while the request runs.
   return (
-    <Button type={type} className={`w-full ${className}`} disabled={disabled || isLoading} variant={variant} onClick={onClick}>
-      {isLoading ? loadingText : children}
+    <Button
+      type={type}
+      className={`w-full ${className}`}
+      loading={isLoading}
+      loadingLabel={loadingText}
+      disabled={disabled}
+      variant={variant}
+      onClick={onClick}
+    >
+      {children}
     </Button>
   );
 }

@@ -1,9 +1,10 @@
+import { isAdminRole, isSiteGrantRole, SITE_GRANT_ROLES } from "@rybbit/shared";
 import { and, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { db } from "../../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, user } from "../../db/postgres/schema.js";
-import { siteIdsInOrganization } from "../../lib/access.js";
+import { grantRoleForRewrite, siteIdsInOrganization } from "../../lib/access.js";
 import { invalidateSitesAccessCache } from "../../lib/auth-utils.js";
 
 interface UpdateMemberSiteAccessParams {
@@ -14,6 +15,8 @@ interface UpdateMemberSiteAccessParams {
 interface UpdateMemberSiteAccessBody {
   hasRestrictedSiteAccess: boolean;
   siteIds: number[];
+  /** Role on the granted sites (editor, member or viewer); null for none; omit to keep what the grants carry. */
+  siteRole?: string | null;
 }
 
 export async function updateMemberSiteAccess(
@@ -25,7 +28,12 @@ export async function updateMemberSiteAccess(
 ) {
   const { organizationId, memberId } = request.params;
   const { hasRestrictedSiteAccess, siteIds } = request.body;
+  const requestedSiteRole = request.body.siteRole;
   const currentUserId = request.user?.id;
+
+  if (requestedSiteRole != null && !isSiteGrantRole(requestedSiteRole)) {
+    return reply.status(400).send({ error: `siteRole must be one of: ${SITE_GRANT_ROLES.join(", ")}` });
+  }
 
   try {
     // Get the member record
@@ -46,8 +54,9 @@ export async function updateMemberSiteAccess(
 
     const memberData = memberRecord[0];
 
-    // Don't allow restricting admin or owner roles
-    if (memberData.role === "admin" || memberData.role === "owner") {
+    // Admins and owners reach every site: they can't be restricted, but a
+    // restriction left over from before a promotion can be cleared.
+    if (isAdminRole(memberData.role) && hasRestrictedSiteAccess) {
       return reply.status(400).send({
         error: "Cannot restrict site access for admin or owner roles",
       });
@@ -66,6 +75,7 @@ export async function updateMemberSiteAccess(
     }
 
     await db.transaction(async tx => {
+      const roleFor = await grantRoleForRewrite(tx, memberId, requestedSiteRole);
       await tx.update(member).set({ hasRestrictedSiteAccess }).where(eq(member.id, memberId));
       await tx.delete(memberSiteAccess).where(eq(memberSiteAccess.memberId, memberId));
 
@@ -74,6 +84,7 @@ export async function updateMemberSiteAccess(
           siteIds.map(siteId => ({
             memberId,
             siteId,
+            role: roleFor(siteId),
             createdBy: currentUserId || null,
           }))
         );
@@ -87,6 +98,7 @@ export async function updateMemberSiteAccess(
     const updatedSiteAccess = await db
       .select({
         siteId: memberSiteAccess.siteId,
+        role: memberSiteAccess.role,
         siteName: sites.name,
         siteDomain: sites.domain,
       })
@@ -99,6 +111,7 @@ export async function updateMemberSiteAccess(
       hasRestrictedSiteAccess,
       siteAccess: updatedSiteAccess.map(record => ({
         siteId: record.siteId,
+        role: record.role,
         name: record.siteName,
         domain: record.siteDomain,
       })),

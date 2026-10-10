@@ -9,7 +9,7 @@ import { useStore } from "../lib/store";
 import { ChartTooltip } from "./charts/ChartTooltip";
 
 interface SiteSessionChartProps {
-  data: GetOverviewBucketedResponse;
+  data: Pick<GetOverviewBucketedResponse[number], "time" | "sessions">[];
 }
 
 export function SiteSessionChart({ data }: SiteSessionChartProps) {

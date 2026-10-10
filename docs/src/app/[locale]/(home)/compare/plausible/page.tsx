@@ -6,7 +6,7 @@ import { createOGImageUrl } from "@/lib/metadata";
 export const metadata: Metadata = {
   title: "Rybbit vs Plausible: The Open Source Plausible Alternative",
   description:
-    "Looking for a Plausible alternative? Rybbit is open-source and privacy-first too, plus session replay, funnels, user journeys, and error tracking.",
+    "Looking for a Plausible alternative? Rybbit is open source and cookieless too, with funnels and journeys on every plan, plus session replay and error tracking.",
   openGraph: {
     title: "Rybbit vs Plausible: Which Privacy-First Analytics Wins?",
     description: "Both respect privacy, but Rybbit offers more power. Compare session replay, funnels, and pricing.",
@@ -48,7 +48,7 @@ const structuredData = {
           name: "How does Rybbit compare to Plausible?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Both Rybbit and Plausible are privacy-first analytics platforms, but Rybbit offers more advanced features like session replay, funnels, user journeys, and error tracking while maintaining simplicity.",
+            text: "Both are privacy-first and open source. Rybbit adds session replay, Web Vitals monitoring, error tracking, and user profiles, and includes funnels and user journeys on every plan, while Plausible reserves those for its Business plan.",
           },
         },
         {
@@ -56,7 +56,7 @@ const structuredData = {
           name: "Does Rybbit have features Plausible doesn't?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. Rybbit includes session replay, funnel analysis, user journey visualization (Sankey diagrams), Web Vitals monitoring, error tracking, and public dashboards that Plausible doesn't offer.",
+            text: "Yes. Rybbit includes session replay, Web Vitals monitoring, and error tracking, which Plausible doesn't offer, and it includes funnels and user journeys on every plan instead of only on a higher tier.",
           },
         },
         {
@@ -64,7 +64,7 @@ const structuredData = {
           name: "Which is more affordable, Rybbit or Plausible?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Plausible starts at $9/month for 10k pageviews, while Rybbit starts at $19/month for events-based pricing. Rybbit includes more features at each price point, including session replay, funnels, and error tracking.",
+            text: "Plausible starts at $9/month for 10k pageviews, while Rybbit starts at $19/month for 100k events (pageviews, custom events, and more). Rybbit includes funnels, journeys, and error tracking on every plan; Plausible reserves funnels and journeys for its $19/month Business plan and doesn't offer session replay or error tracking at any price.",
           },
         },
         {
@@ -103,6 +103,7 @@ export default function Plausible() {
         rybbitPricing={plausibleExtendedData.rybbitPricing}
         competitorPricing={plausibleExtendedData.competitorPricing}
         deepDive={plausibleExtendedData.deepDive}
+        otherAlternatives={plausibleExtendedData.otherAlternatives}
         faqItems={plausibleExtendedData.faqItems}
         relatedResources={plausibleExtendedData.relatedResources}
       />

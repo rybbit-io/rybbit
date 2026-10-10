@@ -57,6 +57,7 @@ export function Login({ callbackURL }: LoginProps) {
           id="email"
           label={t("Email")}
           type="email"
+          autoComplete="email"
           placeholder="example@email.com"
           required
           value={email}
@@ -66,6 +67,7 @@ export function Login({ callbackURL }: LoginProps) {
           id="password"
           label={t("Password")}
           type="password"
+          autoComplete="current-password"
           placeholder="••••••••"
           required
           value={password}

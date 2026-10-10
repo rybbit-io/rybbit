@@ -5,7 +5,7 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { db } from "../../db/postgres/postgres.js";
 import { goals, lifecycleEmailLog, member, sites, user } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
-import { cancelScheduledEmail, isContactUnsubscribed, sendLifecycleEmail } from "../../lib/email/email.js";
+import { isContactUnsubscribed, sendLifecycleEmail } from "../../lib/email/email.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { signExpiringPayload } from "../../lib/signedToken.js";
 import * as content from "./lifecycleContent.js";
@@ -21,9 +21,9 @@ import { detectPlatform, platformForKey, type PlatformInfo } from "./platformDet
  *
  * Per-site emails (install track, "you're live", went quiet) are evaluated per
  * site but sent per user: every site eligible in the same run is bundled into
- * one message, and each kind is sent to a user at most once per
- * KIND_COOLDOWN_HOURS. An agency that adds 13 domains gets one snippet email
- * listing 13 snippets, not 13 emails ten minutes apart.
+ * one message. Install and live emails have a 24-hour per-kind cooldown;
+ * went-quiet emails have a seven-day per-user cooldown. An agency that adds
+ * 13 domains gets one snippet email listing 13 snippets.
  *
  * Concurrency: the cron runs on the cluster primary only, so a single
  * evaluator holds the "one email per user per run" invariant. If this ever
@@ -33,7 +33,9 @@ import { detectPlatform, platformForKey, type PlatformInfo } from "./platformDet
 
 const COHORT_DAYS = 30; // users/sites older than this never enter the onboarding flow
 const MIN_GAP_HOURS = 48; // between non-transition emails to the same user
-const KIND_COOLDOWN_HOURS = 24; // between two emails of the same per-site kind to the same user
+const KIND_COOLDOWN_HOURS = 24; // between install/live emails of the same kind to the same user
+const WENT_QUIET_COOLDOWN_DAYS = 7;
+const WENT_QUIET_LOOKBACK_DAYS = 14; // covers the 48h silence threshold plus a full weekly cooldown
 const CHECK_INSTALL_TTL_SECONDS = 30 * 24 * 3600;
 const NEGATIVE_CACHE_TTL_MS = 12 * 3600 * 1000; // don't re-run a no-result ClickHouse probe for this long
 
@@ -85,7 +87,6 @@ class LifecycleEmailService {
   private cronTask: cron.ScheduledTask | null = null;
   private logger = createServiceLogger("lifecycle-emails");
   private running = false;
-  private legacyTipsCancelled = false;
   private lastWentQuietAt: DateTime | null = null;
   /** cacheKey -> epoch ms until which a known-negative ClickHouse probe is not repeated */
   private negativeCache = new Map<string, number>();
@@ -314,38 +315,6 @@ class LifecycleEmailService {
     build: () => Promise<content.LifecycleEmail | null> | content.LifecycleEmail | null
   ): Promise<boolean> {
     return this.sendBundle(userId, email, [{ key: emailKey, siteId }], `lifecycle:${userId}:${emailKey}`, build);
-  }
-
-  // -------------------------------------------------------------------------
-  // Rollout: cancel tips the retired drip already scheduled in Resend
-  // -------------------------------------------------------------------------
-
-  private async cancelLegacyScheduledTips(): Promise<void> {
-    if (this.legacyTipsCancelled) return;
-    this.legacyTipsCancelled = true;
-
-    try {
-      // The old drip scheduled at most 5 days out, so only recent signups can
-      // still have pending sends worth cancelling.
-      const cutoff = DateTime.utc().minus({ days: 10 }).toSQL({ includeOffset: false })!;
-      const users = await db
-        .select({ id: user.id, scheduledTipEmailIds: user.scheduledTipEmailIds })
-        .from(user)
-        .where(gt(user.createdAt, cutoff));
-
-      for (const u of users) {
-        const ids = (u.scheduledTipEmailIds as string[]) || [];
-        if (ids.length === 0) continue;
-        for (const emailId of ids) {
-          await cancelScheduledEmail(emailId);
-        }
-        await db.update(user).set({ scheduledTipEmailIds: [] }).where(eq(user.id, u.id));
-        this.logger.info({ userId: u.id, cancelled: ids.length }, "Cancelled legacy scheduled tip emails");
-      }
-    } catch (error) {
-      this.legacyTipsCancelled = false; // retry next run
-      this.logger.error({ err: error }, "Error cancelling legacy scheduled tips");
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -637,19 +606,22 @@ class LifecycleEmailService {
   // -------------------------------------------------------------------------
 
   private async processWentQuiet(now: DateTime): Promise<void> {
-    // Candidates: sites with events in the last 7 days whose latest event is
-    // older than 48h. The 7-day window (vs a hard 48-60h band) means a cron
-    // outage longer than the band can't silently skip an alert; the per-outage
-    // email key plus the 30-day per-site cooldown below prevent repeats.
+    // Keep candidates for two weeks so a site that becomes quiet during its
+    // owner's weekly cooldown can still join the next bundle. Evaluate the
+    // window against this run's clock and re-check silence before sending.
     const result = await clickhouse.query({
       query: `
         SELECT site_id, max(timestamp) AS last_event
         FROM events
-        WHERE timestamp > now() - INTERVAL 7 DAY
+        WHERE timestamp > toDateTime({windowStart:UInt32}, 'UTC')
         GROUP BY site_id
-        HAVING last_event < now() - INTERVAL 48 HOUR
+        HAVING last_event < toDateTime({quietBefore:UInt32}, 'UTC')
       `,
       format: "JSONEachRow",
+      query_params: {
+        windowStart: Math.floor(now.minus({ days: WENT_QUIET_LOOKBACK_DAYS }).toSeconds()),
+        quietBefore: Math.floor(now.minus({ hours: 48 }).toSeconds()),
+      },
     });
     const quietRows = await result.json<{ site_id: number; last_event: string }>();
     if (quietRows.length === 0) return;
@@ -714,8 +686,8 @@ class LifecycleEmailService {
     const ownerByOrg = new Map(owners.map(o => [o.organizationId, o]));
     const lastEventBySite = new Map(quietRows.map(r => [Number(r.site_id), parseTs(r.last_event)]));
 
-    // Group by owner: an agency with eight quiet sites gets one email listing
-    // eight sites, at most once per KIND_COOLDOWN_HOURS.
+    // Group across the owner's organizations: all eligible quiet sites share
+    // one email, at most once every seven days.
     const quietByOwner = new Map<string, { owner: (typeof owners)[number]; sites: typeof quietSites }>();
     for (const site of quietSites) {
       if (recentlyAlerted.has(site.siteId)) continue;
@@ -731,7 +703,7 @@ class LifecycleEmailService {
       // an onboarding email waits for the next tick.
       if (this.emailedThisRun.has(owner.userId)) continue;
       const lastQuiet = lastQuietEmailByUser.get(owner.userId) ?? null;
-      if (lastQuiet && now.diff(lastQuiet, "hours").hours < KIND_COOLDOWN_HOURS) continue;
+      if (lastQuiet && now.diff(lastQuiet, "hours").hours < WENT_QUIET_COOLDOWN_DAYS * 24) continue;
       try {
         if (await isContactUnsubscribed(owner.email)) continue;
         // Per-outage key: the date of the last event identifies the outage, so
@@ -768,9 +740,8 @@ class LifecycleEmailService {
     this.emailedThisRun = new Set();
     const now = DateTime.utc();
     try {
-      await this.cancelLegacyScheduledTips();
       await this.processOnboarding(now);
-      // The went-quiet scan covers the whole events table (bounded to 7 days);
+      // The went-quiet scan covers the whole events table (bounded to 14 days);
       // hourly is plenty for a 48h-silence alert.
       if (!this.lastWentQuietAt || now.diff(this.lastWentQuietAt, "minutes").minutes >= 55) {
         this.lastWentQuietAt = now;

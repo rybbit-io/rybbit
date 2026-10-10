@@ -51,6 +51,21 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       typeDescription: 'JSON string mapping step index to required path',
       required: false,
     },
+    endsAt: {
+      description: 'Page (or pattern with * and **) the journeys must reach. Each journey is cut at the first visit to it after the entry page, and only sessions that reach it within `steps` are counted',
+      type: 'string',
+      required: false,
+    },
+    groupBy: {
+      description: 'Set to "section" to collapse the pages under a first-level folder into one step (/docs/script and /docs/api become /docs/**)',
+      type: '"path" | "section"',
+      default: 'path',
+    },
+    goalId: {
+      description: 'ID of a goal. Adds `conversions` to each journey: the sessions on it that completed the goal',
+      type: 'number',
+      required: false,
+    },
   }}
 />
 
@@ -61,6 +76,10 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     journeys: {
       description: 'Array of journey objects',
       type: 'Journey[]',
+    },
+    totalSessions: {
+      description: 'Sessions that visited two or more pages in the period, before stepFilters and endsAt are applied',
+      type: 'number',
     },
   }}
 />
@@ -78,8 +97,13 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       type: 'number',
     },
     percentage: {
-      description: 'Percentage of total sessions',
+      description: 'Share of `totalSessions` (sessions with two or more pages), 0-100',
       type: 'number',
+    },
+    conversions: {
+      description: 'Sessions on this journey that completed the goal. Only present with `goalId`',
+      type: 'number',
+      required: false,
     },
   }}
 />
@@ -232,7 +256,8 @@ var data = await response.Content.ReadAsStringAsync();
       "count": 420,
       "percentage": 2.73
     }
-  ]
+  ],
+  "totalSessions": 15394
 }
 ```
 
@@ -369,7 +394,8 @@ var data = await response.Content.ReadAsStringAsync();
       "count": 580,
       "percentage": 5.8
     }
-  ]
+  ],
+  "totalSessions": 10000
 }
 ```
 

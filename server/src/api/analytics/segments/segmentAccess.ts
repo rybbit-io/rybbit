@@ -1,10 +1,9 @@
-import type { Segment } from "@rybbit/shared";
+import { roleHasPermission, type Segment } from "@rybbit/shared";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { FastifyRequest } from "fastify";
 import { db } from "../../../db/postgres/postgres.js";
 import { segments, sites } from "../../../db/postgres/schema.js";
-import { getOrgMembership, isOrgAdmin } from "../../../lib/access.js";
-import { getIsUserAdmin, getUserHasAccessToSite } from "../../../lib/auth-utils.js";
+import { getUserOrgRole, getUserSiteRole } from "../../../lib/auth-utils.js";
 
 export type SegmentRow = typeof segments.$inferSelect;
 
@@ -17,11 +16,18 @@ export interface SegmentActor {
   userId: string | null;
   /** Session member of the site's org, a user API key with site access, or the org's own key. */
   hasSiteAccess: boolean;
-  /** Org admin/owner, system admin, or an organization-owned API key. */
-  isAdmin: boolean;
+  /** Holds segments:manage in the organization: edits org-wide segments and creates them. */
+  canManage: boolean;
+  /** Holds segments:manage on this site: edits anyone's segments for it. */
+  canManageSite: boolean;
 }
 
-export const NO_ACCESS_ACTOR: SegmentActor = { userId: null, hasSiteAccess: false, isAdmin: false };
+export const NO_ACCESS_ACTOR: SegmentActor = {
+  userId: null,
+  hasSiteAccess: false,
+  canManage: false,
+  canManageSite: false,
+};
 
 export async function getSiteOrganizationId(siteId: number): Promise<string | null> {
   const site = await db.query.sites.findFirst({
@@ -34,13 +40,15 @@ export async function getSiteOrganizationId(siteId: number): Promise<string | nu
 export async function resolveSegmentActor(
   request: FastifyRequest,
   siteId: number,
-  organizationId: string
+  organizationId: string,
+  // Writes decide on the role as it stands now, not this worker's cached copy.
+  { forWrite = false }: { forWrite?: boolean } = {}
 ): Promise<SegmentActor> {
   // Organization-owned API keys carry org-admin authority over their own
   // organization's sites and nothing else (see getSitesUserHasAccessTo).
   if (!request.user?.id && request.apiKeyOrganizationId) {
     const ownsSite = request.apiKeyOrganizationId === organizationId;
-    return { userId: null, hasSiteAccess: ownsSite, isAdmin: ownsSite };
+    return { userId: null, hasSiteAccess: ownsSite, canManage: ownsSite, canManageSite: ownsSite };
   }
 
   const userId: string | null = request.user?.id ?? null;
@@ -48,13 +56,17 @@ export async function resolveSegmentActor(
     return NO_ACCESS_ACTOR;
   }
 
-  const [hasSiteAccess, membership, isSystemAdmin] = await Promise.all([
-    getUserHasAccessToSite(request, siteId),
-    getOrgMembership(userId, organizationId),
-    getIsUserAdmin(request),
+  const [siteRole, orgRole] = await Promise.all([
+    getUserSiteRole(request, siteId, { fresh: forWrite }),
+    getUserOrgRole(request, organizationId),
   ]);
 
-  return { userId, hasSiteAccess, isAdmin: isSystemAdmin || isOrgAdmin(membership) };
+  return {
+    userId,
+    hasSiteAccess: siteRole !== null,
+    canManage: roleHasPermission(orgRole, "segments:manage"),
+    canManageSite: roleHasPermission(siteRole, "segments:manage"),
+  };
 }
 
 /** Anyone with site access reads every segment; everyone else reads public ones. */
@@ -62,9 +74,16 @@ export function canReadSegment(segment: Pick<SegmentRow, "isPublic">, actor: Seg
   return actor.hasSiteAccess || segment.isPublic;
 }
 
-/** Admins and owners edit any segment; members edit the ones they created. */
-export function canEditSegment(segment: Pick<SegmentRow, "userId">, actor: SegmentActor): boolean {
-  if (actor.isAdmin) {
+/**
+ * segments:manage in the organization edits org-wide segments; on the site, it
+ * edits anyone's segments for that site. Otherwise people edit the site
+ * segments they created.
+ */
+export function canEditSegment(segment: Pick<SegmentRow, "userId" | "siteId">, actor: SegmentActor): boolean {
+  if (segment.siteId === null) {
+    return actor.canManage;
+  }
+  if (actor.canManageSite) {
     return true;
   }
   return actor.hasSiteAccess && actor.userId !== null && segment.userId === actor.userId;

@@ -4,7 +4,6 @@ import { Filter, FilterParameter, FilterType } from "@rybbit/shared";
 import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, HelpCircle, Plus } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
-import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { Button } from "../../../../../components/ui/button";
 import { Checkbox } from "../../../../../components/ui/checkbox";
 import {
@@ -27,6 +26,7 @@ import {
   StringOperatorOptions,
 } from "./const";
 import { useOperatorLabel, useOperatorMenuLabel, useParameterLabel, validateRegex } from "./labels";
+import { useFilterValueOptions } from "./useFilterValueOptions";
 
 function RegexExamples() {
   const t = useExtracted();
@@ -86,11 +86,7 @@ function ValueStep({
   const needsTextInput = isNumeric || isRegex || isNumericComparison;
   const operatorOptions = isNumeric ? NumericOperatorOptions : StringOperatorOptions;
 
-  const { data, isFetching } = useMetric({
-    parameter,
-    limit: 1000,
-    useFilters: false,
-  });
+  const { data, isFetching } = useFilterValueOptions(parameter);
 
   const getValueLabel = (val: string | number) => {
     if (parameter === "country") return getCountryName(val as string);

@@ -20,22 +20,24 @@ Go to **Settings > Organization** and click the "Invite Member" button. Enter th
 <Step>
 ### Select the user's role
 
-You can assign the user one of three roles:
+You can assign any role up to your own (only owners can make owners):
 
-**Owners** have full access to all features including billing, organization deletion, and member management.
+- **Owner** — everything, including billing and deleting the organization
+- **Admin** — manages members, teams and sites, but not billing
+- **Editor** — configures sites (tracking settings, feature flags, experiments, imports, Search Console), but doesn't manage members
+- **Member** — views analytics and builds reports: goals, funnels, dashboards, and their own segments and annotations
+- **Viewer** — read-only
 
-**Admins** can manage members and access all sites, but cannot delete the organization or manage billing.
+See [Member Roles](/docs/organization-settings#member-roles) for the full list.
 
-**Members** can view analytics for assigned sites only. They cannot manage settings or other members.
+#### Restricting site access
 
-#### Restricting site access for members
+For editors, members and viewers you can restrict access to specific sites. Check "Restrict access to specific sites" and select the sites they should see. If you don't, they can see every site in your organization (except sites that belong to a [team](/docs/teams) they aren't on).
 
-When inviting a member, you can optionally restrict their access to specific sites. Check the "Restrict access to specific sites" option and select which sites the member should be able to view.
-
-If you don't enable this option, the member will have access to all sites in your organization.
+You can also pick a **role on these sites** to raise their role on the selected sites only. For example, invite a client as a **Viewer**, restricted to their own site, with **Editor** on that site: they can configure their site and nothing else. The site role only ever raises the organization role, never lowers it.
 
 <Callout type="info">
-  Site access restrictions only apply to members. Admins and owners always have full access to all sites.
+  Admins and owners always have access to every site, so site restrictions don't apply to them. A restricted member is treated as a viewer for anything that spans the whole organization, such as organization-wide segments.
 </Callout>
 </Step>
 
@@ -60,11 +62,11 @@ You can change a member's site access at any time after they've joined your orga
 
 1. Go to **Settings > Organization**
 2. Find the member in the list and click the edit (pencil) icon in the Actions column for that member
-3. Toggle "Restrict access to specific sites" and select the sites they should have access to
+3. Toggle "Restrict access to specific sites", select the sites they should have access to, and optionally a role on those sites
 4. Click "Save changes"
 
 The member will immediately only see the sites you've selected. If you disable the restriction, they'll regain access to all sites.
 
 <Callout type="info">
-  Currently, each user can only be in one organization.
+  A person can belong to several organizations, each with its own role. To hand a site over to someone so they can manage it in their own organization, [transfer the site](/docs/site-settings#transfer-site) instead.
 </Callout>

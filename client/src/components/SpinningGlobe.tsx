@@ -164,9 +164,14 @@ export function SpinningGlobe() {
 
     mapRef.current = map;
 
+    // The idle spin is decorative, so reduced-motion users get a still globe. The check must stay:
+    // Mapbox honors the setting by making easeTo instant, which fires "moveend" synchronously and
+    // would turn the moveend -> spinGlobe loop below into unbounded recursion.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
     // Spin globe function using easeTo for smooth animation
     const spinGlobe = () => {
-      if (!mapRef.current) return;
+      if (!mapRef.current || reducedMotion.matches) return;
       const zoom = mapRef.current.getZoom();
       if (!isUserInteractingRef.current && zoom < MAX_SPIN_ZOOM) {
         let distancePerSecond = 360 / SECONDS_PER_REVOLUTION;

@@ -60,29 +60,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            shared/package-lock.json
-            server/package-lock.json
-
-      # server depends on @rybbit/shared via `file:../shared`, which resolves to
-      # the package's built `dist/` — so shared must be built before install.
-      - name: Install and build shared
-        working-directory: shared
-        run: |
-          npm ci
-          npm run build
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install server dependencies
-        working-directory: server
-        run: npm ci --legacy-peer-deps
+        run: pnpm --filter rybbit-backend... install --frozen-lockfile
+
+      - name: Build server and shared
+        run: pnpm build:server
 
       - name: Run server tests
-        working-directory: server
-        run: npm run test:run
+        run: pnpm --filter rybbit-backend test:run
 
   client:
     name: Client
@@ -90,24 +83,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            shared/package-lock.json
-            client/package-lock.json
-
-      - name: Install and build shared
-        working-directory: shared
-        run: |
-          npm ci
-          npm run build
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install client dependencies
-        working-directory: client
-        run: npm ci --legacy-peer-deps
+        run: pnpm --filter client... install --frozen-lockfile
+
+      - name: Build shared
+        run: pnpm --filter @rybbit/shared build
 
       - name: Run client tests
-        working-directory: client
-        run: npm test
+        run: pnpm --filter client test:run
+
+      - name: Build client
+        run: pnpm --filter client build

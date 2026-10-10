@@ -1,6 +1,7 @@
 import { Rewind } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { GetSessionsResponse } from "../../api/analytics/endpoints";
+import { ErrorState } from "../ErrorState";
 import { NothingFound } from "../NothingFound";
 import { Pagination } from "../pagination";
 import { SessionCard, SessionCardSkeleton } from "./SessionCard";
@@ -8,6 +9,9 @@ import { SessionCard, SessionCardSkeleton } from "./SessionCard";
 interface SessionsListProps {
   sessions: GetSessionsResponse;
   isLoading: boolean;
+  /** A failed fetch shows an error with a retry, not "No sessions found". */
+  isError?: boolean;
+  onRetry?: () => void;
   page: number;
   onPageChange: (page: number) => void;
   hasNextPage: boolean;
@@ -21,6 +25,8 @@ interface SessionsListProps {
 export function SessionsList({
   sessions,
   isLoading,
+  isError,
+  onRetry,
   page,
   onPageChange,
   hasNextPage,
@@ -45,7 +51,9 @@ export function SessionsList({
         />
       </div>
 
-      {sessions.length === 0 && !isLoading && (
+      {isError && !isLoading && sessions.length === 0 && <ErrorState title="" message="" refetch={onRetry} />}
+
+      {sessions.length === 0 && !isLoading && !isError && (
         <NothingFound icon={<Rewind className="w-10 h-10" />} title={t("No sessions found")} description={emptyMessage || t("Try a different date range or filter")} />
       )}
 
