@@ -29,6 +29,8 @@ export type Event = {
   device_type: string;
   type: string;
   traits?: Record<string, unknown> | null;
+  device_model: string;
+  app_version: string;
 };
 
 // Response types for cursor-based API

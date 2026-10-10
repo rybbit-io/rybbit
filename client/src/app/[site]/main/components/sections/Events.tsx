@@ -11,6 +11,7 @@ import { OutboundLinksList } from "../../../events/components/OutboundLinksList"
 import { TabbedSectionCard, type TabbedSectionItem } from "../../../components/shared/TabbedSectionCard";
 import { AutocaptureEventsDialogBody } from "./AutocaptureEventsDialog";
 import { OutboundLinksDialogBody } from "./OutboundLinksDialog";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 
 type Tab = "events" | "outbound" | "buttons" | "forms" | "copies";
 
@@ -119,6 +120,8 @@ function AutocaptureDialogContent({
 
 export function Events() {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
 
   const tabs: TabbedSectionItem<Tab>[] = [
     {
@@ -126,13 +129,21 @@ export function Events() {
       label: t("Custom Events"),
       content: <EventsContent />,
     },
-    {
+  ];
+
+  if (!isApp) {
+    tabs.push({
       value: "outbound",
       label: t("Outbound"),
       content: <OutboundLinksContent />,
       dialogContent: <OutboundLinksDialogContent />,
       dialogTitle: t("Outbound Links"),
-    },
+    });
+  }
+
+  // Autocapture tabs apply to both platforms — the native SDKs emit
+  // button_click/form_submit/copy events just like the web script does.
+  tabs.push(
     {
       value: "buttons",
       label: t("Buttons"),
@@ -174,8 +185,8 @@ export function Events() {
         />
       ),
       dialogTitle: t("Copies"),
-    },
-  ];
+    }
+  );
 
   return <TabbedSectionCard defaultValue="events" tabs={tabs} className="h-[483px]" />;
 }

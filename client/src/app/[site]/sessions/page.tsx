@@ -10,6 +10,7 @@ import { AnalysisBar } from "@/components/site/AnalysisBar";
 import { useReplayAvailable } from "@/hooks/useReplayAvailable";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { SESSION_PAGE_FILTERS } from "@/lib/filterGroups";
+import { useSiteFilters } from "@/hooks/useSiteFilters";
 import { useComparisonEnabled, useStore } from "@/lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { RangeChip } from "./components/RangeChip";
@@ -79,7 +80,7 @@ export default function SessionsPage() {
   return (
     <DisabledOverlay message={t("Sessions")} featurePath="sessions">
       <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
-        <SubHeader availableFilters={SESSION_PAGE_FILTERS} />
+        <SubHeader availableFilters={useSiteFilters(SESSION_PAGE_FILTERS)} />
         <SessionsStatBand
           summary={summary}
           previous={comparisonEnabled ? previousSummary : undefined}

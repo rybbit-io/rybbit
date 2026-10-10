@@ -31,6 +31,8 @@ export type GetEventsResponse = {
   device_type: string;
   type: string;
   page_title: string;
+  device_model: string;
+  app_version: string;
 }[];
 
 interface GetEventsRequest {
@@ -69,7 +71,9 @@ const EVENT_COLUMNS = `
   screen_width,
   screen_height,
   device_type,
-  type
+  type,
+  device_model,
+  app_version
 `;
 
 // Everything a visitor does, which leaves out only the web-vitals rows. Errors

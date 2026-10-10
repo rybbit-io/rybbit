@@ -222,6 +222,7 @@ export default function Home() {
           paginatedSites?.map(site => ({
             ...site,
             tags: site.tags ?? [],
+            siteType: site.type,
             canEditTags: site.permissions?.includes("sites:configure") ?? false,
           })) ?? []
         }

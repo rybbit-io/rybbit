@@ -2,11 +2,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { addFilter, getTimezone } from "@/lib/store";
 import { FilterParameter } from "@rybbit/shared";
-import { ArrowRight, ChevronDown, ChevronRight, Video } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Smartphone, Video } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { memo, useCallback, useState } from "react";
+import { useGetSite } from "../../api/admin/hooks/useSites";
 import { GetSessionsResponse } from "../../api/analytics/endpoints";
 import { useSitePath } from "@/app/[site]/sessions/components/useSitePath";
 import { useDateTimeFormat } from "@/hooks/useDateTimeFormat";
@@ -38,6 +39,8 @@ interface SessionCardProps {
 export function SessionCard({ session, onClick, userId, expandedByDefault, highlightedEventTimestamp }: SessionCardProps) {
   const sitePath = useSitePath();
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const { hour12, formatDateTime } = useDateTimeFormat();
   const [expanded, setExpanded] = useState(expandedByDefault || false);
   const [replayDrawerOpen, setReplayDrawerOpen] = useState(false);
@@ -119,23 +122,27 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
                 onClick={e => handleFilterClick(e, "country", session.country)}
               />
             )}
-            <BrowserTooltipIcon
-              browser={session.browser || "Unknown"}
-              browser_version={session.browser_version}
-              onClick={e => handleFilterClick(e, "browser", session.browser)}
-            />
+            {!isApp && (
+              <BrowserTooltipIcon
+                browser={session.browser || "Unknown"}
+                browser_version={session.browser_version}
+                onClick={e => handleFilterClick(e, "browser", session.browser)}
+              />
+            )}
             <OperatingSystemTooltipIcon
               operating_system={session.operating_system || ""}
               operating_system_version={session.operating_system_version}
               onClick={e => handleFilterClick(e, "operating_system", session.operating_system)}
             />
-            <DeviceTypeTooltipIcon
-              device_type={session.device_type || ""}
-              screen_width={session.screen_width}
-              screen_height={session.screen_height}
-              onClick={e => handleFilterClick(e, "device_type", session.device_type)}
-            />
-            {session.has_replay === 1 && (
+            {!isApp && (
+              <DeviceTypeTooltipIcon
+                device_type={session.device_type || ""}
+                screen_width={session.screen_width}
+                screen_height={session.screen_height}
+                onClick={e => handleFilterClick(e, "device_type", session.device_type)}
+              />
+            )}
+            {!isApp && session.has_replay === 1 && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Badge
@@ -158,7 +165,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
                   <span>{formatter(session.pageviews)}</span>
                 </Badge>
               </TooltipTrigger>
-              <TooltipContent>{t("Pageviews")}</TooltipContent>
+              <TooltipContent>{isApp ? t("Screenviews") : t("Pageviews")}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -169,11 +176,33 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
               </TooltipTrigger>
               <TooltipContent>{t("Events")}</TooltipContent>
             </Tooltip>
-            <Channel
-              channel={session.channel}
-              referrer={session.referrer}
-              onClick={e => handleFilterClick(e, "channel", session.channel)}
-            />
+            {isApp ? (
+              <>
+                {session.device_model && (
+                  <Badge
+                    className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
+                    onClick={e => handleFilterClick(e, "device_model", session.device_model)}
+                  >
+                    <Smartphone className="w-3 h-3" />
+                    <span>{session.device_model}</span>
+                  </Badge>
+                )}
+                {session.app_version && (
+                  <Badge
+                    className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
+                    onClick={e => handleFilterClick(e, "app_version", session.app_version)}
+                  >
+                    <span>v{session.app_version}</span>
+                  </Badge>
+                )}
+              </>
+            ) : (
+              <Channel
+                channel={session.channel}
+                referrer={session.referrer}
+                onClick={e => handleFilterClick(e, "channel", session.channel)}
+              />
+            )}
           </div>
         </div>
 
@@ -209,23 +238,27 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
                 onClick={e => handleFilterClick(e, "country", session.country)}
               />
             )}
-            <BrowserTooltipIcon
-              browser={session.browser || "Unknown"}
-              browser_version={session.browser_version}
-              onClick={e => handleFilterClick(e, "browser", session.browser)}
-            />
+            {!isApp && (
+              <BrowserTooltipIcon
+                browser={session.browser || "Unknown"}
+                browser_version={session.browser_version}
+                onClick={e => handleFilterClick(e, "browser", session.browser)}
+              />
+            )}
             <OperatingSystemTooltipIcon
               operating_system={session.operating_system || ""}
               operating_system_version={session.operating_system_version}
               onClick={e => handleFilterClick(e, "operating_system", session.operating_system)}
             />
-            <DeviceTypeTooltipIcon
-              device_type={session.device_type || ""}
-              screen_width={session.screen_width}
-              screen_height={session.screen_height}
-              onClick={e => handleFilterClick(e, "device_type", session.device_type)}
-            />
-            {session.has_replay === 1 && (
+            {!isApp && (
+              <DeviceTypeTooltipIcon
+                device_type={session.device_type || ""}
+                screen_width={session.screen_width}
+                screen_height={session.screen_height}
+                onClick={e => handleFilterClick(e, "device_type", session.device_type)}
+              />
+            )}
+            {!isApp && session.has_replay === 1 && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Badge
@@ -248,7 +281,7 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
                   <span>{formatter(session.pageviews)}</span>
                 </Badge>
               </TooltipTrigger>
-              <TooltipContent>{t("Pageviews")}</TooltipContent>
+              <TooltipContent>{isApp ? t("Screenviews") : t("Pageviews")}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -259,11 +292,33 @@ export function SessionCard({ session, onClick, userId, expandedByDefault, highl
               </TooltipTrigger>
               <TooltipContent>{t("Events")}</TooltipContent>
             </Tooltip>
-            <Channel
-              channel={session.channel}
-              referrer={session.referrer}
-              onClick={e => handleFilterClick(e, "channel", session.channel)}
-            />
+            {isApp ? (
+              <>
+                {session.device_model && (
+                  <Badge
+                    className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
+                    onClick={e => handleFilterClick(e, "device_model", session.device_model)}
+                  >
+                    <Smartphone className="w-3 h-3" />
+                    <span>{session.device_model}</span>
+                  </Badge>
+                )}
+                {session.app_version && (
+                  <Badge
+                    className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer hover:opacity-70"
+                    onClick={e => handleFilterClick(e, "app_version", session.app_version)}
+                  >
+                    <span>v{session.app_version}</span>
+                  </Badge>
+                )}
+              </>
+            ) : (
+              <Channel
+                channel={session.channel}
+                referrer={session.referrer}
+                onClick={e => handleFilterClick(e, "channel", session.channel)}
+              />
+            )}
           </div>
 
           {/* Pages section with tooltips for long paths */}

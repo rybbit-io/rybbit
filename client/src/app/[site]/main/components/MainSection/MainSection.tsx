@@ -1,5 +1,6 @@
 "use client";
 import { Card, CardContent, CardLoader } from "@/components/ui/card";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { DateTime } from "luxon";
 import { Tilt_Warp } from "next/font/google";
 import { AlertCircle, MessageSquarePlus } from "lucide-react";
@@ -32,6 +33,8 @@ export function MainSection() {
   const { isWhiteLabel } = useWhiteLabel();
   const session = authClient.useSession();
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
 
   const { selectedStat, time, site, bucket } = useStore();
 
@@ -42,11 +45,11 @@ export function MainSection() {
   const getSelectedStatLabel = () => {
     switch (selectedStat) {
       case "pageviews":
-        return t("Pageviews");
+        return isApp ? t("Screenviews") : t("Pageviews");
       case "sessions":
         return t("Sessions");
       case "pages_per_session":
-        return t("Pages per Session");
+        return isApp ? t("Screens per Session") : t("Pages per Session");
       case "bounce_rate":
         return t("Bounce Rate");
       case "session_duration":

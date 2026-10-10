@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarCheck, Clock, Files, Target } from "lucide-react";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { useExtracted } from "next-intl";
 import { ReactNode } from "react";
 import { useUserGoals, useUserSummary } from "../../../../../api/analytics/hooks/useUserProfile";
@@ -25,6 +26,8 @@ const OutOf = ({ children }: { children: ReactNode }) => (
  */
 export function UserStatBand({ userId }: { userId: string }) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isMobileSite = siteMetadata?.type === "mobile";
   const zone = useTimezone();
   const time = useStore(state => state.time);
   const previousTime = useStore(state => state.previousTime);
@@ -74,7 +77,7 @@ export function UserStatBand({ userId }: { userId: string }) {
     {
       id: "pageviews",
       icon: <EventTypeIcon type="pageview" className="h-3 w-3" />,
-      label: t("Pageviews"),
+      label: isMobileSite ? t("Screenviews") : t("Pageviews"),
       value: count(current?.pageviews),
       title: exact(current?.pageviews),
       delta: percentDelta(current?.pageviews, previous?.pageviews),

@@ -7,6 +7,10 @@ export function getParameterNameLabel(parameter: FilterParameter) {
       return "Country";
     case "device_type":
       return "Device Type";
+    case "device_model":
+      return "Device Model";
+    case "app_version":
+      return "App Version";
     case "operating_system":
       return "OS";
     case "browser":

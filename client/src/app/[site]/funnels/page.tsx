@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCanOnSite } from "@/hooks/usePermissions";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { FUNNEL_PAGE_FILTERS } from "@/lib/filterGroups";
+import { useSiteFilters } from "@/hooks/useSiteFilters";
 import { useComparisonEnabled, useStore, useTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { SubHeader } from "../components/SubHeader/SubHeader";
@@ -124,7 +125,7 @@ export default function FunnelsPage() {
   return (
     <DisabledOverlay message="Funnels" featurePath="funnels">
       <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
-        <SubHeader availableFilters={FUNNEL_PAGE_FILTERS} />
+        <SubHeader availableFilters={useSiteFilters(FUNNEL_PAGE_FILTERS)} />
 
         {(isLoading || hasFunnels) && (
           <>

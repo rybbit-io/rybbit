@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCanOnSite } from "@/hooks/usePermissions";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { JOURNEY_PAGE_FILTERS } from "@/lib/filterGroups";
+import { useSiteFilters } from "@/hooks/useSiteFilters";
 import { useComparisonEnabled, useStore } from "@/lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import {
@@ -199,7 +200,7 @@ export default function JourneysPage() {
   return (
     <DisabledOverlay message="User Journeys" featurePath="journeys">
       <div className="mx-auto max-w-[1300px] space-y-3 p-2 md:p-4">
-        <SubHeader availableFilters={JOURNEY_PAGE_FILTERS} />
+        <SubHeader availableFilters={useSiteFilters(JOURNEY_PAGE_FILTERS)} />
 
         <JourneyStats
           summary={summary}

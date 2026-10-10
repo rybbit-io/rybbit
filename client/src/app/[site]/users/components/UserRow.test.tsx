@@ -98,6 +98,8 @@ const base: UsersResponse = {
   events: 5,
   sessions: 3,
   last_seen: "2026-09-30 10:00:00",
+  device_model: "",
+  app_version: "",
   first_seen: "2026-09-01 10:00:00",
 };
 const identified: UsersResponse = {

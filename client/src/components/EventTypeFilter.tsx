@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { EVENT_TYPE_CONFIG, EventType } from "@/lib/events";
 import { EventTypeIcon } from "./EventIcons";
 import { ToggleChip } from "./ToggleChip";
+import { useGetSite } from "../api/admin/hooks/useSites";
 
 interface EventTypeFilterProps {
   visibleTypes: Set<string>;
@@ -19,9 +20,11 @@ export function EventTypeFilter({
   events,
 }: EventTypeFilterProps) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
 
   const translatedLabels: Record<string, string> = {
-    Pageview: t("Pageview"),
+    Pageview: isApp ? t("Screenview") : t("Pageview"),
     Event: t("Event"),
     Outbound: t("Outbound"),
     "Button Click": t("Button Click"),

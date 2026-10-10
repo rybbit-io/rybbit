@@ -1,6 +1,7 @@
 "use client";
 
 import { useExtracted } from "next-intl";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { useQuery } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import Link from "next/link";
@@ -29,6 +30,8 @@ interface EventDetailsSheetProps {
 
 export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDetailsSheetProps) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const { singular: typeLabels } = useEventTypeLabels();
   // Set on a private-link view, so the user link stays inside it.
   const privateKey = useStore(state => state.privateKey);
@@ -108,18 +111,22 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
                     <span className="text-neutral-500 dark:text-neutral-400">{t("Session ID")}</span>
                     {truncateString(event.session_id, 24)}
                   </div>
+                  {!isApp && (
+                    <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
+                      <span className="text-neutral-500 dark:text-neutral-400">{t("Hostname")}</span>
+                      <span className="truncate max-w-[280px]">{event.hostname || "-"}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
-                    <span className="text-neutral-500 dark:text-neutral-400">{t("Hostname")}</span>
-                    <span className="truncate max-w-[280px]">{event.hostname || "-"}</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
-                    <span className="text-neutral-500 dark:text-neutral-400">{t("Path")}</span>
+                    <span className="text-neutral-500 dark:text-neutral-400">{isApp ? t("Screen") : t("Path")}</span>
                     <span className="truncate max-w-[280px]">{buildEventPath(event) || "-"}</span>
                   </div>
-                  <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
-                    <span className="text-neutral-500 dark:text-neutral-400">{t("Referrer")}</span>
-                    <span className="truncate max-w-[280px]">{event.referrer || "-"}</span>
-                  </div>
+                  {!isApp && (
+                    <div className="flex items-center justify-between border-b border-neutral-50 dark:border-neutral-850 pb-1.5">
+                      <span className="text-neutral-500 dark:text-neutral-400">{t("Referrer")}</span>
+                      <span className="truncate max-w-[280px]">{event.referrer || "-"}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="space-y-3 flex-1">

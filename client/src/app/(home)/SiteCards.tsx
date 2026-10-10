@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import { hasRangeTimes } from "@/lib/time";
 import { BatchedSiteCard, SiteCard, SiteCardProps } from "./SiteCard";
 
-type SiteFields = "siteId" | "name" | "domain" | "tags" | "canEditTags";
+type SiteFields = "siteId" | "name" | "domain" | "tags" | "canEditTags" | "siteType";
 
 interface SiteCardsProps extends Omit<SiteCardProps, SiteFields> {
   organizationId: string;

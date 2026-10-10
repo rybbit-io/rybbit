@@ -558,7 +558,8 @@ export function PagesTable({
     maxViews: rows.reduce((max, row) => Math.max(max, row.pageviews), 0),
     showChange,
     grouped: group === "section",
-    domain: siteMetadata?.domain,
+    // Mobile screens have no URL to open, so the row stays plain text.
+    domain: (siteMetadata?.type ?? "web") === "web" ? siteMetadata?.domain : undefined,
     expanded,
     onToggleSection: section => {
       const next = new Set(expanded);

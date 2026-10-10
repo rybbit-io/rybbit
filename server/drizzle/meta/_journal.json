@@ -176,6 +176,13 @@
       "when": 1791523545363,
       "tag": "0024_sites_id_index",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791629602631,
+      "tag": "0025_site_icon",
+      "breakpoints": true
     }
   ]
 }
