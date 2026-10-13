@@ -209,6 +209,11 @@ describe("Better Auth 1.7 migration and OAuth integration", () => {
     expect(hosted.status, await hosted.clone().text()).toBe(201);
     expect((await hosted.json()).application_type).toBe("web");
 
+    // The provider's URL parser strips embedded tabs, so this is https too.
+    const normalized = await register({ redirect_uris: ["ht\ttps://client.example.com/callback"] });
+    expect(normalized.status, await normalized.clone().text()).toBe(201);
+    expect((await normalized.json()).application_type).toBe("web");
+
     // Inference never widens what is accepted: plain http off loopback is
     // still refused, and an explicit "web" keeps the strict rule.
     const remoteHttp = await register({ redirect_uris: ["http://client.example.com/callback"] });

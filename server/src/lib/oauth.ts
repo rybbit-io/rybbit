@@ -13,10 +13,16 @@ export function getAuthBaseUrl(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 function hasNonHttpsRedirectUri(redirectUris: unknown): boolean {
-  return (
-    Array.isArray(redirectUris) &&
-    redirectUris.some(uri => typeof uri === "string" && !uri.trim().toLowerCase().startsWith("https:"))
-  );
+  if (!Array.isArray(redirectUris)) return false;
+  return redirectUris.some(uri => {
+    // Parse like the provider does, so the scheme seen here is the one it
+    // validates. Unparseable entries are left for the provider to reject.
+    try {
+      return typeof uri === "string" && new URL(uri).protocol !== "https:";
+    } catch {
+      return false;
+    }
+  });
 }
 
 export function createOAuthPlugins(baseUrl: string) {
