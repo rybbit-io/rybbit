@@ -1,6 +1,6 @@
 import { mcp } from "@better-auth/mcp";
 import { getOAuthProviderApi } from "@better-auth/oauth-provider";
-import { createAuthEndpoint } from "better-auth/api";
+import { createAuthEndpoint, createAuthMiddleware } from "better-auth/api";
 import { jwt } from "better-auth/plugins";
 import { z } from "zod";
 import { ALL_SCOPE_STRINGS, OIDC_STANDARD_SCOPES } from "./scopes.js";
@@ -10,6 +10,13 @@ export function getAuthBaseUrl(env: NodeJS.ProcessEnv = process.env): string {
     .trim()
     .replace(/\/+$/, "")
     .replace(/\/api\/auth$/, "");
+}
+
+function hasNonHttpsRedirectUri(redirectUris: unknown): boolean {
+  return (
+    Array.isArray(redirectUris) &&
+    redirectUris.some(uri => typeof uri === "string" && !uri.trim().toLowerCase().startsWith("https:"))
+  );
 }
 
 export function createOAuthPlugins(baseUrl: string) {
@@ -45,6 +52,22 @@ export function createOAuthPlugins(baseUrl: string) {
     ...(supportsOAuth ? [jwt(), mcp(options)] : []),
     {
       id: "rybbit-oauth",
+      hooks: {
+        before: [
+          {
+            matcher: (ctx: { path?: string }) => ctx.path === "/oauth2/register",
+            // The provider defaults an omitted application_type to "web",
+            // which forbids http://localhost callbacks. Most MCP clients
+            // register a loopback callback and never send the field, so infer
+            // "native" for them. Native validation still vets every URI.
+            handler: createAuthMiddleware(async ctx => {
+              const body = ctx.body as { application_type?: unknown; redirect_uris?: unknown } | undefined;
+              if (!body || body.application_type !== undefined || !hasNonHttpsRedirectUri(body.redirect_uris)) return;
+              return { context: { body: { ...body, application_type: "native" } } };
+            }),
+          },
+        ],
+      },
       endpoints: {
         // Keep verification inside a Better Auth endpoint context so the
         // provider checks signatures, expiry, linked sessions and client state.
