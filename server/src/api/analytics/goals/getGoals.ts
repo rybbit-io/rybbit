@@ -132,7 +132,7 @@ export const getGoals = analyticsRoute<GetGoalsRequest>(
       .from(goals)
       .where(eq(goals.siteId, Number(siteId)));
 
-    const totalGoals = totalGoalsResult[0]?.count || 0;
+    const totalGoals = Number(totalGoalsResult[0]?.count ?? 0);
     const totalPages = Math.ceil(totalGoals / pageSizeNumber);
 
     // If no goals exist, return early with empty data
