@@ -119,7 +119,7 @@ yourdomain.com {
             header_up X-Forwarded-For {remote_host}
             header_up Content-Type {header.Content-Type}
         }
-        rewrite * /api/session-replay/record{path}
+        uri replace /analytics/session-replay/record /api/session-replay/record
     }
 
     # Site configuration
@@ -129,7 +129,7 @@ yourdomain.com {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
         }
-        rewrite * /api/site/tracking-config{path}
+        uri replace /analytics/site/tracking-config /api/site/tracking-config
     }
 }
 ```
@@ -303,7 +303,7 @@ yourdomain.com {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
         }
-        rewrite * /api/site/tracking-config{path}
+        uri replace /analytics/site/tracking-config /api/site/tracking-config
         header Cache-Control "public, max-age=300"
     }
 
@@ -358,7 +358,7 @@ yourdomain.com {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
         }
-        rewrite * /api/session-replay/record{path}
+        uri replace /analytics/session-replay/record /api/session-replay/record
     }
 }
 ```
