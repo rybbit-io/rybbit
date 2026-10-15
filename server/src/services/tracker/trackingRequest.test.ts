@@ -1,5 +1,5 @@
 import type { FastifyRequest } from "fastify";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ValidatedTrackingPayload } from "./trackingPayload.js";
 
 const mocks = vi.hoisted(() => ({
@@ -44,6 +44,26 @@ const payload = (overrides: Record<string, unknown> = {}) =>
   ({ type: "pageview", site_id: "site_abc", ...overrides }) as ValidatedTrackingPayload;
 
 describe("resolveTrackingRequest", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("attaches Cloudflare geo only from the allowlisted socket peer", async () => {
+    vi.stubEnv("CLOUDFLARE_GEO_TRUSTED_PROXIES", "10.0.0.2");
+    const incoming = request({ "cf-connecting-ip": "203.0.113.8", "cf-ipcountry": "TW" });
+    Object.assign(incoming, { raw: { socket: { remoteAddress: "10.0.0.2" } } });
+    expect((await resolveTrackingRequest(incoming, payload()))?.location?.countryIso).toBe("TW");
+    Object.assign(incoming, { raw: { socket: { remoteAddress: "10.0.0.3" } } });
+    expect((await resolveTrackingRequest(incoming, payload()))?.location).toBeNull();
+  });
+
+  it("does not geolocate server-side events using the SDK server's headers", async () => {
+    vi.stubEnv("CLOUDFLARE_GEO_TRUSTED_PROXIES", "10.0.0.2");
+    mocks.checkApiKey.mockResolvedValue({ valid: true, statements: { ingest: ["write"] } });
+    const incoming = request({ authorization: "Bearer test", "cf-connecting-ip": "203.0.113.8", "cf-ipcountry": "TW" });
+    Object.assign(incoming, { raw: { socket: { remoteAddress: "10.0.0.2" } } });
+    const resolved = await resolveTrackingRequest(incoming, payload());
+    expect(resolved?.trustedServerSideIngestion).toBe(true);
+    expect(resolved?.location).toBeNull();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getConfig.mockResolvedValue(site);
