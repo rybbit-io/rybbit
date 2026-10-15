@@ -86,6 +86,13 @@ function createId() {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function slugifyWhileTyping(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+/, "");
+}
+
 function slugify(value: string) {
   return value
     .trim()
@@ -350,6 +357,8 @@ export function CreateExperimentWizard({
   const [flagKeyTouched, setFlagKeyTouched] = useState(false);
   const [goalNameTouched, setGoalNameTouched] = useState(false);
   const isEditing = !!experiment;
+  // Visitors are already assigned by this flag, so the server keeps it once started.
+  const assignmentLocked = !!experiment && experiment.status !== "draft";
 
   const usedFlagIds = useMemo(
     () =>
@@ -359,7 +368,11 @@ export function CreateExperimentWizard({
     [experiment?.experimentId, experiments]
   );
   const availableFlags = useMemo(
-    () => (flags || []).filter(flag => flag.flagType === "multivariate" && !usedFlagIds.has(flag.flagId)),
+    // Server-only flags never reach the tracking script, so they can't record exposures.
+    () =>
+      (flags || []).filter(
+        flag => flag.flagType === "multivariate" && flag.runtime !== "server" && !usedFlagIds.has(flag.flagId)
+      ),
     [flags, usedFlagIds]
   );
   const selectedFlag =
@@ -561,7 +574,7 @@ export function CreateExperimentWizard({
         const createdFlag = await createFeatureFlagMutation.mutateAsync({
           key: form.flagKey.trim(),
           description: form.flagDescription.trim() || `Assignment flag for ${form.name.trim()}`,
-          enabled: true,
+          enabled: false,
           runtime: "client",
           flagType: "multivariate",
           payload: null,
@@ -639,7 +652,7 @@ export function CreateExperimentWizard({
       let flagKey = selectedFlag?.key || form.flagKey.trim();
       let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
 
-      if (form.assignmentMode === "new") {
+      if (form.assignmentMode === "new" && !assignmentLocked) {
         const variants: FeatureFlagVariant[] = form.variants.map(variant => ({
           key: variant.key.trim(),
           name: variant.name.trim() || undefined,
@@ -649,7 +662,7 @@ export function CreateExperimentWizard({
         const createdFlag = await createFeatureFlagMutation.mutateAsync({
           key: form.flagKey.trim(),
           description: form.flagDescription.trim() || `Assignment flag for ${form.name.trim()}`,
-          enabled: true,
+          enabled: false,
           runtime: "client",
           flagType: "multivariate",
           payload: null,
@@ -752,6 +765,20 @@ export function CreateExperimentWizard({
       );
     }
 
+    if (step === "assignment" && assignmentLocked && experiment) {
+      return (
+        <div className="grid gap-1.5">
+          <Label>{t("Assignment flag")}</Label>
+          <div className="rounded-md border border-neutral-150 bg-neutral-50 px-3 py-2 font-mono text-sm text-neutral-800 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-100">
+            {experiment.featureFlag.key}
+          </div>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            {t("The flag can't change once the experiment has started, because visitors are already assigned.")}
+          </p>
+        </div>
+      );
+    }
+
     if (step === "assignment") {
       const rolloutTotal = form.variants.reduce((sum, variant) => sum + Number(variant.rolloutPercentage || 0), 0);
 
@@ -805,8 +832,9 @@ export function CreateExperimentWizard({
                     value={form.flagKey}
                     onChange={event => {
                       setFlagKeyTouched(true);
-                      updateForm("flagKey", slugify(event.target.value));
+                      updateForm("flagKey", slugifyWhileTyping(event.target.value));
                     }}
+                    onBlur={() => updateForm("flagKey", slugify(form.flagKey))}
                     placeholder="checkout_cta"
                     className="font-mono"
                   />
@@ -856,7 +884,8 @@ export function CreateExperimentWizard({
                     <div key={variant.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_2rem] gap-2">
                       <Input
                         value={variant.key}
-                        onChange={event => updateVariant(variant.id, "key", slugify(event.target.value))}
+                        onChange={event => updateVariant(variant.id, "key", slugifyWhileTyping(event.target.value))}
+                        onBlur={() => updateVariant(variant.id, "key", slugify(variant.key))}
                         placeholder="variant_a"
                         className="font-mono"
                       />
@@ -968,14 +997,14 @@ export function CreateExperimentWizard({
                   selected={form.goalType === "path"}
                   icon={<Target className="h-4 w-4" />}
                   title={t("Page goal")}
-                  description={t("Count sessions that reach a URL path.")}
+                  description={t("Count visitors that reach a URL path.")}
                   onClick={() => updateForm("goalType", "path")}
                 />
                 <WizardChoice
                   selected={form.goalType === "event"}
                   icon={<MousePointerClick className="h-4 w-4" />}
                   title={t("Event goal")}
-                  description={t("Count sessions where your app fires a named event.")}
+                  description={t("Count visitors for whom your app fires a named event.")}
                   onClick={() => updateForm("goalType", "event")}
                 />
               </div>
@@ -1078,7 +1107,7 @@ window.rybbit.onReady((rybbit) => {
         ) : implementationState.goalType === "path" ? (
           <p className="rounded-md border border-neutral-150 bg-neutral-50 p-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
             {t(
-              "No conversion event code is needed for this path goal. Rybbit will count sessions that reach {goalLabel}.",
+              "No conversion event code is needed for this path goal. Rybbit will count visitors that reach {goalLabel}.",
               {
                 goalLabel: implementationState.goalLabel || "",
               }

@@ -713,9 +713,13 @@
         return "";
       }
     }
+    isUnassignedVariant(assignment) {
+      return assignment.flagType === "multivariate" && typeof assignment.value !== "string";
+    }
     getFeatureFlagEventPayload() {
       const payload = {};
       for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+        if (this.isUnassignedVariant(assignment)) continue;
         payload[key] = this.serializeFeatureFlagValue(assignment.value);
       }
       return payload;
@@ -836,6 +840,9 @@
       if (Object.keys(featureFlagPayload).length > 0) {
         payload.feature_flags = featureFlagPayload;
       }
+      if (this.config.featureFlagsEnabled) {
+        payload.visitor_id = this.config.visitorId;
+      }
       return payload;
     }
     async sendTrackingData(payload) {
@@ -901,7 +908,7 @@
     }
     getFeatureFlag(key, fallback) {
       const assignment = this.config.featureFlags?.[key];
-      if (!assignment) {
+      if (!assignment || this.isUnassignedVariant(assignment)) {
         return fallback;
       }
       const exposureKey = `${key}:${assignment.version}:${this.serializeFeatureFlagValue(assignment.value)}`;

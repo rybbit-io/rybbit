@@ -30,6 +30,17 @@ export function getDuplicateExperimentMessage(error: unknown) {
   return null;
 }
 
+// Exposures, event tags and visitor ids all come from the tracking script,
+// which only receives client-evaluated flags.
+export const SERVER_ONLY_FLAG_ERROR =
+  "Experiments need a flag evaluated on the client. Server-only flags aren't sent to the tracking script, so no exposures would be recorded.";
+
+export function experimentFlagError(flag: Pick<FeatureFlagRecord, "flagType" | "runtime">) {
+  if (flag.flagType !== "multivariate") return "Experiments require a multivariate feature flag";
+  if (flag.runtime === "server") return SERVER_ONLY_FLAG_ERROR;
+  return null;
+}
+
 export async function validateExperimentReferences(
   siteId: number,
   body: Pick<ExperimentBody, "featureFlagId" | "primaryGoalId">
@@ -49,8 +60,9 @@ export async function validateExperimentReferences(
     return { error: "Feature flag not found" as const };
   }
 
-  if (flag.flagType !== "multivariate") {
-    return { error: "Experiments require a multivariate feature flag" as const };
+  const flagError = experimentFlagError(flag);
+  if (flagError) {
+    return { error: flagError };
   }
 
   if (body.primaryGoalId && !goal) {
@@ -58,6 +70,28 @@ export async function validateExperimentReferences(
   }
 
   return { flag, goal };
+}
+
+/**
+ * Changes an update may not make once an experiment is under way: its flag's
+ * assignment and the rollout are only kept in step at the status transitions.
+ */
+export function experimentUpdateError(
+  existing: Pick<ExperimentRecord, "status" | "featureFlagId" | "winningVariant">,
+  body: Partial<Pick<ExperimentBody, "status" | "featureFlagId" | "winningVariant">>
+) {
+  if (existing.status === "completed" && body.status !== undefined && body.status !== "completed") {
+    return "A completed experiment can't be reopened: its flag now serves the rolled-out variant. Start a new experiment to test again.";
+  }
+  if (existing.status !== "draft" && body.featureFlagId !== undefined && body.featureFlagId !== existing.featureFlagId) {
+    return "The flag can't change once the experiment has started, because visitors are already assigned. Start a new experiment to test a different flag.";
+  }
+  const isCompleting = body.status === "completed" && existing.status !== "completed";
+  const winner = body.winningVariant === undefined ? undefined : body.winningVariant?.trim() || null;
+  if (!isCompleting && winner !== undefined && winner !== existing.winningVariant) {
+    return "The winning variant is chosen when completing the experiment.";
+  }
+  return null;
 }
 
 export function timestampsForStatus(status: ExperimentStatus, existing?: ExperimentRecord) {
@@ -130,18 +164,21 @@ export function buildExperimentResults(variants: string[], rows: ExperimentResul
 
   const controlVariant = getControlVariant(allVariants, rows);
   const controlRow = controlVariant ? resultMap.get(controlVariant) : undefined;
-  const controlRate = controlRow && controlRow.sessions > 0 ? controlRow.conversions / controlRow.sessions : null;
+  const controlUnits = Number(controlRow?.units ?? 0);
+  const controlRate = controlUnits > 0 ? Number(controlRow?.conversions ?? 0) / controlUnits : null;
 
   return allVariants.map(variant => {
     const row = resultMap.get(variant);
-    const sessions = row?.sessions ?? 0;
-    const exposures = row?.exposures ?? 0;
-    const conversions = row?.conversions ?? 0;
-    const conversionRate = sessions > 0 ? conversions / sessions : 0;
+    const units = Number(row?.units ?? 0);
+    const sessions = Number(row?.sessions ?? 0);
+    const exposures = Number(row?.exposures ?? 0);
+    const conversions = Number(row?.conversions ?? 0);
+    const conversionRate = units > 0 ? conversions / units : 0;
     const lift = controlRate && controlRate > 0 ? (conversionRate - controlRate) / controlRate : null;
 
     return {
       variant,
+      units,
       sessions,
       exposures,
       conversions,
@@ -150,4 +187,32 @@ export function buildExperimentResults(variants: string[], rows: ExperimentResul
       isControl: variant === controlVariant,
     };
   });
+}
+
+export function rolloutWinner(flag: FeatureFlagRecord, winner: string) {
+  const serveWinner = <T extends { key: string; rolloutPercentage: number }>(variants: T[] | null | undefined) =>
+    (variants || []).map(variant => ({ ...variant, rolloutPercentage: variant.key === winner ? 100 : 0 }));
+
+  return {
+    rolloutPercentage: 100,
+    variants: serveWinner(flag.variants),
+    conditionSets: (flag.conditionSets || []).map(conditionSet =>
+      conditionSet.variants?.length
+        ? { ...conditionSet, rolloutPercentage: 100, variants: serveWinner(conditionSet.variants) }
+        : { ...conditionSet, rolloutPercentage: 100 }
+    ),
+  };
+}
+
+export function flagUpdateForStatusChange(
+  from: ExperimentStatus,
+  to: ExperimentStatus,
+  flag: FeatureFlagRecord,
+  winner?: string
+): Partial<FeatureFlagRecord> | null {
+  if (from === to) return null;
+  if (to === "completed") return winner ? { ...rolloutWinner(flag, winner), enabled: true } : null;
+
+  const enabled = to === "paused" ? false : to === "running" ? true : undefined;
+  return enabled === undefined || flag.enabled === enabled ? null : { enabled };
 }

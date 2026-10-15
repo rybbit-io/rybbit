@@ -16,6 +16,7 @@ const baseEventFields = {
   user_id: z.string().max(255).optional(),
   tag: z.string().max(256).optional(),
   feature_flags: z.record(z.string().max(100), z.string().max(2048)).optional(),
+  visitor_id: z.string().min(1).max(64).optional(),
   ip_address: z.string().ip().optional(),
   user_agent: z.string().max(512).optional(),
   // Bounds come from the Bot Signal contract, so appending a signal bit widens
