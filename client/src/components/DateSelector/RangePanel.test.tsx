@@ -248,6 +248,32 @@ describe("RangePanel draft", () => {
     expect(screen.getByLabelText<HTMLInputElement>("End date").value).toBe("2024-03-20");
   });
 
+  it("highlights the drafted range on the calendar, not react-day-picker's own guess", () => {
+    renderPanel(DATE_RANGE);
+
+    // react-day-picker's own range mode would extend 3/8–3/14 to 3/8–3/20 here
+    fireEvent.click(day("3/20/2024"));
+    expect(day("3/20/2024").dataset.rangeStart).toBe("true");
+    expect(day("3/20/2024").dataset.rangeEnd).toBe("true");
+    expect(day("3/8/2024").closest("[data-selected]")).toBeNull();
+
+    // ...and then shrink that to 3/8–3/18 instead of drawing 3/18–3/20
+    fireEvent.click(day("3/18/2024"));
+    expect(day("3/18/2024").dataset.rangeStart).toBe("true");
+    expect(day("3/19/2024").dataset.rangeMiddle).toBe("true");
+    expect(day("3/20/2024").dataset.rangeEnd).toBe("true");
+    expect(day("3/8/2024").closest("[data-selected]")).toBeNull();
+  });
+
+  it("follows a typed date on the calendar", () => {
+    renderPanel(DATE_RANGE);
+
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2024-03-11" } });
+
+    expect(day("3/11/2024").dataset.rangeEnd).toBe("true");
+    expect(day("3/14/2024").closest("[data-selected]")).toBeNull();
+  });
+
   it("one click is a single day, which is what gets an hourly bucket", () => {
     renderPanel(DATE_RANGE);
 
