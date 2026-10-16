@@ -10,7 +10,7 @@ await unstable_extractMessages({
     sourceLocale: 'en',
     path: messagesDir,
     format: 'json',
-    locales: ['en', 'de', 'fr', 'zh', 'es', 'pl', 'it', 'ko', 'pt', 'ja'],
+    locales: ['en', 'de', 'fr', 'zh', 'es', 'pl', 'cs', 'it', 'ko', 'pt', 'ja'],
   },
 });
 
