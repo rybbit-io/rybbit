@@ -10,6 +10,8 @@ const event = (overrides: Partial<Event> = {}): Event => ({
   user_id: "a1d7b800719f",
   identified_user_id: "",
   hostname: "rybbit.com",
+  device_model: "",
+  app_version: "",
   pathname: "/pricing",
   querystring: "",
   page_title: "",

@@ -13,21 +13,26 @@ type Tab = "pages" | "page_title" | "entry_pages" | "exit_pages" | "hostname";
 export function Pages() {
   const { data: siteMetadata } = useGetSite();
   const t = useExtracted();
+  const isApp = siteMetadata?.type === "mobile";
+
+  const getPageLink = isApp
+    ? undefined
+    : (e: { value: string; hostname?: string }) => {
+        const host = e.hostname || siteMetadata?.domain;
+        return host ? `https://${host}${e.value}` : "#";
+      };
 
   const tabs: StandardSectionTab<Tab>[] = [
     {
       value: "pages",
-      label: t("Pages"),
+      label: isApp ? t("Screens") : t("Pages"),
       section: {
         filterParameter: "pathname",
-        title: t("Pages"),
+        title: isApp ? t("Screens") : t("Pages"),
         getValue: e => e.value,
         getKey: e => e.value,
         getLabel: e => truncateString(e.value, 50) || t("Other"),
-        getLink: e => {
-          const host = e.hostname || siteMetadata?.domain;
-          return host ? `https://${host}${e.value}` : "#";
-        },
+        getLink: getPageLink,
       },
     },
     {
@@ -43,35 +48,32 @@ export function Pages() {
     },
     {
       value: "entry_pages",
-      label: t("Entries"),
+      label: isApp ? t("Entry Screens") : t("Entries"),
       section: {
         filterParameter: "entry_page",
-        title: t("Entry Pages"),
+        title: isApp ? t("Entry Screens") : t("Entry Pages"),
         getValue: e => e.value,
         getKey: e => e.value,
         getLabel: e => e.value || t("Other"),
-        getLink: e => {
-          const host = e.hostname || siteMetadata?.domain;
-          return host ? `https://${host}${e.value}` : "#";
-        },
+        getLink: getPageLink,
       },
     },
     {
       value: "exit_pages",
-      label: t("Exits"),
+      label: isApp ? t("Exit Screens") : t("Exits"),
       section: {
         filterParameter: "exit_page",
-        title: t("Exit Pages"),
+        title: isApp ? t("Exit Screens") : t("Exit Pages"),
         getValue: e => e.value,
         getKey: e => e.value,
         getLabel: e => e.value || t("Other"),
-        getLink: e => {
-          const host = e.hostname || siteMetadata?.domain;
-          return host ? `https://${host}${e.value}` : "#";
-        },
+        getLink: getPageLink,
       },
     },
-    {
+  ];
+
+  if (!isApp) {
+    tabs.push({
       value: "hostname",
       label: t("Hostnames"),
       section: {
@@ -81,8 +83,8 @@ export function Pages() {
         getKey: e => e.value,
         getLabel: e => e.value,
       },
-    },
-  ];
+    });
+  }
 
   return <StandardSectionTabs defaultValue="pages" tabs={tabs} />;
 }

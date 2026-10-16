@@ -1,6 +1,7 @@
 "use client";
 
 import { ValueFlash, type ValueFlashProps } from "@/components/interior/value-flash";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { Delta } from "@/components/site/Delta";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -151,6 +152,8 @@ export function Overview() {
   const { site, time, filters, bucket } = useStore();
   const timeZone = useTimezone();
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
 
   // Current period - automatically handles both regular time-based and past-minutes queries
   const {
@@ -219,7 +222,7 @@ export function Overview() {
         flash={flash}
       />
       <Stat
-        title={t("Pageviews")}
+        title={isApp ? t("Screenviews") : t("Pageviews")}
         id="pageviews"
         value={currentPageviews}
         previous={overviewDataPrevious?.pageviews}
@@ -227,7 +230,7 @@ export function Overview() {
         flash={flash}
       />
       <Stat
-        title={t("Pages per Session")}
+        title={isApp ? t("Screens per Session") : t("Pages per Session")}
         id="pages_per_session"
         value={currentPagesPerSession}
         previous={overviewDataPrevious?.pages_per_session}

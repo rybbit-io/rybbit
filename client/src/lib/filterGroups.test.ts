@@ -2,6 +2,7 @@ import { FilterParameter } from "@rybbit/shared";
 import { describe, expect, it } from "vitest";
 import {
   EVENT_FILTERS,
+  filtersForSite,
   FUNNEL_PAGE_FILTERS,
   GOALS_PAGE_FILTERS,
   JOURNEY_PAGE_FILTERS,
@@ -87,5 +88,24 @@ describe("group relationships", () => {
       expect(SESSION_REPLAY_PAGE_FILTERS).not.toContain(pageLevel);
     }
     expect(SESSION_REPLAY_PAGE_FILTERS).toContain("user_id");
+  });
+});
+
+describe("filtersForSite", () => {
+  it("leaves a website's filters alone", () => {
+    expect(filtersForSite(EVENT_FILTERS, false)).toEqual(EVENT_FILTERS);
+  });
+
+  it("drops referrer and campaign filters a mobile app never reports", () => {
+    const filters = filtersForSite(EVENT_FILTERS, true);
+    expect(filters).not.toContain("referrer");
+    expect(filters).not.toContain("utm_source");
+    expect(filters).not.toContain("hostname");
+  });
+
+  it("offers the two dimensions only a mobile app reports", () => {
+    const filters = filtersForSite(EVENT_FILTERS, true);
+    expect(filters).toContain("device_model");
+    expect(filters).toContain("app_version");
   });
 });
