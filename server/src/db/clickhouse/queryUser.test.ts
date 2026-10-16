@@ -68,7 +68,7 @@ describe("provisionQueryUser", () => {
     await provisionQueryUser();
     const queries = executed();
     expect(queries.some(q => q.startsWith("CREATE ROW POLICY OR REPLACE rybbit_query_site_scope"))).toBe(true);
-    expect(queries.at(-1)).toBe("GRANT SELECT ON analytics.events TO rybbit_query");
+    expect(queries[queries.length - 1]).toBe("GRANT SELECT ON analytics.events TO rybbit_query");
     // The probe table and its policy are always cleaned up.
     expect(queries.filter(q => q.startsWith("DROP TABLE IF EXISTS analytics.rybbit_row_policy_probe_"))).toHaveLength(
       1
@@ -98,24 +98,26 @@ describe("isQueryUserIsolated", () => {
     vi.clearAllMocks();
   });
 
-  const check = async (result: Promise<unknown>) => {
-    mocks.query.mockReturnValueOnce(result);
+  // A factory, so a rejected result isn't created (and flagged unhandled)
+  // before the module under test attaches its handlers.
+  const check = async (result: () => Promise<unknown>) => {
+    mocks.query.mockImplementationOnce(result);
     const { isQueryUserIsolated } = await import("./queryUser.js");
     return isQueryUserIsolated();
   };
 
   it("is true only with the scope policy and nothing that widens it", async () => {
-    expect(await check(Promise.resolve(rows([{ scoped: "1", widening: "0" }])))).toBe(true);
+    expect(await check(async () => rows([{ scoped: "1", widening: "0" }]))).toBe(true);
   });
 
   it.each([
     ["the scope policy is missing", { scoped: "0", widening: "0" }],
     ["another permissive policy reaches the user", { scoped: "1", widening: "1" }],
   ])("is false when %s", async (_label, row) => {
-    expect(await check(Promise.resolve(rows([row])))).toBe(false);
+    expect(await check(async () => rows([row]))).toBe(false);
   });
 
   it("fails closed when the check errors", async () => {
-    expect(await check(Promise.reject(new Error("down")))).toBe(false);
+    expect(await check(() => Promise.reject(new Error("down")))).toBe(false);
   });
 });
