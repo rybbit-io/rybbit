@@ -106,6 +106,19 @@ export function isPublicCorsPath(path: string): boolean {
 }
 
 export function getCorsOptionsForRequest(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): CorsOptions {
+  const path = getRequestPath(request);
+  // Sandboxed browser contexts, including Shopify custom pixels, serialize
+  // their opaque origin as the literal string "null". Public ingestion routes
+  // are intentionally reachable from any origin, so reflect opaque origins
+  // without credentials while keeping management routes restricted.
+  if (request.headers.origin === "null" && isPublicCorsPath(path)) {
+    return {
+      ...commonCorsOptions,
+      origin: true,
+      credentials: false,
+    };
+  }
+
   const requestOrigin = normalizeCorsOrigin(request.headers.origin);
   if (!requestOrigin) {
     return {
@@ -115,7 +128,7 @@ export function getCorsOptionsForRequest(request: FastifyRequest, env: NodeJS.Pr
     };
   }
 
-  if (isPublicCorsPath(getRequestPath(request))) {
+  if (isPublicCorsPath(path)) {
     // These paths are reachable from any origin (e.g. embedded widgets), but they
     // are also hit by the authenticated dashboard, which sends cookies. Reflect any
     // origin, but only allow credentials for trusted origins so the dashboard's
