@@ -149,7 +149,7 @@ export function usePaletteCommands(entityCommands: PaletteCommand[]): {
             label: t("Performance"),
             icon: <Gauge />,
             keywords: t("web vitals"),
-            visible: IS_CLOUD && !isMobileSite,
+            visible: !isMobileSite,
           },
           { route: "api-playground", label: t("API Playground"), icon: <Code />, visible: isDesktop },
           { route: "query", label: t("Query"), icon: <Database />, keywords: t("SQL"), visible: canQuery },
