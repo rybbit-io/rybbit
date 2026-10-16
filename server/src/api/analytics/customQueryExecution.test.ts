@@ -2,8 +2,16 @@ import { ClickHouseError } from "@clickhouse/client";
 import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ query: vi.fn(), getOrganizationSitesForCaller: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  query: vi.fn(),
+  getOrganizationSitesForCaller: vi.fn(),
+  isQueryUserIsolated: vi.fn(async () => true),
+}));
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({ clickhouseQuery: { query: mocks.query } }));
+vi.mock("../../db/clickhouse/queryUser.js", async importOriginal => ({
+  ...(await importOriginal<typeof import("../../db/clickhouse/queryUser.js")>()),
+  isQueryUserIsolated: mocks.isQueryUserIsolated,
+}));
 vi.mock("../../lib/auth-utils.js", () => ({ getOrganizationSitesForCaller: mocks.getOrganizationSitesForCaller }));
 
 import { runCustomQuery } from "./runCustomQuery.js";
@@ -14,6 +22,7 @@ let app: FastifyInstance;
 beforeEach(async () => {
   vi.resetAllMocks();
   mocks.getOrganizationSitesForCaller.mockResolvedValue([{ siteId: 1, organizationId: "org-1" }]);
+  mocks.isQueryUserIsolated.mockResolvedValue(true);
   app = Fastify();
   app.post<{ Params: { organizationId: string }; Body: unknown }>(
     "/organizations/:organizationId/query",
@@ -76,6 +85,13 @@ describe.each(["/organizations/org-1/query", "/sites/1/run-card"])("custom SQL r
         query_params: expect.objectContaining({ siteIds: [1] }),
       })
     );
+  });
+
+  it("refuses to run while the query user's row policy is unverified", async () => {
+    mocks.isQueryUserIsolated.mockResolvedValue(false);
+    const response = await request();
+    expect(response.statusCode).toBe(503);
+    expect(mocks.query).not.toHaveBeenCalled();
   });
 
   it("reports the 60-second execution limit for successful queries", async () => {

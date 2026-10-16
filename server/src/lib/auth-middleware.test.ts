@@ -379,6 +379,20 @@ describe("resolveSiteId", () => {
     expect((await app.inject({ method: "GET", url: "/sites/abcdef123456" })).json()).toEqual({ siteId: "123" });
   });
 
+  it("resolves an all-digit tracking id before treating it as a numeric id", async () => {
+    const { siteConfig } = await import("./siteConfig.js");
+    vi.mocked(siteConfig.resolveSiteId).mockResolvedValueOnce(9);
+    expect((await app.inject({ method: "GET", url: "/sites/123456789012" })).json()).toEqual({ siteId: "9" });
+  });
+
+  it("canonicalizes a long zero-padded id that is not a tracking id", async () => {
+    expect((await app.inject({ method: "GET", url: "/sites/000042" })).json()).toEqual({ siteId: "42" });
+  });
+
+  it("rejects an id beyond the safe integer range", async () => {
+    expect((await app.inject({ method: "GET", url: "/sites/99999999999999999999" })).statusCode).toBe(404);
+  });
+
   it("rejects an unknown non-numeric tracking id", async () => {
     expect((await app.inject({ method: "GET", url: "/sites/abcdef123456" })).statusCode).toBe(404);
   });

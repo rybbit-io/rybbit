@@ -32,10 +32,16 @@ afterEach(async () => {
 });
 
 describe("deleteUser", () => {
-  it.each(["", "%20%20"])("refuses a blank user id (%j) without touching ClickHouse", async id => {
-    const response = await app.inject({ method: "DELETE", url: `/sites/1/users/${id}` });
+  it("refuses an empty user id without touching ClickHouse", async () => {
+    const response = await app.inject({ method: "DELETE", url: "/sites/1/users/" });
     expect(response.statusCode).toBe(400);
     expect(mocks.command).not.toHaveBeenCalled();
+  });
+
+  it("still erases a whitespace identity, which identify() accepts", async () => {
+    const response = await app.inject({ method: "DELETE", url: "/sites/1/users/%20%20" });
+    expect(response.statusCode).toBe(200);
+    expect(mocks.command).toHaveBeenCalledTimes(3);
   });
 
   it("deletes only the user's rows and never matches the empty id", async () => {

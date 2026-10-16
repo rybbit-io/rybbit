@@ -27,8 +27,9 @@ export async function deleteUser(req: FastifyRequest<DeleteUserRequest>, res: Fa
   const siteId = Number(req.params.siteId);
 
   // Anonymous rows carry identified_user_id = '', so an empty id would match
-  // every one of them and erase the site's anonymous history.
-  if (!userId?.trim()) {
+  // every one of them and erase the site's anonymous history. Any other id,
+  // whitespace included, is a real identity identify() may have stored.
+  if (!userId) {
     return res.status(400).send({ error: "userId is required" });
   }
 

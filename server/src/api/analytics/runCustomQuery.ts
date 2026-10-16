@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { clickhouseQuery } from "../../db/clickhouse/clickhouse.js";
 import { QUERY_USER_LIMITS } from "../../db/clickhouse/queryLimits.js";
-import { siteScopeHeaders } from "../../db/clickhouse/queryUser.js";
+import { isQueryUserIsolated, QUERY_USER_UNAVAILABLE_ERROR, siteScopeHeaders } from "../../db/clickhouse/queryUser.js";
 import { getOrganizationSitesForCaller } from "../../lib/auth-utils.js";
 import {
   MAX_CUSTOM_QUERY_LENGTH,
@@ -54,6 +54,10 @@ export async function runCustomQuery(
       return reply.status(403).send({ error: "No access to the requested site" });
     }
     siteIds = [body.data.siteId];
+  }
+
+  if (!(await isQueryUserIsolated())) {
+    return reply.status(503).send({ error: QUERY_USER_UNAVAILABLE_ERROR });
   }
 
   const query = `

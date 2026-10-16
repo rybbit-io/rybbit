@@ -3,7 +3,7 @@ import SqlString from "sqlstring";
 import { z } from "zod";
 import { clickhouseQuery } from "../../db/clickhouse/clickhouse.js";
 import { QUERY_USER_LIMITS } from "../../db/clickhouse/queryLimits.js";
-import { siteScopeHeaders } from "../../db/clickhouse/queryUser.js";
+import { isQueryUserIsolated, QUERY_USER_UNAVAILABLE_ERROR, siteScopeHeaders } from "../../db/clickhouse/queryUser.js";
 import {
   MAX_CUSTOM_QUERY_LENGTH,
   normalizeCustomQuery,
@@ -84,6 +84,10 @@ export async function runDashboardCardQuery(
   const validationError = validateScopedQuery(substitutedQuery);
   if (validationError) {
     return reply.status(400).send({ error: validationError });
+  }
+
+  if (!(await isQueryUserIsolated())) {
+    return reply.status(503).send({ error: QUERY_USER_UNAVAILABLE_ERROR });
   }
 
   // Auto-scope the timestamp to the global time range. getTimeStatement returns
