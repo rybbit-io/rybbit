@@ -67,6 +67,17 @@ describe.each(["/organizations/org-1/query", "/sites/1/run-card"])("custom SQL r
     expect(response.json()).toEqual({ error: "Unknown expression identifier 'missing_column'" });
   });
 
+  it("sends the caller's site ids for the rybbit_query row policy", async () => {
+    mocks.query.mockResolvedValue({ query_id: "test-query", json: async () => [] });
+    await request();
+    expect(mocks.query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        http_headers: { "X-Rybbit-Site-Ids": "[1]" },
+        query_params: expect.objectContaining({ siteIds: [1] }),
+      })
+    );
+  });
+
   it("reports the 60-second execution limit for successful queries", async () => {
     mocks.query.mockResolvedValue({ query_id: "test-query", json: async () => [{ count: 1 }] });
     const response = await request();

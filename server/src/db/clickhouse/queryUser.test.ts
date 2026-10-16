@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQueryUserStatements } from "./queryUser.js";
+import { buildQueryUserStatements, siteScopeHeaders } from "./queryUser.js";
 
 describe("buildQueryUserStatements", () => {
   it("escapes the password and pins every limit as READONLY", () => {
@@ -16,11 +16,20 @@ describe("buildQueryUserStatements", () => {
       "max_result_rows = 1000",
       "result_overflow_mode = 'break'",
       "max_concurrent_queries_for_user = 8",
+      "allow_get_client_http_header = 1",
     ]) {
       expect(profile).toContain(`${setting} READONLY`);
     }
-    expect(statements[statements.length - 2]).toBe("REVOKE ALL ON *.* FROM rybbit_query");
-    expect(statements[statements.length - 1]).toBe("GRANT SELECT ON analytics.events TO rybbit_query");
+    expect(statements.slice(-4)).toEqual([
+      "REVOKE ALL ON *.* FROM rybbit_query",
+      "CREATE ROW POLICY OR REPLACE rybbit_query_site_scope ON analytics.events FOR SELECT USING has(JSONExtract(getClientHTTPHeader('X-Rybbit-Site-Ids'), 'Array(UInt16)'), site_id) TO rybbit_query",
+      "CREATE ROW POLICY OR REPLACE rybbit_query_others_unrestricted ON analytics.events FOR SELECT USING 1 TO ALL EXCEPT rybbit_query",
+      "GRANT SELECT ON analytics.events TO rybbit_query",
+    ]);
+  });
+
+  it("encodes the site scope header as a JSON array the row policy can parse", () => {
+    expect(siteScopeHeaders([1, 42])).toEqual({ "X-Rybbit-Site-Ids": "[1,42]" });
   });
 
   it("rejects non-identifier database or user names", () => {

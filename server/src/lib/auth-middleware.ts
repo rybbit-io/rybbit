@@ -160,26 +160,38 @@ const attachApiKeyUser = (request: FastifyRequest, reply: FastifyReply, apiKeyRe
 /**
  * Resolves string site IDs to numeric IDs and updates request params.
  * Should be first in preHandler chain for routes with site params.
+ *
+ * Always leaves `params.siteId` as a canonical decimal integer (or rejects the
+ * request). The access check reads the param with Number() while handlers
+ * parse it themselves (often parseInt), and the two disagree on non-decimal
+ * spellings — the check would approve one site while the handler queried
+ * another.
  */
 export const resolveSiteId: AuthMiddleware = async (request, reply) => {
   const params = request.params as Record<string, string>;
   const siteId = getSiteIdFromParams(request);
 
-  if (!siteId || String(siteId).length <= 4) {
+  if (siteId === undefined) {
     return;
   }
 
-  const numericId = await siteConfig.resolveSiteId(siteId);
-  if (numericId !== null) {
-    params.siteId = String(numericId);
-    return;
+  // Tracking ids are longer than any numeric id in use and may be all digits,
+  // so try them first.
+  if (siteId.length > 4) {
+    const numericId = await siteConfig.resolveSiteId(siteId);
+    if (numericId !== null) {
+      params.siteId = String(numericId);
+      return;
+    }
   }
 
-  // A digit-only identifier is already in the shape the handlers expect; leave
-  // it alone and let the access check below produce the 404/403, as before.
-  if (!/^\d+$/.test(siteId)) {
+  // Otherwise only a plain decimal id is accepted; the access check below
+  // produces the 404/403 for one that doesn't exist or isn't the caller's.
+  const numericId = Number(siteId);
+  if (!/^\d+$/.test(siteId) || !Number.isSafeInteger(numericId)) {
     return reply.status(404).send({ error: "Site not found" });
   }
+  params.siteId = String(numericId);
 };
 
 /**

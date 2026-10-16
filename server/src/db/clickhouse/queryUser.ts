@@ -13,10 +13,21 @@ export { QUERY_USER_LIMITS } from "./queryLimits.js";
 // CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1); otherwise the steps fail, the error
 // is logged, and custom queries fail closed until the user is created by hand.
 //
-// The SQL validator is defense-in-depth on top of this user: a validator bypass
-// must still land inside SELECT-on-events, with no table functions
+// Tenant isolation is enforced here, not only by the SQL validator: a row
+// policy limits every read of events by this user to the site ids the backend
+// sends in the SITE_SCOPE_HEADER HTTP header. SQL can't set HTTP headers and
+// allow_get_client_http_header is pinned READONLY, so a validator bypass still
+// lands inside the caller's own sites, with no table functions
 // (url/s3/file/remote…), no system tables, and the pinned resource limits.
+// A request without the header reads no rows.
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+export const SITE_SCOPE_HEADER = "X-Rybbit-Site-Ids";
+
+// Per-request headers for clickhouseQuery: the site ids the row policy admits.
+export function siteScopeHeaders(siteIds: number[]): Record<string, string> {
+  return { [SITE_SCOPE_HEADER]: JSON.stringify(siteIds) };
+}
 
 export function buildQueryUserStatements(database: string, user: string, password: string): string[] {
   if (!IDENTIFIER.test(database) || !IDENTIFIER.test(user)) {
@@ -38,6 +49,8 @@ export function buildQueryUserStatements(database: string, user: string, passwor
     `max_concurrent_queries_for_user = ${l.maxConcurrentQueriesForUser} READONLY`,
     `max_bytes_before_external_group_by = ${l.maxBytesBeforeExternalBytes} READONLY`,
     `max_bytes_before_external_sort = ${l.maxBytesBeforeExternalBytes} READONLY`,
+    // The row policy reads the site scope from the request's HTTP header.
+    "allow_get_client_http_header = 1 READONLY",
     "enable_json_type = 1",
     "log_queries = 0",
   ].join(", ");
@@ -48,8 +61,14 @@ export function buildQueryUserStatements(database: string, user: string, passwor
     `CREATE USER IF NOT EXISTS ${user} IDENTIFIED WITH sha256_password BY ${secret}`,
     // Re-assert the password and profile so an env change or a drifted user is corrected.
     `ALTER USER ${user} IDENTIFIED WITH sha256_password BY ${secret} SETTINGS PROFILE ${SqlString.escape(profile)}`,
-    // Reset grants to exactly SELECT on the events table.
+    // Reset grants to exactly SELECT on the events table. The row policy is
+    // created before the grant so a failure leaves the user with no access.
     `REVOKE ALL ON *.* FROM ${user}`,
+    `CREATE ROW POLICY OR REPLACE ${user}_site_scope ON ${database}.events FOR SELECT USING has(JSONExtract(getClientHTTPHeader('${SITE_SCOPE_HEADER}'), 'Array(UInt16)'), site_id) TO ${user}`,
+    // A row policy hides every row from users it doesn't cover when the server
+    // runs with users_without_row_policies_can_read_rows=false; keep the main
+    // user (and any other) unrestricted regardless of that setting.
+    `CREATE ROW POLICY OR REPLACE ${user}_others_unrestricted ON ${database}.events FOR SELECT USING 1 TO ALL EXCEPT ${user}`,
     `GRANT SELECT ON ${database}.events TO ${user}`,
   ];
 }
