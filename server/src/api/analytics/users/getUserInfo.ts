@@ -5,6 +5,7 @@ import { db } from "../../../db/postgres/postgres.js";
 import { userProfiles, userAliases } from "../../../db/postgres/schema.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
 import { runAnalyticsQuery } from "../utils/analyticsQuery.js";
+import { matchesUser } from "../utils/effectiveUserId.js";
 import { buildUserEventScope } from "./userEventScope.js";
 
 interface UserPageviewData {
@@ -141,7 +142,13 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
         any(screen_height) AS screen_height,
         any(screen_width) AS screen_width,
         MAX(session_end) AS last_seen,
-        MIN(session_start) AS first_seen,
+        (
+            SELECT min(lifetime_events.timestamp)
+            FROM events AS lifetime_events
+            WHERE
+                ${matchesUser("{userId:String}", "lifetime_events")}
+                AND lifetime_events.site_id = {site:Int32}
+        ) AS first_seen,
         SUM(pageviews) AS pageviews,
         SUM(events) AS events,
         any(ip) AS ip,
