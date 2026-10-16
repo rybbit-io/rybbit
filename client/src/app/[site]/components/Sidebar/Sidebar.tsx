@@ -85,28 +85,24 @@ function SidebarContent() {
           />
         </div>
         <SidebarComponents.SectionHeader>{t("Traffic")}</SidebarComponents.SectionHeader>
-        {IS_CLOUD && (
-          <SidebarComponents.Item
-            label={t("Pages")}
-            active={isActiveTab("pages")}
-            href={getTabPath("pages")}
-            icon={<File className="w-4 h-4" />}
-          />
-        )}
+        <SidebarComponents.Item
+          label={t("Pages")}
+          active={isActiveTab("pages")}
+          href={getTabPath("pages")}
+          icon={<File className="w-4 h-4" />}
+        />
         <SidebarComponents.Item
           label={t("Globe")}
           active={isActiveTab("globe")}
           href={getTabPath("globe")}
           icon={<Globe2 className="w-4 h-4" />}
         />
-        {IS_CLOUD && (
-          <SidebarComponents.Item
-            label={t("Bots")}
-            active={isActiveTab("bots")}
-            href={getTabPath("bots")}
-            icon={<Bot className="w-4 h-4" />}
-          />
-        )}
+        <SidebarComponents.Item
+          label={t("Bots")}
+          active={isActiveTab("bots")}
+          href={getTabPath("bots")}
+          icon={<Bot className="w-4 h-4" />}
+        />
         <SidebarComponents.SectionHeader>{t("Behavior")}</SidebarComponents.SectionHeader>
         <SidebarComponents.Item
           label={t("Sessions")}
