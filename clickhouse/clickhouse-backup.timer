@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily ClickHouse Backup Timer
+Requires=clickhouse-backup.service
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
