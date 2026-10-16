@@ -338,12 +338,27 @@ function isIdentifierChar(char: string) {
   return /[A-Za-z0-9_.]/.test(char);
 }
 
+// ClickHouse joins `db . table` (whitespace, or a stripped comment, around the
+// dot) into one compound identifier. Read it the same way so the qualified
+// name is what gets checked, not just its first part — which could otherwise
+// match a declared CTE.
 function readIdentifier(query: string, start: number): [string, number] {
+  let identifier = "";
   let end = start;
-  while (end < query.length && isIdentifierChar(query[end])) {
-    end++;
+  for (;;) {
+    const partStart = end;
+    while (end < query.length && isIdentifierChar(query[end])) {
+      end++;
+    }
+    identifier += query.slice(partStart, end);
+    const dot = skipWhitespace(query, end);
+    const next = skipWhitespace(query, dot + 1);
+    if (query[dot] !== "." || next >= query.length || !isIdentifierStart(query[next])) {
+      return [identifier, end];
+    }
+    identifier += ".";
+    end = next;
   }
-  return [query.slice(start, end), end];
 }
 
 function skipWhitespace(query: string, index: number): number {

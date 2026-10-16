@@ -221,6 +221,14 @@ describe("collectInTableReferences", () => {
 // hasUnsupportedSyntax
 // =============================================================================
 
+describe("collectTableReferences — qualified names", () => {
+  it("reads a database-qualified name as one reference even with whitespace around the dot", () => {
+    expect(collectTableReferences("SELECT 1 FROM db . tbl")).toEqual(["db.tbl"]);
+    expect(collectTableReferences("SELECT 1 FROM db .tbl JOIN db. tbl2 ON 1")).toEqual(["db.tbl", "db."]);
+    expect(collectInTableReferences("SELECT 1 WHERE x IN db . tbl")).toEqual(["db.tbl"]);
+  });
+});
+
 describe("hasUnsupportedSyntax", () => {
   it("detects a double-quoted identifier", () => {
     expect(hasUnsupportedSyntax('SELECT "x" FROM t')).toBe(true);

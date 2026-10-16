@@ -64,7 +64,7 @@ describe("provisionQueryUser", () => {
   });
 
   it("installs the row policy and grant when unnamed users keep reading rows", async () => {
-    mocks.query.mockResolvedValueOnce(rows([{ c: "1" }]));
+    mocks.query.mockResolvedValueOnce(rows([])).mockResolvedValueOnce(rows([{ c: "1" }]));
     await provisionQueryUser();
     const queries = executed();
     expect(queries.some(q => q.startsWith("CREATE ROW POLICY OR REPLACE rybbit_query_site_scope"))).toBe(true);
@@ -75,8 +75,18 @@ describe("provisionQueryUser", () => {
     );
   });
 
+  it("revokes every role granted to the query user, since role policies would widen its scope", async () => {
+    mocks.query
+      .mockResolvedValueOnce(rows([{ role: "analyst" }, { role: "odd`name" }]))
+      .mockResolvedValueOnce(rows([{ c: "1" }]));
+    await provisionQueryUser();
+    expect(executed()).toEqual(
+      expect.arrayContaining(["REVOKE `analyst` FROM rybbit_query", "REVOKE `odd\\`name` FROM rybbit_query"])
+    );
+  });
+
   it("leaves the user without access when a row policy would hide events from the main user", async () => {
-    mocks.query.mockResolvedValueOnce(rows([{ c: "0" }]));
+    mocks.query.mockResolvedValueOnce(rows([])).mockResolvedValueOnce(rows([{ c: "0" }]));
     await provisionQueryUser();
     const queries = executed();
     expect(queries.some(q => q.includes("ON analytics.events FOR SELECT"))).toBe(false);
@@ -107,12 +117,13 @@ describe("isQueryUserIsolated", () => {
   };
 
   it("is true only with the scope policy and nothing that widens it", async () => {
-    expect(await check(async () => rows([{ scoped: "1", widening: "0" }]))).toBe(true);
+    expect(await check(async () => rows([{ scoped: "1", widening: "0", roles: "0" }]))).toBe(true);
   });
 
   it.each([
-    ["the scope policy is missing", { scoped: "0", widening: "0" }],
-    ["another permissive policy reaches the user", { scoped: "1", widening: "1" }],
+    ["the scope policy is missing", { scoped: "0", widening: "0", roles: "0" }],
+    ["another permissive policy reaches the user", { scoped: "1", widening: "1", roles: "0" }],
+    ["the user holds a role", { scoped: "1", widening: "0", roles: "1" }],
   ])("is false when %s", async (_label, row) => {
     expect(await check(async () => rows([row]))).toBe(false);
   });

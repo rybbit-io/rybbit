@@ -31,6 +31,10 @@ export function siteScopeHeaders(siteIds: number[]): Record<string, string> {
   return { [SITE_SCOPE_HEADER]: JSON.stringify(siteIds) };
 }
 
+function quoteIdentifier(name: string) {
+  return "`" + name.replace(/\\/g, "\\\\").replace(/`/g, "\\`") + "`";
+}
+
 export function siteScopePolicyName(user: string) {
   return `${user}_site_scope`;
 }
@@ -115,6 +119,18 @@ export async function provisionQueryUser() {
     for (const query of setup) {
       await clickhouse.exec({ query });
     }
+    // Roles carry their own row policies, which would OR with the site scope;
+    // REVOKE ALL doesn't touch role grants, so drop them explicitly.
+    const roles = await clickhouse
+      .query({
+        query: "SELECT granted_role_name AS role FROM system.role_grants WHERE user_name = {user:String}",
+        query_params: { user },
+        format: "JSONEachRow",
+      })
+      .then(result => result.json<{ role: string }>());
+    for (const { role } of roles) {
+      await clickhouse.exec({ query: `REVOKE ${quoteIdentifier(role)} FROM ${user}` });
+    }
     if (await rowPoliciesHideUnnamedUsers(database, user)) {
       await clickhouse.exec({ query: `REVOKE ALL ON *.* FROM ${user}` });
       await clickhouse.exec({ query: `DROP ROW POLICY IF EXISTS ${siteScopePolicyName(user)} ON ${database}.events` });
@@ -155,7 +171,8 @@ let isolationCheck: { at: number; result: Promise<boolean> } | null = null;
 // Whether events reads by the query user are confined to the site-scope row
 // policy: the policy exists, still keys on the scope header, and no other
 // permissive policy on events reaches the user (permissive policies are ORed,
-// so one would widen the scope). Checked per process from system.row_policies,
+// so one would widen the scope), and the user holds no role, whose policies
+// would apply too. Checked per process from system.row_policies,
 // so it holds under CLUSTER_WORKERS (provisioning runs only on the primary),
 // after a failed upgrade that left an older user's grant in place, and for a
 // hand-provisioned user. Fails closed on any error.
@@ -172,15 +189,16 @@ export function isQueryUserIsolated(): Promise<boolean> {
           countIf(short_name = {policy:String} AND NOT is_restrictive AND has(apply_to_list, {user:String})
             AND NOT apply_to_all AND position(ifNull(select_filter, ''), {header:String}) > 0) AS scoped,
           countIf(short_name != {policy:String} AND NOT is_restrictive
-            AND (has(apply_to_list, {user:String}) OR (apply_to_all AND NOT has(apply_to_except, {user:String})))) AS widening
+            AND (has(apply_to_list, {user:String}) OR (apply_to_all AND NOT has(apply_to_except, {user:String})))) AS widening,
+          (SELECT count() FROM system.role_grants WHERE user_name = {user:String}) AS roles
         FROM system.row_policies
         WHERE database = {database:String} AND table = 'events'
       `,
       query_params: { policy: siteScopePolicyName(user), user, header: SITE_SCOPE_HEADER, database },
       format: "JSONEachRow",
     })
-    .then(response => response.json<{ scoped: string | number; widening: string | number }>())
-    .then(([row]) => Number(row?.scoped) === 1 && Number(row?.widening) === 0)
+    .then(response => response.json<{ scoped: string | number; widening: string | number; roles: string | number }>())
+    .then(([row]) => Number(row?.scoped) === 1 && Number(row?.widening) === 0 && Number(row?.roles) === 0)
     .catch(error => {
       logger.error({ err: error, user }, "Could not verify the ClickHouse query user's row policy");
       return false;

@@ -167,6 +167,12 @@ describe("validateScopedQuery lexer-mismatch bypasses", () => {
     expect(validateScopedQuery("SELECT count() /* a */ /* b */ FROM scoped_events")).toBeNull();
   });
 
+  it("checks the whole qualified table name, not a first part that matches a CTE", () => {
+    expect(validateScopedQuery("WITH db AS (SELECT 1) SELECT * FROM db . tbl, scoped_events")).toBe(
+      "Queries can only read from scoped_events"
+    );
+  });
+
   it("never treats events as a CTE name, even when a WINDOW name looks like one", () => {
     expect(validateScopedQuery("WITH events AS (SELECT * FROM scoped_events) SELECT * FROM events")).toBe(
       "events is reserved and cannot be used as a CTE name"
