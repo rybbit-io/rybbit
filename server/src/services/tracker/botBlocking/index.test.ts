@@ -1,9 +1,14 @@
 import { CLIENT_BOT_SIGNAL_MASKS as clientBotSignalMasks } from "@rybbit/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { lookupAsn } from "../../../db/geolocation/asn.js";
+import { recordAcceptedRequestDiagnostic } from "./acceptedRequestDiagnostics.js";
 import { resetAnomalyScorerForTests, setRedisAnomalyEnabledForTests } from "./anomalyScorer.js";
 import { getBotDetectionStats, resetBotDetectionStatsForTests } from "./botDetectionStats.js";
 import { checkBotBlocking } from "./index.js";
+
+vi.mock("./acceptedRequestDiagnostics.js", () => ({
+  recordAcceptedRequestDiagnostic: vi.fn(),
+}));
 
 vi.mock("../../../db/geolocation/asn.js", () => ({
   lookupAsn: vi.fn(() => null),
@@ -35,6 +40,7 @@ describe("checkBotBlocking", () => {
     setRedisAnomalyEnabledForTests(false);
     resetBotDetectionStatsForTests();
     vi.mocked(lookupAsn).mockReturnValue(null);
+    vi.mocked(recordAcceptedRequestDiagnostic).mockClear();
   });
 
   it("still detects when bot blocking is disabled, but does not enforce", async () => {
@@ -465,6 +471,81 @@ describe("checkBotBlocking", () => {
     expect(result).toBeNull();
   });
 
+  it.each([true, false])(
+    "explains accepted weak client signals without changing the verdict (blockBots=%s)",
+    async blockBots => {
+      const result = await checkBotBlocking({
+        headers: {
+          ...browserHeaders,
+          "user-agent":
+            "Mozilla/5.0 (Linux; Android 15; CPH2653) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Mobile Safari/537.36",
+        },
+        blockBots,
+        payload: {
+          ...basePayload,
+          screenWidth: 375,
+          screenHeight: 812,
+          clientBotScore: 3,
+          clientBotSignalMask: 540,
+        },
+      });
+
+      expect(result).toBeNull();
+      expect(recordAcceptedRequestDiagnostic).toHaveBeenCalledWith({
+        siteId: 123,
+        blockBots,
+        score: 3,
+        strongScore: 0,
+        signalMask: 540,
+        signals: ["missingChrome", "swiftShader", "emptyPlugins", "pluginApiAbsence"],
+        hasClientScore: true,
+        hasClientMask: true,
+        asn: undefined,
+        asnSource: undefined,
+      });
+      expect(getBotDetectionStats()).toMatchObject({
+        totalRequests: 1,
+        totalBotRequests: 0,
+        totalEnforcedBotRequests: 0,
+      });
+    }
+  );
+
+  it("does not sample clean requests, convicted requests, or trusted ingestion", async () => {
+    const payload = { ...basePayload, screenWidth: 1512, screenHeight: 982, clientBotScore: 0, clientBotSignalMask: 0 };
+    expect(await checkBotBlocking({ headers: browserHeaders, blockBots: true, payload })).toBeNull();
+    expect(
+      await checkBotBlocking({
+        headers: browserHeaders,
+        blockBots: true,
+        payload: { ...payload, clientBotScore: 3, clientBotSignalMask: clientBotSignalMasks.automationApi },
+      })
+    ).toMatchObject({ isBot: true, enforced: true });
+    expect(
+      await checkBotBlocking({
+        headers: browserHeaders,
+        blockBots: true,
+        trustedServerSideIngestion: true,
+        payload: { ...payload, clientBotScore: 3, clientBotSignalMask: 540 },
+      })
+    ).toBeNull();
+    expect(recordAcceptedRequestDiagnostic).not.toHaveBeenCalled();
+  });
+
+  it("includes generic hosting context while keeping supporting-only traffic accepted", async () => {
+    vi.mocked(lookupAsn).mockReturnValue({ asn: 16509, organization: "Amazon.com, Inc." });
+    const result = await checkBotBlocking({
+      headers: browserHeaders,
+      blockBots: true,
+      payload: { ...basePayload, screenWidth: 1512, screenHeight: 982, clientBotScore: 3, clientBotSignalMask: 540 },
+    });
+
+    expect(result).toBeNull();
+    expect(recordAcceptedRequestDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ asn: 16509, asnSource: "ipverse_hosting", strongScore: 0 })
+    );
+  });
+
   it("does not convict on a client score sent without a signal mask", async () => {
     // Without the mask the score cannot be decomposed into strong vs. weak
     // signals, so it can only ever corroborate.
@@ -507,6 +588,7 @@ describe("checkBotBlocking", () => {
       },
     });
     expect(result?.detections.map(detection => detection.layer)).toContain("client_signals");
+    expect(recordAcceptedRequestDiagnostic).not.toHaveBeenCalled();
   });
 
   it("does not let two supporting signals convict each other", async () => {

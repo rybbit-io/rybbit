@@ -11,11 +11,12 @@ import {
 import type { IncomingHttpHeaders } from "http";
 import { lookupAsn, type AsnInfo, type AsnLookup } from "../../../db/geolocation/asn.js";
 import { logger } from "../../../lib/logger/logger.js";
+import { recordAcceptedRequestDiagnostic } from "./acceptedRequestDiagnostics.js";
 import type { AnomalyCounters } from "./anomalyScorer.js";
 import { observeTrackingAnomaly } from "./anomalyScorer.js";
 import type { BotDetectionMethod } from "./botDetectionStats.js";
 import { recordBotBlockingRequest, recordBotDetections } from "./botDetectionStats.js";
-import { classifyBotAsn } from "./botProviderAsns.js";
+import { classifyBotAsn, type BotAsnSource } from "./botProviderAsns.js";
 import { CLIENT_BOT_SCORE_THRESHOLD } from "./config.js";
 import { detectBot } from "./headerHeuristics.js";
 import { classifyStaleBrowserVersion } from "./staleBrowserVersion.js";
@@ -397,11 +398,13 @@ export async function checkBotBlocking({
   // Layer 4: ASN check — IP belongs to hosting/cloud or curated bot provider infrastructure.
   const ipForAsn = payload.ipAddress;
   let asnInfo: AsnInfo | null = null;
+  let asnSource: BotAsnSource | undefined;
   let supportingHostingAsnDetection: BotBlockingDetection | null = null;
   let isHostingAsn = false;
   if (ipForAsn) {
     asnInfo = asnLookup(ipForAsn);
     const botAsnMatch = classifyBotAsn(asnInfo?.asn);
+    asnSource = botAsnMatch.source;
     isHostingAsn = asnInfo !== null && botAsnMatch.isBotInfrastructure;
     if (asnInfo && botAsnMatch.isBotInfrastructure) {
       const asnDetection: BotBlockingDetection = {
@@ -458,6 +461,20 @@ export async function checkBotBlocking({
   }
 
   if (detections.length === 0) {
+    if (supportingClientSignalDetection) {
+      recordAcceptedRequestDiagnostic({
+        siteId: payload.siteId,
+        blockBots,
+        score: clientSignalResult.score,
+        strongScore: clientSignalResult.strongScore,
+        signalMask: clientSignalResult.mask,
+        signals: clientSignalResult.signalNames,
+        hasClientScore: clientSignalResult.hasClientScore,
+        hasClientMask: clientSignalResult.hasClientMask,
+        asn: asnInfo?.asn,
+        asnSource,
+      });
+    }
     return null;
   }
 
