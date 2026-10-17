@@ -77,6 +77,55 @@ Each detection object contains compact method-specific details such as matched U
 
 A request can increment multiple method totals if multiple methods detected it, so method totals can sum higher than `totalBotRequests`.
 
+### Accepted requests with supporting client signals
+
+A request can report an elevated client score and still be accepted: weak signals
+only corroborate another blocking layer, and a score without a mask cannot be
+decomposed into strong signals. These decisions do not enter `bot_events` or
+`bot_observations`, because the detector did not classify them as bots.
+
+For a targeted investigation, set `BOT_DIAGNOSTIC_SITE_IDS` to a comma-separated
+allowlist of **numeric database Site IDs**, then restart the backend. For example:
+
+```sh
+BOT_DIAGNOSTIC_SITE_IDS=123,456
+```
+
+For Docker Compose, pass this variable to the backend container's `environment`
+(setting it only in a host `.env` file does not forward it automatically). An
+unset or blank value disables diagnostics. Invalid entries, wildcard values, or
+more than 100 entries disable the entire allowlist. Configuration is read once
+at startup; clear the variable and restart the backend when the investigation is
+finished. No schema changes or migrations are needed.
+
+For those sites, a request that has supporting client signals at or above the
+existing client-score threshold, but no blocking detection, can emit an info log
+with `event: "bot_detection_accepted_diagnostic"`. It contains:
+
+- `decision: "not_classified_as_bot"` and `reason: "supporting_signals_only"`
+- `siteId` and the site's `blockBots` setting
+- effective `score`, `strongScore`, `signalMask`, and named `signals`, including
+  server-inferred contributions
+- `hasClientScore` and `hasClientMask`, distinguishing client-reported fields
+  from inferred signals
+- numeric `asn` (or `null`) and `asnSource` (`unclassified` when not in the
+  current infrastructure lists)
+
+No IP, raw user agent, visitor/session identity, URL, referrer, headers, or request
+body is logged. The logger explicitly selects fields rather than spreading a
+request or detection object. Trusted server-side ingestion and requests already
+classified as bots do not enter this diagnostic path.
+
+Samples are limited to **one log attempt per minute per selected site per backend
+process**, using a monotonic clock. A cluster with N workers can therefore emit
+up to N samples per site per minute. There is no extra Redis/database operation
+or timer on this path, and log failures do not change the detection result.
+Logs follow `LOG_LEVEL` (info or more verbose is needed). These are samples, not
+a complete count or proof of automation. Acceptance here only means that bot
+detection returned no blocking classification; later exclusions or storage can
+still discard the event. Existing detection, enforcement, and analytics totals
+are unchanged.
+
 ## Storage
 
 `botEventQueue.ts` enriches detected bot requests with the same browser, device, and geolocation basics as normal events, then inserts a compact audit row. It exports two queues over one implementation: `botEventQueue` writes to `bot_events` (enforced), and `botObservationQueue` writes to `bot_observations` (detected but not enforced). The schemas are identical on purpose, so the same forensic query runs against either.
