@@ -1,5 +1,5 @@
 import { higherRole, isAdminRole, isOrgRole, isSiteGrantRole, type OrgRole } from "@rybbit/shared";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/postgres/postgres.js";
 import { member, memberSiteAccess, sites, team, teamMember, teamSiteAccess } from "../db/postgres/schema.js";
 
@@ -31,6 +31,14 @@ export interface OrgMembership {
 }
 
 /**
+ * Nothing stops a user holding two membership rows in one organization, and
+ * without an order which one a query returns depends on the query plan (an
+ * index scan and a sequential scan disagree). Every read that picks one row
+ * takes the oldest, so the role a request resolves to stays fixed.
+ */
+export const oldestMembershipFirst = [asc(member.createdAt), asc(member.id)] as const;
+
+/**
  * The membership row for a user in an organization, or null. This is the only
  * place that asks the question — callers that want a boolean check for null,
  * and callers that want a role read `.role` (or use the predicates below).
@@ -56,6 +64,7 @@ export async function getOrgMembership(
     })
     .from(member)
     .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
+    .orderBy(...oldestMembershipFirst)
     .limit(1);
 
   return rows[0] ?? null;
@@ -368,13 +377,21 @@ export async function resolveUserSites(
       organizationId
         ? and(eq(member.userId, userId), eq(member.organizationId, organizationId))
         : eq(member.userId, userId)
-    );
+    )
+    .orderBy(...oldestMembershipFirst);
 
   const roleByOrgId = new Map<string, OrgRole>();
   const fullAccessOrgIds: string[] = [];
   const gatedMembers: typeof memberRecords = [];
+  const decidedOrgIds = new Set<string>();
 
   for (const record of memberRecords) {
+    // A duplicate membership never overrides the oldest one, matching
+    // getOrgMembership — even when the oldest holds an unknown role.
+    if (decidedOrgIds.has(record.organizationId)) {
+      continue;
+    }
+    decidedOrgIds.add(record.organizationId);
     if (!isOrgRole(record.role)) {
       continue;
     }

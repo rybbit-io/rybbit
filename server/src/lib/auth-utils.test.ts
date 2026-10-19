@@ -285,6 +285,57 @@ describe("getOrgMembership", () => {
   });
 });
 
+// Duplicate (organizationId, userId) rows are possible. Which one a bare query
+// returns depends on the plan, so every read must let the oldest row decide.
+// The newer row goes in first (heap order would return it) and has the smaller
+// id, so neither insertion order nor id alone gives the expected answer.
+describe("duplicate memberships", () => {
+  beforeEach(async () => {
+    await db.insert(member).values([
+      {
+        id: "member_dup_a",
+        organizationId: ORG,
+        userId: "user_dup",
+        role: "owner",
+        createdAt: "2026-02-01 00:00:00",
+        hasRestrictedSiteAccess: false,
+      },
+      {
+        id: "member_dup_b",
+        organizationId: ORG,
+        userId: "user_dup",
+        role: "viewer",
+        createdAt: "2025-01-01 00:00:00",
+        hasRestrictedSiteAccess: false,
+      },
+    ]);
+  });
+
+  it("resolves the oldest row's role for the organization", async () => {
+    expect(await getOrgMembership("user_dup", ORG)).toMatchObject({ id: "member_dup_b", role: "viewer" });
+    expect(await getUserOrgRole(reqFor("user_dup"), ORG)).toBe("viewer");
+  });
+
+  it("resolves the oldest row's role for the site list", async () => {
+    invalidateSitesAccessCache("user_dup");
+    const accessible = await getSitesUserHasAccessTo(reqFor("user_dup"));
+
+    // A viewer on no team reaches only the one ungated site.
+    expect(accessible.map((site: { siteId: number }) => site.siteId)).toEqual([13]);
+    expect(accessible.every((site: { accessRole: string }) => site.accessRole === "viewer")).toBe(true);
+    expect(await resolveUserSiteRole("user_dup", 13)).toBe("viewer");
+    expect(await resolveUserSiteRole("user_dup", 1)).toBeNull();
+  });
+
+  it("breaks a createdAt tie by id", async () => {
+    await db.update(member).set({ createdAt: NOW }).where(eq(member.userId, "user_dup"));
+
+    expect(await getOrgMembership("user_dup", ORG)).toMatchObject({ id: "member_dup_a", role: "owner" });
+    invalidateSitesAccessCache("user_dup");
+    expect(await siteIdsFor("user_dup")).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  });
+});
+
 // Shared filter used by getSitesFromOrg, getMyOrganizations, and weekly reports
 describe("filterSitesByMemberAccess", () => {
   const orgSites = Array.from({ length: 13 }, (_, i) => ({ siteId: i + 1 }));
