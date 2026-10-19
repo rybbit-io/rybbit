@@ -104,22 +104,59 @@ export function mapHeaders(headers: any) {
   return map;
 }
 
-export async function getSessionFromReq(req: FastifyRequest) {
+type RequestSession = Awaited<ReturnType<typeof auth.api.getSession>>;
+
+// A guard and its handler resolve the session several times per request (role
+// lookup, then attaching the user, then the system-admin check), and each
+// resolution reads the session and its user from Postgres. The cookie can't
+// change within a request, so the lookup is shared per request object,
+// including a null result and concurrent callers. A failed lookup is dropped
+// so a later caller retries instead of inheriting the error.
+const requestSessions = new WeakMap<FastifyRequest, Promise<RequestSession>>();
+
+export function getSessionFromReq(req: FastifyRequest): Promise<RequestSession> {
+  const memoized = requestSessions.get(req);
+  if (memoized) {
+    return memoized;
+  }
   const headers = new Headers(req.headers as any);
-  const session = await auth!.api.getSession({ headers });
-  return session;
+  const promise = auth!.api.getSession({ headers });
+  requestSessions.set(req, promise);
+  promise.catch(() => {
+    if (requestSessions.get(req) === promise) {
+      requestSessions.delete(req);
+    }
+  });
+  return promise;
 }
 
-export async function getIsUserAdmin(req: FastifyRequest) {
-  const session = await getSessionFromReq(req);
-  const userId = session?.user.id;
+// Shared per request like the session it derives from: one guard can ask
+// several times (site list, site role, org role).
+const requestIsAdmin = new WeakMap<FastifyRequest, Promise<boolean>>();
 
-  if (!userId) {
-    return false;
+export function getIsUserAdmin(req: FastifyRequest): Promise<boolean> {
+  const memoized = requestIsAdmin.get(req);
+  if (memoized) {
+    return memoized;
   }
+  const promise = (async () => {
+    const session = await getSessionFromReq(req);
+    const userId = session?.user.id;
 
-  const userRecord = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).limit(1);
-  return userRecord.length > 0 && userRecord[0].role === "admin";
+    if (!userId) {
+      return false;
+    }
+
+    const userRecord = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).limit(1);
+    return userRecord.length > 0 && userRecord[0].role === "admin";
+  })();
+  requestIsAdmin.set(req, promise);
+  promise.catch(() => {
+    if (requestIsAdmin.get(req) === promise) {
+      requestIsAdmin.delete(req);
+    }
+  });
+  return promise;
 }
 
 const sitesAccessCache = new NodeCache({

@@ -55,7 +55,11 @@ export function createOAuthPlugins(baseUrl: string) {
   return [
     // Non-TLS LAN self-hosting still supports password sessions and API keys.
     // Better Auth 1.7 requires HTTPS (or loopback) for an OAuth resource.
-    ...(supportsOAuth ? [jwt(), mcp(options)] : []),
+    // The JWT plugin is here for OAuth token signing and JWKS only. Without
+    // disableSettingJwtHeader it also signs a session JWT into a set-auth-jwt
+    // header on every getSession, including the server-side lookups behind
+    // each authenticated request, and nothing reads that header.
+    ...(supportsOAuth ? [jwt({ disableSettingJwtHeader: true }), mcp(options)] : []),
     {
       id: "rybbit-oauth",
       hooks: {

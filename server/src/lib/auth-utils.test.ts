@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Better-auth pulls in email, stripe, and env config at import time — stub the
 // session API so getIsUserAdmin sees no session and auth never initializes.
@@ -48,6 +48,8 @@ import { member, memberSiteAccess, sites, team, teamMember, teamSiteAccess } fro
 import { auth } from "./auth.js";
 import {
   checkApiKey,
+  getIsUserAdmin,
+  getSessionFromReq,
   getSitesUserHasAccessTo,
   getUserHasAccessToSite,
   getUserHasAdminAccessToSite,
@@ -153,6 +155,10 @@ CREATE TABLE "sites" (
   "tags" jsonb DEFAULT '[]',
   "detected_platform" text,
   "claim_expires_at" timestamp
+);
+CREATE TABLE "user" (
+  "id" text PRIMARY KEY,
+  "role" text
 );
 `;
 
@@ -848,15 +854,13 @@ describe("getOrganizationSitesForCaller", () => {
       domain: "other.example.com",
       organizationId: "org_other",
     });
-    await db
-      .insert(member)
-      .values({
-        id: "m_owner_other",
-        organizationId: "org_other",
-        userId: "user_owner",
-        role: "owner",
-        createdAt: NOW,
-      });
+    await db.insert(member).values({
+      id: "m_owner_other",
+      organizationId: "org_other",
+      userId: "user_owner",
+      role: "owner",
+      createdAt: NOW,
+    });
 
     const peerSites = await getOrganizationSitesForCaller(reqFor("user_peer"), ORG);
     expect(peerSites.map(site => site.siteId).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13]);
@@ -1030,4 +1034,73 @@ it("refreshes cached session access after another worker claims a site", async (
   });
   expect(await getUserHasAccessToSite(reqFor("user_owner"), 99)).toBe(true);
   expect(await getUserHasAdminAccessToSite(reqFor("user_owner"), 99)).toBe(true);
+});
+
+describe("getSessionFromReq — per-request memo", () => {
+  const getSession = vi.mocked(auth.api.getSession);
+  const cookieRequest = () => ({ headers: { cookie: "better-auth.session_token=t" } }) as any;
+  const sessionFor = (userId: string) => ({ user: { id: userId }, session: { id: `s_${userId}` } }) as any;
+
+  beforeEach(async () => {
+    getSession.mockReset();
+    await (sql as any).exec(`TRUNCATE "user"`);
+  });
+
+  afterEach(() => {
+    getSession.mockReset();
+    getSession.mockImplementation(async () => null);
+  });
+
+  it("looks the session up once per request, null included", async () => {
+    getSession.mockResolvedValue(null);
+    const req = cookieRequest();
+    expect(await getSessionFromReq(req)).toBeNull();
+    expect(await getSessionFromReq(req)).toBeNull();
+    expect(await getUserIdFromRequest(req)).toBeNull();
+    expect(getSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares one in-flight lookup between concurrent callers", async () => {
+    let resolve!: (value: unknown) => void;
+    getSession.mockImplementation(() => new Promise(r => (resolve = r)) as any);
+    const req = cookieRequest();
+    const pending = Promise.all([getSessionFromReq(req), getSessionFromReq(req), getSessionFromReq(req)]);
+    resolve(sessionFor("u1"));
+    const results = await pending;
+    expect(getSession).toHaveBeenCalledTimes(1);
+    expect(results.map(result => result?.user.id)).toEqual(["u1", "u1", "u1"]);
+  });
+
+  it("resolves each request on its own", async () => {
+    getSession.mockResolvedValueOnce(sessionFor("u1")).mockResolvedValueOnce(sessionFor("u2"));
+    expect((await getSessionFromReq(cookieRequest()))?.user.id).toBe("u1");
+    expect((await getSessionFromReq(cookieRequest()))?.user.id).toBe("u2");
+    expect(getSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries after a failed lookup instead of caching the error", async () => {
+    getSession.mockRejectedValueOnce(new Error("db down")).mockResolvedValueOnce(sessionFor("u1"));
+    const req = cookieRequest();
+    await expect(getSessionFromReq(req)).rejects.toThrow("db down");
+    expect((await getSessionFromReq(req))?.user.id).toBe("u1");
+    expect(getSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("decides system admin once per request, from the current role", async () => {
+    await (sql as any).exec(`INSERT INTO "user" ("id", "role") VALUES ('u_admin', 'admin')`);
+    getSession.mockResolvedValue(sessionFor("u_admin"));
+    const req = cookieRequest();
+    expect(await getIsUserAdmin(req)).toBe(true);
+
+    // The same request keeps its decision; the next request sees the demotion.
+    await (sql as any).exec(`UPDATE "user" SET "role" = 'user' WHERE "id" = 'u_admin'`);
+    expect(await getIsUserAdmin(req)).toBe(true);
+    expect(await getIsUserAdmin(cookieRequest())).toBe(false);
+    expect(getSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("is never admin without a session", async () => {
+    getSession.mockResolvedValue(null);
+    expect(await getIsUserAdmin(cookieRequest())).toBe(false);
+  });
 });
