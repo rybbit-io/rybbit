@@ -8,6 +8,13 @@ export const clickhouse = createClient({
   database: process.env.CLICKHOUSE_DB,
   password: process.env.CLICKHOUSE_PASSWORD,
   request_timeout: CLICKHOUSE_REQUEST_TIMEOUT_MS,
+  // Gzip query results on the wire (sends enable_http_compression=1 and
+  // Accept-Encoding: gzip). Dashboard results such as session lists and replay
+  // events can be MBs of JSON, and ClickHouse usually runs on another host.
+  // Inserts stay uncompressed: gzipping every batch would cost Node CPU on the
+  // ingestion path. The main user is never readonly=1 (it inserts), so it can
+  // set enable_http_compression.
+  compression: { response: true, request: false },
   clickhouse_settings: {
     // Writers serialise every instant as ISO-8601 with an explicit `Z` (see
     // dateTime.ts). The default `basic` parser rejects the offset; best_effort
@@ -26,6 +33,8 @@ export const clickhouse = createClient({
 // bypass must still land inside these grants and the caller's sites.
 export const CLICKHOUSE_QUERY_USER = process.env.CLICKHOUSE_QUERY_USER || "rybbit_query";
 
+// No response compression here: results are capped at 1,000 rows, and a
+// hand-created readonly=1 user would reject the enable_http_compression setting.
 export const clickhouseQuery = createClient({
   url: process.env.CLICKHOUSE_HOST,
   database: process.env.CLICKHOUSE_DB,

@@ -16,4 +16,17 @@ describe("clickhouse write client", () => {
     };
     expect(writeClientOptions.clickhouse_settings).toMatchObject({ date_time_input_format: "best_effort" });
   });
+
+  // Results are gzipped on the wire; inserts stay uncompressed so batches don't
+  // cost gzip CPU on the ingestion path. The query user may be readonly=1 when
+  // created by hand, which rejects enable_http_compression, so it stays off.
+  it("compresses query responses but not inserts or user-authored SQL", async () => {
+    await import("./client.js");
+
+    const [writeClientOptions, queryClientOptions] = mocks.createClient.mock.calls.map(
+      call => call[0] as { compression?: { request?: boolean; response?: boolean } }
+    );
+    expect(writeClientOptions.compression).toEqual({ response: true, request: false });
+    expect(queryClientOptions.compression).toBeUndefined();
+  });
 });
