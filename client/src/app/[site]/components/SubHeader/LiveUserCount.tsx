@@ -6,6 +6,7 @@ import { FlashNumber } from "@/components/interior/value-flash";
 import { useStore } from "@/lib/store";
 import { useGetLiveUserCount } from "../../../../api/analytics/hooks/useGetLiveUserCount";
 import { LIVE_SESSIONS_POLL_MS, useGetLiveSessions } from "../../../../api/analytics/hooks/useGetUserSessions";
+import { ErrorState } from "../../../../components/ErrorState";
 import { NothingFound } from "../../../../components/NothingFound";
 import { SessionCard, SessionCardSkeleton } from "../../../../components/Sessions/SessionCard";
 import { Button } from "../../../../components/ui/button";
@@ -86,8 +87,17 @@ function KeepLiveSessionsPolling() {
  */
 function LiveSessionsList({ openedAt }: { openedAt: number }) {
   const t = useExtracted();
-  const { data, dataUpdatedAt, isLoading, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetLiveSessions(0);
+  const {
+    data,
+    dataUpdatedAt,
+    fetchStatus,
+    isError,
+    isLoading,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useGetLiveSessions(0);
 
   // Use the intersection observer hook
   const [ref, entry] = useIntersectionObserver({
@@ -108,8 +118,9 @@ function LiveSessionsList({ openedAt }: { openedAt: number }) {
     }
   }, [entry?.isIntersecting, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
 
-  // Until the refetch that opening started lands, the cached rows are from before the drawer opened.
-  const showSkeleton = isLoading || (isFetching && !isFetchingNextPage && dataUpdatedAt < openedAt);
+  // Cached rows are from before this opening until one of its fetches succeeds: show the skeleton while
+  // that is in flight (or paused offline), and an error if it failed, never the old rows.
+  const refreshed = dataUpdatedAt >= openedAt;
 
   return (
     <ScrollArea
@@ -117,7 +128,9 @@ function LiveSessionsList({ openedAt }: { openedAt: number }) {
       maskClassName="before:from-white dark:before:from-neutral-950 after:from-white dark:after:from-neutral-950"
     >
       <div className="space-y-3 p-2 md:p-4 overflow-x-hidden">
-        {showSkeleton ? (
+        {!refreshed && isError && fetchStatus === "idle" ? (
+          <ErrorState title="" message="" refetch={() => void refetch()} />
+        ) : !refreshed ? (
           <SessionCardSkeleton count={5} />
         ) : sessions.length === 0 ? (
           <NothingFound

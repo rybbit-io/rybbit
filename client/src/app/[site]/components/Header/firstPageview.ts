@@ -14,7 +14,7 @@ type Session = GetSessionsResponse[number];
 // useSiteHasData's key.
 const SITE_HAS_DATA_KEY = "site-has-data";
 // Both polled every 10 s by SubHeader's LiveUserCount (useGetLiveUserCount, useGetSessionsInfinite).
-// The sessions list only while its drawer is open, or for a site useLiveSessionsForFirstVisitor holds live.
+// The sessions list only while its drawer is open, or while NoData holds it live (useHoldLiveSessions).
 const LIVE_USER_COUNT_KEY = "live-user-count";
 const LIVE_SESSIONS_KEY = "sessions-infinite";
 // The dashboard refetch waits for the morph (install card fade-out, then the height spring) to mostly
@@ -149,24 +149,47 @@ export function useFirstSession(site: string, enabled: boolean): Session | undef
   return useSyncExternalStore(subscribe, getSnapshot, () => undefined);
 }
 
-/**
- * Whether LiveUserCount keeps its sessions list polling with the drawer closed. useFirstSession names a
- * new site's first visitor from that list's cache, so once has-data has answered false for the site, the
- * list stays live for as long as LiveUserCount is mounted: through the arrival and its refresh.
- *
- * Reads has-data from the cache: a useSiteHasData observer of its own would run a second 30 s poll.
- */
+// Sites whose install card is up: waiting for the first pageview, or celebrating it until dismissed.
+// LiveUserCount keeps its sessions list live for them, since useFirstSession names the first visitor from
+// that list's cache, and an observed list is never garbage-collected from under the card. Kept here, not in
+// LiveUserCount: switching dashboard tabs remounts LiveUserCount mid-journey, while NoData (layout) stays.
+const liveSessionHolds = new Map<string, number>();
+const liveSessionListeners = new Set<() => void>();
+
+const notifyLiveSessionHolds = () => liveSessionListeners.forEach(listener => listener());
+
+/** Keeps `site`'s live sessions list polling until the returned release runs. */
+export function holdLiveSessions(site: string): () => void {
+  liveSessionHolds.set(site, (liveSessionHolds.get(site) ?? 0) + 1);
+  notifyLiveSessionHolds();
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const count = (liveSessionHolds.get(site) ?? 1) - 1;
+    if (count > 0) liveSessionHolds.set(site, count);
+    else liveSessionHolds.delete(site);
+    notifyLiveSessionHolds();
+  };
+}
+
+/** Holds `site`'s live sessions list while `active` (NoData: while its install card is on screen). */
+export function useHoldLiveSessions(site: string, active: boolean) {
+  useEffect(() => (active && site ? holdLiveSessions(site) : undefined), [active, site]);
+}
+
+const subscribeLiveSessionHolds = (listener: () => void) => {
+  liveSessionListeners.add(listener);
+  return () => void liveSessionListeners.delete(listener);
+};
+
+/** Whether LiveUserCount keeps its sessions list polling with the drawer closed. */
 export function useLiveSessionsForFirstVisitor(site: string): boolean {
-  const cache = useQueryClient().getQueryCache();
-  const subscribe = useCallback((onChange: () => void) => cache.subscribe(onChange), [cache]);
-  const hasData = useSyncExternalStore(
-    subscribe,
-    () => cache.find<boolean>({ queryKey: [SITE_HAS_DATA_KEY, site], exact: true })?.state.data,
-    () => undefined
+  return useSyncExternalStore(
+    subscribeLiveSessionHolds,
+    () => !!site && liveSessionHolds.has(site),
+    () => false
   );
-  const [waitingSite, setWaitingSite] = useState<string | null>(null);
-  if (hasData === false && waitingSite !== site) setWaitingSite(site);
-  return !!site && waitingSite === site;
 }
 
 /**

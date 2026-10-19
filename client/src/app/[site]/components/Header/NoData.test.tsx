@@ -216,6 +216,24 @@ describe("NoData", () => {
     expect(await screen.findByText("from Germany · Firefox")).toBeTruthy();
   });
 
+  it("still names the first visitor when switching tabs remounts LiveUserCount mid-arrival", async () => {
+    const { rerender } = show(<LiveUserCountProbe key="first-tab" />);
+    await waitingHeading();
+    await waitFor(() => expect(callsTo("/sites/7/sessions")).toBe(1));
+    mocks.sessions = [{ session_id: "s1", session_start: "2026-09-28 10:01:00", country: "DE", browser: "Firefox" }];
+
+    await firstPageviewLands();
+    // The page's LiveUserCount goes with the tab; NoData, in the layout, stays.
+    rerender(
+      <QueryClientProvider client={client}>
+        <NoData />
+        <LiveUserCountProbe key="next-tab" />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByText("from Germany · Firefox", undefined, { timeout: 3000 })).toBeTruthy();
+  });
+
   it("moves focus into the confirmation when it was inside the waiting card", async () => {
     show();
     await waitingHeading();

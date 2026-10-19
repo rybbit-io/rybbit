@@ -1,10 +1,11 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useStore } from "@/lib/store";
 
+import { holdLiveSessions } from "../Header/firstPageview";
 import { LiveUserCount } from "./LiveUserCount";
 
 type Session = { session_id: string };
@@ -55,8 +56,11 @@ async function closeDrawer() {
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 }
 
-function show(hasData: boolean) {
-  client.setQueryData(["site-has-data", "7"], hasData);
+let releases: (() => void)[] = [];
+
+// `held`: NoData's install card is up for the site, so the list stays live with the drawer closed.
+function show({ held = false }: { held?: boolean } = {}) {
+  if (held) releases.push(holdLiveSessions("7"));
   return render(
     <QueryClientProvider client={client}>
       <TooltipProvider>
@@ -105,6 +109,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  releases.forEach(release => release());
+  releases = [];
+  onlineManager.setOnline(true);
   client.clear();
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -112,7 +119,7 @@ afterEach(() => {
 
 describe("LiveUserCount", () => {
   it("polls the count but not the sessions list while the drawer is closed", async () => {
-    show(true);
+    show();
     await waitFor(() => expect(liveCountCalls()).toBe(1));
 
     await tick(30_000);
@@ -122,7 +129,7 @@ describe("LiveUserCount", () => {
   });
 
   it("polls the list only while open, and refetches it on reopening", async () => {
-    show(true);
+    show();
     fireEvent.click(trigger());
     expect(await screen.findByText("s1")).toBeTruthy();
     expect(sessionCalls()).toBe(1);
@@ -146,7 +153,7 @@ describe("LiveUserCount", () => {
   it("stops a refetch from walking the remaining pages when the drawer closes", async () => {
     mocks.pages = { 1: rows("a", 25), 2: rows("b", 3) };
     mocks.intersecting = true;
-    show(true);
+    show();
     fireEvent.click(trigger());
     expect(await screen.findByText("b3")).toBeTruthy();
     expect(sessionCalls(2)).toBe(1);
@@ -167,8 +174,8 @@ describe("LiveUserCount", () => {
     expect(sessionCalls(2)).toBe(1);
   });
 
-  it("keeps the list live with the drawer closed while the site has no data yet", async () => {
-    show(false);
+  it("keeps the list live with the drawer closed while the install card holds it", async () => {
+    show({ held: true });
     await waitFor(() => expect(sessionCalls()).toBe(1));
 
     await tick(10_000);
@@ -177,7 +184,7 @@ describe("LiveUserCount", () => {
   });
 
   it("still refetches on reopening a list it keeps live, once per opening", async () => {
-    show(false);
+    show({ held: true });
     await waitFor(() => expect(sessionCalls()).toBe(1));
 
     fireEvent.click(trigger());
@@ -194,5 +201,44 @@ describe("LiveUserCount", () => {
     expect(await screen.findByText("loading sessions")).toBeTruthy();
     expect(await screen.findByText("s2")).toBeTruthy();
     expect(sessionCalls()).toBe(3);
+  });
+
+  it("shows an error, not the rows from the last opening, when the reopening refetch fails", async () => {
+    show();
+    fireEvent.click(trigger());
+    expect(await screen.findByText("s1")).toBeTruthy();
+    await closeDrawer();
+
+    mocks.fetch.mockImplementation(async (path: string) => {
+      if (path === "/sites/7/sessions") throw new Error("boom");
+      return { data: { count: 1 } };
+    });
+    fireEvent.click(trigger());
+    expect(await screen.findByText("Failed to load data")).toBeTruthy();
+    expect(screen.queryByText("s1")).toBeNull();
+
+    mocks.fetch.mockImplementation(async (path: string) =>
+      path === "/sites/7/sessions" ? { data: [{ session_id: "s2" }] } : { data: { count: 1 } }
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Try Again/ }));
+    expect(await screen.findByText("s2")).toBeTruthy();
+  });
+
+  it("keeps the skeleton, not the old rows, while the reopening refetch is paused offline", async () => {
+    show();
+    fireEvent.click(trigger());
+    expect(await screen.findByText("s1")).toBeTruthy();
+    await closeDrawer();
+
+    act(() => onlineManager.setOnline(false));
+    mocks.pages = { 1: [{ session_id: "s2" }] };
+    fireEvent.click(trigger());
+    expect(await screen.findByText("loading sessions")).toBeTruthy();
+    await tick(15_000);
+    expect(screen.queryByText("s1")).toBeNull();
+    expect(screen.getByText("loading sessions")).toBeTruthy();
+
+    act(() => onlineManager.setOnline(true));
+    expect(await screen.findByText("s2")).toBeTruthy();
   });
 });
