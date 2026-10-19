@@ -67,7 +67,7 @@ export async function recordSessionReplay(
     const { siteId, sessionReplay } = siteConfiguration ?? {};
 
     if (!sessionReplay) {
-      request.log.info({ siteId }, "Skipping session replay event because replay is not enabled");
+      request.log.debug({ siteId }, "Skipping session replay event because replay is not enabled");
       return reply.status(200).send({ success: true, message: "Session replay not enabled" });
     }
 
@@ -81,14 +81,14 @@ export async function recordSessionReplay(
 
     // Check if the site has exceeded its monthly limit
     if (usageService.isSiteOverLimit(Number(siteId))) {
-      request.log.info({ siteId }, "Skipping session replay event because the Site is over its monthly limit");
+      request.log.debug({ siteId }, "Skipping session replay event because the Site is over its monthly limit");
       return reply.status(200).send("Site over monthly limit, event not tracked");
     }
 
     // Check if the site can record replays: the plan may not include them (e.g. enabled
     // before a downgrade from Pro) or the monthly replay quota may be exhausted
     if (usageService.isSiteWithoutReplay(Number(siteId))) {
-      request.log.info({ siteId }, "Skipping session replay event because replay is unavailable for plan or quota");
+      request.log.debug({ siteId }, "Skipping session replay event because replay is unavailable for plan or quota");
       return reply.status(200).send({ success: true, message: "Session replay not available for plan or quota" });
     }
 
@@ -108,7 +108,7 @@ export async function recordSessionReplay(
     });
 
     if (exclusionDecision.excluded) {
-      request.log.info(
+      request.log.debug(
         { siteId, exclusionReason: exclusionDecision.reason },
         "Skipping session replay event because a Site Exclusion Decision matched"
       );

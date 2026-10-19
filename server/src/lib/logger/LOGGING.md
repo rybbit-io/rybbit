@@ -38,7 +38,7 @@ Fastify's default request logging is disabled and replaced by `requestLogging.ts
 | handled response with status 500 or greater  | `error` | `Request completed with server error` |
 | handled response with status 400–499         | `warn`  | `Request completed with client error` |
 | successful response                          | `info`  | `Request completed`                   |
-| successful ingestion or static-asset request | `debug` | `Request completed`                   |
+| successful tracker request or CORS preflight | `debug` | `Request completed`                   |
 
 Routes configured with `logLevel: "silent"`, such as health checks, emit no lifecycle event. Thrown failures are marked internally so the later response hook does not log the same lifecycle failure twice.
 

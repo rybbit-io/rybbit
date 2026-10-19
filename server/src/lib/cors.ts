@@ -17,6 +17,7 @@ type CorsOptions = {
   methods: string[];
   allowedHeaders: string[];
   credentials: boolean;
+  maxAge?: number;
 };
 
 type CorsDelegateCallback = (error: Error | null, options?: CorsOptions) => void;
@@ -25,6 +26,10 @@ const commonCorsOptions = {
   methods: corsMethods,
   allowedHeaders: corsAllowedHeaders,
 };
+
+// Chromium caps Access-Control-Max-Age at 2 hours; without the header it caches a
+// preflight for only 5 seconds, so nearly every tracker POST paid for an OPTIONS.
+export const TRACKER_PREFLIGHT_MAX_AGE_SECONDS = 7200;
 
 const devTrustedOrigins = ["http://localhost:3002", "http://127.0.0.1:3002"];
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -105,6 +110,19 @@ export function isPublicCorsPath(path: string): boolean {
   );
 }
 
+// Endpoints the tracking script calls from customer pages. Their CORS policy
+// depends only on the origin, so browsers may cache the preflight. Dashboard
+// routes keep the default so a policy change reaches them immediately.
+export function isTrackerCorsPath(path: string): boolean {
+  return (
+    path === "/api/track" ||
+    path === "/api/identify" ||
+    path.startsWith("/api/session-replay/record/") ||
+    path.startsWith("/api/site/tracking-config/") ||
+    /^\/api\/site\/[^/]+\/feature-flags\/evaluate$/.test(path)
+  );
+}
+
 export function getCorsOptionsForRequest(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): CorsOptions {
   const requestOrigin = normalizeCorsOrigin(request.headers.origin);
   if (!requestOrigin) {
@@ -115,7 +133,8 @@ export function getCorsOptionsForRequest(request: FastifyRequest, env: NodeJS.Pr
     };
   }
 
-  if (isPublicCorsPath(getRequestPath(request))) {
+  const path = getRequestPath(request);
+  if (isPublicCorsPath(path)) {
     // These paths are reachable from any origin (e.g. embedded widgets), but they
     // are also hit by the authenticated dashboard, which sends cookies. Reflect any
     // origin, but only allow credentials for trusted origins so the dashboard's
@@ -125,6 +144,7 @@ export function getCorsOptionsForRequest(request: FastifyRequest, env: NodeJS.Pr
       ...commonCorsOptions,
       origin: true,
       credentials: getTrustedCorsOrigins(env).includes(requestOrigin),
+      ...(isTrackerCorsPath(path) ? { maxAge: TRACKER_PREFLIGHT_MAX_AGE_SECONDS } : {}),
     };
   }
 

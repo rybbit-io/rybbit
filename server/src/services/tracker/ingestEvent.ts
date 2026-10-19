@@ -58,12 +58,12 @@ export async function ingestEvent(trackingRequest: TrackingRequest): Promise<Ing
   });
 
   if (exclusionDecision.excluded) {
-    logger.info({ siteId: payload.site_id, exclusionReason: exclusionDecision.reason }, "Site exclusion matched");
+    logger.debug({ siteId: payload.site_id, exclusionReason: exclusionDecision.reason }, "Site exclusion matched");
     return { status: "excluded", exclusion: exclusionDecision };
   }
 
   if (usageService.isSiteOverLimit(site.siteId)) {
-    logger.info({ siteId: payload.site_id }, "Skipping event - site over monthly limit");
+    logger.debug({ siteId: payload.site_id }, "Skipping event - site over monthly limit");
     return { status: "over_limit" };
   }
 

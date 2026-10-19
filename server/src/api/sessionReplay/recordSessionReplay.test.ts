@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   isSiteOverLimit: vi.fn(),
   isSiteWithoutReplay: vi.fn(),
   recordEvents: vi.fn(),
+  loggerDebug: vi.fn(),
   loggerInfo: vi.fn(),
   loggerError: vi.fn(),
 }));
@@ -88,6 +89,7 @@ function createRequest(overrides: RequestOverrides = {}): ReplayRequest {
     ip: overrides.ip ?? "203.0.113.10",
     log: {
       error: mocks.loggerError,
+      debug: mocks.loggerDebug,
       info: mocks.loggerInfo,
     },
   } as unknown as ReplayRequest;
