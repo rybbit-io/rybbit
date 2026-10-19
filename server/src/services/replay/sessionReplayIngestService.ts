@@ -174,8 +174,8 @@ export class SessionReplayIngestService {
       // An events-free batch still carries metadata worth recording, but it has
       // no timestamps to bound it — anchor those on server time rather than
       // letting Math.min of nothing produce an epoch-dated row.
-      const { startMs, endMs } =
-        events.length > 0 ? timestampRange(events) : { startMs: Date.now(), endMs: Date.now() };
+      const nowMs = Date.now();
+      const { startMs, endMs } = events.length > 0 ? timestampRange(events) : { startMs: nowMs, endMs: nowMs };
       const batchStats: BatchStats = {
         startTime: new Date(startMs),
         endTime: new Date(endMs),
