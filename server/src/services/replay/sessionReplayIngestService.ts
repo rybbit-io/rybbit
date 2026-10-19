@@ -35,6 +35,22 @@ export interface RequestMetadata {
 }
 
 /**
+ * Earliest and latest timestamp in a non-empty batch. A loop rather than
+ * Math.min(...spread): spreading a large batch can exceed the engine's argument
+ * limit and throw. Timestamps are finite here (correctReplayClockSkew sanitizes
+ * them), so plain comparisons match Math.min/Math.max.
+ */
+function timestampRange(events: { timestamp: number }[]): { startMs: number; endMs: number } {
+  let startMs = events[0].timestamp;
+  let endMs = startMs;
+  for (const { timestamp } of events) {
+    if (timestamp < startMs) startMs = timestamp;
+    if (timestamp > endMs) endMs = timestamp;
+  }
+  return { startMs, endMs };
+}
+
+/**
  * Service responsible for ingesting session replay data
  * Handles recording events and updating metadata
  */
@@ -90,15 +106,11 @@ export class SessionReplayIngestService {
 
     // Check if R2 storage is enabled for cloud deployments
     let r2BatchKey: string | null = null;
-    let eventDataArray: any[] = [];
 
     if (r2Storage.isEnabled()) {
-      // Extract event data for R2 storage
-      eventDataArray = events.map(event => event.data);
-
       try {
-        // Store event data batch in R2
-        r2BatchKey = await r2Storage.storeBatch(siteId, sessionId, eventDataArray);
+        // Store event data batch in R2, reusing the strings serialized above
+        r2BatchKey = await r2Storage.storeBatch(siteId, sessionId, serializedEvents);
       } catch (error) {
         console.error("Failed to store in R2, falling back to ClickHouse:", error);
         r2BatchKey = null;
@@ -162,10 +174,11 @@ export class SessionReplayIngestService {
       // An events-free batch still carries metadata worth recording, but it has
       // no timestamps to bound it — anchor those on server time rather than
       // letting Math.min of nothing produce an epoch-dated row.
-      const timestamps = events.length > 0 ? events.map(event => event.timestamp) : [Date.now()];
+      const { startMs, endMs } =
+        events.length > 0 ? timestampRange(events) : { startMs: Date.now(), endMs: Date.now() };
       const batchStats: BatchStats = {
-        startTime: new Date(Math.min(...timestamps)),
-        endTime: new Date(Math.max(...timestamps)),
+        startTime: new Date(startMs),
+        endTime: new Date(endMs),
         eventCount: eventsToInsert.length,
         compressedSizeBytes: eventsToInsert.reduce((total, event) => total + event.event_size_bytes, 0),
         screenWidth: metadata.viewportWidth || 0,

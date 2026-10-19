@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toClickHouseDateTime } from "../../db/clickhouse/dateTime.js";
 import type { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 
 const mocks = vi.hoisted(() => ({
@@ -161,5 +162,70 @@ describe("SessionReplayIngestService size cap", () => {
     expect(result).toEqual({ capped: true });
     expect(mocks.storeBatch).not.toHaveBeenCalled();
     expect(mocks.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe("SessionReplayIngestService batch serialization", () => {
+  // Inside the clock-skew window, so the batch is stored as sent.
+  const base = Date.now() - 60_000;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.generateUserId.mockResolvedValue("fingerprint");
+    mocks.updateSession.mockResolvedValue({ sessionId: "session-1" });
+    mocks.insert.mockResolvedValue(undefined);
+    mocks.chargeReplaySessionBudget.mockResolvedValue({ accepted: true, usedBytes: 0 });
+    mocks.storeBatch.mockResolvedValue("r2-key");
+    mocks.r2Enabled = true;
+  });
+
+  it("hands R2 the per-event strings, which join to the serialized data array", async () => {
+    const service = new SessionReplayIngestService();
+    const events = [
+      { type: 2, data: { node: { id: 1, textContent: 'quote " and é' } }, timestamp: base },
+      { type: 3, data: { source: 1, positions: [{ x: 1, y: 2 }] }, timestamp: base + 10 },
+      { type: 4, data: null, timestamp: base + 20 },
+    ];
+
+    await service.recordEvents(42, { userId: "", events }, requestMeta);
+
+    const serialized: string[] = mocks.storeBatch.mock.calls[0][2];
+    expect(serialized).toEqual(events.map(event => JSON.stringify(event.data)));
+    expect(`[${serialized.join(",")}]`).toBe(JSON.stringify(events.map(event => event.data)));
+    expect(mocks.insert.mock.calls[0][0].values.map((row: { event_data_key: string }) => row.event_data_key)).toEqual([
+      "r2-key",
+      "r2-key",
+      "r2-key",
+    ]);
+  });
+
+  it("bounds the metadata row by the earliest and latest event, whatever their order", async () => {
+    const service = new SessionReplayIngestService();
+    const events = [
+      { type: 3, data: {}, timestamp: base + 500 },
+      { type: 3, data: {}, timestamp: base },
+      { type: 3, data: {}, timestamp: base + 900 },
+      { type: 3, data: {}, timestamp: base + 100 },
+    ];
+
+    await service.recordEvents(42, { userId: "", events, metadata: { pageUrl: "https://example.com/" } }, requestMeta);
+
+    const metadataRow = mocks.insert.mock.calls[1][0].values[0];
+    expect(metadataRow.start_time).toBe(toClickHouseDateTime(new Date(base)));
+    expect(metadataRow.end_time).toBe(toClickHouseDateTime(new Date(base + 900)));
+    expect(metadataRow.event_count).toBe(4);
+  });
+
+  it("records a batch too large to spread into Math.min", async () => {
+    // Math.min(...timestamps) overflows the call stack somewhere past ~120k
+    // arguments; a small-event batch that size still fits the body limit.
+    const service = new SessionReplayIngestService();
+    const events = Array.from({ length: 200_000 }, (_, index) => ({ type: 3, data: {}, timestamp: base + index }));
+
+    await service.recordEvents(42, { userId: "", events, metadata: { pageUrl: "https://example.com/" } }, requestMeta);
+
+    const metadataRow = mocks.insert.mock.calls[1][0].values[0];
+    expect(metadataRow.start_time).toBe(toClickHouseDateTime(new Date(base)));
+    expect(metadataRow.end_time).toBe(toClickHouseDateTime(new Date(base + 199_999)));
   });
 });
