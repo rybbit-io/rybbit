@@ -80,14 +80,14 @@ export function useGetSessionsInfinite({
   limit = 100,
   refetchInterval,
   staleTime = Infinity,
-  enabled,
+  abortable,
 }: {
   userId?: string;
   timeOverride?: Time;
   limit?: number;
   refetchInterval?: number;
   staleTime?: number;
-  enabled?: boolean;
+  abortable?: boolean;
 }) {
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
@@ -107,7 +107,23 @@ export function useGetSessionsInfinite({
     getNextPageParam: (lastPage, allPages) => (lastPage.length === limit ? allPages.length + 1 : undefined),
     staleTime,
     refetchInterval,
-    enabled,
+    abortable,
+  });
+}
+
+export const LIVE_SESSIONS_POLL_MS = 10_000;
+
+/**
+ * The past-5-minute sessions list behind LiveUserCount, polled every 10 s. Its observers are mounted
+ * only while someone needs the list, so unmounting the last one cancels a refetch mid-pages.
+ */
+export function useGetLiveSessions(staleTime: number) {
+  return useGetSessionsInfinite({
+    timeOverride: { mode: "past-minutes", pastMinutesStart: 5, pastMinutesEnd: 0 },
+    limit: 25,
+    refetchInterval: LIVE_SESSIONS_POLL_MS,
+    staleTime,
+    abortable: true,
   });
 }
 

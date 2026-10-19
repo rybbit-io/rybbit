@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionGlobalConfig } from "framer-motion";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGetLiveUserCount } from "@/api/analytics/hooks/useGetLiveUserCount";
-import { useGetSessionsInfinite } from "@/api/analytics/hooks/useGetUserSessions";
+import { LIVE_SESSIONS_POLL_MS, useGetLiveSessions } from "@/api/analytics/hooks/useGetUserSessions";
 import { useStore } from "@/lib/store";
 import { useLiveSessionsForFirstVisitor } from "./firstPageview";
 import { NoData } from "./NoData";
@@ -31,13 +31,11 @@ vi.mock("@/components/CodeSnippet", () => ({ CodeSnippet: ({ code }: { code: str
 // What SubHeader's LiveUserCount mounts on every dashboard page, with its drawer closed.
 function LiveUserCountProbe() {
   useGetLiveUserCount(5);
-  useGetSessionsInfinite({
-    timeOverride: { mode: "past-minutes", pastMinutesStart: 5, pastMinutesEnd: 0 },
-    limit: 25,
-    enabled: useLiveSessionsForFirstVisitor("7"),
-    staleTime: 0,
-    refetchInterval: 10000,
-  });
+  return useLiveSessionsForFirstVisitor("7") ? <KeepLiveSessionsProbe /> : null;
+}
+
+function KeepLiveSessionsProbe() {
+  useGetLiveSessions(LIVE_SESSIONS_POLL_MS);
   return null;
 }
 

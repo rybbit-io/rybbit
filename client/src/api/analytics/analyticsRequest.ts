@@ -78,7 +78,11 @@ export function buildAnalyticsRequest(descriptor: AnalyticsDescriptor, context: 
  * Issue an analytics request. Used by the query hooks and by the non-React
  * callers (CSV export), so both go through the same seam.
  */
-export async function fetchAnalytics<TData>(site: number | string, request: AnalyticsRequest): Promise<TData> {
+export async function fetchAnalytics<TData>(
+  site: number | string,
+  request: AnalyticsRequest,
+  signal?: AbortSignal
+): Promise<TData> {
   const base =
     request.organizationId === undefined
       ? `/sites/${site}`
@@ -86,7 +90,7 @@ export async function fetchAnalytics<TData>(site: number | string, request: Anal
   const response = await authedFetch<TData | { data: TData }>(
     `${base}/${request.path}`,
     request.params,
-    request.body === undefined ? {} : { method: "POST", data: request.body }
+    request.body === undefined ? { signal } : { method: "POST", data: request.body, signal }
   );
   return request.unwrap ? (response as { data: TData }).data : (response as TData);
 }

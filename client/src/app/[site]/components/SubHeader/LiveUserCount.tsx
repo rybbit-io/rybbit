@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FlashNumber } from "@/components/interior/value-flash";
 import { useStore } from "@/lib/store";
 import { useGetLiveUserCount } from "../../../../api/analytics/hooks/useGetLiveUserCount";
-import { useGetSessionsInfinite } from "../../../../api/analytics/hooks/useGetUserSessions";
+import { LIVE_SESSIONS_POLL_MS, useGetLiveSessions } from "../../../../api/analytics/hooks/useGetUserSessions";
 import { NothingFound } from "../../../../components/NothingFound";
 import { SessionCard, SessionCardSkeleton } from "../../../../components/Sessions/SessionCard";
 import { Button } from "../../../../components/ui/button";
@@ -23,56 +23,14 @@ export function LiveUserCount() {
   const [openedAt, setOpenedAt] = useState(0);
   const keepLive = useLiveSessionsForFirstVisitor(site);
 
-  const {
-    data: sessionsData,
-    dataUpdatedAt,
-    isLoading,
-    isFetching: isFetchingSessions,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useGetSessionsInfinite({
-    timeOverride: {
-      mode: "past-minutes",
-      pastMinutesStart: 5,
-      pastMinutesEnd: 0,
-    },
-    limit: 25,
-    // Polled only while someone can see it. Stale once closed, so reopening refetches.
-    enabled: open || keepLive,
-    staleTime: 0,
-    refetchInterval: 10000,
-  });
-
-  // Until the refetch that opening started lands, the cached list is from an earlier opening.
-  const showSkeleton = isLoading || (isFetchingSessions && !isFetchingNextPage && dataUpdatedAt < openedAt);
-
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) setOpenedAt(Date.now());
   };
 
-  // Use the intersection observer hook
-  const [ref, entry] = useIntersectionObserver({
-    threshold: 0,
-    root: null,
-    rootMargin: "0px 0px 200px 0px",
-  });
-
-  const sessions = useMemo(() => {
-    if (!sessionsData) return [];
-    return sessionsData.pages.flatMap(page => page || []);
-  }, [sessionsData]);
-
-  // Fetch next page when intersection observer detects the target is visible
-  useEffect(() => {
-    if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
-      fetchNextPage();
-    }
-  }, [entry?.isIntersecting, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
-
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
+      {keepLive && !open && <KeepLiveSessionsPolling />}
       <Tooltip>
         <TooltipTrigger asChild>
           <DrawerTrigger asChild>
@@ -105,33 +63,80 @@ export function LiveUserCount() {
             <DrawerTitle>{t("Users online in past 5 minutes")}</DrawerTitle>
           </DrawerHeader>
         </VisuallyHidden>
-        <ScrollArea
-          className="h-[75vh]"
-          maskClassName="before:from-white dark:before:from-neutral-950 after:from-white dark:after:from-neutral-950"
-        >
-          <div className="space-y-3 p-2 md:p-4 overflow-x-hidden">
-            {showSkeleton ? (
-              <SessionCardSkeleton count={5} />
-            ) : sessions.length === 0 ? (
-              <NothingFound
-                icon={<Rewind className="w-10 h-10" />}
-                title={t("No sessions found")}
-                description={t("No users online in the past 5 minutes")}
-              />
-            ) : (
-              <>
-                {sessions.map((session, index) => (
-                  <SessionCard key={`${session.session_id}-${index}`} session={session} />
-                ))}
-                {/* Infinite scroll sentinel */}
-                <div ref={ref} className="space-y-3">
-                  {isFetchingNextPage && <SessionCardSkeleton count={3} />}
-                </div>
-              </>
-            )}
-          </div>
-        </ScrollArea>
+        {/* Keyed by opening: every opening mounts a fresh list, even one mid exit animation. */}
+        <LiveSessionsList key={openedAt} openedAt={openedAt} />
       </DrawerContent>
     </Drawer>
+  );
+}
+
+/**
+ * Keeps the list polling with the drawer closed, for a site useLiveSessionsForFirstVisitor holds live.
+ * Not stale until the next poll is due, so taking over from a closing drawer doesn't refetch.
+ */
+function KeepLiveSessionsPolling() {
+  useGetLiveSessions(LIVE_SESSIONS_POLL_MS);
+  return null;
+}
+
+/**
+ * Mounted only while the drawer is open, so the list polls (and pages) only while someone can see it.
+ * Stale on every mount, so opening refetches. The drawer unmounts it once its exit animation ends, and
+ * that cancels a refetch still walking the loaded pages.
+ */
+function LiveSessionsList({ openedAt }: { openedAt: number }) {
+  const t = useExtracted();
+  const { data, dataUpdatedAt, isLoading, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useGetLiveSessions(0);
+
+  // Use the intersection observer hook
+  const [ref, entry] = useIntersectionObserver({
+    threshold: 0,
+    root: null,
+    rootMargin: "0px 0px 200px 0px",
+  });
+
+  const sessions = useMemo(() => {
+    if (!data) return [];
+    return data.pages.flatMap(page => page || []);
+  }, [data]);
+
+  // Fetch next page when intersection observer detects the target is visible
+  useEffect(() => {
+    if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
+      fetchNextPage();
+    }
+  }, [entry?.isIntersecting, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
+
+  // Until the refetch that opening started lands, the cached rows are from before the drawer opened.
+  const showSkeleton = isLoading || (isFetching && !isFetchingNextPage && dataUpdatedAt < openedAt);
+
+  return (
+    <ScrollArea
+      className="h-[75vh]"
+      maskClassName="before:from-white dark:before:from-neutral-950 after:from-white dark:after:from-neutral-950"
+    >
+      <div className="space-y-3 p-2 md:p-4 overflow-x-hidden">
+        {showSkeleton ? (
+          <SessionCardSkeleton count={5} />
+        ) : sessions.length === 0 ? (
+          <NothingFound
+            icon={<Rewind className="w-10 h-10" />}
+            title={t("No sessions found")}
+            description={t("No users online in the past 5 minutes")}
+          />
+        ) : (
+          <>
+            {sessions.map((session, index) => (
+              <SessionCard key={`${session.session_id}-${index}`} session={session} />
+            ))}
+            {/* Infinite scroll sentinel */}
+            <div ref={ref} className="space-y-3">
+              {isFetchingNextPage && <SessionCardSkeleton count={3} />}
+            </div>
+          </>
+        )}
+      </div>
+    </ScrollArea>
   );
 }
