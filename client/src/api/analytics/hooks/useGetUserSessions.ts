@@ -79,11 +79,15 @@ export function useGetSessionsInfinite({
   timeOverride,
   limit = 100,
   refetchInterval,
+  staleTime = Infinity,
+  enabled,
 }: {
   userId?: string;
   timeOverride?: Time;
   limit?: number;
   refetchInterval?: number;
+  staleTime?: number;
+  enabled?: boolean;
 }) {
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
@@ -101,8 +105,9 @@ export function useGetSessionsInfinite({
     pageParams: page => ({ page }),
     // A full page might have more behind it; a short one is the last.
     getNextPageParam: (lastPage, allPages) => (lastPage.length === limit ? allPages.length + 1 : undefined),
-    staleTime: Infinity,
+    staleTime,
     refetchInterval,
+    enabled,
   });
 }
 

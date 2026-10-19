@@ -14,6 +14,7 @@ type Session = GetSessionsResponse[number];
 // useSiteHasData's key.
 const SITE_HAS_DATA_KEY = "site-has-data";
 // Both polled every 10 s by SubHeader's LiveUserCount (useGetLiveUserCount, useGetSessionsInfinite).
+// The sessions list only while its drawer is open, or for a site useLiveSessionsForFirstVisitor holds live.
 const LIVE_USER_COUNT_KEY = "live-user-count";
 const LIVE_SESSIONS_KEY = "sessions-infinite";
 // The dashboard refetch waits for the morph (install card fade-out, then the height spring) to mostly
@@ -146,6 +147,26 @@ export function useFirstSession(site: string, enabled: boolean): Session | undef
       ? earliestSession(cache.findAll({ queryKey: [LIVE_SESSIONS_KEY, site] }).map(query => query.state.data))
       : undefined;
   return useSyncExternalStore(subscribe, getSnapshot, () => undefined);
+}
+
+/**
+ * Whether LiveUserCount keeps its sessions list polling with the drawer closed. useFirstSession names a
+ * new site's first visitor from that list's cache, so once has-data has answered false for the site, the
+ * list stays live for as long as LiveUserCount is mounted: through the arrival and its refresh.
+ *
+ * Reads has-data from the cache: a useSiteHasData observer of its own would run a second 30 s poll.
+ */
+export function useLiveSessionsForFirstVisitor(site: string): boolean {
+  const cache = useQueryClient().getQueryCache();
+  const subscribe = useCallback((onChange: () => void) => cache.subscribe(onChange), [cache]);
+  const hasData = useSyncExternalStore(
+    subscribe,
+    () => cache.find<boolean>({ queryKey: [SITE_HAS_DATA_KEY, site], exact: true })?.state.data,
+    () => undefined
+  );
+  const [waitingSite, setWaitingSite] = useState<string | null>(null);
+  if (hasData === false && waitingSite !== site) setWaitingSite(site);
+  return !!site && waitingSite === site;
 }
 
 /**

@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { useGetLiveUserCount } from "@/api/analytics/hooks/useGetLiveUserCount";
 import { useGetSessionsInfinite } from "@/api/analytics/hooks/useGetUserSessions";
 import { useStore } from "@/lib/store";
+import { useLiveSessionsForFirstVisitor } from "./firstPageview";
 import { NoData } from "./NoData";
 
 const mocks = vi.hoisted(() => ({
@@ -27,12 +28,14 @@ vi.mock("next-intl", () => ({
 vi.mock("@/hooks/useIsWhiteLabel", () => ({ useWhiteLabel: () => ({ isWhiteLabel: false }) }));
 vi.mock("@/components/CodeSnippet", () => ({ CodeSnippet: ({ code }: { code: string }) => <pre>{code}</pre> }));
 
-// What SubHeader's LiveUserCount mounts on every dashboard page.
+// What SubHeader's LiveUserCount mounts on every dashboard page, with its drawer closed.
 function LiveUserCountProbe() {
   useGetLiveUserCount(5);
   useGetSessionsInfinite({
     timeOverride: { mode: "past-minutes", pastMinutesStart: 5, pastMinutesEnd: 0 },
     limit: 25,
+    enabled: useLiveSessionsForFirstVisitor("7"),
+    staleTime: 0,
     refetchInterval: 10000,
   });
   return null;

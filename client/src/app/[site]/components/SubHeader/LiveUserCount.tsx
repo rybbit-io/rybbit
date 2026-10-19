@@ -1,7 +1,7 @@
 import { useIntersectionObserver } from "@uidotdev/usehooks";
 import { Rewind } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlashNumber } from "@/components/interior/value-flash";
 import { useStore } from "@/lib/store";
 import { useGetLiveUserCount } from "../../../../api/analytics/hooks/useGetLiveUserCount";
@@ -13,15 +13,21 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from 
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
+import { useLiveSessionsForFirstVisitor } from "../Header/firstPageview";
 
 export function LiveUserCount() {
   const t = useExtracted();
   const site = useStore(state => state.site);
   const { data, isFetching } = useGetLiveUserCount(5);
+  const [open, setOpen] = useState(false);
+  const [openedAt, setOpenedAt] = useState(0);
+  const keepLive = useLiveSessionsForFirstVisitor(site);
 
   const {
     data: sessionsData,
+    dataUpdatedAt,
     isLoading,
+    isFetching: isFetchingSessions,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -32,8 +38,19 @@ export function LiveUserCount() {
       pastMinutesEnd: 0,
     },
     limit: 25,
+    // Polled only while someone can see it. Stale once closed, so reopening refetches.
+    enabled: open || keepLive,
+    staleTime: 0,
     refetchInterval: 10000,
   });
+
+  // Until the refetch that opening started lands, the cached list is from an earlier opening.
+  const showSkeleton = isLoading || (isFetchingSessions && !isFetchingNextPage && dataUpdatedAt < openedAt);
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) setOpenedAt(Date.now());
+  };
 
   // Use the intersection observer hook
   const [ref, entry] = useIntersectionObserver({
@@ -55,7 +72,7 @@ export function LiveUserCount() {
   }, [entry?.isIntersecting, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
 
   return (
-    <Drawer>
+    <Drawer open={open} onOpenChange={handleOpenChange}>
       <Tooltip>
         <TooltipTrigger asChild>
           <DrawerTrigger asChild>
@@ -93,7 +110,7 @@ export function LiveUserCount() {
           maskClassName="before:from-white dark:before:from-neutral-950 after:from-white dark:after:from-neutral-950"
         >
           <div className="space-y-3 p-2 md:p-4 overflow-x-hidden">
-            {isLoading ? (
+            {showSkeleton ? (
               <SessionCardSkeleton count={5} />
             ) : sessions.length === 0 ? (
               <NothingFound
