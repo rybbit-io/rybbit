@@ -2,7 +2,7 @@ import { Browser } from "../../app/[site]/components/shared/icons/Browser";
 import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
 import { DeviceIcon } from "../../app/[site]/components/shared/icons/Device";
 import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
-import { getRegionName } from "../../lib/geo";
+import { useGetRegionName } from "../../lib/geo";
 import { getCountryName } from "../../lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
@@ -19,6 +19,7 @@ export function CountryFlagTooltipIcon({
   className?: string;
   onClick?: (e: React.MouseEvent) => void;
 }) {
+  const { getRegionName } = useGetRegionName();
   const getFullLocation = <T extends { country: string; city: string; region: string }>(session: T) => {
     let location = "";
     if (session.city) {
