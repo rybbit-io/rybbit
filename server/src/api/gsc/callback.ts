@@ -60,7 +60,8 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.SERVER_URL}/api/gsc/callback`;
+    const redirectUri =
+      process.env.GOOGLE_REDIRECT_URI || `${process.env.SERVER_URL || process.env.BASE_URL}/api/gsc/callback`;
 
     if (!clientId || !clientSecret) {
       return res.status(500).send({ error: "Google OAuth not configured" });
@@ -95,7 +96,7 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
     const properties = await getGSCProperties(tokens.access_token, req.log);
 
     if (properties.length === 0) {
-      return res.redirect(`${process.env.CLIENT_URL}/error?message=No GSC properties found`);
+      return res.redirect(`${process.env.CLIENT_URL || process.env.BASE_URL}/error?message=No GSC properties found`);
     }
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
