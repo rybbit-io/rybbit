@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-alpine AS deps
+FROM node:24.22.1-alpine AS deps
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 # The runtime image supplies Chromium through apk.
@@ -24,7 +24,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm --filter rybbit-backend deploy --legacy --prod --store-dir /pnpm/store /prod/server
 
 # Runtime image
-FROM node:24-alpine
+FROM node:24.22.1-alpine
 
 WORKDIR /app
 
