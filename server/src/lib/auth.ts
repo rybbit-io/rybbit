@@ -90,7 +90,7 @@ const pluginList = [
       rateLimit: apiKeyRateLimit,
     },
   ]),
-  dash(),
+  ...(process.env.BETTER_AUTH_API_KEY ? [dash()] : []),
   organization({
     allowUserToCreateOrganization: true,
     // better-auth checks this whenever it adds a member itself — including
