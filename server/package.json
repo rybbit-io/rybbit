@@ -1,6 +1,6 @@
 {
   "name": "rybbit-backend",
-  "version": "2.9.1",
+  "version": "2.9.2",
   "description": "Rybbit backend",
   "main": "dist/index.js",
   "type": "module",
