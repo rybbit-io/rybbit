@@ -6,7 +6,7 @@ import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { db } from "../../db/postgres/postgres.js";
-import { featureFlags, userProfiles } from "../../db/postgres/schema.js";
+import { experiments, featureFlags, userProfiles } from "../../db/postgres/schema.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { getDeviceType, getRequestUserAgent } from "../../utils.js";
@@ -211,6 +211,18 @@ export async function updateFeatureFlag(
       return reply.status(404).send({ error: "Feature flag not found" });
     }
     updateData.version += 1;
+
+    if (body.runtime === "server") {
+      const experiment = await db.query.experiments.findFirst({
+        columns: { name: true },
+        where: and(eq(experiments.siteId, siteId), eq(experiments.featureFlagId, flagId)),
+      });
+      if (experiment) {
+        return reply.status(400).send({
+          error: `This flag runs the experiment "${experiment.name}", which needs it evaluated on the client. Use "Client" or "Both".`,
+        });
+      }
+    }
 
     const [updated] = await db
       .update(featureFlags)
