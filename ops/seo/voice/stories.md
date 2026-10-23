@@ -3,7 +3,7 @@
 > Used by /blog-post: when a post needs a real example, take it from here instead of inventing one, and keep to the "Publishable" line for that story.
 > Customers stay anonymous unless Bill records permission here. Anything marked "do not publish without Bill's approval" is off-limits to automated drafting.
 
-All entries are candidates drafted 2026-09-28 from engineering notes. Numbers are from Rybbit's own production data or code at the time of each incident; re-check any number you quote against the current code or data, and give the date it was measured.
+Stories 1–9 were drafted 2026-09-28 from engineering notes and approved by Bill the same day (status: approved). Their Publishable and Sensitivities lines still apply. The "Do not publish" section at the end stays gated. Numbers are from Rybbit's own production data or code at the time of each incident; re-check any number you quote against the current code or data, and give the date it was measured.
 
 ## Lead with these
 
@@ -31,7 +31,7 @@ All entries are candidates drafted 2026-09-28 from engineering notes. Numbers ar
 - Publishable: everything already in the post plus current public GitHub numbers.
 - Sensitivities: revenue and signup numbers beyond what's already public need Bill's approval. The old post says "freemium"; the follow-up must not.
 
-## More candidates
+## More stories
 
 ### 5. The one-shot bot fleet that no per-visitor rule can see
 - Facts (August 2026): across 14 days, detection caught 14.5% of traffic during spike hours against 48% at rest. One small site (normally about 4 events an hour) took 26k events in 20 hours from about 20,500 identities sending roughly one event each, from about 3,900 mostly residential networks. The fix compares each site to its own weekly baseline and convicts cohorts that are both a flood and uniform. Backtest: 22 sites flagged, all the same fleet; real product launches weren't flagged.
@@ -49,7 +49,7 @@ All entries are candidates drafted 2026-09-28 from engineering notes. Numbers ar
 - Facts (July 2026): after a change to client-IP resolution, traffic through rotating proxy egress (CloudFront, Fly.io, corporate proxies, iCloud Private Relay) resolved to the proxy's IP. Visitors split into several users, sessions ran 2 to 4 times high, and one customer's excluded IP showed up as 7 users. Fixes: IP exclusion matches every candidate IP, sites can declare a first-party proxy, datacenter egress IPs are bucketed for identity, and a short-lived re-attachment step joins a visitor whose proxy IP rotated.
 - Angle: "Why your analytics counts one visitor twice" for proxy and CDN setups.
 - Publishable: the mechanism and the fixes.
-- Sensitivities: this was a production regression that affected paying customers, and data from that week stays split. Needs Bill's approval before publishing. Never name the customer.
+- Sensitivities: this was a production regression that affected paying customers, and data from that week stays split. Approved 2026-09-28. Never name the customer, and say plainly that data from that week stays split.
 
 ### 8. The homepage redesign that lost
 - Facts (September 2026): Rybbit ran an A/B test of a new homepage design against the existing one using its own tags; the existing design won and the new one was retired (PR #1180). The scaffold for future tests stayed.
@@ -61,7 +61,7 @@ All entries are candidates drafted 2026-09-28 from engineering notes. Numbers ar
 - Facts (September 2026): a large self-hosted instance (about 25M events a day) hit sustained high CPU. Sampling ClickHouse's running queries showed nearly all of it came from one internal script calling the raw overview endpoint per country over a year-to-date range, about 1,000 calls an hour, not from background aggregation.
 - Angle: "Before tuning ClickHouse, look at what's actually running", practical for self-hosters.
 - Publishable: the diagnostic method and the lesson.
-- Sensitivities: customer deployment and their staff's script. Anonymize fully; needs Bill's approval.
+- Sensitivities: customer deployment and their staff's script. Approved 2026-09-28. Anonymize fully.
 
 ## Do not publish without Bill's approval
 
