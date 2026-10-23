@@ -28,10 +28,11 @@ export type GenerateCustomQueryRequest = {
   history?: CustomQueryGenerationMessage[];
 };
 
-export function runCustomQuery(organizationId: string, query: string, siteId?: number) {
+export function runCustomQuery(organizationId: string, query: string, siteId?: number, signal?: AbortSignal) {
   return authedFetch<RunCustomQueryResponse>(`/organizations/${organizationId}/analytics/query`, undefined, {
     method: "POST",
     data: { query, siteId },
+    signal,
   });
 }
 
