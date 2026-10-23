@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { asLicenses } from "../../db/postgres/schema-appsumo.js";
+import { getOrgMembership } from "../../lib/access.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { usageService } from "../../services/usageService.js";
@@ -110,10 +111,7 @@ export async function activateAppSumoLicense(
 
     // A license changes the organization's plan: the same owner-only
     // permission as every other billing action.
-    const member = await db.query.member.findFirst({
-      where: (member, { and, eq }) =>
-        and(eq(member.userId, session.user.id), eq(member.organizationId, organizationId)),
-    });
+    const member = await getOrgMembership(session.user.id, organizationId);
 
     if (!member) {
       return reply.status(403).send({

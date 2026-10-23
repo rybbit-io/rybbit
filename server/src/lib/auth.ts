@@ -14,7 +14,7 @@ import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
 import { invitation, member, memberSiteAccess, sites, user } from "../db/postgres/schema.js";
 import { isAdminRole, isOrgRole, isSiteGrantRole, ORG_ROLES, SITE_GRANT_ROLES, type OrgRole } from "@rybbit/shared";
-import { siteIdsInOrganization } from "./access.js";
+import { oldestMembershipFirst, siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
 import { getMemberLimitError, getPlanMemberLimit } from "./memberLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
@@ -535,6 +535,8 @@ export const auth = betterAuth({
             .select({ id: member.id })
             .from(member)
             .where(and(eq(member.organizationId, organizationId), eq(member.userId, userRecord[0].id)))
+            // The row getOrgMembership resolves, so the grants land on it.
+            .orderBy(...oldestMembershipFirst)
             .limit(1);
           if (memberRecord.length === 0) return;
           const memberId = memberRecord[0].id;

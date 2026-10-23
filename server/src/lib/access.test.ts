@@ -35,6 +35,7 @@ vi.mock("../db/postgres/postgres.js", async () => {
         return builder;
       },
       where: () => builder,
+      orderBy: () => builder,
       limit: () => builder,
       then: (resolve: any, reject: any) => {
         const key = table === "team_site_access" && joined ? "team_site_access_joined" : table;

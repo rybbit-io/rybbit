@@ -117,6 +117,9 @@ export const sites = pgTable(
     // Tracking and the route guards resolve a Site by its text id on every
     // cache miss.
     index("sites_id_idx").on(table.id),
+    // Access resolution loads an organization's sites on every access-cache
+    // miss, as do the usage, weekly-report and lifecycle crons.
+    index("sites_organization_idx").on(table.organizationId),
   ]
 );
 
@@ -250,19 +253,29 @@ export const organization = pgTable(
 );
 
 // Member table (BetterAuth)
-export const member = pgTable("member", {
-  id: text().primaryKey().notNull(),
-  organizationId: text()
-    .notNull()
-    .references(() => organization.id),
-  userId: text()
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  role: text().notNull(),
-  createdAt: timestamp({ mode: "string" }).notNull(),
-  // Site access restriction: false = all sites (default), true = only sites in member_site_access
-  hasRestrictedSiteAccess: boolean("has_restricted_site_access").default(false).notNull(),
-});
+export const member = pgTable(
+  "member",
+  {
+    id: text().primaryKey().notNull(),
+    organizationId: text()
+      .notNull()
+      .references(() => organization.id),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text().notNull(),
+    createdAt: timestamp({ mode: "string" }).notNull(),
+    // Site access restriction: false = all sites (default), true = only sites in member_site_access
+    hasRestrictedSiteAccess: boolean("has_restricted_site_access").default(false).notNull(),
+  },
+  table => [
+    // Not unique: existing deployments may already hold duplicate memberships.
+    // Serves (organizationId, userId) role lookups and per-organization member lists.
+    index("member_organizationId_userId_idx").on(table.organizationId, table.userId),
+    // Every access-cache miss lists the user's memberships.
+    index("member_userId_idx").on(table.userId),
+  ]
+);
 
 // Invitation table (BetterAuth)
 export const invitation = pgTable("invitation", {
@@ -309,23 +322,38 @@ export const memberSiteAccess = pgTable(
 );
 
 // Team table (BetterAuth)
-export const team = pgTable("team", {
-  memberCount: integer().notNull().default(0),
-  id: text().primaryKey(),
-  name: text().notNull(),
-  organizationId: text().notNull().references(() => organization.id, { onDelete: "cascade" }),
-  createdAt: timestamp({ mode: "string" }).notNull(),
-  updatedAt: timestamp({ mode: "string" }),
-});
+export const team = pgTable(
+  "team",
+  {
+    memberCount: integer().notNull().default(0),
+    id: text().primaryKey(),
+    name: text().notNull(),
+    organizationId: text()
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    createdAt: timestamp({ mode: "string" }).notNull(),
+    updatedAt: timestamp({ mode: "string" }),
+  },
+  table => [index("team_organizationId_idx").on(table.organizationId)]
+);
 
 // Team member table (BetterAuth)
-export const teamMember = pgTable("teamMember", {
-  membershipKey: text().unique(),
-  id: text().primaryKey(),
-  teamId: text().notNull().references(() => team.id, { onDelete: "cascade" }),
-  userId: text().notNull().references(() => user.id, { onDelete: "cascade" }),
-  createdAt: timestamp({ mode: "string" }),
-});
+export const teamMember = pgTable(
+  "teamMember",
+  {
+    membershipKey: text().unique(),
+    id: text().primaryKey(),
+    teamId: text()
+      .notNull()
+      .references(() => team.id, { onDelete: "cascade" }),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp({ mode: "string" }),
+  },
+  // Team-granted site access is resolved by user on every access-cache miss.
+  table => [index("teamMember_userId_idx").on(table.userId)]
+);
 
 // Team site access junction table - stores which sites belong to a team
 export const teamSiteAccess = pgTable(
@@ -371,33 +399,38 @@ export const session = pgTable(
 );
 
 // API Key table (BetterAuth)
-export const apiKey = pgTable("apikey", {
-  id: text().primaryKey().notNull(),
-  name: text(),
-  start: text(),
-  prefix: text(),
-  key: text().notNull(),
-  // A user id (configId NULL/"default") or an organization id (configId
-  // "org") — polymorphic, so no FK. Cleanup happens in auth.ts's
-  // deleteUser.afterDelete and afterDeleteOrganization hooks.
-  referenceId: text().notNull(),
-  refillInterval: integer(),
-  refillAmount: integer(),
-  lastRefillAt: timestamp({ mode: "string" }),
-  enabled: boolean().notNull().default(true),
-  rateLimitEnabled: boolean().notNull().default(false),
-  rateLimitTimeWindow: integer(),
-  rateLimitMax: integer(),
-  requestCount: integer().notNull().default(0),
-  remaining: integer(),
-  lastRequest: timestamp({ mode: "string" }),
-  expiresAt: timestamp({ mode: "string" }),
-  createdAt: timestamp({ mode: "string" }).notNull(),
-  updatedAt: timestamp({ mode: "string" }).notNull(),
-  configId: text(),
-  permissions: text(),
-  metadata: jsonb(),
-});
+export const apiKey = pgTable(
+  "apikey",
+  {
+    id: text().primaryKey().notNull(),
+    name: text(),
+    start: text(),
+    prefix: text(),
+    key: text().notNull(),
+    // A user id (configId NULL/"default") or an organization id (configId
+    // "org") — polymorphic, so no FK. Cleanup happens in auth.ts's
+    // deleteUser.afterDelete and afterDeleteOrganization hooks.
+    referenceId: text().notNull(),
+    refillInterval: integer(),
+    refillAmount: integer(),
+    lastRefillAt: timestamp({ mode: "string" }),
+    enabled: boolean().notNull().default(true),
+    rateLimitEnabled: boolean().notNull().default(false),
+    rateLimitTimeWindow: integer(),
+    rateLimitMax: integer(),
+    requestCount: integer().notNull().default(0),
+    remaining: integer(),
+    lastRequest: timestamp({ mode: "string" }),
+    expiresAt: timestamp({ mode: "string" }),
+    createdAt: timestamp({ mode: "string" }).notNull(),
+    updatedAt: timestamp({ mode: "string" }).notNull(),
+    configId: text(),
+    permissions: text(),
+    metadata: jsonb(),
+  },
+  // Every API-key request looks the key up by its hash.
+  table => [index("apikey_key_idx").on(table.key)]
+);
 
 // Legacy Better Auth 1.6 OAuth records, retained for rollback.
 // Better Auth 1.7 uses the separate tables below; legacy tokens are not accepted.
@@ -666,6 +699,8 @@ export const goals = pgTable(
       foreignColumns: [sites.siteId],
       name: "goals_site_id_sites_site_id_fk",
     }).onDelete("cascade"),
+    // Session lists, goal reports and the lifecycle cron load a site's goals.
+    index("goals_site_idx").on(table.siteId),
   ]
 );
 
