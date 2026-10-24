@@ -163,7 +163,8 @@ export async function createSiteTransfer(
       where: eq(user.id, senderId),
       columns: { email: true, name: true },
     });
-    const senderName = sender?.name && !sender.name.includes("@") ? sender.name : null;
+    const trimmedName = sender?.name?.trim();
+    const senderName = trimmedName && !trimmedName.includes("@") ? trimmedName : null;
     try {
       await sendSiteTransferEmail({
         email: transfer.recipientEmail,

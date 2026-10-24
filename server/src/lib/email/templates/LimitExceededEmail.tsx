@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import * as React from "react";
 import { appUrl, formatCount, formatDateTime, plural } from "../format.js";
-import { usagePeriod, type UsageEmailProps } from "./ApproachingLimitEmail.js";
+import { usagePercent, usagePeriod, type UsageEmailProps } from "./ApproachingLimitEmail.js";
 import { Badge, color, H1, HELP_URL, LedgerLayout, Meter, Note, P, PrimaryButton, Rows } from "./ledger.js";
 
 const MAX_LISTED_SITES = 5;
@@ -50,7 +50,7 @@ export const LimitExceededEmail = ({
         top={16}
         used={formatCount(eventCount)}
         of={`${formatCount(eventLimit)} events`}
-        percent={(eventCount / eventLimit) * 100}
+        percent={usagePercent(eventCount, eventLimit)}
         barColor={color.danger}
         startLabel={shortDate(start)}
         endLabel={`Resets ${shortDate(reset)}`}

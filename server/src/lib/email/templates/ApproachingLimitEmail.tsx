@@ -87,7 +87,7 @@ export const ApproachingLimitEmail = ({
       <Meter
         used={formatCount(eventCount)}
         of={`${formatCount(eventLimit)} events`}
-        percent={(eventCount / eventLimit) * 100}
+        percent={percent}
         barColor={color.warning}
         startLabel={shortDate(start)}
         endLabel={`Resets ${shortDate(reset)}`}
