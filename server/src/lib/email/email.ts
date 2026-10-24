@@ -17,13 +17,29 @@ if (IS_CLOUD) {
   resend = new Resend(process.env.RESEND_API_KEY);
 }
 
+/**
+ * The Resend SDK resolves failed requests (HTTP errors, rate limits, network failures) as
+ * { data: null, error } instead of rejecting, so every call must check `error` itself.
+ */
+class ResendRequestError extends Error {
+  constructor(
+    action: string,
+    readonly resendError: { name: string; message: string }
+  ) {
+    super(`Resend ${action} failed (${resendError.name}): ${resendError.message}`);
+    this.name = "ResendRequestError";
+  }
+}
+
 // Marketing audience management
 export const getOrCreateMarketingAudience = async (): Promise<string> => {
   if (marketingAudienceId) return marketingAudienceId;
   if (!resend) throw new Error("Resend not initialized");
 
-  // List existing audiences to check if "Marketing" exists
-  const { data: audiences } = await resend.audiences.list();
+  // List existing audiences to check if "Marketing" exists. A failed list must not fall
+  // through to creating (and caching) a second, empty "Marketing" audience.
+  const { data: audiences, error: listError } = await resend.audiences.list();
+  if (listError) throw new ResendRequestError("audience list", listError);
   const existing = audiences?.data?.find((a: { name: string }) => a.name === "Marketing");
 
   if (existing) {
@@ -32,45 +48,58 @@ export const getOrCreateMarketingAudience = async (): Promise<string> => {
   }
 
   // Create new audience
-  const { data } = await resend.audiences.create({ name: "Marketing" });
-  marketingAudienceId = data!.id;
-  return data!.id;
+  const { data, error: createError } = await resend.audiences.create({ name: "Marketing" });
+  if (createError || !data) {
+    throw new ResendRequestError("audience create", createError ?? { name: "application_error", message: "no data" });
+  }
+  marketingAudienceId = data.id;
+  return data.id;
 };
 
 export const addContactToAudience = async (email: string, firstName?: string): Promise<void> => {
   if (!resend) return;
   try {
     const audienceId = await getOrCreateMarketingAudience();
-    await resend.contacts.create({ audienceId, email, firstName, unsubscribed: false });
+    const { error } = await resend.contacts.create({ audienceId, email, firstName, unsubscribed: false });
+    if (error) throw new ResendRequestError("contact create", error);
   } catch (error) {
     console.error("Failed to add contact to audience:", error);
   }
 };
 
+/**
+ * Whether marketing email to this address must be skipped: the contact unsubscribed, or was
+ * never added to the audience. Throws when Resend can't answer (rate limit, outage), so the
+ * caller skips this send and logs it instead of recording the contact as unsubscribed.
+ */
 export const isContactUnsubscribed = async (email: string): Promise<boolean> => {
   if (!resend) return false;
-  try {
-    const audienceId = await getOrCreateMarketingAudience();
-    const { data: contact } = await resend.contacts.get({ audienceId, email });
-    // If contact doesn't exist or is unsubscribed, return true to skip sending
-    if (!contact) return true;
-    return contact.unsubscribed ?? false;
-  } catch (error) {
-    // If contact doesn't exist (404), don't send email
-    return true;
+  const audienceId = await getOrCreateMarketingAudience();
+  const { data: contact, error } = await resend.contacts.get({ audienceId, email });
+  if (error) {
+    if (error.name === "not_found") return true;
+    throw new ResendRequestError("contact lookup", error);
   }
+  // If contact doesn't exist or is unsubscribed, return true to skip sending
+  if (!contact) return true;
+  return contact.unsubscribed ?? false;
 };
 
+/**
+ * Marks the contact unsubscribed. Throws if Resend rejects the update so the caller can
+ * report the failure instead of confirming an unsubscribe that didn't happen. A contact
+ * that isn't in the audience already receives no marketing email.
+ */
 export const unsubscribeContact = async (email: string): Promise<void> => {
   if (!resend) return;
-  try {
-    const audienceId = await getOrCreateMarketingAudience();
-    await resend.contacts.update({ audienceId, email, unsubscribed: true });
-  } catch (error) {
-    console.error("Failed to unsubscribe contact:", error);
+  const audienceId = await getOrCreateMarketingAudience();
+  const { error } = await resend.contacts.update({ audienceId, email, unsubscribed: true });
+  if (error && error.name !== "not_found") {
+    throw new ResendRequestError("contact unsubscribe", error);
   }
 };
 
+/** Sends a transactional email. Throws when Resend does not accept it. */
 export const sendEmail = async (email: string, subject: string, html: string) => {
   if (!resend) {
     return;
@@ -84,6 +113,9 @@ export const sendEmail = async (email: string, subject: string, html: string) =>
       subject,
       html,
     });
+    if (response.error) {
+      throw new ResendRequestError("email send", response.error);
+    }
     return response;
   } catch (error) {
     console.error(error);
@@ -242,13 +274,14 @@ Cheers,
 Bill`;
 
   try {
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: "Bill from Rybbit <bill@email.rybbit.com>",
       replyTo: "hello@rybbit.com",
       to: email,
       subject: "Welcome to Rybbit!",
       text,
     });
+    if (error) throw new ResendRequestError("welcome email send", error);
   } catch (error) {
     console.error("Failed to send welcome email:", error);
   }

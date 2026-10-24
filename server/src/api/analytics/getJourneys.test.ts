@@ -38,7 +38,7 @@ describe("buildJourneysQuery session-scoped filters", () => {
     expect(sql).toContain("FilteredSessions AS");
     expect(sql).toContain("argMinIf(referrer, timestamp, referrer != '') AS referrer");
     expect(sql).toContain("WHERE 1 = 1 AND domainWithoutWWW(referrer) = 'google.com'");
-    expect(sql).toContain("FROM events\n            INNER JOIN FilteredSessions USING (session_id)");
+    expect(sql).toContain("FROM events\n          INNER JOIN FilteredSessions USING (session_id)");
     expect(sql).toContain("AND type = 'pageview'");
     expect(sql.match(/domainWithoutWWW\(referrer\) = 'google\.com'/g)).toHaveLength(1);
   });
@@ -64,6 +64,13 @@ describe("buildJourneysQuery session-scoped filters", () => {
 });
 
 describe("buildJourneysQuery", () => {
+  it("orders each session's pages by millisecond time, not the whole-second timestamp", () => {
+    const { query: sql } = journeysSql();
+
+    expect(sql).toContain("arraySort(groupArray((timestamp_ms, pathname)))");
+    expect(sql).not.toContain("ORDER BY session_id, timestamp");
+  });
+
   it("takes each journey's share from the sessions with two or more pages", () => {
     const { query: sql, params } = journeysSql();
 

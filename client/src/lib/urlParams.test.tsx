@@ -117,3 +117,70 @@ describe("homepage time URL persistence", () => {
     await waitFor(() => expect(useStore.getState().time).toMatchObject({ pastMinutesStart: 60 }));
   });
 });
+
+describe("site detail pages", () => {
+  const chrome = { parameter: "browser" as const, type: "equals" as const, value: ["Chrome"] };
+  const sharedSearch = `?timeMode=range&startDate=2026-09-01&endDate=2026-09-07&filters=${encodeURIComponent(
+    JSON.stringify([chrome])
+  )}`;
+
+  it.each(["/42/bots", "/42/user/abc", "/42/dashboards/5"])(
+    "restores a shared or refreshed address on %s",
+    async path => {
+      useStore.setState({ site: "42" });
+      mount(sharedSearch, path);
+      await waitFor(() =>
+        expect(useStore.getState()).toMatchObject({
+          time: { mode: "range", startDate: "2026-09-01", endDate: "2026-09-07" },
+          filters: [chrome],
+        })
+      );
+    }
+  );
+
+  it("keeps the period and filters a profile was opened with, and writes them to its address", async () => {
+    const time = { mode: "range" as const, startDate: "2026-08-01", endDate: "2026-08-30" };
+    useStore.getState().setTime(time);
+    useStore.setState({ site: "42", filters: [chrome] });
+    mount("", "/42/user/abc");
+    await waitFor(() => expect(new URLSearchParams(navigation.search).get("startDate")).toBe("2026-08-01"));
+    expect(useStore.getState()).toMatchObject({ time, filters: [chrome] });
+    expect(JSON.parse(new URLSearchParams(navigation.search).get("filters") ?? "null")).toEqual([chrome]);
+  });
+
+  it("still resets list pages opened without a query", async () => {
+    useStore.setState({ site: "42", filters: [chrome] });
+    mount("", "/42/bots");
+    await waitFor(() => expect(useStore.getState().filters).toEqual([]));
+  });
+});
+
+describe("client-side navigation", () => {
+  const chrome = { parameter: "browser" as const, type: "equals" as const, value: ["Chrome"] };
+
+  // A client-side navigation: the router's address changes at once, nuqs's values a commit later.
+  function navigate(view: ReturnType<typeof mount>, search: string, pathname: string) {
+    navigation.pathname = pathname;
+    navigation.search = search;
+    view.rerender(
+      <NuqsTestingAdapter searchParams={search} onUrlUpdate={onUrlUpdate} hasMemory>
+        <Sync />
+      </NuqsTestingAdapter>
+    );
+  }
+
+  it.each([
+    ["a page that doesn't sync", "", "/42/query"],
+    ["a synced page with its own period", "?timeMode=range&startDate=2026-08-01&endDate=2026-08-30", "/42/main"],
+  ])("restores the destination's own address when arriving from %s", async (_from, fromSearch, fromPath) => {
+    useStore.setState({ site: "42", filters: [chrome] });
+    const view = mount(fromSearch, fromPath);
+    await waitFor(() => expect(useStore.getState().filters).toEqual(fromPath === "/42/main" ? [] : [chrome]));
+
+    navigate(view, "?timeMode=day&day=2026-09-01", "/42/user/abc");
+    await waitFor(() => expect(useStore.getState().time).toMatchObject({ mode: "day", day: "2026-09-01" }));
+    expect(useStore.getState().filters).toEqual([]);
+    expect(new URLSearchParams(navigation.search).get("day")).toBe("2026-09-01");
+    expect(new URLSearchParams(navigation.search).get("startDate")).toBeNull();
+  });
+});

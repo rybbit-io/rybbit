@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
 import { enrichWithTraits } from "../utils/utils.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { FilterParams } from "@rybbit/shared";
@@ -8,6 +9,7 @@ import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { effectiveUserId } from "../utils/effectiveUserId.js";
 import {
   buildUserNarrowing,
+  pagingParam,
   resolveSearchScope,
   resolveTraitCohort,
   UserNarrowingParams,
@@ -47,6 +49,35 @@ export interface GetUsersRequest {
     }
   >;
 }
+
+const DEFAULT_PAGE_SIZE = 100;
+// The dashboard asks for at most 100 rows; larger pages are capped, as the
+// sessions list caps its own.
+const MAX_PAGE_SIZE = 1000;
+// The offset is bound as Int32.
+const MAX_OFFSET = 2_147_483_647;
+
+const usersPaginationSchema = z.object({
+  page: pagingParam("page", 1),
+  page_size: pagingParam("page_size", 1),
+});
+
+/** The list's page and offset: a malformed value is an error, an oversized page is capped. */
+export const parseUsersPagination = (
+  query: unknown
+): { ok: true; page: number; pageSize: number; offset: number } | { ok: false; error: string } => {
+  const parsed = usersPaginationSchema.safeParse(query);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid pagination parameters" };
+  }
+  const page = parsed.data.page ?? 1;
+  const pageSize = Math.min(parsed.data.page_size ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const offset = (page - 1) * pageSize;
+  if (offset > MAX_OFFSET) {
+    return { ok: false, error: "page is out of range" };
+  }
+  return { ok: true, page, pageSize, offset };
+};
 
 export const buildUsersQuery = (
   query: GetUsersRequest["Querystring"],
@@ -188,11 +219,14 @@ export const getUsers = analyticsRoute<GetUsersRequest>(
       return res.status(400).send({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
     }
 
-    const { page = "1", page_size: pageSize = "100" } = req.query;
+    const pagination = parseUsersPagination(req.query);
+    if (!pagination.ok) {
+      return res.status(400).send({ error: pagination.error });
+    }
+
     const { trait_key: traitKey, trait_value: traitValue, trait_missing: traitMissing } = parsed.data;
     const siteId = Number(req.params.siteId);
-    const pageNum = parseInt(page, 10);
-    const pageSizeNum = parseInt(pageSize, 10);
+    const { page: pageNum, pageSize: pageSizeNum, offset } = pagination;
 
     if (traitKey && traitValue === undefined && traitMissing !== "true") {
       return res.status(400).send({ error: "trait_key needs trait_value or trait_missing=true" });
@@ -235,7 +269,6 @@ export const getUsers = analyticsRoute<GetUsersRequest>(
     }
 
     const { params: narrowingParams } = buildUserNarrowing(req.query, scope);
-    const offset = (pageNum - 1) * pageSizeNum;
 
     // Execute both queries in parallel
     const [data, countData] = await Promise.all([

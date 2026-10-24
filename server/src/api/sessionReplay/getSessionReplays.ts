@@ -27,6 +27,9 @@ export async function getSessionReplays(
       minDuration: minDuration ? Number(minDuration) : undefined,
       start_date: request.query.start_date,
       end_date: request.query.end_date,
+      // A zoomed chart sends only these; dropping them answered with all time.
+      start_datetime: request.query.start_datetime,
+      end_datetime: request.query.end_datetime,
       time_zone: request.query.time_zone,
       past_minutes_start: request.query.past_minutes_start ? Number(request.query.past_minutes_start) : undefined,
       past_minutes_end: request.query.past_minutes_end ? Number(request.query.past_minutes_end) : undefined,

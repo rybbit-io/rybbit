@@ -4,14 +4,15 @@ import { RybbitApiClient } from "../apiClient.js";
 import { FILTER_PARAMETERS, TIME_BUCKETS, filtersInput, siteIdInput, timeInputs } from "../inputs.js";
 import { looseRow, ok, readOnly, siteQuery, type ScopeCheck, type ToolGuard } from "./shared.js";
 
+// Averages and rates come back null (ClickHouse NaN) for a window with no sessions.
 const overviewMetrics = z
   .object({
     sessions: z.number(),
     pageviews: z.number(),
     users: z.number(),
-    pages_per_session: z.number(),
-    bounce_rate: z.number(),
-    session_duration: z.number(),
+    pages_per_session: z.number().nullable(),
+    bounce_rate: z.number().nullable(),
+    session_duration: z.number().nullable(),
   })
   .partial()
   .passthrough();

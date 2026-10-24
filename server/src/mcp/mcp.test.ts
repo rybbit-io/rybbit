@@ -129,6 +129,19 @@ describe("mcp endpoint", () => {
         fastify.get("/sites/:siteId/overview", async request => {
           captured.url = request.url;
           captured.query = request.query as Record<string, unknown>;
+          if ((request.params as { siteId: string }).siteId === "6") {
+            // An empty window: ClickHouse returns NaN averages, serialized as null.
+            return {
+              data: {
+                sessions: 0,
+                pageviews: 0,
+                users: 0,
+                pages_per_session: null,
+                bounce_rate: null,
+                session_duration: null,
+              },
+            };
+          }
           return { data: { sessions: 100, pageviews: 250 } };
         });
 
@@ -153,6 +166,14 @@ describe("mcp endpoint", () => {
         fastify.post("/sites/:siteId/funnels/analyze", async request => {
           captured.body = request.body;
           captured.query = request.query as Record<string, unknown>;
+          if ((request.params as { siteId: string }).siteId === "6") {
+            return {
+              data: [
+                { step_number: 1, step_name: "Step 1", sessions: 0, conversion_rate: null, dropoff_rate: 0 },
+                { step_number: 2, step_name: "Step 2", sessions: 0, conversion_rate: null, dropoff_rate: null },
+              ],
+            };
+          }
           // The API returns `sessions` plus the deprecated `visitors` alias.
           return {
             data: [{ step_number: 1, step_name: "Step 1", sessions: 10, visitors: 10, conversion_rate: 100, dropoff_rate: 0 }],
@@ -692,6 +713,23 @@ describe("mcp endpoint", () => {
     expect(result.isError).toBeFalsy();
     expect(captured.body).toEqual({ steps });
     expect(captured.query).toMatchObject({ past_minutes_start: "1440" });
+  });
+
+  it("passes null averages and rates from an empty window through output validation", async () => {
+    const overview = await callTool(app, "get_overview", { site_id: 6, past_minutes: 60 });
+    expect(overview.isError).toBeFalsy();
+    expect(overview.structuredContent.data).toMatchObject({ bounce_rate: null, session_duration: null });
+
+    const funnel = await callTool(app, "analyze_funnel", {
+      site_id: 6,
+      steps: [
+        { type: "page", value: "/pricing" },
+        { type: "event", value: "signup" },
+      ],
+      past_minutes: 60,
+    });
+    expect(funnel.isError).toBeFalsy();
+    expect(funnel.structuredContent.data[1]).toMatchObject({ conversion_rate: null, dropoff_rate: null });
   });
 
   it("surfaces REST errors as tool errors with a hint", async () => {

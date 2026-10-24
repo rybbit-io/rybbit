@@ -197,12 +197,9 @@ export const StringOperatorOptions = [
   { label: "Regex", value: "regex" },
   { label: "Is null", value: "is_null" },
   { label: "Is not null", value: "is_not_null" },
-  { label: "Greater than", value: "greater_than" },
-  { label: "Less than", value: "less_than" },
-  { label: "Greater than or equal to", value: "greater_than_or_equal" },
-  { label: "Less than or equal to", value: "less_than_or_equal" },
 ];
 
+// Comparisons only apply to numeric parameters; the API rejects them on text.
 export const NumericOperatorOptions = [
   { label: "Equals", value: "equals" },
   { label: "Not equals", value: "not_equals" },

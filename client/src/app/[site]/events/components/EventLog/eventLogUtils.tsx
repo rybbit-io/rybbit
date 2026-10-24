@@ -1,9 +1,22 @@
 "use client";
 
 import { Event } from "../../../../../api/analytics/endpoints";
+import type { EventLogEvent } from "../../../../../api/analytics/hooks/events/useGetEvents";
 
-export function getEventKey(event: Event) {
-  return `${event.timestamp}-${event.session_id}-${event.user_id}-${event.type}-${event.event_name ?? ""}-${event.pathname}`;
+/**
+ * The event's cursor, which tells it apart from every other event. A key built
+ * from the whole-second timestamp merged two clicks within the same second.
+ */
+export function getEventKey(event: EventLogEvent) {
+  return event.event_cursor;
+}
+
+/** Newest first, in the endpoint's order: by millisecond, then tie-breaker. */
+export function compareEventsNewestFirst(a: EventLogEvent, b: EventLogEvent) {
+  // The milliseconds have no leading zeros, so a longer cursor is a later one.
+  const x = a.event_cursor;
+  const y = b.event_cursor;
+  return y.length - x.length || (y < x ? -1 : y > x ? 1 : 0);
 }
 
 export function parseEventProperties(event: Event): Record<string, any> {

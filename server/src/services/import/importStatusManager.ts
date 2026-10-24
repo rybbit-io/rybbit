@@ -6,6 +6,7 @@ import { DateTime } from "luxon";
 export type SelectImportStatus = typeof importStatus.$inferSelect;
 
 export async function createImport(data: {
+  importId: string;
   siteId: number;
   organizationId: string;
   platform: (typeof importPlatforms)[number];
@@ -13,6 +14,7 @@ export async function createImport(data: {
   const [result] = await db
     .insert(importStatus)
     .values({
+      importId: data.importId,
       siteId: data.siteId,
       organizationId: data.organizationId,
       platform: data.platform,

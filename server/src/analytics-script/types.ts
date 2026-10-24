@@ -163,6 +163,8 @@ export interface SessionReplayEvent {
 export interface SessionReplayBatchResult {
   /** The session hit its replay size cap; stop recording for this page. */
   stopRecording?: boolean;
+  /** The server needs a full snapshot to move the replay to a new session. */
+  takeFullSnapshot?: boolean;
 }
 
 export interface SessionReplayBatch {
@@ -174,4 +176,5 @@ export interface SessionReplayBatch {
     viewportHeight?: number;
     language?: string;
   };
+  _bsm?: number; // Client-side bot detection signal bitmask, as on events
 }

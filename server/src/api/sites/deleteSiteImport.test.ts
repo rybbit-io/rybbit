@@ -20,6 +20,7 @@ vi.mock("../../db/postgres/postgres.js", () => ({ db: {} }));
 vi.mock("../../lib/subscriptionUtils.js", () => ({ getBestSubscription: vi.fn() }));
 vi.mock("../../services/import/importQuotaTracker.js", () => ({ ImportQuotaTracker: {} }));
 vi.mock("../../lib/const.js", () => ({ IS_CLOUD: false }));
+vi.mock("../../db/redis/redis.js", () => ({}));
 
 import { deleteSiteImport } from "./deleteSiteImport.js";
 

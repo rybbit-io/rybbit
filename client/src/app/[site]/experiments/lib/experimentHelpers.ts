@@ -57,9 +57,12 @@ export function formatCompactNumber(value: number): string {
   return `${(value / 1_000_000).toFixed(1)}M`;
 }
 
-export function formatRelativeTime(iso: string | null): string | null {
-  if (!iso) return null;
-  const dt = DateTime.fromISO(iso);
+// Experiment timestamps come from Postgres `timestamp` columns as UTC wall time
+// ("2026-10-24 12:34:56.789"), which fromISO rejects; ISO strings still parse.
+export function formatRelativeTime(timestamp: string | null): string | null {
+  if (!timestamp) return null;
+  const sql = DateTime.fromSQL(timestamp, { zone: "utc" });
+  const dt = sql.isValid ? sql : DateTime.fromISO(timestamp, { zone: "utc" });
   return dt.isValid ? dt.toRelative() : null;
 }
 
@@ -83,16 +86,6 @@ function normalCdf(z: number): number {
   return z >= 0 ? 1 - p : p;
 }
 
-// Derive the denominator consistent with the displayed conversion rate so the
-// z-test never contradicts the rate shown to the user.
-function effectiveSampleSize(result: ExperimentVariantResult): number {
-  if (result.conversionRate > 0) {
-    const derived = Math.round(result.conversions / result.conversionRate);
-    if (Number.isFinite(derived) && derived >= result.conversions) return derived;
-  }
-  return result.exposures;
-}
-
 export type VariantConfidence = {
   confidence: number; // two-sided, 0..1
   isSignificant: boolean; // >= 0.95
@@ -108,8 +101,11 @@ export function getVariantConfidence(
 ): VariantConfidence | null {
   if (!control || control.variant === variant.variant) return null;
 
-  const nControl = effectiveSampleSize(control);
-  const nVariant = effectiveSampleSize(variant);
+  // The displayed conversion rate is conversions / sessions, so sessions is the
+  // sample size. Exposures count every flag evaluation, repeats in a session
+  // included, and would overstate confidence (most visibly for 0-conversion arms).
+  const nControl = control.sessions;
+  const nVariant = variant.sessions;
   if (nControl < MIN_SAMPLE_FOR_STATS || nVariant < MIN_SAMPLE_FOR_STATS) return null;
 
   const pControl = control.conversions / nControl;

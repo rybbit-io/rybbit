@@ -52,8 +52,8 @@ export async function deleteSiteImport(request: FastifyRequest<DeleteImportReque
     }
 
     // Only the client's final batch completes an import, so one whose client stopped early would
-    // otherwise be undeletable. Judged from startedAt in Postgres rather than the in-memory import
-    // lock, which only the worker that created the import holds (CLUSTER_WORKERS) and a restart drops.
+    // otherwise be undeletable. Judged from startedAt in Postgres rather than the import lock,
+    // which can be missing (Redis restarted, or the in-process fallback on another worker).
     if (importRecord.completedAt === null && !isAbandoned(importRecord.startedAt)) {
       return reply.status(400).send({ error: "Cannot delete active import" });
     }
@@ -98,7 +98,9 @@ export async function deleteSiteImport(request: FastifyRequest<DeleteImportReque
       return reply.status(500).send({ error: "Failed to delete import record" });
     }
 
-    importQuotaManager.completeImport(importRecord.organizationId);
+    // Releases the lock only if this import still holds it (an abandoned one whose lock
+    // hasn't expired yet), never the lock of another import that is running now.
+    await importQuotaManager.completeImport(importRecord.organizationId, importId);
 
     return reply.send();
   } catch (error) {

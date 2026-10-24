@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { API_RATE_LIMIT_LUA } from "./apiRateLimitLua.js";
+import { IMPORT_LOCK_RELEASE_LUA, IMPORT_QUOTA_RESERVE_LUA } from "./importQuotaLua.js";
 import { REPLAY_BUDGET_LUA } from "./replayBudgetLua.js";
 import { STICKY_RESOLVE_LUA } from "./stickyResolveLua.js";
 
@@ -410,4 +411,51 @@ export async function anomalyObserve(nowMs: number, specs: AnomalyCounterSpec[])
     top: flat[index * 3 + 1] ?? 0,
     distinct: flat[index * 3 + 2] ?? 0,
   }));
+}
+
+// Data import lock and monthly quota (importQuotaManager), shared so every cluster
+// worker enforces one import per organization and one quota. Imports are rare and
+// each call is a single small script, so they use the main connection.
+redis.defineCommand("importLockRelease", { numberOfKeys: 1, lua: IMPORT_LOCK_RELEASE_LUA });
+redis.defineCommand("importQuotaReserve", { numberOfKeys: 1, lua: IMPORT_QUOTA_RESERVE_LUA });
+
+interface ImportRedis extends Redis {
+  importLockRelease(key: string, owner: string): Promise<number>;
+  importQuotaReserve(key: string, ...args: (string | number)[]): Promise<number[]>;
+}
+
+/** Takes the lock for `owner` unless someone holds it. Atomic across all workers. */
+export async function importLockAcquire(key: string, owner: string, ttlMs: number): Promise<boolean> {
+  return (await redis.set(key, owner, "PX", ttlMs, "NX")) === "OK";
+}
+
+/** Releases the lock if `owner` still holds it. */
+export async function importLockRelease(key: string, owner: string): Promise<boolean> {
+  return (await (redis as ImportRedis).importLockRelease(key, owner)) === 1;
+}
+
+export interface ImportQuotaRequest {
+  /** yyyyMM */
+  month: string;
+  /** Events the caller knows are counted for the month; the shared count never drops below it. */
+  baseline: number;
+  requested: number;
+}
+
+/**
+ * Reserves up to `requested` events per month against `monthlyLimit` and returns how many
+ * were granted, in the same order. Atomic across all workers; one round-trip.
+ */
+export async function importQuotaReserve(
+  key: string,
+  monthlyLimit: number,
+  ttlMs: number,
+  requests: ImportQuotaRequest[]
+): Promise<number[]> {
+  const args: (string | number)[] = [monthlyLimit, ttlMs];
+  for (const request of requests) {
+    args.push(request.month, request.baseline, request.requested);
+  }
+  const granted = await (redis as ImportRedis).importQuotaReserve(key, ...args);
+  return requests.map((_, index) => Number(granted[index] ?? 0));
 }

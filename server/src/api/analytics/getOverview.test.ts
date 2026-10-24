@@ -33,3 +33,15 @@ describe("unique user counting", () => {
     });
   });
 });
+
+describe("buildOverviewBucketedQuery join", () => {
+  it("takes the bucket from whichever side has it instead of defaulting to 1970", () => {
+    const sql = buildOverviewBucketedQuery(baseParams({ start_date: "", end_date: "" }), SITE_ID);
+
+    expect(sql).toContain("coalesce(session_stats.time, page_stats.time) AS time");
+    expect(sql).toContain("coalesce(session_stats.sessions, 0) AS sessions");
+    expect(sql).toContain("coalesce(page_stats.pageviews, 0) AS pageviews");
+    expect(sql).toContain("SETTINGS join_use_nulls = 1");
+    expect(sql).not.toContain("session_stats.time AS time");
+  });
+});

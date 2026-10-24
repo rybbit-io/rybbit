@@ -55,6 +55,11 @@
       return false;
     }
   }
+  function truncateText(value, maxLength) {
+    if (value.length <= maxLength) return value;
+    const lastCode = value.charCodeAt(maxLength - 1);
+    return value.slice(0, lastCode >= 55296 && lastCode <= 56319 ? maxLength - 1 : maxLength);
+  }
   function parseJsonSafely(value, fallback) {
     if (!value) return fallback;
     try {
@@ -285,230 +290,6 @@
     return resolvedConfig;
   }
 
-  // sessionReplay.ts
-  var SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
-  function shouldSampleSession(sampleRate) {
-    if (sampleRate >= 100) return true;
-    if (sampleRate <= 0) return false;
-    try {
-      const existingDecision = sessionStorage.getItem(SAMPLE_STORAGE_KEY);
-      if (existingDecision !== null) {
-        return existingDecision === "1";
-      }
-      const sampled = Math.random() * 100 < sampleRate;
-      sessionStorage.setItem(SAMPLE_STORAGE_KEY, sampled ? "1" : "0");
-      return sampled;
-    } catch {
-      return Math.random() * 100 < sampleRate;
-    }
-  }
-  var SessionReplayRecorder = class {
-    constructor(config, userId, sendBatch) {
-      this.isRecording = false;
-      // Set once the server reports the session is over its size cap; recording
-      // stays off for the rest of this page.
-      this.capped = false;
-      this.eventBuffer = [];
-      this.config = config;
-      this.userId = userId;
-      this.sendBatch = sendBatch;
-    }
-    async initialize() {
-      if (!this.config.enableSessionReplay) {
-        return;
-      }
-      const sampleRate = this.config.sessionReplaySampleRate;
-      if (sampleRate !== void 0 && !shouldSampleSession(sampleRate)) {
-        return;
-      }
-      if (!window.rrweb) {
-        await this.loadRrweb();
-      }
-      if (window.rrweb) {
-        this.startRecording();
-      }
-    }
-    async loadRrweb() {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = `${this.config.analyticsHost}/replay.js`;
-        script.async = false;
-        script.onload = () => {
-          resolve();
-        };
-        script.onerror = () => reject(new Error("Failed to load rrweb"));
-        document.head.appendChild(script);
-      });
-    }
-    startRecording() {
-      if (this.capped || this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
-        return;
-      }
-      try {
-        const defaultSampling = {
-          // Aggressive sampling to reduce data volume
-          mousemove: false,
-          // Don't record mouse moves at all
-          mouseInteraction: {
-            MouseUp: false,
-            MouseDown: false,
-            Click: true,
-            // Only record clicks
-            ContextMenu: false,
-            DblClick: true,
-            Focus: true,
-            Blur: true,
-            TouchStart: false,
-            TouchEnd: false
-          },
-          scroll: 500,
-          // Sample scroll events every 500ms
-          input: "last",
-          // Only record the final input value
-          media: 800
-          // Sample media interactions less frequently
-        };
-        const defaultSlimDOMOptions = {
-          script: false,
-          comment: true,
-          headFavicon: true,
-          headWhitespace: true,
-          headMetaDescKeywords: true,
-          headMetaSocial: true,
-          headMetaRobots: true,
-          headMetaHttpEquiv: true,
-          headMetaAuthorship: true,
-          headMetaVerification: true
-        };
-        const recordingOptions = {
-          emit: (event) => {
-            this.addEvent({
-              type: event.type,
-              data: event.data,
-              timestamp: event.timestamp || Date.now()
-            });
-          },
-          recordCanvas: false,
-          // Always disabled to save disk space
-          checkoutEveryNms: 6e4,
-          // Checkout every 60 seconds
-          checkoutEveryNth: 500,
-          // Checkout every 500 events
-          // Use config values with fallbacks to defaults
-          blockClass: this.config.sessionReplayBlockClass ?? "rr-block",
-          blockSelector: this.config.sessionReplayBlockSelector ?? null,
-          ignoreClass: this.config.sessionReplayIgnoreClass ?? "rr-ignore",
-          ignoreSelector: this.config.sessionReplayIgnoreSelector ?? null,
-          maskTextClass: this.config.sessionReplayMaskTextClass ?? "rr-mask",
-          maskAllInputs: this.config.sessionReplayMaskAllInputs ?? true,
-          maskInputOptions: this.config.sessionReplayMaskInputOptions ?? { password: true, email: true },
-          collectFonts: this.config.sessionReplayCollectFonts ?? true,
-          sampling: this.config.sessionReplaySampling ?? defaultSampling,
-          slimDOMOptions: this.config.sessionReplaySlimDOMOptions ?? defaultSlimDOMOptions
-        };
-        if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
-          recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(", ");
-        }
-        this.stopRecordingFn = window.rrweb.record(recordingOptions);
-        this.isRecording = true;
-        this.setupBatchTimer();
-      } catch (error) {
-      }
-    }
-    stopRecording() {
-      if (!this.isRecording) {
-        return;
-      }
-      if (this.stopRecordingFn) {
-        this.stopRecordingFn();
-      }
-      this.isRecording = false;
-      this.clearBatchTimer();
-      if (this.eventBuffer.length > 0) {
-        this.flushEvents();
-      }
-    }
-    isActive() {
-      return this.isRecording;
-    }
-    addEvent(event) {
-      this.eventBuffer.push(event);
-      if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
-        this.flushEvents();
-      }
-    }
-    setupBatchTimer() {
-      this.clearBatchTimer();
-      this.batchTimer = window.setInterval(() => {
-        if (this.eventBuffer.length > 0) {
-          this.flushEvents();
-        }
-      }, this.config.sessionReplayBatchInterval);
-    }
-    clearBatchTimer() {
-      if (this.batchTimer) {
-        clearInterval(this.batchTimer);
-        this.batchTimer = void 0;
-      }
-    }
-    async flushEvents() {
-      if (this.eventBuffer.length === 0) {
-        return;
-      }
-      const events = [...this.eventBuffer];
-      this.eventBuffer = [];
-      const batch = {
-        userId: this.userId,
-        events,
-        metadata: {
-          pageUrl: window.location.href,
-          viewportWidth: screen.width,
-          viewportHeight: screen.height,
-          language: navigator.language
-        }
-      };
-      try {
-        const result = await this.sendBatch(batch);
-        if (result?.stopRecording) {
-          this.stopForSizeCap();
-        }
-      } catch (error) {
-        this.eventBuffer.unshift(...events);
-      }
-    }
-    // Unlike stopRecording, drops what's buffered: the server refuses it anyway.
-    stopForSizeCap() {
-      this.capped = true;
-      if (this.stopRecordingFn) {
-        this.stopRecordingFn();
-        this.stopRecordingFn = void 0;
-      }
-      this.isRecording = false;
-      this.clearBatchTimer();
-      this.eventBuffer = [];
-    }
-    // Update user ID when it changes
-    updateUserId(userId) {
-      if (userId === this.userId) {
-        return;
-      }
-      if (this.eventBuffer.length > 0) {
-        void this.flushEvents();
-      }
-      this.userId = userId;
-    }
-    // Handle page navigation for SPAs
-    onPageChange() {
-      if (this.isRecording) {
-        this.flushEvents();
-      }
-    }
-    // Cleanup on page unload
-    cleanup() {
-      this.stopRecording();
-    }
-  };
-
   // ../../../shared/src/botSignalContract.ts
   var CLIENT_BOT_SIGNAL_MASKS = {
     automationApi: 1 << 0,
@@ -705,14 +486,309 @@
     canvas.height = 0;
   }
 
+  // sessionReplay.ts
+  var SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+  var FULL_SNAPSHOT_REQUEST_INTERVAL_MS = 1e4;
+  function shouldSampleSession(sampleRate) {
+    if (sampleRate >= 100) return true;
+    if (sampleRate <= 0) return false;
+    try {
+      const existingDecision = sessionStorage.getItem(SAMPLE_STORAGE_KEY);
+      if (existingDecision !== null) {
+        return existingDecision === "1";
+      }
+      const sampled = Math.random() * 100 < sampleRate;
+      sessionStorage.setItem(SAMPLE_STORAGE_KEY, sampled ? "1" : "0");
+      return sampled;
+    } catch {
+      return Math.random() * 100 < sampleRate;
+    }
+  }
+  var SessionReplayRecorder = class {
+    constructor(config, userId, sendBatch) {
+      this.isRecording = false;
+      // Set once the server reports the session is over its size cap; recording
+      // stays off for the rest of this page.
+      this.capped = false;
+      this.eventBuffer = [];
+      // Batches whose send failed, each kept as it was built so a retry after
+      // identify(), clearUserId() or a navigation still carries the identity and
+      // page it was recorded under.
+      this.failedBatches = [];
+      this.lastFullSnapshotRequestAt = -Infinity;
+      this.config = config;
+      this.userId = userId;
+      this.sendBatch = sendBatch;
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          void this.flushEvents();
+        }
+      });
+      window.addEventListener("pagehide", () => void this.flushEvents());
+    }
+    async initialize() {
+      if (!this.config.enableSessionReplay) {
+        return;
+      }
+      const sampleRate = this.config.sessionReplaySampleRate;
+      if (sampleRate !== void 0 && !shouldSampleSession(sampleRate)) {
+        return;
+      }
+      if (!window.rrweb) {
+        await this.loadRrweb();
+      }
+      if (window.rrweb) {
+        this.startRecording();
+      }
+    }
+    async loadRrweb() {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = `${this.config.analyticsHost}/replay.js`;
+        script.async = false;
+        script.onload = () => {
+          resolve();
+        };
+        script.onerror = () => reject(new Error("Failed to load rrweb"));
+        document.head.appendChild(script);
+      });
+    }
+    startRecording() {
+      if (this.capped || this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
+        return;
+      }
+      try {
+        const defaultSampling = {
+          // Aggressive sampling to reduce data volume
+          mousemove: false,
+          // Don't record mouse moves at all
+          mouseInteraction: {
+            MouseUp: false,
+            MouseDown: false,
+            Click: true,
+            // Only record clicks
+            ContextMenu: false,
+            DblClick: true,
+            Focus: true,
+            Blur: true,
+            TouchStart: false,
+            TouchEnd: false
+          },
+          scroll: 500,
+          // Sample scroll events every 500ms
+          input: "last",
+          // Only record the final input value
+          media: 800
+          // Sample media interactions less frequently
+        };
+        const defaultSlimDOMOptions = {
+          script: false,
+          comment: true,
+          headFavicon: true,
+          headWhitespace: true,
+          headMetaDescKeywords: true,
+          headMetaSocial: true,
+          headMetaRobots: true,
+          headMetaHttpEquiv: true,
+          headMetaAuthorship: true,
+          headMetaVerification: true
+        };
+        const recordingOptions = {
+          emit: (event) => {
+            this.addEvent({
+              type: event.type,
+              data: event.data,
+              timestamp: event.timestamp || Date.now()
+            });
+          },
+          recordCanvas: false,
+          // Always disabled to save disk space
+          checkoutEveryNms: 6e4,
+          // Checkout every 60 seconds
+          checkoutEveryNth: 500,
+          // Checkout every 500 events
+          // Use config values with fallbacks to defaults
+          blockClass: this.config.sessionReplayBlockClass ?? "rr-block",
+          blockSelector: this.config.sessionReplayBlockSelector ?? null,
+          ignoreClass: this.config.sessionReplayIgnoreClass ?? "rr-ignore",
+          ignoreSelector: this.config.sessionReplayIgnoreSelector ?? null,
+          maskTextClass: this.config.sessionReplayMaskTextClass ?? "rr-mask",
+          maskAllInputs: this.config.sessionReplayMaskAllInputs ?? true,
+          maskInputOptions: this.config.sessionReplayMaskInputOptions ?? { password: true, email: true },
+          collectFonts: this.config.sessionReplayCollectFonts ?? true,
+          sampling: this.config.sessionReplaySampling ?? defaultSampling,
+          slimDOMOptions: this.config.sessionReplaySlimDOMOptions ?? defaultSlimDOMOptions
+        };
+        if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
+          recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(", ");
+        }
+        this.stopRecordingFn = window.rrweb.record(recordingOptions);
+        this.isRecording = true;
+        this.setupBatchTimer();
+      } catch (error) {
+      }
+    }
+    stopRecording() {
+      if (!this.isRecording) {
+        return;
+      }
+      if (this.stopRecordingFn) {
+        this.stopRecordingFn();
+      }
+      this.isRecording = false;
+      this.clearBatchTimer();
+      if (this.deferredSnapshotTimer !== void 0) {
+        clearTimeout(this.deferredSnapshotTimer);
+        this.deferredSnapshotTimer = void 0;
+      }
+      if (this.eventBuffer.length > 0 || this.failedBatches.length > 0) {
+        this.flushEvents();
+      }
+    }
+    isActive() {
+      return this.isRecording;
+    }
+    addEvent(event) {
+      this.eventBuffer.push(event);
+      if (this.eventBuffer.length >= this.config.sessionReplayBatchSize) {
+        this.flushEvents();
+      }
+    }
+    setupBatchTimer() {
+      this.clearBatchTimer();
+      this.batchTimer = window.setInterval(() => {
+        if (this.eventBuffer.length > 0 || this.failedBatches.length > 0) {
+          this.flushEvents();
+        }
+      }, this.config.sessionReplayBatchInterval);
+    }
+    clearBatchTimer() {
+      if (this.batchTimer) {
+        clearInterval(this.batchTimer);
+        this.batchTimer = void 0;
+      }
+    }
+    // Sends the buffered events, and retries the batches that failed before.
+    async flushEvents() {
+      const batches = this.failedBatches;
+      this.failedBatches = [];
+      if (this.eventBuffer.length > 0) {
+        batches.push({
+          userId: this.userId,
+          events: this.eventBuffer,
+          metadata: {
+            pageUrl: window.location.href,
+            viewportWidth: screen.width,
+            viewportHeight: screen.height,
+            language: navigator.language
+          },
+          _bsm: getBotSignalMask()
+        });
+        this.eventBuffer = [];
+      }
+      await Promise.all(batches.map((batch) => this.sendOrRequeue(batch)));
+    }
+    async sendOrRequeue(batch) {
+      try {
+        const result = await this.sendBatch(batch);
+        if (result?.stopRecording) {
+          this.stopForSizeCap();
+        } else if (result?.takeFullSnapshot) {
+          this.takeFullSnapshot();
+        } else if (this.deferredSnapshotTimer !== void 0 && batch.events.some((event) => event.type === 2)) {
+          clearTimeout(this.deferredSnapshotTimer);
+          this.deferredSnapshotTimer = void 0;
+        }
+      } catch (error) {
+        if (!this.capped) {
+          this.requeue(batch);
+        }
+      }
+    }
+    // A failure from the same identity and page as the last queued one joins it,
+    // so an outage retries one batch per flush rather than one per failed send.
+    requeue(batch) {
+      const last = this.failedBatches[this.failedBatches.length - 1];
+      if (last && last.userId === batch.userId && JSON.stringify(last.metadata) === JSON.stringify(batch.metadata)) {
+        last.events = last.events.concat(batch.events);
+        return;
+      }
+      this.failedBatches.push(batch);
+    }
+    // The server keeps the replay in its previous session until a batch opens
+    // the visitor's new one with a full snapshot, without which a replay can't
+    // be played. Events recorded before the snapshot go first, to the old one.
+    takeFullSnapshot() {
+      if (!this.isRecording) {
+        return;
+      }
+      const wait = this.lastFullSnapshotRequestAt + FULL_SNAPSHOT_REQUEST_INTERVAL_MS - Date.now();
+      if (wait > 0) {
+        if (this.deferredSnapshotTimer === void 0) {
+          this.deferredSnapshotTimer = window.setTimeout(() => {
+            this.deferredSnapshotTimer = void 0;
+            this.takeFullSnapshot();
+          }, wait);
+        }
+        return;
+      }
+      this.lastFullSnapshotRequestAt = Date.now();
+      void this.flushEvents();
+      try {
+        window.rrweb?.record.takeFullSnapshot?.(true);
+      } catch {
+      }
+      void this.flushEvents();
+    }
+    // Unlike stopRecording, drops what's buffered: the server refuses it anyway.
+    stopForSizeCap() {
+      this.capped = true;
+      if (this.stopRecordingFn) {
+        this.stopRecordingFn();
+        this.stopRecordingFn = void 0;
+      }
+      this.isRecording = false;
+      this.clearBatchTimer();
+      this.eventBuffer = [];
+      this.failedBatches = [];
+    }
+    // Update user ID when it changes
+    updateUserId(userId) {
+      if (userId === this.userId) {
+        return;
+      }
+      if (this.eventBuffer.length > 0) {
+        void this.flushEvents();
+      }
+      this.userId = userId;
+    }
+    // Handle page navigation for SPAs
+    onPageChange() {
+      if (this.isRecording) {
+        this.flushEvents();
+      }
+    }
+    // Cleanup on page unload
+    cleanup() {
+      this.stopRecording();
+    }
+  };
+
   // tracking.ts
   var FEATURE_FLAG_REQUEST_TIMEOUT_MS2 = 2e3;
+  var MAX_REFERRER_LENGTH = 2048;
+  var MAX_PAGE_TITLE_LENGTH = 512;
+  var MAX_PROPERTIES_LENGTH = 2048;
+  var MAX_OUTBOUND_TEXT_LENGTH = 500;
+  var REPLAY_KEEPALIVE_BUDGET_BYTES = 48 * 1024;
+  var RETRYABLE_REPLAY_STATUSES = [408, 429, 502, 503, 504];
   var Tracker = class {
     constructor(config) {
       this.customUserId = null;
       this.errorDedupeCache = /* @__PURE__ */ new Map();
       this.errorDedupeLastCleanup = 0;
       this.exposedFeatureFlags = /* @__PURE__ */ new Set();
+      this.replayKeepaliveBytesInFlight = 0;
       this.config = config;
       this.lastPageviewUrl = this.getPageviewUrl();
       this.loadUserId();
@@ -803,7 +879,19 @@
         console.error("Failed to initialize session replay:", error);
       }
     }
+    /**
+     * Resolves once the server has dealt with the batch (stored or deliberately
+     * skipped it); rejects when it is worth sending again, which the recorder does.
+     * Every batch that fits what is left of the keepalive budget is sent with
+     * keepalive, so a navigation can't cancel it: a batch already on its way
+     * when the page hides is out of the buffer that pagehide flushes.
+     */
     async sendSessionReplayBatch(batch) {
+      const body = JSON.stringify(batch);
+      const keepaliveRoom = REPLAY_KEEPALIVE_BUDGET_BYTES - this.replayKeepaliveBytesInFlight;
+      const keepaliveBytes = body.length <= keepaliveRoom ? new Blob([body]).size : Infinity;
+      const useKeepalive = keepaliveBytes <= keepaliveRoom;
+      if (useKeepalive) this.replayKeepaliveBytesInFlight += keepaliveBytes;
       let response;
       try {
         response = await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
@@ -811,14 +899,21 @@
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(batch),
+          body,
           mode: "cors",
-          keepalive: false
-          // Disable keepalive for large session replay requests
+          keepalive: useKeepalive
         });
       } catch (error) {
         console.error("Failed to send session replay batch:", error);
         throw error;
+      } finally {
+        if (useKeepalive) this.replayKeepaliveBytesInFlight -= keepaliveBytes;
+      }
+      if (!response.ok) {
+        if (RETRYABLE_REPLAY_STATUSES.includes(response.status)) {
+          throw new Error(`Session replay batch failed with status ${response.status}`);
+        }
+        return;
       }
       try {
         return await response.json();
@@ -844,8 +939,8 @@
         screenWidth: screen.width,
         screenHeight: screen.height,
         language: navigator.language,
-        page_title: document.title,
-        referrer: document.referrer,
+        page_title: truncateText(document.title, MAX_PAGE_TITLE_LENGTH),
+        referrer: truncateText(document.referrer, MAX_REFERRER_LENGTH),
         _bs: getBotScore(),
         _bsm: getBotSignalMask()
       };
@@ -957,7 +1052,12 @@
       );
     }
     trackOutbound(url, text = "", target = "_self") {
-      this.track("outbound", "", { url, text, target });
+      const properties = { url, text: truncateText(text, MAX_OUTBOUND_TEXT_LENGTH), target };
+      const overflow = JSON.stringify(properties).length - MAX_PROPERTIES_LENGTH;
+      if (overflow > 0) {
+        properties.url = truncateText(url, Math.max(0, url.length - overflow));
+      }
+      this.track("outbound", "", properties);
     }
     trackWebVitals(vitals) {
       const basePayload = this.createBasePayload();
@@ -1564,6 +1664,9 @@
   };
 
   // formTracking.ts
+  function getFormProperty(form, key) {
+    return Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, key)?.get?.call(form);
+  }
   var FormTrackingManager = class {
     constructor(tracker, config) {
       this.tracker = tracker;
@@ -1581,13 +1684,13 @@
     }
     handleSubmit(event) {
       const form = event.target;
-      if (form.tagName !== "FORM") return;
+      if (!(form instanceof HTMLFormElement)) return;
       const properties = {
-        formId: form.id || "",
-        formName: form.name || "",
-        formAction: form.action || "",
-        method: (form.method || "get").toUpperCase(),
-        fieldCount: form.elements.length,
+        formId: form.getAttribute("id") || "",
+        formName: form.getAttribute("name") || "",
+        formAction: getFormProperty(form, "action") || "",
+        method: (getFormProperty(form, "method") || "get").toUpperCase(),
+        fieldCount: getFormProperty(form, "elements")?.length ?? 0,
         ariaLabel: form.getAttribute("aria-label") || void 0,
         ...this.extractDataAttributes(form)
       };
@@ -1609,8 +1712,8 @@
         element: tagName.toLowerCase(),
         inputType: tagName === "INPUT" ? target.type?.toLowerCase() : void 0,
         inputName,
-        formId: target.form?.id || void 0,
-        formName: target.form?.name || void 0,
+        formId: target.form?.getAttribute("id") || void 0,
+        formName: target.form?.getAttribute("name") || void 0,
         ...this.extractDataAttributes(target)
       };
       this.tracker.trackInputChange(properties);
@@ -1628,6 +1731,14 @@
   };
 
   // index.ts
+  function hasOptedOut(optOutKey) {
+    if (window.__RYBBIT_OPTOUT__) return true;
+    try {
+      return localStorage.getItem(optOutKey) !== null;
+    } catch {
+      return false;
+    }
+  }
   (async function() {
     const scriptTag = document.currentScript || document.querySelector('script[src*="/script.js"]');
     if (!scriptTag) {
@@ -1636,7 +1747,7 @@
     }
     const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
     const optOutKey = `disable-${namespace}`;
-    if (window.__RYBBIT_OPTOUT__ || localStorage.getItem(optOutKey) !== null) {
+    if (hasOptedOut(optOutKey)) {
       window[namespace] = {
         pageview: () => {
         },
@@ -1808,7 +1919,6 @@
     window.addEventListener("beforeunload", () => {
       clickManager?.cleanup();
       copyManager?.cleanup();
-      tracker.cleanup();
     });
     if (config.autoTrackPageview) {
       tracker.trackPageview();

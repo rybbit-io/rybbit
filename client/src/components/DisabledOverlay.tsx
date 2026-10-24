@@ -21,7 +21,17 @@ interface DisabledOverlayProps {
   requiredPlan?: "pro" | "standard" | "basic";
 }
 
-function OwnerMessage({ message, featurePath, requiredPlan }: { message: string; featurePath?: string; requiredPlan?: "pro" | "standard" | "basic" }) {
+function OwnerMessage({
+  message,
+  featurePath,
+  requiredPlan,
+  upgradeHref,
+}: {
+  message: string;
+  featurePath?: string;
+  requiredPlan?: "pro" | "standard" | "basic";
+  upgradeHref: string;
+}) {
   const t = useExtracted();
   const planName = requiredPlan === "pro" ? t("Pro") : requiredPlan === "basic" ? t("Basic") : t("Standard");
   return (
@@ -44,7 +54,7 @@ function OwnerMessage({ message, featurePath, requiredPlan }: { message: string;
           )}
         </div>
         <Button asChild size="sm" variant="success">
-          <Link href="/subscribe">
+          <Link href={upgradeHref}>
             {t("Upgrade")} <ArrowRight className="h-3 w-3" />
           </Link>
         </Button>
@@ -103,17 +113,19 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
   const [overlayRemoved, setOverlayRemoved] = useState(false);
 
   const disabled = useMemo(() => {
-    if (!IS_CLOUD) {
+    // Nothing is decided until the subscription has loaded: locking while it is
+    // loading, or after the request failed, would blur paid features for paying users.
+    if (!IS_CLOUD || !subscription) {
       return false;
     }
-    const isFree = subscription?.eventLimit === DEFAULT_EVENT_LIMIT;
-    const isBasic = subscription?.planName?.includes("basic") ?? false;
+    const isFree = subscription.eventLimit === DEFAULT_EVENT_LIMIT;
+    const isBasic = subscription.planName?.includes("basic") ?? false;
 
     if (requiredPlan === "pro") {
       if (organization?.createdAt && DateTime.fromJSDate(organization?.createdAt) < DateTime.fromISO("2025-09-19")) {
         return false;
       }
-      return !subscription?.planName.includes("pro");
+      return !subscription.planName?.includes("pro");
     }
     if (requiredPlan === "basic") {
       // Basic and above can access — only free is blocked
@@ -195,6 +207,9 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
   }
 
   const borderRadiusStyle = borderRadius > 0 ? { borderRadius: `${borderRadius}px` } : {};
+  // A paying organization changes plan in Billing; /subscribe would start a second subscription.
+  const upgradeHref =
+    subscription?.status === "active" || subscription?.status === "trialing" ? "/settings/billing" : "/subscribe";
 
   return (
     <div ref={containerRef} className="relative" style={style}>
@@ -212,7 +227,16 @@ export const DisabledOverlay: React.FC<DisabledOverlayProps> = ({
       >
         {showMessage && (
           <div className="flex items-center justify-center">
-            {canUpgrade ? <OwnerMessage message={message} featurePath={featurePath} requiredPlan={requiredPlan} /> : <UserMessage message={message} featurePath={featurePath} />}
+            {canUpgrade ? (
+              <OwnerMessage
+                message={message}
+                featurePath={featurePath}
+                requiredPlan={requiredPlan}
+                upgradeHref={upgradeHref}
+              />
+            ) : (
+              <UserMessage message={message} featurePath={featurePath} />
+            )}
           </div>
         )}
       </div>

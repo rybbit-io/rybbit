@@ -317,14 +317,30 @@ describe("updateOrganizationsMonthlyUsage — event limit boundary", () => {
     expect(usageService.getSitesOverLimit().size).toBe(0);
   });
 
-  it("fails open when ClickHouse cannot be queried", async () => {
-    singleOrg({ subscription: stripeSub({ eventLimit: 1_000 }), eventCount: 10_000_000 });
+  it("skips the run and keeps the last counts and blocks when ClickHouse cannot be queried", async () => {
+    usageService.setSitesOverLimit(new Set([1]));
+    singleOrg({
+      subscription: stripeSub({ eventLimit: 1_000 }),
+      eventCount: 10_000_000,
+      orgOverrides: { overMonthlyLimit: true },
+    });
     state.clickhouseError = new Error("clickhouse is down");
+    const onUpdated = vi.fn();
+    usageService.onUsageUpdated(onUpdated);
 
     await usageService.updateOrganizationsMonthlyUsage();
 
-    expect(state.updates[0]).toMatchObject({ monthlyEventCount: 0, overMonthlyLimit: false });
-    expect(usageService.getSitesOverLimit().size).toBe(0);
+    expect(state.updates).toEqual([]);
+    expect(usageService.isSiteOverLimit(1)).toBe(true);
+    expect(mocks.sendLimitExceededEmail).not.toHaveBeenCalled();
+    expect(onUpdated).not.toHaveBeenCalled();
+
+    // Once ClickHouse is back, the org is still over and was already notified: no repeat email.
+    state.clickhouseError = null;
+    await usageService.updateOrganizationsMonthlyUsage();
+
+    expect(state.updates[0]).toMatchObject({ monthlyEventCount: 10_000_000, overMonthlyLimit: true });
+    expect(mocks.sendLimitExceededEmail).not.toHaveBeenCalled();
   });
 });
 

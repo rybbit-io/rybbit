@@ -71,7 +71,9 @@ type PersistedStore = Pick<Store, "timezone">;
 
 const getUrlParams = () => (typeof window !== "undefined" ? new URLSearchParams(globalThis.location.search) : null);
 
-const getDefaultTime = (): Time => getStoredDashboardDefaultTime(getSystemTimezone());
+// Presets resolve in the selected timezone: "Today" is a different calendar day
+// in Los Angeles than in a Tokyo browser for part of every day.
+const getDefaultTime = (): Time => getStoredDashboardDefaultTime(getTimezone());
 
 const getDefaultTimeState = () => getTimeState(getDefaultTime());
 

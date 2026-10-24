@@ -34,6 +34,24 @@ export const MAX_SCOPED_USER_IDS = 10_000;
 
 const flag = z.enum(["true", "false"]).optional();
 
+/**
+ * An untrusted paging param (page, limit, offset): absent or empty, or a whole
+ * number of at least `min`. A bare parseInt let a malformed value through as
+ * NaN, which failed in the database as a 500.
+ */
+export const pagingParam = (name: string, min: 0 | 1) => {
+  const message = `${name} must be ${min === 1 ? "a positive" : "a non-negative"} integer`;
+  return z.preprocess(
+    value => (value === "" ? undefined : value),
+    z.coerce
+      .number({ invalid_type_error: message })
+      .int(message)
+      .min(min, message)
+      .max(Number.MAX_SAFE_INTEGER, message)
+      .optional()
+  );
+};
+
 /** The Users page's own query params, on top of the shared time and filter params. */
 export const userNarrowingSchema = z.object({
   identified_only: flag,

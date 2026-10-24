@@ -124,6 +124,48 @@ describe("createCheckoutSession — one trial per organization", () => {
   });
 });
 
+describe("createCheckoutSession — existing subscribers", () => {
+  it.each(["active", "trialing"])("refuses a second checkout when the org has a %s subscription", async status => {
+    mocks.subscriptionsList.mockResolvedValue({ data: [{ id: "sub_live", status }] });
+    const reply = replyStub();
+
+    await createCheckoutSession(requestStub("u_owner", validBody), reply);
+
+    expect(reply.statusCode).toBe(409);
+    expect(reply.body.error).toContain("already has an active subscription");
+    expect(mocks.checkoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("finds an active subscription behind a full page of newer canceled ones", async () => {
+    const canceled = Array.from({ length: 100 }, (_, i) => ({ id: `sub_old_${i}`, status: "canceled" }));
+    mocks.subscriptionsList.mockImplementation(async ({ status }: { status: string }) => ({
+      data: status === "all" ? canceled : status === "active" ? [{ id: "sub_live", status: "active" }] : [],
+    }));
+    const reply = replyStub();
+
+    await createCheckoutSession(requestStub("u_owner", validBody), reply);
+
+    expect(reply.statusCode).toBe(409);
+    expect(mocks.subscriptionsList).toHaveBeenCalledWith(
+      expect.objectContaining({ customer: "cus_1", status: "active" })
+    );
+    expect(mocks.subscriptionsList).toHaveBeenCalledWith(
+      expect.objectContaining({ customer: "cus_1", status: "trialing" })
+    );
+    expect(mocks.checkoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("lets an org whose subscription lapsed subscribe again", async () => {
+    mocks.subscriptionsList.mockResolvedValue({ data: [{ id: "sub_old", status: "canceled" }] });
+    const reply = replyStub();
+
+    await createCheckoutSession(requestStub("u_owner", validBody), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(mocks.checkoutSessionsCreate).toHaveBeenCalledOnce();
+  });
+});
+
 describe("createCheckoutSession — authorization", () => {
   it("creates a checkout session for the org owner with metadata.organizationId from the authorized org", async () => {
     const reply = replyStub();

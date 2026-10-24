@@ -98,7 +98,7 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
       const invalidEventCount = events.length - transformedEvents.length;
 
       const timestamps = transformedEvents.map(e => e.timestamp);
-      const allowedIndices = quotaTracker.canImportBatch(timestamps);
+      const allowedIndices = await quotaTracker.reserveBatch(timestamps);
 
       const eventsWithinQuota = allowedIndices.map(i => transformedEvents[i]);
       const skippedDueToQuota = transformedEvents.length - eventsWithinQuota.length;
@@ -120,7 +120,7 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
 
       if (isLastBatch) {
         await completeImport(importId);
-        importQuotaManager.completeImport(siteRecord.organizationId);
+        await importQuotaManager.completeImport(siteRecord.organizationId, importId);
       }
 
       return reply.send();
@@ -130,7 +130,7 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
 
       if (isLastBatch) {
         await completeImport(importId);
-        importQuotaManager.completeImport(siteRecord.organizationId);
+        await importQuotaManager.completeImport(siteRecord.organizationId, importId);
       }
 
       return reply.status(500).send({

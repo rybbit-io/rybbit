@@ -1,5 +1,6 @@
 // The .tsx suffix selects Vitest's jsdom project for localStorage and window.history coverage.
 import { Filter } from "@rybbit/shared";
+import { DateTime } from "luxon";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_COMPARISON } from "../components/DateSelector/types";
 import { addFilter, getFilteredFilters, getTimezone, removeFilter, updateFilter, useStore } from "./store";
@@ -125,6 +126,26 @@ describe("site context", () => {
     expect(state.filters).toEqual([]);
     expect(state.time.wellKnown).toBe("today");
     expect(state.comparison).toEqual(DEFAULT_COMPARISON);
+  });
+
+  it("resolves the default period in the selected timezone rather than the browser's", () => {
+    // 16:00 UTC is already the 30th at UTC+14 and still the 29th at UTC-11, so
+    // one of the two disagrees with whatever zone the tests run in.
+    const systemDay = DateTime.now().toISODate();
+    const zone =
+      DateTime.now().setZone("Pacific/Kiritimati").toISODate() === systemDay
+        ? "Pacific/Pago_Pago"
+        : "Pacific/Kiritimati";
+    useStore.setState({ timezone: zone });
+
+    useStore.getState().setSiteContext("84", null);
+
+    expect(useStore.getState().time).toEqual({
+      mode: "day",
+      day: DateTime.now().setZone(zone).toISODate(),
+      wellKnown: "today",
+    });
+    expect(useStore.getState().time).not.toMatchObject({ day: systemDay });
   });
 
   it("preserves selections whose URL parameters are waiting to hydrate", () => {

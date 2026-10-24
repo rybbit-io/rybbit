@@ -96,6 +96,15 @@ export default function Home() {
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
+  // Teams and tags belong to one organization: switching keeps this page mounted,
+  // and a stale filter would hide every site of the new one.
+  const [filtersOrganizationId, setFiltersOrganizationId] = useState(activeOrganization?.id);
+  if (activeOrganization?.id && activeOrganization.id !== filtersOrganizationId) {
+    setFiltersOrganizationId(activeOrganization.id);
+    setSelectedTags([]);
+    setSelectedTeamFilter("all");
+  }
+
   // Filters run over the full org list, so changing them should jump back to
   // the first page of results.
   useEffect(() => {

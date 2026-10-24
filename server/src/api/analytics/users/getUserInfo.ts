@@ -156,6 +156,9 @@ export const buildUserInfoQueries = (query: FilterParams, siteId: number) => {
         argMaxIf(user_timezone, session_end, user_timezone != '') AS timezone
     FROM
         sessions
+    -- An aggregate without GROUP BY returns one all-default row for no input;
+    -- return none, so an unknown user 404s and a claimed device follows its alias.
+    HAVING count() > 0
       `;
 
   // p75 Web Vitals across every performance event this user produced.

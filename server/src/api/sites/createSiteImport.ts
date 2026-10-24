@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { createImport } from "../../services/import/importStatusManager.js";
@@ -65,7 +66,10 @@ export async function createSiteImport(request: FastifyRequest<CreateSiteImportR
       }
     }
 
-    if (!importQuotaManager.startImport(organizationId)) {
+    // The import's id owns its lock from the start, so whichever worker serves its final batch
+    // or its delete releases exactly this lock.
+    const importId = randomUUID();
+    if (!(await importQuotaManager.startImport(organizationId, importId))) {
       return reply.status(429).send({ error: "Only 1 concurrent import allowed per organization" });
     }
 
@@ -79,6 +83,7 @@ export async function createSiteImport(request: FastifyRequest<CreateSiteImportR
       const latestAllowedDate = DateTime.utc().toFormat("yyyy-MM-dd");
 
       const importRecord = await createImport({
+        importId,
         siteId,
         organizationId,
         platform,
@@ -94,7 +99,7 @@ export async function createSiteImport(request: FastifyRequest<CreateSiteImportR
         },
       });
     } catch (error) {
-      importQuotaManager.completeImport(organizationId);
+      await importQuotaManager.completeImport(organizationId, importId);
       request.log.error({ err: error }, "Error creating import");
       return reply.status(500).send({ error: "Internal server error" });
     }

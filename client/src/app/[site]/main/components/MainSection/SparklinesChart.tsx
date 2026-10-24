@@ -1,5 +1,6 @@
 "use client";
 import { useNivoTheme } from "@/lib/nivo";
+import { useTimezone } from "@/lib/store";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 
@@ -11,18 +12,22 @@ export function SparklinesChart({
   isHovering: boolean;
 }) {
   const nivoTheme = useNivoTheme();
+  const timeZone = useTimezone();
 
   const formattedData = data
-    ?.map((e, i) => {
+    ?.map(e => {
+      // Buckets are wall-clock times in the dashboard's timezone, not the browser's.
+      const time = DateTime.fromSQL(e.time, { zone: timeZone });
+
       // filter out dates from the future
-      if (DateTime.fromSQL(e.time).toUTC() > DateTime.now()) {
+      if (time > DateTime.now()) {
         return null;
       }
 
       return {
-        x: DateTime.fromSQL(e.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
+        x: time.toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
         y: e.value,
-        currentTime: DateTime.fromSQL(e.time),
+        currentTime: time,
       };
     })
     .filter(e => e !== null);

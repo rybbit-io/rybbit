@@ -20,6 +20,7 @@ import {
   evaluateFeatureFlagsSchema,
   featureFlagBodySchema,
   featureFlagUpdateSchema,
+  validateFeatureFlagUpdate,
   type EvaluateFeatureFlagsBody,
   type FeatureFlagBody,
   type FeatureFlagUpdateBody,
@@ -200,23 +201,28 @@ export async function updateFeatureFlag(
     if (body.rules === undefined) delete updateData.rules;
     if (body.conditionSets === undefined) delete updateData.conditionSets;
 
-    updateData.version = (
-      await db.query.featureFlags.findFirst({
-        columns: { version: true },
-        where: and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flagId)),
-      })
-    )?.version;
+    const flagWhere = and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flagId));
+    // Lock the row so the patch is validated against the flag it actually updates.
+    const updated = await db.transaction(async tx => {
+      const [stored] = await tx
+        .select({
+          version: featureFlags.version,
+          flagType: featureFlags.flagType,
+          variants: featureFlags.variants,
+          conditionSets: featureFlags.conditionSets,
+        })
+        .from(featureFlags)
+        .where(flagWhere)
+        .for("update");
 
-    if (updateData.version === undefined) {
-      return reply.status(404).send({ error: "Feature flag not found" });
-    }
-    updateData.version += 1;
+      if (!stored) return null;
 
-    const [updated] = await db
-      .update(featureFlags)
-      .set(updateData)
-      .where(and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flagId)))
-      .returning();
+      validateFeatureFlagUpdate(stored, body);
+      updateData.version = stored.version + 1;
+
+      const [row] = await tx.update(featureFlags).set(updateData).where(flagWhere).returning();
+      return row ?? null;
+    });
 
     if (!updated) {
       return reply.status(404).send({ error: "Feature flag not found" });

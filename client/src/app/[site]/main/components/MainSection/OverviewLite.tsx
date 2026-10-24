@@ -4,11 +4,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
+import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
-import { StatType, useStore } from "../../../../../lib/store";
+import { StatType, useStore, useTimezone } from "../../../../../lib/store";
 import { SparklinesChart } from "./SparklinesChart";
 
 // Lite variant of Overview: no previous-period queries, no comparison arrows.
@@ -47,6 +48,7 @@ const Stat = ({
   postfix?: string;
 }) => {
   const { selectedStat, setSelectedStat, site, bucket, time } = useStore();
+  const timeZone = useTimezone();
   const [isHovering, setIsHovering] = useState(false);
   const isSelectable = id !== "total_time";
 
@@ -56,9 +58,10 @@ const Stat = ({
     data
       ?.filter(d => {
         if (time.mode === "past-minutes") {
-          const timestamp = new Date(d.time);
-          const now = new Date();
-          const startTime = new Date(now.getTime() - time.pastMinutesStart * 60 * 1000);
+          // Bucket times are in the dashboard's timezone; the browser's would shift the window.
+          const timestamp = DateTime.fromSQL(d.time, { zone: timeZone });
+          const now = DateTime.now();
+          const startTime = now.minus({ minutes: time.pastMinutesStart });
           return timestamp >= startTime && timestamp <= now;
         }
         return true;
