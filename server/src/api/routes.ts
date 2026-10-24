@@ -184,6 +184,7 @@ import {
   getUserOrganizations,
   listOrganizationMembers,
   oneClickUnsubscribeMarketing,
+  oneClickUnsubscribeReports,
   unsubscribeMarketing,
   updateAccountSettings,
 } from "./user/index.js";
@@ -553,8 +554,19 @@ async function userRoutes(fastify: FastifyInstance) {
   fastify.get("/user/organizations", authenticated({ resource: "org", action: "read" }), getUserOrganizations);
   fastify.post("/user/account-settings", authenticated("deny-scoped"), updateAccountSettings);
   fastify.post("/user/unsubscribe-marketing", authenticated("deny-scoped"), unsubscribeMarketing);
-  fastify.get("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for link clicks
-  fastify.post("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
+  await fastify.register(async oneClick => {
+    // Email clients send RFC 8058 one-click unsubscribes as an
+    // application/x-www-form-urlencoded POST ("List-Unsubscribe=One-Click").
+    // The handlers only read the query string, but without a parser Fastify
+    // answers 415 before they run.
+    oneClick.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, _body, done) =>
+      done(null, {})
+    );
+    oneClick.get("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for link clicks
+    oneClick.post("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
+    oneClick.get("/user/unsubscribe-reports-oneclick", publicRoute, oneClickUnsubscribeReports); // Public - weekly report footer link
+    oneClick.post("/user/unsubscribe-reports-oneclick", publicRoute, oneClickUnsubscribeReports); // Public - weekly report List-Unsubscribe header
+  });
   fastify.post("/user/api-keys", authenticated("deny-scoped"), createUserApiKey);
   fastify.post("/organizations/:organizationId/api-keys", org("apikeys:manage"), createOrgApiKey);
   fastify.get("/organizations/:organizationId/api-usage", org("org:read"), getOrgApiUsage);

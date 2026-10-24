@@ -352,7 +352,10 @@ describe("updateOrganizationsMonthlyUsage — limit exceeded email", () => {
     await usageService.updateOrganizationsMonthlyUsage();
 
     expect(mocks.sendLimitExceededEmail).toHaveBeenCalledTimes(2);
-    expect(mocks.sendLimitExceededEmail).toHaveBeenCalledWith("a@example.com", "Org org_1", 101, 100);
+    expect(mocks.sendLimitExceededEmail).toHaveBeenCalledWith(
+      "a@example.com",
+      expect.objectContaining({ organizationName: "Org org_1", eventCount: 101, eventLimit: 100 })
+    );
   });
 
   it("does not re-email an org that was already over its limit", async () => {
@@ -394,7 +397,10 @@ describe("updateOrganizationsMonthlyUsage — approaching limit email", () => {
 
     await usageService.updateOrganizationsMonthlyUsage();
 
-    expect(mocks.sendApproachingLimitEmail).toHaveBeenCalledWith("owner@example.com", "Org org_1", 90_000, 100_000);
+    expect(mocks.sendApproachingLimitEmail).toHaveBeenCalledWith(
+      "owner@example.com",
+      expect.objectContaining({ organizationName: "Org org_1", eventCount: 90_000, eventLimit: 100_000 })
+    );
     expect(state.updates[0]).toMatchObject({ approachingLimitNotifiedPeriodStart: "2026-08-01" });
   });
 

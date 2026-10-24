@@ -38,7 +38,7 @@ const state = vi.hoisted(() => ({
   firstPageview: [] as Array<{ country: string }>,
   overview: [] as Array<{ sessions: number; pageviews: number }>,
   topRows: [] as Array<{ value: string }>,
-  convertingPaths: [] as Array<{ pathname: string }>,
+  convertingPaths: [] as Array<{ pathname: string; sessions?: number }>,
   quietCandidates: [] as Array<{ site_id: number; last_event: string }>,
   establishedSites: [] as Array<{ site_id: number; total: number }>,
   /** unique-key guard mirroring the DB constraint */
@@ -46,7 +46,7 @@ const state = vi.hoisted(() => ({
 }));
 
 const mocks = vi.hoisted(() => ({
-  sendLifecycleEmail: vi.fn(async (_email: string, _subject: string, _text: string, _idempotencyKey?: string) => true),
+  sendLifecycleEmail: vi.fn(async (_email: string, _letter: Letter, _idempotencyKey?: string) => true),
   isContactUnsubscribed: vi.fn(async (_email: string) => false),
   detectPlatform: vi.fn(async () => null),
 }));
@@ -140,6 +140,7 @@ vi.mock("../../db/clickhouse/clickhouse.js", () => ({
       const rows = (() => {
         if (query.includes("custom_events")) return state.siteStats;
         if (query.includes("ORDER BY timestamp ASC")) return state.firstPageview;
+        if (query.includes("match(pathname")) return state.convertingPaths;
         if (query.includes("uniq(session_id)")) return state.overview;
         if (query.includes("GROUP BY value")) return state.topRows;
         if (query.includes("INTERVAL 14 DAY")) return state.convertingPaths;
@@ -173,10 +174,13 @@ vi.mock("./platformDetect.js", async importOriginal => {
   return { ...original, detectPlatform: mocks.detectPlatform };
 });
 
+import { letterText, type Letter } from "../../lib/email/letter.js";
 import { lifecycleEmailService } from "./lifecycleEmailService.js";
 
 const run = () => lifecycleEmailService.processLifecycleEmails();
-const sentSubjects = () => mocks.sendLifecycleEmail.mock.calls.map(call => call[1]);
+const sentSubjects = () => mocks.sendLifecycleEmail.mock.calls.map(call => call[1].subject);
+/** The plain-text part of the nth email sent, which carries the same content as the HTML. */
+const sentBody = (n = 0) => letterText(mocks.sendLifecycleEmail.mock.calls[n][1]);
 
 const addUser = (id: string, createdAt: string) => {
   state.users.push({ id, email: `${id}@example.com`, name: "Ada", createdAt });
@@ -275,7 +279,7 @@ describe("state: site created, no data", () => {
     addOwnedSite("u1", 42, "acme.com", hoursAgo(2));
     await run();
     expect(sentSubjects()).toEqual(["One step left for acme.com"]);
-    const body = mocks.sendLifecycleEmail.mock.calls[0][2];
+    const body = sentBody();
     expect(body).toContain('data-site-id="42"');
   });
 
@@ -292,8 +296,8 @@ describe("state: site created, no data", () => {
     state.logs.length = 0;
     markSent("u1", "install_snippet:42", hoursAgo(25));
     await run();
-    expect(sentSubjects()).toEqual(["Still nothing from acme.com"]);
-    const body = mocks.sendLifecycleEmail.mock.calls[0][2];
+    expect(sentSubjects()).toEqual(["No data from acme.com yet"]);
+    const body = sentBody();
     expect(body).toContain("/api/site/check-install?siteId=42&domain=acme.com&exp=");
   });
 
@@ -332,7 +336,7 @@ describe("transition: first data arrives", () => {
     state.firstPageview.push({ country: "DE" });
     await run();
     expect(sentSubjects()).toEqual(["Rybbit is live on acme.com"]);
-    const body = mocks.sendLifecycleEmail.mock.calls[0][2];
+    const body = sentBody();
     expect(body).toContain("Germany");
   });
 
@@ -343,7 +347,7 @@ describe("transition: first data arrives", () => {
     await run();
     // Bundled kinds key on the cooldown window, not the member sites, so a
     // retry after a lost response reuses it even if membership changed.
-    expect(mocks.sendLifecycleEmail.mock.calls[0][3]).toBe("lifecycle:u1:site_live:first");
+    expect(mocks.sendLifecycleEmail.mock.calls[0][2]).toBe("lifecycle:u1:site_live:first");
   });
 
   it("does not send it for sites whose first event is old (pre-existing traffic)", async () => {
@@ -364,7 +368,7 @@ describe("transition: first data arrives", () => {
     // next run attempts the same key again.
     await run();
     expect(mocks.sendLifecycleEmail).toHaveBeenCalledTimes(2);
-    expect(mocks.sendLifecycleEmail.mock.calls[1][1]).toBe("Rybbit is live on acme.com");
+    expect(mocks.sendLifecycleEmail.mock.calls[1][1].subject).toBe("Rybbit is live on acme.com");
   });
 });
 
@@ -382,8 +386,8 @@ describe("state: data flowing", () => {
     state.topRows.push({ value: "google.com" });
     await run();
     expect(sentSubjects()).toEqual(["Your first days of data on acme.com"]);
-    const body = mocks.sendLifecycleEmail.mock.calls[0][2];
-    expect(body).toContain("120 visits");
+    const body = sentBody();
+    expect(body).toContain("Visits: 120");
     expect(body).toContain("google.com");
   });
 
@@ -402,16 +406,16 @@ describe("state: data flowing", () => {
     state.siteStats.push({ site_id: 42, first_event: daysAgo(8), last_event: hoursAgo(2), total: 2000, pageviews: 1900, custom_events: 4 });
     markSent("u1", "site_live:42", daysAgo(4));
     markSent("u1", "first_days:42", daysAgo(4));
-    state.convertingPaths.push({ pathname: "/thank-you" });
+    state.convertingPaths.push({ pathname: "/thank-you", sessions: 86 });
     await run();
-    expect(sentSubjects()).toEqual(["Visitors are reaching /thank-you - measure it"]);
+    expect(sentSubjects()).toEqual(["Turn /thank-you into a goal"]);
 
     // With a goal already configured, the nudge never fires
     state.sentKeys.delete("u1:nudge_goals:42");
     mocks.sendLifecycleEmail.mockClear();
     state.goals.push({ siteId: 42 });
     await run();
-    expect(sentSubjects()).not.toContain("Visitors are reaching /thank-you - measure it");
+    expect(sentSubjects()).not.toContain("Turn /thank-you into a goal");
   });
 
   it("nudges custom events only when the site has none", async () => {
@@ -421,7 +425,7 @@ describe("state: data flowing", () => {
     markSent("u1", "site_live:42", daysAgo(5));
     markSent("u1", "first_days:42", daysAgo(5));
     await run();
-    expect(sentSubjects()).toEqual(["See what visitors actually do on acme.com"]);
+    expect(sentSubjects()).toEqual(["Track clicks and signups on acme.com"]);
   });
 });
 
@@ -441,7 +445,7 @@ describe("state: went quiet", () => {
   it("alerts the owner when an established site stops sending data, once per outage", async () => {
     quietSite();
     await run();
-    expect(sentSubjects()).toEqual(["We stopped hearing from quiet.com"]);
+    expect(sentSubjects()).toEqual(["quiet.com stopped sending data"]);
     // Hourly cadence: force the next run to include the went-quiet pass again.
     (lifecycleEmailService as any).lastWentQuietAt = null;
     await run();
@@ -470,8 +474,8 @@ describe("state: went quiet", () => {
     state.establishedSites.push({ site_id: 8, total: 3000 });
     state.sites.push({ siteId: 8, domain: "quiet2.com", createdAt: daysAgo(200), organizationId: "org-x", detectedPlatform: null });
     await run();
-    expect(sentSubjects()).toEqual(["We stopped hearing from quiet.com and 1 other site"]);
-    const body = mocks.sendLifecycleEmail.mock.calls[0][2];
+    expect(sentSubjects()).toEqual(["quiet.com and 1 other site stopped sending data"]);
+    const body = sentBody();
     expect(body).toContain("quiet.com");
     expect(body).toContain("quiet2.com");
     expect(state.logs.map(l => l.emailKey).filter(k => k.startsWith("went_quiet:")).length).toBe(2);
@@ -492,7 +496,7 @@ describe("state: went quiet", () => {
     quietSite();
     state.recentQuietLogs.push({ siteId: 99, userId: "owner1", sentAt: daysAgo(7) });
     await run();
-    expect(sentSubjects()).toEqual(["We stopped hearing from quiet.com"]);
+    expect(sentSubjects()).toEqual(["quiet.com stopped sending data"]);
   });
 
   it("bundles sites that stayed quiet during the weekly cooldown, including sites in another organization", async () => {
@@ -518,8 +522,8 @@ describe("state: went quiet", () => {
     vi.setSystemTime(new Date("2026-10-14T12:00:00Z"));
     await run();
     expect(sentSubjects()).toEqual([
-      "We stopped hearing from quiet.com",
-      "We stopped hearing from quiet2.com and 1 other site",
+      "quiet.com stopped sending data",
+      "quiet2.com and 1 other site stopped sending data",
     ]);
     expect(state.logs.filter(l => l.emailKey.startsWith("went_quiet:")).map(l => l.siteId)).toEqual([7, 8, 9]);
   });
@@ -546,12 +550,12 @@ describe("multi-site owners", () => {
     for (let i = 1; i <= 13; i++) addOwnedSite("agency", i, `client${i}.com`, hoursAgo(3));
     await run();
     expect(sentSubjects()).toEqual(["One step left for client1.com and 12 other sites"]);
-    const body = mocks.sendLifecycleEmail.mock.calls[0][2];
+    const body = sentBody();
     // Ten listed with their own snippet, the rest summarised
     expect(body).toContain('data-site-id="1"');
     expect(body).toContain('data-site-id="10"');
     expect(body).not.toContain('data-site-id="11"');
-    expect(body).toContain("...and 3 more sites.");
+    expect(body).toContain("Plus 3 more sites.");
     expect(siteIds("install_snippet:")).toEqual(Array.from({ length: 13 }, (_, i) => i + 1));
 
     // Nothing further on the next tick: every site is logged
@@ -582,8 +586,8 @@ describe("multi-site owners", () => {
       markSent("agency", `install_snippet:${i}`, hoursAgo(30));
     }
     await run();
-    expect(sentSubjects()).toEqual(["Still nothing from client1.com and 2 other sites"]);
-    const body = mocks.sendLifecycleEmail.mock.calls[0][2];
+    expect(sentSubjects()).toEqual(["No data from client1.com and 2 other sites yet"]);
+    const body = sentBody();
     expect(body).toContain("/api/site/check-install?siteId=1&");
     expect(body).toContain("/api/site/check-install?siteId=3&");
     expect(siteIds("install_check:")).toEqual([1, 2, 3]);
@@ -606,7 +610,7 @@ describe("multi-site owners", () => {
     }
     await run();
     expect(sentSubjects()).toEqual(["Rybbit is live on client1.com and 3 other sites"]);
-    const body = mocks.sendLifecycleEmail.mock.calls[0][2];
+    const body = sentBody();
     expect(body).toContain("client4.com: https://app.rybbit.io/4");
     expect(siteIds("site_live:")).toEqual([1, 2, 3, 4]);
   });
@@ -649,10 +653,10 @@ describe("multi-site owners", () => {
     await run();
     expect(mocks.sendLifecycleEmail).toHaveBeenCalledTimes(2);
     const [failed, retried] = mocks.sendLifecycleEmail.mock.calls;
-    expect(retried[1]).toBe("Rybbit is live on client1.com and 2 other sites");
+    expect(retried[1].subject).toBe("Rybbit is live on client1.com and 2 other sites");
     // Same key: Resend dedupes against the possibly-accepted first attempt
     // instead of delivering a second email.
-    expect(retried[3]).toBe(failed[3]);
+    expect(retried[2]).toBe(failed[2]);
     expect(siteIds("site_live:")).toEqual([1, 2, 3]);
 
     // After a successful send the next window gets a different key.
@@ -662,14 +666,14 @@ describe("multi-site owners", () => {
     state.siteStats.length = 0;
     state.siteStats.push({ site_id: 2, first_event: hoursAgo(1), last_event: hoursAgo(0.1), total: 5, pageviews: 5, custom_events: 0 });
     await run();
-    const next = mocks.sendLifecycleEmail.mock.calls[2][3];
+    const next = mocks.sendLifecycleEmail.mock.calls[2][2];
     expect(next).toMatch(/^lifecycle:agency:site_live:\d+$/);
-    expect(next).not.toBe(failed[3]);
+    expect(next).not.toBe(failed[2]);
   });
 
   it("single-key emails keep the per-key idempotency form", async () => {
     addUser("u1", hoursAgo(4));
     await run();
-    expect(mocks.sendLifecycleEmail.mock.calls[0][3]).toBe("lifecycle:u1:no_site_1");
+    expect(mocks.sendLifecycleEmail.mock.calls[0][2]).toBe("lifecycle:u1:no_site_1");
   });
 });

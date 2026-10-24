@@ -159,13 +159,20 @@ export async function createSiteTransfer(
       columns: { name: true },
     });
 
-    const sender = await db.query.user.findFirst({ where: eq(user.id, senderId), columns: { email: true } });
+    const sender = await db.query.user.findFirst({
+      where: eq(user.id, senderId),
+      columns: { email: true, name: true },
+    });
+    const trimmedName = sender?.name?.trim();
+    const senderName = trimmedName && !trimmedName.includes("@") ? trimmedName : null;
     try {
       await sendSiteTransferEmail({
         email: transfer.recipientEmail,
-        sentBy: sender?.email ?? sourceOrg?.name ?? "A Rybbit user",
+        sentBy: senderName ?? sender?.email ?? sourceOrg?.name ?? "A Rybbit user",
+        sentByEmail: sender?.email ?? null,
         siteDomain,
         organizationName: sourceOrg?.name ?? "",
+        expiresAt: transfer.expiresAt,
         transferLink: transferUrl(transfer.id),
       });
     } catch (error) {
