@@ -6,7 +6,13 @@ import { createServiceLogger } from "../../lib/logger/logger.js";
 import { getDeviceType } from "../../utils.js";
 import { isDatacenterAsn } from "./botBlocking/datacenterAsns.js";
 import { getChannel } from "./getChannel.js";
-import { clearSelfReferrer, getAllUrlParams, TotalTrackingPayload } from "./utils.js";
+import {
+  clearSelfReferrer,
+  EVENTS_INSERT_SETTINGS,
+  getAllUrlParams,
+  parseEventProperties,
+  TotalTrackingPayload,
+} from "./utils.js";
 
 type TotalPayload = TotalTrackingPayload & {
   sessionId: string;
@@ -14,14 +20,6 @@ type TotalPayload = TotalTrackingPayload & {
 
 const PAGEVIEW_BATCH_SIZE = 5000;
 const PAGEVIEW_FLUSH_INTERVAL_MS = 1000;
-
-const getParsedProperties = (properties: string | undefined) => {
-  try {
-    return properties ? JSON.parse(properties) : undefined;
-  } catch (error) {
-    return undefined;
-  }
-};
 
 class PageviewQueue {
   private queue: TotalPayload[] = [];
@@ -128,7 +126,7 @@ class PageviewQueue {
             lon: longitude || 0,
             type: pv.type || "pageview",
             event_name: pv.event_name || "",
-            props: getParsedProperties(pv.properties),
+            props: parseEventProperties(pv.properties),
             url_parameters: allUrlParams,
             // Performance metrics (only included for performance events).
             // ?? not ||: 0 is a legitimate measurement (a perfect CLS score is 0)
@@ -155,6 +153,7 @@ class PageviewQueue {
         table: "events",
         values: processedPageviews,
         format: "JSONEachRow",
+        clickhouse_settings: EVENTS_INSERT_SETTINGS,
       });
     } catch (error) {
       this.logger.error({ err: error }, "Error processing pageview queue");

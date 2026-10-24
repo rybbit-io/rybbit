@@ -157,3 +157,26 @@ export async function createBasePayload(trackingRequest: TrackingRequest): Promi
     storeIp: site.trackIp,
   } as any;
 }
+
+// The props column is ClickHouse JSON, which only accepts objects. Validation
+// lets any JSON through (e.g. rybbit.event("download", "file.pdf") sends a
+// string), and one non-object row fails the whole insert, so drop those props
+// here and keep the event.
+export function parseEventProperties(properties: string | undefined): Record<string, unknown> | undefined {
+  if (!properties) return undefined;
+  try {
+    const parsed = JSON.parse(properties);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : undefined;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+// A tracking batch mixes every site's events, so one row ClickHouse can't parse
+// must not take the rest down with it. Conflicting paths like {"a.b":1,"a":{"b":2}} are
+// merged instead of rejected, and up to 100 other unparseable rows are skipped.
+// A failure on more rows than that still throws.
+export const EVENTS_INSERT_SETTINGS = {
+  type_json_skip_duplicated_paths: 1,
+  input_format_allow_errors_num: "100",
+};

@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db/postgres/postgres.js";
 import {
   annotations,
+  gscConnections,
   importStatus,
   memberSiteAccess,
   segments,
@@ -81,6 +82,10 @@ export async function applySiteMove(
     await tx.update(importStatus).set({ organizationId: targetOrganizationId }).where(eq(importStatus.siteId, siteId));
     // A pending hand-over was authorized by the old organization.
     await tx.delete(siteTransfers).where(eq(siteTransfers.siteId, siteId));
+    // The Search Console connection holds the Google credentials of whoever
+    // connected it in the old organization; editors in the new one could
+    // otherwise browse and select any property that account can see.
+    await tx.delete(gscConnections).where(eq(gscConnections.siteId, siteId));
     return true;
   };
   if (transaction) return move(transaction);

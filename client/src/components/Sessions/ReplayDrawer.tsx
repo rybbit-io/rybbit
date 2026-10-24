@@ -14,7 +14,7 @@ interface ReplayDrawerProps {
 }
 
 export function ReplayDrawer({ sessionId, open, onOpenChange }: ReplayDrawerProps) {
-  const { setSessionId, resetPlayerState } = useReplayStore();
+  const setSessionId = useReplayStore(s => s.setSessionId);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -25,12 +25,8 @@ export function ReplayDrawer({ sessionId, open, onOpenChange }: ReplayDrawerProp
     }
   }, [open, sessionId, setSessionId]);
 
-  // Reset player state when drawer closes
-  useEffect(() => {
-    if (!open) {
-      resetPlayerState();
-    }
-  }, [open, resetPlayerState]);
+  // No reset on close: the drawer's player unregisters itself when it unmounts,
+  // handing the controls back to any player still on the page.
 
   // Measure container dimensions using getBoundingClientRect for more reliable sizing
   useEffect(() => {

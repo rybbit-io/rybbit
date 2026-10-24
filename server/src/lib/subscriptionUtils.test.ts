@@ -85,6 +85,7 @@ import {
   getReplayLimit,
   getStripeSubscription,
   hasHadStripeSubscription,
+  hasRenewingStripeSubscription,
   invalidateAllStripeSubscriptionsCache,
   invalidateStripeSubscriptionCache,
   OverrideSubscriptionInfo,
@@ -969,5 +970,52 @@ describe("hasHadStripeSubscription", () => {
   it("offers the trial when Stripe cannot be reached", async () => {
     mocks.list.mockRejectedValue(new Error("stripe down"));
     await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(false);
+  });
+});
+
+describe("hasRenewingStripeSubscription", () => {
+  const PERIOD_END = 1_800_000_000;
+  const sub = (status: string, extra: Record<string, unknown> = {}) => ({
+    id: `sub_${status}`,
+    status,
+    cancel_at_period_end: false,
+    cancel_at: null,
+    items: { data: [{ current_period_end: PERIOD_END }] },
+    ...extra,
+  });
+
+  it.each([
+    ["active", sub("active"), true],
+    ["trialing", sub("trialing"), true],
+    ["past_due (still retrying the card)", sub("past_due"), true],
+    ["active but set to cancel at period end", sub("active", { cancel_at_period_end: true }), false],
+    ["active, cancelling on its renewal date", sub("active", { cancel_at: PERIOD_END }), false],
+    ["active, cancelling only after more renewals", sub("active", { cancel_at: PERIOD_END + 86_400 * 365 }), true],
+    ["canceled", sub("canceled"), false],
+    ["incomplete_expired", sub("incomplete_expired"), false],
+  ])("%s → %s", async (_label, subscription, expected) => {
+    mocks.list.mockResolvedValueOnce({ data: [subscription], has_more: false });
+
+    await expect(hasRenewingStripeSubscription(nextCustomer())).resolves.toBe(expected);
+  });
+
+  it("keeps paging past a full page of ended subscriptions", async () => {
+    mocks.list
+      .mockResolvedValueOnce({ data: [sub("canceled", { id: "sub_old" })], has_more: true })
+      .mockResolvedValueOnce({ data: [sub("active")], has_more: false });
+
+    await expect(hasRenewingStripeSubscription(nextCustomer())).resolves.toBe(true);
+    expect(mocks.list.mock.calls[1][0]).toMatchObject({ starting_after: "sub_old" });
+  });
+
+  it("is false without a customer id and never calls Stripe", async () => {
+    await expect(hasRenewingStripeSubscription(null)).resolves.toBe(false);
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
+
+  it("throws when Stripe can't be reached, so deletion is refused rather than guessed", async () => {
+    mocks.list.mockRejectedValueOnce(new Error("stripe down"));
+
+    await expect(hasRenewingStripeSubscription(nextCustomer())).rejects.toThrow("stripe down");
   });
 });

@@ -2,6 +2,11 @@ import cluster from "node:cluster";
 import { ImportQuotaTracker } from "./importQuotaTracker.js";
 import { IS_CLOUD } from "../../lib/const.js";
 
+// How long an import may run before it no longer counts as active. Imports are only marked
+// complete by the client's final batch, so this is also when one whose client stopped early
+// (tab closed, network lost) is treated as abandoned and can be deleted.
+export const IMPORT_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 interface CachedTracker {
   tracker: ImportQuotaTracker;
   lastAccessed: number;
@@ -14,7 +19,6 @@ class ImportQuotaManager {
 
   private readonly CONCURRENT_IMPORT_LIMIT = 1;
   private readonly TRACKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
-  private readonly IMPORT_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
 
   async getTracker(organizationId: string): Promise<ImportQuotaTracker> {
     const now = Date.now();
@@ -53,7 +57,7 @@ class ImportQuotaManager {
     const startedAt = this.activeImports.get(organizationId);
 
     // If an import exists and hasn't timed out, limit reached
-    if (startedAt && now - startedAt < this.IMPORT_TIMEOUT_MS && this.CONCURRENT_IMPORT_LIMIT === 1) {
+    if (startedAt && now - startedAt < IMPORT_TIMEOUT_MS && this.CONCURRENT_IMPORT_LIMIT === 1) {
       return false;
     }
 
@@ -78,7 +82,7 @@ class ImportQuotaManager {
 
     // Cleanup timed-out imports
     for (const [orgId, startedAt] of this.activeImports) {
-      if (now - startedAt > this.IMPORT_TIMEOUT_MS) {
+      if (now - startedAt > IMPORT_TIMEOUT_MS) {
         this.activeImports.delete(orgId);
       }
     }

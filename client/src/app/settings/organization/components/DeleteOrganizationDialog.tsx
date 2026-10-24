@@ -26,7 +26,8 @@ import type { Organization } from "../page";
 /** Whether the organization is on a paid plan, which has to be cancelled before it can be deleted. */
 export function useHasActiveSubscription() {
   const { data: subscription } = useStripeSubscription();
-  return !!(subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro"));
+  // Any Stripe plan (Basic and legacy prices included) that will renew. The server enforces the same rule.
+  return !!subscription?.id && !subscription.cancelAtPeriodEnd;
 }
 
 interface DeleteOrganizationDialogProps {

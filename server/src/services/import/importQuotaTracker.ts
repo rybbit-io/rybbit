@@ -140,7 +140,9 @@ export class ImportQuotaTracker {
 
       const rows = await processResults<{ month: string; count: number }>(result);
       for (const row of rows) {
-        monthlyUsage.set(row.month, row.count);
+        // processResults turns "202405" into the number 202405; lookups use
+        // the "yyyyMM" string, so a numeric key would never match.
+        monthlyUsage.set(String(row.month), Number(row.count));
       }
 
       return monthlyUsage;

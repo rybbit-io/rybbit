@@ -407,6 +407,46 @@ export async function hasHadStripeSubscription(
  * Uses a single list call (status "all") to halve request volume versus separate
  * active/trialing queries.
  */
+/**
+ * Whether the customer has a Stripe subscription that will charge again: active, trialing or
+ * past due, and not ending before its next renewal. Deleting the organization (or its last owner)
+ * would leave such a subscription billing with nobody able to manage it. Throws when Stripe
+ * can't be reached, so callers refuse instead of guessing.
+ */
+export async function hasRenewingStripeSubscription(stripeCustomerId: string | null): Promise<boolean> {
+  if (!stripeCustomerId || !stripe) {
+    return false;
+  }
+  let startingAfter: string | undefined;
+  for (;;) {
+    const page = await (stripe as Stripe).subscriptions.list({
+      customer: stripeCustomerId,
+      status: "all",
+      limit: 100,
+      ...(startingAfter && { starting_after: startingAfter }),
+    });
+    if (page.data.some(willRenew)) {
+      return true;
+    }
+    if (!page.has_more || page.data.length === 0) {
+      return false;
+    }
+    startingAfter = page.data[page.data.length - 1].id;
+  }
+}
+
+function willRenew(sub: Stripe.Subscription): boolean {
+  if (sub.status !== "active" && sub.status !== "trialing" && sub.status !== "past_due") {
+    return false;
+  }
+  if (sub.cancel_at_period_end) {
+    return false;
+  }
+  // A scheduled cancel date only stops billing when it lands before the next renewal.
+  const periodEnd = sub.items?.data[0]?.current_period_end;
+  return !(sub.cancel_at && periodEnd && sub.cancel_at <= periodEnd);
+}
+
 async function fetchStripeSubscription(stripeCustomerId: string): Promise<StripeSubscriptionInfo | null> {
   // Fetch active + trialing in a single request and filter locally.
   const subs = await (stripe as Stripe).subscriptions.list({

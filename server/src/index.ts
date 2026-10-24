@@ -50,15 +50,6 @@ server.register(cors, {
 });
 server.addHook("onRequest", createRejectUntrustedOriginHook());
 
-// @fastify/rate-limit types FastifyContextConfig, which makes the homegrown
-// `rawBody` route flag (read by the Stripe webhook body parser) a type error
-// unless it is declared alongside.
-declare module "fastify" {
-  interface FastifyContextConfig {
-    rawBody?: boolean;
-  }
-}
-
 // Opt-in per-route rate limiting (routes declare config.rateLimit). Runs in
 // preHandler so authenticated routes can key on the user instead of the IP.
 server.register(rateLimit, {

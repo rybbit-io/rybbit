@@ -13,9 +13,10 @@ interface UseReplayPlayerProps {
 export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) => {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
-  const { setPlayer, setCurrentTime, setIsPlaying, setDuration } = useReplayStore(
+  const { registerPlayer, unregisterPlayer, setCurrentTime, setIsPlaying, setDuration } = useReplayStore(
     useShallow(s => ({
-      setPlayer: s.setPlayer,
+      registerPlayer: s.registerPlayer,
+      unregisterPlayer: s.unregisterPlayer,
       setCurrentTime: s.setCurrentTime,
       setIsPlaying: s.setIsPlaying,
       setDuration: s.setDuration,
@@ -52,10 +53,15 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
         });
 
         playerRef.current = newPlayer;
-        setPlayer(newPlayer);
+        registerPlayer(newPlayer);
+
+        // Another mounted player (e.g. the maximize drawer's) may own the
+        // shared controls; only the active one writes playback state.
+        const isActive = () => useReplayStore.getState().player === newPlayer;
 
         // Set up event listeners
         newPlayer.addEventListener("ui-update-current-time", (event: any) => {
+          if (!isActive()) return;
           // Validate that current time doesn't exceed duration
           const currentTime = event.payload;
           const playerDuration = newPlayer.getMetaData().totalTime;
@@ -71,17 +77,19 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
         });
 
         newPlayer.addEventListener("ui-update-player-state", (event: any) => {
+          if (!isActive()) return;
           setIsPlaying(event.payload === "playing");
         });
 
         newPlayer.addEventListener("ui-update-duration", (event: any) => {
+          if (!isActive()) return;
           setDuration(event.payload);
         });
 
         // Get the initial duration from the player
         setTimeout(() => {
           const playerDuration = newPlayer.getMetaData().totalTime;
-          if (playerDuration) {
+          if (playerDuration && isActive()) {
             setDuration(playerDuration);
           }
         }, 100);
@@ -135,10 +143,10 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
           document.removeEventListener("visibilitychange", handleVisibilityChange);
         }
         playerRef.current = null;
-        setPlayer(null);
+        unregisterPlayer(newPlayer);
       };
     }
-  }, [data, setPlayer, setCurrentTime, setIsPlaying, setDuration]);
+  }, [data, registerPlayer, unregisterPlayer, setCurrentTime, setIsPlaying, setDuration]);
 
   // Update dimensions without recreating the player
   useEffect(() => {

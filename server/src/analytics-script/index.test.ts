@@ -153,6 +153,23 @@ describe("automatic navigation tracking", () => {
     expect(pageviews()).toHaveLength(3);
   });
 
+  it("still tracks when the browser blocks storage", async () => {
+    // Blocked storage (cookies disabled, sandboxed iframes) throws on access.
+    vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new DOMException("The operation is insecure.", "SecurityError");
+    });
+    await start();
+    window.rybbit.event("signup");
+    expect(pageviews().map(event => event.type)).toEqual(["pageview", "custom_event"]);
+  });
+
+  it("installs a no-op API and sends nothing when the visitor opted out", async () => {
+    localStorage.setItem("disable-rybbit", "true");
+    await start();
+    window.rybbit.pageview();
+    expect(pageviews()).toHaveLength(0);
+  });
+
   it("ignores anchors with initial tracking disabled and still tracks subsequent routes", async () => {
     config.autoTrackPageview = false;
     await start();

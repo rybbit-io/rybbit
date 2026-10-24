@@ -1,5 +1,5 @@
 import { useParams } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import "rrweb-player/dist/style.css";
 import { useShallow } from "zustand/react/shallow";
 import { useGetSessionReplayEvents } from "@/api/analytics/hooks/sessionReplay/useGetSessionReplayEvents";
@@ -15,36 +15,24 @@ import { ReplayPlayerTopbar } from "./ReplayPlayerTopbar";
 export function ReplayPlayer({ width, height, isDrawer }: { width: number; height: number; isDrawer?: boolean }) {
   const params = useParams();
   const siteId = Number(params.site);
-  const {
-    sessionId,
-    player,
-    isPlaying,
-    setIsPlaying,
-    currentTime,
-    setCurrentTime,
-    duration,
-    setPlaybackSpeed,
-    resetPlayerState,
-  } = useReplayStore(
-    useShallow(s => ({
-      sessionId: s.sessionId,
-      player: s.player,
-      isPlaying: s.isPlaying,
-      setIsPlaying: s.setIsPlaying,
-      currentTime: s.currentTime,
-      setCurrentTime: s.setCurrentTime,
-      duration: s.duration,
-      setPlaybackSpeed: s.setPlaybackSpeed,
-      resetPlayerState: s.resetPlayerState,
-    }))
-  );
+  const { sessionId, player, isPlaying, setIsPlaying, currentTime, setCurrentTime, duration, setPlaybackSpeed } =
+    useReplayStore(
+      useShallow(s => ({
+        sessionId: s.sessionId,
+        player: s.player,
+        isPlaying: s.isPlaying,
+        setIsPlaying: s.setIsPlaying,
+        currentTime: s.currentTime,
+        setCurrentTime: s.setCurrentTime,
+        duration: s.duration,
+        setPlaybackSpeed: s.setPlaybackSpeed,
+      }))
+    );
 
+  // Playback state is reset by the player itself when it is created for a new
+  // session (see registerPlayer). A reset here would run after the child's
+  // effect and null out a player built from cached events.
   const { data, isLoading, error } = useGetSessionReplayEvents(siteId, sessionId);
-
-  // Reset player state when session changes
-  useEffect(() => {
-    resetPlayerState();
-  }, [sessionId, resetPlayerState]);
 
   // Calculate activity periods when player and data are ready
   useActivityPeriods({ data, player });

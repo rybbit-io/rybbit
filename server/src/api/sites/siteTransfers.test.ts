@@ -43,13 +43,14 @@ import {
 // Only the columns these handlers and applySiteMove touch.
 const DDL = `
 CREATE TABLE "organization" ("id" text PRIMARY KEY, "name" text NOT NULL);
-CREATE TABLE "user" ("id" text PRIMARY KEY, "email" text NOT NULL, "emailVerified" boolean NOT NULL DEFAULT false);
+CREATE TABLE "user" ("id" text PRIMARY KEY, "email" text NOT NULL, "emailVerified" boolean NOT NULL DEFAULT false, "role" text);
 CREATE TABLE "sites" (
   "site_id" serial PRIMARY KEY,
   "name" text NOT NULL,
   "domain" text NOT NULL,
   "organization_id" text REFERENCES "organization"("id"),
-  "updated_at" timestamp
+  "updated_at" timestamp,
+  "private_link_key" text
 );
 CREATE TABLE "member" (
   "id" text PRIMARY KEY,
@@ -118,9 +119,9 @@ beforeEach(async () => {
     TRUNCATE "site_transfers", "gsc_connections", "import_status", "annotations", "segments",
       "team_site_access", "member_site_access", "member", "sites", "user", "organization" RESTART IDENTITY;
     INSERT INTO "organization" VALUES ('org_agency', 'Parcero'), ('org_client', 'TAY'), ('org_other', 'Other');
-    INSERT INTO "user" VALUES
+    INSERT INTO "user" ("id", "email", "emailVerified") VALUES
       ('barnaby', 'barnaby@agency.io', true), ('tay', 'Tay@Example.org', true), ('mallory', 'mallory@evil.io', true);
-    INSERT INTO "sites" ("name", "domain", "organization_id") VALUES ('TAY', 'tay.example.org', 'org_agency');
+    INSERT INTO "sites" ("name", "domain", "organization_id", "private_link_key") VALUES ('TAY', 'tay.example.org', 'org_agency', 'agency-shared-key');
     INSERT INTO "member" ("id", "organizationId", "userId", "role") VALUES
       ('m_barnaby', 'org_agency', 'barnaby', 'owner'),
       ('m_tay_client', 'org_client', 'tay', 'owner'),
@@ -251,6 +252,7 @@ describe("the recipient", () => {
     expect(await rows(`SELECT * FROM member_site_access`)).toEqual([]);
     expect(await rows(`SELECT * FROM site_transfers`)).toEqual([]);
     expect(await rows(`SELECT * FROM gsc_connections`)).toEqual([]);
+    expect(await rows(`SELECT private_link_key FROM sites`)).toEqual([{ private_link_key: null }]);
     // Organization keys of both sides stop seeing the old site list.
     expect(mocks.invalidateOrganizationSitesCache).toHaveBeenCalledWith("org_agency");
     expect(mocks.invalidateOrganizationSitesCache).toHaveBeenCalledWith("org_client");
@@ -347,6 +349,37 @@ describe("the recipient", () => {
     );
 
     expect(reply.statusCode).toBe(404);
+  });
+
+  it("is refused once the sender has lost the right to transfer the site", async () => {
+    // An admin about to be removed sends the site to their own address, then
+    // tries to accept after the removal.
+    const { body } = await startTransfer();
+    await (pgClient as any).exec(`DELETE FROM member WHERE id = 'm_barnaby'`);
+    const reply = replyStub();
+
+    await acceptSiteTransfer(
+      request({ params: { transferId: body.id }, body: { organizationId: "org_client" }, user: { id: "tay" } }),
+      reply
+    );
+
+    expect(reply.statusCode).toBe(403);
+    expect(await rows(`SELECT organization_id FROM sites`)).toEqual([{ organization_id: "org_agency" }]);
+    expect(await rows(`SELECT * FROM site_transfers`)).toEqual([]);
+  });
+
+  it("is refused once the sender has been demoted below admin", async () => {
+    const { body } = await startTransfer();
+    await (pgClient as any).exec(`UPDATE member SET role = 'member' WHERE id = 'm_barnaby'`);
+    const reply = replyStub();
+
+    await acceptSiteTransfer(
+      request({ params: { transferId: body.id }, body: { organizationId: "org_client" }, user: { id: "tay" } }),
+      reply
+    );
+
+    expect(reply.statusCode).toBe(403);
+    expect(await rows(`SELECT organization_id FROM sites`)).toEqual([{ organization_id: "org_agency" }]);
   });
 
   it("respects the receiving organization's site limit on cloud", async () => {

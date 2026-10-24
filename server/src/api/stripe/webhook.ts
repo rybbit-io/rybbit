@@ -22,8 +22,8 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
   let event: Stripe.Event;
 
   try {
-    // Use rawBody instead of request.body for signature verification
-    const rawBody = (request.raw as any).body;
+    // Stripe signs the exact request bytes; the route's parser keeps them.
+    const rawBody = request.rawBody;
     if (!rawBody) {
       return reply.status(400).send("Webhook error: No raw body available");
     }

@@ -1,5 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { Address6 } from "ip-address";
+import { isPublicHttpAddress } from "../../lib/publicHttpFetch.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
 const logger = createServiceLogger("platform-detect");
@@ -43,44 +45,24 @@ const MAX_BODY_BYTES = 512 * 1024;
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_REDIRECTS = 3;
 
+const V4_MAPPED = new Address6("::ffff:0:0/96");
+const NAT64 = new Address6("64:ff9b::/96");
+
 /**
- * SSRF guard: reject any address that is not publicly routable. Covers
- * loopback, RFC1918, link-local (incl. cloud metadata 169.254.169.254),
- * CGNAT, benchmarking/documentation ranges, multicast/reserved, and their
- * IPv6 equivalents including v4-mapped forms.
+ * SSRF guard: reject any address that is not publicly routable. Delegates to
+ * the favicon fetcher's allowlist (public v4, global-unicast v6). v4-mapped
+ * and NAT64 addresses are judged by their embedded v4 address in every
+ * spelling: URL parsing turns [::ffff:169.254.169.254] into
+ * [::ffff:a9fe:a9fe], which a dotted-form pattern never matched.
  */
 export function isPublicUnicastAddress(address: string): boolean {
-  const family = isIP(address);
-  if (family === 4) return isPublicV4(address);
-  if (family === 6) {
-    const lower = address.toLowerCase();
-    // v4-mapped / v4-translated: judge the embedded v4
-    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/) || lower.match(/^64:ff9b::(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapped) return isPublicV4(mapped[1]);
-    if (lower === "::" || lower === "::1") return false;
-    if (/^(fc|fd)/.test(lower)) return false; // unique local fc00::/7
-    if (/^fe[89ab]/.test(lower)) return false; // link-local fe80::/10
-    if (/^ff/.test(lower)) return false; // multicast
-    return true;
+  if (isIP(address) === 6) {
+    const ip = new Address6(address);
+    if (ip.isInSubnet(V4_MAPPED) || ip.isInSubnet(NAT64)) {
+      return isPublicHttpAddress(ip.to4().correctForm());
+    }
   }
-  return false;
-}
-
-function isPublicV4(address: string): boolean {
-  const parts = address.split(".").map(Number);
-  if (parts.length !== 4 || parts.some(p => Number.isNaN(p) || p < 0 || p > 255)) return false;
-  const [a, b] = parts;
-  if (a === 0 || a === 10 || a === 127) return false;
-  if (a === 100 && b >= 64 && b <= 127) return false; // CGNAT 100.64/10
-  if (a === 169 && b === 254) return false; // link-local / metadata
-  if (a === 172 && b >= 16 && b <= 31) return false;
-  if (a === 192 && b === 168) return false;
-  if (a === 192 && b === 0) return false; // 192.0.0/24 + 192.0.2/24 (docs)
-  if (a === 198 && (b === 18 || b === 19)) return false; // benchmarking
-  if (a === 198 && b === 51) return false; // 198.51.100/24 docs
-  if (a === 203 && b === 113) return false; // 203.0.113/24 docs
-  if (a >= 224) return false; // multicast + reserved + broadcast
-  return true;
+  return isPublicHttpAddress(address);
 }
 
 /** Resolve a hostname and confirm every address it maps to is public. */

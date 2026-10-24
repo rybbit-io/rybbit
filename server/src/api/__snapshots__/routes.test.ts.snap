@@ -153,7 +153,7 @@ exports[`API route table > pins the access each route requires 1`] = `
   "POST   /api/sites/:siteId/annotations → site annotations:write [member+]",
   "POST   /api/sites/:siteId/claim → authenticated",
   "POST   /api/sites/:siteId/dashboards → site dashboards:write [member+]",
-  "POST   /api/sites/:siteId/dashboards/run-card → site dashboards:read [viewer+]",
+  "POST   /api/sites/:siteId/dashboards/run-card → site sql:read [viewer+]",
   "POST   /api/sites/:siteId/experiments → site experiments:write [editor+]",
   "POST   /api/sites/:siteId/feature-flags → site flags:write [editor+]",
   "POST   /api/sites/:siteId/feature-flags/evaluate → site flags:read [viewer+]",

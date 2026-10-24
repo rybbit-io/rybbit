@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,8 +35,25 @@ function executedQuery(n: number) {
   return dialect.sqlToQuery(mocks.execute.mock.calls[n][0]);
 }
 
-function createRequest(body: Record<string, unknown>) {
-  return { body, log: requestLogger } as any;
+const API_KEY = "as_api_key";
+const TIMESTAMP = "1761264000000";
+
+function sign(rawBody: Buffer, timestamp = TIMESTAMP, key = API_KEY) {
+  return createHmac("sha256", key)
+    .update(`${timestamp}${rawBody.toString("utf8")}`)
+    .digest("hex");
+}
+
+// Signed the way AppSumo does: HMAC-SHA256 over the timestamp header followed
+// by the raw body, keyed with the partner API key.
+function createRequest(body: Record<string, unknown>, headers?: Record<string, string>) {
+  const rawBody = Buffer.from(JSON.stringify(body));
+  return {
+    body,
+    rawBody,
+    headers: headers ?? { "x-appsumo-timestamp": TIMESTAMP, "x-appsumo-signature": sign(rawBody) },
+    log: requestLogger,
+  } as any;
 }
 
 function createReply() {
@@ -51,9 +69,9 @@ function createReply() {
   return reply;
 }
 
-async function invoke(body: Record<string, unknown>) {
+async function invoke(body: Record<string, unknown>, headers?: Record<string, string>) {
   const reply = createReply();
-  await handleAppSumoWebhook(createRequest(body), reply);
+  await handleAppSumoWebhook(createRequest(body, headers), reply);
   return reply;
 }
 
@@ -61,6 +79,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.APPSUMO_CLIENT_ID = "as_client_id";
   process.env.APPSUMO_CLIENT_SECRET = "as_client_secret";
+  process.env.APPSUMO_API_KEY = API_KEY;
   mocks.execute.mockResolvedValue([]);
 });
 
@@ -73,6 +92,52 @@ describe("handleAppSumoWebhook — availability gate", () => {
     expect(reply.statusCode).toBe(503);
     expect(reply.payload).toEqual({ error: "AppSumo integration is not available" });
     expect(mocks.execute).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleAppSumoWebhook — signature", () => {
+  const body = { event: "activate", license_key: "lic_1", tier: 7 };
+
+  it("rejects an unsigned request before any db access", async () => {
+    const reply = await invoke(body, {});
+
+    expect(reply.statusCode).toBe(401);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("rejects a signature made with a different key", async () => {
+    const raw = Buffer.from(JSON.stringify(body));
+    const reply = await invoke(body, {
+      "x-appsumo-timestamp": TIMESTAMP,
+      "x-appsumo-signature": sign(raw, TIMESTAMP, "wrong_key"),
+    });
+
+    expect(reply.statusCode).toBe(401);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("rejects a valid signature replayed with a different timestamp", async () => {
+    const raw = Buffer.from(JSON.stringify(body));
+    const reply = await invoke(body, { "x-appsumo-timestamp": "1761264000001", "x-appsumo-signature": sign(raw) });
+
+    expect(reply.statusCode).toBe(401);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when the API key is not configured", async () => {
+    delete process.env.APPSUMO_API_KEY;
+
+    const reply = await invoke(body);
+
+    expect(reply.statusCode).toBe(503);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("accepts a correctly signed request", async () => {
+    const reply = await invoke(body);
+
+    expect(reply.statusCode).toBe(200);
+    expect(reply.payload).toEqual({ event: "activate", success: true });
   });
 });
 
@@ -308,47 +373,31 @@ describe("handleAppSumoWebhook — upgrade", () => {
     expect(reply.payload).toEqual({ event: "upgrade", success: true });
   });
 
-  it("PINNED (suspected bug): unknown prev_license_key falls back to ANY license with an org and transfers that org", async () => {
-    // If the previous license is not found, the handler grabs the most
-    // recently updated license belonging to ANY organization and attaches the
-    // new license to it. On this public, unauthenticated endpoint that means a
-    // fabricated upgrade payload with an unknown prev_license_key can mint an
-    // active license attached to another customer's organization.
+  it("keeps the new license pending when prev_license_key is unknown instead of guessing an org", async () => {
     mocks.execute
       .mockResolvedValueOnce([]) // audit insert
       .mockResolvedValueOnce([]) // old license lookup: not found
-      .mockResolvedValueOnce([{ organization_id: "org_someone_else" }]) // fallback lookup
-      .mockResolvedValueOnce([]) // insert new active license
+      .mockResolvedValueOnce([]) // insert pending license
       .mockResolvedValueOnce([]); // deactivate (nonexistent) old license
 
     const reply = await invoke({
       event: "upgrade",
-      license_key: "lic_forged",
+      license_key: "lic_new",
       prev_license_key: "lic_unknown",
       tier: 5,
     });
 
-    const fallback = executedQuery(2);
-    expect(fallback.sql).toContain("WHERE organization_id IS NOT NULL");
-    expect(fallback.sql).toContain("ORDER BY updated_at DESC");
-
-    const insert = executedQuery(3);
-    expect(insert.sql).toContain("'active'");
-    expect(insert.params).toEqual(["org_someone_else", "lic_forged", "5", "org_someone_else", "5"]);
-
-    expect(reply.payload).toEqual({ event: "upgrade", success: true });
-  });
-
-  it("gives up when neither the previous license nor any fallback license exists", async () => {
-    mocks.execute
-      .mockResolvedValueOnce([]) // audit insert
-      .mockResolvedValueOnce([]) // old license lookup: not found
-      .mockResolvedValueOnce([]); // fallback lookup: nothing
-
-    const reply = await invoke({ event: "upgrade", license_key: "lic_new", prev_license_key: "lic_gone", tier: 2 });
-
-    expect(mocks.execute).toHaveBeenCalledTimes(3);
-    // Still acked as success despite doing nothing.
+    expect(mocks.execute).toHaveBeenCalledTimes(4);
+    for (let i = 0; i < 4; i++) {
+      expect(executedQuery(i).sql).not.toContain("WHERE organization_id IS NOT NULL");
+    }
+    const insert = executedQuery(2);
+    expect(insert.sql).toContain("'pending'");
+    // An already activated (org-linked) row keeps its status.
+    expect(insert.sql).toContain(
+      "WHEN appsumo.licenses.organization_id IS NULL THEN 'pending' ELSE appsumo.licenses.status END"
+    );
+    expect(insert.params).toEqual(["lic_new", "5", "5"]);
     expect(reply.payload).toEqual({ event: "upgrade", success: true });
   });
 });
