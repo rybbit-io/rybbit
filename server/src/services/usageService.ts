@@ -9,6 +9,7 @@ import { db } from "../db/postgres/postgres.js";
 import { member, organization, sites, user } from "../db/postgres/schema.js";
 import { IS_CLOUD, USAGE_COUNTED_EVENT_TYPES } from "../lib/const.js";
 import { sendApproachingLimitEmail, sendLimitExceededEmail } from "../lib/email/email.js";
+import type { SiteUsage } from "../lib/email/templates/ApproachingLimitEmail.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
 import {
   getAllStripeSubscriptionsByCustomer,
@@ -214,17 +215,20 @@ class UsageService {
    * Gets all sites with their organization IDs (excludes sites without an organization).
    * Throws on failure for the same reason as getAllSiteEventCounts: no sites means zero usage.
    */
-  private async getAllSites(): Promise<Array<OrgSite & { organizationId: string }>> {
+  private async getAllSites(): Promise<Array<OrgSite & { organizationId: string; domain: string }>> {
     const allSites = await db
       .select({
         siteId: sites.siteId,
         organizationId: sites.organizationId,
         createdAt: sites.createdAt,
+        domain: sites.domain,
       })
       .from(sites);
 
     // Filter out sites without an organization ID
-    return allSites.filter(site => site.organizationId !== null) as Array<OrgSite & { organizationId: string }>;
+    return allSites.filter(site => site.organizationId !== null) as Array<
+      OrgSite & { organizationId: string; domain: string }
+    >;
   }
 
   /**
@@ -375,11 +379,21 @@ class UsageService {
       }
 
       // Step 3: Build a map of organizationId -> { sites, eventCount, replayCount }
-      const orgDataMap = new Map<string, { sites: OrgSite[]; eventCount: number; replayCount: number }>();
+      const orgDataMap = new Map<
+        string,
+        { sites: OrgSite[]; siteUsage: SiteUsage[]; eventCount: number; replayCount: number }
+      >();
       for (const site of allSites) {
-        const orgData = orgDataMap.get(site.organizationId) || { sites: [], eventCount: 0, replayCount: 0 };
+        const orgData = orgDataMap.get(site.organizationId) || {
+          sites: [],
+          siteUsage: [],
+          eventCount: 0,
+          replayCount: 0,
+        };
+        const siteEvents = eventCountMap.get(site.siteId) || 0;
         orgData.sites.push({ siteId: site.siteId, createdAt: site.createdAt });
-        orgData.eventCount += eventCountMap.get(site.siteId) || 0;
+        orgData.siteUsage.push({ domain: site.domain ?? String(site.siteId), events: siteEvents });
+        orgData.eventCount += siteEvents;
         orgData.replayCount += replayCountMap.get(site.siteId) || 0;
         orgDataMap.set(site.organizationId, orgData);
       }
@@ -415,6 +429,12 @@ class UsageService {
           const subscription = await this.getOrganizationSubscriptionInfo(orgData, stripeSubscriptions);
           if (this.refreshedSince(orgData.id, runStartedAt)) continue;
           const eventLimit = subscription.eventLimit;
+          const usageEmail = {
+            organizationName: orgData.name,
+            eventCount,
+            eventLimit,
+            sites: [...(orgStats?.siteUsage ?? [])].sort((a, b) => b.events - a.events),
+          };
           const isOverLimit = eventCount > eventLimit;
 
           const replayCount = orgStats?.replayCount || 0;
@@ -446,7 +466,7 @@ class UsageService {
             if (ownerEmails.length > 0) {
               for (const ownerEmail of ownerEmails) {
                 try {
-                  await sendLimitExceededEmail(ownerEmail, orgData.name, eventCount, eventLimit);
+                  await sendLimitExceededEmail(ownerEmail, usageEmail);
                   this.logger.info({ organizationId: orgData.id }, "Sent limit-exceeded email to organization owner");
                 } catch (error) {
                   this.logger.error(
@@ -468,7 +488,7 @@ class UsageService {
             if (ownerEmails.length > 0) {
               for (const ownerEmail of ownerEmails) {
                 try {
-                  await sendApproachingLimitEmail(ownerEmail, orgData.name, eventCount, eventLimit);
+                  await sendApproachingLimitEmail(ownerEmail, usageEmail);
                   this.logger.info(
                     { organizationId: orgData.id },
                     "Sent approaching-limit email to organization owner"

@@ -43,7 +43,7 @@ import {
 // Only the columns these handlers and applySiteMove touch.
 const DDL = `
 CREATE TABLE "organization" ("id" text PRIMARY KEY, "name" text NOT NULL);
-CREATE TABLE "user" ("id" text PRIMARY KEY, "email" text NOT NULL, "emailVerified" boolean NOT NULL DEFAULT false, "role" text);
+CREATE TABLE "user" ("id" text PRIMARY KEY, "name" text, "email" text NOT NULL, "emailVerified" boolean NOT NULL DEFAULT false, "role" text);
 CREATE TABLE "sites" (
   "site_id" serial PRIMARY KEY,
   "name" text NOT NULL,

@@ -184,6 +184,7 @@ import {
   getUserOrganizations,
   listOrganizationMembers,
   oneClickUnsubscribeMarketing,
+  oneClickUnsubscribeReports,
   unsubscribeMarketing,
   updateAccountSettings,
 } from "./user/index.js";
@@ -555,6 +556,8 @@ async function userRoutes(fastify: FastifyInstance) {
   fastify.post("/user/unsubscribe-marketing", authenticated("deny-scoped"), unsubscribeMarketing);
   fastify.get("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for link clicks
   fastify.post("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
+  fastify.get("/user/unsubscribe-reports-oneclick", publicRoute, oneClickUnsubscribeReports); // Public - weekly report footer link
+  fastify.post("/user/unsubscribe-reports-oneclick", publicRoute, oneClickUnsubscribeReports); // Public - weekly report List-Unsubscribe header
   fastify.post("/user/api-keys", authenticated("deny-scoped"), createUserApiKey);
   fastify.post("/organizations/:organizationId/api-keys", org("apikeys:manage"), createOrgApiKey);
   fastify.get("/organizations/:organizationId/api-usage", org("org:read"), getOrgApiUsage);

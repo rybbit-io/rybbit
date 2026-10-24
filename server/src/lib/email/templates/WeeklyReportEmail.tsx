@@ -1,410 +1,382 @@
-import {
-  Body,
-  Container,
-  Head,
-  Hr,
-  Html,
-  Img,
-  Link,
-  Preview,
-  Section,
-  Tailwind,
-  Text,
-  pixelBasedPreset,
-} from "@react-email/components";
+import { DateTime } from "luxon";
 import * as React from "react";
-import type { SiteReport, MetricData } from "../../../services/weekyReports/weeklyReportTypes.js";
+import type { DailySessions, MetricData, SiteReport } from "../../../services/weekyReports/weeklyReportTypes.js";
+import { appUrl, formatChange, formatCount, formatDuration, percentChange, truncate } from "../format.js";
+import {
+  color,
+  H1,
+  H2,
+  LedgerLayout,
+  Note,
+  PrimaryButton,
+  ShareTable,
+  StatGrid,
+  tableAttrs,
+  type Stat,
+} from "./ledger.js";
 
 interface WeeklyReportEmailProps {
-  userName: string;
-  organizationName: string;
   site: SiteReport;
+  unsubscribeUrl: string;
 }
 
-interface MetricCardProps {
-  label: string;
-  currentValue: string;
-  growth: string;
-  isPositive: boolean;
-}
+const CHART_HEIGHT = 112;
+const ROWS_PER_TABLE = 5;
 
-interface TopListItemProps {
-  value: string;
-  percentage: number | null;
-  count: number;
-  barWidth: number;
-  isLast: boolean;
-  favicon?: string;
-  labelClassName?: string;
-}
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
-interface TopListSectionProps {
-  title: string;
-  items: MetricData[];
-  renderLabel: (item: MetricData) => React.ReactNode;
-  showFavicon?: boolean;
-  labelClassName?: string;
-  className?: string;
-}
-
-const calculateGrowth = (current: number | null | undefined, previous: number | null | undefined): string => {
-  const curr = current ?? 0;
-  const prev = previous ?? 0;
-
-  if (prev === 0) {
-    return curr > 0 ? "+100%" : "0%";
-  }
-  const growth = ((curr - prev) / prev) * 100;
-  const sign = growth > 0 ? "+" : "";
-  return `${sign}${growth.toFixed(1)}%`;
-};
-
-const formatDuration = (seconds: number): string => {
-  if (seconds < 60) {
-    return `${Math.round(seconds)}s`;
-  }
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round(seconds % 60);
-  return `${minutes}m ${remainingSeconds}s`;
-};
-
-const formatNumber = (num: number | null | undefined): string => {
-  if (num == null || isNaN(num)) {
-    return "0";
-  }
-  if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(1)}M`;
-  }
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}K`;
-  }
-  return num.toFixed(0);
-};
-
-const safeToFixed = (num: number | null | undefined, decimals: number = 1): string => {
-  if (num == null || isNaN(num)) {
-    return "0";
-  }
-  return num.toFixed(decimals);
-};
-
-const regionNamesInEnglish = new Intl.DisplayNames(["en"], { type: "region" });
-
-const getCountryFlag = (countryCode: string): string => {
-  if (!countryCode || countryCode.length !== 2) return "";
-  const codePoints = countryCode
-    .toUpperCase()
-    .split("")
-    .map(char => 127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
-};
-
-const getCountryDisplay = (countryCode: string): string => {
+const countryName = (code: string) => {
   try {
-    const flag = getCountryFlag(countryCode);
-    const name = regionNamesInEnglish.of(countryCode.toUpperCase()) || countryCode;
-    return `${flag} ${name}`;
-  } catch (error) {
-    return countryCode;
+    return regionNames.of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
   }
 };
 
-const MetricCard = ({ label, currentValue, growth, isPositive }: MetricCardProps) => (
-  <div
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const day = (iso: string) => DateTime.fromISO(iso, { zone: "utc" });
+
+/** "Oct 13–19", or "Sep 29–Oct 5" across a month boundary. */
+export const formatWeekRange = (startIso: string, endIso: string) => {
+  const start = day(startIso);
+  const end = day(endIso);
+  return start.month === end.month
+    ? `${start.toFormat("LLL d")}–${end.toFormat("d")}`
+    : `${start.toFormat("LLL d")}–${end.toFormat("LLL d")}`;
+};
+
+const previousRange = (site: SiteReport) =>
+  formatWeekRange(
+    day(site.weekStart).minus({ days: 7 }).toISODate()!,
+    day(site.weekEnd).minus({ days: 7 }).toISODate()!
+  );
+
+const visitorChange = (site: SiteReport) => percentChange(site.currentWeek.users, site.previousWeek.users);
+
+/** "up 9.8%", "down 3.1%", "flat", or null when last week had no visitors. */
+const changeWords = (change: number | null) => {
+  if (change === null) return null;
+  const rounded = Math.round(change * 10) / 10;
+  if (rounded === 0) return "flat";
+  return `${rounded > 0 ? "up" : "down"} ${Math.abs(rounded).toFixed(1)}%`;
+};
+
+const visitorsPhrase = (n: number) => `${formatCount(n)} ${n === 1 ? "visitor" : "visitors"}`;
+
+export const weeklyReportSubject = (site: SiteReport) => {
+  const words = changeWords(visitorChange(site));
+  return `${site.siteDomain}: ${visitorsPhrase(site.currentWeek.users)} last week${words && words !== "flat" ? `, ${words}` : ""}`;
+};
+
+const busiestDay = (daily: DailySessions[]) =>
+  daily.reduce<DailySessions | null>((best, d) => (d.sessions > (best?.sessions ?? 0) ? d : best), null);
+
+export const weeklyReportPreview = (site: SiteReport) => {
+  const busiest = busiestDay(site.daily);
+  return [
+    busiest && `Busiest day ${day(busiest.date).toFormat("cccc")}, ${formatCount(busiest.sessions)} sessions`,
+    site.topReferrers[0] && `Top source ${site.topReferrers[0].value}`,
+    formatWeekRange(site.weekStart, site.weekEnd),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+};
+
+/** "+9.8% from 5,560"; green when the move is good for the site, red when it isn't. */
+const Change = ({
+  current,
+  previous,
+  format,
+  lowerIsBetter = false,
+  points = false,
+}: {
+  current: number | null;
+  previous: number | null;
+  format: (n: number) => string;
+  lowerIsBetter?: boolean;
+  points?: boolean;
+}) => {
+  const prev = previous ?? 0;
+  const curr = current ?? 0;
+  const change = points ? (prev > 0 ? curr - prev : null) : percentChange(curr, prev);
+  if (change === null) return <>from {format(prev)}</>;
+  const rounded = Math.round(change * 10) / 10;
+  const good = lowerIsBetter ? rounded < 0 : rounded > 0;
+  const label = points
+    ? rounded === 0
+      ? "0 pp"
+      : `${rounded > 0 ? "+" : "−"}${Math.abs(rounded).toFixed(1)} pp`
+    : formatChange(change);
+  return (
+    <>
+      <span style={{ fontWeight: 500, color: rounded === 0 ? color.muted : good ? color.up : color.down }}>
+        {label}
+      </span>{" "}
+      from {format(prev)}
+    </>
+  );
+};
+
+const percent = (n: number | null) => `${(n ?? 0).toFixed(1)}%`;
+const oneDecimal = (n: number | null) => (n ?? 0).toFixed(1);
+
+const stats = (site: SiteReport): Stat[] => {
+  const { currentWeek: c, previousWeek: p } = site;
+  return [
+    {
+      label: "Visitors",
+      value: formatCount(c.users),
+      change: <Change current={c.users} previous={p.users} format={formatCount} />,
+    },
+    {
+      label: "Sessions",
+      value: formatCount(c.sessions),
+      change: <Change current={c.sessions} previous={p.sessions} format={formatCount} />,
+    },
+    {
+      label: "Pageviews",
+      value: formatCount(c.pageviews),
+      change: <Change current={c.pageviews} previous={p.pageviews} format={formatCount} />,
+    },
+    {
+      label: "Pages per session",
+      value: oneDecimal(c.pages_per_session),
+      change: <Change current={c.pages_per_session} previous={p.pages_per_session} format={oneDecimal} />,
+    },
+    {
+      label: "Avg. session",
+      value: formatDuration(c.session_duration),
+      change: <Change current={c.session_duration} previous={p.session_duration} format={formatDuration} />,
+    },
+    {
+      label: "Bounce rate",
+      value: percent(c.bounce_rate),
+      change: <Change current={c.bounce_rate} previous={p.bounce_rate} format={percent} lowerIsBetter points />,
+    },
+  ];
+};
+
+const LegendSwatch = ({ fill, outline }: { fill: string; outline?: string }) => (
+  <span
     style={{
-      backgroundColor: "#f9fafb",
-      border: "1px solid #e5e7eb",
-      borderRadius: "8px",
-      padding: "16px",
+      display: "inline-block",
+      width: 10,
+      height: 10,
+      borderRadius: 2,
+      backgroundColor: fill,
+      border: outline ? `1px solid ${outline}` : undefined,
+      boxSizing: "border-box",
+      verticalAlign: "-1px",
+      marginRight: 6,
     }}
-  >
-    <Text style={{ color: "#6b7280", fontSize: "12px", marginBottom: "4px", marginTop: 0 }}>{label}</Text>
-    <div>
-      <span style={{ color: "#111827", fontSize: "24px", fontWeight: "bold", lineHeight: "1", marginRight: "8px" }}>
-        {currentValue}
-      </span>
-      <span
-        style={{
-          color: isPositive ? "#10b981" : "#ef4444",
-          fontSize: "12px",
-          fontWeight: 500,
-          lineHeight: "1",
-          verticalAlign: "baseline",
-        }}
-      >
-        {growth}
-      </span>
-    </div>
-  </div>
+  />
 );
 
-const TopListItem = ({ value, percentage, count, barWidth, isLast, favicon, labelClassName }: TopListItemProps) => {
-  const barStyle: React.CSSProperties = {
-    background: `linear-gradient(to right, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.25) ${barWidth}%, transparent ${barWidth}%, transparent 100%)`,
-    borderRadius: "6px",
-  };
+/** A solid bar drawn as a table cell, which Outlook sizes where it ignores div heights. */
+const Bar = ({ width, height, fill }: { width: number; height: number; fill: string }) => (
+  <table {...tableAttrs} width={width} style={{ width }}>
+    <tbody>
+      <tr>
+        <td
+          height={height}
+          style={{ height, width, backgroundColor: fill, borderRadius: "2px 2px 0 0", fontSize: 0, lineHeight: "0px" }}
+        >
+          &nbsp;
+        </td>
+      </tr>
+    </tbody>
+  </table>
+);
+
+const DailyChart = ({ site }: { site: SiteReport }) => {
+  const max = Math.max(1, ...site.daily.flatMap(d => [d.sessions, d.previousSessions]));
+  const busiest = busiestDay(site.daily);
+  const scale = (n: number) => (n > 0 ? Math.max(2, Math.round((n / max) * CHART_HEIGHT)) : 0);
+  const label = (d: DailySessions) => ({
+    fontSize: 11,
+    lineHeight: "14px",
+    fontWeight: d === busiest ? 600 : 400,
+    color: d === busiest ? color.text : color.muted,
+  });
 
   return (
-    <table
-      style={{
-        width: "100%",
-        marginBottom: isLast ? "0" : "8px",
-        borderCollapse: "separate",
-        borderSpacing: "0",
-        ...barStyle,
-      }}
-    >
-      <tbody>
-        <tr>
-          <td style={{ padding: "4px 8px", verticalAlign: "middle" }}>
-            {favicon ? (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  <tr>
-                    <td style={{ width: "16px", paddingRight: "4px", verticalAlign: "middle" }}>
-                      <img src={favicon} alt="" width="16" height="16" style={{ display: "block" }} />
-                    </td>
-                    <td style={{ verticalAlign: "middle" }}>
-                      <Text
-                        style={{
-                          color: "#111827",
-                          fontSize: "14px",
-                          margin: 0,
-                          lineHeight: "1.2",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {value}
-                      </Text>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            ) : (
-              <Text style={{ color: "#111827", fontSize: "14px", margin: 0, lineHeight: "1.2" }}>{value}</Text>
-            )}
-          </td>
-          <td style={{ padding: "8px", textAlign: "right", verticalAlign: "middle", whiteSpace: "nowrap" }}>
-            <Text style={{ color: "#6b7280", fontSize: "12px", margin: 0, marginRight: "12px", lineHeight: "1.2" }}>
-              {safeToFixed(percentage, 1)}%
-            </Text>
-          </td>
-          <td
-            style={{ padding: "8px", textAlign: "right", verticalAlign: "middle", whiteSpace: "nowrap", width: "40px" }}
-          >
-            <Text style={{ color: "#111827", fontSize: "14px", fontWeight: 500, margin: 0, lineHeight: "1.2" }}>
-              {formatNumber(count)}
-            </Text>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <>
+      <table {...tableAttrs} width="100%" style={{ marginTop: 40 }}>
+        <tbody>
+          <tr>
+            <td>
+              <H2 top={0}>Sessions by day</H2>
+            </td>
+            <td align="right" style={{ fontSize: 12, lineHeight: "16px", color: color.muted, whiteSpace: "nowrap" }}>
+              <LegendSwatch fill={color.data} />
+              {formatWeekRange(site.weekStart, site.weekEnd)}
+              <span style={{ paddingLeft: 16 }} />
+              <LegendSwatch fill={color.previous} />
+              {previousRange(site)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <table {...tableAttrs} width="100%" style={{ marginTop: 16, tableLayout: "fixed" }}>
+        <tbody>
+          <tr>
+            {site.daily.map(d => (
+              <td key={d.date} align="center" style={label(d)}>
+                {formatCount(d.sessions)}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            {site.daily.map(d => (
+              <td
+                key={d.date}
+                align="center"
+                valign="bottom"
+                height={CHART_HEIGHT + 6}
+                style={{
+                  height: CHART_HEIGHT + 6,
+                  verticalAlign: "bottom",
+                  borderBottom: `1px solid ${color.axis}`,
+                }}
+              >
+                <table {...tableAttrs} align="center">
+                  <tbody>
+                    <tr>
+                      <td valign="bottom" style={{ verticalAlign: "bottom", paddingRight: 3 }}>
+                        {scale(d.previousSessions) > 0 && (
+                          <Bar width={12} height={scale(d.previousSessions)} fill={color.previous} />
+                        )}
+                      </td>
+                      <td valign="bottom" style={{ verticalAlign: "bottom" }}>
+                        {scale(d.sessions) > 0 && <Bar width={24} height={scale(d.sessions)} fill={color.data} />}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            ))}
+          </tr>
+          <tr>
+            {site.daily.map(d => (
+              <td key={d.date} align="center" style={{ ...label(d), paddingTop: 8 }}>
+                {day(d.date).toFormat("ccc d")}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </>
   );
 };
 
-const TopListSection = ({ title, items, renderLabel, showFavicon, labelClassName, className }: TopListSectionProps) => {
+const Breakdown = ({
+  title,
+  labelHeader,
+  items,
+  labelFor,
+}: {
+  title: string;
+  labelHeader: string;
+  items: MetricData[];
+  labelFor: (item: MetricData) => string;
+}) => {
   if (items.length === 0) return null;
-
-  const ratio = items[0]?.percentage ? 100 / items[0].percentage : 1;
-
+  const rows = items.slice(0, ROWS_PER_TABLE);
+  const largest = rows[0]?.count || 1;
   return (
-    <div
-      style={{
-        backgroundColor: "#f9fafb",
-        border: "1px solid #e5e7eb",
-        borderRadius: "8px",
-        padding: "16px",
-        marginBottom: "16px",
-      }}
-    >
-      <Text style={{ color: "#111827", fontSize: "14px", fontWeight: 600, marginBottom: "12px", marginTop: 0 }}>
-        {title}
-      </Text>
-      {items.map((item, index) => {
-        const barWidth = (item.percentage ?? 0) * ratio;
-        const favicon = showFavicon ? `https://www.google.com/s2/favicons?domain=${item.value}&sz=16` : undefined;
-
-        return (
-          <TopListItem
-            key={index}
-            value={typeof renderLabel(item) === "string" ? (renderLabel(item) as string) : item.value}
-            percentage={item.percentage}
-            count={item.count}
-            barWidth={barWidth}
-            isLast={index === items.length - 1}
-            favicon={favicon}
-            labelClassName={labelClassName}
-          />
-        );
-      })}
-    </div>
+    <>
+      <H2>{title}</H2>
+      <ShareTable
+        labelHeader={labelHeader}
+        valueHeader="Sessions"
+        rows={rows.map(item => ({
+          label: labelFor(item),
+          value: formatCount(item.count),
+          share: item.percentage,
+          bar: (item.count / largest) * 100,
+        }))}
+      />
+    </>
   );
 };
 
-export const WeeklyReportEmail = ({ userName, organizationName, site }: WeeklyReportEmailProps) => {
-  const currentYear = new Date().getFullYear();
+const DEVICE_FILLS = [color.data, color.dataMid, color.dataLight];
 
+const Devices = ({ items }: { items: MetricData[] }) => {
+  const devices = items.filter(item => (item.percentage ?? 0) > 0).slice(0, 3);
+  if (devices.length === 0) return null;
+  const total = devices.reduce((sum, d) => sum + (d.percentage ?? 0), 0);
   return (
-    <Html>
-      <Head />
-      <Preview>Weekly Analytics Report for {organizationName}</Preview>
-      <Tailwind
-        config={{
-          presets: [pixelBasedPreset],
-          theme: {
-            extend: {
-              colors: {
-                brand: "#10b981",
-                cardBg: "#f9fafb",
-                darkText: "#111827",
-                mutedText: "#6b7280",
-                borderColor: "#e5e7eb",
-                positive: "#10b981",
-                negative: "#ef4444",
-              },
-            },
-          },
-        }}
-      >
-        <Body className="bg-white font-sans">
-          <Container className="mx-auto py-8 px-6 max-w-[600px]">
-            <Img
-              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
-              alt="Rybbit"
-              width="120"
-              height="28"
-              className="mb-8"
-            />
+    <>
+      <H2>Devices</H2>
+      <table {...tableAttrs} width="100%" style={{ marginTop: 14, borderCollapse: "separate" }}>
+        <tbody>
+          <tr>
+            {devices.map((d, i) => (
+              <td
+                key={d.value}
+                width={`${Math.max(1, Math.round(((d.percentage ?? 0) / total) * 100))}%`}
+                style={{
+                  height: 10,
+                  lineHeight: "10px",
+                  fontSize: 0,
+                  backgroundColor: DEVICE_FILLS[i],
+                  borderLeft: i > 0 ? `2px solid ${color.page}` : undefined,
+                }}
+              >
+                &nbsp;
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+      <p style={{ margin: "10px 0 0", fontSize: 13, lineHeight: "20px", color: color.body }}>
+        {devices.map((d, i) => (
+          <span key={d.value} style={{ paddingRight: 24, whiteSpace: "nowrap" }}>
+            <LegendSwatch fill={DEVICE_FILLS[i]} outline={i === 2 ? color.dataMid : undefined} />
+            {capitalize(d.value)} <span style={{ fontWeight: 600 }}>{(d.percentage ?? 0).toFixed(1)}%</span>
+          </span>
+        ))}
+      </p>
+    </>
+  );
+};
 
-            <Text className="text-darkText text-base leading-relaxed mb-4">Hi {userName},</Text>
-
-            <Text className="text-darkText text-base leading-relaxed mb-8">
-              Here's your weekly analytics summary for{" "}
-              <span className="font-semibold">{site.siteDomain}</span>.
-            </Text>
-
-            <Section className="mb-10">
-              {/* Metrics Cards */}
-              <table style={{ width: "100%", marginBottom: "24px" }}>
-                <tbody>
-                  <tr>
-                    <td style={{ width: "50%", paddingRight: "6px", paddingBottom: "12px" }}>
-                      <MetricCard
-                        label="Sessions"
-                        currentValue={formatNumber(site.currentWeek.sessions)}
-                        growth={calculateGrowth(site.currentWeek.sessions, site.previousWeek.sessions)}
-                        isPositive={site.currentWeek.sessions >= site.previousWeek.sessions}
-                      />
-                    </td>
-                    <td style={{ width: "50%", paddingLeft: "6px", paddingBottom: "12px" }}>
-                      <MetricCard
-                        label="Pageviews"
-                        currentValue={formatNumber(site.currentWeek.pageviews)}
-                        growth={calculateGrowth(site.currentWeek.pageviews, site.previousWeek.pageviews)}
-                        isPositive={site.currentWeek.pageviews >= site.previousWeek.pageviews}
-                      />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ width: "50%", paddingRight: "6px", paddingBottom: "12px" }}>
-                      <MetricCard
-                        label="Unique Users"
-                        currentValue={formatNumber(site.currentWeek.users)}
-                        growth={calculateGrowth(site.currentWeek.users, site.previousWeek.users)}
-                        isPositive={site.currentWeek.users >= site.previousWeek.users}
-                      />
-                    </td>
-                    <td style={{ width: "50%", paddingLeft: "6px", paddingBottom: "12px" }}>
-                      <MetricCard
-                        label="Avg Duration"
-                        currentValue={formatDuration(site.currentWeek.session_duration)}
-                        growth={calculateGrowth(
-                          site.currentWeek.session_duration,
-                          site.previousWeek.session_duration
-                        )}
-                        isPositive={site.currentWeek.session_duration >= site.previousWeek.session_duration}
-                      />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ width: "50%", paddingRight: "6px" }}>
-                      <MetricCard
-                        label="Pages/Session"
-                        currentValue={safeToFixed(site.currentWeek.pages_per_session, 1)}
-                        growth={calculateGrowth(
-                          site.currentWeek.pages_per_session,
-                          site.previousWeek.pages_per_session
-                        )}
-                        isPositive={
-                          (site.currentWeek.pages_per_session ?? 0) >= (site.previousWeek.pages_per_session ?? 0)
-                        }
-                      />
-                    </td>
-                    <td style={{ width: "50%", paddingLeft: "6px" }}>
-                      <MetricCard
-                        label="Bounce Rate"
-                        currentValue={`${safeToFixed(site.currentWeek.bounce_rate, 1)}%`}
-                        growth={calculateGrowth(site.currentWeek.bounce_rate, site.previousWeek.bounce_rate)}
-                        isPositive={(site.currentWeek.bounce_rate ?? 0) <= (site.previousWeek.bounce_rate ?? 0)}
-                      />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Top Lists Section */}
-              <div className="mb-6">
-                <TopListSection
-                  title="Top Countries"
-                  items={site.topCountries}
-                  renderLabel={item => getCountryDisplay(item.value)}
-                />
-                <TopListSection
-                  title="Top Pages"
-                  items={site.topPages}
-                  renderLabel={item => item.value}
-                  labelClassName="text-darkText text-sm m-0 truncate max-w-[280px]"
-                />
-                <TopListSection
-                  title="Top Referrers"
-                  items={site.topReferrers}
-                  renderLabel={item => item.value}
-                  showFavicon={true}
-                  labelClassName="text-darkText text-sm m-0 truncate"
-                />
-                <TopListSection
-                  title="Device Breakdown"
-                  items={site.deviceBreakdown}
-                  renderLabel={item => item.value}
-                  labelClassName="text-darkText text-sm m-0 capitalize"
-                  className="bg-cardBg border border-borderColor rounded-lg p-4"
-                />
-              </div>
-
-              <Text className="text-darkText text-base leading-relaxed mb-4">
-                <Link href={`https://app.rybbit.io/${site.siteId}`} className="text-brand underline">
-                  View full dashboard
-                </Link>
-              </Text>
-            </Section>
-
-            <Text className="text-mutedText text-sm leading-relaxed">
-              This report covers the last 7 days of analytics data.
-            </Text>
-
-            <Hr className="border-borderColor my-8" />
-
-            <Text className="text-mutedText text-xs mb-2">
-              <Link href="https://app.rybbit.io/settings/account" className="text-mutedText underline">
-                Unsubscribe from weekly reports
-              </Link>
-            </Text>
-            <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
-          </Container>
-        </Body>
-      </Tailwind>
-    </Html>
+export const WeeklyReportEmail = ({ site, unsubscribeUrl }: WeeklyReportEmailProps) => {
+  const words = changeWords(visitorChange(site));
+  return (
+    <LedgerLayout
+      preview={weeklyReportPreview(site)}
+      footer={[
+        { label: "Turn off weekly reports", href: unsubscribeUrl },
+        { label: "Account settings", href: `${appUrl()}/settings/account` },
+      ]}
+    >
+      <H1>
+        {site.siteDomain} had {visitorsPhrase(site.currentWeek.users)} last week
+        {words === "flat" ? ", the same as the week before" : words ? `, ${words}` : ""}.
+      </H1>
+      <Note top={8}>
+        {formatWeekRange(site.weekStart, site.weekEnd)}, compared with {previousRange(site)}
+      </Note>
+      <StatGrid stats={stats(site)} />
+      {site.daily.length > 0 && <DailyChart site={site} />}
+      <Breakdown title="Top pages" labelHeader="Page" items={site.topPages} labelFor={item => truncate(item.value)} />
+      <Breakdown
+        title="Top sources"
+        labelHeader="Referrer"
+        items={site.topReferrers}
+        labelFor={item => truncate(item.value)}
+      />
+      <Breakdown
+        title="Countries"
+        labelHeader="Country"
+        items={site.topCountries}
+        labelFor={item => countryName(item.value)}
+      />
+      <Devices items={site.deviceBreakdown} />
+      <PrimaryButton top={40} label={`Open ${site.siteDomain} in Rybbit`} href={`${appUrl()}/${site.siteId}`} />
+    </LedgerLayout>
   );
 };

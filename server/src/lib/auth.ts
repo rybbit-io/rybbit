@@ -202,12 +202,15 @@ const pluginList = [
     },
     sendInvitationEmail: async invitationData => {
       const inviteLink = `${process.env.BASE_URL}/invitation?invitationId=${invitationData.invitation.id}&organization=${invitationData.organization.name}&inviterEmail=${invitationData.inviter.user.email}`;
-      await sendInvitationEmail(
-        invitationData.email,
-        invitationData.inviter.user.email,
-        invitationData.organization.name,
-        inviteLink
-      );
+      await sendInvitationEmail({
+        email: invitationData.email,
+        inviterName: invitationData.inviter.user.name,
+        inviterEmail: invitationData.inviter.user.email,
+        organizationName: invitationData.organization.name,
+        role: invitationData.role,
+        expiresAt: new Date(invitationData.invitation.expiresAt),
+        inviteLink,
+      });
     },
     schema: {
       invitation: {

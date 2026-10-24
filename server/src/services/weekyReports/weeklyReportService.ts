@@ -14,10 +14,11 @@ import { IS_CLOUD } from "../../lib/const.js";
 import {
   BreakdownDimension,
   buildBreakdownQuery,
+  buildChartQuery,
   buildOverviewQuery,
   SiteMetricsSpec,
 } from "../siteMetrics/siteMetrics.js";
-import type { OverviewData, MetricData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
+import type { DailySessions, OverviewData, MetricData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
 
 const MAX_SITE_REPORTS_PER_ORG = 10;
 
@@ -63,14 +64,46 @@ class WeeklyReportService {
     }
   }
 
+  /**
+   * Sessions per UTC day across both weeks, paired weekday to weekday. Days
+   * with no sessions are absent from the query result and read as zero.
+   */
+  private async fetchDailySessions(
+    siteId: number,
+    spec: SiteMetricsSpec,
+    currentWeekStart: DateTime
+  ): Promise<DailySessions[]> {
+    try {
+      const result = await clickhouse.query({
+        query: buildChartQuery(spec, "toStartOfDay"),
+        format: "JSONEachRow",
+        query_params: { siteId, timeZone: "UTC" },
+      });
+      const rows = await processResults<{ time: string; sessions: number }>(result);
+      const byDay = new Map(rows.map(row => [row.time.slice(0, 10), Number(row.sessions) || 0]));
+      return Array.from({ length: 7 }, (_, i) => {
+        const date = currentWeekStart.plus({ days: i });
+        return {
+          date: date.toISODate()!,
+          sessions: byDay.get(date.toISODate()!) ?? 0,
+          previousSessions: byDay.get(date.minus({ days: 7 }).toISODate()!) ?? 0,
+        };
+      });
+    } catch (error) {
+      this.logger.error({ err: error, siteId }, "Error fetching daily sessions");
+      return [];
+    }
+  }
+
   private async generateSiteReport(siteId: number, siteName: string, siteDomain: string): Promise<SiteReport | null> {
     try {
-      // Use UTC timezone for consistency
-      const now = DateTime.utc();
+      // Whole UTC days, so the report covers exactly Monday to Sunday when the
+      // cron fires at Monday midnight and the chart has one bar per day.
+      const today = DateTime.utc().startOf("day");
 
-      // Calculate current week (last 7 days)
-      const currentWeekEnd = now;
-      const currentWeekStart = now.minus({ days: 7 });
+      // Calculate current week (the last 7 full days)
+      const currentWeekEnd = today;
+      const currentWeekStart = today.minus({ days: 7 });
 
       // Calculate previous week (8-14 days ago)
       const previousWeekEnd = currentWeekStart;
@@ -91,14 +124,16 @@ class WeeklyReportService {
       const currentSpec = specFor(currentWeekStart, currentWeekEnd);
       const previousSpec = specFor(previousWeekStart, previousWeekEnd);
 
-      const [currentWeek, previousWeek, topCountries, topPages, topReferrers, deviceBreakdown] = await Promise.all([
-        this.fetchOverviewData(siteId, currentSpec),
-        this.fetchOverviewData(siteId, previousSpec),
-        this.fetchTopN(siteId, "country", currentSpec),
-        this.fetchTopN(siteId, "pathname", currentSpec),
-        this.fetchTopN(siteId, "referrer", currentSpec),
-        this.fetchTopN(siteId, "device_type", currentSpec),
-      ]);
+      const [currentWeek, previousWeek, daily, topCountries, topPages, topReferrers, deviceBreakdown] =
+        await Promise.all([
+          this.fetchOverviewData(siteId, currentSpec),
+          this.fetchOverviewData(siteId, previousSpec),
+          this.fetchDailySessions(siteId, specFor(previousWeekStart, currentWeekEnd), currentWeekStart),
+          this.fetchTopN(siteId, "country", currentSpec),
+          this.fetchTopN(siteId, "pathname", currentSpec),
+          this.fetchTopN(siteId, "referrer", currentSpec),
+          this.fetchTopN(siteId, "device_type", currentSpec),
+        ]);
 
       if (!currentWeek) {
         return null;
@@ -113,6 +148,8 @@ class WeeklyReportService {
         siteId,
         siteName,
         siteDomain,
+        weekStart: currentWeekStart.toISODate()!,
+        weekEnd: currentWeekEnd.minus({ days: 1 }).toISODate()!,
         currentWeek,
         previousWeek: previousWeek || {
           sessions: 0,
@@ -122,6 +159,7 @@ class WeeklyReportService {
           bounce_rate: 0,
           session_duration: 0,
         },
+        daily,
         topCountries,
         topPages,
         topReferrers,
@@ -230,7 +268,7 @@ class WeeklyReportService {
 
         for (const site of allowedSites) {
           try {
-            await sendWeeklyReportEmail(memberData.email, memberData.name, report.organizationName, site);
+            await sendWeeklyReportEmail({ email: memberData.email, userId: memberData.userId, site });
             this.logger.info(
               {
                 organizationId: report.organizationId,
