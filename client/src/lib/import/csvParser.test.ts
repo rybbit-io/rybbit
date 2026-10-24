@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import Papa from "papaparse";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportPlatform } from "@/types/import";
 
 const authedFetch = vi.hoisted(() => vi.fn());
@@ -9,9 +10,9 @@ import { CsvParser } from "./csvParser";
 // ---------------------------------------------------------------------------
 // Harness
 //
-// startImport hands the input straight to Papa. Papa's worker path is inert
-// outside a browser, and it streams a string through the same chunk/complete
-// callbacks a File would take, so a plain string stands in for the upload.
+// startImport hands the input straight to Papa, which streams a string through
+// the same chunk/complete callbacks (and pause/resume) a File would take, so a
+// plain string stands in for the upload.
 // ---------------------------------------------------------------------------
 
 const SITE_ID = 42;
@@ -28,6 +29,17 @@ function uploads(): Upload[] {
 
 const events = () => uploads().flatMap(u => u.events);
 
+const shape = () => uploads().map(u => ({ n: u.events.length, last: u.isLastBatch }));
+
+// Uploads settle on microtasks, so one macrotask lets every chunk and the final batch go out.
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+function startImport(csv: string, platform: ImportPlatform = "umami"): CsvParser {
+  const parser = new CsvParser(SITE_ID, IMPORT_ID, platform, "2024-01-01", "2024-12-31");
+  parser.startImport(csv as unknown as File);
+  return parser;
+}
+
 async function runImport(
   csv: string,
   opts: { platform?: ImportPlatform; earliest?: string; latest?: string } = {}
@@ -41,10 +53,35 @@ async function runImport(
     opts.latest ?? "2024-12-31"
   );
   parser.startImport(csv as unknown as File);
-  // The chunk/complete callbacks are async and Papa does not await them.
-  await new Promise(resolve => setTimeout(resolve, 0));
+  await flush();
   return uploads();
 }
+
+// The parser reads 5MB at a time; shrink that so a few rows span several chunks.
+function useChunkSize(bytes: number) {
+  const parse = Papa.parse;
+  vi.spyOn(Papa, "parse").mockImplementation(((input: unknown, config: object) =>
+    (parse as (input: unknown, config: object) => unknown)(input, {
+      ...config,
+      chunkSize: bytes,
+    })) as typeof Papa.parse);
+}
+
+function deferred() {
+  let resolve!: () => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+const MANY_ROWS = "session_id,created_at\n" + [1, 2, 3, 4, 5].map(i => `sess-${i},2024-03-1${i} 10:00:00\n`).join("");
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const UMAMI_HEADER =
   "session_id,hostname,browser,os,device,screen,language,country,region,city," +
@@ -208,21 +245,21 @@ describe("date range", () => {
     expect(sent[0].events.map(e => e.session_id)).toEqual(["ok"]);
   });
 
-  it("uploads nothing at all when the constructor gets an unparseable range", async () => {
+  it("uploads no rows, only closes the import, when the constructor gets an unparseable range", async () => {
     const parser = new CsvParser(SITE_ID, IMPORT_ID, "umami", "01-01-2024", "2024-12-31");
     parser.startImport((UMAMI_HEADER + UMAMI_ROW) as unknown as File);
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await flush();
 
-    expect(authedFetch).not.toHaveBeenCalled();
+    expect(uploads()).toEqual([{ events: [], isLastBatch: true }]);
   });
 
-  it("uploads nothing after cancel()", async () => {
+  it("uploads no rows, only closes the import, after cancel()", async () => {
     const parser = new CsvParser(SITE_ID, IMPORT_ID, "umami", "2024-01-01", "2024-12-31");
     parser.cancel();
     parser.startImport((UMAMI_HEADER + UMAMI_ROW) as unknown as File);
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await flush();
 
-    expect(authedFetch).not.toHaveBeenCalled();
+    expect(uploads()).toEqual([{ events: [], isLastBatch: true }]);
   });
 });
 
@@ -280,21 +317,105 @@ describe("malformed and awkward csv", () => {
   });
 });
 
-describe("upload failures", () => {
-  it("finalises the import even though the data chunk failed to upload", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    authedFetch.mockRejectedValue(new Error("network down"));
+describe("upload ordering", () => {
+  it("holds the final batch until the last chunk's upload has landed", async () => {
+    const upload = deferred();
+    authedFetch.mockReturnValueOnce(upload.promise);
 
-    const sent = await runImport(UMAMI_HEADER + UMAMI_ROW);
+    startImport(UMAMI_HEADER + UMAMI_ROW);
+    await flush();
 
-    // Current behaviour, and a bug: Papa does not await the async chunk
-    // callback, so `complete` runs — and marks the import finished — before the
-    // rejected upload has had a chance to set `cancelled`.
-    expect(sent.map(u => ({ n: u.events.length, last: u.isLastBatch }))).toEqual([
+    // The server marks the import complete on the final batch, so it must not overtake the data.
+    expect(shape()).toEqual([{ n: 1, last: false }]);
+
+    upload.resolve();
+    await flush();
+
+    expect(shape()).toEqual([
       { n: 1, last: false },
       { n: 0, last: true },
     ]);
+  });
 
-    vi.restoreAllMocks();
+  it("uploads chunks one at a time, in file order", async () => {
+    useChunkSize(30);
+    let inFlight = 0;
+    let maxInFlight = 0;
+    authedFetch.mockImplementation(async () => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await flush();
+      inFlight--;
+    });
+
+    startImport(MANY_ROWS);
+    await vi.waitFor(() => expect(uploads().at(-1)?.isLastBatch).toBe(true));
+
+    expect(maxInFlight).toBe(1);
+    expect(uploads().filter(u => !u.isLastBatch).length).toBeGreaterThan(1);
+    expect(events().map(e => e.session_id)).toEqual(["sess-1", "sess-2", "sess-3", "sess-4", "sess-5"]);
+    expect(uploads().filter(u => u.isLastBatch)).toHaveLength(1);
+  });
+});
+
+describe("upload failures", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("closes the import only after the failed chunk has settled", async () => {
+    const upload = deferred();
+    authedFetch.mockReturnValueOnce(upload.promise);
+
+    startImport(UMAMI_HEADER + UMAMI_ROW);
+    await flush();
+    expect(shape()).toEqual([{ n: 1, last: false }]);
+
+    upload.reject(new Error("network down"));
+    await flush();
+
+    // The final batch is what lets the user delete the partial import, so a failure still sends it.
+    expect(shape()).toEqual([
+      { n: 1, last: false },
+      { n: 0, last: true },
+    ]);
+  });
+
+  it("stops reading the file at the first failed chunk", async () => {
+    useChunkSize(30);
+    authedFetch.mockRejectedValueOnce(new Error("network down"));
+
+    startImport(MANY_ROWS);
+    await flush();
+
+    expect(events().map(e => e.session_id)).toEqual(["sess-1"]);
+    expect(uploads().at(-1)).toEqual({ events: [], isLastBatch: true });
+    expect(uploads()).toHaveLength(2);
+  });
+
+  it("stops reading the file when cancelled mid-upload, then closes the import", async () => {
+    useChunkSize(30);
+    const upload = deferred();
+    authedFetch.mockReturnValueOnce(upload.promise);
+
+    const parser = startImport(MANY_ROWS);
+    await flush();
+    parser.cancel();
+    upload.resolve();
+    await flush();
+
+    expect(events().map(e => e.session_id)).toEqual(["sess-1"]);
+    expect(uploads().at(-1)).toEqual({ events: [], isLastBatch: true });
+    expect(uploads()).toHaveLength(2);
+  });
+
+  it("closes the import when the file can't be read", async () => {
+    vi.spyOn(Papa, "parse").mockImplementation(((_input: unknown, config: { error: (error: Error) => void }) =>
+      config.error(new Error("NotReadableError"))) as unknown as typeof Papa.parse);
+
+    startImport(UMAMI_HEADER + UMAMI_ROW);
+    await flush();
+
+    expect(uploads()).toEqual([{ events: [], isLastBatch: true }]);
   });
 });

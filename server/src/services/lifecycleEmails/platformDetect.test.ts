@@ -21,11 +21,17 @@ describe("isPublicUnicastAddress (SSRF guard)", () => {
     "fe80::1",
     "::ffff:127.0.0.1", // v4-mapped loopback
     "::ffff:10.0.0.1",
+    // The same mapped addresses in the hex form URL parsing produces
+    "::ffff:7f00:1",
+    "::ffff:a9fe:a9fe", // 169.254.169.254
+    "0:0:0:0:0:ffff:a00:1",
+    "64:ff9b::7f00:1", // NAT64 loopback
+    "2001:db8::1", // documentation
   ])("rejects %s", address => {
     expect(isPublicUnicastAddress(address)).toBe(false);
   });
 
-  it.each(["8.8.8.8", "1.1.1.1", "93.184.216.34", "2606:4700:4700::1111", "::ffff:8.8.8.8"])(
+  it.each(["8.8.8.8", "1.1.1.1", "93.184.216.34", "2606:4700:4700::1111", "::ffff:8.8.8.8", "::ffff:808:808"])(
     "allows public %s",
     address => {
       expect(isPublicUnicastAddress(address)).toBe(true);

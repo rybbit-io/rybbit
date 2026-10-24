@@ -66,11 +66,10 @@ function cleanUrl(url: string) {
 export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem; onSelect?: () => void }) {
   const t = useExtracted();
   const { formatRelative } = useDateTimeFormat();
-  const { sessionId, setSessionId, resetPlayerState } = useReplayStore(
+  const { sessionId, setSessionId } = useReplayStore(
     useShallow(s => ({
       sessionId: s.sessionId,
       setSessionId: s.setSessionId,
-      resetPlayerState: s.resetPlayerState,
     }))
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -82,10 +81,9 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
 
   const handleDelete = async () => {
     try {
+      // If this was the selected replay, ReplayList moves the selection once the
+      // refetched list no longer contains it, and the player re-initialises then.
       await deleteSessionReplay.mutateAsync({ sessionId: replay.session_id });
-      if (sessionId === replay.session_id) {
-        resetPlayerState();
-      }
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Failed to delete session replay:", error);
@@ -194,7 +192,10 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
           screen_height={replay.screen_height}
         />
         <div className="ml-auto flex items-center gap-2 text-[11px] tabular-nums">
-          <span className="flex items-center gap-1" title={t("{count} events", { count: formatter(replay.event_count) })}>
+          <span
+            className="flex items-center gap-1"
+            title={t("{count} events", { count: formatter(replay.event_count) })}
+          >
             <MousePointerClick className="w-3 h-3" />
             {formatter(replay.event_count)}
           </span>

@@ -1,10 +1,11 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { GSCCallbackRequest } from "./types.js";
-import { gscConnections } from "../../db/postgres/schema.js";
+import { gscConnections, sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getGSCProperties, verifyGSCState } from "./utils.js";
 import { getSessionFromReq, getUserHasSitePermission } from "../../lib/auth-utils.js";
 import { db } from "../../db/postgres/postgres.js";
+import { lockSiteOwnership } from "../sites/applySiteMove.js";
 
 interface TokenResponse {
   access_token: string;
@@ -50,6 +51,14 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
     if (session.user.id !== statePayload.userId) {
       return res.status(403).send({ error: "State does not match session" });
     }
+
+    // Read the owner before authorizing: the tokens are only written if the
+    // site is still in this organization afterwards (see below).
+    const [authorizedSite] = await db
+      .select({ organizationId: sites.organizationId })
+      .from(sites)
+      .where(eq(sites.siteId, siteId))
+      .limit(1);
 
     // Verify the caller actually has admin access to the target site before
     // writing OAuth tokens against it (prevents IDOR / connection hijack).
@@ -101,31 +110,48 @@ export async function gscCallback(req: FastifyRequest<GSCCallbackRequest>, res: 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
     // Store tokens temporarily WITHOUT a property URL
-    // We'll update with the selected property after user chooses
-    const [existingConnection] = await db.select().from(gscConnections).where(eq(gscConnections.siteId, siteId));
+    // We'll update with the selected property after user chooses.
+    // The Google round trip above can overlap a site move or transfer, which
+    // deletes the connection; writing afterwards would hand this account's
+    // properties to the new organization. Write only while the site, locked,
+    // is still in the organization the caller was authorized against.
+    const stored = await db.transaction(async tx => {
+      const site = await lockSiteOwnership(tx, siteId);
+      if (!site || !authorizedSite || site.organizationId !== authorizedSite.organizationId) {
+        return false;
+      }
 
-    if (existingConnection) {
-      // Update existing connection with new tokens (but keep old property if it exists)
-      await db
-        .update(gscConnections)
-        .set({
+      const [existingConnection] = await tx.select().from(gscConnections).where(eq(gscConnections.siteId, siteId));
+
+      if (existingConnection) {
+        // Update existing connection with new tokens (but keep old property if it exists)
+        await tx
+          .update(gscConnections)
+          .set({
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+            expiresAt: expiresAt.toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(gscConnections.siteId, siteId));
+      } else {
+        // Create new connection with temporary placeholder
+        await tx.insert(gscConnections).values({
+          siteId,
           accessToken: tokens.access_token,
           refreshToken: tokens.refresh_token,
           expiresAt: expiresAt.toISOString(),
+          gscPropertyUrl: "PENDING_SELECTION", // Placeholder until user selects
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        })
-        .where(eq(gscConnections.siteId, siteId));
-    } else {
-      // Create new connection with temporary placeholder
-      await db.insert(gscConnections).values({
-        siteId,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        expiresAt: expiresAt.toISOString(),
-        gscPropertyUrl: "PENDING_SELECTION", // Placeholder until user selects
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+        });
+      }
+      return true;
+    });
+
+    if (!stored) {
+      req.log.warn({ siteId }, "Site changed organization during the GSC callback; tokens not stored");
+      return res.redirect(`${process.env.BASE_URL}/error?message=The site moved while connecting Search Console`);
     }
 
     // Redirect to property selection page with properties as query params

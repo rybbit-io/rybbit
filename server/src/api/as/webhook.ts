@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyBaseLogger } from "fastify";
@@ -39,6 +40,25 @@ function tierForLog(tier: unknown): string | undefined {
  */
 function isAppSumoEnabled(): boolean {
   return IS_CLOUD && !!process.env.APPSUMO_CLIENT_ID && !!process.env.APPSUMO_CLIENT_SECRET;
+}
+
+/**
+ * AppSumo signs each webhook with HMAC-SHA256 over `${X-Appsumo-Timestamp}${raw body}`,
+ * keyed with the partner API key and hex-encoded in X-Appsumo-Signature.
+ * https://docs.licensing.appsumo.com/webhook/webhook__security.html
+ */
+export function isValidAppSumoSignature(
+  rawBody: Buffer | undefined,
+  timestamp: unknown,
+  signature: unknown,
+  apiKey: string
+): boolean {
+  if (!rawBody || typeof timestamp !== "string" || typeof signature !== "string") {
+    return false;
+  }
+  const expected = createHmac("sha256", apiKey).update(timestamp).update(rawBody).digest();
+  const received = Buffer.from(signature, "hex");
+  return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
 /**
@@ -94,6 +114,27 @@ export async function handleAppSumoWebhook(
       event: "test",
       success: true,
     });
+  }
+
+  // Every other event changes license state, so it must carry AppSumo's signature.
+  const apiKey = process.env.APPSUMO_API_KEY;
+  if (!apiKey) {
+    requestLogger.error("APPSUMO_API_KEY is not set; rejecting webhook");
+    return reply.status(503).send({ error: "AppSumo webhook verification is not configured" });
+  }
+  if (
+    !isValidAppSumoSignature(
+      request.rawBody,
+      request.headers["x-appsumo-timestamp"],
+      request.headers["x-appsumo-signature"],
+      apiKey
+    )
+  ) {
+    requestLogger.warn(
+      { eventType: eventTypeForLog(payload.event) },
+      "Rejected AppSumo webhook with invalid signature"
+    );
+    return reply.status(401).send({ error: "Invalid signature" });
   }
 
   try {
@@ -293,7 +334,7 @@ async function handleUpgradeEvent(
 
   // Get the old license to find the organization
   requestLogger.debug("Looking up previous license for upgrade");
-  let oldLicenseResult = await db.execute(
+  const oldLicenseResult = await db.execute(
     sql`SELECT organization_id FROM appsumo.licenses WHERE license_key = ${prevLicenseKey} LIMIT 1`
   );
 
@@ -302,22 +343,15 @@ async function handleUpgradeEvent(
     "Previous license lookup completed"
   );
 
-  // If previous license not found, try to find ANY license with an organization (fallback for missed webhooks)
+  // An unknown previous license can't be tied to an organization. The new
+  // license stays pending until the customer activates it; guessing an org
+  // here would hand the plan to someone else.
   if (!Array.isArray(oldLicenseResult) || oldLicenseResult.length === 0) {
-    requestLogger.warn("Previous license not found; searching for an organization fallback");
-    oldLicenseResult = await db.execute(
-      sql`SELECT organization_id FROM appsumo.licenses WHERE organization_id IS NOT NULL ORDER BY updated_at DESC LIMIT 1`
-    );
-
-    if (!Array.isArray(oldLicenseResult) || oldLicenseResult.length === 0) {
-      requestLogger.error("No licenses with an organization found; cannot process upgrade");
-      return;
-    }
-    requestLogger.info("Found fallback license for upgrade");
+    requestLogger.warn("Previous license not found; creating the new license as pending");
   }
 
-  const oldLicense = oldLicenseResult[0] as any;
-  const organizationId = oldLicense.organization_id;
+  const oldLicense = (Array.isArray(oldLicenseResult) ? oldLicenseResult[0] : undefined) as any;
+  const organizationId = oldLicense?.organization_id ?? null;
   requestLogger.info({ organizationId }, "Found organization for previous license");
 
   // Create new license with the organization transferred
@@ -377,7 +411,9 @@ async function handleUpgradeEvent(
         )
         ON CONFLICT (license_key) DO UPDATE SET
           tier = ${tierValue},
-          status = 'pending',
+          -- /as/activate may have linked this key before the webhook arrived;
+          -- don't drop an activated license back to pending.
+          status = CASE WHEN appsumo.licenses.organization_id IS NULL THEN 'pending' ELSE appsumo.licenses.status END,
           updated_at = NOW()
       `);
       requestLogger.info({ tier: tierValue }, "Successfully created or updated pending license");
@@ -424,7 +460,7 @@ async function handleDowngradeEvent(
 
   // Get the old license to find the organization
   requestLogger.debug("Looking up previous license for downgrade");
-  let oldLicenseResult = await db.execute(
+  const oldLicenseResult = await db.execute(
     sql`SELECT organization_id FROM appsumo.licenses WHERE license_key = ${prevLicenseKey} LIMIT 1`
   );
 
@@ -433,22 +469,15 @@ async function handleDowngradeEvent(
     "Previous license lookup completed"
   );
 
-  // If previous license not found, try to find ANY license with an organization (fallback for missed webhooks)
+  // An unknown previous license can't be tied to an organization. The new
+  // license stays pending until the customer activates it; guessing an org
+  // here would hand the plan to someone else.
   if (!Array.isArray(oldLicenseResult) || oldLicenseResult.length === 0) {
-    requestLogger.warn("Previous license not found; searching for an organization fallback");
-    oldLicenseResult = await db.execute(
-      sql`SELECT organization_id FROM appsumo.licenses WHERE organization_id IS NOT NULL ORDER BY updated_at DESC LIMIT 1`
-    );
-
-    if (!Array.isArray(oldLicenseResult) || oldLicenseResult.length === 0) {
-      requestLogger.error("No licenses with an organization found; cannot process downgrade");
-      return;
-    }
-    requestLogger.info("Found fallback license for downgrade");
+    requestLogger.warn("Previous license not found; creating the new license as pending");
   }
 
-  const oldLicense = oldLicenseResult[0] as any;
-  const organizationId = oldLicense.organization_id;
+  const oldLicense = (Array.isArray(oldLicenseResult) ? oldLicenseResult[0] : undefined) as any;
+  const organizationId = oldLicense?.organization_id ?? null;
   requestLogger.info({ organizationId }, "Found organization for previous license");
 
   // Create new license with the organization transferred
@@ -508,7 +537,9 @@ async function handleDowngradeEvent(
         )
         ON CONFLICT (license_key) DO UPDATE SET
           tier = ${tierValue},
-          status = 'pending',
+          -- /as/activate may have linked this key before the webhook arrived;
+          -- don't drop an activated license back to pending.
+          status = CASE WHEN appsumo.licenses.organization_id IS NULL THEN 'pending' ELSE appsumo.licenses.status END,
           updated_at = NOW()
       `);
       requestLogger.info({ tier: tierValue }, "Successfully created or updated pending license");

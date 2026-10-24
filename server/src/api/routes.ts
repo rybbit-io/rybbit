@@ -212,6 +212,7 @@ import {
   type RouteScope,
 } from "../lib/auth-middleware.js";
 import { IS_CLOUD } from "../lib/const.js";
+import { keepRawJsonBody } from "../lib/rawBody.js";
 import { mcpRoutes } from "../mcp/index.js";
 
 // Reject requests whose shared time query params are present but invalid.
@@ -409,9 +410,11 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/segments", site("segments:write"), createSegment);
   fastify.put("/sites/:siteId/segments/:segmentId", site("segments:write"), updateSegment);
   fastify.delete("/sites/:siteId/segments/:segmentId", site("segments:write"), deleteSegment);
+  // The card body carries caller-written SQL, so this is a custom query: a
+  // dashboards:read credential alone must not be able to read raw events.
   fastify.post(
     "/sites/:siteId/dashboards/run-card",
-    withRateLimit(site("dashboards:read"), customQueryRateLimit),
+    withRateLimit(site("sql:read"), customQueryRateLimit),
     runDashboardCardQuery
   );
   fastify.get("/sites/:siteId/feature-flags", site("flags:read"), getFeatureFlags);
@@ -604,12 +607,20 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
     fastify.get("/stripe/subscription", authenticated("deny-scoped"), getSubscription);
     fastify.get("/stripe/invoices", authenticated("deny-scoped"), getInvoices);
     fastify.post("/stripe/cancellation-feedback", authenticated("deny-scoped"), submitCancellationFeedback);
-    fastify.post("/stripe/webhook", { config: { rawBody: true, access: "public" as RouteAccess } }, handleWebhook); // Public - Stripe webhook
 
     // AppSumo Routes
     fastify.post("/as/activate", authenticated("deny-scoped"), activateAppSumoLicense);
-    fastify.post("/as/webhook", publicRoute, handleAppSumoWebhook); // Public - AppSumo webhook
+
+    await fastify.register(webhookRoutes);
   }
+}
+
+// Public webhooks. Both senders sign the raw request bytes, so this scope keeps
+// them on request.rawBody for the handlers' signature checks.
+async function webhookRoutes(fastify: FastifyInstance) {
+  keepRawJsonBody(fastify);
+  fastify.post("/stripe/webhook", publicRoute, handleWebhook);
+  fastify.post("/as/webhook", publicRoute, handleAppSumoWebhook);
 }
 
 // Main API routes plugin - registers all domain plugins

@@ -4,13 +4,13 @@ import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/postgres/postgres.js";
-import { gscConnections, organization, sites, siteTransfers, user } from "../../db/postgres/schema.js";
+import { organization, sites, siteTransfers, user } from "../../db/postgres/schema.js";
 import { effectiveOrgRole, getOrgMembership } from "../../lib/access.js";
 import { getIsUserAdmin } from "../../lib/auth-utils.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { sendSiteTransferEmail } from "../../lib/email/email.js";
 import { claimExpiryIso as utcIso } from "../../services/sites/claimExpiry.js";
-import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
+import { type SiteTransaction, withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
 import { applySiteMove, invalidateSiteMoveAccess, lockSiteOwnership } from "./applySiteMove.js";
 import { getPlanSiteLimit, targetSiteLimitError } from "./siteLimit.js";
 
@@ -45,6 +45,19 @@ const transferUrl = (transferId: string) => `${process.env.BASE_URL ?? ""}/trans
 
 // Postgres hands timestamps back without a zone; they are UTC.
 const isExpired = (transfer: Pick<TransferRow, "expiresAt">) => Date.parse(utcIso(transfer.expiresAt)!) <= Date.now();
+
+/** Whether the transfer's sender still holds sites:transfer on the source organization. */
+async function senderCanStillTransfer(tx: SiteTransaction, senderId: string | null, sourceOrganizationId: string) {
+  if (!senderId) {
+    return false;
+  }
+  const [sender] = await tx.select({ role: user.role }).from(user).where(eq(user.id, senderId)).limit(1);
+  const role = higherRole(
+    effectiveOrgRole(await getOrgMembership(senderId, sourceOrganizationId, tx)),
+    sender?.role === "admin" ? "admin" : null
+  );
+  return roleHasPermission(role, "sites:transfer");
+}
 
 function serializeForSender(transfer: TransferRow) {
   return {
@@ -327,6 +340,14 @@ export async function acceptSiteTransfer(
         return { status: 404, error: "This transfer link is no longer valid" };
       }
 
+      // The sender's authority was checked when the link was created; it must
+      // still hold now. Otherwise an admin who was demoted or removed could
+      // send a link to themselves and take the site with them days later.
+      if (!(await senderCanStillTransfer(tx, current.createdBy, current.sourceOrganizationId))) {
+        await tx.delete(siteTransfers).where(eq(siteTransfers.id, transfer.id));
+        return { status: 403, error: "The person who sent this transfer can no longer transfer the site" };
+      }
+
       const limitError = await targetSiteLimitError(tx, targetOrganizationId, siteLimit);
       if (limitError) {
         return { status: 403, error: limitError };
@@ -338,9 +359,11 @@ export async function acceptSiteTransfer(
         await tx.delete(siteTransfers).where(eq(siteTransfers.id, transfer.id));
         return { status: 409, error: "The site has moved since this transfer was sent" };
       }
-      // The Search Console connection holds the sender's Google credentials;
-      // it does not go to someone else's organization.
-      await tx.delete(gscConnections).where(eq(gscConnections.siteId, transfer.siteId));
+      // The site now belongs to someone else. A private link the old
+      // organization shared would keep exposing its analytics and replays, so
+      // the new owner starts without one. (applySiteMove already dropped the
+      // sender's Search Console connection.)
+      await tx.update(sites).set({ privateLinkKey: null }).where(eq(sites.siteId, transfer.siteId));
       return null;
     });
 

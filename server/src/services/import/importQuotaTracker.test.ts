@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ImportQuotaTracker } from "./importQuotaTracker.js";
 import { db } from "../../db/postgres/postgres.js";
 import { getBestSubscription } from "../../lib/subscriptionUtils.js";
+import { processResults } from "../../api/analytics/utils/utils.js";
 
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({
   clickhouse: { query: vi.fn() },
@@ -234,6 +235,21 @@ describe("ImportQuotaTracker", () => {
       expect(
         tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z", "2024-06-03T10:00:00.000Z"])
       ).toEqual([0, 1]);
+    });
+
+    it("should count existing ClickHouse usage when processResults returns numeric months", async () => {
+      vi.mocked(db.select as any)
+        .mockReturnValueOnce(chainResolving([{ stripeCustomerId: "cus_123" }]))
+        .mockReturnValueOnce(chainResolving([{ siteId: 3000 }]));
+      vi.mocked(getBestSubscription).mockResolvedValueOnce({ source: "free", eventLimit: 5 } as any);
+      // processResults coerces numeric-looking strings, so "202406" arrives as 202406.
+      vi.mocked(processResults).mockResolvedValueOnce([{ month: 202406, count: 4 }] as any);
+
+      const tracker = await ImportQuotaTracker.create("org-1");
+
+      expect(
+        tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z", "2024-05-02T10:00:00.000Z"])
+      ).toEqual([0, 2]);
     });
 
     it("should throw when the organization is not found", async () => {

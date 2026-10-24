@@ -5,7 +5,7 @@ import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
 import { createOAuthPlugins, getAuthBaseUrl } from "./oauth.js";
 import dotenv from "dotenv";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import pg from "pg";
 import { dash } from "@better-auth/infra";
 import { apiKey } from "@better-auth/api-key";
@@ -29,6 +29,7 @@ import {
   sendWelcomeEmail,
 } from "./email/email.js";
 import { getTrustedCorsOrigins } from "./cors.js";
+import { hasRenewingStripeSubscription } from "./subscriptionUtils.js";
 import { createServiceLogger } from "./logger/logger.js";
 
 dotenv.config();
@@ -105,6 +106,10 @@ const pluginList = [
     },
     organizationHooks: {
       beforeDeleteOrganization: async ({ organization: org }) => {
+        await assertOrganizationNotBilling(
+          org.id,
+          "Cancel this organization's subscription in Billing before deleting it."
+        );
         // apikey.referenceId has no FK (it holds user OR org ids), so
         // org-owned keys are purged explicitly. Runs BEFORE the deletion and
         // lets failures propagate: a failed purge aborts the deletion instead
@@ -170,6 +175,18 @@ const pluginList = [
           },
         };
       },
+      afterAcceptInvitation: async ({ invitation: accepted, member: newMember, user: acceptingUser }) => {
+        // Runs only after better-auth accepted a pending invitation and created
+        // the membership. (A generic after-hook on /accept-invitation also runs
+        // for rejected requests, which let a member replay an old invitation id
+        // to win back sites an admin had since taken away.)
+        try {
+          await applyInvitationSiteAccess(accepted.id, newMember.id);
+          invalidateSitesAccessCache(acceptingUser.id);
+        } catch (error) {
+          authLogger.error({ err: error }, "Error applying invitation Site restrictions");
+        }
+      },
       afterRemoveMember: async ({ member: removedMember, user: removedUser, organization: org }) => {
         // Clear any pending/accepted invitations for this user+org so a stale
         // invite can't be re-accepted and recreate access after removal.
@@ -216,29 +233,40 @@ const pluginList = [
           },
         },
       },
+      // Billing and usage fields are server-owned. `input: false` keeps them
+      // out of the /organization/create and /update body schemas; without it
+      // any signed-in user could create an org with a plan override, a custom
+      // plan, or another org's Stripe customer id. stripeCustomerId is also
+      // withheld from org reads so members can't copy it.
       organization: {
         additionalFields: {
           stripeCustomerId: {
             type: "string",
             required: false,
+            input: false,
+            returned: false,
           },
           monthlyEventCount: {
             type: "number",
             required: false,
             defaultValue: 0,
+            input: false,
           },
           overMonthlyLimit: {
             type: "boolean",
             required: false,
             defaultValue: false,
+            input: false,
           },
           planOverride: {
             type: "string",
             required: false,
+            input: false,
           },
           customPlan: {
             type: "string",
             required: false,
+            input: false,
             // Column is snake_case (jsonb "custom_plan" in schema.ts). Without
             // this, Better Auth 1.7's startup schema check looks for a
             // "customPlan" column, reports SCHEMA_MISMATCH, and every
@@ -266,6 +294,88 @@ const pluginList = [
 ];
 
 // Duck-typed: the api-key plugin can resolve its own copy of APIError.
+/**
+ * Refuses to remove an organization's last way to manage billing while its
+ * Stripe subscription would keep charging.
+ */
+async function assertOrganizationNotBilling(organizationId: string, message: string) {
+  if (!IS_CLOUD) return;
+  const [org] = await db
+    .select({ stripeCustomerId: schema.organization.stripeCustomerId })
+    .from(schema.organization)
+    .where(eq(schema.organization.id, organizationId))
+    .limit(1);
+  let renewing: boolean;
+  try {
+    renewing = await hasRenewingStripeSubscription(org?.stripeCustomerId ?? null);
+  } catch (error) {
+    authLogger.error({ err: error, organizationId }, "Could not check the subscription before deletion");
+    throw new APIError("SERVICE_UNAVAILABLE", {
+      message: "Couldn't check the subscription right now. Try again in a minute.",
+    });
+  }
+  if (renewing) {
+    throw new APIError("BAD_REQUEST", { message });
+  }
+}
+
+/**
+ * Copies an accepted invitation's site restriction onto the new member.
+ */
+async function applyInvitationSiteAccess(invitationId: string, memberId: string) {
+  const invitationRecord = await db
+    .select({
+      organizationId: invitation.organizationId,
+      hasRestrictedSiteAccess: invitation.hasRestrictedSiteAccess,
+      siteIds: invitation.siteIds,
+      siteRole: invitation.siteRole,
+    })
+    .from(invitation)
+    .where(eq(invitation.id, invitationId))
+    .limit(1);
+
+  if (invitationRecord.length === 0) return;
+  const { organizationId, hasRestrictedSiteAccess, siteIds, siteRole } = invitationRecord[0];
+  if (!hasRestrictedSiteAccess) return;
+
+  // Fail-safe ordering: flip the member to restricted BEFORE inserting the
+  // granted-site rows. If the insert step then fails, the member is left
+  // with hasRestrictedSiteAccess=true and zero rows in memberSiteAccess —
+  // i.e. locked out, which is safe. The previous transaction-based
+  // implementation would silently leave the member unrestricted (full
+  // org access) on any failure.
+  await db.update(member).set({ hasRestrictedSiteAccess: true }).where(eq(member.id, memberId));
+
+  // The ids were validated when the invitation was written, but a site
+  // can move organizations or be deleted while the invite sits pending
+  // (applySiteMove clears live grants for a moved site; it cannot reach
+  // into unaccepted invitations). Re-check against the organization as
+  // it stands now, so acceptance can only grant sites it still owns.
+  const invitedSiteIds = (siteIds || []) as number[];
+  const grantableSiteIds = await siteIdsInOrganization(invitedSiteIds, organizationId);
+
+  if (grantableSiteIds.length !== invitedSiteIds.length) {
+    authLogger.warn(
+      {
+        organizationId,
+        memberId,
+        droppedSiteIds: invitedSiteIds.filter(siteId => !grantableSiteIds.includes(siteId)),
+      },
+      "Invitation named sites the organization no longer owns; those grants were dropped"
+    );
+  }
+
+  if (grantableSiteIds.length > 0) {
+    await db.insert(memberSiteAccess).values(
+      grantableSiteIds.map(siteId => ({
+        memberId,
+        siteId,
+        role: isSiteGrantRole(siteRole) ? siteRole : null,
+      }))
+    );
+  }
+}
+
 function isApiErrorLike(value: unknown): boolean {
   return (
     typeof value === "object" && value !== null && typeof (value as { statusCode?: unknown }).statusCode === "number"
@@ -328,6 +438,33 @@ export const auth = betterAuth({
     },
     deleteUser: {
       enabled: true,
+      // Membership rows go with the user, so an organization they solely own
+      // would be left with a live subscription and nobody able to cancel it.
+      beforeDelete: async deletingUser => {
+        const owned = await db
+          .select({ organizationId: member.organizationId, name: schema.organization.name })
+          .from(member)
+          .innerJoin(schema.organization, eq(schema.organization.id, member.organizationId))
+          .where(and(eq(member.userId, deletingUser.id), eq(member.role, "owner")));
+        for (const { organizationId, name } of owned) {
+          const [otherOwner] = await db
+            .select({ id: member.id })
+            .from(member)
+            .where(
+              and(
+                eq(member.organizationId, organizationId),
+                eq(member.role, "owner"),
+                ne(member.userId, deletingUser.id)
+              )
+            )
+            .limit(1);
+          if (otherOwner) continue;
+          await assertOrganizationNotBilling(
+            organizationId,
+            `You're the only owner of "${name}", which has an active subscription. Cancel it in Billing or make someone else an owner before deleting your account.`
+          );
+        }
+      },
       // apikey.referenceId no longer has a cascading FK to user.id (it holds
       // user OR org ids), so the user's keys are purged explicitly. Keys of a
       // user removed through other paths are unusable anyway — bearer auth
@@ -505,83 +642,6 @@ export const auth = betterAuth({
       }
     }),
     after: createAuthMiddleware(async ctx => {
-      // Handle invitation acceptance - copy site access from invitation to member
-      if (ctx.path === "/organization/accept-invitation") {
-        const body = ctx.body as { invitationId?: string } | null;
-        const invitationId = body?.invitationId;
-        if (!invitationId) return;
-
-        try {
-          const invitationRecord = await db
-            .select({
-              organizationId: invitation.organizationId,
-              email: invitation.email,
-              hasRestrictedSiteAccess: invitation.hasRestrictedSiteAccess,
-              siteIds: invitation.siteIds,
-              siteRole: invitation.siteRole,
-            })
-            .from(invitation)
-            .where(eq(invitation.id, invitationId))
-            .limit(1);
-
-          if (invitationRecord.length === 0) return;
-          const { organizationId, email, hasRestrictedSiteAccess, siteIds, siteRole } = invitationRecord[0];
-          if (!hasRestrictedSiteAccess) return;
-
-          const userRecord = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
-          if (userRecord.length === 0) return;
-
-          const memberRecord = await db
-            .select({ id: member.id })
-            .from(member)
-            .where(and(eq(member.organizationId, organizationId), eq(member.userId, userRecord[0].id)))
-            .limit(1);
-          if (memberRecord.length === 0) return;
-          const memberId = memberRecord[0].id;
-
-          // Fail-safe ordering: flip the member to restricted BEFORE inserting the
-          // granted-site rows. If the insert step then fails, the member is left
-          // with hasRestrictedSiteAccess=true and zero rows in memberSiteAccess —
-          // i.e. locked out, which is safe. The previous transaction-based
-          // implementation would silently leave the member unrestricted (full
-          // org access) on any failure.
-          await db.update(member).set({ hasRestrictedSiteAccess: true }).where(eq(member.id, memberId));
-
-          // The ids were validated when the invitation was written, but a site
-          // can move organizations or be deleted while the invite sits pending
-          // (applySiteMove clears live grants for a moved site; it cannot reach
-          // into unaccepted invitations). Re-check against the organization as
-          // it stands now, so acceptance can only grant sites it still owns.
-          const invitedSiteIds = (siteIds || []) as number[];
-          const grantableSiteIds = await siteIdsInOrganization(invitedSiteIds, organizationId);
-
-          if (grantableSiteIds.length !== invitedSiteIds.length) {
-            authLogger.warn(
-              {
-                organizationId,
-                memberId,
-                droppedSiteIds: invitedSiteIds.filter(siteId => !grantableSiteIds.includes(siteId)),
-              },
-              "Invitation named sites the organization no longer owns; those grants were dropped"
-            );
-          }
-
-          if (grantableSiteIds.length > 0) {
-            await db.insert(memberSiteAccess).values(
-              grantableSiteIds.map(siteId => ({
-                memberId,
-                siteId,
-                role: isSiteGrantRole(siteRole) ? siteRole : null,
-              }))
-            );
-          }
-
-          invalidateSitesAccessCache(userRecord[0].id);
-        } catch (error) {
-          authLogger.error({ err: error }, "Error applying invitation Site restrictions");
-        }
-      }
-
       // Handle self-removal via /organization/leave. Better-auth does NOT call
       // organizationHooks.afterRemoveMember for this path, so the cleanup
       // (invitation purge + access-cache invalidation) has to live here.

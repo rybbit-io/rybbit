@@ -1,8 +1,9 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import { DateTime } from "luxon";
 import { z } from "zod";
 import { getImportById, deleteImport } from "../../services/import/importStatusManager.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
-import { importQuotaManager } from "../../services/import/importQuotaManager.js";
+import { IMPORT_TIMEOUT_MS, importQuotaManager } from "../../services/import/importQuotaManager.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
@@ -21,6 +22,13 @@ const deleteImportRequestSchema = z
 type DeleteImportRequest = {
   Params: z.infer<typeof deleteImportRequestSchema.shape.params>;
 };
+
+// startedAt is Postgres text ("2026-10-24 09:15:00.123") written in UTC.
+function isAbandoned(startedAt: string): boolean {
+  const sql = DateTime.fromSQL(startedAt, { zone: "utc" });
+  const started = sql.isValid ? sql : DateTime.fromISO(startedAt, { zone: "utc" });
+  return started.isValid && DateTime.utc().diff(started).toMillis() > IMPORT_TIMEOUT_MS;
+}
 
 export async function deleteSiteImport(request: FastifyRequest<DeleteImportRequest>, reply: FastifyReply) {
   try {
@@ -43,7 +51,10 @@ export async function deleteSiteImport(request: FastifyRequest<DeleteImportReque
       return reply.status(403).send({ error: "Import does not belong to this site" });
     }
 
-    if (importRecord.completedAt === null) {
+    // Only the client's final batch completes an import, so one whose client stopped early would
+    // otherwise be undeletable. Judged from startedAt in Postgres rather than the in-memory import
+    // lock, which only the worker that created the import holds (CLUSTER_WORKERS) and a restart drops.
+    if (importRecord.completedAt === null && !isAbandoned(importRecord.startedAt)) {
       return reply.status(400).send({ error: "Cannot delete active import" });
     }
 

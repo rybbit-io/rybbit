@@ -61,7 +61,7 @@ export interface TrackingRequest {
  * An under-scoped bearer degrades to untrusted client-side traffic (no 4xx) —
  * this is a public ingestion endpoint, not an authenticated API.
  */
-async function isTrustedServerSideIngestion(request: FastifyRequest, siteId: number): Promise<boolean> {
+export async function isTrustedServerSideIngestion(request: FastifyRequest, siteId: number): Promise<boolean> {
   const authHeader = request.headers["authorization"];
   if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
     return false;

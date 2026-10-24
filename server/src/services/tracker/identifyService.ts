@@ -8,6 +8,7 @@ import { usageService } from "../usageService.js";
 import { identityBackfillQueue } from "./identityBackfillQueue.js";
 import { userIdService } from "../userId/userIdService.js";
 import { resolveClientIp } from "./resolveClientIp.js";
+import { isTrustedServerSideIngestion } from "./trackingRequest.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 
 const logger = createServiceLogger("identify-service");
@@ -87,11 +88,18 @@ export async function handleIdentify(request: FastifyRequest, reply: FastifyRepl
       return reply.status(200).send("Site has no plan, identify not stored");
     }
 
+    // Like tracking, only a bearer with ingest:write may speak for another
+    // visitor. Otherwise anyone who knew a visitor's IP and user agent could
+    // point that visitor's fingerprint at a user id of their choosing.
+    const trustedOverride =
+      (ip_address !== undefined || user_agent !== undefined) && (await isTrustedServerSideIngestion(request, siteId));
+
     const anonymousId = anonymous_id
       ? await userIdService.generateUserIdFromClientId(anonymous_id, siteId)
       : await userIdService.generateUserId(
-          ip_address || resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy }),
-          user_agent || request.headers["user-agent"] || "",
+          (trustedOverride && ip_address) ||
+            resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy }),
+          (trustedOverride && user_agent) || request.headers["user-agent"] || "",
           siteId
         );
 

@@ -15,6 +15,16 @@ declare global {
   }
 }
 
+function hasOptedOut(optOutKey: string): boolean {
+  if (window.__RYBBIT_OPTOUT__) return true;
+  try {
+    return localStorage.getItem(optOutKey) !== null;
+  } catch {
+    // Storage is blocked (cookies disabled, sandboxed iframe): not opted out.
+    return false;
+  }
+}
+
 (async function () {
   // Script optimizers that re-inject the tag can leave `document.currentScript`
   // null; fall back to locating our own tag by its URL.
@@ -31,7 +41,7 @@ declare global {
   const optOutKey = `disable-${namespace}`;
 
   // Check if user has opted out
-  if (window.__RYBBIT_OPTOUT__ || localStorage.getItem(optOutKey) !== null) {
+  if (hasOptedOut(optOutKey)) {
     // Create no-op implementation
     window[namespace] = {
       pageview: () => {},

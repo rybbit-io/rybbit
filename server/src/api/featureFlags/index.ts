@@ -6,7 +6,7 @@ import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { db } from "../../db/postgres/postgres.js";
-import { featureFlags, userProfiles } from "../../db/postgres/schema.js";
+import { experiments, featureFlags, userProfiles } from "../../db/postgres/schema.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { getDeviceType, getRequestUserAgent } from "../../utils.js";
@@ -249,6 +249,19 @@ export async function deleteFeatureFlag(
   const flagId = parseInt(request.params.flagId, 10);
   if (isNaN(flagId) || flagId <= 0) {
     return reply.status(400).send({ error: "Invalid feature flag ID" });
+  }
+
+  // An experiment is cascade-deleted with its flag, so refuse rather than
+  // silently take the experiment down with it.
+  const experiment = await db.query.experiments.findFirst({
+    columns: { name: true },
+    where: and(eq(experiments.siteId, siteId), eq(experiments.featureFlagId, flagId)),
+  });
+
+  if (experiment) {
+    return reply.status(409).send({
+      error: `This flag is used by experiment "${experiment.name}". Delete the experiment first.`,
+    });
   }
 
   const [deleted] = await db

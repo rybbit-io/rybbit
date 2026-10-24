@@ -11,6 +11,7 @@ import { organization, sites } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getBestSubscription } from "../../lib/subscriptionUtils.js";
 import { IS_CLOUD } from "../../lib/const.js";
+import { EVENTS_INSERT_SETTINGS } from "../../services/tracker/utils.js";
 
 const batchImportRequestSchema = z
   .object({
@@ -107,6 +108,11 @@ export async function batchImportEvents(request: FastifyRequest<BatchImportReque
           table: "events",
           values: eventsWithinQuota,
           format: "JSONEachRow",
+          // Merge conflicting JSON paths, but don't let ClickHouse skip rows here:
+          // the counts below assume every submitted row was stored.
+          clickhouse_settings: {
+            type_json_skip_duplicated_paths: EVENTS_INSERT_SETTINGS.type_json_skip_duplicated_paths,
+          },
         });
       }
 
