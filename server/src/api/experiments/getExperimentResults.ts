@@ -21,6 +21,8 @@ type BuildExperimentResultQueriesParams = {
   query: FilterParams;
   siteId: number;
   flagKey: string;
+  /** The flag's configured variant keys; must not be empty. */
+  variantKeys: string[];
   goalCondition: string;
 };
 
@@ -28,6 +30,7 @@ export function buildExperimentResultQueries({
   query,
   siteId,
   flagKey,
+  variantKeys,
   goalCondition,
 }: BuildExperimentResultQueriesParams) {
   const timeStatement = getTimeStatement(query);
@@ -36,6 +39,10 @@ export function buildExperimentResultQueries({
   const filteredSessionsPrefix = filteredSessionsCte ? `${filteredSessionsCte},` : "";
   const escapedSiteId = SqlString.escape(siteId);
   const escapedFlagKey = SqlString.escape(flagKey);
+  // Sessions outside the rollout carry the flag as "false"; they are not an experiment arm.
+  // Exposures also say why the value was assigned, which tells an arm apart from that "false"
+  // even for a variant named "false" (no longer allowed, but older flags may have one).
+  const escapedVariantKeys = variantKeys.map(key => SqlString.escape(key)).join(", ");
 
   // A session qualifies once, independently of which event carried the filter
   // value. Goal, exposure, and assignment rows are then scoped to that cohort.
@@ -69,7 +76,8 @@ export function buildExperimentResultQueries({
             AND type = 'custom_event'
             AND event_name = 'feature_flag_exposure'
             AND JSONExtractString(toString(props), 'key') = ${escapedFlagKey}
-            AND JSONExtractString(toString(props), 'value') != ''
+            AND JSONExtractString(toString(props), 'value') IN (${escapedVariantKeys})
+            AND JSONExtractString(toString(props), 'reason') IN ('variant', '')
             ${timeStatement}
           GROUP BY session_id
         ),
@@ -98,7 +106,7 @@ export function buildExperimentResultQueries({
           FROM events
           ${filteredSessionsJoin}
           WHERE site_id = ${escapedSiteId}
-            AND feature_flags[${escapedFlagKey}] != ''
+            AND feature_flags[${escapedFlagKey}] IN (${escapedVariantKeys})
             ${timeStatement}
           GROUP BY session_id
         ),
@@ -139,14 +147,14 @@ export async function getExperimentResults(
     const variants = getExperimentVariantKeys(record.featureFlag);
     const goalCondition = record.primaryGoal ? buildGoalCondition(record.primaryGoal) : null;
 
-    if (!record.primaryGoal || !goalCondition) {
+    if (!record.primaryGoal || !goalCondition || variants.length === 0) {
       return reply.send({
         data: {
           experiment: serializeExperiment(record),
           variants: buildExperimentResults(variants, []),
           totalExposureSessions: 0,
           totalConversions: 0,
-          hasGoal: false,
+          hasGoal: !!(record.primaryGoal && goalCondition),
           measurement: "exposure",
         },
       });
@@ -156,6 +164,7 @@ export async function getExperimentResults(
       query: request.query,
       siteId,
       flagKey: record.featureFlag.key,
+      variantKeys: variants,
       goalCondition,
     });
 
@@ -167,8 +176,12 @@ export async function getExperimentResults(
     // for this key), count sessions that were assigned the variant via the
     // feature_flags map attached to every event. Looser, but avoids a confusing
     // empty result when the flag is clearly assigning traffic.
+    // The assignment map can't tell a variant named "true"/"false" (older flags may have one)
+    // from the flag being on or off for a visitor outside the rollout, so such flags only
+    // report exposures.
     const hasExposures = rows.some(row => Number(row.sessions) > 0);
-    if (!hasExposures) {
+    const hasReservedVariant = variants.some(variant => variant === "true" || variant === "false");
+    if (!hasExposures && !hasReservedVariant) {
       const assignmentResult = await clickhouse.query({ query: assignmentQuery, format: "JSONEachRow" });
       const assignmentRows = await processResults<ExperimentResultRow>(assignmentResult);
       if (assignmentRows.some(row => Number(row.sessions) > 0)) {

@@ -128,13 +128,34 @@ describe("recordSessionReplay exclusions", () => {
     await recordSessionReplay(createRequest(), reply);
 
     expect(mocks.decideSiteExclusion).toHaveBeenCalledOnce();
-    expect(mocks.recordEvents).toHaveBeenCalledWith(42, baseBody, {
-      userAgent: "Mozilla/5.0 HeadlessChrome/120",
-      ipAddress: "198.51.100.10",
-      origin: "https://example.com",
-      referrer: "https://example.com/admin/users",
-    });
+    expect(mocks.recordEvents).toHaveBeenCalledWith(
+      42,
+      baseBody,
+      expect.objectContaining({
+        userAgent: "Mozilla/5.0 HeadlessChrome/120",
+        ipAddress: "198.51.100.10",
+        origin: "https://example.com",
+        referrer: "https://example.com/admin/users",
+        anonymousId: undefined,
+        receivedAt: expect.any(Date),
+      })
+    );
     expect(reply.sentPayload).toEqual({ success: true });
+  });
+
+  it.each(["anonymousId", "anonymous_id"])("hands ingestion the persistent client id sent as %s", async field => {
+    const reply = createReply();
+
+    await recordSessionReplay(
+      createRequest({ body: { ...baseBody, [field]: "client-123" } as RecordSessionReplayRequest }),
+      reply
+    );
+
+    expect(mocks.recordEvents).toHaveBeenCalledWith(
+      42,
+      baseBody,
+      expect.objectContaining({ anonymousId: "client-123" })
+    );
   });
 
   it("tells the script to stop recording once the session is over its size cap", async () => {
@@ -148,6 +169,15 @@ describe("recordSessionReplay exclusions", () => {
       stopRecording: true,
       message: "Session replay size limit reached",
     });
+  });
+
+  it("asks the script for a full snapshot when the session needs one", async () => {
+    mocks.recordEvents.mockResolvedValue({ capped: false, needsFullSnapshot: true });
+
+    const reply = createReply();
+    await recordSessionReplay(createRequest(), reply);
+
+    expect(reply.sentPayload).toEqual({ success: true, takeFullSnapshot: true });
   });
 
   it("maps an IP Site Exclusion Decision to the replay skip response", async () => {
@@ -270,5 +300,66 @@ describe("recordSessionReplay exclusions", () => {
       success: true,
       message: "Session replay not recorded - user agent excluded",
     });
+  });
+});
+
+describe("recordSessionReplay bot detection", () => {
+  const browserHeaders = {
+    "user-agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    accept: "*/*",
+    "accept-language": "en-US,en;q=0.9",
+    "accept-encoding": "gzip, deflate, br",
+    "sec-fetch-site": "cross-site",
+    "sec-fetch-mode": "cors",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.decideSiteExclusion.mockResolvedValue({ excluded: false });
+    mocks.isSiteOverLimit.mockReturnValue(false);
+    mocks.isSiteWithoutReplay.mockReturnValue(false);
+    mocks.recordEvents.mockResolvedValue({ capped: false });
+  });
+
+  it("does not store a detected bot's replay when the Site blocks bots", async () => {
+    mocks.getConfig.mockResolvedValue({ ...baseConfig, blockBots: true });
+
+    const reply = createReply();
+    await recordSessionReplay(createRequest(), reply);
+
+    expect(mocks.recordEvents).not.toHaveBeenCalled();
+    expect(reply.sentPayload).toEqual({ success: true, message: "Session replay not recorded - bot detected" });
+  });
+
+  it("convicts on the strong client signals the tracker sends with the batch", async () => {
+    mocks.getConfig.mockResolvedValue({ ...baseConfig, blockBots: true });
+
+    const reply = createReply();
+    await recordSessionReplay(
+      createRequest({ headers: browserHeaders, body: { ...baseBody, _bsm: 1 } as RecordSessionReplayRequest }),
+      reply
+    );
+
+    expect(mocks.recordEvents).not.toHaveBeenCalled();
+  });
+
+  it("stores a detected bot's replay when the Site does not block bots", async () => {
+    mocks.getConfig.mockResolvedValue({ ...baseConfig, blockBots: false });
+
+    const reply = createReply();
+    await recordSessionReplay(createRequest(), reply);
+
+    expect(mocks.recordEvents).toHaveBeenCalledOnce();
+  });
+
+  it("stores a browser's replay when the Site blocks bots", async () => {
+    mocks.getConfig.mockResolvedValue({ ...baseConfig, blockBots: true });
+
+    const reply = createReply();
+    await recordSessionReplay(createRequest({ headers: browserHeaders }), reply);
+
+    expect(mocks.recordEvents).toHaveBeenCalledOnce();
+    expect(reply.sentPayload).toEqual({ success: true });
   });
 });

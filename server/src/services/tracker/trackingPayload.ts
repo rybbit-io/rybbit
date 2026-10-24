@@ -1,17 +1,40 @@
 import { ALL_CLIENT_BOT_SIGNAL_BITS, MAX_CLIENT_BOT_SCORE } from "@rybbit/shared";
 import { z } from "zod";
 
+/**
+ * Cut a string to `maxLength` UTF-16 units without splitting a surrogate pair:
+ * half an emoji serializes to an escape ClickHouse refuses, losing the row.
+ */
+export function truncateString(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  const lastCode = value.charCodeAt(maxLength - 1);
+  return value.slice(0, lastCode >= 0xd800 && lastCode <= 0xdbff ? maxLength - 1 : maxLength);
+}
+
+// The page's own URL, title and referrer are cut to length rather than
+// rejected. They come from whatever page the visitor is on, not from the
+// integration, and a 400 dropped every event on a page whose title or URL ran
+// long — whichever client (tracker, SDK, older cached script) sent it.
+const truncatedString = (maxLength: number) => z.string().transform(value => truncateString(value, maxLength));
+
+// The path and query string, though, are cut only after Site Exclusions have
+// matched them whole (truncateUrlForStorage): cut first, `?padding=…&preview=1`
+// lost the very parameter a "preview" exclusion names. The validation bound
+// keeps that matching cheap and sits far past any real page's URL.
+const MAX_URL_PART_LENGTH = 2048;
+const MAX_RAW_URL_PART_LENGTH = 16 * 1024;
+
 // Shared fields for all event types
 const baseEventFields = {
   site_id: z.string().min(1),
   hostname: z.string().max(253).optional(),
-  pathname: z.string().max(2048).optional(),
-  querystring: z.string().max(2048).optional(),
+  pathname: z.string().max(MAX_RAW_URL_PART_LENGTH).optional(),
+  querystring: z.string().max(MAX_RAW_URL_PART_LENGTH).optional(),
   screenWidth: z.number().int().nonnegative().optional(),
   screenHeight: z.number().int().nonnegative().optional(),
   language: z.string().max(35).optional(),
-  page_title: z.string().max(512).optional(),
-  referrer: z.string().max(2048).optional(),
+  page_title: truncatedString(512).optional(),
+  referrer: truncatedString(2048).optional(),
   anonymous_id: z.string().min(1).max(255).optional(),
   user_id: z.string().max(255).optional(),
   tag: z.string().max(256).optional(),
@@ -240,3 +263,16 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
 
 /** The event body after validation — the only shape ingestion ever sees. */
 export type ValidatedTrackingPayload = z.infer<typeof trackingPayloadSchema>;
+
+/** The payload with its path and query string cut to what the events table keeps. */
+export function truncateUrlForStorage(payload: ValidatedTrackingPayload): ValidatedTrackingPayload {
+  const { pathname, querystring } = payload;
+  if ((pathname?.length ?? 0) <= MAX_URL_PART_LENGTH && (querystring?.length ?? 0) <= MAX_URL_PART_LENGTH) {
+    return payload;
+  }
+  return {
+    ...payload,
+    pathname: pathname && truncateString(pathname, MAX_URL_PART_LENGTH),
+    querystring: querystring && truncateString(querystring, MAX_URL_PART_LENGTH),
+  };
+}

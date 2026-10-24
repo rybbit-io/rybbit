@@ -27,7 +27,12 @@ import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
 import { startSiteBaselineRefresh } from "./services/tracker/botBlocking/siteBaseline.js";
-import { usageService } from "./services/usageService.js";
+import {
+  USAGE_STATE_MESSAGE,
+  USAGE_STATE_REQUEST_MESSAGE,
+  usageService,
+  type UsageStateMessage,
+} from "./services/usageService.js";
 import { unclaimedSiteCleanupService } from "./services/sites/unclaimedSiteCleanupService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 
@@ -51,11 +56,17 @@ server.register(cors, {
 server.addHook("onRequest", createRejectUntrustedOriginHook());
 
 // Opt-in per-route rate limiting (routes declare config.rateLimit). Runs in
-// preHandler so authenticated routes can key on the user instead of the IP.
+// preHandler so authenticated routes can key on the caller instead of the IP.
+// Org API keys carry no user; without their organization in the key, every
+// MCP-proxied call (all from 127.0.0.1) would share one bucket.
 server.register(rateLimit, {
   global: false,
   hook: "preHandler",
-  keyGenerator: (request: FastifyRequest) => request.user?.id ?? request.ip,
+  keyGenerator: (request: FastifyRequest) => {
+    if (request.user?.id) return `user:${request.user.id}`;
+    if (request.apiKeyOrganizationId) return `org:${request.apiKeyOrganizationId}`;
+    return request.ip;
+  },
   // Shared store so the limit holds across cluster workers; fall open if Redis
   // is unreachable rather than blocking the request.
   redis: apiRateLimitRedis,
@@ -125,6 +136,36 @@ server.post("/api/identify", handleIdentify);
 // Register API routes with /api prefix
 server.register(apiRoutes, { prefix: "/api" });
 
+// How long a new worker waits for the primary's usage state before serving anyway.
+const USAGE_STATE_WAIT_MS = 10_000;
+
+/**
+ * Installs the worker's listener for usage state from the cluster primary, then asks for the
+ * current state. Resolves once it has been applied, so the worker doesn't serve over-limit or
+ * plan-less sites until the next broadcast (up to 30 minutes). Never rejects: if the primary
+ * doesn't answer in time the worker serves without blocks, as it did before the handshake.
+ */
+function receiveUsageStateFromPrimary(): Promise<void> {
+  return new Promise(resolve => {
+    const timeout = setTimeout(() => {
+      server.log.warn("No usage state from the cluster primary yet; serving until it arrives");
+      resolve();
+    }, USAGE_STATE_WAIT_MS);
+
+    process.on("message", (message: UsageStateMessage) => {
+      if (message?.type !== USAGE_STATE_MESSAGE) return;
+      usageService.applyUsageStateMessage(message);
+      server.log.debug(
+        `Received ${message.sitesOverLimit.length} sites-over-limit, ${message.sitesWithoutPlan.length} sites-without-plan and ${message.sitesWithoutReplay.length} sites-without-replay from primary`
+      );
+      clearTimeout(timeout);
+      resolve();
+    });
+
+    process.send?.({ type: USAGE_STATE_REQUEST_MESSAGE });
+  });
+}
+
 const start = async () => {
   try {
     // When running as a cluster worker, the primary process already initialized the databases
@@ -147,25 +188,13 @@ const start = async () => {
       }
     }
 
-    // Start the server first
+    // Blocked-site sets live on the cluster primary; apply them before accepting traffic.
+    if (cluster.isWorker) {
+      await receiveUsageStateFromPrimary();
+    }
+
     await server.listen({ port: 3001, host: "0.0.0.0" });
     server.log.info(`Server is listening on http://0.0.0.0:3001 (PID: ${process.pid})`);
-
-    // Listen for IPC messages from the cluster primary process
-    if (cluster.isWorker) {
-      process.on("message", (message: { type: string; siteIds: number[] }) => {
-        if (message?.type === "sites-over-limit") {
-          usageService.setSitesOverLimit(new Set(message.siteIds));
-          server.log.debug(`Received ${message.siteIds.length} sites-over-limit from primary`);
-        } else if (message?.type === "sites-without-plan") {
-          usageService.setSitesWithoutPlan(new Set(message.siteIds));
-          server.log.debug(`Received ${message.siteIds.length} sites-without-plan from primary`);
-        } else if (message?.type === "sites-without-replay") {
-          usageService.setSitesWithoutReplay(new Set(message.siteIds));
-          server.log.debug(`Received ${message.siteIds.length} sites-without-replay from primary`);
-        }
-      });
-    }
   } catch (err) {
     server.log.error(err);
     process.exit(1);

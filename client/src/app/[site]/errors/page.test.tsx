@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ErrorNameItem, ErrorNamesPaginatedResponse } from "@/api/analytics/endpoints";
 import { useStore } from "@/lib/store";
@@ -13,18 +13,28 @@ type QueryState = {
   error: Error | null;
 };
 
-const mocks = vi.hoisted(() => ({ query: {} as QueryState }));
+const mocks = vi.hoisted(() => ({
+  query: {} as QueryState,
+  page: 0,
+  setPageIndex: (_index: number) => {},
+}));
 
 vi.mock("next-intl", () => ({ useExtracted: () => (message: string) => message }));
-vi.mock("@/api/analytics/hooks/errors/useGetErrorNames", () => ({ useGetErrorNamesPaginated: () => mocks.query }));
+vi.mock("@/api/analytics/hooks/errors/useGetErrorNames", () => ({
+  useGetErrorNamesPaginated: ({ page }: { page: number }) => {
+    mocks.page = page;
+    return mocks.query;
+  },
+}));
 vi.mock("@/hooks/useSetPageTitle", () => ({ useSetPageTitle: () => {} }));
 vi.mock("@/components/DisabledOverlay", () => ({
   DisabledOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("@/components/pagination", () => ({
-  Pagination: ({ isLoading }: { isLoading?: boolean }) => (
-    <div data-testid="pagination">{isLoading ? "pagination loading" : "pagination idle"}</div>
-  ),
+  Pagination: ({ isLoading, table }: { isLoading?: boolean; table: { setPageIndex: (index: number) => void } }) => {
+    mocks.setPageIndex = table.setPageIndex;
+    return <div data-testid="pagination">{isLoading ? "pagination loading" : "pagination idle"}</div>;
+  },
 }));
 vi.mock("../components/SubHeader/SubHeader", () => ({ SubHeader: () => null }));
 vi.mock("./components/EnableErrorTracking", () => ({ EnableErrorTracking: () => null }));
@@ -92,5 +102,20 @@ describe("Errors page loading states", () => {
   it("keeps the empty state instead of blanking while an empty result refetches", () => {
     renderThenRefetch({ data: response([]), isFetching: true, isPlaceholderData: true });
     expect(screen.getByText("No error events found")).toBeTruthy();
+  });
+});
+
+describe("Errors page pagination", () => {
+  it("starts every scope on page one, including one returned to", () => {
+    mocks.query = { ...settled, data: { ...response(["a is undefined"]), totalCount: 100 } };
+    render(<Errors />);
+    act(() => mocks.setPageIndex(3));
+    expect(mocks.page).toBe(4);
+
+    const chrome = { parameter: "browser" as const, type: "equals" as const, value: ["Chrome"] };
+    act(() => useStore.setState({ filters: [chrome] }));
+    expect(mocks.page).toBe(1);
+    act(() => useStore.setState({ filters: [] }));
+    expect(mocks.page).toBe(1);
   });
 });

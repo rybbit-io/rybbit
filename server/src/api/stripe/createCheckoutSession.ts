@@ -15,6 +15,17 @@ interface CheckoutRequestBody {
   referral?: string;
 }
 
+/** Whether the customer has an active or trialing subscription. Throws if Stripe can't be read. */
+async function hasLiveSubscription(stripeCustomerId: string): Promise<boolean> {
+  // Filter by status on Stripe's side: a status "all" page holds only the newest 100, so a
+  // live subscription behind a long tail of canceled ones would be missed.
+  const statuses = ["active", "trialing"] as const;
+  const pages = await Promise.all(
+    statuses.map(status => (stripe as Stripe).subscriptions.list({ customer: stripeCustomerId, status, limit: 1 }))
+  );
+  return pages.some((page, i) => page.data.some(sub => sub.status === statuses[i]));
+}
+
 export async function createCheckoutSession(
   request: FastifyRequest<{ Body: CheckoutRequestBody }>,
   reply: FastifyReply
@@ -71,6 +82,17 @@ export async function createCheckoutSession(
     }
 
     let stripeCustomerId = org.stripeCustomerId;
+
+    // A second checkout would start a second subscription billed alongside the first; plan
+    // changes go through update-subscription instead. Read fresh rather than from the
+    // subscription cache so a just-finished checkout is seen.
+    if (stripeCustomerId && (await hasLiveSubscription(stripeCustomerId))) {
+      return reply.status(409).send({
+        error:
+          "This organization already has an active subscription. To change plans, use the Billing page in your organization settings.",
+      });
+    }
+
     // One free trial per organization. A customer created just below has no history. If the
     // history can't be read this throws, so checkout fails and can be retried rather than
     // handing a returning customer another trial.

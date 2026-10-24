@@ -12,7 +12,6 @@ interface SetupStepProps {
   domain: string;
   setDomain: (v: string) => void;
   orgName: string;
-  orgSlug: string;
   handleOrgNameChange: (v: string) => void;
   referralSource: string;
   setReferralSource: (v: string) => void;
@@ -24,7 +23,6 @@ export function SetupStep({
   domain,
   setDomain,
   orgName,
-  orgSlug,
   handleOrgNameChange,
   referralSource,
   setReferralSource,
@@ -32,7 +30,7 @@ export function SetupStep({
   onSubmit,
 }: SetupStepProps) {
   const t = useExtracted();
-  const canSubmit = !!orgName && !!orgSlug && !!domain && isValidDomain(domain) && !(IS_CLOUD && !referralSource);
+  const canSubmit = !!orgName && !!domain && isValidDomain(domain) && !(IS_CLOUD && !referralSource);
 
   return (
     <div>

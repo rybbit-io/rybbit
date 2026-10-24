@@ -1,6 +1,13 @@
 import { ScriptConfig, SessionReplayEvent, SessionReplayBatch, SessionReplayBatchResult } from "./types.js";
+import { getBotSignalMask } from "./botSignals.js";
+
+type SendSessionReplayBatch = (batch: SessionReplayBatch) => Promise<SessionReplayBatchResult | void>;
 
 const SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+
+// Batches that left before a requested snapshot reached the server ask for one
+// too; this covers the snapshot's own round trip and a retry.
+const FULL_SNAPSHOT_REQUEST_INTERVAL_MS = 10_000;
 
 /**
  * Determines if this session should have replay enabled based on sample rate.
@@ -33,7 +40,7 @@ function shouldSampleSession(sampleRate: number): boolean {
 declare global {
   interface Window {
     rrweb?: {
-      record: (options: {
+      record: ((options: {
         emit: (event: any) => void;
         checkoutEveryNms?: number;
         checkoutEveryNth?: number;
@@ -49,7 +56,9 @@ declare global {
         sampling?: Record<string, any>;
         recordCanvas?: boolean;
         collectFonts?: boolean;
-      }) => () => void;
+      }) => () => void) & {
+        takeFullSnapshot?: (isCheckout?: boolean) => void;
+      };
     };
   }
 }
@@ -63,17 +72,31 @@ export class SessionReplayRecorder {
   private stopRecordingFn?: () => void;
   private userId: string;
   private eventBuffer: SessionReplayEvent[] = [];
+  // Batches whose send failed, each kept as it was built so a retry after
+  // identify(), clearUserId() or a navigation still carries the identity and
+  // page it was recorded under.
+  private failedBatches: SessionReplayBatch[] = [];
   private batchTimer?: number;
-  private sendBatch: (batch: SessionReplayBatch) => Promise<SessionReplayBatchResult | void>;
+  private lastFullSnapshotRequestAt = -Infinity;
+  private deferredSnapshotTimer?: number;
+  private sendBatch: SendSessionReplayBatch;
 
-  constructor(
-    config: ScriptConfig,
-    userId: string,
-    sendBatch: (batch: SessionReplayBatch) => Promise<SessionReplayBatchResult | void>
-  ) {
+  constructor(config: ScriptConfig, userId: string, sendBatch: SendSessionReplayBatch) {
     this.config = config;
     this.userId = userId;
     this.sendBatch = sendBatch;
+
+    // The page may be about to unload: send what's buffered now (batches go
+    // with keepalive while they fit) so the end of the replay survives it.
+    // Recording itself carries on — a hidden tab can come back, and a page
+    // restored from the back/forward cache resumes with its recorder intact,
+    // which stopping on beforeunload broke.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        void this.flushEvents();
+      }
+    });
+    window.addEventListener("pagehide", () => void this.flushEvents());
   }
 
   async initialize(): Promise<void> {
@@ -200,9 +223,13 @@ export class SessionReplayRecorder {
 
     this.isRecording = false;
     this.clearBatchTimer();
+    if (this.deferredSnapshotTimer !== undefined) {
+      clearTimeout(this.deferredSnapshotTimer);
+      this.deferredSnapshotTimer = undefined;
+    }
 
-    // Send any remaining events
-    if (this.eventBuffer.length > 0) {
+    // Send any remaining events, and retry failed batches while there's a chance
+    if (this.eventBuffer.length > 0 || this.failedBatches.length > 0) {
       this.flushEvents();
     }
   }
@@ -223,7 +250,7 @@ export class SessionReplayRecorder {
   private setupBatchTimer(): void {
     this.clearBatchTimer();
     this.batchTimer = window.setInterval(() => {
-      if (this.eventBuffer.length > 0) {
+      if (this.eventBuffer.length > 0 || this.failedBatches.length > 0) {
         this.flushEvents();
       }
     }, this.config.sessionReplayBatchInterval);
@@ -236,34 +263,90 @@ export class SessionReplayRecorder {
     }
   }
 
+  // Sends the buffered events, and retries the batches that failed before.
   private async flushEvents(): Promise<void> {
-    if (this.eventBuffer.length === 0) {
-      return;
+    const batches = this.failedBatches;
+    this.failedBatches = [];
+
+    if (this.eventBuffer.length > 0) {
+      // Built before the first await, so the identity and page are the ones
+      // the events were recorded under.
+      batches.push({
+        userId: this.userId,
+        events: this.eventBuffer,
+        metadata: {
+          pageUrl: window.location.href,
+          viewportWidth: screen.width,
+          viewportHeight: screen.height,
+          language: navigator.language,
+        },
+        _bsm: getBotSignalMask(),
+      });
+      this.eventBuffer = [];
     }
 
-    const events = [...this.eventBuffer];
-    this.eventBuffer = [];
+    await Promise.all(batches.map(batch => this.sendOrRequeue(batch)));
+  }
 
-    const batch: SessionReplayBatch = {
-      userId: this.userId,
-      events,
-      metadata: {
-        pageUrl: window.location.href,
-        viewportWidth: screen.width,
-        viewportHeight: screen.height,
-        language: navigator.language,
-      },
-    };
-
+  private async sendOrRequeue(batch: SessionReplayBatch): Promise<void> {
     try {
       const result = await this.sendBatch(batch);
       if (result?.stopRecording) {
         this.stopForSizeCap();
+      } else if (result?.takeFullSnapshot) {
+        this.takeFullSnapshot();
+      } else if (this.deferredSnapshotTimer !== undefined && batch.events.some(event => event.type === 2)) {
+        // The server accepted a snapshot without asking for another.
+        clearTimeout(this.deferredSnapshotTimer);
+        this.deferredSnapshotTimer = undefined;
       }
     } catch (error) {
-      // Re-queue the events for retry since this batch failed
-      this.eventBuffer.unshift(...events);
+      if (!this.capped) {
+        this.requeue(batch);
+      }
     }
+  }
+
+  // A failure from the same identity and page as the last queued one joins it,
+  // so an outage retries one batch per flush rather than one per failed send.
+  private requeue(batch: SessionReplayBatch): void {
+    const last = this.failedBatches[this.failedBatches.length - 1];
+    if (last && last.userId === batch.userId && JSON.stringify(last.metadata) === JSON.stringify(batch.metadata)) {
+      last.events = last.events.concat(batch.events);
+      return;
+    }
+    this.failedBatches.push(batch);
+  }
+
+  // The server keeps the replay in its previous session until a batch opens
+  // the visitor's new one with a full snapshot, without which a replay can't
+  // be played. Events recorded before the snapshot go first, to the old one.
+  private takeFullSnapshot(): void {
+    if (!this.isRecording) {
+      return;
+    }
+    // A request inside the cooldown (e.g. identify() right after a rollover)
+    // runs when it ends rather than being dropped: the newer session needs
+    // its own snapshot too.
+    const wait = this.lastFullSnapshotRequestAt + FULL_SNAPSHOT_REQUEST_INTERVAL_MS - Date.now();
+    if (wait > 0) {
+      if (this.deferredSnapshotTimer === undefined) {
+        this.deferredSnapshotTimer = window.setTimeout(() => {
+          this.deferredSnapshotTimer = undefined;
+          this.takeFullSnapshot();
+        }, wait);
+      }
+      return;
+    }
+    this.lastFullSnapshotRequestAt = Date.now();
+
+    void this.flushEvents();
+    try {
+      window.rrweb?.record.takeFullSnapshot?.(true);
+    } catch {
+      // rrweb isn't recording after all; its next checkout brings the snapshot.
+    }
+    void this.flushEvents();
   }
 
   // Unlike stopRecording, drops what's buffered: the server refuses it anyway.
@@ -276,6 +359,7 @@ export class SessionReplayRecorder {
     this.isRecording = false;
     this.clearBatchTimer();
     this.eventBuffer = [];
+    this.failedBatches = [];
   }
 
   // Update user ID when it changes
@@ -285,8 +369,8 @@ export class SessionReplayRecorder {
     }
 
     // Keep events captured under the previous identity in their original batch.
-    // flushEvents snapshots this.userId before its first await, so the identity
-    // can be changed immediately after starting the send.
+    // flushEvents builds the batch before its first await, so the identity can
+    // be changed immediately after starting the send.
     if (this.eventBuffer.length > 0) {
       void this.flushEvents();
     }

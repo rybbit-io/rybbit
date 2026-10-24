@@ -4,7 +4,26 @@ const mocks = vi.hoisted(() => ({
   getLocation: vi.fn(),
   lookupAsn: vi.fn(),
   loggerWarn: vi.fn(),
+  addressParses: 0,
 }));
+
+// The real parser, counting each address it is asked to read.
+vi.mock("ip-address", async importOriginal => {
+  const actual = await importOriginal<typeof import("ip-address")>();
+  class Address4 extends actual.Address4 {
+    constructor(address: string) {
+      mocks.addressParses++;
+      super(address);
+    }
+  }
+  class Address6 extends actual.Address6 {
+    constructor(address: string, optionalGroups?: number) {
+      mocks.addressParses++;
+      super(address, optionalGroups);
+    }
+  }
+  return { ...actual, Address4, Address6 };
+});
 
 vi.mock("../../db/geolocation/geolocation.js", () => ({
   getLocation: mocks.getLocation,
@@ -62,6 +81,70 @@ describe("decideSiteExclusion", () => {
       reason: "ip",
       label: "IP",
       value: "198.51.100.10",
+    });
+  });
+
+  it.each([
+    ["a zero-padded IPv4 rule", "198.051.100.010", "198.51.100.10"],
+    ["an upper-case IPv6 rule", "2001:DB8::1", "2001:db8::1"],
+    ["an expanded IPv6 rule", "2001:0db8:0000:0000:0000:0000:0000:0001", "2001:db8::1"],
+    ["an upper-case IPv6 request address", "2001:db8::1", "2001:DB8::1"],
+    // Ranges and CIDR blocks always parsed their addresses; single rules now agree.
+    ["a zero-padded IPv4 range", "198.51.100.001-198.51.100.020", "198.51.100.10"],
+  ])("matches %s by address rather than spelling", async (_description, pattern, ipAddress) => {
+    await expect(
+      decideSiteExclusion(configuration({ excludedIPs: [` ${pattern} `] }), { ...request, ipAddress })
+    ).resolves.toMatchObject({ excluded: true, reason: "ip", value: ipAddress });
+  });
+
+  it("still tells different addresses apart after canonicalizing", async () => {
+    await expect(
+      decideSiteExclusion(configuration({ excludedIPs: ["198.51.100.011", "2001:db8::2", "unknown"] }), {
+        ...request,
+        ipAddress: "198.51.100.10",
+        candidateIps: ["2001:db8::1", "UNKNOWN"],
+      })
+    ).resolves.toEqual({ excluded: false });
+  });
+
+  it("parses each address once rather than once per address and rule pair", async () => {
+    // A long forwarded chain against many single-address rules, all IPv6 so every
+    // parse is an IPv4 attempt that throws and then an IPv6 one.
+    const excludedIPs = Array.from({ length: 100 }, (_, i) => `2001:db8::${(i + 1).toString(16)}`);
+    const candidateIps = Array.from({ length: 500 }, (_, i) => `2001:db8:1::${(i + 1).toString(16)}`);
+    const rules = configuration({ excludedIPs });
+    const chain = { ...request, ipAddress: "2001:db8:2::1", candidateIps };
+    const perAddress = 2;
+
+    mocks.addressParses = 0;
+    await expect(decideSiteExclusion(rules, chain)).resolves.toEqual({ excluded: false });
+    expect(mocks.addressParses).toBeLessThanOrEqual(perAddress * (excludedIPs.length + candidateIps.length + 1));
+
+    // The same configuration again: its rules are already parsed.
+    mocks.addressParses = 0;
+    await expect(decideSiteExclusion(rules, chain)).resolves.toEqual({ excluded: false });
+    expect(mocks.addressParses).toBeLessThanOrEqual(perAddress * (candidateIps.length + 1));
+
+    // ...and still match, by spelling or by address, and follow a changed rule list.
+    await expect(
+      decideSiteExclusion(rules, { ...chain, candidateIps: [...candidateIps, "2001:DB8::0064"] })
+    ).resolves.toMatchObject({ excluded: true, reason: "ip", value: "2001:DB8::0064" });
+    await expect(decideSiteExclusion(configuration({ excludedIPs: ["2001:db8:2::1"] }), chain)).resolves.toMatchObject({
+      excluded: true,
+      reason: "ip",
+      value: "2001:db8:2::1",
+    });
+  });
+
+  it("keeps matching an unparseable rule by its exact spelling", async () => {
+    const rules = configuration({ excludedIPs: [" unknown "] });
+    await expect(decideSiteExclusion(rules, { ...request, ipAddress: "unknown" })).resolves.toMatchObject({
+      excluded: true,
+      reason: "ip",
+      value: "unknown",
+    });
+    await expect(decideSiteExclusion(rules, { ...request, ipAddress: "UNKNOWN" })).resolves.toEqual({
+      excluded: false,
     });
   });
 

@@ -84,10 +84,14 @@ export function useRemoveUserFromOrganization() {
   return useMutation<void, Error, RemoveUserFromOrganizationInput>({
     mutationFn: async ({ memberIdOrEmail, organizationId }: RemoveUserFromOrganizationInput) => {
       try {
-        await authClient.organization.removeMember({
+        // Better Auth reports a refused request as { error } rather than throwing.
+        const { error } = await authClient.organization.removeMember({
           memberIdOrEmail,
           organizationId,
         });
+        if (error) {
+          throw new Error(error.message || "Failed to remove user from organization");
+        }
       } catch (error) {
         throw new Error(error instanceof Error ? error.message : "Failed to remove user from organization");
       }

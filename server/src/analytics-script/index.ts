@@ -249,11 +249,12 @@ function hasOptedOut(optOutKey: string): boolean {
   // Initialize
   setupEventListeners();
 
-  // Setup cleanup on page unload
+  // Setup cleanup on page unload. Session replay is left running: it flushes
+  // itself on page hide, and beforeunload also fires for pages that stay (a
+  // cancelled leave prompt, a download link) or come back from the bfcache.
   window.addEventListener("beforeunload", () => {
     clickManager?.cleanup();
     copyManager?.cleanup();
-    tracker.cleanup();
   });
 
   // Track initial pageview if enabled

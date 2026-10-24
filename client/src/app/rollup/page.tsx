@@ -115,6 +115,15 @@ export default function RollupPage() {
 
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  // Teams and tags belong to one organization: switching keeps this page mounted,
+  // and a stale filter would hide every site of the new one.
+  const [filtersOrganizationId, setFiltersOrganizationId] = useState(activeOrganization?.id);
+  if (activeOrganization?.id && activeOrganization.id !== filtersOrganizationId) {
+    setFiltersOrganizationId(activeOrganization.id);
+    setSelectedTeamFilter("all");
+    setSelectedTags([]);
+  }
+
   // Track what the user switched OFF rather than on: narrowing by team or tag
   // then shows every site in the new set, and widening again brings back
   // exactly what they had.

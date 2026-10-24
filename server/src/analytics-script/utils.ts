@@ -81,6 +81,17 @@ export function isOutboundLink(url: string): boolean {
 }
 
 /**
+ * Cut a string to at most `maxLength` UTF-16 units without splitting a
+ * surrogate pair: half an emoji serializes to an escape ClickHouse refuses,
+ * which loses the event at insert.
+ */
+export function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  const lastCode = value.charCodeAt(maxLength - 1);
+  return value.slice(0, lastCode >= 0xd800 && lastCode <= 0xdbff ? maxLength - 1 : maxLength);
+}
+
+/**
  * Parse JSON safely with fallback
  */
 export function parseJsonSafely<T>(value: string | null, fallback: T): T {

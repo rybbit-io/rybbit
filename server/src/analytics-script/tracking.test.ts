@@ -202,6 +202,27 @@ describe("Tracker", () => {
       expect(payload?.querystring).toBe("");
     });
 
+    it("cuts a long title and referrer to the server's limits without splitting a character", () => {
+      Object.defineProperty(document, "title", { value: `${"t".repeat(511)}😀`, writable: true });
+      Object.defineProperty(document, "referrer", { value: `https://google.com/${"r".repeat(3000)}`, writable: true });
+
+      const payload = tracker.createBasePayload()!;
+
+      expect(payload.referrer).toHaveLength(2048);
+      expect(payload.page_title).toBe("t".repeat(511));
+    });
+
+    it("sends a long path and query string whole, for the server's exclusions to see", () => {
+      // The server cuts them for storage only after matching Site Exclusions.
+      mockLocation.pathname = `/${"p".repeat(3000)}`;
+      mockLocation.search = `?padding=${"q".repeat(3000)}&preview=1`;
+
+      const payload = tracker.createBasePayload()!;
+
+      expect(payload.pathname).toBe(mockLocation.pathname);
+      expect(payload.querystring).toBe(mockLocation.search);
+    });
+
     it("should include user ID when set", () => {
       vi.mocked(window.localStorage.getItem).mockReturnValue("user-123");
       tracker = new Tracker(config);
@@ -314,6 +335,18 @@ describe("Tracker", () => {
           target: "_blank",
         })
       );
+    });
+
+    it("fits outbound properties within the server's limit", () => {
+      const url = `https://external.com/?ref=${"a".repeat(3000)}`;
+      tracker.trackOutbound(url, "card text ".repeat(500), "_blank");
+
+      const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
+      const properties = JSON.parse(body.properties);
+      expect(body.properties.length).toBeLessThanOrEqual(2048);
+      expect(properties.text).toHaveLength(500);
+      expect(properties.target).toBe("_blank");
+      expect(url.startsWith(properties.url)).toBe(true);
     });
 
     it("should track web vitals", async () => {
@@ -530,6 +563,71 @@ describe("Tracker", () => {
         "https://analytics.example.com/site/123/feature-flags/evaluate",
         expect.objectContaining({ method: "POST", signal: expect.any(AbortSignal) })
       );
+    });
+  });
+
+  describe("session replay batches", () => {
+    type SendReplayBatch = (batch: unknown) => Promise<unknown>;
+    const sendReplayBatch = (batch: unknown) =>
+      (tracker as unknown as { sendSessionReplayBatch: SendReplayBatch }).sendSessionReplayBatch(batch);
+    const batchOfSize = (bytes: number) => ({
+      userId: "",
+      events: [{ type: 3, data: "x".repeat(bytes), timestamp: 1 }],
+    });
+
+    beforeEach(() => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    it.each([408, 429, 502, 503, 504])(
+      "rejects on a %i, which stored nothing, so the recorder retries",
+      async status => {
+        vi.mocked(global.fetch).mockResolvedValue({ ok: false, status } as Response);
+
+        await expect(sendReplayBatch(batchOfSize(10))).rejects.toThrow(String(status));
+      }
+    );
+
+    it("does not retry a 500, which may come after the batch's events were stored", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({ ok: false, status: 500 } as Response);
+
+      await expect(sendReplayBatch(batchOfSize(10))).resolves.toBeUndefined();
+    });
+
+    it("drops a batch the server refuses as invalid instead of retrying it", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({ ok: false, status: 400 } as Response);
+
+      await expect(sendReplayBatch(batchOfSize(10))).resolves.toBeUndefined();
+    });
+
+    it("passes the server's stop signal back to the recorder", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, stopRecording: true }),
+      } as Response);
+
+      await expect(sendReplayBatch(batchOfSize(10))).resolves.toEqual({ success: true, stopRecording: true });
+    });
+
+    it("sends every batch that fits the shared keepalive budget with keepalive", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response);
+      const keepaliveOf = (call: number) => vi.mocked(global.fetch).mock.calls[call][1]!.keepalive;
+
+      // An ordinary batch too: one already in flight when the page hides is
+      // past the flush that pagehide makes.
+      await sendReplayBatch(batchOfSize(10));
+      await sendReplayBatch(batchOfSize(60 * 1024));
+      expect([keepaliveOf(0), keepaliveOf(1)]).toEqual([true, false]);
+
+      // Two at once: the second would overrun what the page can hold in flight.
+      await Promise.all([sendReplayBatch(batchOfSize(30 * 1024)), sendReplayBatch(batchOfSize(30 * 1024))]);
+      expect([keepaliveOf(2), keepaliveOf(3)]).toEqual([true, false]);
+
+      // Measured in UTF-8 bytes: 20k three-byte characters don't fit.
+      await sendReplayBatch(batchOfSize(0));
+      await sendReplayBatch({ userId: "", events: [{ type: 3, data: "€".repeat(20_000), timestamp: 1 }] });
+      expect([keepaliveOf(4), keepaliveOf(5)]).toEqual([true, false]);
     });
   });
 });

@@ -4,8 +4,9 @@ import type { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 
 const mocks = vi.hoisted(() => ({
   generateUserId: vi.fn(),
+  generateUserIdFromClientId: vi.fn(),
   insert: vi.fn(),
-  updateSession: vi.fn(),
+  resolveReplaySession: vi.fn(),
   chargeReplaySessionBudget: vi.fn(),
   storeBatch: vi.fn(),
   r2Enabled: false,
@@ -19,13 +20,14 @@ vi.mock("../../db/clickhouse/clickhouse.js", () => ({
 
 vi.mock("../sessions/sessionsService.js", () => ({
   sessionsService: {
-    updateSession: mocks.updateSession,
+    resolveReplaySession: mocks.resolveReplaySession,
   },
 }));
 
 vi.mock("../userId/userIdService.js", () => ({
   userIdService: {
     generateUserId: mocks.generateUserId,
+    generateUserIdFromClientId: mocks.generateUserIdFromClientId,
   },
 }));
 
@@ -64,7 +66,7 @@ describe("SessionReplayIngestService identity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.generateUserId.mockResolvedValue("shared-fingerprint");
-    mocks.updateSession.mockImplementation(
+    mocks.resolveReplaySession.mockImplementation(
       async ({ userId, identifiedUserId }: { userId: string; identifiedUserId?: string }) => ({
         sessionId: `session-${userId}-${identifiedUserId || "anonymous"}`,
       })
@@ -80,15 +82,17 @@ describe("SessionReplayIngestService identity", () => {
     await service.recordEvents(42, replayRequest("employee-alice"), requestMeta);
     await service.recordEvents(42, replayRequest("employee-bob"), requestMeta);
 
-    expect(mocks.updateSession).toHaveBeenNthCalledWith(1, {
+    expect(mocks.resolveReplaySession).toHaveBeenNthCalledWith(1, {
       userId: "shared-fingerprint",
       identifiedUserId: "employee-alice",
       siteId: 42,
+      hasFullSnapshot: true,
     });
-    expect(mocks.updateSession).toHaveBeenNthCalledWith(2, {
+    expect(mocks.resolveReplaySession).toHaveBeenNthCalledWith(2, {
       userId: "shared-fingerprint",
       identifiedUserId: "employee-bob",
       siteId: 42,
+      hasFullSnapshot: true,
     });
 
     const insertedRows = mocks.insert.mock.calls.flatMap(call => call[0].values);
@@ -104,12 +108,84 @@ describe("SessionReplayIngestService identity", () => {
 
     await service.recordEvents(42, replayRequest(""), requestMeta);
 
-    expect(mocks.generateUserId).toHaveBeenCalledWith(requestMeta.ipAddress, requestMeta.userAgent, 42);
-    expect(mocks.updateSession).toHaveBeenCalledWith({
+    expect(mocks.generateUserId).toHaveBeenCalledWith(
+      requestMeta.ipAddress,
+      requestMeta.userAgent,
+      42,
+      expect.objectContaining({ saltUserIds: undefined })
+    );
+    expect(mocks.resolveReplaySession).toHaveBeenCalledWith({
       userId: "shared-fingerprint",
       identifiedUserId: "",
       siteId: 42,
+      hasFullSnapshot: true,
     });
+  });
+
+  it("hashes the persistent client id, as event ingestion does, instead of the fingerprint", async () => {
+    mocks.generateUserIdFromClientId.mockResolvedValue("client-hash");
+    const receivedAt = new Date("2026-01-01T23:59:59.900Z");
+    const service = new SessionReplayIngestService();
+
+    await service.recordEvents(42, replayRequest(""), {
+      ...requestMeta,
+      anonymousId: "client-123",
+      saltUserIds: false,
+      receivedAt,
+    });
+
+    expect(mocks.generateUserId).not.toHaveBeenCalled();
+    expect(mocks.generateUserIdFromClientId).toHaveBeenCalledWith("client-123", 42, {
+      saltUserIds: false,
+      receivedAt,
+    });
+    expect(mocks.resolveReplaySession).toHaveBeenCalledWith({
+      userId: "client-hash",
+      identifiedUserId: "",
+      siteId: 42,
+      hasFullSnapshot: true,
+    });
+    expect(new Set(mocks.insert.mock.calls.flatMap(call => call[0].values).map(row => row.user_id))).toEqual(
+      new Set(["client-hash"])
+    );
+  });
+});
+
+describe("SessionReplayIngestService session rollover", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.generateUserId.mockResolvedValue("fingerprint");
+    mocks.insert.mockResolvedValue(undefined);
+    mocks.chargeReplaySessionBudget.mockResolvedValue({ accepted: true, usedBytes: 0 });
+    mocks.r2Enabled = false;
+  });
+
+  it("tells session resolution whether the batch carries a full snapshot", async () => {
+    mocks.resolveReplaySession.mockResolvedValue({ sessionId: "session-1", needsFullSnapshot: false });
+    const service = new SessionReplayIngestService();
+    const batch = (types: (number | string)[]) => ({
+      userId: "",
+      events: types.map(type => ({ type, data: {}, timestamp: Date.now() })),
+    });
+
+    await service.recordEvents(42, batch([3, 3]), requestMeta);
+    await service.recordEvents(42, batch([3, "4", "2", 3]), requestMeta);
+
+    expect(mocks.resolveReplaySession.mock.calls.map(([args]) => args.hasFullSnapshot)).toEqual([false, true]);
+  });
+
+  it("stores the batch where resolution put it and passes on its snapshot request", async () => {
+    mocks.resolveReplaySession.mockResolvedValue({ sessionId: "session-previous", needsFullSnapshot: true });
+    const service = new SessionReplayIngestService();
+
+    const result = await service.recordEvents(
+      42,
+      { userId: "", events: [{ type: 3, data: {}, timestamp: Date.now() }] },
+      requestMeta
+    );
+
+    expect(result).toEqual({ capped: false, needsFullSnapshot: true });
+    expect(mocks.insert.mock.calls[0][0].values[0].session_id).toBe("session-previous");
   });
 });
 
@@ -117,7 +193,7 @@ describe("SessionReplayIngestService size cap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.generateUserId.mockResolvedValue("fingerprint");
-    mocks.updateSession.mockResolvedValue({ sessionId: "session-1" });
+    mocks.resolveReplaySession.mockResolvedValue({ sessionId: "session-1" });
     mocks.insert.mockResolvedValue(undefined);
     mocks.storeBatch.mockResolvedValue("r2-key");
     mocks.r2Enabled = true;
@@ -172,7 +248,7 @@ describe("SessionReplayIngestService batch serialization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.generateUserId.mockResolvedValue("fingerprint");
-    mocks.updateSession.mockResolvedValue({ sessionId: "session-1" });
+    mocks.resolveReplaySession.mockResolvedValue({ sessionId: "session-1" });
     mocks.insert.mockResolvedValue(undefined);
     mocks.chargeReplaySessionBudget.mockResolvedValue({ accepted: true, usedBytes: 0 });
     mocks.storeBatch.mockResolvedValue("r2-key");

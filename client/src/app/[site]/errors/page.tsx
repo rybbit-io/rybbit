@@ -5,7 +5,7 @@ import { useGetErrorNamesPaginated } from "@/api/analytics/hooks/errors/useGetEr
 import { ErrorNameItem } from "@/api/analytics/endpoints";
 import { Pagination } from "@/components/pagination";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
-import { useStore } from "@/lib/store";
+import { useStore, useTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
@@ -20,12 +20,22 @@ const PAGE_SIZE = 10;
 
 export default function Errors() {
   const t = useExtracted();
-  const { site } = useStore();
+  const { site, time, filters } = useStore();
+  const timeZone = useTimezone();
 
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: PAGE_SIZE,
-  });
+  // Anything that changes which errors are listed sends the pager back to page one, and keeps it there:
+  // returning to an earlier scope starts on page one too, not on the page it was left at.
+  const scope = JSON.stringify([site, time, filters, timeZone]);
+  const [pageState, setPageState] = useState({ scope, pageIndex: 0 });
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  if (pageState.scope !== scope) {
+    setPageState({ scope, pageIndex: 0 });
+  }
+  const pagination = { pageIndex: pageState.scope === scope ? pageState.pageIndex : 0, pageSize };
+  const setPagination = (next: { pageIndex: number; pageSize: number }) => {
+    setPageState({ scope, pageIndex: next.pageIndex });
+    setPageSize(next.pageSize);
+  };
   const [totalPages, setTotalPages] = useState(0);
 
   useSetPageTitle("Errors");
@@ -70,7 +80,13 @@ export default function Errors() {
   useEffect(() => {
     if (!isLoadingErrors && !isPlaceholderData && !isFetching) {
       if (totalCount !== undefined) {
-        setTotalPages(Math.ceil(totalCount / pagination.pageSize));
+        const pageCount = Math.ceil(totalCount / pagination.pageSize);
+        setTotalPages(pageCount);
+        // The list can shrink under the current page (a refetch, a rolling window): step back to the last
+        // page that has rows instead of showing an empty one.
+        if (pagination.pageIndex > 0 && pagination.pageIndex >= pageCount) {
+          setPageState({ scope, pageIndex: Math.max(pageCount - 1, 0) });
+        }
       } else if (errorsDataArray && errorsDataArray.length === 0 && pagination.pageIndex === 0) {
         // Fallback if totalCount is somehow undefined but we have an empty array on page 1
         setTotalPages(0);
@@ -91,6 +107,7 @@ export default function Errors() {
     isFetching,
     pagination.pageIndex,
     pagination.pageSize,
+    scope,
   ]);
 
   if (!site) {

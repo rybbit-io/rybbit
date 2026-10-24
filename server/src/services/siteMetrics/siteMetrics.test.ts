@@ -166,6 +166,15 @@ describe("site metrics", () => {
       expect(sql.match(/INNER JOIN FilteredSessions USING \(session_id\)/g)).toHaveLength(2);
       expect(sql).toContain("countIf(type = 'pageview') AS pageviews");
     });
+
+    it("reads weekly (Date) buckets as DateTimes in the report timezone", () => {
+      const sql = buildChartQuery(pdfSpec, "toStartOfWeek");
+
+      expect(sql).toContain(
+        "toString(toDateTime(toStartOfWeek(toTimeZone(session_start, {timeZone:String})), {timeZone:String}))"
+      );
+      expect(sql).not.toContain("toTimeZone(toStartOfWeek(");
+    });
   });
 
   describe("buildMetricsSpec", () => {

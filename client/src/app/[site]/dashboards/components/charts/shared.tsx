@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 import { formatter } from "@/lib/utils";
 import { CARD_PALETTE } from "../../utils";
@@ -63,6 +64,26 @@ export function CardLegend({ series }: { series: CardSeries[] }) {
       ))}
     </div>
   );
+}
+
+/**
+ * Tracks an element's content size. Returns a callback ref rather than taking a
+ * ref object: cards render <ChartEmpty /> until their data can be drawn, so the
+ * measured element may mount after the first render, and a mount-time effect
+ * would never observe it.
+ */
+export function useElementSize<T extends HTMLElement>() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const ref = useCallback((el: T | null) => {
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const rect = entries[0]?.contentRect;
+      if (rect) setSize({ width: rect.width, height: rect.height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, size] as const;
 }
 
 export function ChartEmpty({ message = "Configure chart columns to render this card" }: { message?: string }) {

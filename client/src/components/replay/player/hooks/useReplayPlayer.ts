@@ -37,6 +37,7 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
 
       let newPlayer: any = null;
       let handleVisibilityChange: (() => void) | null = null;
+      let durationTimeout: ReturnType<typeof setTimeout> | undefined;
 
       try {
         // Initialize rrweb player
@@ -87,7 +88,7 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
         });
 
         // Get the initial duration from the player
-        setTimeout(() => {
+        durationTimeout = setTimeout(() => {
           const playerDuration = newPlayer.getMetaData().totalTime;
           if (playerDuration && isActive()) {
             setDuration(playerDuration);
@@ -132,18 +133,27 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
       }
 
       return () => {
-        // Proper cleanup
-        if (newPlayer) {
-          newPlayer.pause();
-        }
-        if (playerContainerRef.current) {
-          playerContainerRef.current.innerHTML = "";
-        }
+        // A destroyed player has no methods left for the duration read to call.
+        clearTimeout(durationTimeout);
         if (handleVisibilityChange) {
           document.removeEventListener("visibilitychange", handleVisibilityChange);
         }
         playerRef.current = null;
         unregisterPlayer(newPlayer);
+        // rrweb-player's fullscreen listeners on document hold the component,
+        // its Replayer and the whole recording until $destroy removes them, so
+        // emptying the container alone leaks every replay that was opened.
+        if (newPlayer) {
+          try {
+            newPlayer.getReplayer().destroy();
+          } catch (error) {
+            console.error("Failed to destroy rrweb replayer:", error);
+          }
+          newPlayer.$destroy();
+        }
+        if (playerContainerRef.current) {
+          playerContainerRef.current.innerHTML = "";
+        }
       };
     }
   }, [data, registerPlayer, unregisterPlayer, setCurrentTime, setIsPlaying, setDuration]);

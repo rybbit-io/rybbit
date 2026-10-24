@@ -186,8 +186,10 @@ export function buildBreakdownQuery(dimension: BreakdownDimension, spec: SiteMet
 export function buildChartQuery(spec: SiteMetricsSpec, bucketFn: ChartBucketFunction): string {
   const { timeStatement, filteredSessionsCTE } = spec;
   const sessionJoin = filteredSessionsCTE ? "INNER JOIN FilteredSessions USING (session_id)" : "";
+  // toStartOfWeek returns a Date, which toTimeZone rejects; toDateTime takes
+  // both and reads a Date as midnight in the report timezone.
   const bucket = (column: string) =>
-    `toString(toTimeZone(${bucketFn}(toTimeZone(${column}, {timeZone:String})), {timeZone:String}))`;
+    `toString(toDateTime(${bucketFn}(toTimeZone(${column}, {timeZone:String})), {timeZone:String}))`;
 
   return `
     WITH

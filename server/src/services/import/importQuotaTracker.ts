@@ -6,6 +6,15 @@ import { eq } from "drizzle-orm";
 import { processResults } from "../../api/analytics/utils/utils.js";
 import { getBestSubscription, type SubscriptionInfo } from "../../lib/subscriptionUtils.js";
 import { IS_CLOUD } from "../../lib/const.js";
+import { createServiceLogger } from "../../lib/logger/logger.js";
+import { importQuotaReserve } from "../../db/redis/redis.js";
+
+const logger = createServiceLogger("import-quota");
+
+// How long an organization's shared quota counts live in Redis after its last batch. It must
+// outlast a cached tracker (see importQuotaManager): when the counts expire, a new tracker
+// reseeds them from ClickHouse, which by then holds every event reserved before.
+export const IMPORT_QUOTA_TTL_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Get the number of months of historical data allowed for import based on subscription tier
@@ -33,11 +42,19 @@ export class ImportQuotaTracker {
   private monthlyUsage: Map<string, number>;
   private readonly monthlyLimit: number;
   private readonly oldestAllowedMonth: string;
+  // Keys the shared Redis counts; null keeps all accounting in this process.
+  private readonly organizationId: string | null;
 
-  private constructor(monthlyUsage: Map<string, number>, monthlyLimit: number, oldestAllowedMonth: string) {
+  private constructor(
+    monthlyUsage: Map<string, number>,
+    monthlyLimit: number,
+    oldestAllowedMonth: string,
+    organizationId: string | null = null
+  ) {
     this.monthlyUsage = monthlyUsage;
     this.monthlyLimit = monthlyLimit;
     this.oldestAllowedMonth = oldestAllowedMonth;
+    this.organizationId = organizationId;
   }
 
   static async create(organizationId: string): Promise<ImportQuotaTracker> {
@@ -71,12 +88,12 @@ export class ImportQuotaTracker {
     const siteIds = siteRecords.map(s => s.siteId);
 
     if (siteIds.length === 0) {
-      return new ImportQuotaTracker(new Map(), monthlyLimit, oldestAllowedMonth);
+      return new ImportQuotaTracker(new Map(), monthlyLimit, oldestAllowedMonth, organizationId);
     }
 
     const monthlyUsage = await ImportQuotaTracker.queryMonthlyUsage(siteIds, oldestAllowedDate.toFormat("yyyy-MM-dd"));
 
-    return new ImportQuotaTracker(monthlyUsage, monthlyLimit, oldestAllowedMonth);
+    return new ImportQuotaTracker(monthlyUsage, monthlyLimit, oldestAllowedMonth, organizationId);
   }
 
   private static async queryMonthlyUsage(siteIds: number[], startDate: string): Promise<Map<string, number>> {
@@ -154,57 +171,122 @@ export class ImportQuotaTracker {
   }
 
   /**
-   * Atomically check and reserve quota for a batch of events.
-   * This method prevents race conditions by checking all events in a batch
-   * and atomically updating usage counts for all months at once.
+   * The month (yyyyMM) each timestamp counts against, or null when it can't be imported:
+   * malformed, in the future, or older than the plan's historical window. Self-hosted
+   * (unlimited) has no window, so any past timestamp maps to "".
+   */
+  private monthsFor(timestamps: string[]): Array<string | null> {
+    const now = DateTime.utc();
+    const unlimited = this.monthlyLimit === Infinity;
+
+    return timestamps.map(timestamp => {
+      // Mappers emit the explicit-UTC ISO form that ClickHouse is given.
+      const dt = DateTime.fromISO(timestamp, { zone: "utc", setZone: true });
+      if (!dt.isValid || dt > now) return null;
+      if (unlimited) return "";
+
+      const month = dt.toFormat("yyyyMM");
+      return month < this.oldestAllowedMonth ? null : month;
+    });
+  }
+
+  private static countPerMonth(months: Array<string | null>): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const month of months) {
+      if (month !== null) counts.set(month, (counts.get(month) ?? 0) + 1);
+    }
+    return counts;
+  }
+
+  /** Indices of the events admitted: the first `granted` events of each month, in batch order. */
+  private static admit(months: Array<string | null>, granted: Map<string, number>): number[] {
+    const admitted = new Map<string, number>();
+    const allowedIndices: number[] = [];
+
+    months.forEach((month, index) => {
+      if (month === null) return;
+      const count = admitted.get(month) ?? 0;
+      if (count < (granted.get(month) ?? 0)) {
+        allowedIndices.push(index);
+        admitted.set(month, count + 1);
+      }
+    });
+
+    return allowedIndices;
+  }
+
+  private addUsage(granted: Map<string, number>): void {
+    for (const [month, grant] of granted) {
+      this.monthlyUsage.set(month, (this.monthlyUsage.get(month) ?? 0) + grant);
+    }
+  }
+
+  /**
+   * Check and reserve quota for a batch of events using only this process's accounting.
+   * Every month in the batch is granted at most what's left of its limit, all at once,
+   * so a batch can't overshoot.
+   *
+   * With several cluster workers this only sees reservations made on this worker; use
+   * reserveBatch, which falls back to this when Redis is unavailable.
    *
    * @param timestamps - Array of event timestamps to check
    * @returns Array of indices indicating which events can be imported
    */
   canImportBatch(timestamps: string[]): number[] {
-    const allowedIndices: number[] = [];
-    const monthlyIncrements = new Map<string, number>();
-    const now = DateTime.utc();
-    const unlimited = this.monthlyLimit === Infinity;
+    const months = this.monthsFor(timestamps);
+    const requested = ImportQuotaTracker.countPerMonth(months);
+    const granted = new Map<string, number>();
 
-    for (let i = 0; i < timestamps.length; i++) {
-      const timestamp = timestamps[i];
-      // Mappers emit the explicit-UTC ISO form that ClickHouse is given.
-      const dt = DateTime.fromISO(timestamp, { zone: "utc", setZone: true });
-
-      if (!dt.isValid || dt > now) {
-        continue;
-      }
-
-      if (unlimited) {
-        // Self-hosted: no quota accounting and no tier-based historical window,
-        // but malformed and future timestamps are still rejected.
-        allowedIndices.push(i);
-        continue;
-      }
-
-      const month = dt.toFormat("yyyyMM");
-      if (month < this.oldestAllowedMonth) {
-        continue;
-      }
-
-      const currentUsage = this.monthlyUsage.get(month) || 0;
-      const incrementInBatch = monthlyIncrements.get(month) || 0;
-      const totalUsage = currentUsage + incrementInBatch;
-
-      if (totalUsage < this.monthlyLimit) {
-        allowedIndices.push(i);
-        monthlyIncrements.set(month, incrementInBatch + 1);
-      }
+    for (const [month, count] of requested) {
+      // Self-hosted: no quota accounting, but malformed and future timestamps are still rejected.
+      const remaining = this.monthlyLimit - (this.monthlyUsage.get(month) ?? 0);
+      granted.set(month, Math.max(0, Math.min(count, remaining)));
     }
 
-    // Atomically apply all increments at once
-    for (const [month, increment] of monthlyIncrements) {
-      const current = this.monthlyUsage.get(month) || 0;
-      this.monthlyUsage.set(month, current + increment);
+    if (this.monthlyLimit !== Infinity) this.addUsage(granted);
+    return ImportQuotaTracker.admit(months, granted);
+  }
+
+  /**
+   * Check and reserve quota for a batch against the organization's counts in Redis, which
+   * every cluster worker shares, so parallel batches can't each spend the same remaining
+   * quota. Falls back to this process's accounting if Redis fails, so imports never stall.
+   */
+  async reserveBatch(timestamps: string[]): Promise<number[]> {
+    if (this.monthlyLimit === Infinity || !this.organizationId) {
+      return this.canImportBatch(timestamps);
     }
 
-    return allowedIndices;
+    const months = this.monthsFor(timestamps);
+    const requests = [...ImportQuotaTracker.countPerMonth(months)].map(([month, requested]) => ({
+      month,
+      // ClickHouse usage when this tracker was built plus anything this process has reserved
+      // since. The shared count adopts it when higher, e.g. once live traffic has landed.
+      baseline: this.monthlyUsage.get(month) ?? 0,
+      requested,
+    }));
+    if (requests.length === 0) return [];
+
+    let grantedCounts: number[];
+    try {
+      grantedCounts = await importQuotaReserve(
+        `import:quota:${this.organizationId}`,
+        this.monthlyLimit,
+        IMPORT_QUOTA_TTL_MS,
+        requests
+      );
+    } catch (error) {
+      logger.warn(
+        { err: error, organizationId: this.organizationId },
+        "Import quota Redis call failed; using this process's counts"
+      );
+      return this.canImportBatch(timestamps);
+    }
+
+    const granted = new Map(requests.map((request, index) => [request.month, grantedCounts[index]]));
+    // Mirror the reservation so the in-process fallback stays close if Redis drops out later.
+    this.addUsage(granted);
+    return ImportQuotaTracker.admit(months, granted);
   }
 
   getOldestAllowedMonth(): string {

@@ -118,21 +118,20 @@ function getControlVariant(variants: string[], rows: ExperimentResultRow[]) {
   return variants.find(variant => variant === "control") || variants[0] || rows[0]?.variant || null;
 }
 
+/**
+ * One result per configured variant. Rows for any other value (the "false" recorded for
+ * sessions outside the rollout, or a variant since removed from the flag) are not arms of the
+ * experiment and are left out.
+ */
 export function buildExperimentResults(variants: string[], rows: ExperimentResultRow[]) {
-  const resultMap = new Map(rows.map(row => [row.variant, row]));
-  const allVariants = [...variants];
+  const armRows = rows.filter(row => variants.includes(row.variant));
+  const resultMap = new Map(armRows.map(row => [row.variant, row]));
 
-  for (const row of rows) {
-    if (!allVariants.includes(row.variant)) {
-      allVariants.push(row.variant);
-    }
-  }
-
-  const controlVariant = getControlVariant(allVariants, rows);
+  const controlVariant = getControlVariant(variants, armRows);
   const controlRow = controlVariant ? resultMap.get(controlVariant) : undefined;
   const controlRate = controlRow && controlRow.sessions > 0 ? controlRow.conversions / controlRow.sessions : null;
 
-  return allVariants.map(variant => {
+  return variants.map(variant => {
     const row = resultMap.get(variant);
     const sessions = row?.sessions ?? 0;
     const exposures = row?.exposures ?? 0;

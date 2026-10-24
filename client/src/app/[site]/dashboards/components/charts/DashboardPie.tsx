@@ -2,11 +2,11 @@
 
 import type { DashboardCardMapping } from "@rybbit/shared";
 import * as d3 from "d3";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CustomQueryRow } from "@/api/analytics/endpoints";
 import { buildPieData, formatValue } from "../../utils";
-import { CardLegend, cardColor, ChartEmpty, DashboardTooltip, type CardSeries } from "./shared";
+import { CardLegend, cardColor, ChartEmpty, DashboardTooltip, type CardSeries, useElementSize } from "./shared";
 
 type DashboardPieProps = {
   rows: CustomQueryRow[];
@@ -24,18 +24,7 @@ export function DashboardPie({ rows, mapping }: DashboardPieProps) {
 
   const total = useMemo(() => slices.reduce((sum, slice) => sum + slice.value, 0), [slices]);
 
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  useEffect(() => {
-    if (!wrapperRef.current) return;
-    const el = wrapperRef.current;
-    const ro = new ResizeObserver(entries => {
-      const rect = entries[0]?.contentRect;
-      if (rect) setSize({ width: rect.width, height: rect.height });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const [wrapperRef, size] = useElementSize<HTMLDivElement>();
 
   const [hover, setHover] = useState<{ index: number; clientX: number; clientY: number } | null>(null);
 

@@ -2,10 +2,10 @@
 
 import type { DashboardCardMapping } from "@rybbit/shared";
 import NumberFlow from "@number-flow/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { CustomQueryRow } from "@/api/analytics/endpoints";
 import { formatValue, getStatValue } from "../../utils";
-import { ChartEmpty } from "./shared";
+import { ChartEmpty, useElementSize } from "./shared";
 
 type DashboardStatProps = {
   rows: CustomQueryRow[];
@@ -18,18 +18,7 @@ export function DashboardStat({ rows, mapping }: DashboardStatProps) {
   const format = mapping.valueFormat ?? "number";
 
   // Scale the figure to the card: track size, derive a font size from it.
-  const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  useEffect(() => {
-    if (!ref.current) return;
-    const el = ref.current;
-    const ro = new ResizeObserver(entries => {
-      const rect = entries[0]?.contentRect;
-      if (rect) setSize({ width: rect.width, height: rect.height });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const [ref, size] = useElementSize<HTMLDivElement>();
 
   if (!stat) {
     return <ChartEmpty message="No numeric value to display. Return a single number, e.g. SELECT count() AS total." />;

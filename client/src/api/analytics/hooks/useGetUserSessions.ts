@@ -1,6 +1,6 @@
 import { Time } from "../../../components/DateSelector/types";
 import { SESSION_PAGE_FILTERS, USER_DETAIL_PAGE_FILTERS } from "../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../lib/store";
+import { getFilteredFilters } from "../../../lib/store";
 import {
   GetSessionsResponse,
   SessionPageviewsAndEvents,
@@ -128,17 +128,15 @@ export function useGetLiveSessions(staleTime: number) {
 }
 
 export function useGetSessionDetailsInfinite(sessionId: string | null) {
-  const time = useStore(state => state.time);
-  // In past-minutes mode the session detail endpoint takes the window as a
-  // minute count rather than a date range.
-  const minutes = time.mode === "past-minutes" ? time.pastMinutesStart : undefined;
-
+  // A known session's details are the whole session, whatever window listed it.
+  // The user page lists other days and full histories, so clipping to a rolling
+  // past-minutes window (the endpoint's `minutes`) cut sessions off or 404ed them.
   return useAnalyticsInfiniteQuery<SessionPageviewsAndEvents>({
     key: ["session-details-infinite", sessionId],
     path: `sessions/${sessionId}`,
     useTime: false,
     useFilters: false,
-    params: { limit: 100, minutes },
+    params: { limit: 100 },
     initialPageParam: 0,
     pageParams: offset => ({ offset }),
     getNextPageParam: lastPage =>
