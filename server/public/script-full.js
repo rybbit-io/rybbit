@@ -1387,6 +1387,7 @@
   };
 
   // webVitals.ts
+  var SEND_DELAY_MS = 2e4;
   var WebVitalsCollector = class {
     constructor(onReady) {
       this.data = {
@@ -1403,21 +1404,18 @@
     }
     initialize() {
       try {
-        x(this.collectMetric.bind(this));
-        L(this.collectMetric.bind(this));
-        S(this.collectMetric.bind(this));
+        x(this.collectMetric.bind(this), { reportAllChanges: true });
+        L(this.collectMetric.bind(this), { reportAllChanges: true });
+        S(this.collectMetric.bind(this), { reportAllChanges: true });
         E(this.collectMetric.bind(this));
         $(this.collectMetric.bind(this));
-        this.timeout = setTimeout(() => {
-          if (!this.sent) {
-            this.sendData();
-          }
-        }, 2e4);
-        window.addEventListener("beforeunload", () => {
-          if (!this.sent) {
+        this.timeout = setTimeout(() => this.sendData(), SEND_DELAY_MS);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") {
             this.sendData();
           }
         });
+        window.addEventListener("pagehide", () => this.sendData());
       } catch (e2) {
         console.warn("Error initializing web vitals tracking:", e2);
       }
@@ -1426,10 +1424,6 @@
       if (this.sent) return;
       const metricName = metric.name.toLowerCase();
       this.data[metricName] = metric.value;
-      const allCollected = Object.values(this.data).every((value) => value !== null);
-      if (allCollected) {
-        this.sendData();
-      }
     }
     sendData() {
       if (this.sent) return;
