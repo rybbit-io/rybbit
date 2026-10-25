@@ -410,6 +410,22 @@ export const Badge = ({ children, tone }: { children: React.ReactNode; tone: "da
   </span>
 );
 
+/** A solid bar drawn as a table cell, which Outlook sizes where it ignores div heights. */
+export const Bar = ({ width, height, fill }: { width: number; height: number; fill: string }) => (
+  <table {...table} width={width} style={{ width }}>
+    <tbody>
+      <tr>
+        <td
+          height={height}
+          style={{ height, width, backgroundColor: fill, borderRadius: "2px 2px 0 0", fontSize: 0, lineHeight: "0px" }}
+        >
+          &nbsp;
+        </td>
+      </tr>
+    </tbody>
+  </table>
+);
+
 interface MeterProps {
   used: string;
   of: string;

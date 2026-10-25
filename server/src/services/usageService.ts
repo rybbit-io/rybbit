@@ -22,6 +22,7 @@ import {
   subscriptionIncludesReplay,
   SubscriptionInfo,
 } from "../lib/subscriptionUtils.js";
+import { trialGraceEmails } from "./trialGrace/trialGraceEmails.js";
 
 type UsageUpdateCallback = () => void;
 
@@ -248,7 +249,12 @@ class UsageService {
     const stripeSub = stripeSubscriptionInfoFromSnapshot(stripeSubscriptions, orgData.stripeCustomerId);
     // A failed plan lookup throws, so the caller skips this org and keeps its current blocks
     // instead of treating a paying organization as free.
-    const subscription = await getBestSubscriptionFromStripeSub(orgData.id, stripeSub, { throwOnError: true });
+    const subscription = await getBestSubscriptionFromStripeSub(
+      orgData.id,
+      stripeSub,
+      { throwOnError: true },
+      orgData.stripeCustomerId ? stripeSubscriptions.get(orgData.stripeCustomerId) : null
+    );
 
     // Log subscription details
     if (subscription.source === "appsumo") {
@@ -258,6 +264,10 @@ class UsageService {
     } else if (subscription.source === "stripe") {
       this.logger.info(
         `Organization ${orgData.name} using Stripe ${subscription.planName} (${subscription.interval}) with ${subscription.eventLimit} events/month`
+      );
+    } else if (subscription.source === "free" && subscription.trialGrace) {
+      this.logger.info(
+        `Organization ${orgData.name} in its post-trial grace period until ${subscription.trialGrace.endsAt.toISOString()} with ${subscription.eventLimit} events/month`
       );
     } else {
       this.logger.info(`Organization ${orgData.name} on free tier with ${subscription.eventLimit} events/month`);
@@ -381,7 +391,7 @@ class UsageService {
       // Step 3: Build a map of organizationId -> { sites, eventCount, replayCount }
       const orgDataMap = new Map<
         string,
-        { sites: OrgSite[]; siteUsage: SiteUsage[]; eventCount: number; replayCount: number }
+        { sites: Array<OrgSite & { domain: string }>; siteUsage: SiteUsage[]; eventCount: number; replayCount: number }
       >();
       for (const site of allSites) {
         const orgData = orgDataMap.get(site.organizationId) || {
@@ -391,8 +401,9 @@ class UsageService {
           replayCount: 0,
         };
         const siteEvents = eventCountMap.get(site.siteId) || 0;
-        orgData.sites.push({ siteId: site.siteId, createdAt: site.createdAt });
-        orgData.siteUsage.push({ domain: site.domain ?? String(site.siteId), events: siteEvents });
+        const domain = site.domain ?? String(site.siteId);
+        orgData.sites.push({ siteId: site.siteId, createdAt: site.createdAt, domain });
+        orgData.siteUsage.push({ domain, events: siteEvents });
         orgData.eventCount += siteEvents;
         orgData.replayCount += replayCountMap.get(site.siteId) || 0;
         orgDataMap.set(site.organizationId, orgData);
@@ -505,6 +516,14 @@ class UsageService {
                 { organizationId: orgData.id },
                 "No organization owners found; skipping approaching-limit email"
               );
+            }
+          }
+
+          if (subscription.source === "free" && subscription.trialGrace) {
+            try {
+              await trialGraceEmails.sendDue(orgData, subscription.trialGrace, orgSites);
+            } catch (error) {
+              this.logger.error({ err: error, organizationId: orgData.id }, "Failed to send trial grace emails");
             }
           }
 
