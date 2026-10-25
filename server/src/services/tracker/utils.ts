@@ -1,4 +1,5 @@
 import UAParser, { UAParser as userAgentParser } from "ua-parser-js";
+import type { LocationResponse } from "../../db/geolocation/types.js";
 import { userIdService } from "../userId/userIdService.js";
 import type { TrackingRequest } from "./trackingRequest.js";
 import { TrackingPayload } from "./types.js";
@@ -14,6 +15,7 @@ export type TotalTrackingPayload = TrackingPayload & {
   userAgent: string;
   referrer: string;
   ipAddress: string;
+  location?: LocationResponse;
   storeIp?: boolean;
   lcp?: number;
   cls?: number;
@@ -149,6 +151,7 @@ export async function createBasePayload(trackingRequest: TrackingRequest): Promi
     referrer: payload.referrer || "",
     type: payload.type,
     ipAddress: ipAddress,
+    location: trackingRequest.location,
     timestamp: trackingRequest.receivedAt.toISOString(),
     ua: parseUserAgent(userAgent),
     userAgent,
