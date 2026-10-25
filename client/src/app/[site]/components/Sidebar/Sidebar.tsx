@@ -187,7 +187,7 @@ function SidebarContent() {
           href={getTabPath("errors")}
           icon={<AlertTriangle className="w-4 h-4" />}
         />
-        {IS_CLOUD && !isMobileSite && (
+        {!isMobileSite && (
           <SidebarComponents.Item
             label={t("Performance")}
             active={isActiveTab("performance")}
