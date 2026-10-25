@@ -8,7 +8,7 @@ import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { processResults } from "../../api/analytics/utils/utils.js";
 import { getTimeStatement } from "../../api/analytics/utils/timeWindow.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
-import { sendWeeklyReportEmail } from "../../lib/email/email.js";
+import { sendWeeklyDigestEmail, sendWeeklyReportEmail } from "../../lib/email/email.js";
 import { filterSitesByMemberAccess } from "../../lib/access.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import {
@@ -18,9 +18,65 @@ import {
   buildOverviewQuery,
   SiteMetricsSpec,
 } from "../siteMetrics/siteMetrics.js";
-import type { DailySessions, OverviewData, MetricData, SiteReport, OrganizationReport } from "./weeklyReportTypes.js";
+import type { DailySessions, DigestSite, OverviewData, MetricData, SiteReport } from "./weeklyReportTypes.js";
 
-const MAX_SITE_REPORTS_PER_ORG = 10;
+/** The reported week and the one before it, as whole UTC days. */
+interface ReportWindow {
+  currentWeekStart: DateTime;
+  /** Exclusive: midnight after the last reported day. */
+  currentWeekEnd: DateTime;
+  previousWeekStart: DateTime;
+}
+
+/** Pageviews in each week. */
+interface SiteActivity {
+  current: number;
+  previous: number;
+}
+
+interface RecipientSite {
+  siteId: number;
+  name: string;
+  domain: string;
+  organizationId: string;
+  organizationName: string;
+}
+
+interface Recipient {
+  userId: string;
+  email: string;
+  sites: RecipientSite[];
+}
+
+/** Per-run state, so a site shared by many members is queried once. */
+interface ReportRun {
+  window: ReportWindow;
+  activity: Map<number, SiteActivity>;
+  reports: Map<number, Promise<SiteReport | null>>;
+  digestSites: Map<number, Promise<DigestSite | null>>;
+}
+
+// Format dates for ClickHouse (YYYY-MM-DD HH:mm:ss). The windows are UTC, and
+// getTimeStatement anchors the comparison in UTC too — the bound
+// `toDateTime({date:String})` this replaced was interpreted in the ClickHouse
+// server's timezone, so a non-UTC server shifted the week.
+const formatDate = (date: DateTime) => date.toFormat("yyyy-MM-dd HH:mm:ss");
+
+const specFor = (from: DateTime, to: DateTime): SiteMetricsSpec => ({
+  timeStatement: getTimeStatement({
+    start_datetime: formatDate(from),
+    end_datetime: formatDate(to),
+  }),
+});
+
+const memo = <T>(cache: Map<number, Promise<T>>, key: number, load: () => Promise<T>): Promise<T> => {
+  let value = cache.get(key);
+  if (!value) {
+    value = load();
+    cache.set(key, value);
+  }
+  return value;
+};
 
 class WeeklyReportService {
   private cronTask: cron.ScheduledTask | null = null;
@@ -95,34 +151,16 @@ class WeeklyReportService {
     }
   }
 
-  private async generateSiteReport(siteId: number, siteName: string, siteDomain: string): Promise<SiteReport | null> {
+  private async generateSiteReport(
+    siteId: number,
+    siteName: string,
+    siteDomain: string,
+    window: ReportWindow
+  ): Promise<SiteReport | null> {
     try {
-      // Whole UTC days, so the report covers exactly Monday to Sunday when the
-      // cron fires at Monday midnight and the chart has one bar per day.
-      const today = DateTime.utc().startOf("day");
-
-      // Calculate current week (the last 7 full days)
-      const currentWeekEnd = today;
-      const currentWeekStart = today.minus({ days: 7 });
-
-      // Calculate previous week (8-14 days ago)
-      const previousWeekEnd = currentWeekStart;
-      const previousWeekStart = currentWeekStart.minus({ days: 7 });
-
-      // Format dates for ClickHouse (YYYY-MM-DD HH:mm:ss). The windows above are
-      // UTC, and getTimeStatement anchors the comparison in UTC too — the bound
-      // `toDateTime({date:String})` this replaced was interpreted in the
-      // ClickHouse server's timezone, so a non-UTC server shifted the week.
-      const formatDate = (date: DateTime) => date.toFormat("yyyy-MM-dd HH:mm:ss");
-      const specFor = (from: DateTime, to: DateTime): SiteMetricsSpec => ({
-        timeStatement: getTimeStatement({
-          start_datetime: formatDate(from),
-          end_datetime: formatDate(to),
-        }),
-      });
-
+      const { currentWeekStart, currentWeekEnd, previousWeekStart } = window;
       const currentSpec = specFor(currentWeekStart, currentWeekEnd);
-      const previousSpec = specFor(previousWeekStart, previousWeekEnd);
+      const previousSpec = specFor(previousWeekStart, currentWeekStart);
 
       const [currentWeek, previousWeek, daily, topCountries, topPages, topReferrers, deviceBreakdown] =
         await Promise.all([
@@ -171,122 +209,220 @@ class WeeklyReportService {
     }
   }
 
-  private async generateOrganizationReport(organizationId: string): Promise<OrganizationReport | null> {
+  /**
+   * Pageviews per site in each of the two weeks, for every site that had any. One scan
+   * instead of a report query per site: most sites are idle and get no email.
+   */
+  private async fetchSiteActivity(window: ReportWindow): Promise<Map<number, SiteActivity>> {
+    const result = await clickhouse.query({
+      query: `
+        SELECT
+          site_id,
+          countIf(timestamp >= toDateTime({currentStart:String}, 'UTC')) AS current,
+          countIf(timestamp < toDateTime({currentStart:String}, 'UTC')) AS previous
+        FROM events
+        WHERE type = 'pageview'
+          AND timestamp >= toDateTime({previousStart:String}, 'UTC')
+          AND timestamp < toDateTime({end:String}, 'UTC')
+        GROUP BY site_id
+      `,
+      format: "JSONEachRow",
+      query_params: {
+        previousStart: formatDate(window.previousWeekStart),
+        currentStart: formatDate(window.currentWeekStart),
+        end: formatDate(window.currentWeekEnd),
+      },
+    });
+    const rows = await processResults<{ site_id: number; current: number; previous: number }>(result);
+    return new Map(
+      rows.map(row => [Number(row.site_id), { current: Number(row.current), previous: Number(row.previous) }])
+    );
+  }
+
+  private async fetchLastPageviewAt(siteId: number, since: DateTime): Promise<string | null> {
+    const result = await clickhouse.query({
+      query: `
+        SELECT max(timestamp) AS last
+        FROM events
+        WHERE site_id = {siteId:Int32}
+          AND type = 'pageview'
+          AND timestamp >= toDateTime({since:String}, 'UTC')
+      `,
+      format: "JSONEachRow",
+      query_params: { siteId, since: formatDate(since) },
+    });
+    const [row] = await processResults<{ last: string }>(result);
+    const last = row?.last ? DateTime.fromSQL(row.last, { zone: "utc" }) : null;
+    return last?.isValid ? last.toISO() : null;
+  }
+
+  /** A site's line in the digest: visitors in both weeks and sessions per day. */
+  private async generateDigestSite(
+    site: RecipientSite,
+    activity: SiteActivity,
+    window: ReportWindow
+  ): Promise<DigestSite | null> {
     try {
-      // Fetch organization details
-      const [org] = await db.select().from(organization).where(eq(organization.id, organizationId));
+      const { currentWeekStart, currentWeekEnd, previousWeekStart } = window;
+      const quiet = activity.current === 0;
+      const currentSpec = specFor(currentWeekStart, currentWeekEnd);
 
-      if (!org) {
-        return null;
-      }
+      const [currentWeek, previousWeek, daily, lastPageviewAt] = await Promise.all([
+        quiet ? null : this.fetchOverviewData(site.siteId, currentSpec),
+        activity.previous > 0
+          ? this.fetchOverviewData(site.siteId, specFor(previousWeekStart, currentWeekStart))
+          : null,
+        quiet ? [] : this.fetchDailySessions(site.siteId, currentSpec, currentWeekStart),
+        quiet ? this.fetchLastPageviewAt(site.siteId, previousWeekStart) : null,
+      ]);
 
-      // Fetch all sites for this organization
-      const orgSites = await db.select().from(sites).where(eq(sites.organizationId, org.id));
-
-      if (orgSites.length === 0) {
-        return null;
-      }
-
-      const siteReports: SiteReport[] = [];
-
-      for (const site of orgSites) {
-        if (siteReports.length >= MAX_SITE_REPORTS_PER_ORG) {
-          this.logger.info(
-            { organizationId, totalSites: orgSites.length, limit: MAX_SITE_REPORTS_PER_ORG },
-            "Reached site report limit for organization, skipping remaining sites"
-          );
-          break;
-        }
-
-        const report = await this.generateSiteReport(site.siteId, site.name, site.domain);
-        if (report) {
-          siteReports.push(report);
-        }
-      }
-
-      if (siteReports.length === 0) {
+      // A failed query would show a busy site as empty; leave it out instead.
+      if ((!quiet && !currentWeek) || (activity.previous > 0 && !previousWeek) || (quiet && !lastPageviewAt)) {
         return null;
       }
 
       return {
-        organizationId: org.id,
-        organizationName: org.name,
-        sites: siteReports,
+        siteId: site.siteId,
+        siteDomain: site.domain,
+        organizationId: site.organizationId,
+        organizationName: site.organizationName,
+        users: currentWeek?.users ?? 0,
+        previousUsers: previousWeek?.users ?? 0,
+        daily: quiet ? Array(7).fill(0) : daily.map(day => day.sessions),
+        lastPageviewAt: quiet ? lastPageviewAt : null,
       };
     } catch (error) {
-      this.logger.error({ err: error, organizationId }, "Error generating organization report");
+      this.logger.error({ err: error, siteId: site.siteId }, "Error generating digest line for site");
       return null;
     }
   }
 
-  private async sendReportsToOrganization(report: OrganizationReport): Promise<void> {
-    try {
-      // Fetch all members of the organization with their access restrictions
-      const members = await db
+  /**
+   * Everyone who gets weekly reports, with the sites they can open that had pageviews in
+   * either week. A member only hears about sites their role or site grants reach.
+   */
+  private async loadRecipients(activity: Map<number, SiteActivity>): Promise<Recipient[]> {
+    const [memberships, organizations, siteRows] = await Promise.all([
+      db
         .select({
           memberId: member.id,
           userId: member.userId,
           role: member.role,
-          email: user.email,
-          name: user.name,
-          sendAutoEmailReports: user.sendAutoEmailReports,
+          organizationId: member.organizationId,
           hasRestrictedSiteAccess: member.hasRestrictedSiteAccess,
+          email: user.email,
+          sendAutoEmailReports: user.sendAutoEmailReports,
         })
         .from(member)
-        .innerJoin(user, eq(member.userId, user.id))
-        .where(eq(member.organizationId, report.organizationId));
+        .innerJoin(user, eq(member.userId, user.id)),
+      db.select({ id: organization.id, name: organization.name }).from(organization),
+      db
+        .select({ siteId: sites.siteId, name: sites.name, domain: sites.domain, organizationId: sites.organizationId })
+        .from(sites),
+    ]);
 
-      // Send a separate email for each site to each member
-      for (const memberData of members) {
-        // Skip users who have disabled email reports
-        if (memberData.sendAutoEmailReports === false) {
-          continue;
-        }
-
-        // A membership whose role isn't one Rybbit knows reaches nothing
-        // (the same rule the request-time resolver applies).
-        if (!isOrgRole(memberData.role)) {
-          continue;
-        }
-
-        // Only report on sites the member can actually access
-        let allowedSites = report.sites;
-        if (!isAdminRole(memberData.role)) {
-          allowedSites = await filterSitesByMemberAccess(
-            report.sites,
-            report.organizationId,
-            memberData.userId,
-            memberData.memberId,
-            memberData.hasRestrictedSiteAccess
-          );
-
-          // Skip this member entirely if they have no site access
-          if (allowedSites.length === 0) {
-            continue;
-          }
-        }
-
-        for (const site of allowedSites) {
-          try {
-            await sendWeeklyReportEmail({ email: memberData.email, userId: memberData.userId, site });
-            this.logger.info(
-              {
-                organizationId: report.organizationId,
-                siteId: site.siteId,
-              },
-              "Sent weekly report email for site"
-            );
-          } catch (error) {
-            this.logger.error(
-              { err: error, organizationId: report.organizationId, siteId: site.siteId },
-              "Failed to send email to member for site"
-            );
-          }
-        }
-      }
-    } catch (error) {
-      this.logger.error({ err: error, organizationId: report.organizationId }, "Error sending reports to organization");
+    const organizationNames = new Map(organizations.map(org => [org.id, org.name]));
+    const activeSitesByOrg = new Map<string, RecipientSite[]>();
+    for (const site of siteRows) {
+      if (!site.organizationId || !activity.has(site.siteId)) continue;
+      const orgSites = activeSitesByOrg.get(site.organizationId) ?? [];
+      orgSites.push({
+        siteId: site.siteId,
+        name: site.name,
+        domain: site.domain,
+        organizationId: site.organizationId,
+        organizationName: organizationNames.get(site.organizationId) ?? "",
+      });
+      activeSitesByOrg.set(site.organizationId, orgSites);
     }
+
+    const recipients = new Map<string, Recipient>();
+    for (const membership of memberships) {
+      // Skip users who have disabled email reports
+      if (membership.sendAutoEmailReports === false) continue;
+      // A membership whose role isn't one Rybbit knows reaches nothing
+      // (the same rule the request-time resolver applies).
+      if (!isOrgRole(membership.role)) continue;
+
+      const orgSites = activeSitesByOrg.get(membership.organizationId);
+      if (!orgSites) continue;
+
+      try {
+        // Only report on sites the member can actually access
+        const allowedSites = isAdminRole(membership.role)
+          ? orgSites
+          : await filterSitesByMemberAccess(
+              orgSites,
+              membership.organizationId,
+              membership.userId,
+              membership.memberId,
+              membership.hasRestrictedSiteAccess
+            );
+        if (allowedSites.length === 0) continue;
+
+        const recipient = recipients.get(membership.userId) ?? {
+          userId: membership.userId,
+          email: membership.email,
+          sites: [],
+        };
+        recipient.sites.push(...allowedSites);
+        recipients.set(membership.userId, recipient);
+      } catch (error) {
+        this.logger.error(
+          { err: error, userId: membership.userId, organizationId: membership.organizationId },
+          "Error resolving member site access for weekly report"
+        );
+      }
+    }
+    return [...recipients.values()];
+  }
+
+  /**
+   * One email per person: the full report when they have one site with traffic, a digest of
+   * every site otherwise. Returns whether an email went out.
+   */
+  private async sendToRecipient(recipient: Recipient, run: ReportRun): Promise<boolean> {
+    const active = recipient.sites.filter(site => run.activity.get(site.siteId)!.current > 0);
+    if (active.length === 0) {
+      return false;
+    }
+
+    let digestSites: DigestSite[] = [];
+    if (recipient.sites.length > 1) {
+      for (const site of recipient.sites) {
+        const line = await memo(run.digestSites, site.siteId, () =>
+          this.generateDigestSite(site, run.activity.get(site.siteId)!, run.window)
+        );
+        if (line) digestSites.push(line);
+      }
+      digestSites = digestSites.sort((a, b) => b.users - a.users || a.siteDomain.localeCompare(b.siteDomain));
+    }
+
+    if (digestSites.length > 1 && digestSites.some(site => site.lastPageviewAt === null)) {
+      await sendWeeklyDigestEmail({
+        email: recipient.email,
+        userId: recipient.userId,
+        digest: {
+          weekStart: run.window.currentWeekStart.toISODate()!,
+          weekEnd: run.window.currentWeekEnd.minus({ days: 1 }).toISODate()!,
+          sites: digestSites,
+        },
+      });
+      this.logger.info({ userId: recipient.userId, sites: digestSites.length }, "Sent weekly digest email");
+      return true;
+    }
+
+    // One site with traffic (or the digest lines failed): the full report for the busiest.
+    const [site] = active.sort((x, y) => run.activity.get(y.siteId)!.current - run.activity.get(x.siteId)!.current);
+    const report = await memo(run.reports, site.siteId, () =>
+      this.generateSiteReport(site.siteId, site.name, site.domain, run.window)
+    );
+    if (!report) {
+      return false;
+    }
+    await sendWeeklyReportEmail({ email: recipient.email, userId: recipient.userId, site: report });
+    this.logger.info({ userId: recipient.userId, siteId: site.siteId }, "Sent weekly report email for site");
+    return true;
   }
 
   public async generateAndSendReports(): Promise<void> {
@@ -298,40 +434,35 @@ class WeeklyReportService {
     this.logger.info("Starting weekly report generation and sending");
 
     try {
-      // Fetch all organizations
-      const organizations = await db.select().from(organization);
-      const totalOrgs = organizations.length;
+      // Whole UTC days, so the report covers exactly Monday to Sunday when the cron fires at
+      // Monday midnight. Every email in the run shares the same window.
+      const today = DateTime.utc().startOf("day");
+      const window: ReportWindow = {
+        currentWeekStart: today.minus({ days: 7 }),
+        currentWeekEnd: today,
+        previousWeekStart: today.minus({ days: 14 }),
+      };
+      const activity = await this.fetchSiteActivity(window);
+      const recipients = await this.loadRecipients(activity);
+      const run: ReportRun = { window, activity, reports: new Map(), digestSites: new Map() };
 
-      this.logger.info({ totalOrganizations: totalOrgs }, "Processing organizations");
+      this.logger.info({ activeSites: activity.size, recipients: recipients.length }, "Sending weekly reports");
 
-      let processedCount = 0;
       let sentCount = 0;
-
-      for (let i = 0; i < organizations.length; i++) {
-        const org = organizations[i];
-
-        // Generate report for this organization
-        const report = await this.generateOrganizationReport(org.id);
-
-        if (report) {
-          // Send reports immediately after generation
-          await this.sendReportsToOrganization(report);
-          sentCount++;
+      for (const [i, recipient] of recipients.entries()) {
+        try {
+          if (await this.sendToRecipient(recipient, run)) sentCount++;
+        } catch (error) {
+          this.logger.error({ err: error, userId: recipient.userId }, "Failed to send weekly report email");
         }
 
-        processedCount++;
-
-        // Log progress every 10 organizations
-        if (processedCount % 10 === 0 || processedCount === totalOrgs) {
-          this.logger.info(
-            { processed: processedCount, total: totalOrgs, sent: sentCount },
-            `Progress: ${processedCount}/${totalOrgs} organizations processed, ${sentCount} reports sent`
-          );
+        if ((i + 1) % 50 === 0) {
+          this.logger.info({ processed: i + 1, total: recipients.length, sent: sentCount }, "Weekly report progress");
         }
       }
 
       this.logger.info(
-        { totalProcessed: processedCount, totalSent: sentCount },
+        { totalRecipients: recipients.length, totalSent: sentCount },
         "Completed weekly report generation and sending"
       );
     } catch (error) {

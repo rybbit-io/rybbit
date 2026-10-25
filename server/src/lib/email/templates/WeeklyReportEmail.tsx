@@ -3,6 +3,7 @@ import * as React from "react";
 import type { DailySessions, MetricData, SiteReport } from "../../../services/weekyReports/weeklyReportTypes.js";
 import { appUrl, formatChange, formatCount, formatDuration, percentChange, truncate } from "../format.js";
 import {
+  Bar,
   color,
   H1,
   H2,
@@ -55,14 +56,14 @@ const previousRange = (site: SiteReport) =>
 const visitorChange = (site: SiteReport) => percentChange(site.currentWeek.users, site.previousWeek.users);
 
 /** "up 9.8%", "down 3.1%", "flat", or null when last week had no visitors. */
-const changeWords = (change: number | null) => {
+export const changeWords = (change: number | null) => {
   if (change === null) return null;
   const rounded = Math.round(change * 10) / 10;
   if (rounded === 0) return "flat";
   return `${rounded > 0 ? "up" : "down"} ${Math.abs(rounded).toFixed(1)}%`;
 };
 
-const visitorsPhrase = (n: number) => `${formatCount(n)} ${n === 1 ? "visitor" : "visitors"}`;
+export const visitorsPhrase = (n: number) => `${formatCount(n)} ${n === 1 ? "visitor" : "visitors"}`;
 
 export const weeklyReportSubject = (site: SiteReport) => {
   const words = changeWords(visitorChange(site));
@@ -171,22 +172,6 @@ const LegendSwatch = ({ fill, outline }: { fill: string; outline?: string }) => 
       marginRight: 6,
     }}
   />
-);
-
-/** A solid bar drawn as a table cell, which Outlook sizes where it ignores div heights. */
-const Bar = ({ width, height, fill }: { width: number; height: number; fill: string }) => (
-  <table {...tableAttrs} width={width} style={{ width }}>
-    <tbody>
-      <tr>
-        <td
-          height={height}
-          style={{ height, width, backgroundColor: fill, borderRadius: "2px 2px 0 0", fontSize: 0, lineHeight: "0px" }}
-        >
-          &nbsp;
-        </td>
-      </tr>
-    </tbody>
-  </table>
 );
 
 const DailyChart = ({ site }: { site: SiteReport }) => {

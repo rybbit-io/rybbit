@@ -1,6 +1,6 @@
 import { render } from "@react-email/components";
 import { Resend } from "resend";
-import type { SiteReport } from "../../services/weekyReports/weeklyReportTypes.js";
+import type { SiteReport, WeeklyDigest } from "../../services/weekyReports/weeklyReportTypes.js";
 import { welcome } from "../../services/lifecycleEmails/lifecycleContent.js";
 import { IS_CLOUD } from "../const.js";
 import { signExpiringPayload } from "../signedToken.js";
@@ -16,7 +16,9 @@ import { LetterEmail } from "./templates/LetterEmail.js";
 import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
 import { OTP_COPY, OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
 import { SiteTransferEmail, type SiteTransferEmailProps } from "./templates/SiteTransferEmail.js";
+import { TrialGraceEmail, trialGraceSubject, type TrialGraceEmailProps } from "./templates/TrialGraceEmail.js";
 import { VerifyEmailEmail } from "./templates/VerifyEmailEmail.js";
+import { WeeklyDigestEmail, weeklyDigestSubject } from "./templates/WeeklyDigestEmail.js";
 import { WeeklyReportEmail, weeklyReportSubject } from "./templates/WeeklyReportEmail.js";
 
 let resend: Resend | undefined;
@@ -116,7 +118,19 @@ const REPLY_TO = "hello@rybbit.com";
 interface SendOptions {
   text?: string;
   headers?: Record<string, string>;
+  /** Resend replays the first response for a repeated key (for 24 hours) instead of sending again. */
+  idempotencyKey?: string;
 }
+
+/**
+ * Whether Resend refused a send because its idempotency key was already used: by a request with
+ * a different payload, or by one still in flight. Either way the email went out (or is going out)
+ * under that key, so the caller must not treat the send as failed and try again.
+ */
+export const isIdempotencyConflict = (error: unknown): boolean =>
+  error instanceof ResendRequestError &&
+  (error.resendError.name === "invalid_idempotent_request" ||
+    error.resendError.name === "concurrent_idempotent_requests");
 
 /** Sends a transactional email. Throws when Resend does not accept it. */
 export const sendEmail = async (email: string, subject: string, html: string, options: SendOptions = {}) => {
@@ -126,15 +140,18 @@ export const sendEmail = async (email: string, subject: string, html: string, op
     // throw new Error("Resend is not initialized");
   }
   try {
-    const response = await resend.emails.send({
-      from: TRANSACTIONAL_FROM,
-      replyTo: REPLY_TO,
-      to: email,
-      subject,
-      html,
-      ...(options.text ? { text: options.text } : {}),
-      ...(options.headers ? { headers: options.headers } : {}),
-    });
+    const response = await resend.emails.send(
+      {
+        from: TRANSACTIONAL_FROM,
+        replyTo: REPLY_TO,
+        to: email,
+        subject,
+        html,
+        ...(options.text ? { text: options.text } : {}),
+        ...(options.headers ? { headers: options.headers } : {}),
+      },
+      options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
+    );
     if (response.error) {
       throw new ResendRequestError("email send", response.error);
     }
@@ -189,6 +206,11 @@ export const sendApproachingLimitEmail = async (email: string, usage: UsageEmail
   await sendEmail(email, approachingLimitSubject(usage.organizationName, usage.eventCount, usage.eventLimit), html);
 };
 
+export const sendTrialGraceEmail = async (email: string, props: TrialGraceEmailProps, idempotencyKey: string) => {
+  const html = await render(TrialGraceEmail(props));
+  await sendEmail(email, trialGraceSubject(props), html, { idempotencyKey });
+};
+
 /**
  * Signed one-click link that turns off weekly reports for one user, used in the
  * report footer and its List-Unsubscribe header. Same 2-year TTL as the
@@ -198,6 +220,11 @@ export const weeklyReportUnsubscribeUrl = (userId: string): string => {
   const { exp, sig } = signExpiringPayload(`unsubscribe-reports:${userId}`, 2 * 365 * 24 * 3600);
   return `${process.env.BASE_URL}/api/user/unsubscribe-reports-oneclick?userId=${encodeURIComponent(userId)}&exp=${exp}&sig=${sig}`;
 };
+
+const listUnsubscribeHeaders = (unsubscribeUrl: string) => ({
+  "List-Unsubscribe": `<${unsubscribeUrl}>`,
+  "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+});
 
 export const sendWeeklyReportEmail = async ({
   email,
@@ -210,12 +237,21 @@ export const sendWeeklyReportEmail = async ({
 }) => {
   const unsubscribeUrl = weeklyReportUnsubscribeUrl(userId);
   const html = await render(WeeklyReportEmail({ site, unsubscribeUrl }));
-  await sendEmail(email, weeklyReportSubject(site), html, {
-    headers: {
-      "List-Unsubscribe": `<${unsubscribeUrl}>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    },
-  });
+  await sendEmail(email, weeklyReportSubject(site), html, { headers: listUnsubscribeHeaders(unsubscribeUrl) });
+};
+
+export const sendWeeklyDigestEmail = async ({
+  email,
+  userId,
+  digest,
+}: {
+  email: string;
+  userId: string;
+  digest: WeeklyDigest;
+}) => {
+  const unsubscribeUrl = weeklyReportUnsubscribeUrl(userId);
+  const html = await render(WeeklyDigestEmail({ digest, unsubscribeUrl }));
+  await sendEmail(email, weeklyDigestSubject(digest), html, { headers: listUnsubscribeHeaders(unsubscribeUrl) });
 };
 
 export const sendWelcomeEmail = async (email: string, name?: string) => {
