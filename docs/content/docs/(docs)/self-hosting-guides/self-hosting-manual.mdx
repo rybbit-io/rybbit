@@ -20,12 +20,16 @@ This guide is for users who want to manually set up Rybbit using Docker Compose 
 
 <Steps>
 <Step>
-### Clone the Repository
+### Download the Deployment Files
+
+Rybbit runs from prebuilt Docker images, so you only need `docker-compose.yml`, the `Caddyfile`, and the helper scripts from the root of the repository. This sparse clone downloads just those files:
 
 ```bash
-git clone https://github.com/rybbit-io/rybbit.git
+git clone --depth 1 --filter=blob:none --sparse https://github.com/rybbit-io/rybbit.git
 cd rybbit
 ```
+
+A plain `git clone` works too, it just downloads the whole codebase.
 </Step>
 
 <Step>
