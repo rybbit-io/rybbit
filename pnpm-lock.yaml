@@ -350,9 +350,6 @@ importers:
       '@better-auth/api-key':
         specifier: 1.7.3
         version: 1.7.3(@better-auth/core@1.7.3(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.4.0(zod@3.25.76))(jose@6.2.12)(kysely@0.28.17)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(better-auth@1.7.3(drizzle-kit@0.31.9)(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.4)(@types/pg@8.16.0)(kysely@0.28.17)(pg@8.16.0)(postgres@3.4.5))(next@16.2.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(pg@8.16.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@3.2.4(@types/node@24.13.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.44.1)))(better-call@1.4.0(zod@3.25.76))
-      '@better-auth/infra':
-        specifier: ^0.1.12
-        version: 0.1.12(992490ff4b8f4a0319a51bdd6f95009e)
       '@better-auth/mcp':
         specifier: 1.7.3
         version: 1.7.3(@better-auth/core@1.7.3(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.4.0(zod@3.25.76))(jose@6.2.12)(kysely@0.28.17)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.3(drizzle-kit@0.31.9)(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.4)(@types/pg@8.16.0)(kysely@0.28.17)(pg@8.16.0)(postgres@3.4.5))(next@16.2.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(pg@8.16.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@3.2.4(@types/node@24.13.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.44.1)))(better-call@1.4.0(zod@3.25.76))
@@ -839,14 +836,6 @@ packages:
     peerDependenciesMeta:
       drizzle-orm:
         optional: true
-
-  '@better-auth/infra@0.1.12':
-    resolution: {integrity: sha512-NCOX5YIyCfJXJ8HDIyZdRpMuJtjQD8+tNYd+goXkgL+/6GYwEYOm4dRRcSmqlODsjL7vC4ZHfo9bfqpafq/9Nw==}
-    peerDependencies:
-      '@better-auth/core': '>=1.4.0'
-      '@better-auth/sso': '>=1.4.0'
-      better-auth: '>=1.4.0'
-      zod: '>=4.1.12'
 
   '@better-auth/kysely-adapter@1.7.3':
     resolution: {integrity: sha512-UIsyJMIrjUnT+yTaS6dkCxYYmtPwxFHxwSJ8+CLty2II5w9BewlDxDA0/QzhoL/InYCPxQ5Y6xIgLHZG1dhwRA==}
@@ -6132,9 +6121,6 @@ packages:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
 
-  libphonenumber-js@1.12.40:
-    resolution: {integrity: sha512-HKGs7GowShNls3Zh+7DTr6wYpPk5jC78l508yQQY3e8ZgJChM3A9JZghmMJZuK+5bogSfuTafpjksGSR3aMIEg==}
-
   lie@3.3.0:
     resolution: {integrity: sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==}
 
@@ -8781,17 +8767,6 @@ snapshots:
       '@better-auth/utils': 0.4.2
     optionalDependencies:
       drizzle-orm: 0.45.2(@electric-sql/pglite@0.5.4)(@types/pg@8.16.0)(kysely@0.28.17)(pg@8.16.0)(postgres@3.4.5)
-
-  '@better-auth/infra@0.1.12(992490ff4b8f4a0319a51bdd6f95009e)':
-    dependencies:
-      '@better-auth/core': 1.7.3(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.4.0(zod@3.25.76))(jose@6.2.12)(kysely@0.28.17)(nanostores@1.5.3)
-      '@better-auth/sso': 1.7.3(@better-auth/core@1.7.3(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.4.0(zod@3.25.76))(jose@6.2.12)(kysely@0.28.17)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.3(drizzle-kit@0.31.9)(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.4)(@types/pg@8.16.0)(kysely@0.28.17)(pg@8.16.0)(postgres@3.4.5))(next@16.2.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(pg@8.16.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@3.2.4(@types/node@24.13.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.44.1)))(better-call@1.4.0(zod@3.25.76))
-      '@better-fetch/fetch': 1.3.1
-      better-auth: 1.7.3(drizzle-kit@0.31.9)(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.4)(@types/pg@8.16.0)(kysely@0.28.17)(pg@8.16.0)(postgres@3.4.5))(next@16.2.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(pg@8.16.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@3.2.4(@types/node@24.13.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.44.1))
-      better-call: 1.4.0(zod@3.25.76)
-      jose: 6.2.12
-      libphonenumber-js: 1.12.40
-      zod: 3.25.76
 
   '@better-auth/kysely-adapter@1.7.3(@better-auth/core@1.7.3(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.4.0(zod@3.24.4))(jose@6.2.12)(kysely@0.28.17)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(kysely@0.28.17)':
     dependencies:
@@ -14083,8 +14058,6 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
       type-check: 0.4.0
-
-  libphonenumber-js@1.12.40: {}
 
   lie@3.3.0:
     dependencies:
