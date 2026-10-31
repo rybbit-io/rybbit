@@ -45,8 +45,10 @@ describe("replayBudgetCharge Lua script", () => {
 
   it("slides the TTL on refused batches too", async () => {
     await charge(CAP);
-    await redis.pexpire(KEY, 5);
+    // Short enough to tell a slid TTL from the original, long enough that the
+    // key can't expire before the refused charge runs on a slow CI runner.
+    await redis.pexpire(KEY, 5_000);
     expect(await charge(10)).toEqual([0, CAP]);
-    expect(await redis.pttl(KEY)).toBeGreaterThan(5);
+    expect(await redis.pttl(KEY)).toBeGreaterThan(5_000);
   });
 });
