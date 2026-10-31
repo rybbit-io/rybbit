@@ -68,17 +68,18 @@ function trackAction() {
 
 ## Troubleshooting
 
-- **Pageviews missing after navigation**: Rybbit tracks Vue Router navigations automatically, so test the default first. If a route change is still not recorded, trigger it from an `afterEach` guard in your router setup:
+- **Pageviews missing after navigation**: Rybbit tracks Vue Router navigations automatically, so test the default first. If a route change is still not recorded, trigger it from an `afterEach` guard in your router setup. Skip the first navigation: the script already tracks the landing page, and counting it again doubles it.
 
   ```javascript title="src/router/index.js"
-  import { createRouter, createWebHistory } from "vue-router";
+  import { createRouter, createWebHistory, START_LOCATION } from "vue-router";
 
   const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [/* your routes */],
   });
 
-  router.afterEach(() => {
+  router.afterEach((to, from, failure) => {
+    if (from === START_LOCATION || failure) return;
     if (window.rybbit) {
       window.rybbit.pageview();
     }

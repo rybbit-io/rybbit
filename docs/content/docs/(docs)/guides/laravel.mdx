@@ -23,14 +23,14 @@ Laravel renders pages through Blade layouts, so the snippet goes into the layout
 
 Add the Rybbit values to `.env`:
 
-```bash filename=".env"
+```bash title=".env"
 RYBBIT_INSTANCE_URL=https://app.rybbit.io
 RYBBIT_SITE_ID=YOUR_SITE_ID
 ```
 
 Then register them in `config/services.php`:
 
-```php filename="config/services.php"
+```php title="config/services.php"
 <?php
 
 return [
@@ -49,7 +49,7 @@ Run `php artisan config:clear` if your configuration is cached, otherwise the ne
 
 Open the Blade layout that wraps your pages. In a default install this is `resources/views/layouts/app.blade.php`; Breeze and Jetstream also ship `resources/views/layouts/guest.blade.php`, and Inertia apps use `resources/views/app.blade.php`. Add the tag inside `<head>`:
 
-```php filename="resources/views/layouts/app.blade.php"
+```php title="resources/views/layouts/app.blade.php"
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

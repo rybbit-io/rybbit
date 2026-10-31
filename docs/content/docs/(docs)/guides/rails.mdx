@@ -23,14 +23,14 @@ Rails wraps every page in `app/views/layouts/application.html.erb`, so the snipp
 
 Add the Rybbit values to your environment (`.env` if you use dotenv-rails, otherwise your host's environment settings):
 
-```bash filename=".env"
+```bash title=".env"
 RYBBIT_INSTANCE_URL=https://app.rybbit.io
 RYBBIT_SITE_ID=YOUR_SITE_ID
 ```
 
 Then expose them through the `config.x` namespace in `config/application.rb`:
 
-```ruby filename="config/application.rb"
+```ruby title="config/application.rb"
 module MyApp
   class Application < Rails::Application
     # ... existing configuration
@@ -45,7 +45,7 @@ end
 
 Open `app/views/layouts/application.html.erb` and add the tag inside `<head>`, after the stylesheet and JavaScript tags:
 
-```erb filename="app/views/layouts/application.html.erb"
+```erb title="app/views/layouts/application.html.erb"
 <head>
   <title><%= content_for(:title) || "MyApp" %></title>
   <meta name="viewport" content="width=device-width,initial-scale=1">

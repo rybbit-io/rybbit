@@ -22,7 +22,7 @@ Docusaurus has a `scripts` option in `docusaurus.config.js` that adds a `<script
 
 Open `docusaurus.config.js` (or `docusaurus.config.ts`) at the root of your project and add the script to the `scripts` array:
 
-```javascript filename="docusaurus.config.js"
+```javascript title="docusaurus.config.js"
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   // ... title, url, baseUrl, presets, themeConfig
@@ -40,7 +40,7 @@ module.exports = config;
 
 If you already manage tags through `headTags`, this form is equivalent:
 
-```javascript filename="docusaurus.config.js"
+```javascript title="docusaurus.config.js"
 headTags: [
   {
     tagName: "script",
@@ -70,7 +70,7 @@ Docusaurus builds a single-page app on React Router. Rybbit detects client-side 
 
 Docusaurus pages are React, so you can fire events from a component and use it in MDX:
 
-```jsx filename="src/components/TrackedButton.jsx"
+```jsx title="src/components/TrackedButton.jsx"
 import React from "react";
 
 export default function TrackedButton({ children, eventName, eventData }) {
@@ -94,19 +94,9 @@ import TrackedButton from "@site/src/components/TrackedButton";
 </TrackedButton>
 ```
 
-For site-wide listeners, use a [client module](https://docusaurus.io/docs/advanced/client-modules). `onRouteDidUpdate` runs after every navigation once the DOM is ready:
+You don't need a listener for links to other sites. Rybbit records clicks on external links as outbound events by default, controlled by [Outbound Links](/docs/site-settings#track-outbound-links) under **Site Settings → Tracking**.
 
-```javascript filename="src/client-modules/rybbit-events.js"
-export function onRouteDidUpdate() {
-  document.querySelectorAll('a[target="_blank"]').forEach((link) => {
-    link.addEventListener("click", () => {
-      window.rybbit?.event("external_link_click", { href: link.href });
-    });
-  });
-}
-```
-
-Register it in `docusaurus.config.js` under `clientModules: [require.resolve("./src/client-modules/rybbit-events.js")]`. Client modules also run during server-side rendering, so guard any `window` access.
+If you add other site-wide code through a [client module](https://docusaurus.io/docs/advanced/client), keep in mind that `onRouteDidUpdate` runs after every navigation while the navbar and footer stay mounted, so listeners attached to them there pile up. Client modules also run during server-side rendering, so guard any `window` access.
 
 ## Next steps
 
