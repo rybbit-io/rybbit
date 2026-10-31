@@ -3,23 +3,23 @@ title: Errors
 description: Track JavaScript errors on your website
 ---
 
-The Errors tab shows JavaScript errors occurring on your website, helping you identify and fix bugs that affect user experience.
+The Errors tab shows JavaScript errors occurring on your website, helping you identify and fix bugs that affect user experience. On Rybbit Cloud, error tracking needs a Standard plan or higher.
 
 ## Enabling Error Tracking
 
-Enable error tracking in your [site settings](/docs/site-settings).
+Turn on **Error Tracking** in the **Tracking** tab of your [site settings](/docs/site-settings), or click **Enable** on the Errors page if you can configure the site.
 
 ## Error Information
 
-For each error, you'll see:
+Errors are grouped by message. Errors of different types with the same message share one row, which shows one of their types. For each error, you'll see:
 
 - **Error Type** - ReferenceError, TypeError, SyntaxError, NetworkError, etc.
 - **Error Message** - The specific error message
-- **Stack Trace** - The chain of function calls that led to the error
-- **Affected Sessions** - Number of unique sessions in which this error occurred
-- **Occurrence Count** - How many times the error was triggered
-Expanding an error shows its individual occurrences, including the timestamp and page for each event.
-- **Browser & Device** - Which environments experience this error
+- **Occurrences** - How many times the error was triggered
+- **Sessions** - Number of unique sessions in which this error occurred
+- A sparkline of occurrences over the selected period
+
+Click an error to expand it and see its individual occurrences. Each one shows the timestamp, page, browser, device, location, and stack trace. Use **Copy stack trace** to paste it into your issue tracker.
 
 ## Using Error Data
 

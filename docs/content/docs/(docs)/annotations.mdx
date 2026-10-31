@@ -1,0 +1,49 @@
+---
+title: Annotations
+description: Pin notes to dates on your traffic chart so spikes and drops stay explainable
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+An annotation is a note pinned to a moment, or a date range, on the main traffic chart. Use them for launches, deploys, campaigns, outages, or anything else that explains why the line moved.
+
+Annotations show as pins along the chart on the [Main dashboard](/docs/feature-guides/main-tab). They also show, read-only, on the [Performance](/docs/feature-guides/performance) chart.
+
+## Add an annotation
+
+1. Open the site's **Main** page.
+2. Click **Annotate** above the chart, or click a point on the chart to start a note at that time.
+3. Fill in the form:
+   - **Title**: what happened, up to 120 characters.
+   - **Date and time**: when it happened. Turn on **Date range** to set **Starts** and **Ends** instead. The end must be after the start.
+   - **Note** (optional): more context, up to 2,000 characters.
+   - **Color**: neutral, or one of five marker colors.
+   - **Icon** (optional): an emoji shown in the pin.
+   - **Applies to**: **This site** or **All sites** in the organization. You only see this choice if you can manage organization-wide annotations.
+   - **Show on public dashboard and shared links**: off by default.
+4. Click **Add annotation**.
+
+## View, edit, and delete
+
+Hover a pin to see its notes. Pins that land close together are grouped into one. Click a pin to open its notes, then use the edit or delete buttons on a note. Deleting asks you to confirm and can't be undone.
+
+Notes that apply to every site carry an **All sites** badge. Notes visible to the public carry a **Public** badge.
+
+## Who can do what
+
+| Action | Role needed |
+| --- | --- |
+| See annotations | Anyone who can view the site |
+| Add a site annotation, and edit or delete your own | Member or above |
+| Edit or delete anyone's site annotations | Editor or above |
+| Add, edit, or delete organization-wide (**All sites**) annotations | Editor or above in the organization |
+
+See [Organization settings](/docs/organization-settings) for how roles work.
+
+## Public dashboards and shared links
+
+If a site is public, or you share it through a private link, visitors only see annotations with **Show on public dashboard and shared links** turned on. Everything else stays visible to your organization only. Private-link viewers can't add or edit annotations, even if they're signed in.
+
+<Callout>
+  Annotations are also available through the [API](/docs/api/annotations/list) and the `get_annotations` tool in the [MCP server](/docs/mcp).
+</Callout>

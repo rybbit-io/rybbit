@@ -1,0 +1,74 @@
+---
+title: Custom dashboards and SQL
+description: Query your raw events with SQL and build dashboards from the results
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout>
+  Query and Dashboards are available on Rybbit Cloud. You'll find both under **Explore** in the site sidebar. The prebuilt self-hosted images don't include them: they only appear if you set `DEPLOYMENT` and build the client image yourself, because the client reads it at build time.
+</Callout>
+
+## Query
+
+The **Query** page runs read-only ClickHouse SQL against the current site's events.
+
+1. Open **Query** in the site sidebar.
+2. Write SQL in the editor, or describe what you want in the **What do you want to query?** box and click **Generate** to have it written for you. Generating again refines the current query, so you can ask follow-ups.
+3. Click **Run**. Results show in a sortable table below the editor.
+
+Use the format button to tidy the SQL, the **+** button to open more query tabs, and the download button to export results as **CSV** or **JSON**.
+
+### Rules
+
+- Read from `scoped_events`. It holds every event for this site and is the only table you can query. You can define your own CTEs on top of it.
+- Queries are read-only. Statements that write, change settings, or read other tables are rejected.
+- Results are capped at 1,000 rows, and a query stops after 60 seconds.
+- The Query page isn't limited by the date selector. Add your own `timestamp` conditions.
+
+For example:
+
+```sql
+SELECT pathname, countIf(type = 'pageview') AS pageviews
+FROM scoped_events
+GROUP BY pathname
+ORDER BY pageviews DESC
+LIMIT 100
+```
+
+## Dashboards
+
+A dashboard is a grid of cards, and each card runs its own query. Dashboards belong to a site.
+
+### Create a dashboard
+
+1. Open **Dashboards** in the site sidebar and click **New dashboard**.
+2. Click **Add card**. Pick one of the built-in examples, or start from a blank card.
+3. In the card editor, give the card a title, write or edit its SQL, and run it to see results.
+4. Pick a **Chart type**: Line, Area, Bar, Bar list, Donut, Stat, Table, Map, or Calendar. Choose which columns to plot and a **Value format** (Number, Percent, Duration, or Bytes). You can also edit the card as JSON.
+5. Click **Save card**, drag and resize cards to arrange the grid, then click **Save**.
+
+A dashboard can have up to 20 cards. To change it later, click **Edit**. In edit mode you can duplicate or remove cards. Press <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) to save, or <kbd>Esc</kbd> to cancel.
+
+### Time range
+
+Unlike the Query page, dashboard cards follow the date selector at the top of the dashboard. `scoped_events` only contains events in the selected range, so you don't need to filter by date yourself.
+
+Two tokens help with time series cards:
+
+- `{{bucket}}` becomes the interval chosen in the bucket selector (hour, day, week, and so on).
+- `{{tz}}` becomes your timezone, so daily buckets line up with your calendar days.
+
+```sql
+SELECT toStartOfInterval(toTimeZone(timestamp, {{tz}}), INTERVAL {{bucket}}) AS time,
+       countIf(type = 'pageview') AS pageviews
+FROM scoped_events
+GROUP BY time
+ORDER BY time
+```
+
+## Who can use them
+
+Anyone who can view the site can run queries and open its dashboards. Creating, editing, and deleting dashboards needs the Member role or above. Dashboards aren't shown on public dashboards or private share links.
+
+You can also run SQL through the `run_query` tool in the [MCP server](/docs/mcp).

@@ -35,7 +35,7 @@ The `rrweb` package is only required if you enable session replay in your Rybbit
 ## Initialization
 
 <Callout type="warning">
-`rybbit.init()` **must** be called once before any other tracking methods (`pageview`, `event`, etc.) can be used. Attempting to call other methods before `init` will result in errors or no tracking.
+`rybbit.init()` **must** be called once before any other tracking methods (`pageview`, `event`, etc.) can be used. Calls made before `init` finishes are dropped, not queued. The SDK reports problems like this only when `debug: true` is set; otherwise it fails silently.
 </Callout>
 
 ### Syntax
@@ -71,9 +71,9 @@ These options are configured in your code and control SDK behavior locally:
 | Option                 | Type     | Default | Description                                                                                                                                                             |
 | :--------------------- | :------- | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `debounceDuration`     | `number` | `500`   | Debounce time in milliseconds for tracking pageviews after route changes. Set to `0` to disable debouncing (track immediately).                                         |
-| `skipPatterns`         | `string[]` | `[]`    | Array of path patterns. Pageviews whose path matches any pattern will **not** be tracked. See [Path Matching](#path-matching).                                          |
-| `maskPatterns`         | `string[]` | `[]`    | Array of path patterns. For matching pageview paths, the original path will be **replaced** by the pattern itself in tracked data. See [Path Matching](#path-matching). |
-| `debug`                | `boolean` | `false` | Enable detailed logging to the browser console.                                                                                                                         |
+| `skipPatterns`         | `string[]` | `[]`    | Array of path patterns. Analytics events from a matching path (pageviews, custom events, errors, autocapture) are dropped. Web vitals and session replay are not affected. See [Path Matching](#path-matching). |
+| `maskPatterns`         | `string[]` | `[]`    | Array of path patterns. On a matching path, analytics events have their path **replaced** by the pattern itself and their query string dropped. Web vitals and session replay keep the real URL. See [Path Matching](#path-matching). |
+| `debug`                | `boolean` | `false` | Log to the browser console. Warnings and errors (for example, calling methods before `init`) are only printed when this is on.                                         |
 | `replayPrivacyConfig`  | `object` | -       | Privacy settings for session replay. See [Session Replay](#session-replay).                                                                                            |
 
 #### Remote Configuration
@@ -82,12 +82,12 @@ These settings are controlled through your Rybbit dashboard and cannot be set in
 
 | Dashboard Setting      | Description                                                | Default |
 | :--------------------- | :--------------------------------------------------------- | :------ |
-| Track Initial Pageview | Track pageview on initial page load                        | `true`  |
+| Track Initial Pageview | Track pageview on initial page load. Turning this off also turns off SPA navigation tracking and `onPageChange` callbacks in the SDK. | `true`  |
 | Track SPA Navigation   | Track pageviews on Single Page Application route changes   | `true`  |
 | Track URL Parameters   | Include URL query strings in tracked data                  | `true`  |
-| Track URL Fragments    | Keep ordinary URL fragments, such as `#shipping`, in paths | `false` |
+| Track URL Fragments    | Not read by the SDK: it always appends the URL fragment (such as `#shipping`) to the tracked path | - |
 | Track Outbound Links   | Automatically track clicks on external links               | `true`  |
-| Track Web Vitals       | Track Core Web Vitals performance metrics                  | `false` |
+| Track Web Vitals       | Track Core Web Vitals performance metrics. The SDK sends one snapshot when all metrics are in, 20 seconds after `init()`, or on `beforeunload`, whichever comes first. Without `reportAllChanges`, LCP is only reported after the first click or key press or when the page is hidden, and CLS only when the page is hidden, so both are often missing from SDK-sent vitals. | `false` |
 | Capture Errors         | Enable automatic error tracking                            | `false` |
 | Session Replay         | Enable session replay recording                            | `false` |
 | Track Button Clicks    | Automatically track button click interactions              | `false` |
@@ -95,6 +95,10 @@ These settings are controlled through your Rybbit dashboard and cannot be set in
 | Track Form Interactions| Automatically track form submissions and input changes     | `false` |
 
 If fetching settings fails or times out, the SDK uses sensible defaults.
+
+<Callout type="info">
+The SDK has no feature flag API (`flag()`, `flagPayload()`, and so on). To use [feature flags](/docs/feature-flags) in the browser, use the tracking script, or call the server evaluation endpoint from your backend.
+</Callout>
 
 ## Tracking Pageviews
 
@@ -292,7 +296,7 @@ async function fetchUserData(userId) {
 ```
 
 <Callout type="info">
-Manual error capture only works when error tracking is enabled in your dashboard settings. If it's disabled, calling `error()` will log a warning.
+Manual error capture only works when error tracking is enabled in your dashboard settings. If it's disabled, `error()` does nothing (with `debug: true` it logs why).
 </Callout>
 
 ## Session Replay
@@ -307,7 +311,7 @@ npm install rrweb
 
 ### Enabling Session Replay
 
-Session replay must be enabled in your Rybbit dashboard under. Once enabled, recording starts automatically when the SDK initializes.
+Session replay must be enabled in your site settings in the Rybbit dashboard. Once enabled, recording starts automatically when the SDK initializes.
 
 ### Manual Controls
 
@@ -487,12 +491,12 @@ rybbit.onPageChange((newPath, previousPath) => {
 ```
 
 <Callout type="info">
-Callbacks are only triggered when the pathname actually changes. Multiple calls to the same path won't trigger callbacks repeatedly.
+Callbacks are only triggered when the pathname actually changes. Multiple calls to the same path won't trigger callbacks repeatedly. They only run when **Track Initial Pageview** is on in your dashboard, since the SDK sets up its navigation listeners only then.
 </Callout>
 
 ## Opting Out
 
-Users can opt out of all tracking by setting a flag in `localStorage` or on the `window` object. When opted out, all tracking calls are silently ignored.
+Users can opt out of all tracking by setting a flag in `localStorage` or on the `window` object. When opted out, all tracking calls are silently ignored. The SDK checks both flags once, when it loads, so setting one on a page that is already tracking takes effect on the next page load.
 
 ```javascript
 // Opt out via localStorage (persists across sessions)
@@ -521,27 +525,24 @@ rybbit.cleanup();
 ### What Gets Cleaned Up
 
 - SPA route change listeners (`popstate`, `hashchange`)
-- Outbound link click listeners
-- Data attribute click listeners
-- Error tracking listeners
+- Outbound link and data attribute click listeners (only when automatic pageview tracking was set up)
+- Error, button click, copy, and form tracking listeners
 - Session replay recording
 - Page change callbacks
-- Resets initialization state
+
+`cleanup()` does not stop all tracking:
+
+- The patched `history.pushState` and `history.replaceState` are not restored, so SPA navigations keep sending pageviews.
+- A web vitals snapshot that hasn't been sent yet is still sent.
+- The SDK's configuration is not reset, so calling `init()` again fails with "already initialized" (logged only with `debug: true`).
+
+Call `init()` once per page load. The SDK has no way to fully stop tracking mid-page. To honor a consent withdrawal, set the [opt-out flag](#opting-out) and reload the page.
 
 ### Example
 
 ```javascript
-// In React
-useEffect(() => {
-  rybbit.init({
-    analyticsHost: "https://app.rybbit.io/api",
-    siteId: "1",
-  });
-
-  return () => {
-    rybbit.cleanup();
-  };
-}, []);
+// Remove the SDK's listeners and stop session replay
+rybbit.cleanup();
 ```
 
 ## Path Matching
@@ -566,7 +567,7 @@ skipPatterns: [
 
 ### `skipPatterns`
 
-If a page's path matches any pattern in `skipPatterns`, the pageview for that path will **not** be sent.
+If a page's path matches any pattern in `skipPatterns`, analytics events from that path are dropped: pageviews, custom events, outbound clicks, errors, and autocapture events. Web vitals are still sent, and session replay (if enabled) keeps recording and uploading on skipped paths.
 
 **Examples:**
 
@@ -588,7 +589,7 @@ await rybbit.init({
 
 ### `maskPatterns`
 
-If a page's path matches a pattern in `maskPatterns`, the pageview **will** be sent, but the `pathname` will be **replaced** by the pattern string itself. This is useful for grouping similar pages or hiding sensitive IDs.
+If a page's path matches a pattern in `maskPatterns`, events **will** be sent, but the `pathname` will be **replaced** by the pattern string itself and the query string is dropped. This applies to analytics events only: web vitals and session replay recordings keep the original URL, including the query string. It is useful for grouping similar pages or hiding sensitive IDs.
 
 <Callout type="warning">
 If a path matches both a `skipPatterns` and a `maskPatterns` pattern, **skipping takes priority**.

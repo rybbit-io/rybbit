@@ -5,9 +5,17 @@ description: Configure your site settings including privacy options, analytics f
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Access your site settings by clicking the settings icon in your site's Rybbit dashboard.
+Open your site's dashboard and click **Site Settings** at the bottom of the sidebar.
 
 ![site settings](/docs/site-settings.png)
+
+Settings are split into tabs: **General**, **Tracking**, **Exclusions**, **Integrations** (Cloud), **Tracking Script**, **Widget Embeds**, **Dashboard Embed**, **Import** and **Usage**.
+
+## General
+
+### Site Name and Domain
+
+**Site Name** is the display name for the site. **Domain** is the domain used for tracking. Click **Update** next to either to save it. Changing the domain doesn't affect existing data; all historical analytics are kept.
 
 ## Privacy & Security
 
@@ -34,6 +42,10 @@ Enable "User ID Salting" to have Rybbit forget about unique users every day. If 
 
 Enable "Block Bot Traffic" to prevent detected bot traffic from being tracked in your normal analytics. See [Bot detection](/docs/bot-detection) for how Rybbit identifies and stores bot traffic.
 
+### First-Party Proxy
+
+Turn on **First-Party Proxy** if tracking requests reach Rybbit through your own proxy or CDN (for example a Cloudflare Worker, CloudFront or nginx). Rybbit then reads visitor IPs from forwarded headers instead of the connecting IP. Leave it off if the script talks to Rybbit directly. See the [proxy guide](/docs/proxy-guide).
+
 ### Track IP Address
 
 Enable "Track IP Address" to store the IP address of visitors.
@@ -42,13 +54,15 @@ Enable "Track IP Address" to store the IP address of visitors.
   This is not GDPR compliant. Only enable if you have a legitimate need and proper consent mechanisms in place.
 </Callout>
 
-## Analytics Features
+## Tracking
 
-### Session Replay <span className="text-green-500 text-sm">(Pro)</span>
+### Analytics Features
+
+#### Session Replay <span className="text-green-500 text-sm">(Pro)</span>
 
 Record and replay user sessions to understand user behavior. This feature allows you to see exactly how users interact with your site.
 
-### Web Vitals <span className="text-green-500 text-sm">(Standard)</span>
+#### Web Vitals <span className="text-green-500 text-sm">(Cloud, Standard)</span>
 
 Track Core Web Vitals metrics including:
 - **LCP** (Largest Contentful Paint)
@@ -57,27 +71,47 @@ Track Core Web Vitals metrics including:
 - **FCP** (First Contentful Paint)
 - **TTFB** (Time to First Byte)
 
-### Error Tracking <span className="text-green-500 text-sm">(Standard)</span>
-
-Capture JavaScript errors and exceptions from your site to identify and fix issues affecting your users.
-
-### Track Outbound Links
-
-Track when users click on external links leaving your site. Enabled by default.
-
-### Track URL Parameters
-
-Include query string parameters in page tracking. Enabled by default. Disable if you want cleaner URLs in your analytics or need to exclude sensitive parameters.
-
-### Track Initial Page View
-
-Automatically track the first page view when the tracking script loads. Enabled by default.
-
-### Track SPA Navigation
+#### SPA Navigation [#track-spa-navigation]
 
 Automatically track navigation in single-page applications (SPAs). Enabled by default. This detects URL changes via the History API and tracks them as page views.
 
-## Traffic Filtering
+#### URL Parameters [#track-url-parameters]
+
+Include query string parameters in page tracking. Enabled by default. Disable if you want cleaner URLs in your analytics or need to exclude sensitive parameters.
+
+#### Track URL fragments
+
+Keep fragments such as `#shipping` in page paths, so checkout stages or tabs are tracked as separate pages. Off by default.
+
+#### Initial Page View [#track-initial-page-view]
+
+Automatically track the first page view when the tracking script loads. Enabled by default.
+
+### Auto Capture
+
+#### Outbound Links [#track-outbound-links]
+
+Track when users click on external links leaving your site. Enabled by default.
+
+#### Error Tracking <span className="text-green-500 text-sm">(Standard)</span>
+
+Capture JavaScript errors and exceptions from your site to identify and fix issues affecting your users.
+
+#### Button Clicks <span className="text-green-500 text-sm">(Standard)</span>
+
+Automatically track clicks on all buttons.
+
+#### Copy Events <span className="text-green-500 text-sm">(Standard)</span>
+
+Track when users copy text from your site.
+
+#### Form Interactions <span className="text-green-500 text-sm">(Standard)</span>
+
+Automatically track form submissions and input and select changes.
+
+See [Autocapture](/docs/autocapture) for what each of these records.
+
+## Exclusions
 
 ### IP Exclusions
 
@@ -90,9 +124,21 @@ Block specific IP addresses or ranges from being tracked. Supports:
 
 Block all traffic from specific countries using ISO country codes (e.g., `US`, `DE`, `FR`).
 
+### ASN Exclusions
+
+Exclude traffic from specific networks by autonomous system number, such as a corporate VPN or hosting provider. Enter the number with or without the `AS` prefix (e.g., `AS13335` or `13335`). Up to 100 ASN exclusions are allowed.
+
 ### Path Exclusions
 
 Exclude traffic to specific pages. Use `*` as a wildcard (e.g., `/admin/*` or `/preview`). Matching is case-insensitive. Up to 100 path exclusions are allowed.
+
+### Query Param Exclusions
+
+Exclude traffic to URLs containing specific query parameters. Use a parameter name alone (e.g., `preview`) to match whenever it's present, or `name=value` (e.g., `utm_source=internal`) to match a specific value. Values support `*` as a wildcard, and matching is case-insensitive. Up to 100 query param exclusions are allowed.
+
+<Callout type="info">
+  Query param exclusions need **URL Parameters** turned on in the **Tracking** tab. With it off, events are sent without their query string and these exclusions can't match.
+</Callout>
 
 ### Hostname Exclusions
 
@@ -104,6 +150,10 @@ Exclude traffic from user agents containing any of these terms. Matching is a ca
 
 All of these exclusions work at the server level, ensuring blocked traffic never reaches your analytics database.
 
+## Tracking Script
+
+The **Tracking Script** tab shows the snippet to add to the `<head>` of your website, with an **AI agent** tab holding a prompt you can paste into a coding agent. Under **Options** you can set **Skip Patterns** (URLs to exclude from tracking), **Mask Patterns** (URLs to anonymize, e.g. `/users/*/profile`) and the **Debounce Duration (ms)** before a pageview is tracked after a URL change. See [Tracking script](/docs/script) for every option.
+
 ## Embeds
 
 Show Rybbit data on another site with an embeddable iframe.
@@ -111,20 +161,31 @@ Show Rybbit data on another site with an embeddable iframe.
 - **Widget Embeds** show a compact live visitor widget. Enable them from the **Widget Embeds** tab. This is independent of Public Analytics and only exposes the data the widget displays. See the [Widget Embeds guide](/docs/embeds/widget) for details.
 - **Dashboard Embed** shows the analytics dashboard in an iframe. Configure it from the **Dashboard Embed** tab. It uses a generated private link, not Public Analytics. See the [Dashboard Embed guide](/docs/embeds/dashboard) for details.
 
-## Google Search Console <span className="text-green-500 text-sm">(Cloud)</span>
+## Integrations <span className="text-green-500 text-sm">(Cloud)</span>
+
+### Google Search Console
 
 Connect your Google Search Console account to see search performance data alongside your analytics.
 
-## Change Domain
+## Import
 
-Update the domain for your site. Changing domains does not affect existing data - all historical analytics are preserved.
+Import historical data from another analytics tool. See [Data import](/docs/data-import).
 
-## Transfer Site
+## Usage
 
-Admins and owners can move a site to another organization. Its analytics data, goals, funnels, dashboards, segments, annotations and settings go with it, and the tracking script keeps working unchanged. Site access granted in the old organization (restricted-member grants and team assignments) stays behind.
+The **Usage** tab shows this site's events for the current calendar month, its share of your organization's events, the organization's event limit, a projection to month end, and a **Daily Events** chart. Usage resets at the start of each calendar month. See [Billing](/docs/billing-settings#usage) for what counts.
 
-- **To another organization you manage:** pick the organization under **Transfer Site** and confirm. You need to be an admin or owner of both organizations.
-- **To someone else:** enter their email under **Transfer to someone else**. They get an email with a link (you can also copy it and send it yourself); they open it signed in with that address (on Rybbit Cloud it must be verified; the page offers to send the verification email), choose one of their organizations, and accept. The link is valid for 7 days, and you can cancel it until it's accepted. Neither of you needs to join the other's organization.
+## Moving a site
+
+Admins and owners can move a site to another organization from the **General** tab. Its analytics data, goals, funnels, dashboards, segments, annotations and settings go with it, and the tracking script keeps working unchanged. Site access granted in the old organization (restricted-member grants and team assignments) is reset.
+
+### Move to Organization
+
+To move a site to another organization you manage, pick the organization under **Move to Organization**, click **Move** and confirm with **Yes, move site**. You need to be an admin or owner of both organizations.
+
+### Transfer to someone else
+
+Enter the recipient's email under **Transfer to someone else** and click **Send transfer**. They get an email with a link (you can also use **Copy link** and send it yourself); they open it signed in with that address (on Rybbit Cloud it must be verified; the page offers to send the verification email), choose one of their organizations, and accept. The link is valid for 7 days, and you can **Cancel transfer** until it's accepted. Neither of you needs to join the other's organization.
 
 <Callout type="info">
   When someone else accepts a transfer, the site's Google Search Console connection is removed, since it uses the sender's Google account; the new owner can connect their own. On Rybbit Cloud the receiving organization's plan must have room for another site.
@@ -132,7 +193,7 @@ Admins and owners can move a site to another organization. Its analytics data, g
 
 ## Delete Site
 
-Permanently delete a site and all associated data. Only admins and owners can delete sites.
+Permanently delete a site and all associated data from the **Danger Zone** at the bottom of the **General** tab. Only admins and owners can delete sites. Click **Delete Site**, then press and hold **Hold to delete site** to confirm.
 
 <Callout type="warn">
   This action cannot be undone. All analytics data, reports, funnels, and goals will be permanently deleted.

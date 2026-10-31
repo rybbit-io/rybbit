@@ -51,7 +51,8 @@ There are several ways to disable Rybbit tracking to hide your own visits from a
     - **Server-side filtering**: Traffic is blocked before it reaches your analytics, providing highly accurate exclusion
     - **Multiple formats**: Supports individual IPs, CIDR notation, and ranges
     - **IPv4 and IPv6**: Full support for both IP versions
-    - **Near real-time updates**: Changes take effect within seconds
+    - **Fast updates**: Changes take effect within about a minute (site settings are cached briefly on the server)
+    - **Forwarded hops count**: Rybbit checks every client IP the request reports in its forwarding headers (such as each `X-Forwarded-For` entry), so your IP is excluded even when it isn't the one Rybbit picks as the visitor's IP
     - **No browser dependency**: Works regardless of browser or device
 
     <Callout type="info">
@@ -110,6 +111,10 @@ There are several ways to disable Rybbit tracking to hide your own visits from a
     ```js
     localStorage.setItem('disable-rybbit', 'true');
     ```
+
+    The script only checks that the key exists, so any value works, even `'false'`. If you set `data-namespace` on the script tag, the key is `disable-<namespace>` instead (for example `disable-analytics`). The opt-out applies on the next page load.
+
+    You can also opt out from your own code by setting `window.__RYBBIT_OPTOUT__ = true` before the script loads.
 
     ### 3. Re-enable tracking (when needed)
 

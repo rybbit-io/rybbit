@@ -5,11 +5,11 @@ description: Track Core Web Vitals and site speed
 
 ![Performance Dashboard](/blog/rybbit_performance_dashboard.webp)
 
-The Performance tab tracks Core Web Vitals from real user data.
+The Performance tab tracks Core Web Vitals from real user data. It is available on Rybbit Cloud, on the Standard plan or higher, for websites (not mobile apps).
 
 ## Enabling Performance Tracking
 
-Enable Web Vitals in your [site settings](/docs/site-settings).
+Turn on **Web Vitals** in the **Tracking** tab of your [site settings](/docs/site-settings), or click **Enable** on the Performance page. Web Vitals events count toward your monthly event usage.
 
 ## Web Vitals
 
@@ -43,9 +43,13 @@ How long until the server responds.
 - **Needs Improvement**: 800-1800ms
 - **Poor**: Over 1800ms
 
-## Percentile Selector
+## Percentiles
 
-Choose which percentile to view (p50, p75, p90, p99). The p75 is commonly used for Core Web Vitals assessment.
+Choose which percentile the metric cards show (p50, p75, p90, p99). p75 is the default and is what Core Web Vitals assessments use. On the chart, toggle each percentile on or off to compare them.
+
+## Annotations
+
+Click **Annotations** to show your [annotations](/docs/annotations) on the performance chart, so you can line up a change in speed with a deploy or launch.
 
 ## Comparison
 
@@ -53,7 +57,8 @@ Each metric shows the change from the previous period, with green indicating imp
 
 ## Breakdowns
 
-- **By Page** - Find your slowest pages
-- **By Device** - Compare mobile vs desktop performance
-- **By Browser** - Identify browser-specific issues
-- **By Country** - See geographic performance differences
+- **Pages** - Find your slowest pages
+- **Countries**, **Regions**, and **Map** - See geographic performance differences
+- **Devices** - Compare mobile vs desktop performance
+- **Browsers** - Identify browser-specific issues
+- **Operating systems** - Compare performance across operating systems

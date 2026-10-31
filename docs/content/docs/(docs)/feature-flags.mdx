@@ -119,10 +119,10 @@ If a visitor matches a boolean condition set but falls outside that set's rollou
 | Query parameter | A specific URL query parameter |
 | Referrer | The document referrer |
 | Language | Browser language, such as `en-US` |
-| Country | Visitor country resolved from IP |
-| Region | Visitor region resolved from IP |
-| City | Visitor city resolved from IP |
-| Device type | Device category derived from user agent and screen size |
+| Country | Visitor country resolved from the IP of the request that asks for evaluation |
+| Region | Visitor region resolved from the same IP |
+| City | Visitor city resolved from the same IP |
+| Device type | Device category derived from the requesting user agent and the reported screen size |
 | User ID | The identified user ID, falling back to the anonymous visitor ID |
 | User trait | A trait set through `identify()` or `setTraits()` |
 
@@ -144,6 +144,10 @@ All rules in a condition set must match. Multiple condition sets act as ordered 
 The tracking script automatically evaluates client and both-runtime flags when it loads. It sends context such as anonymous visitor ID, identified user ID, URL, referrer, language, screen size, IP-derived location, and saved user traits.
 
 The anonymous visitor ID is a random ID that keeps percentage rollouts stable across page loads. As soon as a site has at least one client or both-runtime flag, the script stores it in `localStorage` under `<namespace>-visitor-id` (`rybbit-visitor-id` by default). Sites without feature flags never read or write this visitor-ID key. If you use feature flags on sites with EU visitors, treat this stored ID like a cookie under Art. 5(3) ePrivacy when you assess consent requirements.
+
+Flags are evaluated again after `identify()`, `setTraits()`, and `clearUserId()`, and on every SPA navigation when SPA tracking is on, so path and query targeting follow the current page.
+
+If you serve the script through a [proxy](/docs/proxy-guide), the proxy must also forward `POST /site/:siteId/feature-flags/evaluate` (under the same prefix as your other Rybbit routes). Without it, `rybbit.flag()` returns your fallback.
 
 Use `onReady()` before reading flags if you need the evaluated value during page initialization:
 
@@ -194,7 +198,7 @@ You can then target flags using **User ID** or **User trait** rules.
 
 ## Server Runtime
 
-Use server runtime for decisions that should not happen in the browser. The server endpoint returns server and both-runtime flags only.
+Use server runtime for decisions that should not happen in the browser. The server endpoint returns server and both-runtime flags only. It requires an [API key](/docs/api/getting-started) with the `flags:read` scope (or an unrestricted key).
 
 ```
 POST /api/sites/:siteId/feature-flags/evaluate
@@ -247,6 +251,10 @@ POST /api/sites/:siteId/feature-flags/evaluate
     },
   }}
 />
+
+<Callout type="warn">
+The body has no IP address or user agent field. Country, region, city, and device type targeting use the IP and `User-Agent` of the request itself, so a call from your backend is evaluated as your server, not as the visitor. Rules on those fields won't match visitors reliably on the server runtime.
+</Callout>
 
 <Tabs items={['cURL', 'JavaScript']}>
   <Tab value="cURL">
@@ -312,9 +320,12 @@ const newCheckout = data.flags.new_checkout?.value === true;
       "rolloutPercentage": 100
     }
   },
+  "featureFlagsEnabled": true,
   "generatedAt": "2026-05-27T12:00:00.000Z"
 }
 ```
+
+`featureFlagsEnabled` is `false` (with an empty `flags` object) when the site has no flags for this runtime.
 
 Assignment fields:
 

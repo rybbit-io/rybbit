@@ -2,6 +2,7 @@
   "title": "Feature Guides",
   "pages": [
     "errors",
+    "bots",
     "events",
     "globe",
     "journeys",

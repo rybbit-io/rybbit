@@ -5,72 +5,84 @@ description: Manage your personal account settings including profile, security, 
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Access your account settings by clicking on "Account" or going to [app.rybbit.io/settings/account](https://app.rybbit.io/settings/account).
+Open your account settings by clicking **Account** in the settings sidebar or going to [app.rybbit.io/settings/account](https://app.rybbit.io/settings/account). Your profile, sign-in and personal API keys go with you into every organization you belong to.
 
 ![account settings](/docs/account-settings.png)
 
-## Account
+The page has five sections: **Profile**, **Preferences**, **Sign-in & security**, **Personal API keys** and **Danger zone**. The **Sign out** button sits at the top right.
+
+## Profile
 
 ### Name
 
-Update your display name shown across the platform. This name is visible to other members in your organization.
+Your display name, shown to teammates in member lists.
 
 ### Email
 
-Update your email address for account notifications and login. This is the primary email associated with your account.
+The address you use to sign in and receive reports and invitations. To change it, click **Change email**, enter the new address and click **Send confirmation link**:
 
-### Weekly Email Reports <span className="text-green-500 text-sm">(Cloud)</span>
+- If your current email is verified, Rybbit first emails a confirmation link to your current address, then a link to the new address. The new address takes over once you click both.
+- If your current email isn't verified, Rybbit emails a link to the new address only. It takes over once you click that link.
 
-Enable or disable automatic weekly email reports. When enabled, you'll receive a summary of your analytics performance delivered to your inbox each week.
+## Preferences
 
-### Sign Out
+### Weekly email reports <span className="text-green-500 text-sm">(Cloud)</span>
 
-Sign out of your current session.
+Turn on to receive a weekly traffic summary for each site you can access.
 
-## Security
+### Language
 
-### Change Password
+The language used for menus and labels in the dashboard.
 
-Update your password to keep your account secure.
+## Sign-in & security
 
-### Delete Account
+### Password
 
-Permanently delete your account and all associated data.
+Click **Change password**, enter your current password and a new one, and confirm it. Passwords must be at least 8 characters.
 
-<Callout type="warn">
-  This action cannot be undone. If you have an active subscription, you must cancel it before deleting your account.
-</Callout>
+## Personal API keys
 
-## API Keys
+Personal API keys act as you, with your role in each organization, and stop working if you leave that organization. For an integration that should keep working when people leave, use an [organization API key](/docs/organization-settings#organization-api-keys) instead.
 
-Generate API keys to access Rybbit's analytics endpoints from your applications.
+### Creating an API key
 
-### Creating an API Key
-
-1. Enter a name for your API key (e.g., "Production App", "Development")
-2. Optionally enable **Restrict permissions** to limit the key to specific resources. Leave it off for a full-access key that can do everything you can.
-3. Click "Create"
-4. Copy and save the generated key immediately
+1. Click **Create key**
+2. Enter a **Key name** so you can tell your keys apart
+3. Optionally turn on **Restrict permissions** to limit the key to specific resources. Leave it off for a full-access key that can do anything you can.
+4. Click **Create key**
+5. Copy and store the key right away
 
 <Callout type="warn">
-  On Rybbit Cloud, API keys require a Standard or Pro plan. On a free plan you'll see an upgrade prompt in place of the creation form.
+  On Rybbit Cloud, API keys are available on Standard and Pro plans. On other plans you'll see an **Upgrade your plan** button instead of **Create key**.
 </Callout>
 
 <Callout type="warn">
-  API keys are only shown once when created. Store your key securely as you won't be able to view it again.
+  You see the key once, right after you create it. You can't view it again.
 </Callout>
 
-### Managing API Keys
+### Managing API keys
 
-Your existing API keys are displayed in a table showing:
-- **Name** - The name you assigned to the key
+Your keys are listed in a table with these columns:
+- **Name** - The name you gave the key
 - **Key** - A preview of the key (first few characters)
-- **Permissions** - Whether the key has full access or is restricted to specific scopes
+- **Permissions** - **Full access**, or the access and resources a restricted key has
 - **Created** - When the key was created
 - **Last used** - When the key last made a request
 
-You can delete API keys that are no longer needed. Deleting a key immediately revokes access for any applications using it.
+Delete a key you no longer need. Deleting a key revokes access immediately for anything using it.
 
-### Using API Keys
+### Using API keys
 
-Include your API key in requests to Rybbit's API endpoints. See the [API documentation](/docs/api) for available endpoints and usage examples.
+Send your API key with requests to Rybbit's API. See [API getting started](/docs/api/getting-started) for authentication and available endpoints.
+
+## Danger zone
+
+### Delete account
+
+Deleting your account removes your profile, your sign-in and your personal API keys, and removes you from every organization. Organizations, their sites and their analytics data are not deleted.
+
+To confirm, click **Delete account**, then press and hold **Hold to delete account**.
+
+<Callout type="warn">
+  This cannot be undone. If you're the only owner of an organization with an active subscription, you can't delete your account until you cancel that subscription in [Billing](/docs/billing-settings) or make someone else an owner.
+</Callout>

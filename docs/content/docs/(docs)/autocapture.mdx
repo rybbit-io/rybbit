@@ -3,7 +3,7 @@ title: Autocapture
 description: Automatically track user interactions without writing code
 ---
 
-Rybbit can automatically capture common user interactions without requiring any code changes. These features can be enabled in your [Site Settings](/docs/site-settings) under the "Auto Capture" section.
+Rybbit can automatically capture common user interactions without requiring any code changes. You turn these features on and off in your [Site Settings](/docs/site-settings) under the "Auto Capture" section. Outbound link tracking is on by default; the others are off until you enable them.
 
 ## Available Autocapture Features
 
@@ -17,7 +17,7 @@ Rybbit can automatically capture common user interactions without requiring any 
 
 ## Outbound Links
 
-When enabled, Rybbit automatically tracks clicks on links that navigate to external domains.
+On by default. Rybbit tracks clicks on links that navigate to external domains.
 
 **Tracked properties:**
 - `url` - The destination URL
@@ -26,10 +26,10 @@ When enabled, Rybbit automatically tracks clicks on links that navigate to exter
 
 ## Error Tracking
 
-Captures uncaught JavaScript errors and unhandled promise rejections from your site. Only errors originating from your domain are tracked (third-party script errors are filtered out).
+Captures uncaught JavaScript errors and unhandled promise rejections from your site. Only errors originating from your domain are tracked (third-party script errors are filtered out). Browser `ResizeObserver loop` warnings are ignored, and an identical error (same name, message, file, line, and column) is sent at most once per 60 seconds.
 
 **Tracked properties:**
-- `message` - The error message
+- `message` - The error message (truncated to 500 characters)
 - `stack` - Stack trace (truncated to 2000 characters)
 - `fileName` - Source file where the error occurred
 - `lineNumber` - Line number
@@ -42,8 +42,10 @@ Automatically tracks clicks on:
 - Elements with `role="button"`
 - `<input type="submit">` and `<input type="button">`
 
+Repeat clicks on the same button within one second are recorded as a single click.
+
 **Tracked properties:**
-- `text` - The button's text content (falls back to `aria-label`, then `value` for input buttons, then `title`)
+- `text` - The button's text content, up to 100 characters (falls back to `aria-label`, then `value` for input buttons, then `title`)
 
 ### Adding Custom Properties
 
@@ -112,7 +114,7 @@ You can add custom properties using `data-rybbit-prop-*` on the form element:
 
 ### Input Changes (`input_change`)
 
-Triggered when a user changes the value of an input, select, or textarea field. Disabled inputs are automatically excluded from tracking.
+Triggered when a user changes the value of an input, select, or textarea field. Disabled and read-only fields are excluded.
 
 **Tracked properties:**
 - `element` - The element type (`input`, `select`, or `textarea`)
@@ -137,7 +139,7 @@ You can add custom properties using `data-rybbit-prop-*` on the input element:
 </select>
 ```
 
-**Privacy note:** Hidden inputs, password fields, and disabled inputs are automatically excluded from tracking.
+**Privacy note:** Field values are never sent. Hidden inputs, password fields, and disabled or read-only fields are excluded from tracking.
 
 ## Enabling Autocapture
 
@@ -145,7 +147,7 @@ You can add custom properties using `data-rybbit-prop-*` on the input element:
 2. Navigate to the **Auto Capture** section
 3. Toggle on the features you want to enable
 
-Changes take effect immediately for new visitors. Existing sessions may need to refresh to pick up the new configuration.
+The script reads these settings when the page loads, so changes apply on the next page load, within about a minute (site settings are cached briefly on the server). Pages that are already open keep the old settings until they reload.
 
 ---
 
