@@ -1,0 +1,201 @@
+---
+title: Get Site Transfer
+description: Returns the site's pending transfer, or null when there is none.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/transfer
+```
+
+Returns the site's pending transfer. Expired transfers are returned as `null`.
+
+**Permissions:** the `admin` role or above in the site's organization. API keys need the `sites:write` scope.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: "Site ID or site identifier",
+      type: "string | number",
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    transfer: {
+      description: "The pending transfer, or null",
+      type: "SiteTransfer | null",
+    },
+  }}
+/>
+
+#### SiteTransfer Object
+
+<TypeTable
+  type={{
+    id: {
+      description: "Transfer ID (the secret in the link)",
+      type: "string",
+    },
+    recipientEmail: {
+      description: "Recipient's email address, lowercased",
+      type: "string",
+    },
+    createdAt: {
+      description: "When the transfer was created",
+      type: "string",
+      typeDescription: "ISO 8601 UTC, e.g. 2026-10-31T14:22:05.000Z",
+    },
+    expiresAt: {
+      description: "When the link stops working, 7 days after creation",
+      type: "string",
+      typeDescription: "ISO 8601 UTC",
+    },
+    url: {
+      description: "Link the recipient opens to accept",
+      type: "string",
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/transfer" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/transfer',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/transfer',
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/transfer');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/transfer')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/transfer", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/123/transfer")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/transfer"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/transfer");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "transfer": {
+    "id": "q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a",
+    "recipientEmail": "tay@example.org",
+    "createdAt": "2026-10-31T14:22:05.000Z",
+    "expiresAt": "2026-11-07T14:22:05.000Z",
+    "url": "https://app.rybbit.io/transfer/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a"
+  }
+}
+```
+
+</div>
+</div>

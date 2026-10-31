@@ -18,7 +18,7 @@ POST /api/organizations/:organizationId/api-keys
 
 Creates an API key **owned by the organization itself**, rather than by your user account. The key authenticates as the organization (org-admin authority over its sites), so it survives member departures, and its plan gating, [rate limits](/docs/api/getting-started#rate-limits-cloud-only), and key-count limit all follow the owning organization's subscription. Organization keys are issued with the `rb_org_` prefix.
 
-<Callout type="warn">You must be an **owner or admin** of the target organization. This endpoint accepts your dashboard **session** or an **unrestricted (full-access) user API key** — scoped keys and organization keys are rejected, so an organization key cannot mint other keys.</Callout>
+<Callout type="warn">You must be an **owner or admin** of the target organization. This endpoint accepts your dashboard **session** or an **unrestricted (full-access) personal API key**. Scoped keys and organization keys get `403` with `"Insufficient scope"`, so an organization key cannot mint other keys.</Callout>
 
 ### Path Parameters
 
@@ -37,22 +37,24 @@ Creates an API key **owned by the organization itself**, rather than by your use
 <TypeTable
   type={{
     name: {
-      description: 'A label for the key',
+      description: 'A label for the key, 1 to 32 characters',
       type: 'string',
       required: true,
     },
     expiresIn: {
-      description: 'Seconds until the key expires. Omit for a key that never expires.',
+      description: 'Seconds until the key expires, from 86,400 (1 day) to 31,536,000 (365 days). Omit for a key that never expires.',
       type: 'number',
       required: false,
     },
     permissions: {
-      description: 'Scope the key to specific `resource: action[]` pairs (e.g. `{ "analytics": ["read"], "goals": ["read", "write"] }`). Omit entirely for a full-access key.',
+      description: 'Scope the key to specific `resource: action[]` pairs (e.g. `{ "analytics": ["read"], "goals": ["read", "write"] }`); see the note below this table. Omit entirely for a full-access key; an empty object is rejected.',
       type: 'object',
       required: false,
     },
   }}
 />
+
+Scopes use the `resource:action` taxonomy listed under [Roles and Scopes](/docs/api/getting-started#scopes). Per-key limits don't apply; usage counts against the owner's [rate limits](/docs/api/getting-started#rate-limits-cloud-only).
 
 ### Response
 
@@ -73,7 +75,7 @@ Returns the created API key object. The full `key` value carries the `rb_org_` p
       type: 'string',
     },
     start: {
-      description: 'A non-secret prefix of the key for display',
+      description: 'The first 6 characters of the key ("rb_org"), for display',
       type: 'string',
     },
     prefix: {
@@ -84,9 +86,17 @@ Returns the created API key object. The full `key` value carries the `rb_org_` p
       description: 'The ID of the organization that owns the key',
       type: 'string',
     },
-    userId: {
-      description: 'The ID of the admin/owner who created the key',
+    configId: {
+      description: 'Key configuration: always "org" for organization keys',
       type: 'string',
+    },
+    metadata: {
+      description: '`{ createdBy }`: the ID of the admin or owner who created the key',
+      type: 'object',
+    },
+    permissions: {
+      description: 'The scopes the key was given, or null for a full-access key',
+      type: 'object | null',
     },
     enabled: {
       description: 'Whether the key is currently enabled',
@@ -105,15 +115,15 @@ Returns the created API key object. The full `key` value carries the `rb_org_` p
       type: 'string',
     },
     rateLimitEnabled: {
-      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only))',
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see Rate Limits in Getting Started)',
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number',
     },
     rateLimitTimeWindow: {
-      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number',
     },
   }}
@@ -128,7 +138,7 @@ Returns the created API key object. The full `key` value carries the `rb_org_` p
   <Tab value="cURL">
 ```bash title="Request"
 curl -X POST "https://app.rybbit.io/api/organizations/org_123/api-keys" \
-  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "CI pipeline", "expiresIn": 2592000}'
 ```
@@ -164,7 +174,7 @@ response = requests.post(
         'expiresIn': 2592000
     },
     headers={
-        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
     }
 )
 
@@ -182,7 +192,7 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     'expiresIn' => 2592000
 ]));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
     'Content-Type: application/json'
 ]);
 
@@ -199,7 +209,7 @@ require 'json'
 
 uri = URI("https://app.rybbit.io/api/organizations/org_123/api-keys")
 req = Net::HTTP::Post.new(uri)
-req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
 req['Content-Type'] = 'application/json'
 req.body = {
   name: 'CI pipeline',
@@ -217,7 +227,7 @@ body := bytes.NewBuffer([]byte(`{
   "expiresIn": 2592000
 }`))
 req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/organizations/org_123/api-keys", body)
-req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
 req.Header.Set("Content-Type", "application/json")
 
 client := &http.Client{}
@@ -233,7 +243,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 let client = reqwest::Client::new();
 let res = client
     .post("https://app.rybbit.io/api/organizations/org_123/api-keys")
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
     .json(&serde_json::json!({
         "name": "CI pipeline",
         "expiresIn": 2592000
@@ -250,7 +260,7 @@ HttpClient client = HttpClient.newHttpClient();
 String json = "{\"name\": \"CI pipeline\", \"expiresIn\": 2592000}";
 HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://app.rybbit.io/api/organizations/org_123/api-keys"))
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
     .build();
@@ -261,7 +271,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
   <Tab value=".NET">
 ```csharp title="Request"
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
 
 var content = new StringContent(
     "{\"name\": \"CI pipeline\", \"expiresIn\": 2592000}",
@@ -280,12 +290,14 @@ var data = await response.Content.ReadAsStringAsync();
 ```json title="Response"
 {
   "id": "key_8f3a1b2c4d5e6f7g",
-  "key": "rb_org_xxxxxxxxxxxxxxxxxxxx",
+  "key": "rb_org_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "name": "CI pipeline",
-  "start": "rb_org_xxxx",
+  "start": "rb_org",
   "prefix": "rb_org_",
   "referenceId": "org_123",
-  "userId": "user_2a9b8c7d6e5f4g3h",
+  "configId": "org",
+  "metadata": { "createdBy": "user_2a9b8c7d6e5f4g3h" },
+  "permissions": null,
   "enabled": true,
   "expiresAt": "2026-07-25T12:00:00.000Z",
   "createdAt": "2026-06-25T12:00:00.000Z",

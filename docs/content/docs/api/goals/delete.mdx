@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 DELETE /api/sites/:site/goals/:goalId
 ```
 
-Deletes a goal. This action cannot be undone.
+Deletes a goal. This action cannot be undone. Requires the member role or above on the site (the `goals:write` permission). Returns `404` if the goal does not exist and `403` if it belongs to another site.
 
 ### Path Parameters
 

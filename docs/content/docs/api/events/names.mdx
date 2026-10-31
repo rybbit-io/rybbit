@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/sites/:site/events/names
 ```
 
-Returns a list of unique custom event names with their occurrence counts.
+Returns a list of unique custom event names with their occurrence counts, most frequent first. Returns at most 1,000 names.
 
 ### Path Parameters
 
@@ -38,7 +38,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 <TypeTable
   type={{
     data: {
-      description: 'Array of event name objects',
+      description: 'Array of event name objects, sorted by count descending (at most 1,000)',
       type: 'EventName[]',
     },
   }}

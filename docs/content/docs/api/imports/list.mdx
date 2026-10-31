@@ -1,6 +1,6 @@
 ---
 title: List Imports
-description: Returns all data imports for a site with their progress counts.
+description: Returns the 10 most recent data imports for a site with their progress counts.
 full: true
 method: GET
 ---
@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/sites/:site/imports
 ```
 
-Returns all data imports for a site with their progress counts. Requires the editor role or above on the site. On Rybbit Cloud, this requires a paid plan.
+Returns the 10 most recent data imports for a site, newest first, with their progress counts. Requires the editor role or above on the site. On Rybbit Cloud, this requires a paid plan.
 
 ### Path Parameters
 
@@ -63,22 +63,22 @@ This endpoint takes no query parameters.
       type: 'number',
     },
     skippedEvents: {
-      description: 'Number of events skipped (e.g. outside the retention window)',
+      description: 'Number of events skipped: timestamp in the future, older than the plan\'s historical window, or over the monthly import quota for its month',
       type: 'number',
     },
     invalidEvents: {
-      description: 'Number of events rejected as invalid',
+      description: 'Number of events dropped because their values failed validation',
       type: 'number',
     },
     startedAt: {
       description: 'When the import started',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix',
     },
     completedAt: {
       description: 'When the import finished, or null while it is still running',
       type: 'string | null',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix',
     },
   }}
 />
@@ -262,8 +262,8 @@ class Program
       "importedEvents": 15420,
       "skippedEvents": 120,
       "invalidEvents": 3,
-      "startedAt": "2024-01-10T12:00:00.000Z",
-      "completedAt": "2024-01-10T12:04:30.000Z"
+      "startedAt": "2024-01-10 12:00:00.123",
+      "completedAt": "2024-01-10 12:04:30.456"
     },
     {
       "importId": "9a1c8f2e-3b7d-4e1a-9c0f-2d5b6a7e8f10",
@@ -271,7 +271,7 @@ class Program
       "importedEvents": 8200,
       "skippedEvents": 0,
       "invalidEvents": 0,
-      "startedAt": "2024-01-15T09:30:00.000Z",
+      "startedAt": "2024-01-15 09:30:00.789",
       "completedAt": null
     }
   ]

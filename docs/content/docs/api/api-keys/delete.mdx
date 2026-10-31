@@ -20,7 +20,7 @@ Revokes (deletes) an existing API key. The key is identified by its `keyId`.
 
 <Callout type="warn">This endpoint uses **POST**, not HTTP DELETE. Revoking a key is immediate and permanent — any client still using it will start receiving 401 responses.</Callout>
 
-<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie with the request.</Callout>
+<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie and an `Origin` header with the request. To delete an organization key, pass `"configId": "org"`; without it the key is not found (`404`). Managing organization keys requires the owner or admin role.</Callout>
 
 ### Request Body
 
@@ -30,6 +30,11 @@ Revokes (deletes) an existing API key. The key is identified by its `keyId`.
       description: 'The id of the API key to delete',
       type: 'string',
       required: true,
+    },
+    configId: {
+      description: 'Set to "org" for an organization key. Omit for a personal key.',
+      type: 'string',
+      required: false,
     },
   }}
 />
@@ -54,7 +59,8 @@ Returns a success flag.
   <Tab value="cURL">
 ```bash title="Request"
 curl -X POST "https://app.rybbit.io/api/auth/api-key/delete" \
-  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Origin: https://app.rybbit.io" \
   -H "Content-Type: application/json" \
   -d '{"keyId": "key_8f3a1b2c4d5e6f7g"}'
 ```
@@ -88,7 +94,8 @@ response = requests.post(
         'keyId': 'key_8f3a1b2c4d5e6f7g'
     },
     headers={
-        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+        'Origin': 'https://app.rybbit.io'
     }
 )
 
@@ -105,7 +112,8 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     'keyId' => 'key_8f3a1b2c4d5e6f7g'
 ]));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Origin: https://app.rybbit.io',
     'Content-Type: application/json'
 ]);
 
@@ -122,7 +130,8 @@ require 'json'
 
 uri = URI("https://app.rybbit.io/api/auth/api-key/delete")
 req = Net::HTTP::Post.new(uri)
-req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Origin'] = 'https://app.rybbit.io'
 req['Content-Type'] = 'application/json'
 req.body = {
   keyId: 'key_8f3a1b2c4d5e6f7g'
@@ -138,7 +147,8 @@ body := bytes.NewBuffer([]byte(`{
   "keyId": "key_8f3a1b2c4d5e6f7g"
 }`))
 req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/auth/api-key/delete", body)
-req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Origin", "https://app.rybbit.io")
 req.Header.Set("Content-Type", "application/json")
 
 client := &http.Client{}
@@ -154,7 +164,8 @@ json.NewDecoder(resp.Body).Decode(&data)
 let client = reqwest::Client::new();
 let res = client
     .post("https://app.rybbit.io/api/auth/api-key/delete")
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
     .json(&serde_json::json!({
         "keyId": "key_8f3a1b2c4d5e6f7g"
     }))
@@ -170,7 +181,8 @@ HttpClient client = HttpClient.newHttpClient();
 String json = "{\"keyId\": \"key_8f3a1b2c4d5e6f7g\"}";
 HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://app.rybbit.io/api/auth/api-key/delete"))
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
     .build();
@@ -181,7 +193,8 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
   <Tab value=".NET">
 ```csharp title="Request"
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Origin", "https://app.rybbit.io");
 
 var content = new StringContent(
     "{\"keyId\": \"key_8f3a1b2c4d5e6f7g\"}",

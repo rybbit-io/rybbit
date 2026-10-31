@@ -31,22 +31,27 @@ Returns a paginated list of sessions with their analytics data.
 
 ### Query Parameters
 
-Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following. An invalid `view`, `sort_by`, `sort_order`, `include_goals`, or min/max value returns `400`.
 
 <TypeTable
   type={{
     page: {
-      description: 'Page number (1-indexed)',
+      description: 'Page number (1-indexed). Invalid values fall back to 1.',
       type: 'number',
       default: 1,
     },
     limit: {
-      description: 'Number of results per page',
+      description: 'Number of results per page, capped at 10,000. Invalid values fall back to 100.',
       type: 'number',
       default: 100,
     },
     user_id: {
-      description: 'Filter sessions by user ID',
+      description: 'Only sessions of this user. Matches the identified user ID, or the device ID of anonymous sessions.',
+      type: 'string',
+      required: false,
+    },
+    session_id: {
+      description: 'Only this session',
       type: 'string',
       required: false,
     },
@@ -55,6 +60,60 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       type: 'string',
       typeDescription: '"true" | "false"',
       default: 'false',
+    },
+    view: {
+      description: 'Preset view. identified: identified users. replay: sessions with a replay. converted: completed at least one goal (turns on include_goals). bounced: exactly one pageview. errors: at least one error.',
+      type: 'string',
+      typeDescription: '"all" | "identified" | "replay" | "converted" | "bounced" | "errors"',
+      default: 'all',
+    },
+    sort_by: {
+      description: 'Sort column. events sorts by custom events plus autocaptured interactions. Ties fall back to session start, then session ID.',
+      type: 'string',
+      typeDescription: '"started" | "ended" | "duration" | "pageviews" | "events" | "errors"',
+      default: 'ended',
+    },
+    sort_order: {
+      description: 'Sort direction',
+      type: 'string',
+      typeDescription: '"asc" | "desc"',
+      default: 'desc',
+    },
+    include_goals: {
+      description: "Add converted_goals to each session. Only the site's 50 oldest goals are matched. API keys without the goals:read scope get an empty list.",
+      type: 'string',
+      typeDescription: '"true" | "false"',
+      default: 'false',
+    },
+    min_pageviews: {
+      description: 'Minimum pageviews (inclusive)',
+      type: 'number',
+      required: false,
+    },
+    max_pageviews: {
+      description: 'Maximum pageviews (inclusive)',
+      type: 'number',
+      required: false,
+    },
+    min_events: {
+      description: 'Minimum events (inclusive). Counts custom events plus button clicks, copies, form submits, and input changes.',
+      type: 'number',
+      required: false,
+    },
+    max_events: {
+      description: 'Maximum events (inclusive), counted like min_events',
+      type: 'number',
+      required: false,
+    },
+    min_duration: {
+      description: 'Minimum session duration in seconds (inclusive)',
+      type: 'number',
+      required: false,
+    },
+    max_duration: {
+      description: 'Maximum session duration in seconds (inclusive)',
+      type: 'number',
+      required: false,
     },
   }}
 />
@@ -72,6 +131,8 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 
 #### Session Object
 
+Attribute fields (`country`, `browser`, and so on) come from the session's latest event. `referrer`, `channel`, and the UTM fields come from its first event that has one.
+
 <TypeTable
   type={{
     session_id: {
@@ -83,11 +144,11 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       type: 'string',
     },
     identified_user_id: {
-      description: 'Custom user ID when identified',
+      description: 'Custom user ID when identified, empty string otherwise',
       type: 'string',
     },
     traits: {
-      description: 'Custom user traits',
+      description: 'Custom user traits, null for anonymous users or users without a profile',
       type: 'object | null',
     },
     country: {
@@ -102,17 +163,49 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'City name',
       type: 'string',
     },
+    lat: {
+      description: 'Latitude of the visitor location',
+      type: 'number',
+    },
+    lon: {
+      description: 'Longitude of the visitor location',
+      type: 'number',
+    },
+    timezone: {
+      description: 'Timezone of the visitor location',
+      type: 'string',
+    },
+    language: {
+      description: 'Browser language',
+      type: 'string',
+    },
     browser: {
       description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
       type: 'string',
     },
     operating_system: {
       description: 'Operating system',
       type: 'string',
     },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
     device_type: {
       description: 'Device type',
       type: 'string',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
     },
     referrer: {
       description: 'Referrer URL',
@@ -120,6 +213,10 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     },
     channel: {
       description: 'Traffic channel',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname of the first event',
       type: 'string',
     },
     entry_page: {
@@ -138,6 +235,30 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Number of custom events',
       type: 'number',
     },
+    errors: {
+      description: 'Number of errors',
+      type: 'number',
+    },
+    outbound: {
+      description: 'Number of outbound link clicks',
+      type: 'number',
+    },
+    button_clicks: {
+      description: 'Number of autocaptured button clicks',
+      type: 'number',
+    },
+    copies: {
+      description: 'Number of autocaptured copy events',
+      type: 'number',
+    },
+    form_submits: {
+      description: 'Number of autocaptured form submits',
+      type: 'number',
+    },
+    input_changes: {
+      description: 'Number of autocaptured input changes',
+      type: 'number',
+    },
     session_duration: {
       description: 'Duration in seconds',
       type: 'number',
@@ -145,12 +266,12 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     session_start: {
       description: 'Session start time',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
     },
     session_end: {
       description: 'Session end time',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
     },
     utm_source: {
       description: 'UTM source parameter',
@@ -163,6 +284,31 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     utm_campaign: {
       description: 'UTM campaign parameter',
       type: 'string',
+    },
+    utm_term: {
+      description: 'UTM term parameter',
+      type: 'string',
+    },
+    utm_content: {
+      description: 'UTM content parameter',
+      type: 'string',
+    },
+    tag: {
+      description: 'Tag set on the tracking script, empty string if none',
+      type: 'string',
+    },
+    ip: {
+      description: 'IP address. null unless the site has IP tracking turned on.',
+      type: 'string | null',
+    },
+    has_replay: {
+      description: '1 when the session has a session replay, otherwise 0',
+      type: 'number',
+    },
+    converted_goals: {
+      description: 'Goals the session completed, most recent conversion first. Only present with include_goals=true or view=converted.',
+      type: '{ id: number; name: string | null }[]',
+      required: false,
     },
   }}
 />
@@ -296,23 +442,44 @@ var data = await response.Content.ReadAsStringAsync();
       "identified_user_id": "user@example.com",
       "traits": { "plan": "pro" },
       "country": "US",
-      "region": "California",
+      "region": "US-CA",
       "city": "San Francisco",
+      "lat": 37.7749,
+      "lon": -122.4194,
+      "timezone": "America/Los_Angeles",
+      "language": "en-US",
       "browser": "Chrome",
+      "browser_version": "120.0",
       "operating_system": "macOS",
-      "device_type": "desktop",
+      "operating_system_version": "14.2",
+      "device_type": "Desktop",
+      "screen_width": 1920,
+      "screen_height": 1080,
       "referrer": "https://google.com",
-      "channel": "organic",
+      "channel": "Organic Search",
+      "hostname": "example.com",
       "entry_page": "/",
       "exit_page": "/pricing",
       "pageviews": 5,
       "events": 2,
+      "errors": 0,
+      "outbound": 1,
+      "button_clicks": 3,
+      "copies": 0,
+      "form_submits": 0,
+      "input_changes": 0,
       "session_duration": 245,
-      "session_start": "2024-01-31T14:00:00.000Z",
-      "session_end": "2024-01-31T14:04:05.000Z",
+      "session_start": "2024-01-31 14:00:00",
+      "session_end": "2024-01-31 14:04:05",
       "utm_source": "google",
       "utm_medium": "cpc",
-      "utm_campaign": "brand"
+      "utm_campaign": "brand",
+      "utm_term": "",
+      "utm_content": "",
+      "tag": "",
+      "ip": null,
+      "has_replay": 1,
+      "converted_goals": [{ "id": 12, "name": "Signup" }]
     }
   ]
 }

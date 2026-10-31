@@ -49,12 +49,14 @@ Returns detailed information about a specific session including all events and p
       default: 0,
     },
     minutes: {
-      description: 'Only return events from the last N minutes',
+      description: 'Only use events from the last N minutes. Applies to the session summary, the events, and the total.',
       type: 'number',
       required: false,
     },
   }}
 />
+
+Returns `404` when the session has no events (or none in the last `minutes`).
 
 ### Response
 
@@ -72,16 +74,117 @@ Returns detailed information about a specific session including all events and p
 <TypeTable
   type={{
     session: {
-      description: 'Session metadata',
+      description: 'Session summary',
       type: 'SessionMeta',
     },
     events: {
-      description: 'Array of events in the session',
+      description: 'Events in the session, oldest first. Performance (web vitals) events are left out.',
       type: 'Event[]',
     },
     pagination: {
       description: 'Pagination info for events',
       type: 'Pagination',
+    },
+  }}
+/>
+
+#### SessionMeta Object
+
+<TypeTable
+  type={{
+    session_id: {
+      description: 'Session identifier',
+      type: 'string',
+    },
+    user_id: {
+      description: 'Device fingerprint identifier',
+      type: 'string',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    region: {
+      description: 'Region/state',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    language: {
+      description: 'Browser language',
+      type: 'string',
+    },
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
+    },
+    referrer: {
+      description: 'First non-empty referrer in the session',
+      type: 'string',
+    },
+    channel: {
+      description: 'Traffic channel',
+      type: 'string',
+    },
+    session_start: {
+      description: 'Time of the first event',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_end: {
+      description: 'Time of the last event',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_duration: {
+      description: 'Duration in seconds',
+      type: 'number',
+    },
+    pageviews: {
+      description: 'Number of pageviews',
+      type: 'number',
+    },
+    events: {
+      description: 'Number of events of every type, including pageviews and performance events',
+      type: 'number',
+    },
+    entry_page: {
+      description: 'First page visited',
+      type: 'string',
+    },
+    exit_page: {
+      description: 'Last page visited',
+      type: 'string',
+    },
+    ip: {
+      description: 'IP address. null unless the site has IP tracking turned on.',
+      type: 'string | null',
     },
   }}
 />
@@ -93,7 +196,7 @@ Returns detailed information about a specific session including all events and p
     timestamp: {
       description: 'Event timestamp',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS.mmm"',
     },
     pathname: {
       description: 'Page path',
@@ -103,8 +206,16 @@ Returns detailed information about a specific session including all events and p
       description: 'Hostname',
       type: 'string',
     },
+    querystring: {
+      description: 'Raw query string',
+      type: 'string',
+    },
     page_title: {
       description: 'Page title',
+      type: 'string',
+    },
+    referrer: {
+      description: 'Referrer URL',
       type: 'string',
     },
     type: {
@@ -113,12 +224,39 @@ Returns detailed information about a specific session including all events and p
       typeDescription: '"pageview" | "custom_event" | "error" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change"',
     },
     event_name: {
-      description: 'Custom event name (for custom_event type)',
+      description: 'Custom event name, or the error type for errors. Often empty for other types.',
       type: 'string',
     },
     props: {
       description: 'Event properties',
       type: 'object',
+    },
+    goals: {
+      description: "Goals this event completed, usually empty. Only the site's 50 oldest goals are matched, and API keys without the goals:read scope always get an empty list.",
+      type: '{ id: number; name: string | null }[]',
+    },
+  }}
+/>
+
+#### Pagination Object
+
+<TypeTable
+  type={{
+    total: {
+      description: 'Number of events in the session, excluding performance events',
+      type: 'number',
+    },
+    limit: {
+      description: 'The limit used',
+      type: 'number',
+    },
+    offset: {
+      description: 'The offset used',
+      type: 'number',
+    },
+    hasMore: {
+      description: 'Whether more events follow this page',
+      type: 'boolean',
     },
   }}
 />
@@ -245,33 +383,51 @@ var data = await response.Content.ReadAsStringAsync();
       "session_id": "sess_abc123",
       "user_id": "dev_xyz789",
       "country": "US",
+      "region": "US-CA",
+      "city": "San Francisco",
+      "language": "en-US",
+      "device_type": "Desktop",
       "browser": "Chrome",
+      "browser_version": "120.0",
       "operating_system": "macOS",
-      "device_type": "desktop",
-      "session_start": "2024-01-31T14:00:00.000Z",
-      "session_end": "2024-01-31T14:04:05.000Z",
+      "operating_system_version": "14.2",
+      "screen_width": 1920,
+      "screen_height": 1080,
+      "referrer": "https://google.com",
+      "channel": "Organic Search",
+      "session_start": "2024-01-31 14:00:00",
+      "session_end": "2024-01-31 14:04:05",
       "session_duration": 245,
       "pageviews": 5,
       "events": 7,
       "entry_page": "/",
-      "exit_page": "/pricing"
+      "exit_page": "/pricing",
+      "ip": null
     },
     "events": [
       {
-        "timestamp": "2024-01-31T14:00:00.000Z",
+        "timestamp": "2024-01-31 14:00:00.000",
         "pathname": "/",
         "hostname": "example.com",
+        "querystring": "",
         "page_title": "Home",
+        "referrer": "https://google.com",
         "type": "pageview",
-        "referrer": "https://google.com"
+        "event_name": "",
+        "props": {},
+        "goals": []
       },
       {
-        "timestamp": "2024-01-31T14:01:30.000Z",
+        "timestamp": "2024-01-31 14:01:30.412",
         "pathname": "/",
         "hostname": "example.com",
+        "querystring": "",
+        "page_title": "Home",
+        "referrer": "",
         "type": "custom_event",
         "event_name": "cta_click",
-        "props": { "button": "hero" }
+        "props": { "button": "hero" },
+        "goals": [{ "id": 12, "name": "CTA click" }]
       }
     ],
     "pagination": {

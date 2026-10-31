@@ -46,29 +46,41 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 
 #### PerformanceMetrics Object
 
-Each metric (lcp, cls, inp, fcp, ttfb) includes the following percentiles:
+Each metric (`lcp`, `cls`, `inp`, `fcp`, `ttfb`) has the fields below; LCP is shown. LCP, INP, FCP and TTFB are in milliseconds; CLS is unitless. A percentile is `null` when no page load in the range reported that metric.
 
 <TypeTable
   type={{
     lcp_p50: {
       description: 'LCP 50th percentile (median)',
-      type: 'number',
+      type: 'number | null',
       typeDescription: 'milliseconds',
     },
     lcp_p75: {
       description: 'LCP 75th percentile',
-      type: 'number',
+      type: 'number | null',
       typeDescription: 'milliseconds',
     },
     lcp_p90: {
       description: 'LCP 90th percentile',
-      type: 'number',
+      type: 'number | null',
       typeDescription: 'milliseconds',
     },
     lcp_p99: {
       description: 'LCP 99th percentile',
-      type: 'number',
+      type: 'number | null',
       typeDescription: 'milliseconds',
+    },
+    lcp_count: {
+      description: 'Page loads that reported LCP',
+      type: 'number',
+    },
+    lcp_good: {
+      description: 'Page loads with a good LCP (at most 2500 ms; CLS 0.1, INP 200 ms, FCP 1800 ms, TTFB 800 ms)',
+      type: 'number',
+    },
+    lcp_poor: {
+      description: 'Page loads with a poor LCP (over 4000 ms; CLS 0.25, INP 500 ms, FCP 3000 ms, TTFB 1800 ms). The rest of lcp_count needs improvement.',
+      type: 'number',
     },
     total_performance_events: {
       description: 'Total number of performance measurements',
@@ -202,6 +214,9 @@ var data = await response.Content.ReadAsStringAsync();
     "lcp_p75": 2400,
     "lcp_p90": 3200,
     "lcp_p99": 5100,
+    "lcp_count": 48210,
+    "lcp_good": 36150,
+    "lcp_poor": 4320,
     "cls_p50": 0.05,
     "cls_p75": 0.1,
     "cls_p90": 0.18,
@@ -218,6 +233,18 @@ var data = await response.Content.ReadAsStringAsync();
     "ttfb_p75": 650,
     "ttfb_p90": 950,
     "ttfb_p99": 1800,
+    "cls_count": 47980,
+    "cls_good": 39870,
+    "cls_poor": 2110,
+    "inp_count": 21450,
+    "inp_good": 18900,
+    "inp_poor": 640,
+    "fcp_count": 48300,
+    "fcp_good": 41200,
+    "fcp_poor": 1980,
+    "ttfb_count": 48500,
+    "ttfb_good": 42100,
+    "ttfb_poor": 1730,
     "total_performance_events": 48521
   }
 }

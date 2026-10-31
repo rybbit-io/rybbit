@@ -15,7 +15,9 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 PUT /api/sites/:siteId/config
 ```
 
-Updates site configuration settings. All fields are optional - only include the fields you want to update. Requires the editor role or above on the site.
+Updates site configuration settings. All fields are optional - only include the fields you want to update. Requires the editor role or above on the site (the `sites:configure` permission).
+
+Fields you omit keep their current values. The `excluded*` lists and `tags` replace the stored list as a whole, so send the full list each time.
 
 ### Path Parameters
 
@@ -33,14 +35,31 @@ Updates site configuration settings. All fields are optional - only include the 
 
 <TypeTable
   type={{
-    domain: {
-      description: 'Site domain',
+    name: {
+      description: 'Display name',
       type: 'string',
-      typeDescription: 'Valid domain format (e.g., example.com)',
+      typeDescription: '1-255 characters',
+      required: false,
+    },
+    domain: {
+      description: 'Site domain, or the app identifier for a mobile site. A leading http:// or https:// and trailing slashes are removed.',
+      type: 'string',
+      typeDescription: 'Valid domain (e.g., example.com) for web sites; bundle/package ID (e.g., com.example.app) for mobile sites',
+      required: false,
+    },
+    type: {
+      description: 'Site type. Switching to mobile turns off session replay and Web Vitals.',
+      type: 'string | null',
+      typeDescription: '"web" | "mobile" (null means web)',
       required: false,
     },
     public: {
       description: 'Make analytics publicly accessible',
+      type: 'boolean',
+      required: false,
+    },
+    embedEnabled: {
+      description: 'Allow embedding the stats widget',
       type: 'boolean',
       required: false,
     },
@@ -54,8 +73,13 @@ Updates site configuration settings. All fields are optional - only include the 
       type: 'boolean',
       required: false,
     },
+    firstPartyProxy: {
+      description: 'The site sends tracking through a first-party proxy (Cloudflare Worker, CloudFront, nginx), so the visitor IP is read from forwarded headers',
+      type: 'boolean',
+      required: false,
+    },
     excludedIPs: {
-      description: 'List of IP addresses or CIDR ranges to exclude',
+      description: 'IP addresses, CIDR ranges, or a-b ranges to exclude',
       type: 'string[]',
       typeDescription: 'Max 100 entries',
       required: false,
@@ -63,16 +87,52 @@ Updates site configuration settings. All fields are optional - only include the 
     excludedCountries: {
       description: 'List of country codes to exclude',
       type: 'string[]',
-      typeDescription: '2-letter ISO codes (e.g., US, GB)',
+      typeDescription: 'Uppercase 2-letter ISO codes (e.g., US, GB), max 250 entries',
+      required: false,
+    },
+    excludedPaths: {
+      description: 'Path patterns to exclude, case-insensitive, * matches anything (e.g., /admin/*)',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, 2048 characters each',
+      required: false,
+    },
+    excludedHostnames: {
+      description: 'Hostname patterns to exclude, case-insensitive, * matches anything (e.g., *.vercel.app)',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, 253 characters each',
+      required: false,
+    },
+    excludedUserAgents: {
+      description: 'Case-insensitive substrings; a request whose user agent contains one is excluded (e.g., HeadlessChrome)',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, 512 characters each',
+      required: false,
+    },
+    excludedASNs: {
+      description: 'Autonomous system numbers to exclude, with or without the AS prefix (e.g., AS13335 or 13335)',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, each at most 4294967295',
+      required: false,
+    },
+    excludedQueryParams: {
+      description: 'Query parameter rules: "name" excludes a request that has the parameter; "name=value" also matches the value, with * as a wildcard (e.g., utm_source=internal-*). Case-insensitive.',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, 512 characters each; must not start with =',
+      required: false,
+    },
+    tags: {
+      description: 'Labels for organizing sites',
+      type: 'string[]',
+      typeDescription: 'Max 20 tags, 50 characters each',
       required: false,
     },
     sessionReplay: {
-      description: 'Enable session replay',
+      description: 'Enable session replay. Web sites only.',
       type: 'boolean',
       required: false,
     },
     webVitals: {
-      description: 'Enable Web Vitals tracking',
+      description: 'Enable Web Vitals tracking. Web sites only.',
       type: 'boolean',
       required: false,
     },
@@ -96,6 +156,36 @@ Updates site configuration settings. All fields are optional - only include the 
       type: 'boolean',
       required: false,
     },
+    trackInitialPageView: {
+      description: 'Send a pageview when the tracking script loads. Enabled by default.',
+      type: 'boolean',
+      required: false,
+    },
+    trackSpaNavigation: {
+      description: 'Send a pageview on single-page-app route changes. Enabled by default.',
+      type: 'boolean',
+      required: false,
+    },
+    trackIp: {
+      description: 'Store visitor IP addresses. Disabled by default.',
+      type: 'boolean',
+      required: false,
+    },
+    trackButtonClicks: {
+      description: 'Capture button clicks automatically',
+      type: 'boolean',
+      required: false,
+    },
+    trackCopy: {
+      description: 'Capture text copy events automatically',
+      type: 'boolean',
+      required: false,
+    },
+    trackFormInteractions: {
+      description: 'Capture form submissions and input changes automatically',
+      type: 'boolean',
+      required: false,
+    },
   }}
 />
 
@@ -112,11 +202,19 @@ Updates site configuration settings. All fields are optional - only include the 
       type: 'string',
     },
     config: {
-      description: 'Updated site configuration',
+      description: 'The full site configuration after the update: every request field except name, plus id, siteId, privateLinkKey, and claimExpiresAt',
       type: 'object',
     },
   }}
 />
+
+### Errors
+
+| Status | When |
+|--------|------|
+| `400` | The body fails validation (`details` lists the problems), an IP pattern is invalid, the domain does not fit the site type, `sessionReplay` or `webVitals` is `true` on a mobile site, or the body has no fields |
+| `403` | Rybbit Cloud only: turning on `sessionReplay` without a plan that includes replay, or turning on `webVitals`, `trackErrors`, `trackButtonClicks`, `trackCopy`, or `trackFormInteractions` without an active or trialing subscription. Turning these off is always allowed. The other features are checked only when the update turns them on, but `sessionReplay: true` is checked every time it is sent, even if replay is already on. |
+| `404` | The site does not exist |
 
 </div>
 <div className="flex flex-col gap-4">
@@ -275,16 +373,37 @@ var data = await response.Content.ReadAsStringAsync();
   "success": true,
   "message": "Site configuration updated successfully",
   "config": {
+    "id": "a1b2c3d4e5f6",
+    "siteId": 123,
+    "type": "web",
+    "domain": "example.com",
     "public": true,
+    "embedEnabled": false,
     "saltUserIds": false,
     "blockBots": true,
+    "firstPartyProxy": false,
     "excludedIPs": [],
     "excludedCountries": ["CN", "RU"],
+    "excludedPaths": [],
+    "excludedHostnames": [],
+    "excludedUserAgents": [],
+    "excludedASNs": [],
+    "excludedQueryParams": [],
+    "privateLinkKey": null,
+    "claimExpiresAt": null,
     "sessionReplay": true,
     "webVitals": true,
     "trackErrors": true,
     "trackOutbound": true,
-    "trackUrlParams": false
+    "trackUrlParams": false,
+    "trackUrlFragments": false,
+    "trackInitialPageView": true,
+    "trackSpaNavigation": true,
+    "trackIp": false,
+    "trackButtonClicks": false,
+    "trackCopy": false,
+    "trackFormInteractions": false,
+    "tags": []
   }
 }
 ```

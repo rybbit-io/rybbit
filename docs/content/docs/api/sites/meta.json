@@ -1,4 +1,28 @@
 {
   "title": "Sites",
-  "pages": ["get", "has-data", "is-public", "delete", "update-config", "excluded-ips", "excluded-countries", "excluded-paths", "excluded-hostnames", "excluded-user-agents", "get-private-link", "update-private-link", "export-pdf"]
+  "pages": [
+    "get",
+    "has-data",
+    "is-public",
+    "delete",
+    "update-config",
+    "excluded-ips",
+    "excluded-countries",
+    "excluded-paths",
+    "excluded-hostnames",
+    "excluded-user-agents",
+    "excluded-asns",
+    "excluded-query-params",
+    "usage",
+    "get-private-link",
+    "update-private-link",
+    "export-pdf",
+    "move",
+    "create-transfer",
+    "get-transfer",
+    "cancel-transfer",
+    "get-incoming-transfer",
+    "accept-transfer",
+    "decline-transfer"
+  ]
 }

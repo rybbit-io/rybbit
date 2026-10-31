@@ -38,7 +38,7 @@ Operators that only read, and operators that only referred, both appear; the mis
 
 Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
 
-Filters apply to both halves, using the bot filter subset described in [Get Bots by Dimension](/docs/api/bots/by-dimension).
+Filters apply differently to each half. The crawl half (`crawls`, `training_crawls`, `search_crawls`, `agent_requests`) uses only the bot filter subset described in [Get Bots by Dimension](/docs/api/bots/by-dimension) and ignores other parameters. The referral half (`referrals`) uses the full events filter set. So a channel, UTM, or `event_name` filter narrows referrals but leaves crawl counts unchanged.
 
 ### Response
 

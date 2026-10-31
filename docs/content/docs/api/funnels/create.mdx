@@ -1,12 +1,14 @@
 ---
 title: Create Funnel
-description: Creates or updates a saved funnel. If `reportId` is provided, updates the existing funnel.
+description: Creates or updates a saved funnel. If `reportId` is provided, updates the existing funnel. Requires the member role or above on the site (the `funnels:write` permission).
 full: true
 method: POST
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+Each step uses the [FunnelStep object](/docs/api/funnels/analyze#funnelstep-object). Returns `201` on success; `400` for fewer than 2 steps, an unknown step type, a page or event step without a `value`, or a missing name; `404` if `reportId` does not exist; `403` if it belongs to another site.
 
 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
 <div>

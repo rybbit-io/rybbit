@@ -48,9 +48,21 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 
 <TypeTable
   type={{
+    data: {
+      description: 'One row per bucket, oldest first. When the time range is bounded, empty buckets are returned as zero rows.',
+      type: 'EventCountBucket[]',
+    },
+  }}
+/>
+
+#### EventCountBucket Object
+
+<TypeTable
+  type={{
     time: {
       description: 'Start of the time bucket',
       type: 'string',
+      typeDescription: 'Bucket start in the requested time_zone, "YYYY-MM-DD HH:MM:SS"',
     },
     pageview_count: {
       description: 'Number of pageviews in this bucket',

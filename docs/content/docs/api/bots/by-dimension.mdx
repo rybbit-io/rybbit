@@ -38,7 +38,7 @@ Bot filtering supports a subset of filter parameters: `browser`, `browser_versio
 <TypeTable
   type={{
     dimension: {
-      description: 'The dimension to group by',
+      description: 'The dimension to group by. There is no default: a missing or unknown value fails with 500.',
       type: 'string',
       typeDescription: '"browser" | "browser_version" | "operating_system" | "operating_system_version" | "country" | "region" | "city" | "device_type" | "referrer" | "hostname" | "pathname" | "dimensions" | "asn_org" | "asn_provider" | "bot_category" | "bot_name" | "bot_operator" | "bot_purpose" | "matched_ua_pattern"',
       required: true,

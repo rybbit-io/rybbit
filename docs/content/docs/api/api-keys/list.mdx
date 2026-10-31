@@ -25,7 +25,12 @@ Returns all API keys owned by the authenticated user, or by a specific organizat
 <TypeTable
   type={{
     organizationId: {
-      description: 'Organization ID. If provided, returns organization-owned keys instead of your user-owned keys.',
+      description: 'Organization ID. If provided, returns that organization\'s keys instead of your personal keys. Requires the owner or admin role in the organization.',
+      type: 'string',
+      required: false,
+    },
+    configId: {
+      description: 'Only return keys of this configuration: "default" (personal) or "org" (organization).',
       type: 'string',
       required: false,
     },
@@ -95,8 +100,12 @@ Returns all API keys owned by the authenticated user, or by a specific organizat
       description: 'The key prefix',
       type: 'string | null',
     },
-    userId: {
-      description: 'ID of the user that owns the key',
+    referenceId: {
+      description: 'Owner of the key: your user ID for personal keys, the organization ID for organization keys',
+      type: 'string',
+    },
+    configId: {
+      description: '"default" for personal keys, "org" for organization keys',
       type: 'string',
     },
     enabled: {
@@ -116,15 +125,15 @@ Returns all API keys owned by the authenticated user, or by a specific organizat
       type: 'string',
     },
     rateLimitEnabled: {
-      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only))',
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see Rate Limits in Getting Started)',
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number | null',
     },
     rateLimitTimeWindow: {
-      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number | null',
     },
     requestCount: {
@@ -140,15 +149,17 @@ Returns all API keys owned by the authenticated user, or by a specific organizat
       type: 'string | null',
     },
     metadata: {
-      description: 'Extra metadata stored on the key',
+      description: 'Organization keys: `{ createdBy }`, the user who created the key. Null for personal keys',
       type: 'object | null',
     },
     permissions: {
-      description: 'Permissions associated with the key',
+      description: 'The scopes the key was given, or null for a full-access key',
       type: 'object | null',
     },
   }}
 />
+
+The `rateLimit*` fields are unused: limits apply per credential owner, see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only).
 
 </div>
 <div className="flex flex-col gap-4">
@@ -157,7 +168,7 @@ Returns all API keys owned by the authenticated user, or by a specific organizat
   <Tab value="cURL">
 ```bash title="Request"
 curl -X GET "https://app.rybbit.io/api/auth/api-key/list?limit=20" \
-  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN"
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN"
 ```
   </Tab>
   <Tab value="JavaScript">
@@ -180,7 +191,7 @@ import requests
 response = requests.get(
     'https://app.rybbit.io/api/auth/api-key/list?limit=20',
     headers={
-        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
     }
 )
 
@@ -193,7 +204,7 @@ $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/auth/api-key/list?limit=20");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN'
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
 ]);
 
 $response = curl_exec($ch);
@@ -209,7 +220,7 @@ require 'json'
 
 uri = URI("https://app.rybbit.io/api/auth/api-key/list?limit=20")
 req = Net::HTTP::Get.new(uri)
-req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
 
 res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
 data = JSON.parse(res.body)
@@ -218,7 +229,7 @@ data = JSON.parse(res.body)
   <Tab value="Go">
 ```go title="Request"
 req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/auth/api-key/list?limit=20", nil)
-req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
 
 client := &http.Client{}
 resp, _ := client.Do(req)
@@ -233,7 +244,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 let client = reqwest::Client::new();
 let res = client
     .get("https://app.rybbit.io/api/auth/api-key/list?limit=20")
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
     .send()
     .await?;
 
@@ -245,7 +256,7 @@ let data: serde_json::Value = res.json().await?;
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://app.rybbit.io/api/auth/api-key/list?limit=20"))
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
     .GET()
     .build();
 
@@ -255,7 +266,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
   <Tab value=".NET">
 ```csharp title="Request"
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
 
 var response = await client.GetAsync("https://app.rybbit.io/api/auth/api-key/list?limit=20");
 var data = await response.Content.ReadAsStringAsync();
@@ -271,9 +282,10 @@ var data = await response.Content.ReadAsStringAsync();
     {
       "id": "key_8f3a1b2c4d5e6f7g",
       "name": "CI pipeline",
-      "start": "rybbit_sk_live_xxxx",
-      "prefix": "rybbit_sk_live_",
-      "userId": "user_2a9b8c7d6e5f4g3h",
+      "start": "aBcDeF",
+      "prefix": null,
+      "referenceId": "user_2a9b8c7d6e5f4g3h",
+      "configId": "default",
       "enabled": true,
       "expiresAt": "2026-07-25T12:00:00.000Z",
       "createdAt": "2026-06-25T12:00:00.000Z",

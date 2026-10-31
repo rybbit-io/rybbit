@@ -1,0 +1,314 @@
+---
+title: Identify User
+description: Links an anonymous device ID to a user ID from your backend, optionally merging traits into the user's profile.
+full: true
+method: POST
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/sites/:site/users/identify
+```
+
+Links an anonymous visitor (the device fingerprint shown as `user_id` in sessions and events) to an identified user ID, the same link the tracking script's `identify()` call makes. Past events from that device are attributed to the user in the background; expect them to update within a few minutes.
+
+This is the management endpoint. To identify a visitor as part of tracking (from a browser or server sending events), use [Sending Events](/docs/api/sending-events) or the script's [`identify()`](/docs/identify-users).
+
+**Permissions:** the `member` role or above on the site. API keys need the `users:write` scope.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: "Site ID or site identifier",
+      type: "string | number",
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    anonymous_id: {
+      description: "The anonymous device ID to link",
+      type: "string",
+      typeDescription: "1-255 characters",
+      required: true,
+    },
+    user_id: {
+      description: "Your user ID. Must differ from anonymous_id",
+      type: "string",
+      typeDescription: "1-255 characters",
+      required: true,
+    },
+    traits: {
+      description: "Traits to merge into the user's existing traits. Keys with a null value are dropped. Without traits, an empty profile is created if none exists",
+      type: "object",
+      typeDescription: "Max 2 KB as JSON",
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: "Whether the user was identified",
+      type: "boolean",
+    },
+  }}
+/>
+
+### Error Responses
+
+Errors use the standard body `{ error, code, message, resolution }`.
+
+<TypeTable
+  type={{
+    "400": {
+      description: "Invalid payload (missing or oversized fields, traits over 2 KB), or user_id equal to anonymous_id",
+      type: "object",
+    },
+    "403": {
+      description: "Missing role on the site or the users:write scope",
+      type: "object",
+    },
+    "500": {
+      description: "Failed to identify user",
+      type: "object",
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X POST "https://app.rybbit.io/api/sites/123/users/identify" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "anonymous_id": "abc123def456",
+    "user_id": "user_8421",
+    "traits": {
+      "email": "jane@example.com",
+      "plan": "pro"
+    }
+  }'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/users/identify',
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      anonymous_id: 'abc123def456',
+      user_id: 'user_8421',
+      traits: {
+        email: 'jane@example.com',
+        plan: 'pro'
+      }
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.post(
+    'https://app.rybbit.io/api/sites/123/users/identify',
+    json={
+        'anonymous_id': 'abc123def456',
+        'user_id': 'user_8421',
+        'traits': {
+            'email': 'jane@example.com',
+            'plan': 'pro'
+        }
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$body = [
+    'anonymous_id' => 'abc123def456',
+    'user_id' => 'user_8421',
+    'traits' => [
+        'email' => 'jane@example.com',
+        'plan' => 'pro'
+    ]
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/users/identify');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/users/identify')
+request = Net::HTTP::Post.new(uri)
+request['Authorization'] = 'Bearer your_api_key_here'
+request['Content-Type'] = 'application/json'
+request.body = {
+  anonymous_id: 'abc123def456',
+  user_id: 'user_8421',
+  traits: {
+    email: 'jane@example.com',
+    plan: 'pro'
+  }
+}.to_json
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+data = JSON.parse(response.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+body := map[string]interface{}{
+    "anonymous_id": "abc123def456",
+    "user_id": "user_8421",
+    "traits": map[string]interface{}{
+        "email": "jane@example.com",
+        "plan": "pro",
+    },
+}
+jsonBody, _ := json.Marshal(body)
+
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/123/users/identify", bytes.NewBuffer(jsonBody))
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let body = serde_json::json!({
+  "anonymous_id": "abc123def456",
+  "user_id": "user_8421",
+  "traits": {
+    "email": "jane@example.com",
+    "plan": "pro"
+  }
+});
+
+let client = reqwest::Client::new();
+let res = client
+    .post("https://app.rybbit.io/api/sites/123/users/identify")
+    .header("Authorization", "Bearer your_api_key_here")
+    .json(&body)
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+String json = """
+{
+  "anonymous_id": "abc123def456",
+  "user_id": "user_8421",
+  "traits": {
+    "email": "jane@example.com",
+    "plan": "pro"
+  }
+}
+""";
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/users/identify"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+var body = new
+{
+    anonymous_id = "abc123def456",
+    user_id = "user_8421",
+    traits = new
+    {
+        email = "jane@example.com",
+        plan = "pro"
+    }
+};
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(body),
+    Encoding.UTF8,
+    "application/json");
+
+var response = await client.PostAsync("https://app.rybbit.io/api/sites/123/users/identify", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true
+}
+```
+
+</div>
+</div>

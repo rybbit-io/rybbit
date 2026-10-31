@@ -34,7 +34,7 @@ The key technique here is the [`filters` parameter](/docs/api/getting-started#fi
 
 ## Full script
 
-This script ranks every channel by the conversion rate of a chosen goal (here, goal `1` — your signup goal). Swap in whichever goal matters to your business.
+This script ranks every channel by the conversion rate of a chosen goal (here, goal `1` — your signup goal). Swap in whichever goal matters to your business. `/goals` returns 10 goals per page by default, newest first, so the script asks for `page_size=100` (the maximum); with more than 100 goals, page through with `page` until you find yours.
 
 <Tabs items={['JavaScript', 'Python']}>
 <Tab value="JavaScript">
@@ -63,7 +63,8 @@ async function getChannels() {
 // 2. Conversion rate for one channel, scoped with a filter
 async function goalForChannel(channel) {
   const filters = JSON.stringify([{ parameter: 'channel', type: 'equals', value: [channel] }]);
-  const { data } = await get('/goals', { filters, ...range });
+  // /goals is paginated (10 per page, newest first by default); ask for the maximum of 100
+  const { data } = await get('/goals', { filters, page_size: 100, ...range });
   return data.find((g) => g.goalId === PRIMARY_GOAL_ID);
 }
 
@@ -128,7 +129,8 @@ def get_channels():
 def goal_for_channel(channel):
     # 2. Conversion rate for one channel, scoped with a filter
     filters = json.dumps([{"parameter": "channel", "type": "equals", "value": [channel]}])
-    goals = get("/goals", filters=filters, **RANGE)["data"]
+    # /goals is paginated (10 per page, newest first by default); ask for the maximum of 100
+    goals = get("/goals", filters=filters, page_size=100, **RANGE)["data"]
     return next((g for g in goals if g["goalId"] == PRIMARY_GOAL_ID), None)
 
 

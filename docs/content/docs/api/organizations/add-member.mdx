@@ -5,6 +5,7 @@ full: true
 method: POST
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
@@ -16,6 +17,8 @@ POST /api/organizations/:organizationId/members
 ```
 
 Adds a user to an organization with a specified role. The user must already exist in the system. Requires admin or owner role in the organization. You cannot assign a role above your own.
+
+<Callout type="warn">Call this with your dashboard session or a **personal** API key; keys need the `org:write` scope. An **organization** API key passes the role check but has no user behind it, so the request returns `401`.</Callout>
 
 ### Path Parameters
 
@@ -50,7 +53,7 @@ Adds a user to an organization with a specified role. The user must already exis
 
 ### Response
 
-Returns a success message when the user is added successfully.
+Returns `201` with a success message when the user is added.
 
 <TypeTable
   type={{
@@ -70,7 +73,11 @@ Returns a success message when the user is added successfully.
       type: 'object',
     },
     '401': {
-      description: 'Unauthorized (not an admin/owner of the organization)',
+      description: 'No credential, or an organization API key (no user to act as)',
+      type: 'object',
+    },
+    '403': {
+      description: 'Caller is below admin ("Insufficient role", with `required`), not a member of the organization, missing the `org:write` scope, assigning a role above their own ("You cannot assign a role above your own"), or the plan\'s member limit is reached',
       type: 'object',
     },
     '404': {
@@ -264,11 +271,17 @@ var data = await response.Content.ReadAsStringAsync();
 }
 ```
 
-```json title="Error Response (401 - Unauthorized)"
+```json title="Error Response (403 - Not an admin)"
 {
-  "error": "Unauthorized"
+  "error": "Insufficient role",
+  "code": "FORBIDDEN",
+  "message": "Insufficient role",
+  "resolution": "Use a credential with the required scope and Site or Organization access.",
+  "required": "admin"
 }
 ```
+
+Every error body also carries `code`, `message` and `resolution`; see [Error Responses](/docs/api/getting-started#error-responses).
 
 </div>
 </div>

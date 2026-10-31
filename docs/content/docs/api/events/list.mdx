@@ -17,6 +17,13 @@ GET /api/sites/:site/events
 
 Returns a paginated list of events (pageviews, custom events, and outbound clicks).
 
+Web vitals rows are left out. Events come back newest first. Page with cursors:
+
+- **Scroll back:** make the first request with no cursor, then pass `cursor.oldestCursor` as `before_cursor` until `cursor.hasMore` is `false`.
+- **Poll for new events:** pass `cursor.newestCursor` (or any row's `event_cursor`) as `since_cursor`, then pass each response's `cursor.nextCursor` on the next poll. Each poll reads the oldest 500 events after the cursor; if `cursor.hasMore` is `true`, poll again straight away. Each poll re-reads the last 5 seconds, because events can be written slightly out of order, so drop rows whose `event_cursor` you already have.
+
+`since_timestamp` and `before_timestamp` are older whole-second bounds kept for compatibility. Events in the boundary second are skipped, so prefer the cursors.
+
 ### Path Parameters
 
 <TypeTable
@@ -36,32 +43,42 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     page_size: {
-      description: 'Number of results per page',
+      description: 'Number of results per page. Ignored when since_cursor or since_timestamp is set.',
       type: 'number',
       default: 50,
     },
+    before_cursor: {
+      description: 'Return events older than this cursor. Pass cursor.oldestCursor from the previous page, or a row\'s event_cursor.',
+      type: 'string',
+    },
+    since_cursor: {
+      description: 'Poll for events newer than this cursor. Returns up to 500 events per poll, read oldest first, and a cursor with nextCursor and hasMore. Takes precedence over every other cursor parameter.',
+      type: 'string',
+    },
     since_timestamp: {
-      description: 'Poll for new events after this timestamp (ISO 8601). Used for realtime polling. Returns up to 500 events.',
+      description: 'Legacy. Return events after this second (UTC, "YYYY-MM-DD HH:MM:SS"). Returns only the newest 500 and no cursor; events in the boundary second are skipped.',
       type: 'string',
     },
     before_timestamp: {
-      description: 'Fetch events before this timestamp (ISO 8601). Used for cursor-based pagination (scrolling back).',
+      description: 'Legacy. Return events before this second (UTC, "YYYY-MM-DD HH:MM:SS"). Events in the boundary second are skipped.',
       type: 'string',
     },
   }}
 />
+
+A malformed `before_cursor` or `since_cursor` returns `400`.
 
 ### Response
 
 <TypeTable
   type={{
     data: {
-      description: 'Array of event objects',
+      description: 'Array of event objects, newest first',
       type: 'Event[]',
     },
     cursor: {
-      description: 'Cursor metadata for pagination (only present when not using since_timestamp)',
-      type: '{ hasMore: boolean, oldestTimestamp: string | null }',
+      description: 'Pagination cursor. Omitted when since_timestamp is used. With since_cursor it is { nextCursor, hasMore }; otherwise it is the scroll-back shape.',
+      type: '{ hasMore: boolean, oldestTimestamp: string | null, oldestCursor: string | null, newestCursor: string | null } | { nextCursor: string, hasMore: boolean }',
     },
   }}
 />
@@ -73,12 +90,17 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     timestamp: {
       description: 'Event timestamp',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    event_cursor: {
+      description: 'The row\'s position in the log, usable as before_cursor or since_cursor',
+      type: 'string',
+      typeDescription: '"<epoch milliseconds>_<16 hex digits>"',
     },
     type: {
       description: 'Event type',
       type: 'string',
-      typeDescription: '"pageview" | "custom_event" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change"',
+      typeDescription: '"pageview" | "custom_event" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change" | "error"',
     },
     event_name: {
       description: 'Custom event name',
@@ -99,6 +121,10 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     identified_user_id: {
       description: 'Identified user ID (if user has been identified)',
       type: 'string',
+    },
+    traits: {
+      description: 'Traits of the identified user, or null when the event has no identified user or no stored profile',
+      type: 'object | null',
     },
     pathname: {
       description: 'Page path',
@@ -298,7 +324,7 @@ var data = await response.Content.ReadAsStringAsync();
 {
   "data": [
     {
-      "timestamp": "2024-01-31T14:22:00.000Z",
+      "timestamp": "2024-01-31 14:22:00",
       "type": "custom_event",
       "event_name": "signup",
       "properties": "{\"plan\":\"pro\",\"source\":\"homepage\"}",
@@ -322,10 +348,12 @@ var data = await response.Content.ReadAsStringAsync();
       "lon": -122.4194,
       "screen_width": 1920,
       "screen_height": 1080,
-      "device_type": "desktop"
+      "device_type": "desktop",
+      "event_cursor": "1706710920412_9F3C2A61B07E4D18",
+      "traits": null
     },
     {
-      "timestamp": "2024-01-31T14:21:00.000Z",
+      "timestamp": "2024-01-31 14:21:00",
       "type": "pageview",
       "event_name": "",
       "properties": "{}",
@@ -349,12 +377,16 @@ var data = await response.Content.ReadAsStringAsync();
       "lon": -122.4194,
       "screen_width": 1920,
       "screen_height": 1080,
-      "device_type": "desktop"
+      "device_type": "desktop",
+      "event_cursor": "1706710860118_04B7E9D25C3A1F60",
+      "traits": null
     }
   ],
   "cursor": {
     "hasMore": true,
-    "oldestTimestamp": "2024-01-31T14:21:00.000Z"
+    "oldestTimestamp": "2024-01-31 14:21:00",
+    "oldestCursor": "1706710860118_04B7E9D25C3A1F60",
+    "newestCursor": "1706710920412_9F3C2A61B07E4D18"
   }
 }
 ```

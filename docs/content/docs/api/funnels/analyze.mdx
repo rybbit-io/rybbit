@@ -56,9 +56,10 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
       required: true,
     },
     value: {
-      description: 'Page path pattern or event name',
+      description: 'page: path pattern (* matches within one path segment, ** across segments). event: custom event name. Autocapture types (outbound, button_click, form_submit, copy): wildcard pattern for the destination URL, button or copied text, or form name, ID, or action; leave empty to match every event of the type.',
       type: 'string',
-      required: true,
+      typeDescription: 'Required for page and event steps',
+      required: false,
     },
     name: {
       description: 'Display name for the step',
@@ -70,13 +71,18 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
       type: 'string',
       required: false,
     },
+    propertyFilters: {
+      description: 'Exact-match filters that must all pass. For event and autocapture steps they match event properties; for page steps they match URL query parameters. Property values are compared as strings: a boolean or number stored as a native JSON value (e.g. `{ gift: true }`) does not match.',
+      type: 'Array<{ key: string; value: string | number | boolean }>',
+      required: false,
+    },
     eventPropertyKey: {
-      description: 'Event property key to match (for event steps)',
+      description: 'Deprecated: use propertyFilters. Single property key; ignored when propertyFilters is set.',
       type: 'string',
       required: false,
     },
     eventPropertyValue: {
-      description: 'Event property value to match',
+      description: 'Deprecated: use propertyFilters. Single property value; ignored when propertyFilters is set.',
       type: 'string | number | boolean',
       required: false,
     },

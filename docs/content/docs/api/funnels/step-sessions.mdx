@@ -41,7 +41,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     mode: {
-      description: 'Whether to get sessions that reached or dropped off at this step',
+      description: 'reached: sessions that completed this step. dropped: sessions that completed this step but not the next one (empty for the last step).',
       type: 'string',
       typeDescription: '"reached" | "dropped"',
       required: true,
@@ -56,6 +56,12 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       type: 'number',
       default: 25,
     },
+    replays_only: {
+      description: 'Only return sessions that have a session replay',
+      type: 'string',
+      typeDescription: '"true" | "false"',
+      default: 'false',
+    },
   }}
 />
 
@@ -64,7 +70,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     steps: {
-      description: 'Array of funnel steps (same as used in analyze)',
+      description: 'Array of funnel steps (minimum 2), using the FunnelStep object from Analyze Funnel',
       type: 'FunnelStep[]',
       required: true,
     },
@@ -81,6 +87,175 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     },
   }}
 />
+
+#### Session Object
+
+Session fields are computed from the events inside the requested time range. Sessions are ordered by `session_end`, newest first.
+
+<TypeTable
+  type={{
+    session_id: {
+      description: 'Unique session identifier',
+      type: 'string',
+    },
+    user_id: {
+      description: 'Device fingerprint identifier',
+      type: 'string',
+    },
+    identified_user_id: {
+      description: 'Custom user ID when identified, otherwise empty',
+      type: 'string',
+    },
+    traits: {
+      description: 'Traits of the identified user, or null',
+      type: 'object | null',
+    },
+    country: {
+      description: 'Country code (latest event)',
+      type: 'string',
+    },
+    region: {
+      description: 'Region code (latest event)',
+      type: 'string',
+    },
+    city: {
+      description: 'City (latest event)',
+      type: 'string',
+    },
+    language: {
+      description: 'Browser language (latest event)',
+      type: 'string',
+    },
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
+    },
+    referrer: {
+      description: 'Session referrer',
+      type: 'string',
+    },
+    channel: {
+      description: 'Traffic channel',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname of the first event',
+      type: 'string',
+    },
+    page_title: {
+      description: 'Page title of the first event',
+      type: 'string',
+    },
+    querystring: {
+      description: 'Query string of the first event',
+      type: 'string',
+    },
+    utm_source: {
+      description: 'UTM source of the first event',
+      type: 'string',
+    },
+    utm_medium: {
+      description: 'UTM medium of the first event',
+      type: 'string',
+    },
+    utm_campaign: {
+      description: 'UTM campaign of the first event',
+      type: 'string',
+    },
+    utm_term: {
+      description: 'UTM term of the first event',
+      type: 'string',
+    },
+    utm_content: {
+      description: 'UTM content of the first event',
+      type: 'string',
+    },
+    session_start: {
+      description: 'First event time in the session',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_end: {
+      description: 'Last event time in the session',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_duration: {
+      description: 'Seconds between first and last event',
+      type: 'number',
+    },
+    entry_page: {
+      description: 'First page viewed',
+      type: 'string',
+    },
+    exit_page: {
+      description: 'Last page viewed',
+      type: 'string',
+    },
+    pageviews: {
+      description: 'Number of pageviews',
+      type: 'number',
+    },
+    events: {
+      description: 'Number of custom events',
+      type: 'number',
+    },
+    errors: {
+      description: 'Number of error events',
+      type: 'number',
+    },
+    outbound: {
+      description: 'Number of outbound link clicks',
+      type: 'number',
+    },
+    ip: {
+      description: 'Visitor IP address. null unless the site stores IPs (trackIp).',
+      type: 'string | null',
+    },
+    lat: {
+      description: 'Latitude (latest event)',
+      type: 'number',
+    },
+    lon: {
+      description: 'Longitude (latest event)',
+      type: 'number',
+    },
+    tag: {
+      description: 'Tag set on the latest event',
+      type: 'string',
+    },
+    has_replay: {
+      description: '1 when the session has a replay with at least two recorded events, otherwise 0',
+      type: 'number',
+    },
+  }}
+/>
+
+Returns `400` for fewer than 2 steps, a `stepNumber` outside the steps, an invalid `mode`, or an invalid `replays_only`.
 
 </div>
 <div className="flex flex-col gap-4">
@@ -299,18 +474,43 @@ var data = await response.Content.ReadAsStringAsync();
     {
       "session_id": "sess_abc123",
       "user_id": "user_xyz789",
+      "identified_user_id": "",
+      "traits": null,
       "country": "US",
-      "browser": "Chrome",
-      "operating_system": "macOS",
+      "region": "US-CA",
+      "city": "San Francisco",
+      "language": "en-US",
       "device_type": "desktop",
+      "browser": "Chrome",
+      "browser_version": "128.0",
+      "operating_system": "macOS",
+      "operating_system_version": "14.5",
+      "screen_width": 1920,
+      "screen_height": 1080,
+      "referrer": "https://google.com",
+      "channel": "Organic Search",
+      "hostname": "example.com",
+      "page_title": "Home",
+      "querystring": "",
+      "utm_source": "",
+      "utm_medium": "",
+      "utm_campaign": "",
+      "utm_term": "",
+      "utm_content": "",
+      "session_start": "2024-01-31 14:00:00",
+      "session_end": "2024-01-31 14:02:05",
+      "session_duration": 125,
       "entry_page": "/",
       "exit_page": "/pricing",
       "pageviews": 3,
-      "session_duration": 125,
-      "session_start": "2024-01-31T14:00:00.000Z",
-      "session_end": "2024-01-31T14:02:05.000Z",
-      "referrer": "https://google.com",
-      "channel": "organic"
+      "events": 0,
+      "errors": 0,
+      "outbound": 0,
+      "ip": null,
+      "lat": 37.77,
+      "lon": -122.42,
+      "tag": "",
+      "has_replay": 0
     }
   ]
 }

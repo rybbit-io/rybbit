@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/organizations/:organizationId/sites
 ```
 
-Creates a new site within an organization. Requires admin or owner role in the organization.
+Creates a new site within an organization. Requires admin or owner role in the organization; API keys need the `sites:write` scope.
 
 ### Path Parameters
 
@@ -34,10 +34,15 @@ Creates a new site within an organization. Requires admin or owner role in the o
 <TypeTable
   type={{
     domain: {
-      description: 'Site domain',
+      description: 'Site domain, or for a mobile app its bundle/package identifier. A leading http(s):// and trailing slashes are stripped',
       type: 'string',
-      typeDescription: 'Valid domain format (e.g., example.com)',
+      typeDescription: 'Web: a domain like example.com. Mobile: an identifier like com.example.app',
       required: true,
+    },
+    type: {
+      description: 'Kind of site. Mobile sites cannot enable sessionReplay or webVitals',
+      type: '"web" | "mobile"',
+      default: '"web"',
     },
     name: {
       description: 'Site display name',
@@ -94,6 +99,11 @@ Creates a new site within an organization. Requires admin or owner role in the o
       type: 'boolean',
       default: true,
     },
+    trackUrlFragments: {
+      description: 'Keep the URL fragment (#...) in tracked page paths',
+      type: 'boolean',
+      default: false,
+    },
     trackInitialPageView: {
       description: 'Automatically track the initial page view',
       type: 'boolean',
@@ -134,7 +144,7 @@ Creates a new site within an organization. Requires admin or owner role in the o
 
 ### Response
 
-Returns the created site object with the assigned `siteId`.
+Returns `201` with the created site object, including the assigned `siteId`. `type` is `null` for web sites.
 
 <TypeTable
   type={{
@@ -229,6 +239,25 @@ Returns the created site object with the assigned `siteId`.
     tags: {
       description: 'Site tags',
       type: 'string[]',
+    },
+  }}
+/>
+
+### Error Responses
+
+<TypeTable
+  type={{
+    '400': {
+      description: 'Invalid domain or app identifier, or sessionReplay/webVitals on a mobile site',
+      type: 'object',
+    },
+    '403': {
+      description: 'Caller is below admin or the key lacks sites:write; or, on Rybbit Cloud: session replay without a plan that includes it, webVitals/trackErrors/trackButtonClicks/trackCopy/trackFormInteractions without an active subscription, or the plan\'s site limit is reached',
+      type: 'object',
+    },
+    '404': {
+      description: 'Organization not found (Rybbit Cloud)',
+      type: 'object',
     },
   }}
 />
@@ -401,10 +430,11 @@ var data = await response.Content.ReadAsStringAsync();
   </Tab>
 </Tabs>
 
-```json title="Response"
+```json title="Response (201)"
 {
   "siteId": 456,
   "id": "a1b2c3d4e5f6",
+  "type": null,
   "domain": "example.com",
   "name": "My Website",
   "organizationId": "org_123",
@@ -419,6 +449,7 @@ var data = await response.Content.ReadAsStringAsync();
   "trackErrors": false,
   "trackOutbound": true,
   "trackUrlParams": true,
+  "trackUrlFragments": false,
   "trackInitialPageView": true,
   "trackSpaNavigation": true,
   "trackIp": false,
