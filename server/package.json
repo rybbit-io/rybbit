@@ -42,7 +42,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.842.0",
     "@better-auth/api-key": "1.7.3",
-    "@better-auth/infra": "^0.1.12",
     "@better-auth/mcp": "1.7.3",
     "@better-auth/oauth-provider": "1.7.3",
     "@better-auth/sso": "1.7.3",

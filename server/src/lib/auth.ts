@@ -7,7 +7,6 @@ import { createOAuthPlugins, getAuthBaseUrl } from "./oauth.js";
 import dotenv from "dotenv";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import pg from "pg";
-import { dash } from "@better-auth/infra";
 import { apiKey } from "@better-auth/api-key";
 
 import { db } from "../db/postgres/postgres.js";
@@ -91,7 +90,6 @@ const pluginList = [
       rateLimit: apiKeyRateLimit,
     },
   ]),
-  dash(),
   organization({
     allowUserToCreateOrganization: true,
     // better-auth checks this whenever it adds a member itself — including
