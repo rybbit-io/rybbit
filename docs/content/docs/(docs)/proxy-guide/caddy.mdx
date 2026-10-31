@@ -79,16 +79,6 @@ yourdomain.com {
         rewrite * /api/replay.js
     }
 
-    # Web Vitals metrics script
-    handle /analytics/metrics.js {
-        reverse_proxy https://app.rybbit.io {
-            header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-        }
-        rewrite * /api/metrics.js
-    }
-
     # Event tracking endpoint
     handle /analytics/track {
         reverse_proxy https://app.rybbit.io {
@@ -131,12 +121,25 @@ yourdomain.com {
         }
         uri replace /analytics/site/tracking-config /api/site/tracking-config
     }
+
+    # Feature flag evaluation
+    handle /analytics/site/*/feature-flags/evaluate {
+        reverse_proxy https://app.rybbit.io {
+            header_up Host app.rybbit.io
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up Content-Type {header.Content-Type}
+        }
+        uri replace /analytics/site/ /api/site/
+    }
 }
 ```
 
 <Callout type="info">
 Replace `app.rybbit.io` with your self-hosted Rybbit instance URL if you're not using the cloud version.
 </Callout>
+
+Web vitals collection is bundled into `script.js`; `replay.js` is only loaded when session replay is enabled for the site. If the feature flag route isn't proxied, `rybbit.flag()` silently returns your fallback.
 
 </Tab>
 <Tab>
@@ -167,6 +170,13 @@ yourdomain.com {
 }
 ```
 
+A minimal setup proxies only `script.js` and `/track`. The script then can't fetch your site's tracking config, so it ignores every setting on the site's **Tracking** tab and runs on built-in defaults:
+
+- Pageviews, SPA navigation, query strings and outbound links are tracked.
+- Web vitals, error tracking, session replay, button clicks, copy and form tracking stay off.
+- Feature flags return their fallback.
+- `identify()` and `setTraits()` can't reach `/identify`, so traits aren't stored and earlier anonymous activity isn't linked to the user.
+
 </Tab>
 <Tab>
 
@@ -187,7 +197,7 @@ yourdomain.com {
 }
 ```
 
-This proxies all `/analytics/*` requests to `https://app.rybbit.io/api/*`.
+This proxies all `/analytics/*` requests to `https://app.rybbit.io/api/*`, so every tracking route (including feature flags and `/identify`) is covered.
 
 </Tab>
 </Tabs>
@@ -232,7 +242,7 @@ Update your HTML to load the script from your proxied domain:
 <html>
 <head>
     <!-- ... other head elements -->
-    <script src="/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+    <script src="/analytics/script.js?siteId=YOUR_SITE_ID" defer></script>
 </head>
 <body>
     <!-- Your content -->
@@ -240,7 +250,9 @@ Update your HTML to load the script from your proxied domain:
 </html>
 ```
 
-Replace `YOUR_SITE_ID` with your actual site ID from the Rybbit dashboard.
+Replace `YOUR_SITE_ID` with your actual site ID from the Rybbit dashboard. Older snippets that pass the ID as `data-site-id` still work.
+
+Keep the proxied file named `script.js`. The script cuts its own URL at `/script.js` to find where to send events, so a renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
 
 ### Verify the Setup
 
@@ -339,7 +351,7 @@ analytics.yourdomain.com {
 
 Then use:
 ```html
-<script src="https://analytics.yourdomain.com/script.js" data-site-id="123"></script>
+<script src="https://analytics.yourdomain.com/script.js?siteId=123" defer></script>
 ```
 
 ### Request Size Limits

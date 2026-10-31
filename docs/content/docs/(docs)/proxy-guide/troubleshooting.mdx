@@ -43,6 +43,7 @@ Your domain          →  Rybbit backend
 Common mistakes:
 - Wrong source path (`/tracking` instead of `/analytics`)
 - Incorrect destination (missing `/api` prefix)
+- A renamed script file. Keep the proxied file named `script.js`. The script cuts its own URL at `/script.js` to find where to send events, so a renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
 - Typos in configuration
 
 ### Test Direct Backend Access
@@ -104,32 +105,55 @@ app.get('*', (req, res) => res.sendFile('index.html'));
 
 ### Verify All Endpoints Are Proxied
 
-Ensure tracking endpoints are configured:
+Ensure every endpoint the script calls is configured:
 
-- `/analytics/track` (required)
-- `/analytics/identify` (for user identification)
-- `/analytics/session-replay/record/:siteId` (for session replay)
-- `/analytics/site/tracking-config/:siteId` (for configuration)
+| Your path | Rybbit endpoint | Without it |
+|-----------|-----------------|------------|
+| `/analytics/script.js` (GET) | `/api/script.js` | Nothing loads |
+| `/analytics/track` (POST) | `/api/track` | No events |
+| `/analytics/site/tracking-config/:siteId` (GET) | `/api/site/tracking-config/:siteId` | Every setting on the site's **Tracking** tab is ignored and the script runs on built-in defaults: web vitals, error tracking, session replay, button clicks, copy and form tracking stay off |
+| `/analytics/identify` (POST) | `/api/identify` | `identify()` and `setTraits()` fail, so traits aren't stored and earlier anonymous activity isn't linked to the user |
+| `/analytics/site/:siteId/feature-flags/evaluate` (POST) | `/api/site/:siteId/feature-flags/evaluate` | `rybbit.flag()` silently returns your fallback |
+| `/analytics/replay.js` (GET) | `/api/replay.js` | Session replay can't start (loaded only when replay is on) |
+| `/analytics/session-replay/record/:siteId` (POST) | `/api/session-replay/record/:siteId` | Replays aren't saved |
 
-**Check Network tab**: Look for failed POST requests to `/analytics/track`.
+Web vitals are bundled into `script.js`, so there's no separate metrics script to proxy.
+
+**Check Network tab**: Look for failed requests to any `/analytics/*` path.
+
+### Don't Let a Body Parser Run Before the Proxy
+
+In Express, `app.use(express.json())` registered before the proxy reads the request body first, so the proxy forwards an empty body and `/track`, `/identify` and session replay POSTs fail. Mount the proxy before any body parser, or use http-proxy-middleware's `fixRequestBody`:
+
+```javascript
+const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
+
+// ✅ Proxy first, body parsers after
+app.use('/analytics', createProxyMiddleware({
+  target: 'https://app.rybbit.io/api',
+  changeOrigin: true,
+}));
+app.use(express.json());
+
+// Or, if a body parser must run first:
+app.use('/analytics', createProxyMiddleware({
+  target: 'https://app.rybbit.io/api',
+  changeOrigin: true,
+  on: { proxyReq: fixRequestBody },
+}));
+```
 
 ### Check CORS Headers
 
-Tracking endpoints need proper CORS headers. Rybbit sets these automatically, but ensure your proxy preserves them:
-
-```nginx
-# Nginx - preserve CORS headers
-proxy_pass_header Access-Control-Allow-Origin;
-proxy_pass_header Access-Control-Allow-Methods;
-```
+CORS only matters when the script is served from a different origin than your pages (for example an `analytics.` subdomain). Rybbit sets the CORS headers itself, echoing the page's origin back in `Access-Control-Allow-Origin`, and Nginx passes them through by default. Don't add or override them in your proxy:
 
 ```javascript
-// Express - don't override CORS
-// ❌ Wrong - blocks CORS
+// Express
+// ❌ Wrong - a cors() middleware in front of the proxy replaces Rybbit's headers
 app.use('/analytics', cors({ origin: 'https://yourdomain.com' }));
 
-// ✅ Correct - allow all origins (or use Rybbit's headers)
-app.use('/analytics', cors({ origin: true }));
+// ✅ Correct - no cors() on the proxy path; Rybbit's headers pass through
+app.use('/analytics', createProxyMiddleware({ target: 'https://app.rybbit.io/api', changeOrigin: true }));
 ```
 
 ### Verify Content-Type for POST Requests
@@ -142,12 +166,12 @@ proxy_set_header Content-Type $content_type;
 ```
 
 ```javascript
-// Express
-onProxyReq: (proxyReq, req) => {
-  if (req.headers['content-type']) {
-    proxyReq.setHeader('Content-Type', req.headers['content-type']);
-  }
-}
+// Express (http-proxy-middleware v3 forwards Content-Type as-is;
+// v3 replaced the old onProxyReq option with on.proxyReq)
+createProxyMiddleware({
+  target: 'https://app.rybbit.io/api',
+  changeOrigin: true,
+});
 ```
 
 ### Check Request Method Preservation
@@ -196,14 +220,18 @@ reverse_proxy https://app.rybbit.io {
 }
 ```
 
-**Express:**
+**Express (http-proxy-middleware v3):**
 ```javascript
-onProxyReq: (proxyReq, req) => {
-  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-  proxyReq.setHeader('X-Real-IP', clientIp);
-  proxyReq.setHeader('X-Forwarded-For', clientIp);
-  proxyReq.setHeader('User-Agent', req.headers['user-agent']);
-}
+createProxyMiddleware({
+  target: 'https://app.rybbit.io/api',
+  changeOrigin: true,
+  on: {
+    proxyReq: (proxyReq, req) => {
+      // With app.set('trust proxy', ...) configured, req.ip is the visitor IP
+      proxyReq.setHeader('X-Forwarded-For', req.ip);
+    },
+  },
+});
 ```
 
 **Cloudflare Workers:**
@@ -221,7 +249,9 @@ proxyHeaders.set('X-Forwarded-For', clientIp);
 - Events do not appear in the normal analytics dashboard (only under bot traffic)
 - Tracking works fine when the script talks to Rybbit directly, without the proxy
 
-There are two independent causes, and server-side proxies often hit **both**. Work through them in order.
+A `200` from `/track` doesn't prove an event was stored. Rybbit also answers `200` when the event is diverted as bot traffic, matches a site exclusion, or belongs to a site that's over its monthly limit or has no plan. See [Script troubleshooting](/docs/script-troubleshooting) for the non-proxy causes.
+
+There are two independent causes on the proxy side, and server-side proxies often hit **both**. Work through them in order.
 
 #### Cause 1: Your proxy strips the browser's headers
 
@@ -311,24 +341,25 @@ Session replay can send large payloads (up to 10MB). Ensure your proxy allows th
 
 ```nginx
 # Nginx
-location ~ ^/analytics/session-replay/record/ {
+location /analytics/session-replay/record/ {
     client_max_body_size 10M;
-    proxy_pass https://app.rybbit.io;
+    proxy_pass https://app.rybbit.io/api/session-replay/record/;
 }
 ```
 
 ```javascript
-// Express
-app.use('/analytics/session-replay', express.json({ limit: '10mb' }));
+// Express: don't parse replay bodies before the proxy at all.
+// The proxy streams them through, so no size option is needed.
+// See "Don't Let a Body Parser Run Before the Proxy" above.
 ```
 
 ```javascript
-// Next.js - add to next.config.js
+// Next.js: rewrites stream the body through. Only if your app has a
+// proxy.ts (middleware) file does Next.js buffer request bodies, capped
+// at 10 MB by default. Raise that cap in next.config.js if needed:
 module.exports = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
+  experimental: {
+    proxyClientMaxBodySize: '10mb',
   },
 };
 ```
@@ -352,9 +383,10 @@ module.exports = {
 
 ```nginx
 # Nginx - cache for 5 minutes max
-location ~ ^/analytics/site/tracking-config/(.*)$ {
+location /analytics/site/tracking-config/ {
+    proxy_cache rybbit;
     proxy_cache_valid 200 5m;  # Not longer!
-    proxy_pass https://app.rybbit.io/api/site/tracking-config/$1;
+    proxy_pass https://app.rybbit.io/api/site/tracking-config/;
 }
 ```
 
@@ -380,9 +412,9 @@ cache.flushAll();
 
 ```nginx
 # Nginx - no caching
-location ~ ^/analytics/site/tracking-config/(.*)$ {
+location /analytics/site/tracking-config/ {
     proxy_cache off;
-    proxy_pass https://app.rybbit.io/api/site/tracking-config/$1;
+    proxy_pass https://app.rybbit.io/api/site/tracking-config/;
 }
 ```
 
@@ -427,17 +459,19 @@ sudo nginx -s reload
 3. **Add cache busting** (advanced):
 
 ```javascript
-// Next.js - revalidate on each deployment
-{
-  source: '/analytics/script.js',
-  destination: `${rybbitHost}/api/script.js`,
-  headers: [
-    {
-      key: 'Cache-Control',
-      value: 'public, max-age=3600, must-revalidate',
-    },
-  ],
-}
+// Next.js - rewrites can't set headers; use headers() alongside rewrites()
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/analytics/script.js',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=3600, must-revalidate' },
+        ],
+      },
+    ];
+  },
+};
 ```
 
 ---
@@ -597,17 +631,22 @@ async rewrites() {
 proxy_ssl_server_name on;
 ```
 
-2. **Check DNS resolution**:
+2. **Add a `resolver`** if `proxy_pass` uses a variable (for example `proxy_pass https://app.rybbit.io/api/site/tracking-config/$1;` in a regex location). Nginx resolves variable upstreams at request time and returns 502 without one:
+```nginx
+resolver 1.1.1.1 8.8.8.8 valid=300s;
+```
+
+3. **Check DNS resolution**:
 ```bash
 nslookup app.rybbit.io
 ```
 
-3. **Check logs**:
+4. **Check logs**:
 ```bash
 sudo tail -f /var/log/nginx/error.log
 ```
 
-4. **Test backend directly**:
+5. **Test backend directly**:
 ```bash
 curl -v https://app.rybbit.io/api/script.js
 ```
@@ -638,7 +677,10 @@ git push
 When troubleshooting, work through this checklist:
 
 - [ ] Script loads successfully (200 status, correct Content-Type)
+- [ ] Proxied file is still named `script.js`
 - [ ] Tracking endpoint is proxied (`/analytics/track`)
+- [ ] Config, identify and feature flag endpoints are proxied (`/analytics/site/tracking-config/:siteId`, `/analytics/identify`, `/analytics/site/:siteId/feature-flags/evaluate`)
+- [ ] No body parser consumes POST bodies before the proxy
 - [ ] POST requests preserve method and body
 - [ ] Client IP is forwarded in `X-Forwarded-For` (not just `X-Real-IP` — that header doesn't survive Rybbit Cloud's edge)
 - [ ] **First-Party Proxy** toggle is enabled in Site Settings → Privacy & Security

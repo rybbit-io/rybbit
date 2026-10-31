@@ -39,6 +39,8 @@ services:
         target: /etc/clickhouse-server/config.d/network.xml
       - source: clickhouse_logging
         target: /etc/clickhouse-server/config.d/logging_rules.xml
+      - source: clickhouse_resource_limits
+        target: /etc/clickhouse-server/config.d/resource_limits.xml
       # Profile (user-level) settings are only read from users.d, not config.d
       - source: clickhouse_user_settings
         target: /etc/clickhouse-server/users.d/user_settings.xml
@@ -46,6 +48,9 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      # Lets the backend provision the least-privilege `rybbit_query` user
+      # (custom SQL queries / dashboards) with SQL at startup.
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
       interval: 3s
@@ -108,6 +113,7 @@ services:
       - CLICKHOUSE_HOST=http://rybbit_clickhouse:8123
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
+      - CLICKHOUSE_QUERY_PASSWORD=${CLICKHOUSE_QUERY_PASSWORD:-${CLICKHOUSE_PASSWORD:-frog}}
       - POSTGRES_HOST=rybbit_postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB:-analytics}
@@ -119,7 +125,10 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
+      - DISABLE_TELEMETRY=${DISABLE_TELEMETRY}
       - MAPBOX_TOKEN=${MAPBOX_TOKEN}
+      - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
+      - DASHBOARD_CACHE_TTL_SECONDS=${DASHBOARD_CACHE_TTL_SECONDS:-30}
     depends_on:
       rybbit_clickhouse:
         condition: service_healthy
@@ -174,6 +183,10 @@ configs:
         </logger>
         <query_thread_log remove="remove"/>
         <query_log remove="remove"/>
+        <query_views_log remove="remove"/>
+        <query_metric_log remove="remove"/>
+        <error_log remove="remove"/>
+        <opentelemetry_span_log remove="remove"/>
         <text_log remove="remove"/>
         <trace_log remove="remove"/>
         <metric_log remove="remove"/>
@@ -184,18 +197,37 @@ configs:
         <processors_profile_log remove="remove"/>
       </clickhouse>
 
+  clickhouse_resource_limits:
+    content: |
+      <clickhouse>
+        <!-- Leave headroom for the backend, Redis, Caddy, the kernel, and the
+             filesystem cache instead of allowing ClickHouse to exhaust RAM. -->
+        <max_server_memory_usage_to_ram_ratio>0.80</max_server_memory_usage_to_ram_ratio>
+        <!-- Share at most one query-processing thread per CPU core across all
+             concurrent queries. This throttles work rather than rejecting it. -->
+        <concurrent_threads_soft_limit_ratio_to_cores>1</concurrent_threads_soft_limit_ratio_to_cores>
+        <!-- Bound memory used by background merges and mutations separately. -->
+        <merges_mutations_memory_usage_to_ram_ratio>0.25</merges_mutations_memory_usage_to_ram_ratio>
+      </clickhouse>
+
   clickhouse_user_settings:
     content: |
       <clickhouse>
         <profiles>
           <default>
             <enable_json_type>1</enable_json_type>
-            <!-- 26.3+ enables async_insert by default; the backend already
-                 batches app-side, so keep inserts synchronous -->
-            <async_insert>0</async_insert>
+            <!-- Combine concurrent inserts into larger blocks inside ClickHouse.
+                 Wait for the flush so the backend still receives insert errors. -->
+            <async_insert>1</async_insert>
+            <wait_for_async_insert>1</wait_for_async_insert>
             <log_queries>0</log_queries>
             <log_query_threads>0</log_query_threads>
             <log_processors_profiles>0</log_processors_profiles>
+            <!-- Bound individual queries while preserving enough parallelism
+                 for large analytics scans. Query-count limits remain unset so
+                 ingestion is never rejected by admission control. -->
+            <max_memory_usage>32000000000</max_memory_usage>
+            <max_threads>16</max_threads>
           </default>
         </profiles>
       </clickhouse>
@@ -278,11 +310,9 @@ In your Nginx Proxy Manager interface:
    - Forward Port: `3002`
    - Enable "Cache Assets", "Block Common Exploits", "Websockets Support"
 
-2. **Add Custom Location**:
-   - Location: `/api`
-   - Scheme: `http`
-   - Forward Hostname/IP: `rybbit_backend`
-   - Forward Port: `3001`
+2. **Add Custom Locations**: add one for each of these locations, all with scheme `http`, Forward Hostname/IP `rybbit_backend`, and Forward Port `3001`:
+   - `/api`
+   - `/.well-known/oauth-` and `/.well-known/openid-configuration`, which [MCP](/docs/mcp) clients use to discover OAuth login
 
 3. **Advanced Configuration** (in the custom location):
    ```nginx
@@ -320,7 +350,7 @@ services:
     # ... existing config
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.rybbit-api.rule=Host(`your.domain.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.rybbit-api.rule=Host(`your.domain.com`) && (PathPrefix(`/api`) || PathPrefix(`/.well-known/oauth-`) || PathPrefix(`/.well-known/openid-configuration`))"
       - "traefik.http.routers.rybbit-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.rybbit-api.loadbalancer.server.port=3001"
       - "traefik.docker.network=traefik_proxy"
@@ -350,6 +380,9 @@ credentials-file: /path/to/credentials.json
 ingress:
   - hostname: your.domain.com
     path: /api
+    service: http://rybbit_backend:3001
+  - hostname: your.domain.com
+    path: ^/\.well-known/(oauth-|openid-configuration)
     service: http://rybbit_backend:3001
   - hostname: your.domain.com
     service: http://rybbit_client:3002
@@ -403,5 +436,5 @@ docker logs -f nginx-proxy-manager
 ```
 
 <Callout type="warning">
-Remember to regularly backup your data volumes (`clickhouse-data` and `postgres-data`) and your `.env` file.
+Remember to regularly back up your data directories (`clickhouse-data`, `postgres-data`, and `redis-data`) and your `.env` file.
 </Callout>

@@ -49,8 +49,19 @@ If you prefer to use your own web server instead of the built-in Caddy server, y
 
 This will:
 - Not start the Caddy container
-- Expose the backend service on host port 3001 (or your custom port)
-- Expose the client service on host port 3002 (or your custom port)
+- Expose the backend service on host port 3001 (or your custom port) on all interfaces
+- Expose the client service on host port 3002 (or your custom port) on all interfaces
+
+<Callout type="warn">
+Both ports serve plain HTTP. If your web server runs on the same host, bind them to localhost by editing these lines in `.env`, then run `docker compose up -d`:
+
+```bash
+HOST_BACKEND_PORT="127.0.0.1:3001:3001"
+HOST_CLIENT_PORT="127.0.0.1:3002:3002"
+```
+
+If your web server runs elsewhere, restrict the ports with your hosting provider's firewall. Ports published by Docker bypass host firewalls such as `ufw`.
+</Callout>
 
 <Callout type="info">
 For detailed configuration examples with Nginx, Traefik, NPM, and other reverse proxies, see our [Manual Docker Compose Setup](/docs/self-hosting-guides/self-hosting-manual) guide.
@@ -79,20 +90,64 @@ POSTGRES_USER=frog
 POSTGRES_PASSWORD=frog
 POSTGRES_DB=analytics
 CLICKHOUSE_DB=analytics
+REDIS_PASSWORD=changeme
 
-# Custom image tags
+# Image tag to run: latest, a release like v2.9.2, edge, or sha-<commit>
 IMAGE_TAG=latest
 
 # Port mapping (only needed for custom ports or --no-webserver)
-HOST_BACKEND_PORT="3001:3001"
-HOST_CLIENT_PORT="3002:3002"
+HOST_BACKEND_PORT="127.0.0.1:3001:3001"
+HOST_CLIENT_PORT="127.0.0.1:3002:3002"
 ```
+
+`setup.sh` doesn't generate database or Redis passwords, so the defaults above apply until you set your own. Set them before the first start: Postgres only reads `POSTGRES_USER` and `POSTGRES_PASSWORD` when it creates its data volume. See [Image tags](/docs/managing-your-installation#image-tags) for what each `IMAGE_TAG` value points to.
+
+`docker-compose.yml` also passes these to the backend:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `CLUSTER_WORKERS` | `4` | Number of backend worker processes. `0` runs a single process. |
+| `DASHBOARD_CACHE_TTL_SECONDS` | `30` | How long dashboard query results are cached in Redis, in seconds. The maximum is 30; `0` disables the cache. Not in 2.9.2; applies to `edge` images and the next release. |
+| `CLICKHOUSE_QUERY_PASSWORD` | `CLICKHOUSE_PASSWORD` | Password for the read-only `rybbit_query` ClickHouse user the backend creates for custom SQL queries, such as the MCP `run_query` tool. |
+| `DISABLE_TELEMETRY` | unset | Set to `true` to turn off [anonymous usage telemetry](/docs/managing-your-installation#anonymous-usage-telemetry). |
+| `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | unset | An [OpenRouter](https://openrouter.ai) key and model for generating custom SQL queries from plain-language questions. |
+| `LITE_DASHBOARD` | unset | For very high-traffic installs. Set to `true` and the backend keeps hourly rollup tables and serves the site list from them. The rollups only see new events: on an install that already has data, run `docker compose run --rm --no-deps backend node dist/scripts/backfillLiteDashboardMVs.js --cutoff "<YYYY-MM-DD HH:MM:SS>"` once, with the cutoff at the moment you enabled it. |
+| `DEPLOYMENT` | unset | Shows the Query and Dashboards pages and the admin panel in the client. |
+
+`LITE_DASHBOARD` and `DEPLOYMENT` are compiled into the client when its image is built. The prebuilt images are built without them, so with prebuilt images `LITE_DASHBOARD` only changes the backend and `DEPLOYMENT` does nothing. To use them fully, build the images yourself with `docker compose build` after setting them in `.env`.
+
+### Variables that aren't in docker-compose.yml
+
+The backend's `environment` list in `docker-compose.yml` is explicit, so a variable you add to `.env` only reaches the backend if that list mentions it. To set anything else, add it in a `docker-compose.override.yml` file next to `docker-compose.yml`. Docker Compose loads it automatically and merges its `environment` entries with the main file:
+
+```yaml
+services:
+  backend:
+    environment:
+      - LOG_LEVEL=warn
+      - SESSION_REPLAY_MAX_MB_PER_SESSION=100
+```
+
+Then run your usual start command (for example `docker compose --profile with-webserver up -d`) to recreate the backend. Variables you might set this way:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `SESSION_REPLAY_MAX_MB_PER_SESSION` | `50` | Stops storing replay data for a session once it reaches this many MB. `0` removes the cap. Not in 2.9.2; applies to `edge` images and the next release. |
+| `LOG_LEVEL` | `info` | Backend log level, such as `debug`, `info`, `warn`, or `error`. |
+| `DISABLE_STICKY_IDENTITY` | unset | Set to `true` to stop keeping a visitor's ID stable when their IP address rotates during a visit. |
+| `DISABLE_REDIS_ANOMALY` | unset | Set to `true` to keep bot-detection rate counters in each process instead of Redis. |
+
+`update.sh` leaves `docker-compose.override.yml` in place, while it stashes edits made directly to `docker-compose.yml`.
 
 ## ClickHouse Timezone
 
+<Callout type="info">
+This section applies to the first release after 2.9.2 and to `edge` images. The current `latest` images (2.9.2) don't include the UTC change yet.
+</Callout>
+
 Rybbit stores every timestamp as a UTC instant and converts to your dashboard timezone when it queries. Every time column is declared `DateTime('UTC')`, and the backend writes timestamps with an explicit UTC offset, so the ClickHouse server's own `<timezone>` setting does not change what gets stored. Leave it at the default (UTC) unless you have a reason not to; the backend logs a warning at startup if it is anything else.
 
-### Upgrading from 2.9.1 or earlier on a non-UTC ClickHouse
+### Upgrading from 2.9.2 or earlier on a non-UTC ClickHouse
 
 Before this change the backend wrote timezone-less strings, which ClickHouse read in the server's timezone. If your ClickHouse was configured for anything but UTC, two things need attention after upgrading:
 
@@ -111,7 +166,7 @@ Before this change the backend wrote timezone-less strings, which ClickHouse rea
 
    Repeat for `bot_events` and `bot_observations` (partitioned on `timestamp`), and `session_replay_events` (`timestamp`), `session_replay_metadata` and `session_replay_metadata_v2` (`start_time`). With `LITE_DASHBOARD=true`, do the same for `sessions_mv_target` (`start_time`) and the `*_hourly_mv_target` tables (`event_hour`); `session_hourly_mv_target` is rebuilt by its view every hour and can be skipped. On `ReplacingMergeTree` and `AggregatingMergeTree` tables compare `count()` with `FINAL`, since background merges can change the raw count. Materialized views stay attached to the swapped-in table. The copy rewrites every row, so run it off-peak. Step 2's copy also re-partitions every row it writes, so a table you fix there can skip this step. Start the backend when you are done, unless you continue with step 2.
 
-2. **Shifted timestamps.** Keep the backend stopped for this step too: any event that arrives between the copy and the swap ends up only in the table you drop. Rows written by rybbit-backend 2.9.0 or 2.9.1 while ClickHouse was not in UTC were stored shifted by the server's offset (the dashboard looked frozen at the upgrade time). Rows written by 2.8.0 or earlier were shifted only if the backend container's `TZ` differed from the ClickHouse timezone. Rybbit cannot correct these automatically: a shifted row and a correct row can carry the same timestamp, so only you know which rows the old backend wrote. If you want them fixed, use the same copy-and-swap on the `events` table with your own bounds, then rebuild the rollups from it:
+2. **Shifted timestamps.** Keep the backend stopped for this step too: any event that arrives between the copy and the swap ends up only in the table you drop. Rows written by rybbit-backend 2.9.0, 2.9.1, or 2.9.2 while ClickHouse was not in UTC were stored shifted by the server's offset (the dashboard looked frozen at the upgrade time). Rows written by 2.8.0 or earlier were shifted only if the backend container's `TZ` differed from the ClickHouse timezone. Rybbit cannot correct these automatically: a shifted row and a correct row can carry the same timestamp, so only you know which rows the old backend wrote. If you want them fixed, use the same copy-and-swap on the `events` table with your own bounds, then rebuild the rollups from it:
 
    ```sql
    CREATE TABLE events_fixed AS events;

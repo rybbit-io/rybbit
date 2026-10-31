@@ -65,32 +65,39 @@ docker network rm $(docker network ls | grep -v "bridge\|host\|none" | awk '{pri
 
 If you only want to clean up Rybbit-related Docker resources without affecting other containers, use these commands instead:
 
+Run these from the Rybbit directory. Add `--profile with-webserver` so the Caddy container is included.
+
 ```bash
 # Stop and remove Rybbit containers
-docker-compose down
+docker compose --profile with-webserver down
 
-# Remove Rybbit images
-docker-compose down --rmi all
+# Also remove Rybbit images
+docker compose --profile with-webserver down --rmi all
 
-# Remove Rybbit volumes (this will delete your data!)
-docker-compose down --volumes
+# Also remove Rybbit volumes (this will delete your data!)
+docker compose --profile with-webserver down --volumes
 
 # Complete Rybbit cleanup
-docker-compose down --rmi all --volumes --remove-orphans
+docker compose --profile with-webserver down --rmi all --volumes --remove-orphans
 ```
 
 ### After Cleanup
 
-Once you've completed the cleanup, you can restart Rybbit by following the setup instructions:
+Once you've completed the cleanup, set Rybbit up again by running the setup script, which creates a new `.env` file and starts the services:
 
 ```bash
-# Copy environment file
-cp .env.example .env
-
-# Edit .env with your configuration
-# Then start the services
-docker-compose up -d
+./setup.sh your.domain.name
 ```
+
+If you'd rather write `.env` yourself, copy `.env.example`, set `DOMAIN_NAME` and `BETTER_AUTH_SECRET` (generate it with `openssl rand -hex 32`), then start the services:
+
+```bash
+cp .env.example .env
+# Edit .env, then start everything including the Caddy webserver:
+docker compose --profile with-webserver up -d
+```
+
+Leave out `--profile with-webserver` if you run your own reverse proxy.
 
 ## ClickHouse keeps crashing on a Proxmox VM
 
@@ -121,7 +128,7 @@ The `host` CPU type can prevent live migration between Proxmox nodes with differ
 
 ## I ran out of disk space
 
-Regular web analytics events take up almost no space in Clickhouse, so it is very unlikely that you ran out of disk space from from this. There are two main reasons why you might have run out of disk space:
+Regular web analytics events take up almost no space in Clickhouse, so it is very unlikely that you ran out of disk space from this. There are two main reasons why you might have run out of disk space:
 
 ### 1. You are using session replay
 
@@ -133,7 +140,8 @@ We have a 30 day retention policy for session replays events, so if you turn off
 docker exec -it clickhouse clickhouse-client --database analytics
 
 TRUNCATE TABLE session_replay_events;
-TRUNCATE TABLE session_replay_metadata;
+TRUNCATE TABLE session_replay_metadata_v2;
+TRUNCATE TABLE session_replay_metadata; -- legacy table, only holds data from older versions
 ```
 
 ### 2. You didn't mount the Clickhouse log suppression configs

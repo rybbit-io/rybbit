@@ -1,12 +1,13 @@
 ---
 title: Sending Events
-description: Track pageviews, custom events, performance, and errors from any platform using the HTTP API.
+description: Track pageviews, custom events, and other events from any platform using the HTTP API.
 full: true
 method: POST
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
 <div>
@@ -15,11 +16,19 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/track
 ```
 
-Track pageviews, custom events, performance, and errors from server-side applications, mobile apps, or any platform. An API key is optional but recommended for server-side tracking — it bypasses bot detection and domain validation. IP addresses are resolved to geolocation and user agents are parsed for browser/OS/device info.
+Send events from servers, mobile apps, or any platform that can make an HTTP request. The body is JSON, and every event needs a `site_id` and a `type`.
+
+Send an API key as `Authorization: Bearer your_api_key_here` when you report events on a visitor's behalf. A key only counts here if it has access to the site and is full-access or holds the `ingest:write` permission. With such a key, Rybbit uses the `ip_address` and `user_agent` you send for the visitor ID, geolocation and device detection, and skips every bot check except user-agent classification. Without one (including a key sent as `?api_key=`), `ip_address` and `user_agent` are silently ignored and the event is treated as a browser hit from your server. There is no domain validation.
+
+<Callout type="warn">
+Bot detection still runs. Without a qualifying key, a request from a server HTTP client (curl, python-requests, node-fetch, Go's HTTP client and similar) is classified as a bot. With one, the reported user agent is still classified, so pass the visitor's real user agent. With bot blocking on (the default), bot events are stored as bot traffic and never appear in your analytics, but the response is still `200` with `{"success":true}`.
+</Callout>
+
+To keep visitors apart, send an `anonymous_id` per visitor, or the visitor's `ip_address` and `user_agent` with a qualifying key. Otherwise every event shares your server's IP and user agent and counts as one visitor.
 
 ### Request Body
 
-All parameters are sent in the request body as JSON.
+All parameters are sent in the request body as JSON. Unknown fields are rejected with `400`, so don't add fields that aren't listed here.
 
 <TypeTable
   type={{
@@ -29,15 +38,20 @@ All parameters are sent in the request body as JSON.
       required: true,
     },
     type: {
-      description: 'Event type',
+      description: 'Event type. Each type accepts the fields below plus the type-specific ones in its section.',
       type: 'string',
-      typeDescription: '"pageview" | "custom_event" | "performance" | "outbound" | "error"',
-      default: 'pageview',
+      typeDescription: '"pageview" | "custom_event" | "performance" | "outbound" | "error" | "button_click" | "copy" | "form_submit" | "input_change"',
+      required: true,
     },
     pathname: {
-      description: 'Page path',
+      description: 'Page path. Site exclusions match the full value; it is stored cut to 2048 chars.',
       type: 'string',
-      typeDescription: 'Max 2048 chars',
+      typeDescription: 'Max 16384 chars',
+    },
+    querystring: {
+      description: 'Query string, e.g. "?utm_source=newsletter". Same limits as pathname.',
+      type: 'string',
+      typeDescription: 'Max 16384 chars',
     },
     hostname: {
       description: 'Domain name',
@@ -45,55 +59,62 @@ All parameters are sent in the request body as JSON.
       typeDescription: 'Max 253 chars',
     },
     page_title: {
-      description: 'Page title',
+      description: 'Page title. Longer values are cut.',
       type: 'string',
-      typeDescription: 'Max 512 chars',
+      typeDescription: 'Stored up to 512 chars',
     },
     referrer: {
-      description: 'Referrer URL',
+      description: 'Referrer URL. Longer values are cut.',
       type: 'string',
-      typeDescription: 'Max 2048 chars',
+      typeDescription: 'Stored up to 2048 chars',
+    },
+    anonymous_id: {
+      description: 'Stable per-visitor ID. When set, the visitor is derived from it instead of IP and user agent.',
+      type: 'string',
+      typeDescription: '1-255 chars',
     },
     user_id: {
-      description: 'Custom user identifier',
+      description: 'Your ID for a signed-in user',
       type: 'string',
       typeDescription: 'Max 255 chars',
     },
-    user_agent: {
-      description: 'Custom user agent string - will be parsed for browser/OS/device info',
-      type: 'string',
-      typeDescription: 'Max 512 chars',
-    },
     ip_address: {
-      description: 'Custom IP for geolocation - will be resolved to location data',
+      description: "Visitor's IP, used for geolocation and the visitor ID. Ignored without a qualifying Bearer key.",
       type: 'string',
       typeDescription: 'Valid IPv4 or IPv6 address',
     },
-    querystring: {
-      description: 'Query parameters',
+    user_agent: {
+      description: "Visitor's user agent, parsed for browser, OS and device. Ignored without a qualifying Bearer key.",
       type: 'string',
-      typeDescription: 'Max 2048 chars',
+      typeDescription: 'Max 512 chars',
     },
     language: {
       description: 'Language code',
       type: 'string',
-      typeDescription: 'e.g., "en", "es", "fr"',
+      typeDescription: 'Max 35 chars, e.g. "en-US"',
     },
     screenWidth: {
       description: 'Screen width in logical pixels (density-independent pixels)',
       type: 'number',
+      typeDescription: 'Non-negative integer',
     },
     screenHeight: {
       description: 'Screen height in logical pixels (density-independent pixels)',
       type: 'number',
+      typeDescription: 'Non-negative integer',
+    },
+    tag: {
+      description: 'Free-form label stored with the event, e.g. a deployment or variant name',
+      type: 'string',
+      typeDescription: 'Max 256 chars',
     },
     event_name: {
-      description: 'Event name (required for custom events)',
+      description: 'Event name. Required for custom_event and error, optional for the other types.',
       type: 'string',
       typeDescription: 'Max 256 chars',
     },
     properties: {
-      description: 'JSON string with event data (for custom events, outbound, error)',
+      description: 'JSON string with event data. Its required shape depends on the type.',
       type: 'string',
       typeDescription: 'Max 2048 chars (4096 for error events)',
     },
@@ -107,7 +128,7 @@ All parameters are sent in the request body as JSON.
 
 #### Pageview
 
-Standard page view tracking. Set `type: "pageview"` (default).
+Standard page view tracking. Set `type: "pageview"`.
 
 #### Custom Event
 
@@ -165,13 +186,14 @@ Track Core Web Vitals. Set `type: "performance"`.
 
 #### Outbound
 
-Track outbound link clicks. Set `type: "outbound"`. Pass details in the `properties` JSON string.
+Track outbound link clicks. Set `type: "outbound"`. Pass details in the `properties` JSON string; it is required for this type.
 
 <TypeTable
   type={{
     url: {
       description: 'Destination URL',
       type: 'string',
+      typeDescription: 'Absolute URL',
       required: true,
     },
     text: {
@@ -188,7 +210,7 @@ Track outbound link clicks. Set `type: "outbound"`. Pass details in the `propert
 
 #### Error
 
-Track JavaScript errors. Set `type: "error"`. `event_name` is the error type and `properties` carries the error details as a JSON string.
+Track JavaScript errors. Set `type: "error"`. `event_name` (required) is the error type and `properties` (required) carries the error details as a JSON string.
 
 <TypeTable
   type={{
@@ -218,20 +240,153 @@ Track JavaScript errors. Set `type: "error"`. `event_name` is the error type and
   }}
 />
 
-### Response
+#### Button Click
+
+Set `type: "button_click"`. `properties` is optional and can be any JSON string.
+
+#### Copy
+
+Set `type: "copy"`. `properties` is required.
 
 <TypeTable
   type={{
-    success: {
-      description: 'Whether the event was accepted',
-      type: 'boolean',
+    sourceElement: {
+      description: 'Element the text was copied from, e.g. "p" or "code"',
+      type: 'string',
+      required: true,
+    },
+    text: {
+      description: 'Copied text',
+      type: 'string',
+    },
+    textLength: {
+      description: 'Length of the copied text',
+      type: 'number',
+      typeDescription: 'Non-negative',
     },
   }}
 />
 
+#### Form Submit
+
+Set `type: "form_submit"`. `properties` is required, and every field below must be present.
+
+<TypeTable
+  type={{
+    formId: {
+      description: 'Form id attribute (empty string if none)',
+      type: 'string',
+      required: true,
+    },
+    formName: {
+      description: 'Form name attribute (empty string if none)',
+      type: 'string',
+      required: true,
+    },
+    formAction: {
+      description: 'Form action URL',
+      type: 'string',
+      required: true,
+    },
+    method: {
+      description: 'HTTP method, e.g. "POST"',
+      type: 'string',
+      required: true,
+    },
+    fieldCount: {
+      description: 'Number of fields in the form',
+      type: 'number',
+      typeDescription: 'Non-negative',
+      required: true,
+    },
+  }}
+/>
+
+#### Input Change
+
+Set `type: "input_change"`. `properties` is required.
+
+<TypeTable
+  type={{
+    element: {
+      description: 'Element type, e.g. "input" or "select"',
+      type: 'string',
+      required: true,
+    },
+    inputName: {
+      description: 'Name or id of the field',
+      type: 'string',
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `200` | `{"success":true}` | Accepted. Events classified as bots get the same response. |
+| `200` | `{"success":true,"message":"Event not tracked - ... excluded"}` | Matched one of the site's exclusions and was not stored. |
+| `200` | Plain text, e.g. `Site over monthly limit, event not tracked` or `Site has no plan, event not tracked` | Not stored. The body is not JSON, so read it as text. |
+| `400` | `{"success":false,"error":"Invalid payload","details":...}` | Validation failed; `details` lists the failing fields. |
+| `404` | `{"success":false,"error":"Site not found"}` | Unknown `site_id`. |
+
 ### Rate Limiting
 
-API keys are limited to **500 requests per 10 minutes**. Exceeding the limit returns a `429` status code.
+`/api/track` itself isn't rate limited, but on Rybbit Cloud every request that carries a Bearer key counts against the key owner's API limits: a burst of 50 requests per 10 seconds, plus 5,000 (Standard) or 25,000 (Pro) requests per day. See [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only).
+
+When a limit is reached, `/api/track` doesn't return `429`. The key simply stops counting: the event is still ingested, but as untrusted traffic, so `ip_address` and `user_agent` are ignored and bot detection runs in full. Self-hosted instances have no API rate limits.
+
+### Identifying Users
+
+```
+POST /api/identify
+```
+
+Links a visitor to your user ID and stores traits on the user's profile. This is the endpoint `rybbit.identify()` and `rybbit.setTraits()` call in the browser. Send the same `Authorization: Bearer` key as for `/api/track` if you pass `ip_address` or `user_agent`; without a qualifying key they're ignored.
+
+<TypeTable
+  type={{
+    site_id: {
+      description: 'Your site ID',
+      type: 'string',
+      required: true,
+    },
+    user_id: {
+      description: 'Your ID for the user',
+      type: 'string',
+      typeDescription: '1-255 chars',
+      required: true,
+    },
+    anonymous_id: {
+      description: 'The anonymous_id you send with this visitor\'s events. When omitted, the visitor is derived from IP and user agent.',
+      type: 'string',
+      typeDescription: '1-255 chars',
+    },
+    ip_address: {
+      description: "Visitor's IP. Used only with a qualifying Bearer key.",
+      type: 'string',
+      typeDescription: 'Valid IPv4 or IPv6 address',
+    },
+    user_agent: {
+      description: "Visitor's user agent. Used only with a qualifying Bearer key.",
+      type: 'string',
+      typeDescription: 'Max 512 chars',
+    },
+    traits: {
+      description: 'User properties to merge into the profile. A trait set to null is removed. username, name and email are shown in the dashboard.',
+      type: 'object',
+      typeDescription: 'Max 2 KB as JSON',
+    },
+    is_new_identify: {
+      description: 'When true, links the visitor to user_id; the first time a visitor is linked, its anonymous events from the last 30 days are attributed to the user. Set false to only update traits.',
+      type: 'boolean',
+      default: 'true',
+    },
+  }}
+/>
+
+Responses: `200` with `{"success":true}`; `200` with the plain-text body `Site has no plan, identify not stored`; `400` for an invalid payload; `404` for an unknown site.
 
 </div>
 <div className="flex flex-col gap-4">
@@ -247,7 +402,10 @@ curl -X POST "https://app.rybbit.io/api/track" \
     "type": "custom_event",
     "pathname": "/checkout",
     "event_name": "purchase",
-    "properties": "{\"amount\": 99.99, \"currency\": \"USD\"}"
+    "properties": "{\"amount\": 99.99, \"currency\": \"USD\"}",
+    "anonymous_id": "visitor-session-id",
+    "ip_address": "203.0.113.7",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
   }'
 ```
   </Tab>
@@ -264,11 +422,15 @@ const response = await fetch('https://app.rybbit.io/api/track', {
     type: 'custom_event',
     pathname: '/checkout',
     event_name: 'purchase',
-    properties: JSON.stringify({ amount: 99.99, currency: 'USD' })
+    properties: JSON.stringify({ amount: 99.99, currency: 'USD' }),
+    anonymous_id: 'visitor-session-id',
+    ip_address: '203.0.113.7',
+    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
   })
 });
 
-const data = await response.json();
+// Some 200 responses are plain text, so read the body as text
+const result = await response.text();
 ```
   </Tab>
   <Tab value="Python">
@@ -283,14 +445,18 @@ response = requests.post(
         'type': 'custom_event',
         'pathname': '/checkout',
         'event_name': 'purchase',
-        'properties': json.dumps({'amount': 99.99, 'currency': 'USD'})
+        'properties': json.dumps({'amount': 99.99, 'currency': 'USD'}),
+        'anonymous_id': 'visitor-session-id',
+        'ip_address': '203.0.113.7',
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
     },
     headers={
         'Authorization': 'Bearer your_api_key_here'
     }
 )
 
-data = response.json()
+# Some 200 responses are plain text, so read the body as text
+result = response.text
 ```
   </Tab>
   <Tab value="PHP">
@@ -300,7 +466,10 @@ $body = [
     'type' => 'custom_event',
     'pathname' => '/checkout',
     'event_name' => 'purchase',
-    'properties' => json_encode(['amount' => 99.99, 'currency' => 'USD'])
+    'properties' => json_encode(['amount' => 99.99, 'currency' => 'USD']),
+    'anonymous_id' => 'visitor-session-id',
+    'ip_address' => '203.0.113.7',
+    'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
 ];
 
 $ch = curl_init();
@@ -313,10 +482,9 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json'
 ]);
 
-$response = curl_exec($ch);
+// Some 200 responses are plain text, so treat the body as text
+$result = curl_exec($ch);
 curl_close($ch);
-
-$data = json_decode($response, true);
 ```
   </Tab>
   <Tab value="Ruby">
@@ -333,14 +501,18 @@ request.body = {
   type: 'custom_event',
   pathname: '/checkout',
   event_name: 'purchase',
-  properties: { amount: 99.99, currency: 'USD' }.to_json
+  properties: { amount: 99.99, currency: 'USD' }.to_json,
+  anonymous_id: 'visitor-session-id',
+  ip_address: '203.0.113.7',
+  user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
 }.to_json
 
 response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
   http.request(request)
 end
 
-data = JSON.parse(response.body)
+# Some 200 responses are plain text, so read the body as text
+result = response.body
 ```
   </Tab>
   <Tab value="Go">
@@ -350,7 +522,10 @@ body := map[string]interface{}{
     "type":       "custom_event",
     "pathname":   "/checkout",
     "event_name": "purchase",
-    "properties": `{"amount": 99.99, "currency": "USD"}`,
+    "properties":   `{"amount": 99.99, "currency": "USD"}`,
+    "anonymous_id": "visitor-session-id",
+    "ip_address":   "203.0.113.7",
+    "user_agent":   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
 }
 jsonBody, _ := json.Marshal(body)
 
@@ -362,8 +537,8 @@ client := &http.Client{}
 resp, _ := client.Do(req)
 defer resp.Body.Close()
 
-var data map[string]interface{}
-json.NewDecoder(resp.Body).Decode(&data)
+// Some 200 responses are plain text, so read the body as text
+result, _ := io.ReadAll(resp.Body)
 ```
   </Tab>
   <Tab value="Rust">
@@ -373,7 +548,10 @@ let body = serde_json::json!({
     "type": "custom_event",
     "pathname": "/checkout",
     "event_name": "purchase",
-    "properties": r#"{"amount": 99.99, "currency": "USD"}"#
+    "properties": r#"{"amount": 99.99, "currency": "USD"}"#,
+    "anonymous_id": "visitor-session-id",
+    "ip_address": "203.0.113.7",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
 });
 
 let client = reqwest::Client::new();
@@ -384,7 +562,8 @@ let res = client
     .send()
     .await?;
 
-let data: serde_json::Value = res.json().await?;
+// Some 200 responses are plain text, so read the body as text
+let result = res.text().await?;
 ```
   </Tab>
   <Tab value="Java">
@@ -395,7 +574,10 @@ String json = """
   "type": "custom_event",
   "pathname": "/checkout",
   "event_name": "purchase",
-  "properties": "{\"amount\": 99.99, \"currency\": \"USD\"}"
+  "properties": "{\"amount\": 99.99, \"currency\": \"USD\"}",
+  "anonymous_id": "visitor-session-id",
+  "ip_address": "203.0.113.7",
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
 }
 """;
 
@@ -418,7 +600,10 @@ var body = new
     type = "custom_event",
     pathname = "/checkout",
     event_name = "purchase",
-    properties = JsonSerializer.Serialize(new { amount = 99.99, currency = "USD" })
+    properties = JsonSerializer.Serialize(new { amount = 99.99, currency = "USD" }),
+    anonymous_id = "visitor-session-id",
+    ip_address = "203.0.113.7",
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
 };
 
 using var client = new HttpClient();
@@ -430,7 +615,8 @@ var content = new StringContent(
     "application/json");
 
 var response = await client.PostAsync("https://app.rybbit.io/api/track", content);
-var data = await response.Content.ReadAsStringAsync();
+// Some 200 responses are plain text, so read the body as text
+var result = await response.Content.ReadAsStringAsync();
 ```
   </Tab>
 </Tabs>
@@ -441,13 +627,13 @@ var data = await response.Content.ReadAsStringAsync();
 }
 ```
 
-```json title="Error"
+```json title="Error (400, unknown field in the body)"
 {
   "success": false,
   "error": "Invalid payload",
   "details": {
-    "fieldErrors": {},
-    "formErrors": ["Custom events require event_name"]
+    "formErrors": ["Unrecognized key(s) in object: 'api_key'"],
+    "fieldErrors": {}
   }
 }
 ```

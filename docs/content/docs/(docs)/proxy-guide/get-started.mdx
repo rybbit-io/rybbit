@@ -35,7 +35,12 @@ Rybbit uses several endpoints for tracking. You can choose between a minimal set
 | `/api/script.js` | GET | Main tracking script | 1 hour |
 | `/api/track` | POST | Event tracking endpoint | No cache |
 
-This minimal setup enables basic pageview and event tracking, but won't support session replay or some advanced features.
+A minimal setup proxies only `script.js` and `/track`. The script then can't fetch your site's tracking config, so it ignores every setting on the site's **Tracking** tab and runs on built-in defaults:
+
+- Pageviews, SPA navigation, query strings and outbound links are tracked.
+- Web vitals, error tracking, session replay, button clicks, copy and form tracking stay off.
+- Feature flags return their fallback.
+- `identify()` and `setTraits()` can't reach `/identify`, so traits aren't stored and earlier anonymous activity isn't linked to the user.
 
 </Tab>
 <Tab>
@@ -46,19 +51,19 @@ This minimal setup enables basic pageview and event tracking, but won't support 
 |----------|--------|---------|-------|
 | `/api/script.js` | GET | Main tracking script (minified) | 1 hour |
 | `/api/replay.js` | GET | Session replay recording script | 1 day |
-| `/api/metrics.js` | GET | Web Vitals metrics script | 1 day |
 | `/api/track` | POST | Event tracking endpoint | No cache |
 | `/api/identify` | POST | User identification endpoint | No cache |
 | `/api/session-replay/record/:siteId` | POST | Session replay data upload | No cache |
 | `/api/site/tracking-config/:siteId` | GET | Site configuration | 5 minutes |
+| `/api/site/:siteId/feature-flags/evaluate` | POST | Feature flag evaluation | No cache |
 
-This setup supports all Rybbit features including session replay, Web Vitals, and custom events.
+This setup supports every tracking feature, including your Tracking tab settings, session replay, web vitals, user identification and feature flags. If the feature flag route isn't proxied, `rybbit.flag()` silently returns your fallback.
 
 </Tab>
 </Tabs>
 
 <Callout type="info">
-The session replay and metrics scripts (`/api/replay.js` and `/api/metrics.js`) are loaded dynamically by the main script when those features are enabled in your site settings. You don't need to include them in your HTML.
+Web vitals collection is bundled into `script.js`. The only script loaded on demand is `/api/replay.js`, which the main script fetches when session replay is enabled for the site. You don't need to include it in your HTML.
 </Callout>
 
 ## Implementation Steps
@@ -79,6 +84,8 @@ Your domain path          →  Rybbit backend
 /analytics/replay.js      →  https://app.rybbit.io/api/replay.js
 ... and so on
 ```
+
+Keep the proxied file named `script.js`. The script cuts its own URL at `/script.js` to find where to send events, so a renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
 
 **Key requirements:**
 - Preserve the HTTP method (GET or POST)
@@ -117,13 +124,15 @@ Change your script tag to load from your proxied domain instead of directly from
 
 **Before (direct loading):**
 ```html
-<script src="https://app.rybbit.io/api/script.js" async data-site-id="YOUR_SITE_ID"></script>
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
 ```
 
 **After (proxied):**
 ```html
-<script src="https://yourdomain.com/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+<script src="https://yourdomain.com/analytics/script.js?siteId=YOUR_SITE_ID" defer></script>
 ```
+
+Older snippets that pass the ID as `data-site-id` still work.
 
 <Callout type="info">
 **How Auto-Discovery Works**: The Rybbit script automatically extracts the analytics host from its own `src` attribute by splitting on `/script.js`. This means when it loads from `https://yourdomain.com/analytics/script.js`, it automatically sends all tracking data to `https://yourdomain.com/analytics/*` endpoints.
@@ -158,12 +167,7 @@ X-Frame-Options: DENY
 Referrer-Policy: strict-origin-when-cross-origin
 ```
 
-**CORS headers** (should be preserved from Rybbit):
-```
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: GET, POST, OPTIONS
-Access-Control-Allow-Headers: Content-Type
-```
+**CORS headers**: pass Rybbit's CORS response headers through unchanged rather than setting your own. On the tracking endpoints Rybbit echoes the requesting page's origin back in `Access-Control-Allow-Origin` (not `*`) and answers preflight `OPTIONS` requests itself. If your proxy serves the script from the same origin as your pages, the browser never needs CORS for it.
 
 </Steps>
 
@@ -183,8 +187,7 @@ If you must whitelist headers instead of passing everything through, this is the
 | `Accept` | Bot filtering | Yes |
 | `Accept-Encoding` | Bot filtering (must include `gzip`) | Yes |
 | `Sec-Fetch-Site`, `Sec-Fetch-Mode`, `Sec-Fetch-Dest` | Bot filtering (sent by all Chromium browsers) | Yes |
-| `Sec-CH-UA`, `Sec-CH-UA-Mobile`, `Sec-CH-UA-Platform` | Browser detection | Recommended |
-| `Referer` | Referrer tracking | Recommended |
+| `Referer` | Session replay metadata (event referrers come from the request body) | Recommended |
 | `Content-Type` | POST body parsing | Yes (POSTs) |
 
 <Callout type="warn">
@@ -340,6 +343,8 @@ If something isn't working, check:
 4. **Incorrect geolocation**: Verify `X-Forwarded-For` is set to the visitor IP and the **First-Party Proxy** toggle is enabled in site settings
 5. **`/track` returns 200 but nothing appears in the dashboard**: Your proxy is probably forwarding too few headers and events are being classified as bot traffic — forward the full browser header set (see [Request Header Forwarding](#request-header-forwarding))
 6. **Session replay not working**: Add `/api/replay.js` and `/api/session-replay/record/:siteId` endpoints
+7. **Tracking tab settings ignored, or `identify()` does nothing**: Proxy `/api/site/tracking-config/:siteId` and `/api/identify`
+8. **`rybbit.flag()` always returns the fallback**: Proxy `/api/site/:siteId/feature-flags/evaluate`
 
 For more detailed troubleshooting, see our [troubleshooting guide](/docs/proxy-guide/troubleshooting).
 
