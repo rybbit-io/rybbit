@@ -22,7 +22,7 @@ services:
 
   clickhouse:
     container_name: clickhouse
-    image: clickhouse/clickhouse-server:26.3.17.4
+    image: clickhouse/clickhouse-server:26.3.62.3
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     configs:
