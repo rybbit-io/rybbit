@@ -233,7 +233,7 @@ OAuth clients request scopes through the standard grant. Rybbit advertises the s
 ## Troubleshooting
 
 - **401 Unauthorized:** The client did not send a Bearer credential, or the key/token is invalid, expired, or revoked. OAuth-capable clients re-authenticate automatically via the `WWW-Authenticate` challenge.
-- **OAuth login loop or "table does not exist" (self-hosted):** The backend container applies database migrations each time it starts. Check `docker compose logs backend` for a failed migration, fix the cause, and restart the backend with `docker compose restart backend`.
+- **OAuth login loop or "table does not exist" (self-hosted):** The backend container applies database migrations each time it starts. Check `docker compose logs backend` for a failed migration, fix the cause, and recreate the backend with `docker compose up -d backend`. `docker compose restart` keeps the old environment, so it doesn't pick up changes to `.env`.
 - **OAuth discovery fails (self-hosted):** Your reverse proxy must send `/.well-known/oauth-*` and `/.well-known/openid-configuration*` to the backend, as the built-in Caddy config does. See [Configure your reverse proxy](/docs/self-hosting-guides/self-hosting-manual#configure-your-reverse-proxy).
 - **403 in tool results:** The key's user lacks access to that site or organization, or holds too low a role for the tool (`"Insufficient role"` names the role required). Check the `role` field in `list_sites`.
 - **403 "Insufficient scope":** The credential was created without the `resource:action` scope this tool needs (the `required` field names it). Use a key or OAuth grant that includes it.

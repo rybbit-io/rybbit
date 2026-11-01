@@ -18,7 +18,7 @@ POST /api/track
 
 Send events from servers, mobile apps, or any platform that can make an HTTP request. The body is JSON, and every event needs a `site_id` and a `type`.
 
-Send an API key as `Authorization: Bearer your_api_key_here` when you report events on a visitor's behalf. A key only counts here if it has access to the site and is full-access or holds the `ingest:write` permission. With such a key, Rybbit uses the `ip_address` and `user_agent` you send for the visitor ID, geolocation and device detection, and skips every bot check except user-agent classification. Without one (including a key sent as `?api_key=`), `ip_address` and `user_agent` are silently ignored and the event is treated as a browser hit from your server. There is no domain validation.
+Send an API key as `Authorization: Bearer your_api_key_here` when you report events on a visitor's behalf. A key only counts here if it has access to the site and is full-access or holds the `ingest:write` permission. With such a key, Rybbit uses the `ip_address` and `user_agent` you send for the visitor ID, geolocation and device detection, and skips every bot check except user-agent classification. Without one (including a key sent as `?api_key=`), `ip_address` and `user_agent` are ignored and the event is treated as a browser hit from your server. They are still validated, so a malformed value returns `400`. There is no domain validation.
 
 <Callout type="warn">
 Bot detection still runs. Without a qualifying key, a request from a server HTTP client (curl, python-requests, node-fetch, Go's HTTP client and similar) is classified as a bot. With one, the reported user agent is still classified, so pass the visitor's real user agent. With bot blocking on (the default), bot events are stored as bot traffic and never appear in your analytics, but the response is still `200` with `{"success":true}`.
@@ -143,7 +143,7 @@ Track custom events with optional properties. Set `type: "custom_event"`.
       required: true,
     },
     properties: {
-      description: 'Event data as JSON string',
+      description: 'Event data as a JSON string. Only a JSON object is stored; other valid JSON (a string, number or array) is dropped and the event is kept.',
       type: 'string',
       typeDescription: 'Valid JSON, max 2048 chars',
     },
@@ -242,7 +242,7 @@ Track JavaScript errors. Set `type: "error"`. `event_name` (required) is the err
 
 #### Button Click
 
-Set `type: "button_click"`. `properties` is optional and can be any JSON string.
+Set `type: "button_click"`. `properties` is optional. Any valid JSON string is accepted, but only a JSON object is stored; other values are dropped and the event is kept.
 
 #### Copy
 

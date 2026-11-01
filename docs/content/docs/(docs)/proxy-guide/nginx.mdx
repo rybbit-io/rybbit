@@ -355,10 +355,10 @@ The Rybbit script auto-detects it's being served from your domain and sends all 
 
 ### Caching Strategy
 
-Configure different cache durations based on content type (requires the cache zone from the **With Cache Zone** tab):
+Configure different cache durations based on content type (requires the cache zone from the **With Cache Zone** tab). These blocks replace the matching ones from the **Full Proxy** tab; don't add them alongside. nginx picks an exact-match `location =` over a regex one, and a repeated prefix location fails `nginx -t`.
 
 ```nginx
-# Scripts - cache for 1 hour
+# Scripts - nginx follows Rybbit's Cache-Control: 1 hour for script.js, 1 day for replay.js
 location ~ ^/analytics/(script|replay)\.js$ {
     rewrite ^/analytics/(.*)$ /api/$1 break;
     proxy_pass https://app.rybbit.io;

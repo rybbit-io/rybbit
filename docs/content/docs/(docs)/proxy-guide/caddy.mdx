@@ -28,7 +28,7 @@ Caddy's `reverse_proxy` directive makes it incredibly easy to proxy requests. Co
 
 ## Prerequisites
 
-- Caddy installed (version 2.0 or later)
+- Caddy installed (version 2.7 or later, for the `{client_ip}` placeholder)
 - Domain pointing to your server
 - Your Rybbit instance URL:
   - **Cloud hosted**: `https://app.rybbit.io`
@@ -62,8 +62,8 @@ yourdomain.com {
     handle /analytics/script.js {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
             header_up X-Forwarded-Proto {scheme}
         }
         rewrite * /api/script.js
@@ -73,8 +73,8 @@ yourdomain.com {
     handle /analytics/replay.js {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         rewrite * /api/replay.js
     }
@@ -83,8 +83,8 @@ yourdomain.com {
     handle /analytics/track {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
             header_up Content-Type {header.Content-Type}
         }
         rewrite * /api/track
@@ -94,8 +94,8 @@ yourdomain.com {
     handle /analytics/identify {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
             header_up Content-Type {header.Content-Type}
         }
         rewrite * /api/identify
@@ -105,8 +105,8 @@ yourdomain.com {
     handle /analytics/session-replay/record/* {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
             header_up Content-Type {header.Content-Type}
         }
         uri replace /analytics/session-replay/record /api/session-replay/record
@@ -116,8 +116,8 @@ yourdomain.com {
     handle /analytics/site/tracking-config/* {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         uri replace /analytics/site/tracking-config /api/site/tracking-config
     }
@@ -126,8 +126,8 @@ yourdomain.com {
     handle /analytics/site/*/feature-flags/evaluate {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
             header_up Content-Type {header.Content-Type}
         }
         uri replace /analytics/site/ /api/site/
@@ -141,6 +141,19 @@ Replace `app.rybbit.io` with your self-hosted Rybbit instance URL if you're not 
 
 Web vitals collection is bundled into `script.js`; `replay.js` is only loaded when session replay is enabled for the site. If the feature flag route isn't proxied, `rybbit.flag()` silently returns your fallback.
 
+<Callout type="warn">
+`{client_ip}` is the address that connected to Caddy. If a CDN such as Cloudflare sits in front of Caddy, that address is the CDN's edge server, so Rybbit would place every visitor at the edge's location. List the CDN's IP ranges in the `trusted_proxies` global option at the top of your Caddyfile, so `{client_ip}` becomes the visitor's IP:
+
+```txt
+{
+    servers {
+        # Your CDN's published IP ranges, e.g. https://www.cloudflare.com/ips/
+        trusted_proxies static 198.51.100.0/24 2001:db8::/32
+    }
+}
+```
+</Callout>
+
 </Tab>
 <Tab>
 
@@ -152,8 +165,8 @@ yourdomain.com {
     handle /analytics/script.js {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         rewrite * /api/script.js
     }
@@ -162,8 +175,8 @@ yourdomain.com {
     handle /analytics/track {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         rewrite * /api/track
     }
@@ -189,8 +202,8 @@ yourdomain.com {
     handle_path /analytics/* {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         rewrite * /api{uri}
     }
@@ -301,8 +314,8 @@ yourdomain.com {
     handle /analytics/script.js {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         rewrite * /api/script.js
         header Cache-Control "public, max-age=3600"
@@ -312,8 +325,8 @@ yourdomain.com {
     handle /analytics/site/tracking-config/* {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         uri replace /analytics/site/tracking-config /api/site/tracking-config
         header Cache-Control "public, max-age=300"
@@ -323,8 +336,8 @@ yourdomain.com {
     handle /analytics/track {
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         rewrite * /api/track
         header Cache-Control "no-store"
@@ -342,8 +355,8 @@ Use a dedicated subdomain for analytics:
 analytics.yourdomain.com {
     reverse_proxy https://app.rybbit.io {
         header_up Host app.rybbit.io
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {client_ip}
+        header_up X-Forwarded-For {client_ip}
     }
     rewrite * /api{uri}
 }
@@ -367,8 +380,8 @@ yourdomain.com {
         }
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         uri replace /analytics/session-replay/record /api/session-replay/record
     }
@@ -386,8 +399,8 @@ Use Caddy's environment variable support:
     handle_path /analytics/* {
         reverse_proxy {$RYBBIT_HOST:https://app.rybbit.io} {
             header_up Host {upstream_hostport}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         rewrite * /api{uri}
     }
@@ -410,15 +423,15 @@ yourdomain.com {
     handle /analytics/track {
         rate_limit {
             zone analytics {
-                key {remote_host}
+                key {client_ip}
                 events 100
                 window 1m
             }
         }
         reverse_proxy https://app.rybbit.io {
             header_up Host app.rybbit.io
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {client_ip}
+            header_up X-Forwarded-For {client_ip}
         }
         rewrite * /api/track
     }
@@ -446,13 +459,15 @@ The `rate_limit` directive requires the [caddy-ratelimit plugin](https://github.
 **Problem**: All visitors show same location.
 
 **Solution**:
-Ensure you're forwarding client IP:
+Ensure you're forwarding client IP, and that **First-Party Proxy** is on in your site settings:
 ```txt
 reverse_proxy https://app.rybbit.io {
-    header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-For {remote_host}
+    header_up X-Real-IP {client_ip}
+    header_up X-Forwarded-For {client_ip}
 }
 ```
+
+If a CDN sits in front of Caddy, also add its IP ranges to `trusted_proxies` (see the note under **Full Proxy**). Otherwise every visitor gets the CDN edge's location.
 
 ### 502 Bad Gateway
 

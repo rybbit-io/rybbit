@@ -71,11 +71,13 @@ use Illuminate\Support\Facades\Log;
 
 class AnalyticsProxyController extends Controller
 {
-    // Headers that describe the hop to your app, not the visitor's browser.
+    // Headers that describe the hop to your app, not the visitor's browser,
+    // plus credentials (e.g. HTTP basic auth on a staging site) Rybbit must not get.
     private const SKIP_HEADERS = [
         'host', 'content-length', 'connection', 'cookie', 'keep-alive',
         'transfer-encoding', 'upgrade', 'x-forwarded-for', 'x-forwarded-host',
         'x-forwarded-proto', 'x-forwarded-port', 'x-real-ip',
+        'authorization', 'proxy-authorization',
     ];
 
     private string $rybbitHost;
@@ -145,8 +147,10 @@ class AnalyticsProxyController extends Controller
 
         // The visitor IP. $request->ip() honors your TrustProxies settings.
         $headers['X-Forwarded-For'] = $request->ip();
-        // Keep an encoding the HTTP client can decode (bot detection expects gzip).
-        $headers['Accept-Encoding'] = 'gzip';
+        // Replace the copied Accept-Encoding (the keys above are lowercase) with
+        // gzip, which the HTTP client can decode. Send it only if the browser
+        // offered gzip: bot detection flags clients that don't.
+        $headers['accept-encoding'] = str_contains($request->header('Accept-Encoding', ''), 'gzip') ? 'gzip' : 'identity';
 
         $http = Http::timeout(30)->withHeaders($headers);
 

@@ -50,7 +50,7 @@ Proxying doesn't compromise user privacy:
 - No cookies are used (Rybbit remains cookieless)
 - User data is still processed according to your privacy policy
 - GDPR, CCPA, and other privacy regulations remain fully satisfied
-- Visitors who opt out stay opted out: the script does nothing when `window.__RYBBIT_OPTOUT__` is set or `localStorage` holds a `disable-rybbit` key (`disable-<namespace>` if you set `data-namespace`; see [Hiding your own traffic](/docs/hiding-own-traffic)). Rybbit does not read Do Not Track or Global Privacy Control signals.
+- Visitors who opt out stay opted out: the script does nothing when `window.__RYBBIT_OPTOUT__` is set or `localStorage` holds a `disable-rybbit` key (`disable-<namespace>` if you set `data-namespace`; see [Hiding your own traffic](/docs/hiding-own-traffic)). The script checks for these when it loads, so a change takes effect on the next page load. Rybbit does not read Do Not Track or Global Privacy Control signals.
 
 ### Better Performance (Optional)
 

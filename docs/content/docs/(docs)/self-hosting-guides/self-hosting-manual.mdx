@@ -106,7 +106,7 @@ HOST_CLIENT_PORT="3002:3002"
 This exposes the backend and client over plain HTTP to anyone who can reach the server. Restrict access with a firewall at your hosting provider. Ports published by Docker bypass host firewalls such as `ufw`.
 </Callout>
 
-To change ports with a `docker-compose.override.yml` file instead, use the `!override` tag. Without it, Docker Compose adds your ports to the default `127.0.0.1` ones instead of replacing them:
+To change ports with a `docker-compose.override.yml` file instead, use the `!override` tag, which needs Docker Compose 2.24.4 or later. Without it, Docker Compose adds your ports to the default `127.0.0.1` ones instead of replacing them:
 
 ```yaml
 services:

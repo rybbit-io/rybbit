@@ -212,13 +212,15 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_set_header User-Agent $http_user_agent;
 ```
 
-**Caddy:**
+**Caddy (2.7 or later):**
 ```txt
 reverse_proxy https://app.rybbit.io {
-    header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-For {remote_host}
+    header_up X-Real-IP {client_ip}
+    header_up X-Forwarded-For {client_ip}
 }
 ```
+
+If a CDN sits in front of Caddy, add its IP ranges to the `trusted_proxies` global option, or `{client_ip}` is the CDN's edge server. See the [Caddy guide](/docs/proxy-guide/caddy).
 
 **Express (http-proxy-middleware v3):**
 ```javascript
@@ -456,7 +458,7 @@ sudo nginx -s reload
 // Caching → Configuration → Purge Everything
 ```
 
-3. **Add cache busting** (advanced):
+3. **Set the browser cache lifetime explicitly** (advanced). Rybbit already serves `script.js` with `max-age=3600`; set it yourself only if something in your stack changes that header:
 
 ```javascript
 // Next.js - rewrites can't set headers; use headers() alongside rewrites()

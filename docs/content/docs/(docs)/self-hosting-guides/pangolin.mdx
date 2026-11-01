@@ -60,6 +60,8 @@ HOST_CLIENT_PORT=127.0.0.1:3002:3002
 # MAPBOX_TOKEN=your_mapbox_token
 ```
 
+Set the passwords before the first start: Postgres only reads `POSTGRES_USER` and `POSTGRES_PASSWORD` when it creates its data volume. If you reuse an existing `postgres-data` volume, keep the user and password it was created with.
+
 <Callout type="info">
 Newt reaches the backend and client over the Docker network, so the host port mappings are only for access from the server itself. Binding them to `127.0.0.1` keeps them off the network. If ports 3001 or 3002 are already taken on your host, change the host port, e.g. `127.0.0.1:4001:3001`. A value without an IP, such as `3001:3001`, publishes the port on all interfaces.
 </Callout>

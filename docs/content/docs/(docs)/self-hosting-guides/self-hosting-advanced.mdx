@@ -53,7 +53,7 @@ This will:
 - Expose the client service on host port 3002 (or your custom port) on all interfaces
 
 <Callout type="warn">
-Both ports serve plain HTTP. If your web server runs on the same host, bind them to localhost by editing these lines in `.env`, then run `docker compose up -d`:
+Both ports serve plain HTTP. If your web server runs on the same host, bind them to localhost by editing these lines in `.env`, then run `docker compose up -d`. If you set custom ports, keep your host port, e.g. `127.0.0.1:8080:3001`:
 
 ```bash
 HOST_BACKEND_PORT="127.0.0.1:3001:3001"

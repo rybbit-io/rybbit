@@ -19,6 +19,8 @@ Server-side tracking from Node.js is a `POST` to [`/api/track`](/docs/api/sendin
 
 ## Helper
 
+The examples are ES modules. Set `"type": "module"` in your `package.json`, or name the files `.mjs`.
+
 ```javascript title="rybbit.js"
 const RYBBIT_HOST = process.env.RYBBIT_HOST ?? "https://app.rybbit.io";
 const RYBBIT_SITE_ID = process.env.RYBBIT_SITE_ID;
@@ -59,6 +61,7 @@ app.get("/products/:id", async (req, res) => {
     pathname: req.path,
     page_title: `Product - ${product.name}`,
     referrer: req.get("referer"),
+    // Any stable per-visitor ID. req.session needs session middleware such as express-session.
     anonymous_id: req.session.id,
     ip_address: req.ip,
     user_agent: req.get("user-agent"),
@@ -115,7 +118,7 @@ On Rybbit Cloud each request with a Bearer key counts against the key owner's AP
 To attach traits to a user or link a visitor's earlier anonymous events to them, `POST` to `/api/identify`. See [Identifying users](/docs/api/sending-events#identifying-users) for the fields.
 
 ```javascript
-await fetch(`${RYBBIT_HOST}/api/identify`, {
+const response = await fetch(`${RYBBIT_HOST}/api/identify`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
@@ -128,4 +131,10 @@ await fetch(`${RYBBIT_HOST}/api/identify`, {
     traits: { email: user.email, name: user.name },
   }),
 });
+
+// fetch doesn't throw on 4xx/5xx, so check the status like the track helper does.
+const body = await response.text();
+if (!response.ok) {
+  throw new Error(`Rybbit /api/identify ${response.status}: ${body}`);
+}
 ```
