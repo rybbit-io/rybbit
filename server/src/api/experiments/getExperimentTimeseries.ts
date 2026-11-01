@@ -87,7 +87,7 @@ export async function getExperimentTimeseries(
     }
 
     const variants = getExperimentVariantKeys(record.featureFlag);
-    const { query, window } = resolveExperimentWindow(request.query, record.experiment);
+    const { query, window, exact } = resolveExperimentWindow(request.query, record.experiment);
     const timeZone = query.time_zone || "UTC";
     const goalCondition = record.primaryGoal ? buildGoalCondition(record.primaryGoal) : null;
 
@@ -101,6 +101,7 @@ export async function getExperimentTimeseries(
       flagKey: record.featureFlag.key,
       variantKeys: variants,
       goalCondition,
+      exact,
     });
 
     let measurement: "exposure" | "assignment" = "exposure";

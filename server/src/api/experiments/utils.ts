@@ -41,6 +41,34 @@ export function experimentFlagError(flag: Pick<FeatureFlagRecord, "flagType" | "
   return null;
 }
 
+/** A request a handler rejects from inside a transaction, so everything it wrote rolls back. */
+export class ExperimentRequestError extends Error {
+  constructor(
+    message: string,
+    readonly statusCode = 400
+  ) {
+    super(message);
+  }
+}
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Locks the flag row until the transaction ends and checks it can run an experiment. Flag updates
+ * take the same lock before changing the runtime, so the check can't race a switch to server-only.
+ */
+export async function lockExperimentFlag(tx: Transaction, siteId: number, flagId: number) {
+  const [flag] = await tx
+    .select()
+    .from(featureFlags)
+    .where(and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flagId)))
+    .for("update");
+  if (!flag) throw new ExperimentRequestError("Feature flag not found");
+  const flagError = experimentFlagError(flag);
+  if (flagError) throw new ExperimentRequestError(flagError);
+  return flag;
+}
+
 export async function validateExperimentReferences(
   siteId: number,
   body: Pick<ExperimentBody, "featureFlagId" | "primaryGoalId">
@@ -189,8 +217,16 @@ export function buildExperimentResults(variants: string[], rows: ExperimentResul
 }
 
 export function rolloutWinner(flag: FeatureFlagRecord, winner: string) {
-  const serveWinner = <T extends { key: string; rolloutPercentage: number }>(variants: T[] | null | undefined) =>
-    (variants || []).map(variant => ({ ...variant, rolloutPercentage: variant.key === winner ? 100 : 0 }));
+  const definitions = [...(flag.variants || []), ...(flag.conditionSets || []).flatMap(set => set.variants || [])];
+  const winnerVariant = definitions.find(variant => variant.key === winner) ?? { key: winner, rolloutPercentage: 0 };
+  // Every set that splits traffic serves the winner, also a set that never offered it: left at
+  // all-zero rollouts, its visitors would fall through to the off value instead.
+  const serveWinner = <T extends { key: string; rolloutPercentage: number }>(variants: T[] | null | undefined) => {
+    const served = (variants || []).map(variant => ({ ...variant, rolloutPercentage: variant.key === winner ? 100 : 0 }));
+    return served.length === 0 || served.some(variant => variant.key === winner)
+      ? served
+      : [...served, { ...(winnerVariant as T), rolloutPercentage: 100 }];
+  };
 
   return {
     rolloutPercentage: 100,

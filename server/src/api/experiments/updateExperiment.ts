@@ -17,6 +17,8 @@ import {
   serializeExperiment,
   timestampsForStatus,
   validateExperimentReferences,
+  ExperimentRequestError,
+  lockExperimentFlag,
 } from "./utils.js";
 
 const FLAGS_WRITE = { resource: "flags", action: "write" } as const;
@@ -113,9 +115,15 @@ export async function updateExperiment(
     }
 
     // Validation above ran against `existing` and `flag`. Only write if neither
-    // changed since (status and flag version as optimistic locks), so a
+    // changed since (status, flag assignment and flag version as optimistic locks), so a
     // concurrent edit, lifecycle change or delete rolls the whole update back.
     const updated = await db.transaction(async tx => {
+      // A draft moving to another flag: hold that flag's row, as on create, so it can't turn
+      // server-only between the check above and this write.
+      if (body.featureFlagId !== undefined && body.featureFlagId !== existing.featureFlagId) {
+        await lockExperimentFlag(tx, siteId, body.featureFlagId);
+      }
+
       if (flag && flagUpdate) {
         const flagRows = await tx
           .update(featureFlags)
@@ -138,7 +146,8 @@ export async function updateExperiment(
           and(
             eq(experiments.siteId, siteId),
             eq(experiments.experimentId, experimentId),
-            eq(experiments.status, existing.status)
+            eq(experiments.status, existing.status),
+            eq(experiments.featureFlagId, existing.featureFlagId)
           )
         )
         .returning({ experimentId: experiments.experimentId });
@@ -153,6 +162,9 @@ export async function updateExperiment(
     const record = await getExperimentWithRelations(siteId, updated.experimentId);
     return reply.send({ success: true, data: record ? serializeExperiment(record) : updated });
   } catch (error) {
+    if (error instanceof ExperimentRequestError) {
+      return reply.status(error.statusCode).send({ error: error.message });
+    }
     if (error instanceof ExperimentConflictError) {
       return reply
         .status(409)

@@ -68,23 +68,23 @@ describe("experiment result queries", () => {
   it("attributes a session to its first exposure variant instead of grouping it into every observed variant", () => {
     const { exposureQuery } = buildQueries();
 
-    expect(exposureQuery).toContain("argMin(JSONExtractString(toString(props), 'value'), timestamp) AS variant");
+    expect(exposureQuery).toContain("argMin(JSONExtractString(toString(props), 'value'), timestamp_ms) AS variant");
     expect(exposureQuery).not.toContain("GROUP BY session_id, variant");
   });
 
   it("attributes assignment fallback to the first assigned variant per session", () => {
     const { assignmentQuery } = buildQueries();
 
-    expect(assignmentQuery).toContain("argMin(feature_flags['recipe_book_test'], timestamp) AS variant");
+    expect(assignmentQuery).toContain("argMin(feature_flags['recipe_book_test'], timestamp_ms) AS variant");
     expect(assignmentQuery).not.toContain("GROUP BY session_id, variant");
   });
 
   it("groups exposures and goals by visitor, falling back to the session", () => {
     const { exposureQuery, assignmentQuery } = buildQueries();
 
-    expect(EXPERIMENT_UNIT).toBe("if(visitor_id != '', visitor_id, session_id)");
+    expect(EXPERIMENT_UNIT).toBe("ifNull(nullIf(session_visitor, ''), events.session_id)");
     for (const sql of [exposureQuery, assignmentQuery]) {
-      expect(sql.match(/if\(visitor_id != '', visitor_id, session_id\) AS unit/g)).toHaveLength(2);
+      expect(sql.split(`${EXPERIMENT_UNIT} AS unit`)).toHaveLength(3);
       expect(sql).toContain("GROUP BY unit");
       expect(sql).toContain("uniqExactArray(u.session_ids) AS sessions");
     }
@@ -104,13 +104,47 @@ describe("experiment result queries", () => {
     const { exposureTimeseriesQuery, assignmentTimeseriesQuery } = buildQueries();
 
     for (const sql of [exposureTimeseriesQuery, assignmentTimeseriesQuery]) {
-      expect(sql).toContain("minIf(g.timestamp, g.timestamp >= u.exposed_at) AS converted_at");
+      expect(sql).toContain("minIf(g.goal_at, g.goal_at >= u.exposed_at) AS converted_at");
       expect(sql).toContain("toDate(exposed_at, 'UTC') AS day");
       expect(sql).toContain("WHERE converted_at > toDateTime(0)");
       expect(sql).toContain("GROUP BY variant, day");
     }
     expect(exposureTimeseriesQuery).toContain("event_name = 'feature_flag_exposure'");
     expect(assignmentTimeseriesQuery).toContain("feature_flags['recipe_book_test'] IN ('control', 'treatment')");
+  });
+});
+
+describe("experiment unit and timing", () => {
+  it("gives every event of a session the visitor id seen in that session", () => {
+    const { exposureQuery, assignmentQuery } = buildQueries();
+
+    for (const sql of [exposureQuery, assignmentQuery]) {
+      expect(sql).toContain("SELECT session_id AS visitor_session_id, any(visitor_id) AS session_visitor");
+      expect(sql.match(/LEFT JOIN session_visitors ON session_visitors.visitor_session_id = events.session_id/g)).toHaveLength(2);
+    }
+  });
+
+  it("orders exposures and goals by millisecond timestamps", () => {
+    const { exposureQuery } = buildQueries();
+
+    expect(exposureQuery).toContain("min(timestamp_ms) AS exposed_at");
+    expect(exposureQuery).toContain("timestamp_ms AS goal_at");
+    expect(exposureQuery).toContain("uniqExactIf(u.unit, g.last_goal_at >= u.exposed_at) AS conversions");
+  });
+
+  it("bounds a run to its exact start and end next to the whole-second window", () => {
+    const sql = buildExperimentResultQueries({
+      query: { filters: "", start_datetime: "2026-09-25 21:29:05", end_datetime: "2026-09-25 21:37:37" } as never,
+      siteId: 1,
+      flagKey: "recipe_book_test",
+      variantKeys: ["control", "treatment"],
+      goalCondition: "type = 'pageview'",
+      exact: { start: "2026-09-25 21:29:05.930", end: "2026-09-25 21:37:36.163" },
+    }).exposureQuery;
+
+    expect(sql).toContain("timestamp >= toDateTime('2026-09-25 21:29:05', 'UTC')");
+    expect(sql).toContain("timestamp_ms >= toDateTime64('2026-09-25 21:29:05.930', 3, 'UTC')");
+    expect(sql).toContain("timestamp_ms <= toDateTime64('2026-09-25 21:37:36.163', 3, 'UTC')");
   });
 });
 
@@ -128,7 +162,7 @@ describe("resolveExperimentWindow", () => {
   });
 
   it("stops a completed experiment at its end", () => {
-    const { query, window } = resolveExperimentWindow(
+    const { query, window, exact } = resolveExperimentWindow(
       rangeQuery,
       { startedAt: "2026-09-25 21:29:05.93", endedAt: "2026-09-25 21:37:36.163" },
       now
@@ -136,6 +170,7 @@ describe("resolveExperimentWindow", () => {
 
     expect(query.end_datetime).toBe("2026-09-25 21:37:37");
     expect(window).toEqual({ mode: "experiment", start: "2026-09-25 21:29:05", end: "2026-09-25 21:37:37" });
+    expect(exact).toEqual({ start: "2026-09-25 21:29:05.930", end: "2026-09-25 21:37:36.163" });
   });
 
   it("uses the page date range when asked, or before the experiment starts", () => {
@@ -256,6 +291,41 @@ describe("rolloutWinner", () => {
       ],
     });
     expect(rollout.conditionSets[1]).toEqual({ name: "Everyone else", rules: [], variants: [], rolloutPercentage: 100 });
+    expect(rollout.variants).toEqual([]);
+  });
+
+  it("adds the winner to a set that never offered it, so its visitors don't fall through", () => {
+    const rollout = rolloutWinner(
+      {
+        rolloutPercentage: 100,
+        variants: [],
+        conditionSets: [
+          {
+            name: "NL",
+            rules: [],
+            variants: [
+              { key: "control", rolloutPercentage: 50 },
+              { key: "variant_a", name: "Variant A", rolloutPercentage: 50, payload: { copy: "Try it" } },
+            ],
+          },
+          {
+            name: "BE",
+            rules: [],
+            variants: [
+              { key: "control", rolloutPercentage: 50 },
+              { key: "variant_b", rolloutPercentage: 50 },
+            ],
+          },
+        ],
+      } as never,
+      "variant_a"
+    );
+
+    expect(rollout.conditionSets[1].variants).toEqual([
+      { key: "control", rolloutPercentage: 0 },
+      { key: "variant_b", rolloutPercentage: 0 },
+      { key: "variant_a", name: "Variant A", rolloutPercentage: 100, payload: { copy: "Try it" } },
+    ]);
   });
 });
 

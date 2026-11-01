@@ -17,7 +17,10 @@ import {
   serializeExperiment,
 } from "./utils.js";
 
-export const EXPERIMENT_UNIT = "if(visitor_id != '', visitor_id, session_id)";
+// A session's events count toward one unit: the visitor id seen anywhere in that session, or else
+// the session itself. Events from a tracker that didn't send visitor_id yet (cached older script)
+// still land on the same unit as the rest of their session.
+export const EXPERIMENT_UNIT = "ifNull(nullIf(session_visitor, ''), events.session_id)";
 
 export type ExperimentResultsQuery = FilterParams<{ window?: "experiment" | "range" }>;
 
@@ -25,21 +28,33 @@ export type ExperimentWindow = { mode: "experiment" | "range"; start: string | n
 
 type ExperimentDates = { startedAt: string | null; endedAt: string | null };
 
+/** The run's exact bounds (UTC, milliseconds), applied to timestamp_ms on top of the whole-second window. */
+export type ExactWindow = { start: string; end: string | null };
+
+function parseUtc(value: string | Date): Date {
+  return typeof value === "string" ? new Date(`${value.replace(" ", "T")}Z`) : value;
+}
+
 function toWindowInstant(value: string | Date, roundUp = false): string {
-  const date = typeof value === "string" ? new Date(`${value.replace(" ", "T")}Z`) : value;
+  const date = parseUtc(value);
   const ms = roundUp ? Math.ceil(date.getTime() / 1000) * 1000 : Math.floor(date.getTime() / 1000) * 1000;
   return new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+}
+
+function toExactInstant(value: string): string {
+  return parseUtc(value).toISOString().slice(0, 23).replace("T", " ");
 }
 
 export function resolveExperimentWindow(
   query: ExperimentResultsQuery,
   experiment: ExperimentDates,
   now = new Date()
-): { query: FilterParams; window: ExperimentWindow } {
+): { query: FilterParams; window: ExperimentWindow; exact: ExactWindow | null } {
   if (query.window === "range" || !experiment.startedAt) {
     return {
       query,
       window: { mode: "range", start: query.start_date || null, end: query.end_date || null },
+      exact: null,
     };
   }
 
@@ -59,6 +74,10 @@ export function resolveExperimentWindow(
       end_datetime: end,
     },
     window: { mode: "experiment", start, end: experiment.endedAt ? end : null },
+    exact: {
+      start: toExactInstant(experiment.startedAt),
+      end: experiment.endedAt ? toExactInstant(experiment.endedAt) : null,
+    },
   };
 }
 
@@ -69,6 +88,7 @@ type BuildExperimentResultQueriesParams = {
   /** The flag's configured variant keys; must not be empty. */
   variantKeys: string[];
   goalCondition: string;
+  exact?: ExactWindow | null;
 };
 
 export function buildExperimentResultQueries({
@@ -77,9 +97,20 @@ export function buildExperimentResultQueries({
   flagKey,
   variantKeys,
   goalCondition,
+  exact,
 }: BuildExperimentResultQueriesParams) {
-  const timeStatement = getTimeStatement(query);
-  const filteredSessionsCte = buildFilteredSessionsCTE(query.filters, siteId, timeStatement);
+  // The whole-second window prunes by the (site_id, timestamp) sort key; the exact bounds then
+  // keep events from the run's first and last second that fall outside it.
+  const windowStatement = getTimeStatement(query);
+  const timeStatement = `${windowStatement}${
+    exact
+      ? `
+            AND timestamp_ms >= toDateTime64(${SqlString.escape(exact.start)}, 3, 'UTC')${
+              exact.end ? ` AND timestamp_ms <= toDateTime64(${SqlString.escape(exact.end)}, 3, 'UTC')` : ""
+            }`
+      : ""
+  }`;
+  const filteredSessionsCte = buildFilteredSessionsCTE(query.filters, siteId, windowStatement);
   const filteredSessionsJoin = filteredSessionsCte ? "INNER JOIN FilteredSessions USING (session_id)" : "";
   const filteredSessionsPrefix = filteredSessionsCte ? `${filteredSessionsCte},` : "";
   const escapedSiteId = SqlString.escape(siteId);
@@ -89,6 +120,17 @@ export function buildExperimentResultQueries({
   // even for a variant named "false" (no longer allowed, but older flags may have one).
   const escapedVariantKeys = variantKeys.map(key => SqlString.escape(key)).join(", ");
   const timeZone = SqlString.escape(query.time_zone || "UTC");
+  const sessionVisitorJoin = "LEFT JOIN session_visitors ON session_visitors.visitor_session_id = events.session_id";
+
+  const sessionVisitorsCte = `
+        session_visitors AS (
+          SELECT session_id AS visitor_session_id, any(visitor_id) AS session_visitor
+          FROM events
+          WHERE site_id = ${escapedSiteId}
+            AND visitor_id != ''
+            ${timeStatement}
+          GROUP BY session_id
+        )`;
 
   const unitsCte = (measurement: "exposure" | "assignment") =>
     measurement === "exposure"
@@ -96,12 +138,13 @@ export function buildExperimentResultQueries({
         experiment_units AS (
           SELECT
             ${EXPERIMENT_UNIT} AS unit,
-            argMin(JSONExtractString(toString(props), 'value'), timestamp) AS variant,
-            min(timestamp) AS exposed_at,
-            groupUniqArray(session_id) AS session_ids,
+            argMin(JSONExtractString(toString(props), 'value'), timestamp_ms) AS variant,
+            min(timestamp_ms) AS exposed_at,
+            groupUniqArray(events.session_id) AS session_ids,
             count() AS exposures
           FROM events
           ${filteredSessionsJoin}
+          ${sessionVisitorJoin}
           WHERE site_id = ${escapedSiteId}
             AND type = 'custom_event'
             AND event_name = 'feature_flag_exposure'
@@ -115,12 +158,13 @@ export function buildExperimentResultQueries({
         experiment_units AS (
           SELECT
             ${EXPERIMENT_UNIT} AS unit,
-            argMin(feature_flags[${escapedFlagKey}], timestamp) AS variant,
-            min(timestamp) AS exposed_at,
-            groupUniqArray(session_id) AS session_ids,
+            argMin(feature_flags[${escapedFlagKey}], timestamp_ms) AS variant,
+            min(timestamp_ms) AS exposed_at,
+            groupUniqArray(events.session_id) AS session_ids,
             1 AS exposures
           FROM events
           ${filteredSessionsJoin}
+          ${sessionVisitorJoin}
           WHERE site_id = ${escapedSiteId}
             AND feature_flags[${escapedFlagKey}] IN (${escapedVariantKeys})
             ${timeStatement}
@@ -131,9 +175,10 @@ export function buildExperimentResultQueries({
         goal_events AS (
           SELECT
             ${EXPERIMENT_UNIT} AS unit,
-            timestamp
+            timestamp_ms AS goal_at
           FROM events
           ${filteredSessionsJoin}
+          ${sessionVisitorJoin}
           WHERE site_id = ${escapedSiteId}
             AND (${goalCondition})
             ${timeStatement}
@@ -142,10 +187,11 @@ export function buildExperimentResultQueries({
   const resultsQuery = (measurement: "exposure" | "assignment") => `
       WITH
         ${filteredSessionsPrefix}
+        ${sessionVisitorsCte},
         ${unitsCte(measurement)},
         ${goalEventsCte},
         goal_units AS (
-          SELECT unit, max(timestamp) AS last_goal_at FROM goal_events GROUP BY unit
+          SELECT unit, max(goal_at) AS last_goal_at FROM goal_events GROUP BY unit
         )
       SELECT
         u.variant AS variant,
@@ -162,6 +208,7 @@ export function buildExperimentResultQueries({
   const timeseriesQuery = (measurement: "exposure" | "assignment") => `
       WITH
         ${filteredSessionsPrefix}
+        ${sessionVisitorsCte},
         ${unitsCte(measurement)},
         ${goalEventsCte},
         unit_outcomes AS (
@@ -169,7 +216,7 @@ export function buildExperimentResultQueries({
             u.unit AS unit,
             any(u.variant) AS variant,
             any(u.exposed_at) AS exposed_at,
-            minIf(g.timestamp, g.timestamp >= u.exposed_at) AS converted_at
+            minIf(g.goal_at, g.goal_at >= u.exposed_at) AS converted_at
           FROM experiment_units u
           LEFT JOIN goal_events g ON g.unit = u.unit
           GROUP BY u.unit
@@ -218,7 +265,7 @@ export async function getExperimentResults(
     }
 
     const variants = getExperimentVariantKeys(record.featureFlag);
-    const { query, window } = resolveExperimentWindow(request.query, record.experiment);
+    const { query, window, exact } = resolveExperimentWindow(request.query, record.experiment);
     const goalCondition = record.primaryGoal ? buildGoalCondition(record.primaryGoal) : null;
 
     if (!record.primaryGoal || !goalCondition || variants.length === 0) {
@@ -242,6 +289,7 @@ export async function getExperimentResults(
       flagKey: record.featureFlag.key,
       variantKeys: variants,
       goalCondition,
+      exact,
     });
 
     const exposureResult = await clickhouse.query({ query: exposureQuery, format: "JSONEachRow" });
