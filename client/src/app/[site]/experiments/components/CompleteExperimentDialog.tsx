@@ -39,6 +39,13 @@ export function CompleteExperimentDialog({
   const [choice, setChoice] = useState<string | null>(null);
   const selected = choice ?? recommended;
 
+  // A pick from an earlier opening must not outlive it: reopened, the dialog
+  // starts from the current recommendation again.
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setChoice(null);
+    onOpenChange(next);
+  };
+
   const complete = async () => {
     if (!selected) return;
     try {
@@ -47,14 +54,14 @@ export function CompleteExperimentDialog({
         payload: { status: "completed", winningVariant: selected },
       });
       toast.success(t("Rolled out {variant}", { variant: selected }));
-      onOpenChange(false);
+      handleOpenChange(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Failed to update experiment"));
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t("Complete experiment")}</DialogTitle>
@@ -106,7 +113,7 @@ export function CompleteExperimentDialog({
         </RadioGroup>
 
         <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => handleOpenChange(false)}>
             {t("Cancel")}
           </Button>
           <Button variant="success" onClick={complete} disabled={!selected || updateMutation.isPending}>
