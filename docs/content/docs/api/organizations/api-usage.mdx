@@ -40,7 +40,7 @@ Returns how much of today's [daily API quota](/docs/api/getting-started#rate-lim
       type: "boolean",
     },
     available: {
-      description: "False when the usage counter couldn't be read. The quota is still enforced; dailyUsed is then reported as 0",
+      description: "False when the usage counter couldn't be read. The quota is still enforced; dailyUsed is then reported as 0 and dailyRemaining as the full dailyLimit, so the real remainder may be lower",
       type: "boolean",
     },
     dailyUsed: {

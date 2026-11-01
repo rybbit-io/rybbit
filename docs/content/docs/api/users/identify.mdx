@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/sites/:site/users/identify
 ```
 
-Links an anonymous visitor (the device fingerprint shown as `user_id` in sessions and events) to an identified user ID, the same link the tracking script's `identify()` call makes. Past events from that device are attributed to the user in the background; expect them to update within a few minutes.
+Links an anonymous visitor (the device fingerprint shown as `user_id` in sessions and events) to an identified user ID, the same link the tracking script's `identify()` call makes. Past events from that device are attributed to the user in the background; expect them to update within a few minutes. Events already attributed to another identified user keep that attribution.
 
 This is the management endpoint. To identify a visitor as part of tracking (from a browser or server sending events), use [Sending Events](/docs/api/sending-events) or the script's [`identify()`](/docs/identify-users).
 

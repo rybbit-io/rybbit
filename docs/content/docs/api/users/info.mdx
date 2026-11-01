@@ -36,7 +36,7 @@ Returns detailed information about a specific user, including their profile trai
 
 ### Query Parameters
 
-Accepts all [Common Parameters](/docs/api/getting-started#common-parameters). Without a time range or filters, the response covers the user's full history. With them, only the user's sessions inside the range that match the filters count, so `sessions`, `pageviews`, `first_seen`, `vitals`, `locations`, `devices` and the rest describe that slice. Filters select sessions; every event in a selected session counts.
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters). Without a time range or filters, the response covers the user's full history. With them, only the user's sessions inside the range that match the filters count, so `sessions`, `pageviews`, `first_seen`, `vitals`, `locations`, `devices` and the rest describe that slice. Filters select sessions; every event of a selected session that falls inside the range counts.
 
 Returns `404` with `{"error": "User not found"}` when the user has no events in that slice. A device ID whose events were all claimed by an identified user resolves to that user.
 

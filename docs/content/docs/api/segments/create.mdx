@@ -41,7 +41,7 @@ The body is strict: unknown fields return `400`. Creating an organization-wide s
       required: true,
     },
     filters: {
-      description: 'Filters that define the segment (1–20). Uses the `filters` parameter format with stricter limits: at most 50 values per filter, each up to 500 characters; regex filters take exactly one valid pattern; comparison and lat/lon filters need numeric values; every filter except is_null/is_not_null needs a value',
+      description: 'Filters that define the segment (1–20). Uses the `filters` parameter format with stricter limits: at most 50 values per filter, each up to 500 characters; regex filters take exactly one valid pattern; comparison and lat/lon filters need numeric values; every filter except is_null/is_not_null needs at least one value (those two still send `value: []`)',
       type: 'Filter[]',
       typeDescription: 'See Filter Parameters in Getting Started',
       required: true,

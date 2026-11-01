@@ -60,6 +60,7 @@ async function analyzeFunnel() {
     },
     body: JSON.stringify({ steps: funnelSteps }),
   });
+  if (!res.ok) throw new Error(`Funnel analysis failed: HTTP ${res.status}`);
   const { data } = await res.json();
   return data; // array of { step_number, step_name, sessions, conversion_rate, dropoff_rate }
 }
@@ -156,7 +157,7 @@ In the example above, the steepest drop-off is **60%, between Pricing and Signup
 
 ## Step 3 — See where the leavers ended up
 
-[`POST /funnels/:stepNumber/sessions?mode=dropped`](/docs/api/funnels/step-sessions) returns the sessions that reached step `stepNumber` but never reached the next one, using the same `steps` body as the analyze call. Each session carries `exit_page`, the last page it viewed. Count those across a few pages of results to see where people who stalled ended their visit.
+[`POST /funnels/:stepNumber/sessions?mode=dropped`](/docs/api/funnels/step-sessions) returns the sessions that reached step `stepNumber` but never reached the next one, using the same `steps` body as the analyze call. Each session carries `exit_page`, the last page it viewed in the requested range. Count those across a few pages of results to see where people who stalled ended their visit.
 
 <Tabs items={['JavaScript', 'Python']}>
 <Tab value="JavaScript">
@@ -175,6 +176,7 @@ async function droppedSessions(stepNumber, pages = 5) {
       headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ steps: funnelSteps }),
     });
+    if (!res.ok) throw new Error(`Step sessions failed: HTTP ${res.status}`);
     const { data } = await res.json();
     sessions.push(...data);
     if (data.length < 100) break; // last page

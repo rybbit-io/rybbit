@@ -167,7 +167,7 @@ Any role on the site can call this. Public sites, and private-link viewers who s
   }}
 />
 
-Returns `404` if the site does not exist.
+Returns `403` for a site that doesn't exist or that you can't access; `404` for a malformed ID or an unknown text site identifier.
 
 </div>
 <div className="flex flex-col gap-4">

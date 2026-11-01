@@ -20,7 +20,7 @@ Every event in the response has an `event_cursor`, its exact place in the event 
 
 <Steps>
 <Step>
-**Fetch the initial batch** with `page_size`. The response's `cursor.newestCursor` is where polling starts (`cursor.oldestCursor` is for scrolling back with `before_cursor`).
+**Fetch the initial batch** with `page_size`. Polling starts 5 seconds before the response's `cursor.newestCursor`, so the first poll gets the same overlap as the ones after it (`cursor.oldestCursor` is for scrolling back with `before_cursor`). A cursor is `<epoch milliseconds>_<16 hex digits>`, so subtract 5000 from the first part and use sixteen zeros for the second.
 </Step>
 <Step>
 **On an interval, request events with `since_cursor`** set to the cursor you are holding. The response carries `cursor.nextCursor` and `cursor.hasMore`.
@@ -80,7 +80,8 @@ const toDate = (ts) => new Date(ts.replace(' ', 'T') + 'Z');
 
 async function poll() {
   try {
-    const params = cursor ? { since_cursor: cursor } : { page_size: 20 };
+    const polling = cursor !== null; // false for the initial load
+    const params = polling ? { since_cursor: cursor } : { page_size: 20 };
     const [res, count] = await Promise.all([get('/events', params), liveCount()]);
 
     // Events come back newest-first; show oldest-first so the feed reads top-to-bottom
@@ -95,11 +96,17 @@ async function poll() {
       seen.delete(old);
     }
 
-    // Initial load: start polling from the newest event (null on a site with no events yet)
-    cursor = cursor ? res.cursor.nextCursor : res.cursor.newestCursor;
+    if (polling) {
+      cursor = res.cursor.nextCursor;
+    } else if (res.cursor.newestCursor) {
+      // Initial load: start 5 seconds before the newest event, the same overlap
+      // later polls get (newestCursor is null on a site with no events yet)
+      const [ms] = res.cursor.newestCursor.split('_');
+      cursor = `${Number(ms) - 5000}_0000000000000000`;
+    }
 
     process.stdout.write(`\n🟢 ${count} visitors online\n`);
-    if (cursor && res.cursor.hasMore) return poll(); // backlog: read the next 500 now
+    if (polling && res.cursor.hasMore) return poll(); // backlog: read the next 500 now
   } catch (err) {
     console.error('poll error:', err.message);
   }
@@ -168,9 +175,14 @@ while True:
         while len(seen) > SEEN_MAX:
             del seen[next(iter(seen))]
 
-        # Initial load: start polling from the newest event (None on a site with no events yet)
-        cursor = res["cursor"]["nextCursor"] if cursor else res["cursor"]["newestCursor"]
-        has_more = bool(cursor) and res["cursor"]["hasMore"]
+        if cursor:
+            cursor = res["cursor"]["nextCursor"]
+            has_more = res["cursor"]["hasMore"]
+        elif res["cursor"]["newestCursor"]:
+            # Initial load: start 5 seconds before the newest event, the same overlap
+            # later polls get (newestCursor is None on a site with no events yet)
+            ms = int(res["cursor"]["newestCursor"].split("_")[0])
+            cursor = f"{ms - 5000}_0000000000000000"
 
         print(f"\n🟢 {live_count()} visitors online\n")
     except Exception as err:

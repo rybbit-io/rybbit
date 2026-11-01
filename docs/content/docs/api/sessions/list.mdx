@@ -62,7 +62,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       default: 'false',
     },
     view: {
-      description: 'Preset view. identified: identified users. replay: sessions with a replay. converted: completed at least one goal (turns on include_goals). bounced: exactly one pageview. errors: at least one error.',
+      description: 'Preset view. identified: identified users. replay: sessions with a replay. converted: completed at least one goal (turns on include_goals); API keys without the goals:read scope get no sessions for this view. bounced: exactly one pageview. errors: at least one error.',
       type: 'string',
       typeDescription: '"all" | "identified" | "replay" | "converted" | "bounced" | "errors"',
       default: 'all',

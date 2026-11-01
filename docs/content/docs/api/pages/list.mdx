@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/sites/:site/pages
 ```
 
-Returns the Pages report: one row per path (or per section, the first path segment), with entry, exit, time-on-page and bounce figures computed from the same pass over the site's pageviews. A pageview with no earlier pageview in its session is an entry, one with no later pageview is an exit, and one with neither is a bounce.
+Returns the Pages report: one row per path (or per section, the first path segment), with entry, exit, time-on-page and bounce figures computed from the same pass over the site's pageviews. Within the requested time range, a pageview with no earlier pageview in its session is an entry, one with no later pageview is an exit, and one with neither is a bounce.
 
 **Permissions:** any role on the site (`viewer` and above). API keys need the `analytics:read` scope. Public sites and [private links](/docs/api/sites/get-private-link) can read it without a key.
 

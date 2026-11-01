@@ -63,7 +63,7 @@ Needs a role on the site (any role, including viewer). Public-site and private-l
 
 Returns a binary PDF file (`Content-Type: application/pdf`). Save the response body to a `.pdf` file rather than parsing it as JSON.
 
-Errors come back as JSON: `400` for a missing or malformed `start_date`, `end_date`, `time_zone`, or `filters`; `403` when the plan does not include PDF export; `404` when the site does not exist.
+Errors come back as JSON: `400` for a missing or malformed `start_date`, `end_date`, `time_zone`, or `filters`; `403` when the plan does not include PDF export, or for a site that doesn't exist or that you can't access; `404` for a malformed site ID or an unknown text site identifier.
 
 </div>
 <div className="flex flex-col gap-4">

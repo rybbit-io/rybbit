@@ -25,7 +25,7 @@ What is deleted:
 
 Events and sessions already collected are not deleted from ClickHouse.
 
-Returns `400` for an invalid site ID and `404` if the site does not exist.
+Returns `403` for a site that doesn't exist or that you can't access; `404` for a malformed ID or an unknown text site identifier.
 
 ### Path Parameters
 

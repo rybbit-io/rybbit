@@ -17,7 +17,7 @@ POST /api/site-transfers/:transferId/accept
 
 Accepts a [site transfer](/docs/api/sites/create-transfer) and moves the site, with its data, into the organization you choose. The move has the same effects as [Move Site](/docs/api/sites/move), and the site's private link is also removed.
 
-**Authentication:** a signed-in dashboard session belonging to the recipient. API keys don't work here: the route names no site or organization to check a key against, so every API key (personal, scoped or organization) gets `401`. The examples send the session cookie. You must be an `admin` or `owner` of the target organization, and the person who sent the transfer must still be able to transfer the site.
+**Authentication:** a signed-in dashboard session belonging to the recipient. API keys don't work here: the route names no site or organization to check a key against, so every API key (personal, scoped or organization) gets `401`. The examples send the session cookie. The JavaScript example is for Node.js: browsers don't let scripts set a `Cookie` header. You must be an `admin` or `owner` of the target organization, and the person who sent the transfer must still be able to transfer the site.
 
 ### Path Parameters
 
@@ -100,7 +100,7 @@ A `403` is also returned when you aren't an admin or owner of the target organiz
   <Tab value="cURL">
 ```bash title="Request"
 curl -X POST "https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/accept" \
-  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "organizationId": "org_789"
@@ -114,7 +114,7 @@ const response = await fetch(
   {
     method: 'POST',
     headers: {
-      'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN',
+      'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -136,7 +136,7 @@ response = requests.post(
         'organizationId': 'org_789'
     },
     headers={
-        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
     }
 )
 
@@ -155,7 +155,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
     'Content-Type: application/json'
 ]);
 
@@ -172,7 +172,7 @@ require 'json'
 
 uri = URI('https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/accept')
 request = Net::HTTP::Post.new(uri)
-request['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+request['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
 request['Content-Type'] = 'application/json'
 request.body = {
   organizationId: 'org_789'
@@ -193,7 +193,7 @@ body := map[string]interface{}{
 jsonBody, _ := json.Marshal(body)
 
 req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/accept", bytes.NewBuffer(jsonBody))
-req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
 req.Header.Set("Content-Type", "application/json")
 
 client := &http.Client{}
@@ -213,7 +213,7 @@ let body = serde_json::json!({
 let client = reqwest::Client::new();
 let res = client
     .post("https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/accept")
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
     .json(&body)
     .send()
     .await?;
@@ -232,7 +232,7 @@ String json = """
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/accept"))
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
     .build();
@@ -248,7 +248,7 @@ var body = new
 };
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
 
 var content = new StringContent(
     JsonSerializer.Serialize(body),

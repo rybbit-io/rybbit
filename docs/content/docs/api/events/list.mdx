@@ -20,7 +20,7 @@ Returns a paginated list of events (pageviews, custom events, and outbound click
 Web vitals rows are left out. Events come back newest first. Page with cursors:
 
 - **Scroll back:** make the first request with no cursor, then pass `cursor.oldestCursor` as `before_cursor` until `cursor.hasMore` is `false`.
-- **Poll for new events:** pass `cursor.newestCursor` (or any row's `event_cursor`) as `since_cursor`, then pass each response's `cursor.nextCursor` on the next poll. Each poll reads the oldest 500 events after the cursor; if `cursor.hasMore` is `true`, poll again straight away. Each poll re-reads the last 5 seconds, because events can be written slightly out of order, so drop rows whose `event_cursor` you already have.
+- **Poll for new events:** pass `cursor.newestCursor` (or any row's `event_cursor`) as `since_cursor`, then pass each response's `cursor.nextCursor` on the next poll. Each poll reads the oldest 500 events after the cursor; if `cursor.hasMore` is `true`, poll again straight away. Each poll re-reads the last 5 seconds, because events can be written slightly out of order, so drop rows whose `event_cursor` you already have. The first poll after a page load gets no such overlap from `cursor.newestCursor` itself, so start it 5 seconds earlier: subtract 5000 from the cursor's millisecond part and use sixteen zeros after the underscore (see [Build a Live Visitor Feed](/docs/api/live-feed)).
 
 `since_timestamp` and `before_timestamp` are older whole-second bounds kept for compatibility. Events in the boundary second are skipped, so prefer the cursors.
 

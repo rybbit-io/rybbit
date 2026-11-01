@@ -49,7 +49,7 @@ Returns detailed information about a specific session including all events and p
       default: 0,
     },
     minutes: {
-      description: 'Only use events from the last N minutes. Applies to the session summary, the events, and the total.',
+      description: 'Only use events from the last N minutes. Applies to the session summary, the events, and the total. 0 or a non-numeric value is ignored, and the whole session is returned.',
       type: 'number',
       required: false,
     },

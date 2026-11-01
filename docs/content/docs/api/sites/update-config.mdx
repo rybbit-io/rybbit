@@ -214,7 +214,7 @@ Fields you omit keep their current values. The `excluded*` lists and `tags` repl
 |--------|------|
 | `400` | The body fails validation (`details` lists the problems), an IP pattern is invalid, the domain does not fit the site type, `sessionReplay` or `webVitals` is `true` on a mobile site, or the body has no fields |
 | `403` | Rybbit Cloud only: turning on `sessionReplay` without a plan that includes replay, or turning on `webVitals`, `trackErrors`, `trackButtonClicks`, `trackCopy`, or `trackFormInteractions` without an active or trialing subscription. Turning these off is always allowed. The other features are checked only when the update turns them on, but `sessionReplay: true` is checked every time it is sent, even if replay is already on. |
-| `404` | The site does not exist |
+| `404` | Malformed site ID or unknown text site identifier (a site that doesn't exist or that you can't access gets `403`) |
 
 </div>
 <div className="flex flex-col gap-4">
