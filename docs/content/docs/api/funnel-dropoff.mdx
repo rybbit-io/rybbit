@@ -1,18 +1,18 @@
 ---
 title: Find Where Users Drop Off
-description: Chain the funnel analysis and journeys endpoints to locate the biggest leak in a conversion flow, then discover where the users who abandon actually go instead.
+description: Chain the funnel analysis and funnel step sessions endpoints to locate the biggest leak in a conversion flow, then see the last page the people who abandon viewed.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 
-A funnel tells you *how many* people fall out at each step. The journeys endpoint tells you *where they went instead*. Putting them together turns "our signup funnel leaks at the pricing page" into "people leave the pricing page for the FAQ — they have unanswered questions."
+A funnel tells you *how many* people fall out at each step. The funnel step sessions endpoint lists *the sessions that fell out*, with the last page each one viewed. Putting them together turns "our signup funnel leaks at the pricing page" into "people who stall on pricing end their visit on the FAQ — they have unanswered questions."
 
 **Endpoints used:**
 
 - [`POST /funnels/analyze`](/docs/api/funnels/analyze) — step-by-step conversion and drop-off rates
-- [`GET /journeys`](/docs/api/insights/journeys) — the most common navigation paths
+- [`POST /funnels/:stepNumber/sessions`](/docs/api/funnels/step-sessions) — the sessions that reached a step but not the next one
 
 ## The workflow
 
@@ -24,7 +24,7 @@ A funnel tells you *how many* people fall out at each step. The journeys endpoin
 **Find the worst step** — the one with the highest `dropoff_rate`.
 </Step>
 <Step>
-**Pull journeys that start at that step's page** using `stepFilters`, so you can see the most common next page for people who were there.
+**List the sessions that dropped** after the step before the leak (`mode=dropped`) and count their `exit_page`, the last page each one viewed.
 </Step>
 </Steps>
 
@@ -60,6 +60,7 @@ async function analyzeFunnel() {
     },
     body: JSON.stringify({ steps: funnelSteps }),
   });
+  if (!res.ok) throw new Error(`Funnel analysis failed: HTTP ${res.status}`);
   const { data } = await res.json();
   return data; // array of { step_number, step_name, sessions, conversion_rate, dropoff_rate }
 }
@@ -154,59 +155,77 @@ print(
 
 In the example above, the steepest drop-off is **60%, between Pricing and Signup** — of the 4,500 people who reached the pricing page, only 1,800 went on to signup. That makes the **pricing page** the one to investigate: it's where the audience was sitting right before the biggest leak.
 
-## Step 3 — See where the leavers went
+## Step 3 — See where the leavers ended up
 
-The [journeys endpoint](/docs/api/insights/journeys) ranks the most common page paths. Use `stepFilters` to anchor step `0` to the page people were dropping from — now every returned journey shows you a common *next* page for that audience.
+[`POST /funnels/:stepNumber/sessions?mode=dropped`](/docs/api/funnels/step-sessions) returns the sessions that reached step `stepNumber` but never reached the next one, using the same `steps` body as the analyze call. Each session carries `exit_page`, the last page it viewed in the requested range. Count those across a few pages of results to see where people who stalled ended their visit.
 
 <Tabs items={['JavaScript', 'Python']}>
 <Tab value="JavaScript">
-```javascript title="What did they do after the leaky page?"
-async function journeysFrom(page) {
-  const stepFilters = JSON.stringify({ '0': page });
-  const url = new URL(`${API}/api/sites/${SITE}/journeys`);
-  url.searchParams.set('steps', '2');
-  url.searchParams.set('limit', '10');
-  url.searchParams.set('stepFilters', stepFilters);
-  Object.entries(range).forEach(([k, v]) => url.searchParams.set(k, v));
+```javascript title="Where did the leavers end their visit?"
+async function droppedSessions(stepNumber, pages = 5) {
+  const sessions = [];
+  for (let page = 1; page <= pages; page++) {
+    const url = new URL(`${API}/api/sites/${SITE}/funnels/${stepNumber}/sessions`);
+    url.searchParams.set('mode', 'dropped');
+    url.searchParams.set('limit', '100');
+    url.searchParams.set('page', String(page));
+    Object.entries(range).forEach(([k, v]) => url.searchParams.set(k, v));
 
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${API_KEY}` } });
-  const { journeys } = await res.json();
-  return journeys;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ steps: funnelSteps }),
+    });
+    if (!res.ok) throw new Error(`Step sessions failed: HTTP ${res.status}`);
+    const { data } = await res.json();
+    sessions.push(...data);
+    if (data.length < 100) break; // last page
+  }
+  return sessions;
 }
 
-// The leaky step's page — '/pricing' in our example
-const leakyPage = funnelSteps[leak.step_number - 2].value;
-const journeys = await journeysFrom(leakyPage);
+// Sessions that reached the step before the leak ('Pricing') but not the next one
+const dropped = await droppedSessions(enteredStep.step_number);
 
-console.log(`Where users go after ${leakyPage}:`);
-journeys
-  .filter((j) => j.path[1] && j.path[1] !== '/signup') // exclude the intended next step
+const exits = {};
+for (const s of dropped) exits[s.exit_page] = (exits[s.exit_page] || 0) + 1;
+
+console.log(`Last page viewed by ${dropped.length} sessions that left after ${enteredStep.step_name}:`);
+Object.entries(exits)
+  .sort((a, b) => b[1] - a[1])
   .slice(0, 5)
-  .forEach((j) => console.log(`  → ${j.path[1]}  (${j.count} sessions, ${j.percentage}%)`));
+  .forEach(([page, n]) => console.log(`  ${page}  (${n} sessions, ${((n / dropped.length) * 100).toFixed(1)}%)`));
 ```
 </Tab>
 <Tab value="Python">
-```python title="What did they do after the leaky page?"
-import json
+```python title="Where did the leavers end their visit?"
+from collections import Counter
 
 
-def journeys_from(page):
-    res = requests.get(
-        f"{API}/api/sites/{SITE}/journeys",
-        params={"steps": 2, "limit": 10, "stepFilters": json.dumps({"0": page}), **RANGE},
-        headers={"Authorization": f"Bearer {API_KEY}"},
-    )
-    res.raise_for_status()
-    return res.json()["journeys"]
+def dropped_sessions(step_number, pages=5):
+    sessions = []
+    for page in range(1, pages + 1):
+        res = requests.post(
+            f"{API}/api/sites/{SITE}/funnels/{step_number}/sessions",
+            params={"mode": "dropped", "limit": 100, "page": page, **RANGE},
+            json={"steps": FUNNEL_STEPS},
+            headers={"Authorization": f"Bearer {API_KEY}"},
+        )
+        res.raise_for_status()
+        data = res.json()["data"]
+        sessions.extend(data)
+        if len(data) < 100:  # last page
+            break
+    return sessions
 
 
-# The leaky step's page — '/pricing' in our example
-leaky_page = FUNNEL_STEPS[leak["step_number"] - 2]["value"]
-journeys = journeys_from(leaky_page)
+# Sessions that reached the step before the leak ('Pricing') but not the next one
+dropped = dropped_sessions(entered_step["step_number"])
+exits = Counter(s["exit_page"] for s in dropped)
 
-print(f"Where users go after {leaky_page}:")
-for j in [j for j in journeys if len(j["path"]) > 1 and j["path"][1] != "/signup"][:5]:
-    print(f'  → {j["path"][1]}  ({j["count"]} sessions, {j["percentage"]}%)')
+print(f'Last page viewed by {len(dropped)} sessions that left after {entered_step["step_name"]}:')
+for page, n in exits.most_common(5):
+    print(f"  {page}  ({n} sessions, {n / len(dropped) * 100:.1f}%)")
 ```
 </Tab>
 </Tabs>
@@ -214,19 +233,26 @@ for j in [j for j in journeys if len(j["path"]) > 1 and j["path"][1] != "/signup
 ### The insight
 
 ```text
-Where users go after /pricing:
-  → /faq          (1,240 sessions, 27.6%)
-  → /             (820 sessions, 18.2%)
-  → /enterprise   (610 sessions, 13.6%)
+Last page viewed by 500 sessions that left after Pricing:
+  /faq          (138 sessions, 27.6%)
+  /pricing      (121 sessions, 24.2%)
+  /enterprise   (68 sessions, 13.6%)
 ```
 
-More than a quarter of people who hit Pricing and didn't sign up went to the FAQ — a strong signal that pricing raises questions your FAQ has to answer. That's a far more actionable finding than "the pricing page has a 60% drop-off."
+In this example more than a quarter of the people who reached Pricing and didn't sign up ended their visit on the FAQ, a sign that pricing raises questions the FAQ has to answer. That is more actionable than "the pricing page has a 60% drop-off."
+
+This samples the most recent dropped sessions (up to 500 here). Raise `pages` for a fuller count; each page is one request against your [rate limit](/docs/api/getting-started#rate-limits-cloud-only).
 
 <Callout type="info">
-**Quantify before you act.** Combine the funnel and journey numbers into a one-line business case: *"2,700 users/month leave Pricing; 28% head to the FAQ. Surfacing the top FAQ answers on the pricing page could recover a meaningful share of them."*
+Don't use [`GET /journeys`](/docs/api/insights/journeys) with `stepFilters` `{"0": "/pricing"}` for this. A journey is the first pages of a session, so step `0` is the landing page: that filter only covers sessions that *landed* on pricing, and each journey's `percentage` is a share of all sessions with two or more pages, not of that audience. It is the right tool for "where do people who land on /pricing go next?", not for funnel drop-off.
+</Callout>
+
+<Callout type="info">
+**Quantify before you act.** Combine the funnel and exit-page numbers into a one-line business case: *"2,700 sessions a month leave after Pricing; 28% end on the FAQ. Surfacing the top FAQ answers on the pricing page could recover a meaningful share of them."*
 </Callout>
 
 ## Next steps
 
 - [Compare Marketing Channel Performance](/docs/api/channel-performance) — find out which traffic sources fill the top of this funnel with people who actually convert.
-- [Funnels API reference](/docs/api/funnels/analyze) — event steps, property matching, and per-step session lookups.
+- [Funnels API reference](/docs/api/funnels/analyze) — event steps and property matching.
+- [Funnel step sessions](/docs/api/funnels/step-sessions) — `reached` and `dropped` session lists for any step.

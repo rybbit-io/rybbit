@@ -15,7 +15,9 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/sites/:siteId/private-link-config
 ```
 
-Returns the private link key configuration. Private links allow sharing analytics with a secret key without requiring authentication.
+Returns the private link key configuration. Private links allow sharing analytics with a secret key without requiring authentication. Requires the editor role or above on the site (the `sites:configure` permission).
+
+A private-link viewer sends the key in the `x-private-key` request header. With it, read endpoints that allow public access answer as they would for a public site.
 
 ### Path Parameters
 

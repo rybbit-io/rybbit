@@ -17,6 +17,8 @@ GET /api/sites/:siteId
 
 Returns detailed information about a specific site including its configuration.
 
+Any role on the site can call this. Public sites, and private-link viewers who send the key in the `x-private-key` header, can call it too; for them `role` is `null` and `permissions` is empty.
+
 ### Path Parameters
 
 <TypeTable
@@ -34,7 +36,7 @@ Returns detailed information about a specific site including its configuration.
 <TypeTable
   type={{
     id: {
-      description: 'Site UUID',
+      description: 'Site string identifier (12 hex characters)',
       type: 'string | null',
     },
     siteId: {
@@ -45,30 +47,44 @@ Returns detailed information about a specific site including its configuration.
       description: 'Site name',
       type: 'string',
     },
+    type: {
+      description: 'Site type',
+      type: 'string',
+      typeDescription: '"web" | "mobile"',
+    },
     domain: {
-      description: 'Site domain',
+      description: 'Site domain, or app identifier for mobile sites',
       type: 'string',
     },
     createdAt: {
       description: 'Creation timestamp',
-      type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      type: 'string | null',
+      typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix',
     },
     updatedAt: {
       description: 'Last update timestamp',
-      type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      type: 'string | null',
+      typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix',
     },
     createdBy: {
       description: 'User ID who created the site',
-      type: 'string',
+      type: 'string | null',
     },
     organizationId: {
       description: 'Organization ID',
       type: 'string | null',
     },
+    claimExpiresAt: {
+      description: 'For a site created from the landing page and not yet claimed, when it will be deleted; otherwise null',
+      type: 'string | null',
+      typeDescription: 'ISO 8601 datetime',
+    },
     public: {
       description: 'Whether the site analytics are publicly accessible',
+      type: 'boolean',
+    },
+    embedEnabled: {
+      description: 'Whether the stats widget may be embedded',
       type: 'boolean',
     },
     saltUserIds: {
@@ -79,8 +95,29 @@ Returns detailed information about a specific site including its configuration.
       description: 'Whether bot traffic is blocked',
       type: 'boolean',
     },
+    firstPartyProxy: {
+      description: 'Whether visitor IPs are read from first-party proxy headers',
+      type: 'boolean',
+    },
+    trackIp: {
+      description: 'Whether visitor IP addresses are stored',
+      type: 'boolean',
+    },
+    role: {
+      description: 'Your role on this site, or null for public and private-link viewers',
+      type: 'string | null',
+      typeDescription: '"owner" | "admin" | "editor" | "member" | "viewer" | null',
+    },
+    permissions: {
+      description: 'Permissions your role holds on this site (e.g. "goals:write", "sites:configure"). An API key\'s scopes can narrow what it may actually do.',
+      type: 'string[]',
+    },
     isOwner: {
-      description: 'Whether the current user owns this site',
+      description: 'True when your role is admin or owner',
+      type: 'boolean',
+    },
+    requiresPlan: {
+      description: 'Whether the site collects no data until its organization starts a plan',
       type: 'boolean',
     },
     sessionReplay: {
@@ -107,8 +144,30 @@ Returns detailed information about a specific site including its configuration.
       description: 'Whether ordinary URL fragments are included in tracked paths. Defaults to false.',
       type: 'boolean',
     },
+    trackInitialPageView: {
+      description: 'Whether a pageview is sent when the script loads',
+      type: 'boolean',
+    },
+    trackSpaNavigation: {
+      description: 'Whether single-page-app route changes are tracked',
+      type: 'boolean',
+    },
+    trackButtonClicks: {
+      description: 'Whether button clicks are captured automatically',
+      type: 'boolean',
+    },
+    trackCopy: {
+      description: 'Whether text copy events are captured',
+      type: 'boolean',
+    },
+    trackFormInteractions: {
+      description: 'Whether form interactions are captured',
+      type: 'boolean',
+    },
   }}
 />
+
+Returns `403` for a site that doesn't exist or that you can't access; `404` for a malformed ID or an unknown text site identifier.
 
 </div>
 <div className="flex flex-col gap-4">
@@ -226,23 +285,37 @@ var data = await response.Content.ReadAsStringAsync();
 
 ```json title="Response"
 {
-  "id": "site_abc123",
+  "id": "a1b2c3d4e5f6",
   "siteId": 123,
   "name": "My Website",
+  "type": "web",
   "domain": "example.com",
-  "createdAt": "2024-01-15T10:30:00.000Z",
-  "updatedAt": "2024-01-31T14:00:00.000Z",
+  "createdAt": "2024-01-15 10:30:00.123456",
+  "updatedAt": "2024-01-31 14:00:00.5",
   "createdBy": "user_xyz789",
   "organizationId": "org_def456",
-  "public": false,
+  "claimExpiresAt": null,
   "saltUserIds": false,
+  "public": false,
+  "embedEnabled": false,
   "blockBots": true,
-  "isOwner": true,
+  "firstPartyProxy": false,
+  "trackIp": false,
+  "isOwner": false,
+  "role": "editor",
+  "permissions": ["analytics:read", "sessions:read", "goals:write", "sites:configure"],
+  "requiresPlan": false,
   "sessionReplay": true,
   "webVitals": true,
   "trackErrors": true,
   "trackOutbound": true,
-  "trackUrlParams": false
+  "trackUrlParams": false,
+  "trackUrlFragments": false,
+  "trackInitialPageView": true,
+  "trackSpaNavigation": true,
+  "trackButtonClicks": false,
+  "trackCopy": false,
+  "trackFormInteractions": false
 }
 ```
 

@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/organizations/:organizationId/teams
 ```
 
-Creates a team in an organization. Requires admin/owner role.
+Creates a team in an organization. Requires admin/owner role; API keys need the `org:write` scope.
 
 ### Path Parameters
 
@@ -92,6 +92,11 @@ Returns the created team with HTTP 201.
     siteIds: {
       description: 'Array of granted site IDs',
       type: 'number[]',
+    },
+    siteRole: {
+      description: 'The role set on the team\'s site grants, or null',
+      type: 'string | null',
+      typeDescription: '"editor" | "member" | "viewer" | null',
     },
   }}
 />
@@ -272,7 +277,8 @@ var data = await response.Content.ReadAsStringAsync();
   "createdAt": "2024-01-15T10:30:00.000Z",
   "updatedAt": "2024-01-15T10:30:00.000Z",
   "members": ["user_123"],
-  "siteIds": [123]
+  "siteIds": [123],
+  "siteRole": null
 }
 ```
 

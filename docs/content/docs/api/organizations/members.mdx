@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/organizations/:organizationId/members
 ```
 
-Returns all members of an organization with their user details and roles. Requires membership in the organization.
+Returns all members of an organization with their user details and roles. Requires membership in the organization (`viewer` or above); API keys need the `org:read` scope.
 
 ### Path Parameters
 
@@ -115,8 +115,18 @@ Each member in the `data` array contains:
       type: 'boolean',
     },
     siteIds: {
-      description: 'IDs of the sites the member can access (empty when access is not restricted)',
+      description: 'IDs of the sites the member has a per-site grant on',
+      type: 'number[]',
+    },
+    siteRole: {
+      description: "The role every one of the member's grants raises them to; null when the grants carry no role (the organization role applies) or carry different roles",
+      type: 'string | null',
+      typeDescription: '"editor" | "member" | "viewer" | null',
+    },
+    siteGrants: {
+      description: 'Each grant with its own role, for resolving the member\'s role per site',
       type: 'array',
+      typeDescription: 'Array of { siteId: number, role: "editor" | "member" | "viewer" | null }',
     },
   }}
 />
@@ -277,7 +287,9 @@ var data = await response.Content.ReadAsStringAsync();
       },
       "siteAccess": {
         "hasRestrictedSiteAccess": false,
-        "siteIds": []
+        "siteIds": [],
+        "siteRole": null,
+        "siteGrants": []
       },
       "teams": []
     },
@@ -294,7 +306,9 @@ var data = await response.Content.ReadAsStringAsync();
       },
       "siteAccess": {
         "hasRestrictedSiteAccess": true,
-        "siteIds": ["456"]
+        "siteIds": [456],
+        "siteRole": "editor",
+        "siteGrants": [{ "siteId": 456, "role": "editor" }]
       },
       "teams": [
         {

@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/sites/:site/goals
 ```
 
-Creates a new goal for tracking conversions.
+Creates a new goal for tracking conversions. Requires the member role or above on the site (the `goals:write` permission). Returns `201` on success and `400` with `details` when the body fails validation.
 
 ### Path Parameters
 
@@ -52,35 +52,40 @@ Creates a new goal for tracking conversions.
   }}
 />
 
-#### GoalConfig for Path Goals
+#### GoalConfig Object
+
+Which fields apply depends on `goalType`. Path goals need `pathPattern` and event goals need `eventName`; autocapture goals need nothing, and match every event of their type when `valuePattern` is omitted.
 
 <TypeTable
   type={{
     pathPattern: {
-      description: 'URL path pattern to match. Supports wildcards (*)',
+      description: 'path goals: URL path pattern. * matches within one path segment, ** across segments. Required for path goals.',
       type: 'string',
-      required: true,
-      typeDescription: 'e.g., "/checkout/*", "/signup/complete"',
+      required: false,
     },
-  }}
-/>
-
-#### GoalConfig for Event Goals
-
-<TypeTable
-  type={{
     eventName: {
-      description: 'Event name to match',
+      description: 'event goals: custom event name to match exactly. Required for event goals.',
       type: 'string',
-      required: true,
+      required: false,
+    },
+    valuePattern: {
+      description: 'Autocapture goals (outbound, button_click, form_submit, copy): wildcard pattern matched against the destination URL (outbound), the button or copied text (button_click, copy), or the form name, ID, or action (form_submit). * matches one or more characters, ** zero or more. Omit to match every event of the type.',
+      type: 'string',
+      typeDescription: 'Max 512 characters',
+      required: false,
+    },
+    propertyFilters: {
+      description: 'Exact-match filters that must all pass. For event and autocapture goals they match event properties; for path goals they match URL query parameters. Property values are compared as strings: a boolean or number stored as a native JSON value (e.g. `{ gift: true }`) does not match.',
+      type: 'Array<{ key: string; value: string | number | boolean }>',
+      required: false,
     },
     eventPropertyKey: {
-      description: 'Property key to match (optional)',
+      description: 'Deprecated: use propertyFilters. Single property key; ignored when propertyFilters is set. Must be sent together with eventPropertyValue.',
       type: 'string',
       required: false,
     },
     eventPropertyValue: {
-      description: 'Property value to match (required if key is provided)',
+      description: 'Deprecated: use propertyFilters. Single property value; ignored when propertyFilters is set.',
       type: 'string | number | boolean',
       required: false,
     },

@@ -18,24 +18,31 @@ POST /api/user/api-keys
 
 Creates a new API key scoped to your user account (and its organizations). To create a key owned by an organization instead, see [Create Organization API Key](/docs/api/api-keys/create-org).
 
-<Callout type="warn">This endpoint accepts your logged-in dashboard **session** or an **unrestricted (full-access) user API key**. Scoped keys and organization keys are rejected — so a scoped key cannot mint new keys, but a session or full-access key can. Send your session cookie or `Authorization: Bearer` header with the request.</Callout>
+<Callout type="warn">This endpoint accepts only your logged-in dashboard **session**. API keys can't create keys: any API key gets `401`. Send your session cookie with the request. On Rybbit Cloud the session must have an active organization (the one you last opened in the dashboard), or the request returns `400` with `"No active organization"`; its plan decides whether you can create keys.</Callout>
 
 ### Request Body
 
 <TypeTable
   type={{
     name: {
-      description: 'A label for the key',
+      description: 'A label for the key, 1 to 32 characters',
       type: 'string',
       required: true,
     },
     expiresIn: {
-      description: 'Seconds until the key expires. Omit for a key that never expires.',
+      description: 'Seconds until the key expires, from 86,400 (1 day) to 31,536,000 (365 days). Omit for a key that never expires.',
       type: 'number',
+      required: false,
+    },
+    permissions: {
+      description: 'Scope the key to specific `resource: action[]` pairs (e.g. `{ "analytics": ["read"], "goals": ["read", "write"] }`); see the note below this table. Omit entirely for a full-access key; an empty object is rejected.',
+      type: 'object',
       required: false,
     },
   }}
 />
+
+Scopes use the `resource:action` taxonomy listed under [Roles and Scopes](/docs/api/getting-started#scopes). Per-key limits don't apply; usage counts against the owner's [rate limits](/docs/api/getting-started#rate-limits-cloud-only).
 
 ### Response
 
@@ -56,16 +63,24 @@ Returns the created API key object.
       type: 'string',
     },
     start: {
-      description: 'A non-secret prefix of the key for display',
+      description: 'The first 6 characters of the key, for display',
       type: 'string',
     },
     prefix: {
-      description: 'The key prefix',
-      type: 'string',
+      description: 'The key prefix. Personal keys have none, so this is null',
+      type: 'string | null',
     },
-    userId: {
+    referenceId: {
       description: 'The ID of the user that owns the key',
       type: 'string',
+    },
+    configId: {
+      description: 'Key configuration: "default" for personal keys',
+      type: 'string',
+    },
+    permissions: {
+      description: 'The scopes the key was given, or null for a full-access key',
+      type: 'object | null',
     },
     enabled: {
       description: 'Whether the key is currently enabled',
@@ -84,15 +99,15 @@ Returns the created API key object.
       type: 'string',
     },
     rateLimitEnabled: {
-      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only))',
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see Rate Limits in Getting Started)',
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number',
     },
     rateLimitTimeWindow: {
-      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number',
     },
   }}
@@ -107,9 +122,9 @@ Returns the created API key object.
   <Tab value="cURL">
 ```bash title="Request"
 curl -X POST "https://app.rybbit.io/api/user/api-keys" \
-  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name": "CI pipeline", "expiresIn": 2592000}'
+  -d '{"name": "CI pipeline", "expiresIn": 2592000, "permissions": {"analytics": ["read"]}}'
 ```
   </Tab>
   <Tab value="JavaScript">
@@ -143,7 +158,7 @@ response = requests.post(
         'expiresIn': 2592000
     },
     headers={
-        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
     }
 )
 
@@ -161,7 +176,7 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     'expiresIn' => 2592000
 ]));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
     'Content-Type: application/json'
 ]);
 
@@ -178,7 +193,7 @@ require 'json'
 
 uri = URI("https://app.rybbit.io/api/user/api-keys")
 req = Net::HTTP::Post.new(uri)
-req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
 req['Content-Type'] = 'application/json'
 req.body = {
   name: 'CI pipeline',
@@ -196,7 +211,7 @@ body := bytes.NewBuffer([]byte(`{
   "expiresIn": 2592000
 }`))
 req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/user/api-keys", body)
-req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
 req.Header.Set("Content-Type", "application/json")
 
 client := &http.Client{}
@@ -212,7 +227,7 @@ json.NewDecoder(resp.Body).Decode(&data)
 let client = reqwest::Client::new();
 let res = client
     .post("https://app.rybbit.io/api/user/api-keys")
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
     .json(&serde_json::json!({
         "name": "CI pipeline",
         "expiresIn": 2592000
@@ -229,7 +244,7 @@ HttpClient client = HttpClient.newHttpClient();
 String json = "{\"name\": \"CI pipeline\", \"expiresIn\": 2592000}";
 HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://app.rybbit.io/api/user/api-keys"))
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
     .build();
@@ -240,7 +255,7 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
   <Tab value=".NET">
 ```csharp title="Request"
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
 
 var content = new StringContent(
     "{\"name\": \"CI pipeline\", \"expiresIn\": 2592000}",
@@ -259,11 +274,14 @@ var data = await response.Content.ReadAsStringAsync();
 ```json title="Response"
 {
   "id": "key_8f3a1b2c4d5e6f7g",
-  "key": "rybbit_sk_live_xxxxxxxxxxxxxxxxxxxx",
+  "key": "aBcDeFxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "name": "CI pipeline",
-  "start": "rybbit_sk_live_xxxx",
-  "prefix": "rybbit_sk_live_",
-  "userId": "user_2a9b8c7d6e5f4g3h",
+  "start": "aBcDeF",
+  "prefix": null,
+  "referenceId": "user_2a9b8c7d6e5f4g3h",
+  "configId": "default",
+  "permissions": { "analytics": ["read"] },
+  "metadata": null,
   "enabled": true,
   "expiresAt": "2026-07-25T12:00:00.000Z",
   "createdAt": "2026-06-25T12:00:00.000Z",

@@ -1,0 +1,327 @@
+---
+title: Get Pages
+description: Returns one row per page path or per section, with pageviews, sessions, entries, exits, time on page and bounce rate.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/pages
+```
+
+Returns the Pages report: one row per path (or per section, the first path segment), with entry, exit, time-on-page and bounce figures computed from the same pass over the site's pageviews. Within the requested time range, a pageview with no earlier pageview in its session is an entry, one with no later pageview is an exit, and one with neither is a bounce.
+
+**Permissions:** any role on the site (`viewer` and above). API keys need the `analytics:read` scope. Public sites and [private links](/docs/api/sites/get-private-link) can read it without a key.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: "Site ID or site identifier",
+      type: "string | number",
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters). Time parameters are optional; omit them for all-time data.
+
+<TypeTable
+  type={{
+    group: {
+      description: "Return one row per path, or one row per section",
+      type: "string",
+      typeDescription: "\"page\" | \"section\"",
+      default: "page",
+      required: false,
+    },
+    section: {
+      description: "Only paths in this section (e.g. \"/docs\"). Page rows only. Max 2048 characters",
+      type: "string",
+      required: false,
+    },
+    mode: {
+      description: "`entry` keeps only rows with entries, `exit` only rows with exits",
+      type: "string",
+      typeDescription: "\"all\" | \"entry\" | \"exit\"",
+      default: "all",
+      required: false,
+    },
+    sort: {
+      description: "Sort column",
+      type: "string",
+      typeDescription: "\"pageviews\" | \"sessions\" | \"entries\" | \"exits\" | \"time_on_page\" | \"bounce_rate\"",
+      default: "pageviews",
+      required: false,
+    },
+    order: {
+      description: "Sort direction. Nulls sort last either way",
+      type: "string",
+      typeDescription: "\"asc\" | \"desc\"",
+      default: "desc",
+      required: false,
+    },
+    search: {
+      description: "Case-insensitive substring matched against the path or title. Page rows only. Max 200 characters",
+      type: "string",
+      required: false,
+    },
+    limit: {
+      description: "Rows per page",
+      type: "number",
+      typeDescription: "1-100",
+      default: 25,
+      required: false,
+    },
+    page: {
+      description: "Page number (1-indexed)",
+      type: "number",
+      typeDescription: "1-10000",
+      default: 1,
+      required: false,
+    },
+  }}
+/>
+
+`section` and `search` can't be combined with `group=section`; the request is rejected with a `400`.
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: "Paginated result",
+      type: "{ data: PageRow[], totalCount: number }",
+    },
+  }}
+/>
+
+#### PageRow Object
+
+<TypeTable
+  type={{
+    kind: {
+      description: "Row type. With `group=section`, a section that contains only one page is returned as that page",
+      type: "string",
+      typeDescription: "\"page\" | \"section\"",
+    },
+    key: {
+      description: "The path for a page row, the section for a section row",
+      type: "string",
+    },
+    title: {
+      description: "The page's most recent non-empty title; empty for sections and untitled pages",
+      type: "string",
+    },
+    section: {
+      description: "The first path segment the row belongs to (e.g. \"/docs\" for \"/docs/api\"); \"/\" is its own section",
+      type: "string",
+    },
+    pages: {
+      description: "Number of distinct paths in the row (1 for a page row)",
+      type: "number",
+    },
+    pageviews: {
+      description: "Total pageviews",
+      type: "number",
+    },
+    sessions: {
+      description: "Unique sessions that viewed the page",
+      type: "number",
+    },
+    entries: {
+      description: "Pageviews that were the first of their session",
+      type: "number",
+    },
+    exits: {
+      description: "Pageviews that were the last of their session",
+      type: "number",
+    },
+    bounced_entries: {
+      description: "Entries that were the only pageview of their session",
+      type: "number",
+    },
+    time_on_page_seconds: {
+      description: "Average seconds to the next pageview, capped at 1800 per view. Exit views have no next view and are left out of the average",
+      type: "number | null",
+    },
+    bounce_rate: {
+      description: "bounced_entries as a percentage of entries; null when the row has no entries",
+      type: "number | null",
+      typeDescription: "Range: 0-100",
+    },
+  }}
+/>
+
+`totalCount` is the number of rows across all pages of results.
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/pages?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&sort=entries&limit=25" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/pages?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&sort=entries&limit=25',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/pages',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31',
+        'time_zone': 'America/New_York',
+        'sort': 'entries',
+        'limit': 25
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/pages?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&sort=entries&limit=25');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/pages?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&sort=entries&limit=25')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/pages?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&sort=entries&limit=25", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/123/pages?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&sort=entries&limit=25")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/pages?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&sort=entries&limit=25"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/pages?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&sort=entries&limit=25");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "data": [
+      {
+        "kind": "page",
+        "key": "/",
+        "title": "Acme - Home",
+        "section": "/",
+        "pages": 1,
+        "pageviews": 18420,
+        "sessions": 12950,
+        "entries": 11230,
+        "exits": 7410,
+        "bounced_entries": 5120,
+        "time_on_page_seconds": 41.6,
+        "bounce_rate": 45.59
+      },
+      {
+        "kind": "page",
+        "key": "/pricing",
+        "title": "Pricing - Acme",
+        "section": "/pricing",
+        "pages": 1,
+        "pageviews": 6210,
+        "sessions": 4870,
+        "entries": 1980,
+        "exits": 2240,
+        "bounced_entries": 760,
+        "time_on_page_seconds": 63.2,
+        "bounce_rate": 38.38
+      }
+    ],
+    "totalCount": 214
+  }
+}
+```
+
+</div>
+</div>

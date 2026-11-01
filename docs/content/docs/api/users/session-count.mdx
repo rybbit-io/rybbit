@@ -44,8 +44,15 @@ Returns the number of sessions per day for a specific user. Useful for visualizi
       default: 'UTC',
       typeDescription: 'IANA timezone (e.g., "America/New_York")',
     },
+    filters: {
+      description: 'JSON-encoded filter array, same format as the Common Parameters filters. Only sessions that match count.',
+      type: 'string',
+      required: false,
+    },
   }}
 />
+
+The counts always cover the user's full history: `start_date`, `end_date`, and the other time-range parameters are ignored. Days with no sessions are left out. Returns `400` without `user_id`.
 
 ### Response
 
@@ -63,7 +70,7 @@ Returns the number of sessions per day for a specific user. Useful for visualizi
 <TypeTable
   type={{
     date: {
-      description: 'Date',
+      description: 'Day the sessions started, in time_zone',
       type: 'string',
       typeDescription: 'YYYY-MM-DD format',
     },

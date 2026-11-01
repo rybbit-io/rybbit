@@ -36,7 +36,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     page: {
-      description: 'Page number (1-indexed). Enables paginated response format.',
+      description: 'Page number (1-indexed). When set, data becomes { data, totalCount } instead of an array.',
       type: 'number',
       required: false,
     },
@@ -53,11 +53,13 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     data: {
-      description: 'Array of error objects (or paginated wrapper)',
-      type: 'Error[] | PaginatedResponse',
+      description: 'Array of error objects, most occurrences first. When page is set, an object { data: Error[], totalCount: number } instead, where totalCount is the number of distinct error messages.',
+      type: 'Error[] | { data: Error[], totalCount: number }',
     },
   }}
 />
+
+With `page`, the response nests one level deeper: `{ "data": { "data": [...], "totalCount": 42 } }`.
 
 #### Error Object
 

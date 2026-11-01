@@ -32,11 +32,19 @@ Looking for what to *build* with the API? These end-to-end recipes chain endpoin
 - [**Find Where Users Drop Off**](/docs/api/funnel-dropoff) — locate the biggest leak in a funnel, then see where the people who abandon go instead.
 - [**Compare Channel Performance**](/docs/api/channel-performance) — rank acquisition channels by how well they convert, not just how much traffic they send.
 - [**Build a Live Visitor Feed**](/docs/api/live-feed) — poll the events endpoint for a real-time activity stream you can render or alert on.
-- [**Export Events to a Warehouse**](/docs/api/export-events) — backfill your full event history and keep it in sync with an incremental job.
 
 ## Authentication
 
-All API requests must include authentication using one of the following methods:
+Most requests need a credential, sent one of the ways below. Two exceptions:
+
+- **Public sites.** Read endpoints for a site with [Public Analytics](/docs/site-settings#public-analytics) turned on answer without any credential.
+- **Private links.** Send a site's private link key in an `x-private-key` header to read that site's analytics without a credential, the same access a [private dashboard link](/docs/embeds/dashboard) gives. A rotated key stops working immediately.
+
+```bash
+x-private-key: your_private_link_key
+```
+
+Both only cover reads that the public dashboard can make (analytics, sessions, events, users, funnels, goals, segments, annotations and similar). Settings, organization endpoints, and writes other than event ingestion need a credential. [`POST /api/track`](/docs/api/sending-events) accepts events without one, as the browser script does; an API key with `ingest:write` additionally lets you set the visitor's IP and user agent.
 
 ### Bearer Token (Recommended)
 
@@ -53,6 +61,10 @@ Authorization: Bearer your_api_key_here
 <Callout type="warn">
 Query parameters expose API keys in server logs and browser history. Use only for quick testing.
 </Callout>
+
+### Session cookie
+
+Requests from a signed-in dashboard session (the Better Auth session cookie) are also accepted. A few account endpoints, such as creating a personal API key or managing keys and invitations under `/api/auth/*`, accept only a session. In production the cookie is named `__Secure-better-auth.session_token`. A `POST` to `/api/auth/*` that sends a cookie must also send an `Origin` header for your Rybbit instance (for example `Origin: https://app.rybbit.io`), or it is refused with `403` and code `MISSING_OR_NULL_ORIGIN`.
 
 ## Generating API Keys
 
@@ -75,7 +87,51 @@ Rybbit has two kinds of API keys:
 3. Enter a name for the key and click **Create**
 4. Copy the key immediately (it won't be shown again)
 
-Both kinds support restricting a key to specific permissions when you create it — leave restrictions off for a full-access key.
+Both kinds support restricting a key to specific scopes when you create it. Leave restrictions off for a full-access key.
+
+## Roles and Scopes
+
+A request is allowed only if the caller's **role** permits it and, for API keys and OAuth tokens, the credential's **scopes** do too.
+
+### Roles
+
+Each organization member has one role. Every role can do everything the roles below it can:
+
+| Role | Can |
+|------|-----|
+| `owner` | Everything, including billing and deleting the organization |
+| `admin` | Manage members, teams and API keys; create, delete and transfer sites. Sees every site |
+| `editor` | Configure sites: tracking settings, feature flags, experiments, imports, Search Console. Manage everyone's segments and annotations |
+| `member` | Build reports: goals, funnels, dashboards, their own segments and annotations |
+| `viewer` | Read everything they can reach; change nothing |
+
+Below admin, a member can be limited to specific sites, and a per-site grant (direct or through a [team](/docs/teams)) can raise their role on a site to `editor`, `member` or `viewer`. A grant never lowers a role. Organization keys act with `admin` authority over every site in their organization. Personal keys act with your role.
+
+### Scopes
+
+A scoped key carries `resource:action` pairs. `write` implies `read` on the same resource. Requests outside a key's scopes get `403` with `"error": "Insufficient scope"` and the missing scope in `required`.
+
+| Resource | Actions | Covers |
+|----------|---------|--------|
+| `analytics` | `read` | Overview, metrics, time series, performance, bots, journeys, retention, PDF export |
+| `sessions` | `read` | Sessions |
+| `events` | `read` | Events |
+| `users` | `read`, `write` | Users and user traits |
+| `goals` | `read`, `write` | Goals |
+| `funnels` | `read`, `write` | Funnels |
+| `dashboards` | `read`, `write` | Dashboards |
+| `annotations` | `read`, `write` | Annotations |
+| `segments` | `read`, `write` | Saved segments, and the `segment_id` parameter |
+| `flags` | `read`, `write` | Feature flags |
+| `experiments` | `read`, `write` | Experiments |
+| `sites` | `read`, `write` | Site settings, creating, deleting and transferring sites, imports |
+| `gsc` | `read`, `write` | Google Search Console |
+| `org` | `read`, `write` | Organizations, members, teams |
+| `replay` | `read`, `write` | Session replay |
+| `sql` | `read` | Custom SQL queries |
+| `ingest` | `write` | Sending events |
+
+Scopes never raise a role: an `org:write` key still needs an admin behind it to add members. Some account surfaces (creating API keys, billing, account settings) reject scoped keys and organization keys outright, whatever their scopes. Cookie sessions are never scope-limited.
 
 ### Rate Limits (Cloud Only)
 
@@ -121,6 +177,8 @@ Analytics and management endpoints report your current budget on every response,
 
 Treat these as advisory: a few endpoints resolve credentials outside the standard path and omit them. `Retry-After` on a `429` is always present.
 
+To check an organization's daily quota without spending a request against a site, call `GET /api/organizations/:organizationId/api-usage` (role `viewer` or above; keys need `org:read`). It returns `dailyUsed`, `dailyLimit`, `dailyRemaining`, `resetsInSeconds`, `burstLimit` and `burstWindowSeconds`, plus `metered` (`false` on self-hosted) and `available` (`false` when the counter could not be read). It covers the organization's own keys only; personal keys are budgeted per user and are not counted here.
+
 #### When you hit a limit
 
 A `429` names the limit you hit and tells you how long to wait, in seconds:
@@ -144,7 +202,7 @@ The following parameters are shared across all analytics endpoints.
 
 ### Time Parameters
 
-All endpoints require date-based, exact datetime, or relative time parameters:
+Time parameters are optional on most endpoints. With none, a query covers all time. A few endpoints differ: retention defaults to the last 90 days, and PDF export requires `start_date`, `end_date` and `time_zone`. To narrow a query, pass one of the ranges below:
 
 <TypeTable
   type={{
@@ -163,7 +221,7 @@ All endpoints require date-based, exact datetime, or relative time parameters:
     time_zone: {
       description: 'IANA timezone identifier',
       type: 'string',
-      typeDescription: 'e.g., "America/New_York", "Europe/London", "Asia/Tokyo". Required with date and exact datetime ranges.',
+      typeDescription: 'e.g., "America/New_York", "Europe/London", "Asia/Tokyo". Defaults to UTC. Sets which midnight a date range uses and the timezone of time buckets.',
       required: false,
     },
     start_datetime: {
@@ -193,10 +251,16 @@ All endpoints require date-based, exact datetime, or relative time parameters:
   }}
 />
 
-**Note:** You must provide either:
-- All three date parameters (`start_date`, `end_date`, `time_zone`), OR
-- All three exact datetime parameters (`start_datetime`, `end_datetime`, `time_zone`), OR
-- Both relative parameters (`past_minutes_start`, `past_minutes_end`)
+**Note:** Each range's parameters come in pairs. Send both or neither:
+- `start_date` and `end_date` (both days inclusive; when `end_date` is today, the range ends now)
+- `start_datetime` and `end_datetime`
+- `past_minutes_start` and `past_minutes_end`
+
+Half a pair, a malformed value, or an invalid `time_zone` returns `400`, as does a datetime or past-minutes range whose start isn't before its end. A date range may start and end on the same day; a reversed date range isn't rejected, it just matches nothing. If you send more than one range, the date range wins, then the datetime range, then past minutes.
+
+### Timestamps in responses
+
+Analytics timestamps (events, sessions, users, time-series buckets) and most stored records come back as `YYYY-MM-DD HH:MM:SS`, sometimes with fractional seconds (`2024-01-15 13:00:00.123`), without a `T` or a `Z`. Event and session timestamps are UTC; time-series bucket values are wall-clock times in the requested `time_zone`. Some endpoints, such as retention and annotations, return ISO 8601 strings with `T` and a zone instead. Parse defensively rather than with a parser that assumes local time. In JavaScript, for a UTC value: `new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(ts) ? ts : ts.replace(' ', 'T') + 'Z')`.
 
 #### Examples
 
@@ -219,7 +283,7 @@ All endpoints require date-based, exact datetime, or relative time parameters:
 
 The `filters` parameter accepts a JSON-encoded array of filter objects to narrow down your data.
 
-You can also pass `segment_id`, the ID of a [saved segment](/docs/segments), instead of or alongside `filters`. The segment's filters are expanded on the server and ANDed with any `filters` you pass. Use the [Segments endpoints](/docs/api/segments/list) to find IDs. Public and private-link callers can only use segments marked as shown on the public dashboard.
+You can also pass `segment_id`, the ID of a [saved segment](/docs/segments), instead of or alongside `filters`. The segment's filters are expanded on the server and ANDed with any `filters` you pass. Use the [Segments endpoints](/docs/api/segments/list) to find IDs. Public and private-link callers can only use segments marked as shown on the public dashboard. A scoped API key also needs `segments:read` to pass `segment_id`, whatever scope the endpoint itself requires.
 
 ```
 ?start_date=2024-01-01&end_date=2024-01-31&time_zone=UTC&segment_id=12
@@ -238,13 +302,13 @@ You can also pass `segment_id`, the ID of a [saved segment](/docs/segments), ins
     type: {
       description: 'The type of comparison to perform',
       type: 'FilterType',
-      typeDescription: '"equals" | "not_equals" | "contains" | "not_contains" | "regex" | "not_regex" | "greater_than" | "less_than"',
+      typeDescription: 'One of the 14 types under Filter Types below',
       required: true,
     },
     value: {
       description: 'Array of values to match against',
       type: 'Array<string | number>',
-      typeDescription: 'Multiple values are treated as OR conditions',
+      typeDescription: 'Multiple values are ORed; for not_equals and not_contains they are ANDed (matches none of them). Ignored by is_null and is_not_null. Comparison types, regex and not_regex use only the first value',
       required: true,
     },
   }}
@@ -274,28 +338,60 @@ You can also pass `segment_id`, the ID of a [saved segment](/docs/segments), ins
       type: 'string',
       typeDescription: 'Value must not contain the substring',
     },
+    starts_with: {
+      description: 'Prefix match',
+      type: 'string',
+      typeDescription: 'Value must start with the string',
+    },
+    ends_with: {
+      description: 'Suffix match',
+      type: 'string',
+      typeDescription: 'Value must end with the string',
+    },
     regex: {
       description: 'Regular expression match',
       type: 'string',
-      typeDescription: 'Value must match the regex pattern (max 500 characters)',
+      typeDescription: 'Value must match the regex pattern (RE2 syntax: no lookaround or backreferences; max 500 characters)',
     },
     not_regex: {
       description: 'Exclude regex matches',
       type: 'string',
       typeDescription: 'Value must not match the regex pattern',
     },
+    is_null: {
+      description: 'Value is missing',
+      type: 'none',
+      typeDescription: 'Matches empty values; send "value": []',
+    },
+    is_not_null: {
+      description: 'Value is present',
+      type: 'none',
+      typeDescription: 'Matches non-empty values; send "value": []',
+    },
     greater_than: {
       description: 'Numeric greater than',
       type: 'number',
-      typeDescription: 'For numeric fields like lat, lon',
+      typeDescription: 'lat and lon only',
     },
     less_than: {
       description: 'Numeric less than',
       type: 'number',
-      typeDescription: 'For numeric fields like lat, lon',
+      typeDescription: 'lat and lon only',
+    },
+    greater_than_or_equal: {
+      description: 'Numeric greater than or equal',
+      type: 'number',
+      typeDescription: 'lat and lon only',
+    },
+    less_than_or_equal: {
+      description: 'Numeric less than or equal',
+      type: 'number',
+      typeDescription: 'lat and lon only',
     },
   }}
 />
+
+The four comparison types only work on `lat` and `lon`, and `lat`/`lon` take no string types (`contains`, `not_contains`, `starts_with`, `ends_with`, `regex`, `not_regex`). Either mismatch returns `400`.
 
 #### Available Filter Parameters
 
@@ -465,8 +561,20 @@ You can also pass `segment_id`, the ID of a [saved segment](/docs/segments), ins
       type: 'string',
       typeDescription: 'Filters to sessions containing the event',
     },
+    tag: {
+      description: 'Tag set by the tracking script',
+      type: 'string',
+      typeDescription: 'The data-tag value from the tracking script',
+    },
+    'feature_flag:<key>': {
+      description: 'Value of a feature flag recorded on the event',
+      type: 'string',
+      typeDescription: 'Replace <key> with the flag key, e.g. "feature_flag:new_checkout"',
+    },
   }}
 />
+
+`tag` filters on the `data-tag` value set by the tracking script ([Tagging](/docs/tagging)). `feature_flag:<key>` filters on the value a [feature flag](/docs/feature-flags) had when the event was recorded.
 
 #### Filter Examples
 
@@ -551,20 +659,36 @@ Geolocation comparison:
 
 ## Error Responses
 
-All endpoints return standard HTTP status codes:
+Endpoints use standard HTTP status codes:
 
-- **200** - Success
-- **400** - Bad Request (invalid parameters)
-- **401** - Unauthorized (missing or invalid API key)
-- **403** - Forbidden (no access to site)
-- **404** - Not Found (site doesn't exist)
-- **429** - Too Many Requests (rate limit exceeded)
-- **500** - Internal Server Error
+- **200** - Success (some create endpoints return **201**)
+- **400** - Bad request: invalid parameters, body, filters, or time range
+- **401** - No usable credential where one is required (organization and account endpoints), or a credential the endpoint can't act for
+- **403** - Forbidden. On site endpoints this is also what a missing or invalid API key gets, and what a site ID that doesn't exist gets, so a site's existence isn't revealed. Also returned when your role or the key's scopes fall short
+- **404** - Not found: a malformed site ID, an unknown text site identifier, or a resource that doesn't exist inside a site you can access (a segment, goal, funnel and so on). A numeric site ID you can't access returns `403`, not `404`
+- **409** - Conflict with the current state
+- **429** - Rate limit exceeded (see [Rate Limits](#rate-limits-cloud-only))
+- **500** - Internal server error
 
 ### Error Response Format
 
+Every error from `/api` has the same shape, except the MCP endpoint and Better Auth routes under `/api/auth/*`, which return their own error bodies:
+
 ```json
 {
-  "error": "Error message describing what went wrong"
+  "error": "Insufficient role",
+  "code": "FORBIDDEN",
+  "message": "Insufficient role",
+  "resolution": "Use a credential with the required scope and Site or Organization access.",
+  "required": "admin"
 }
 ```
+
+| Field | Meaning |
+|-------|---------|
+| `error` | Human-readable error, kept for backward compatibility |
+| `code` | Machine-readable code. Endpoints that don't set one get a default per status: `INVALID_REQUEST`, `AUTHENTICATION_REQUIRED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `INTERNAL_ERROR` |
+| `message` | Human-readable explanation |
+| `resolution` | What to do about it |
+
+Some errors add fields. Role and scope failures (`"Insufficient role"`, `"Insufficient scope"`) usually include `required`, the role or `resource:action` scope you need; it is omitted when the endpoint rejects scoped keys outright. `429` responses usually include `scope` and `retryAfter`, and most include `limit`; the `Retry-After` header is always set. Branch on `code` and `required` when present, not on the text of `error`.

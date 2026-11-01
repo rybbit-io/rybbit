@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 PUT /api/organizations/:organizationId/teams/:teamId
 ```
 
-Updates a team's name, members, or site access. Requires admin/owner role.
+Updates a team's name, members, or site access. Requires admin/owner role; API keys need the `org:write` scope.
 
 When `memberUserIds` or `siteIds` is provided, it **replaces** the team's entire existing set (it is not merged). Omit a field to leave it unchanged.
 

@@ -41,14 +41,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       default: 1,
     },
     page_size: {
-      description: 'Number of results per page (max 100)',
+      description: 'Number of results per page, 1-100. Out-of-range values return 400.',
       type: 'number',
       default: 10,
     },
     sort: {
       description: 'Field to sort by',
       type: 'string',
-      typeDescription: '"goalId" | "name" | "goalType" | "createdAt"',
+      typeDescription: '"goalId" | "name" | "goalType" | "createdAt" (other values fall back to createdAt)',
       default: 'createdAt',
     },
     order: {
@@ -90,7 +90,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     goalType: {
       description: 'Type of goal',
       type: 'string',
-      typeDescription: '"path" | "event"',
+      typeDescription: '"path" | "event" | "outbound" | "button_click" | "form_submit" | "copy"',
     },
     config: {
       description: 'Goal configuration',
@@ -98,8 +98,8 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     },
     createdAt: {
       description: 'Creation timestamp',
-      type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      type: 'string | null',
+      typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix',
     },
     total_conversions: {
       description: 'Number of sessions that completed the goal',
@@ -121,22 +121,33 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     pathPattern: {
-      description: 'URL path pattern (for path goals). Supports wildcards (*)',
+      description: 'path goals: URL path pattern. * matches within one path segment, ** across segments. Required for path goals.',
       type: 'string',
       required: false,
     },
     eventName: {
-      description: 'Event name to match (for event goals)',
+      description: 'event goals: custom event name to match exactly. Required for event goals.',
       type: 'string',
       required: false,
     },
+    valuePattern: {
+      description: 'Autocapture goals (outbound, button_click, form_submit, copy): wildcard pattern matched against the destination URL (outbound), the button or copied text (button_click, copy), or the form name, ID, or action (form_submit). * matches one or more characters, ** zero or more. Omit to match every event of the type.',
+      type: 'string',
+      typeDescription: 'Max 512 characters',
+      required: false,
+    },
+    propertyFilters: {
+      description: 'Exact-match filters that must all pass. For event and autocapture goals they match event properties; for path goals they match URL query parameters. Property values are compared as strings: a boolean or number stored as a native JSON value (e.g. `{ gift: true }`) does not match.',
+      type: 'Array<{ key: string; value: string | number | boolean }>',
+      required: false,
+    },
     eventPropertyKey: {
-      description: 'Event property key to match',
+      description: 'Deprecated: use propertyFilters. Single property key; ignored when propertyFilters is set. Must be sent together with eventPropertyValue.',
       type: 'string',
       required: false,
     },
     eventPropertyValue: {
-      description: 'Event property value to match',
+      description: 'Deprecated: use propertyFilters. Single property value; ignored when propertyFilters is set.',
       type: 'string | number | boolean',
       required: false,
     },
@@ -327,7 +338,7 @@ class Program
       "config": {
         "pathPattern": "/signup/complete"
       },
-      "createdAt": "2024-01-10T12:00:00.000Z",
+      "createdAt": "2024-01-10 12:00:00.123456",
       "total_conversions": 1250,
       "total_sessions": 15420,
       "conversion_rate": 0.081
@@ -341,7 +352,7 @@ class Program
         "eventPropertyKey": "value",
         "eventPropertyValue": 100
       },
-      "createdAt": "2024-01-15T09:30:00.000Z",
+      "createdAt": "2024-01-15 09:30:00.654321",
       "total_conversions": 320,
       "total_sessions": 15420,
       "conversion_rate": 0.021

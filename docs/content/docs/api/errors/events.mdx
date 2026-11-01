@@ -36,12 +36,12 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     errorMessage: {
-      description: 'The error message to filter by',
+      description: 'The exact error message to return occurrences for (the value field from Get Error Names). Missing returns 400.',
       type: 'string',
       required: true,
     },
     page: {
-      description: 'Page number (1-indexed)',
+      description: 'Page number (1-indexed). When set, data becomes { data, totalCount } instead of an array.',
       type: 'number',
       required: false,
     },
@@ -58,11 +58,13 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     data: {
-      description: 'Array of error event objects',
-      type: 'ErrorEvent[]',
+      description: 'Array of error event objects, newest first. When page is set, an object { data: ErrorEvent[], totalCount: number } instead, where totalCount is the number of matching occurrences.',
+      type: 'ErrorEvent[] | { data: ErrorEvent[], totalCount: number }',
     },
   }}
 />
+
+With `page`, the response nests one level deeper: `{ "data": { "data": [...], "totalCount": 42 } }`.
 
 #### ErrorEvent Object
 
@@ -71,7 +73,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     timestamp: {
       description: 'When the error occurred',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
     },
     session_id: {
       description: 'Session identifier',
@@ -89,6 +91,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Hostname',
       type: 'string',
     },
+    page_title: {
+      description: 'Page title',
+      type: 'string',
+    },
+    referrer: {
+      description: 'Referrer URL',
+      type: 'string',
+    },
     browser: {
       description: 'Browser name',
       type: 'string',
@@ -101,12 +111,24 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Operating system',
       type: 'string',
     },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
     device_type: {
       description: 'Device type',
       type: 'string',
     },
     country: {
       description: 'Country code',
+      type: 'string',
+    },
+    region: {
+      description: 'Region/state',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
       type: 'string',
     },
     message: {
@@ -254,16 +276,21 @@ var data = await response.Content.ReadAsStringAsync();
 {
   "data": [
     {
-      "timestamp": "2024-01-31T14:22:00.000Z",
+      "timestamp": "2024-01-31 14:22:00",
       "session_id": "sess_abc123",
       "user_id": "user_xyz789",
       "pathname": "/dashboard",
       "hostname": "app.example.com",
+      "page_title": "Dashboard",
+      "referrer": "https://app.example.com/login",
       "browser": "Chrome",
       "browser_version": "120.0.0",
       "operating_system": "macOS",
+      "operating_system_version": "14.0",
       "device_type": "desktop",
       "country": "US",
+      "region": "US-CA",
+      "city": "San Francisco",
       "message": "Cannot read property 'map' of undefined",
       "stack": "TypeError: Cannot read property 'map' of undefined\n    at Dashboard (dashboard.js:42:15)\n    at renderWithHooks (react-dom.js:1234:22)",
       "fileName": "dashboard.js",
