@@ -44,7 +44,7 @@ Enable "Block Bot Traffic" to prevent detected bot traffic from being tracked in
 
 ### First-Party Proxy
 
-Turn on **First-Party Proxy** if tracking requests reach Rybbit through your own proxy or CDN (for example a Cloudflare Worker, CloudFront or nginx). Rybbit then reads visitor IPs from forwarded headers instead of the connecting IP. Leave it off if the script talks to Rybbit directly. See the [proxy guide](/docs/proxy-guide).
+Turn on **First-Party Proxy** if tracking requests reach Rybbit through your own proxy or CDN (for example a Cloudflare Worker, CloudFront or nginx). Rybbit then always reads visitor IPs from forwarded headers. Leave it off if the script talks to Rybbit directly. Without Cloudflare in front, as on most self-hosted installations, Rybbit reads forwarded headers either way, so the setting has no effect. See the [proxy guide](/docs/proxy-guide).
 
 ### Track IP Address
 
