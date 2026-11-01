@@ -5,15 +5,13 @@ description: How Rybbit handles traffic from localhost during development
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Rybbit does not restrict tracking to your registered domain — the tracking script works from `localhost` (or any other origin) out of the box. As long as your snippet has a valid `data-site-id`, events sent during local development are recorded like any other traffic.
+Rybbit does not restrict tracking to your registered domain — the tracking script works from `localhost` (or any other origin) out of the box. As long as your snippet carries a valid site ID, events sent during local development are recorded like any other traffic.
 
 ```html
-<script
-  defer
-  src="https://app.rybbit.io/api/script.js"
-  data-site-id="YOUR_SITE_ID">
-</script>
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
 ```
+
+Older snippets that pass the ID as `data-site-id` still work.
 
 <Callout type="warning">
   Because localhost traffic is tracked by default, the usual problem is the opposite one: development visits polluting your production analytics. Use one of the approaches below to keep your data clean.
@@ -36,8 +34,7 @@ export function Analytics() {
   return (
     <script
       defer
-      src="https://app.rybbit.io/api/script.js"
-      data-site-id={siteId}
+      src={`https://app.rybbit.io/api/script.js?siteId=${siteId}`}
     />
   );
 }
@@ -55,8 +52,7 @@ export function Analytics() {
   return (
     <script
       defer
-      src="https://app.rybbit.io/api/script.js"
-      data-site-id={process.env.NEXT_PUBLIC_RYBBIT_SITE_ID}
+      src={`https://app.rybbit.io/api/script.js?siteId=${process.env.NEXT_PUBLIC_RYBBIT_SITE_ID}`}
     />
   );
 }
@@ -67,8 +63,7 @@ export function Analytics() {
 if (process.env.NODE_ENV === 'production') {
   const script = document.createElement('script');
   script.defer = true;
-  script.src = 'https://app.rybbit.io/api/script.js';
-  script.setAttribute('data-site-id', 'YOUR_SITE_ID');
+  script.src = 'https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID';
   document.head.appendChild(script);
 }
 ```
@@ -81,7 +76,8 @@ If you want the script loaded everywhere but excluded from your stats, use your 
 
 **Events not showing up from localhost?**
 
-- Confirm `data-site-id` matches the site you're looking at in the dashboard
+- Confirm the `siteId` in the script URL (or `data-site-id`) matches the site you're looking at in the dashboard
 - Check the browser console for errors and the Network tab for `POST` requests to `/api/track`
 - Disable ad blockers or privacy extensions — they commonly block analytics scripts on any origin, including localhost
-- Make sure the page isn't excluded by your site's IP, path, or user-agent exclusion rules
+- Make sure the page isn't excluded by your site's IP, hostname, path, or user-agent exclusion rules
+- Headless or automated browsers (Puppeteer, Playwright, Selenium) are classified as bots, so test in a normal browser

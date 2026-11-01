@@ -49,7 +49,7 @@ Log in to Cloudflare Dashboard and create a new Worker:
 
 ### Update Worker Code
 
-Replace the default code with the proxy implementation:
+Replace the default code with the proxy implementation. The examples use the ES module syntax (`export default { fetch }`), which current Workers use; environment variables and secrets arrive as the `env` argument of `fetch`.
 
 <Tabs items={['Full Proxy (Recommended)', 'Minimal Proxy', 'With Environment Variables']}>
 <Tab>
@@ -57,28 +57,30 @@ Replace the default code with the proxy implementation:
 ```javascript
 // Cloudflare Worker for Rybbit Analytics Proxy
 
+// Proxies every /analytics/* route (script.js, replay.js, track, identify,
+// site/tracking-config/:siteId, site/:siteId/feature-flags/evaluate,
+// session-replay/record/:siteId) to Rybbit's /api/*.
+
 const RYBBIT_HOST = 'https://app.rybbit.io';
 
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request));
-});
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
 
-async function handleRequest(request) {
-  const url = new URL(request.url);
+    // Only proxy /analytics/* paths
+    if (!url.pathname.startsWith('/analytics/')) {
+      // Pass through to origin
+      return fetch(request);
+    }
 
-  // Only proxy /analytics/* paths
-  if (!url.pathname.startsWith('/analytics/')) {
-    // Pass through to origin
-    return fetch(request);
-  }
-
-  try {
-    return await proxyToRybbit(request, url);
-  } catch (error) {
-    console.error('Proxy error:', error);
-    return new Response('Analytics proxy error', { status: 500 });
-  }
-}
+    try {
+      return await proxyToRybbit(request, url);
+    } catch (error) {
+      console.error('Proxy error:', error);
+      return new Response('Analytics proxy error', { status: 500 });
+    }
+  },
+};
 
 async function proxyToRybbit(request, url) {
   // Map paths: /analytics/* → /api/*
@@ -157,35 +159,40 @@ async function proxyToRybbit(request, url) {
 
 const RYBBIT_HOST = 'https://app.rybbit.io';
 
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request));
-});
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
 
-async function handleRequest(request) {
-  const url = new URL(request.url);
+    // Only proxy /analytics/script.js and /analytics/track
+    if (url.pathname === '/analytics/script.js' || url.pathname === '/analytics/track') {
+      const rybbitPath = url.pathname.replace('/analytics/', '/api/');
+      const rybbitUrl = `${RYBBIT_HOST}${rybbitPath}${url.search}`;
 
-  // Only proxy /analytics/script.js and /analytics/track
-  if (url.pathname === '/analytics/script.js' || url.pathname === '/analytics/track') {
-    const rybbitPath = url.pathname.replace('/analytics/', '/api/');
-    const rybbitUrl = `${RYBBIT_HOST}${rybbitPath}`;
+      const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
 
-    const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
+      const proxyHeaders = new Headers(request.headers);
+      proxyHeaders.set('X-Real-IP', clientIp);
+      proxyHeaders.set('X-Forwarded-For', clientIp);
 
-    const proxyHeaders = new Headers(request.headers);
-    proxyHeaders.set('X-Real-IP', clientIp);
-    proxyHeaders.set('X-Forwarded-For', clientIp);
+      return fetch(rybbitUrl, {
+        method: request.method,
+        headers: proxyHeaders,
+        body: request.method === 'POST' ? request.body : undefined,
+      });
+    }
 
-    return fetch(rybbitUrl, {
-      method: request.method,
-      headers: proxyHeaders,
-      body: request.method === 'POST' ? request.body : undefined,
-    });
-  }
-
-  // Pass through to origin
-  return fetch(request);
-}
+    // Pass through to origin
+    return fetch(request);
+  },
+};
 ```
+
+A minimal setup proxies only `script.js` and `/track`. The script then can't fetch your site's tracking config, so it ignores every setting on the site's **Tracking** tab and runs on built-in defaults:
+
+- Pageviews, SPA navigation, query strings and outbound links are tracked.
+- Web vitals, error tracking, session replay, button clicks, copy and form tracking stay off.
+- Feature flags return their fallback.
+- `identify()` and `setTraits()` can't reach `/identify`, so traits aren't stored and earlier anonymous activity isn't linked to the user.
 
 </Tab>
 <Tab>
@@ -193,41 +200,41 @@ async function handleRequest(request) {
 Using Workers secrets for configuration:
 
 ```javascript
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request, event.env));
-});
+export default {
+  async fetch(request, env) {
+    const RYBBIT_HOST = env.RYBBIT_HOST || 'https://app.rybbit.io';
+    const url = new URL(request.url);
 
-async function handleRequest(request, env) {
-  const RYBBIT_HOST = env.RYBBIT_HOST || 'https://app.rybbit.io';
-  const url = new URL(request.url);
+    if (!url.pathname.startsWith('/analytics/')) {
+      return fetch(request);
+    }
 
-  if (!url.pathname.startsWith('/analytics/')) {
-    return fetch(request);
-  }
+    // Map paths: /analytics/* → /api/*
+    const rybbitUrl = new URL(url.pathname.replace('/analytics/', '/api/'), RYBBIT_HOST);
+    rybbitUrl.search = url.search; // Preserve query params (e.g. ?siteId=)
 
-  // Map paths: /analytics/* → /api/*
-  let rybbitPath = url.pathname.replace('/analytics/', '/api/');
+    const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
 
-  const rybbitUrl = new URL(rybbitPath, RYBBIT_HOST);
-  const clientIp = request.headers.get('CF-Connecting-IP') || '0.0.0.0';
+    const proxyHeaders = new Headers(request.headers);
+    proxyHeaders.set('X-Real-IP', clientIp);
+    proxyHeaders.set('X-Forwarded-For', clientIp);
 
-  const proxyHeaders = new Headers(request.headers);
-  proxyHeaders.set('X-Real-IP', clientIp);
-  proxyHeaders.set('X-Forwarded-For', clientIp);
-
-  return fetch(rybbitUrl.toString(), {
-    method: request.method,
-    headers: proxyHeaders,
-    body: request.method !== 'GET' ? request.body : undefined,
-  });
-}
+    return fetch(rybbitUrl.toString(), {
+      method: request.method,
+      headers: proxyHeaders,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
+    });
+  },
+};
 ```
 
 Set environment variable in Cloudflare Dashboard:
-**Workers & Pages** → Your Worker → **Settings** → **Variables** → Add `RYBBIT_HOST`
+**Workers & Pages** → Your Worker → **Settings** → **Variables and Secrets** → Add `RYBBIT_HOST`. With Wrangler, set it under `vars` in your Wrangler config instead.
 
 </Tab>
 </Tabs>
+
+The full and environment-variable versions forward every `/analytics/*` path, so feature flag evaluation (`/analytics/site/:siteId/feature-flags/evaluate`) and `/identify` are covered. If you narrow the paths, keep the feature flag route: without it, `rybbit.flag()` silently returns your fallback. Web vitals collection is bundled into `script.js`; `replay.js` is only loaded when session replay is enabled for the site.
 
 ### Deploy Worker
 
@@ -253,8 +260,12 @@ The route pattern `yourdomain.com/analytics/*` ensures the worker only runs for 
 Add the script to your website:
 
 ```html
-<script src="/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+<script src="/analytics/script.js?siteId=YOUR_SITE_ID" defer></script>
 ```
+
+Older snippets that pass the ID as `data-site-id` still work.
+
+Keep the proxied file named `script.js`. The script cuts its own URL at `/script.js` to find where to send events, so a renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
 
 ### Verify the Setup
 
@@ -339,30 +350,40 @@ async function checkRateLimit(ip) {
 
 ### Logging and Analytics
 
-Log proxy usage:
+Log proxy usage by wrapping `proxyToRybbit` and calling the wrapper from `fetch`:
 
 ```javascript
-async function handleRequest(request) {
+async function proxyWithLogging(request, url) {
   const startTime = Date.now();
+  const response = await proxyToRybbit(request, url);
 
-  try {
-    const response = await proxyToRybbit(request, url);
-    const duration = Date.now() - startTime;
+  // Shows up in Workers Logs / `wrangler tail`
+  console.log({
+    path: url.pathname,
+    status: response.status,
+    duration: Date.now() - startTime,
+    cached: response.headers.get('X-Cache-Status') === 'HIT',
+  });
 
-    // Log to Cloudflare Analytics Engine (if enabled)
-    console.log({
-      path: url.pathname,
-      status: response.status,
-      duration,
-      cached: response.headers.get('X-Cache-Status') === 'HIT',
-    });
-
-    return response;
-  } catch (error) {
-    console.error('Proxy error:', error);
-    return new Response('Error', { status: 500 });
-  }
+  return response;
 }
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    if (!url.pathname.startsWith('/analytics/')) {
+      return fetch(request);
+    }
+
+    try {
+      return await proxyWithLogging(request, url);
+    } catch (error) {
+      console.error('Proxy error:', error);
+      return new Response('Analytics proxy error', { status: 500 });
+    }
+  },
+};
 ```
 
 ## Cost Considerations
@@ -411,8 +432,10 @@ Most sites stay within the free tier. Bandwidth is unlimited on all Cloudflare p
 Use `CF-Connecting-IP` header:
 ```javascript
 const clientIp = request.headers.get('CF-Connecting-IP');
-proxyHeaders.set('X-Real-IP', clientIp);
+proxyHeaders.set('X-Forwarded-For', clientIp);
 ```
+
+Also enable **First-Party Proxy** in your site settings so Rybbit trusts that header.
 
 ### Deployment errors
 

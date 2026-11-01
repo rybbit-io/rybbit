@@ -52,10 +52,6 @@ Add rewrites to your `vercel.json` file in the project root:
       "destination": "https://app.rybbit.io/api/replay.js"
     },
     {
-      "source": "/analytics/metrics.js",
-      "destination": "https://app.rybbit.io/api/metrics.js"
-    },
-    {
       "source": "/analytics/track",
       "destination": "https://app.rybbit.io/api/track"
     },
@@ -70,13 +66,23 @@ Add rewrites to your `vercel.json` file in the project root:
     {
       "source": "/analytics/site/tracking-config/:siteId",
       "destination": "https://app.rybbit.io/api/site/tracking-config/:siteId"
+    },
+    {
+      "source": "/analytics/site/:siteId/feature-flags/evaluate",
+      "destination": "https://app.rybbit.io/api/site/:siteId/feature-flags/evaluate"
     }
   ]
 }
 ```
 
+This covers every endpoint the tracking script calls. Web vitals are bundled into `script.js`; `replay.js` loads only when session replay is on. If the feature-flag route isn't proxied, `rybbit.flag()` silently returns your fallback.
+
 <Callout type="info">
 Replace `app.rybbit.io` with your self-hosted Rybbit instance URL if you're not using the cloud version.
+</Callout>
+
+<Callout type="warn">
+Keep the proxied file named `script.js`. The script cuts its own URL at `/script.js` to find where to send events, so a renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
 </Callout>
 
 ### Update Your Tracking Script
@@ -84,8 +90,10 @@ Replace `app.rybbit.io` with your self-hosted Rybbit instance URL if you're not 
 Update your HTML to use the proxied path:
 
 ```html
-<script src="/analytics/script.js" async data-site-id="YOUR_SITE_ID"></script>
+<script src="/analytics/script.js?siteId=YOUR_SITE_ID" defer></script>
 ```
+
+Older snippets that pass the site ID as `data-site-id` still work.
 
 ### Deploy to Vercel
 
@@ -116,8 +124,8 @@ Vercel's Edge Network handles rewrites at the edge, close to your users:
 
 1. Request hits Vercel's edge location nearest to the user
 2. Edge server rewrites and proxies to Rybbit
-3. Response is cached at the edge (for cacheable requests)
-4. Subsequent requests serve from edge cache
+3. Responses Rybbit marks as cacheable (the scripts) can be cached at the edge
+4. Subsequent requests for those scripts are served from the edge cache
 
 This provides excellent performance with minimal configuration.
 
@@ -125,11 +133,11 @@ This provides excellent performance with minimal configuration.
 
 ### Edge Network Caching
 
-Vercel automatically caches responses at edge locations:
+Vercel caches external rewrites according to the upstream `Cache-Control` header. That's the default for projects created on or after April 6, 2026; older projects need to opt in (see [Vercel's rewrite caching docs](https://vercel.com/docs/routing/rewrites#caching-rewrites-to-external-origins)).
 
-- **Scripts**: Cached globally, served from nearest edge
-- **Configuration**: Cached with appropriate TTL
-- **Tracking requests**: Not cached (unique per request)
+- **Scripts**: Rybbit sends `Cache-Control` on `script.js` (1 hour) and `replay.js` (1 day), so they can be served from the nearest edge
+- **Configuration**: Rybbit sends no cache headers for `tracking-config`, so it isn't cached
+- **Tracking requests**: Not cached (POSTs, unique per request)
 
 ### Global Distribution
 
@@ -168,6 +176,8 @@ Check your Vercel plan limits. Pro plan includes 1 TB bandwidth/month.
 Verify all endpoints are in `vercel.json` rewrites, including:
 - `/analytics/track`
 - `/analytics/identify`
+- `/analytics/site/tracking-config/:siteId`
+- `/analytics/site/:siteId/feature-flags/evaluate`
 - `/analytics/session-replay/record/:siteId`
 
 ### Session replay not working
@@ -238,7 +248,7 @@ Add custom headers to responses:
   ],
   "headers": [
     {
-      "source": "/analytics/(.*)",
+      "source": "/analytics/script.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -280,4 +290,4 @@ Don't use redirects for proxying (they're visible to the user):
 
 - [Next.js Proxy Guide](/docs/proxy-guide/next-js) - If using Next.js
 - [Tracking Script Documentation](/docs/script) - Script configuration
-- [Vercel Rewrites Documentation](https://vercel.com/docs/projects/project-configuration#rewrites) - Official Vercel docs
+- [Vercel Rewrites Documentation](https://vercel.com/docs/routing/rewrites) - Official Vercel docs

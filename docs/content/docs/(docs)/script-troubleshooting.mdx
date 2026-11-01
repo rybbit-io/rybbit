@@ -28,17 +28,20 @@ Alternatively, you can use keyboard shortcuts:
 
 In the console, type `rybbit` and press Enter.
 
-**If the script is loaded correctly**, you'll see an object with functions like this:
-```javascript
-{event: ƒ, pageview: ƒ, identify: ƒ, setTraits: ƒ, clearUserId: ƒ, …}
-```
-
-**If the script is NOT loaded**, you'll see an error like:
+**If you see an error** like the one below, the script didn't load at all. Continue reading for common causes.
 ```
 Uncaught ReferenceError: rybbit is not defined
 ```
 
-If you see the error, the script is not loading properly. Continue reading for common causes.
+**If you see an object** with functions like `{event: ƒ, pageview: ƒ, identify: ƒ, …}`, the script file loaded, but that doesn't prove tracking works. The script creates this object before it reads its configuration, and it stays a placeholder that queues your calls if the site ID is missing. Browsers that opted out (see [Hiding your own traffic](/docs/hiding-own-traffic)) get an object whose functions do nothing.
+</Step>
+
+<Step>
+### Check the Console and Network Tab
+
+Look in the console for messages from the script, such as `Please provide a valid site ID using the ?siteId= query parameter or the data-site-id attribute` or `Failed to fetch tracking config from API, using defaults`.
+
+Then open the **Network** tab and reload the page. A working install makes a request to `/site/tracking-config/YOUR_SITE_ID` followed by `POST` requests to `/track`. If you see neither, the script stopped before tracking anything.
 </Step>
 </Steps>
 
@@ -131,19 +134,22 @@ In single-page applications (React, Vue, Next.js, etc.), if the script loads aft
 
 **Solution:** Ensure the script is in your root HTML template (like `index.html` or `_document.js` in Next.js), not dynamically imported in a component.
 
-For Next.js specifically, see our [Next.js Guide](/docs/guides/nextjs).
+For Next.js specifically, see our [Next.js Guide](/docs/guides/react/next-js).
 
 ## Testing Your Installation
 
 Once you've made changes, verify that tracking is working:
 
-1. **Check the console**: Type `rybbit` to confirm the object exists
-2. **Trigger a test event**: In the console, run:
+1. **Trigger a test event**: In the console, run:
    ```javascript
    rybbit.event("test_event")
    ```
+2. **Check the Network tab**: In browser dev tools, go to the Network tab, filter by "track", and look at the request and its response
 3. **Check your dashboard**: Navigate to the Events tab in your Rybbit dashboard and look for "test_event" (it may take a few seconds to appear)
-4. **Check the Network tab**: In browser dev tools, go to the Network tab, filter by "track" or "rybbit", and verify requests are being sent with 200 status codes
+
+<Callout type="warn">
+A `200` response from `/track` doesn't mean the event was stored. Excluded, bot-classified, over-limit and no-plan events all get `200`. Read the response body: `{"success":true}` means accepted (unless the hit was classified as a bot), a `message` field means an exclusion matched, and a plain-text body means the site is over its limit or has no plan. The dashboard is the real test.
+</Callout>
 
 ## Still Having Issues?
 
@@ -151,8 +157,10 @@ If you've tried all the above and are still not seeing traffic:
 
 1. **Check the browser Network tab** for any failed requests to your Rybbit instance
 2. **Verify your site ID** is correct in the dashboard
-3. **Check if traffic is being filtered** - review your [IP exclusions](/docs/hiding-own-traffic) and [country exclusions](/docs/filter-traffic) to ensure your traffic isn't being blocked
-4. **For self-hosted instances** - ensure your Rybbit server is running and accessible
+3. **Check if traffic is being filtered**: review the site's [exclusions](/docs/filter-traffic) (IP, country, ASN, path, query parameter, hostname and user agent) and [your own traffic settings](/docs/hiding-own-traffic)
+4. **Check bot detection**: hits from headless browsers and automation tools (Puppeteer, Playwright, Selenium) are classified as bots and, with bot blocking on, stored as bot traffic instead of analytics. A cloud or hosting network (a VPN, a CI runner, a cloud desktop) doesn't convict a hit on its own, but it counts against a hit that already looks automated. Test from a normal browser. See [Bot Detection](/docs/bot-detection).
+5. **Check your plan and usage** (Rybbit Cloud): once a site passes its monthly event limit, new events are dropped until the next month or an upgrade. Sites created on or after February 13, 2026 collect nothing while their organization has no trial or paid plan. After a trial ends unpaid, the organization's sites keep collecting for 60 days, then stop.
+6. **For self-hosted instances**: ensure your Rybbit server is running and accessible
 
 ---
 
