@@ -57,7 +57,7 @@ Ecwid's storefront JavaScript API fires `Ecwid.OnOrderPlaced` with the order rig
 <script>
 Ecwid.OnAPILoaded.add(function () {
   Ecwid.OnOrderPlaced.add(function (order) {
-    window.rybbit.event('purchase', {
+    window.rybbit?.event('purchase', {
       transaction_id: order.vendorNumber,
       value: order.total,
       tax: order.tax,
@@ -79,7 +79,7 @@ Ecwid also has a **Custom tracking code on Order Confirmation page** field under
 <script>
 <#noescape>
 document.addEventListener('DOMContentLoaded', function () {
-  window.rybbit.event('purchase', { transaction_id: "${order.number}", value: ${order.total} });
+  window.rybbit?.event('purchase', { transaction_id: "${order.number}", value: ${order.total} });
 });
 </#noescape>
 </script>

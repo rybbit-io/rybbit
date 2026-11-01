@@ -5,7 +5,6 @@ category: ecommerce
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
-import { Callout } from "fumadocs-ui/components/callout";
 
 Magento Open Source and Adobe Commerce have a **Scripts and Style Sheets** field in the design configuration that prints HTML into the `<head>` of every storefront page, so no theme edits are needed. On 2.4.7 and later the checkout page runs under a strict Content Security Policy, so the tracker's host also needs a CSP whitelist entry before it loads there.
 
@@ -111,7 +110,7 @@ $purchase = [
 ?>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    window.rybbit.event('purchase', <?= /* @noEscape */ json_encode($purchase) ?>);
+    window.rybbit?.event('purchase', <?= /* @noEscape */ json_encode($purchase) ?>);
 });
 </script>
 ```

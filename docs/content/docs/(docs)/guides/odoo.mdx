@@ -43,7 +43,7 @@ Odoo eCommerce pages render standard HTML, so use `data-rybbit-event` attributes
 <script>
   document.addEventListener("click", function (e) {
     if (e.target.closest("#add_to_cart")) {
-      window.rybbit.event("add_to_cart");
+      window.rybbit?.event("add_to_cart");
     }
   });
 </script>

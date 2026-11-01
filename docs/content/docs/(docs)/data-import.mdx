@@ -29,8 +29,8 @@ Additional platforms may be added in the future based on user demand.
 | Plan | Access | Historical Window | Monthly Event Limit |
 |------|--------|-------------------|---------------------|
 | Free | ❌ Not available | - | - |
-| Standard | ✅ Available | 36 months (3 years) | Plan limit applies |
-| Pro | ✅ Available | 60 months (5 years) | Plan limit applies |
+| Standard | ✅ Available | 24 months (2 years) | Plan limit applies to each month |
+| Pro | ✅ Available | 60 months (5 years) | Plan limit applies to each month |
 
 ### Self-Hosted Version
 
@@ -45,7 +45,7 @@ Self-hosted installations have **unlimited** access to data imports with no rest
 
 The historical data window determines how far back you can import data:
 
-- **Standard plans**: Import data from the past 36 months (3 years)
+- **Standard plans**: Import data from the past 24 months (2 years)
 - **Pro plans**: Import data from the past 60 months (5 years)
 - **Self-hosted**: Unlimited - import data from any date
 
@@ -53,18 +53,19 @@ Events outside your plan's historical window will be automatically skipped durin
 
 ### Event Quotas
 
-Imported events count toward your monthly event limit:
+Each imported event counts against the calendar month it happened in, not the month you run the import. Every month can hold up to your plan's monthly event limit, including the events Rybbit already tracked for your organization that month and anything imported earlier:
 
-- If you're close to your monthly limit, imports may be partially skipped
+- Events that would push their month over the limit are skipped
 - Skipped events are counted and displayed in the import history
-- Consider upgrading your plan if you need to import large amounts of data
+- Importing older data doesn't use up the current month's quota; only events dated this month count toward it
+- If a month in your source data is busier than your plan allows, upgrade to a plan with a higher event limit before importing
 
 ### Concurrent Imports
 
 For cloud users:
 - **Maximum 1 active import per organization**
 - New imports are blocked until the current one completes
-- Maximum 2-hour timeout per import
+- An import that hasn't finished after 2 hours is marked **Failed** and no longer blocks new imports
 
 Self-hosted users have no concurrent import restrictions.
 
@@ -120,13 +121,13 @@ Self-hosted users have no concurrent import restrictions.
 
 ### Monitor Import Progress
 
-Your import will begin processing in the background. You can:
+Your browser reads the file and uploads it to Rybbit in batches, so keep the tab open until the import finishes. While it runs you can:
 - View the import status in the "Import History" section
 - Monitor the number of imported, skipped, and invalid events
-- Continue using Rybbit while the import runs
+- Keep using Rybbit in the same tab, as long as you don't close or reload it
 
 <Callout type="info">
-  Large imports may take several minutes to complete. The page will automatically refresh to show updated progress.
+  Large imports may take several minutes to complete. The Import History updates automatically to show progress.
 </Callout>
 
 </Step>
@@ -148,7 +149,7 @@ Each import shows three key metrics:
 - Events that were excluded during import
 - Common reasons:
   - Outside your plan's historical data window
-  - Would exceed your monthly event quota
+  - Would push the month they happened in over your plan's monthly event limit
 
 **Invalid Events**
 - Events that failed validation during import
@@ -164,8 +165,8 @@ Each import shows three key metrics:
 
 ### Managing Imports
 
-**Deleting Completed Imports**
-- Click the trash icon next to any completed import
+**Deleting Imports**
+- Click the trash icon next to any completed or failed import
 - Confirm the deletion in the dialog
 - This will permanently remove the import record **and all associated events** from your analytics
 - Active imports cannot be deleted
@@ -178,12 +179,13 @@ Each import shows three key metrics:
 
 ### Events Skipped Due to Quota Limits
 
-**Cause:** Importing the events would exceed your monthly event limit.
+**Cause:** The months those events happened in already reached your plan's monthly event limit, counting the events Rybbit tracked then and earlier imports.
 
 **Solution:**
-- Wait until the next billing cycle when your quota resets
-- Upgrade to a plan with a higher event limit
-- Import smaller date ranges to stay within quota
+- Upgrade to a plan with a higher monthly event limit
+- After upgrading, delete the import, then import the whole file again. Importing it again without deleting stores the events it already imported twice
+- Start the new import at least 2 hours after the original one finished. Until then its events still count against your limit, even after you delete it
+- Waiting for the next billing cycle doesn't help: imported events count against the months they happened in, and past months don't reset
 
 ### Events Skipped Due to Date Range
 
@@ -206,12 +208,12 @@ Each import shows three key metrics:
 
 ### Import Appears Stuck
 
-**Cause:** Very large files can take time to process, or a timeout occurred.
+**Cause:** Very large files take time to upload, or the browser tab was closed or lost its connection before the upload finished.
 
 **Solution:**
-- Wait up to 2 hours for the import to complete
-- If still stuck after 2 hours, the import will be automatically marked as complete
-- Check the imported event count to see if any data was processed
+- Keep the tab open while a large file uploads
+- An import that hasn't finished after 2 hours is marked **Failed**, and you can start a new one
+- Events imported before it stopped stay in your analytics. Delete the failed import to remove them before importing the file again
 - Contact support if no events were imported
 
 ## Best Practices
@@ -220,7 +222,7 @@ Each import shows three key metrics:
 
 1. **Export a complete backup** from your current analytics platform
 2. **Test with a small sample** (first 1,000 rows) before importing your full dataset
-3. **Check your event quota** to ensure you have sufficient capacity
+3. **Check each month in your source data** against your monthly event limit, minus what Rybbit already tracked or imported that month
 4. **Verify date ranges** match your plan's historical window
 5. **Review CSV format** matches the required structure for your platform
 

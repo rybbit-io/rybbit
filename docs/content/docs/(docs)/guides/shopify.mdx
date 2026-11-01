@@ -51,7 +51,7 @@ Add to your main product template (`sections/main-product.liquid` or `templates/
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var variant = {{ product.selected_or_first_available_variant | json }};
-  window.rybbit.event('view_item', {
+  window.rybbit?.event('view_item', {
     item_id: variant.sku || variant.id,
     item_name: {{ product.title | json }},
     item_variant: variant.title === 'Default Title' ? null : variant.title,
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
   form.addEventListener('submit', function () {
     var variant = {{ product.selected_or_first_available_variant | json }};
     var qty = form.querySelector('[name="quantity"]');
-    window.rybbit.event('add_to_cart', {
+    window.rybbit?.event('add_to_cart', {
       item_id: variant.sku || variant.id,
       item_name: {{ product.title | json }},
       price: variant.price / 100,
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!button) return;
   button.addEventListener('click', function () {
     var cart = {{ cart | json }};
-    window.rybbit.event('begin_checkout', {
+    window.rybbit?.event('begin_checkout', {
       currency: cart.currency,
       value: cart.total_price / 100,
       items: cart.items.map(function (item) {
@@ -113,7 +113,7 @@ Event properties are limited to 2048 characters of serialised JSON and larger pa
 
 #### Purchase
 
-Checkout and the order status page do not load your theme, and the old **Order status page > Additional scripts** field is deprecated: view-only since August 28, 2025, with non-Plus stores required to migrate by August 26, 2026. Track purchases with a custom web pixel from [Checkout Extensibility](https://help.shopify.com/en/manual/checkout-settings/customize-checkout-configurations) instead.
+Checkout and the order status page do not load your theme, and the old **Order status page > Additional scripts** field is deprecated: it became view-only on August 28, 2025, and the migration deadline for non-Plus stores passed on August 26, 2026, so don't rely on scripts there. Track purchases with a custom web pixel from [Checkout Extensibility](https://help.shopify.com/en/manual/checkout-settings/customize-checkout-configurations) instead.
 
 Pixels run in a sandbox with no access to `window.rybbit`, so the pixel posts the event straight to Rybbit's track endpoint.
 
@@ -150,7 +150,7 @@ analytics.subscribe("checkout_completed", (event) => {
 });
 ```
 
-`checkout_completed` fires once per placed order. The same [Customer Events](https://shopify.dev/docs/api/customer-events) API also exposes `product_added_to_cart` and `checkout_started`, so you can move add-to-cart and begin-checkout into the pixel too if theme code is unreliable on your store.
+`checkout_completed` fires once per placed order. The same [Customer Events](https://shopify.dev/docs/api/web-pixels-api) API also exposes `product_added_to_cart` and `checkout_started`, so you can move add-to-cart and begin-checkout into the pixel too if theme code is unreliable on your store.
 
 ## Next steps
 

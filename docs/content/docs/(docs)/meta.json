@@ -10,6 +10,7 @@
     "---Usage---",
     "script",
     "script-troubleshooting",
+    "localhost-tracking",
     "track-events",
     "autocapture",
     "identify-users",
@@ -42,7 +43,6 @@
     "data-import",
     "---Other---",
     "definitions",
-    "privacy",
-    "contact"
+    "roadmap"
   ]
 }
