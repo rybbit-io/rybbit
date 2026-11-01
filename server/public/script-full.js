@@ -93,11 +93,12 @@
     }
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
   }
+  var MAX_VISITOR_ID_LENGTH = 64;
   function getOrCreateVisitorId(namespace) {
     const key = `${namespace}-visitor-id`;
     try {
       const stored = localStorage.getItem(key);
-      if (stored) return stored;
+      if (stored && stored.length <= MAX_VISITOR_ID_LENGTH) return stored;
       const visitorId = createVisitorId();
       localStorage.setItem(key, visitorId);
       return visitorId;
@@ -806,9 +807,13 @@
         return "";
       }
     }
+    isUnassignedVariant(assignment) {
+      return assignment.flagType === "multivariate" && typeof assignment.value !== "string";
+    }
     getFeatureFlagEventPayload() {
       const payload = {};
       for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+        if (this.isUnassignedVariant(assignment)) continue;
         payload[key] = this.serializeFeatureFlagValue(assignment.value);
       }
       return payload;
@@ -954,6 +959,9 @@
       if (Object.keys(featureFlagPayload).length > 0) {
         payload.feature_flags = featureFlagPayload;
       }
+      if (this.config.featureFlagsEnabled) {
+        payload.visitor_id = this.config.visitorId;
+      }
       return payload;
     }
     async sendTrackingData(payload) {
@@ -1019,7 +1027,7 @@
     }
     getFeatureFlag(key, fallback) {
       const assignment = this.config.featureFlags?.[key];
-      if (!assignment) {
+      if (!assignment || this.isUnassignedVariant(assignment)) {
         return fallback;
       }
       const exposureKey = `${key}:${assignment.version}:${this.serializeFeatureFlagValue(assignment.value)}`;
@@ -1036,7 +1044,7 @@
     }
     getFeatureFlags() {
       return Object.fromEntries(
-        Object.entries(this.config.featureFlags || {}).map(([key, assignment]) => [key, assignment.value])
+        Object.entries(this.config.featureFlags || {}).filter(([, assignment]) => !this.isUnassignedVariant(assignment)).map(([key, assignment]) => [key, assignment.value])
       );
     }
     getFeatureFlagPayload(key, fallback) {

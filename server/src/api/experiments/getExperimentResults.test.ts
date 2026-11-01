@@ -7,8 +7,17 @@ vi.mock("../../db/postgres/postgres.js", () => ({
   db: {},
 }));
 
-import { buildExperimentResultQueries } from "./getExperimentResults.js";
-import { buildExperimentResults } from "./utils.js";
+import { getTimeStatement } from "../analytics/utils/timeWindow.js";
+import { buildExperimentResultQueries, EXPERIMENT_UNIT, resolveExperimentWindow } from "./getExperimentResults.js";
+import { buildCumulativeSeries } from "./getExperimentTimeseries.js";
+import {
+  buildExperimentResults,
+  experimentFlagError,
+  experimentUpdateError,
+  flagUpdateForStatusChange,
+  rolloutWinner,
+  SERVER_ONLY_FLAG_ERROR,
+} from "./utils.js";
 
 const CAMPAIGN_FILTER = JSON.stringify([{ parameter: "utm_campaign", type: "equals", value: ["recipe_book_2026"] }]);
 
@@ -38,6 +47,7 @@ describe("experiment result queries", () => {
     expect(exposureQuery.match(/INNER JOIN FilteredSessions USING \(session_id\)/g)).toHaveLength(2);
     expect(exposureQuery).toContain("event_name = 'feature_flag_exposure'");
     expect(exposureQuery).toContain("type = 'form_submit'");
+    expect(exposureQuery).toContain("JSONExtractString(toString(props), 'value') IN ('control', 'treatment')");
 
     // The campaign condition belongs only to FilteredSessions, not separately
     // to the exposure and goal event rows.
@@ -58,15 +68,298 @@ describe("experiment result queries", () => {
   it("attributes a session to its first exposure variant instead of grouping it into every observed variant", () => {
     const { exposureQuery } = buildQueries();
 
-    expect(exposureQuery).toContain("argMin(JSONExtractString(toString(props), 'value'), timestamp) AS variant");
+    expect(exposureQuery).toContain("argMin(JSONExtractString(toString(props), 'value'), timestamp_ms) AS variant");
     expect(exposureQuery).not.toContain("GROUP BY session_id, variant");
   });
 
   it("attributes assignment fallback to the first assigned variant per session", () => {
     const { assignmentQuery } = buildQueries();
 
-    expect(assignmentQuery).toContain("argMin(feature_flags['recipe_book_test'], timestamp) AS variant");
+    expect(assignmentQuery).toContain("argMin(feature_flags['recipe_book_test'], timestamp_ms) AS variant");
     expect(assignmentQuery).not.toContain("GROUP BY session_id, variant");
+  });
+
+  it("groups exposures and goals by visitor, falling back to the session", () => {
+    const { exposureQuery, assignmentQuery } = buildQueries();
+
+    expect(EXPERIMENT_UNIT).toBe("ifNull(nullIf(session_visitor, ''), events.session_id)");
+    for (const sql of [exposureQuery, assignmentQuery]) {
+      expect(sql.split(`${EXPERIMENT_UNIT} AS unit`)).toHaveLength(3);
+      expect(sql).toContain("GROUP BY unit");
+      expect(sql).toContain("uniqExactArray(u.session_ids) AS sessions");
+    }
+  });
+
+  it("counts a conversion from a later session against the unit's first exposure", () => {
+    const { exposureQuery, assignmentQuery } = buildQueries();
+
+    for (const sql of [exposureQuery, assignmentQuery]) {
+      expect(sql).toContain("LEFT JOIN goal_units g ON g.unit = u.unit");
+      expect(sql).toContain("uniqExactIf(u.unit, g.last_goal_at >= u.exposed_at) AS conversions");
+      expect(sql).toContain("uniqExact(u.unit) AS units");
+    }
+  });
+
+  it("dates a unit's conversion by its first goal at or after exposure, in the site time zone", () => {
+    const { exposureTimeseriesQuery, assignmentTimeseriesQuery } = buildQueries();
+
+    for (const sql of [exposureTimeseriesQuery, assignmentTimeseriesQuery]) {
+      expect(sql).toContain("minIf(g.goal_at, g.goal_at >= u.exposed_at) AS converted_at");
+      expect(sql).toContain("toDate(exposed_at, 'UTC') AS day");
+      expect(sql).toContain("WHERE converted_at > toDateTime(0)");
+      expect(sql).toContain("GROUP BY variant, day");
+    }
+    expect(exposureTimeseriesQuery).toContain("event_name = 'feature_flag_exposure'");
+    expect(assignmentTimeseriesQuery).toContain("feature_flags['recipe_book_test'] IN ('control', 'treatment')");
+  });
+});
+
+describe("experiment unit and timing", () => {
+  it("gives every event of a session the visitor id seen in that session", () => {
+    const { exposureQuery, assignmentQuery } = buildQueries();
+
+    for (const sql of [exposureQuery, assignmentQuery]) {
+      expect(sql).toContain("SELECT session_id AS visitor_session_id, any(visitor_id) AS session_visitor");
+      expect(sql.match(/LEFT JOIN session_visitors ON session_visitors.visitor_session_id = events.session_id/g)).toHaveLength(2);
+    }
+  });
+
+  it("orders exposures and goals by millisecond timestamps", () => {
+    const { exposureQuery } = buildQueries();
+
+    expect(exposureQuery).toContain("min(timestamp_ms) AS exposed_at");
+    expect(exposureQuery).toContain("timestamp_ms AS goal_at");
+    expect(exposureQuery).toContain("uniqExactIf(u.unit, g.last_goal_at >= u.exposed_at) AS conversions");
+  });
+
+  it("bounds a run to its exact start and end next to the whole-second window", () => {
+    const sql = buildExperimentResultQueries({
+      query: { filters: "", start_datetime: "2026-09-25 21:29:05", end_datetime: "2026-09-25 21:37:37" } as never,
+      siteId: 1,
+      flagKey: "recipe_book_test",
+      variantKeys: ["control", "treatment"],
+      goalCondition: "type = 'pageview'",
+      exact: { start: "2026-09-25 21:29:05.930", end: "2026-09-25 21:37:36.163" },
+    }).exposureQuery;
+
+    expect(sql).toContain("timestamp >= toDateTime('2026-09-25 21:29:05', 'UTC')");
+    expect(sql).toContain("timestamp_ms >= toDateTime64('2026-09-25 21:29:05.930', 3, 'UTC')");
+    expect(sql).toContain("timestamp_ms <= toDateTime64('2026-09-25 21:37:36.163', 3, 'UTC')");
+  });
+});
+
+describe("resolveExperimentWindow", () => {
+  const rangeQuery = { filters: "", start_date: "2026-09-01", end_date: "2026-09-26", time_zone: "Europe/Amsterdam" };
+  const now = new Date("2026-09-26T10:00:00.400Z");
+
+  it("measures a running experiment from its start until now", () => {
+    const { query, window } = resolveExperimentWindow(rangeQuery, { startedAt: "2026-09-25 21:29:05.93", endedAt: null }, now);
+
+    expect(query).toMatchObject({ start_date: "", end_date: "", start_datetime: "2026-09-25 21:29:05" });
+    expect(query.end_datetime).toBe("2026-09-26 10:00:02");
+    expect(window).toEqual({ mode: "experiment", start: "2026-09-25 21:29:05", end: null });
+    expect(getTimeStatement(query)).toContain("timestamp >= toDateTime('2026-09-25 21:29:05', 'UTC')");
+  });
+
+  it("stops a completed experiment at its end", () => {
+    const { query, window, exact } = resolveExperimentWindow(
+      rangeQuery,
+      { startedAt: "2026-09-25 21:29:05.93", endedAt: "2026-09-25 21:37:36.163" },
+      now
+    );
+
+    expect(query.end_datetime).toBe("2026-09-25 21:37:37");
+    expect(window).toEqual({ mode: "experiment", start: "2026-09-25 21:29:05", end: "2026-09-25 21:37:37" });
+    expect(exact).toEqual({ start: "2026-09-25 21:29:05.930", end: "2026-09-25 21:37:36.163" });
+  });
+
+  it("uses the page date range when asked, or before the experiment starts", () => {
+    const started = { startedAt: "2026-09-25 21:29:05.93", endedAt: null };
+    expect(resolveExperimentWindow({ ...rangeQuery, window: "range" as const }, started, now).query).toMatchObject(rangeQuery);
+    expect(resolveExperimentWindow(rangeQuery, { startedAt: null, endedAt: null }, now).window).toEqual({
+      mode: "range",
+      start: "2026-09-01",
+      end: "2026-09-26",
+    });
+  });
+});
+
+describe("buildCumulativeSeries", () => {
+  it("fills every day of the window and accumulates units and conversions", () => {
+    const series = buildCumulativeSeries(
+      ["control", "test"],
+      [
+        { variant: "control", day: "2026-09-24", units: "4", conversions: "1" },
+        { variant: "test", day: "2026-09-24", units: "5", conversions: "0" },
+        { variant: "test", day: "2026-09-26", units: "5", conversions: "3" },
+      ],
+      { mode: "experiment", start: "2026-09-23 23:30:00", end: null },
+      "Europe/Amsterdam",
+      "2026-09-26"
+    );
+
+    expect(series.map(s => s.points.map(p => p.date))).toEqual([
+      ["2026-09-24", "2026-09-25", "2026-09-26"],
+      ["2026-09-24", "2026-09-25", "2026-09-26"],
+    ]);
+    expect(series[0].points.map(p => [p.units, p.conversions])).toEqual([[4, 1], [4, 1], [4, 1]]);
+    expect(series[1].points[2]).toEqual({ date: "2026-09-26", units: 10, conversions: 3, conversionRate: 0.3 });
+  });
+
+  it("uses the data's own days for an all-time range", () => {
+    const series = buildCumulativeSeries(
+      ["control"],
+      [{ variant: "control", day: "2026-09-20", units: 2, conversions: 1 }, { variant: "control", day: "2026-09-21", units: 2, conversions: 0 }],
+      { mode: "range", start: null, end: null },
+      "UTC"
+    );
+
+    expect(series[0].points.map(p => p.date)).toEqual(["2026-09-20", "2026-09-21"]);
+  });
+
+  it("keeps the most recent days of a long window and carries earlier totals", () => {
+    const series = buildCumulativeSeries(
+      ["control"],
+      [
+        { variant: "control", day: "2024-01-01", units: 10, conversions: 5 },
+        { variant: "control", day: "2026-09-26", units: 10, conversions: 1 },
+      ],
+      { mode: "range", start: null, end: null },
+      "UTC"
+    );
+
+    const points = series[0].points;
+    expect(points).toHaveLength(366);
+    expect(points[points.length - 1]).toEqual({ date: "2026-09-26", units: 20, conversions: 6, conversionRate: 0.3 });
+    expect(points[0]).toMatchObject({ date: "2025-09-26", units: 10, conversions: 5 });
+  });
+});
+
+describe("buildExperimentResults", () => {
+  it("uses units, not sessions, as the conversion-rate denominator", () => {
+    const results = buildExperimentResults(
+      ["control", "test"],
+      [
+        { variant: "control", units: 10, sessions: 25, exposures: 40, conversions: 5 },
+        { variant: "test", units: 10, sessions: 12, exposures: 15, conversions: 6 },
+      ]
+    );
+
+    expect(results[0]).toMatchObject({ variant: "control", units: 10, sessions: 25, conversionRate: 0.5, isControl: true });
+    expect(results[1].conversionRate).toBe(0.6);
+    expect(results[1].lift).toBeCloseTo(0.2);
+  });
+
+  it("coerces ClickHouse UInt64 strings to numbers", () => {
+    const [control] = buildExperimentResults(["control"], [
+      { variant: "control", units: "4", sessions: "6", exposures: "8", conversions: "1" } as never,
+    ]);
+
+    expect(control).toMatchObject({ units: 4, sessions: 6, exposures: 8, conversions: 1, conversionRate: 0.25 });
+  });
+});
+
+describe("rolloutWinner", () => {
+  const flag = {
+    rolloutPercentage: 40,
+    variants: [],
+    conditionSets: [
+      {
+        name: "Beta users",
+        rules: [{ field: "country", operator: "equals", value: "NL" }],
+        rolloutPercentage: 50,
+        variants: [
+          { key: "control", name: "Control", rolloutPercentage: 50 },
+          { key: "variant_a", name: "Variant A", rolloutPercentage: 50, payload: { copy: "Try it" } },
+        ],
+      },
+      { name: "Everyone else", rules: [], variants: [] },
+    ],
+  } as never;
+
+  it("serves the winner to everyone the flag targets, keeping rules and variant details", () => {
+    const rollout = rolloutWinner(flag, "variant_a");
+
+    expect(rollout.rolloutPercentage).toBe(100);
+    expect(rollout.conditionSets[0]).toMatchObject({
+      name: "Beta users",
+      rules: [{ field: "country", operator: "equals", value: "NL" }],
+      rolloutPercentage: 100,
+      variants: [
+        { key: "control", name: "Control", rolloutPercentage: 0 },
+        { key: "variant_a", name: "Variant A", rolloutPercentage: 100, payload: { copy: "Try it" } },
+      ],
+    });
+    expect(rollout.conditionSets[1]).toEqual({ name: "Everyone else", rules: [], variants: [], rolloutPercentage: 100 });
+    expect(rollout.variants).toEqual([]);
+  });
+
+  it("adds the winner to a set that never offered it, so its visitors don't fall through", () => {
+    const rollout = rolloutWinner(
+      {
+        rolloutPercentage: 100,
+        variants: [],
+        conditionSets: [
+          {
+            name: "NL",
+            rules: [],
+            variants: [
+              { key: "control", rolloutPercentage: 50 },
+              { key: "variant_a", name: "Variant A", rolloutPercentage: 50, payload: { copy: "Try it" } },
+            ],
+          },
+          {
+            name: "BE",
+            rules: [],
+            variants: [
+              { key: "control", rolloutPercentage: 50 },
+              { key: "variant_b", rolloutPercentage: 50 },
+            ],
+          },
+        ],
+      } as never,
+      "variant_a"
+    );
+
+    expect(rollout.conditionSets[1].variants).toEqual([
+      { key: "control", rolloutPercentage: 0 },
+      { key: "variant_b", rolloutPercentage: 0 },
+      { key: "variant_a", name: "Variant A", rolloutPercentage: 100, payload: { copy: "Try it" } },
+    ]);
+  });
+});
+
+describe("flagUpdateForStatusChange", () => {
+  const flag = (enabled: boolean) =>
+    ({
+      enabled,
+      rolloutPercentage: 100,
+      variants: [],
+      conditionSets: [{ rules: [], variants: [{ key: "control", rolloutPercentage: 50 }, { key: "test", rolloutPercentage: 50 }] }],
+    }) as never;
+
+  it("switches the flag off when pausing and back on when resuming", () => {
+    expect(flagUpdateForStatusChange("running", "paused", flag(true))).toEqual({ enabled: false });
+    expect(flagUpdateForStatusChange("paused", "running", flag(false))).toEqual({ enabled: true });
+  });
+
+  it("switches a disabled flag on when a draft starts", () => {
+    expect(flagUpdateForStatusChange("draft", "running", flag(false))).toEqual({ enabled: true });
+  });
+
+  it("leaves the flag alone when it is already right or nothing changes", () => {
+    expect(flagUpdateForStatusChange("draft", "running", flag(true))).toBeNull();
+    expect(flagUpdateForStatusChange("running", "running", flag(true))).toBeNull();
+    expect(flagUpdateForStatusChange("running", "draft", flag(true))).toBeNull();
+  });
+
+  it("ships the winner, enabled, when completing", () => {
+    const update = flagUpdateForStatusChange("paused", "completed", flag(false), "test")!;
+    expect(update.enabled).toBe(true);
+    expect(update.conditionSets?.[0].variants).toEqual([
+      { key: "control", rolloutPercentage: 0 },
+      { key: "test", rolloutPercentage: 100 },
+    ]);
   });
 });
 
@@ -88,14 +381,59 @@ describe("experiment arms", () => {
     const results = buildExperimentResults(
       ["control", "treatment"],
       [
-        { variant: "control", sessions: 100, exposures: 120, conversions: 10 },
-        { variant: "false", sessions: 900, exposures: 900, conversions: 300 },
-        { variant: "treatment", sessions: 100, exposures: 110, conversions: 20 },
+        { variant: "control", units: 100, sessions: 100, exposures: 120, conversions: 10 },
+        { variant: "false", units: 900, sessions: 900, exposures: 900, conversions: 300 },
+        { variant: "treatment", units: 100, sessions: 100, exposures: 110, conversions: 20 },
       ]
     );
 
     expect(results.map(result => result.variant)).toEqual(["control", "treatment"]);
-    expect(results.reduce((sum, result) => sum + result.sessions, 0)).toBe(200);
+    expect(results.reduce((sum, result) => sum + result.units, 0)).toBe(200);
     expect(results[1]).toMatchObject({ conversionRate: 0.2, lift: 1, isControl: false });
+  });
+});
+
+describe("experimentFlagError", () => {
+  it("accepts multivariate flags evaluated on the client", () => {
+    expect(experimentFlagError({ flagType: "multivariate", runtime: "client" })).toBeNull();
+    expect(experimentFlagError({ flagType: "multivariate", runtime: "both" })).toBeNull();
+  });
+
+  it("rejects server-only flags, which the tracking script never receives", () => {
+    expect(experimentFlagError({ flagType: "multivariate", runtime: "server" })).toBe(SERVER_ONLY_FLAG_ERROR);
+  });
+
+  it("rejects flags that aren't multivariate", () => {
+    expect(experimentFlagError({ flagType: "boolean", runtime: "client" })).toBe(
+      "Experiments require a multivariate feature flag"
+    );
+  });
+});
+
+describe("experimentUpdateError", () => {
+  const running = { status: "running" as const, featureFlagId: 7, winningVariant: null };
+  const completed = { status: "completed" as const, featureFlagId: 7, winningVariant: "variant_a" };
+
+  it("allows the usual lifecycle and edits that keep the flag", () => {
+    expect(experimentUpdateError({ ...running, status: "draft" }, { status: "running", featureFlagId: 9 })).toBeNull();
+    expect(experimentUpdateError(running, { status: "paused" })).toBeNull();
+    expect(experimentUpdateError(running, { featureFlagId: 7 })).toBeNull();
+    expect(experimentUpdateError(running, { status: "completed", winningVariant: "variant_a" })).toBeNull();
+    expect(experimentUpdateError(completed, { winningVariant: "variant_a" })).toBeNull();
+  });
+
+  it("keeps a completed experiment completed", () => {
+    expect(experimentUpdateError(completed, { status: "running" })).toMatch(/can't be reopened/);
+    expect(experimentUpdateError(completed, { status: "completed" })).toBeNull();
+  });
+
+  it("keeps the flag once the experiment has started", () => {
+    expect(experimentUpdateError(running, { featureFlagId: 9 })).toMatch(/flag can't change/);
+    expect(experimentUpdateError({ ...running, status: "paused" }, { featureFlagId: 9 })).toMatch(/flag can't change/);
+  });
+
+  it("only sets the winner while completing", () => {
+    expect(experimentUpdateError(completed, { winningVariant: "control" })).toMatch(/chosen when completing/);
+    expect(experimentUpdateError(running, { winningVariant: "variant_a" })).toMatch(/chosen when completing/);
   });
 });

@@ -168,6 +168,9 @@ export async function createFeatureFlag(
   }
 }
 
+/** A flag update rejected from inside its transaction. */
+class FeatureFlagRequestError extends Error {}
+
 export async function updateFeatureFlag(
   request: FastifyRequest<{
     Params: { siteId: string; flagId: string };
@@ -217,6 +220,21 @@ export async function updateFeatureFlag(
 
       if (!stored) return null;
 
+      // Checked under the row lock: experiment create and flag reassignment take the same lock,
+      // so an experiment can't be linked while the flag turns server-only.
+      if (body.runtime === "server") {
+        const [experiment] = await tx
+          .select({ name: experiments.name })
+          .from(experiments)
+          .where(and(eq(experiments.siteId, siteId), eq(experiments.featureFlagId, flagId)))
+          .limit(1);
+        if (experiment) {
+          throw new FeatureFlagRequestError(
+            `This flag runs the experiment "${experiment.name}", which needs it evaluated on the client. Use "Client" or "Both".`
+          );
+        }
+      }
+
       validateFeatureFlagUpdate(stored, body);
       updateData.version = stored.version + 1;
 
@@ -232,6 +250,9 @@ export async function updateFeatureFlag(
 
     return reply.send({ success: true, data: updated });
   } catch (error) {
+    if (error instanceof FeatureFlagRequestError) {
+      return reply.status(400).send({ error: error.message });
+    }
     const duplicateMessage = getDuplicateKeyMessage(error);
     if (duplicateMessage) {
       return reply.status(409).send({ error: duplicateMessage });

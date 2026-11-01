@@ -12,6 +12,7 @@ export type ExperimentWithRelations = {
 
 export type ExperimentResultRow = {
   variant: string;
+  units: number;
   sessions: number;
   exposures: number;
   conversions: number;
