@@ -3,29 +3,39 @@ title: Sessions
 description: Analyze individual user sessions
 ---
 
-The Sessions tab shows individual user visits to your website, including all page views, interactions, and events during each session.
+The Sessions tab shows individual visits to your website, including all page views, interactions, and events during each session. On Rybbit Cloud, it needs a Standard plan or higher.
 
-## Session Metrics
+## Stats
 
-Each session displays:
+The band at the top shows **Sessions**, **Avg duration**, **Pages per session**, **Bounce rate**, **Converted** (sessions that completed any [goal](/docs/goals)), and **With errors**.
 
-- **Duration** - Time spent on site
-- **Pages Visited** - Number of pages viewed
-- **Events Triggered** - Custom events fired during the session
-- **Device & Browser** - Technical environment
-- **Location** - Geographic location based on IP
-- **Entry/Exit Page** - Where the session started and ended
-- **Bounce Status** - Whether the user left after one page
+## Session List
+
+Sessions are listed by day, newest first. Each row shows:
+
+- The user, and their location and device
+- **Entry and exit page** - Where the session started and ended, or "single page" if it bounced
+- Channel and source
+- Pages, events, and duration
+- JavaScript errors, if any
+- Goals the session completed
+
+Click a page or channel in a row to filter by it. Expand a row to see the session's timeline and counts of custom events, button clicks, copies, form submits, and input changes. Click **Watch replay** to open the session's [replay](/docs/feature-guides/session-replay), when it has one.
+
+Use **Sort** to order by **Started**, **Duration**, **Pages**, **Events**, or **Errors**.
 
 ## Filtering Sessions
 
-Filter by:
+Use the view tabs to show **All** sessions, or only **Identified**, **Has replay**, **Converted**, **Bounced**, or **With errors** sessions.
 
-- Duration, pages visited, or events triggered
+Set a range for **Pageviews**, **Events**, or **Duration** (for example, at least 3 pages or at most 30 seconds). These combine with the standard dashboard filters:
+
 - Device type, browser, or location
 - Referrer or traffic source
 - Date range
 
+Click **Save as segment** to keep the current filters as a [segment](/docs/segments).
+
 ## Session Replay
 
-If [session replay](/docs/product-analytics/replay-session) is enabled, you can watch a recording of any session to see exactly what the user did.
+If [session replay](/docs/feature-guides/session-replay) is enabled, you can watch a recording of any session that has one to see exactly what the user did.

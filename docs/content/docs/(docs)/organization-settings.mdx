@@ -5,32 +5,30 @@ description: Manage your organization, team members, roles, and permissions
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Access organization settings by clicking on "Organization" or going to [app.rybbit.io/settings/organization](https://app.rybbit.io/settings/organization).
+Open organization settings by clicking **Organization** in the settings sidebar or going to [app.rybbit.io/settings/organization](https://app.rybbit.io/settings/organization). Only admins and owners see the **Organization** and **Teams** items.
 
 ![organization settings](/docs/organization-settings.png)
 
-## Organization
+The page has four sections: **General**, **People**, **Organization API keys** and **Danger zone**.
 
-### Organization Name
+## General
 
-Update your organization's display name. Owners and admins can change this setting.
+- **Name** - Shown in the navigation and on invitations. Admins and owners can change it.
+- **Slug** - Set when the organization is created. It can't be changed.
+- **Created** - When the organization was created.
 
-### Delete Organization
+## People
 
-Permanently delete the organization and all associated data including sites, analytics, reports, and member associations. Only owners can delete an organization.
+The **People** table lists everyone in the organization, with a search box to find someone by name or email. It has these columns:
 
-<Callout type="warn">
-  This action cannot be undone. You must type the organization name to confirm deletion. If you have an active subscription, you must cancel it before deleting the organization.
-</Callout>
-
-## Members
-
-View and manage all members in your organization. The members table shows:
-- **Name** - Member's display name
-- **Email** - Member's email address
+- **Person** - Name and email
 - **Role** - Owner, Admin, Editor, Member, or Viewer
-- **Site Access** - Which sites the member can access
-- **Joined** - When they joined the organization
+- **Site access** - **All sites**, or how many of the organization's sites they can reach, with the teams and direct grants that give them access
+- **Joined** - When they joined
+
+Pending invitations appear in the same table, marked **Pending**, with who sent them and when they expire. Use **Resend** to send an invitation again or **Cancel** to revoke it.
+
+Click a member's edit button to change their role or site access, or to remove them from the organization with **Remove Member**. Only system admins (accounts with the instance-wide admin role) can also change a member's name there.
 
 ### Member Roles
 
@@ -39,7 +37,7 @@ Each role can do everything the roles below it can.
 | Role | What it adds |
 |------|-------------|
 | **Owner** | Billing and plans, deleting the organization, making other owners |
-| **Admin** | Inviting and managing members and teams, organization API keys, creating, deleting and [transferring](/docs/site-settings#transfer-site) sites |
+| **Admin** | Inviting and managing members and teams, organization API keys, creating, deleting and [moving](/docs/site-settings#move-to-organization) sites |
 | **Editor** | Site configuration: tracking settings, exclusions, public and private links, feature flags, experiments, data imports, Google Search Console, deleting session replays and tracked users, and editing anyone's segments and annotations |
 | **Member** | Building reports: goals, funnels, dashboards, and their own segments and annotations |
 | **Viewer** | Viewing analytics, sessions, replays and reports, without changing anything |
@@ -50,8 +48,26 @@ A member's role can also be raised on individual sites: when you restrict someon
 
 ### Inviting Members
 
-Owners and admins can invite new members or create user accounts. See the [Inviting Users](/docs/inviting-users) guide for detailed instructions. A person can belong to several organizations.
+Owners and admins can invite new members (Rybbit Cloud) or create user accounts (self-hosted) with the button next to the search box. See the [Inviting Users](/docs/inviting-users) guide for detailed instructions. A person can belong to several organizations.
 
 ### Teams
 
 You can organize sites into teams to control which members have access to which sites. See the [Teams](/docs/teams) guide for details.
+
+## Organization API keys
+
+Organization API keys belong to the organization rather than a person, so they keep working when people leave. Only admins and owners can see or create them. A full-access organization key can reach all of the organization's sites; turn on **Restrict permissions** to limit it to specific resources. On Rybbit Cloud they share the organization's daily request budget and need a Standard or Pro plan.
+
+Creating and managing them works the same way as [personal API keys](/docs/account-settings#personal-api-keys). For keys that act as you, with your own role, use personal keys instead.
+
+## Danger zone
+
+### Delete organization
+
+Deleting an organization removes its members, teams and organization API keys. It does not delete sites: an organization that still has sites can't be deleted. Delete each site, or move it to another organization from its [site settings](/docs/site-settings), before you delete the organization. Only owners can delete an organization.
+
+To confirm, click **Delete organization**, type the organization's name, then press and hold **Hold to delete organization**.
+
+<Callout type="warn">
+  This cannot be undone. If the organization has an active subscription, cancel it in [Billing](/docs/billing-settings) first.
+</Callout>

@@ -5,24 +5,43 @@ description: Analyze page performance
 
 ![Pages Dashboard](/blog/rybbit_pages_dashboard.webp)
 
-The Pages tab shows detailed analytics for every URL on your site.
+The Pages tab shows detailed analytics for every URL on your site. It is available on Rybbit Cloud, on the Standard plan or higher.
 
-## Page Metrics
+## Stat Band
 
-Each page displays:
-- **Page URL** - The full path
-- **Sessions** - Number of sessions that viewed this page
-- **Average Time on Page** - How long visitors spend there
+The top of the page shows **Pageviews**, **Pages with traffic**, **Views per session**, **Avg time on page** (exit views excluded), and **Entry bounce rate**.
+
+## Pages Table
+
+Each row shows:
+- **Views** - Pageviews in the selected period
+- **Sessions** - Sessions that viewed the page
+- **Entries** - Sessions that started on the page
+- **Exits** - Sessions that ended on the page
+- **Avg time** - Average time on page
+- **Bounce** - Entry bounce rate: sessions that started here and viewed nothing else
+- **Change** - Change in views against the comparison period, when a comparison is on
+- **Trend** - Views over the period
+
+Click a column header to sort. Use **Search title or path** to find a page.
+
+### Entry and exit pages
+
+Switch between **All pages**, **Entry pages**, and **Exit pages** to list every page, only pages where sessions started, or only pages where they ended.
+
+### Sections
+
+By default the table groups pages by section (the first part of the path), so `/blog/a` and `/blog/b` roll up under `/blog/`. Expand a section to see its pages, or use **Expand all**. Set the breakdown to **None** to list every page flat. Searching always lists matching pages individually.
 
 ## Filtering
 
-Use the same filters as the main dashboard to analyze specific segments:
+Click a page to filter the dashboard to it. Use the same filters as the main dashboard to analyze specific segments:
 - Mobile users from social media
 - Desktop users who converted
 - Users who triggered specific events
 
 ## Identifying Issues
 
-- Scan for pages with low time on page to find content that isn't engaging
-- Look for pages with few sessions to find underperforming pages
-- Compare entry pages to see which content attracts traffic
+- Sort by **Bounce** to find entry pages that lose visitors right away
+- Sort by **Exits** to see where sessions end
+- Use **Change** with a comparison period to spot pages gaining or losing traffic

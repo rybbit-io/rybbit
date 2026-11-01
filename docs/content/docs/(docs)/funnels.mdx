@@ -9,12 +9,14 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 Funnels let you define a sequence of steps — page visits, custom events, or autocaptured interactions — and measure how many users progress through each stage. You can see where users convert, where they drop off, and drill into the sessions at each step to understand why.
 
+On Rybbit Cloud, funnels need a Standard plan or higher.
+
 ## Creating a Funnel
 
 ![Creating a Funnel](/docs/funnels/2.png)
 <Steps>
 <Step>
-### Click "Create Funnel"
+### Click "Create funnel"
 Each funnel has:
 
 - **Name** — A label for the funnel (e.g., "Signup Flow", "Checkout Process")
@@ -85,39 +87,54 @@ Button click, form interaction, and copy tracking are disabled by default. Enabl
 
 ![Step Options](/docs/funnels/4.png)
 
-Each step has additional configuration options:
+Click **Show advanced options** on a step to configure:
 
 - **Label** (optional) — A friendly display name for the step
 - **Hostname** (optional) — Restrict matching to a specific domain, useful for multi-domain sites
-- **Property Filters** (optional) — Filter by URL parameters (for path steps) or event properties (for all other step types). Multiple filters can be added per step, and all must match.
+- **Property Filters** (optional) — **Filter by URL parameter** (for path steps) or **Filter by event property** (for all other step types). Multiple filters can be added per step, and all must match.
 
 </Step>
 </Steps>
+
+You can also build a funnel from a path on the [Journeys](/docs/feature-guides/journeys) page with **Save as funnel**.
+
+## The Funnels List
+
+Saved funnels appear as rows you can expand. A summary band at the top shows **Funnels tracked**, **Sessions entering any funnel**, **Highest conversion**, **Biggest gain** against the comparison period, and **Biggest drop-off**. Use **Sort** to order funnels by **Sessions entered**, **Conversion**, **Change in conversion**, **Name**, or **Date created**, and **Filter funnels** to search by name.
+
+Each expanded funnel has these actions:
+
+- **Explore paths** — Open [Journeys](/docs/feature-guides/journeys) to see the paths sessions actually take
+- **Clone** — Copy the funnel as a starting point for a new one
+- **Edit funnel** — Change the funnel's name and steps
+
+If the funnel's last step matches one of your [goals](/docs/goals), a **Goal:** link to it appears under that step.
+
 ## Reading Funnel Results
 
-The funnel visualization updates in real time as you configure steps. For each step, you'll see:
+For each step, you'll see:
 
 - **Sessions** — How many sessions reached this step
-- **Conversion Rate** — Percentage of the first step's sessions that reached this step
-- **Dropped** — How many sessions completed the previous step but not this one
-- **Dropoff Rate** — Percentage of the previous step's sessions lost at this point
+- **Of start** — Percentage of the first step's sessions that reached this step
+- How many sessions dropped off between this step and the next
+- The median time from the first step, and to the next step
 
-The horizontal bar for each step shows two layers:
-- **Solid bar** — Overall conversion from the first step
-- **Striped overlay** — Conversion from the immediately previous step
+When a comparison period is on, each step also shows how its numbers changed.
 
 Steps are evaluated sequentially — each step must occur after the previous one within the same session.
 
-## Viewing Sessions
+## Viewing Sessions and Replays
 
 ![Viewing Sessions](/docs/funnels/3.png)
 
-Click any step to expand it and view the sessions associated with that step:
+Click any step row except the last to list the sessions that reached that step.
 
-- **Reached** tab — Sessions that completed this step
-- **Dropped Off** tab — Sessions that reached the previous step but didn't make it to this one (available for step 2 and beyond)
+Next to each drop-off count, and next to the final **converted** count, click:
 
-Each session shows entry/exit pages, duration, location, device info, referrer, UTM parameters, and user ID if identified. Sessions are paginated.
+- **Sessions** — List the sessions that dropped off after that step, or that converted
+- **Replays** — List only those sessions that have a replay, when [session replay](/docs/feature-guides/session-replay) is on
+
+Each session shows entry/exit pages, duration, location, device info, referrer, UTM parameters, and user ID if identified.
 
 ---
 

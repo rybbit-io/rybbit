@@ -1,6 +1,6 @@
 ---
 title: Filter traffic
-description: Exclude traffic by IP address, country, path, hostname, or user agent
+description: Exclude traffic by IP address, network (ASN), country, path, query parameter, hostname, or user agent
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -15,7 +15,9 @@ Filters are configured from **Site Settings → Exclusions**.
 | --- | --- | --- | --- |
 | **IP Exclusions** | Your home, office, VPN, or internal network traffic | Single IPs, CIDR ranges, and IPv4 ranges | 100 entries |
 | **Country Exclusions** | Regional filtering or compliance requirements | Two-letter ISO country codes, such as `US`, `GB`, or `DE` | 250 entries |
+| **ASN Exclusions** | A corporate VPN, a hosting provider, or another whole network | Autonomous system numbers, with or without the `AS` prefix | 100 entries |
 | **Path Exclusions** | Admin pages, private pages, preview routes, or test pages | Case-insensitive glob patterns using `*` | 100 entries |
+| **Query Param Exclusions** | Preview links, internal UTM tags, test flags in the URL | A parameter name, or `name=value` with `*` in the value | 100 entries |
 | **Hostname Exclusions** | Localhost, staging domains, preview deployments, or temporary domains | Case-insensitive glob patterns using `*` | 100 entries |
 | **User Agent Exclusions** | Monitoring tools, headless browsers, or custom crawlers | Case-insensitive substring matching | 100 entries |
 
@@ -32,7 +34,15 @@ Supported formats:
 - **CIDR notation**: `192.168.1.0/24`, `2001:db8::/32`
 - **IPv4 ranges**: `192.168.1.1-192.168.1.10`
 
+IP exclusions are checked against every client IP the request reports in its headers (`CF-Connecting-IP`, `X-Real-IP`, and each `X-Forwarded-For` entry), not only the IP Rybbit resolves as the visitor's. The address of the direct network connection is not checked when forwarding headers are present. That keeps "exclude my own IP" working behind proxies, at the cost of also excluding anyone whose request passes through an excluded address.
+
 For setup instructions and best practices, see [Hiding Your Own Traffic](/docs/hiding-own-traffic).
+
+## ASN Exclusions
+
+Exclude every request from a network, identified by its autonomous system number. Enter `AS13335` or `13335`. Like IP exclusions, ASN exclusions match if any of those client IPs belongs to an excluded network.
+
+Use this for networks that don't have a stable IP range you can list, such as a corporate VPN or a hosting provider that sends you unwanted traffic. Excluding a large consumer ISP or mobile carrier removes real visitors too.
 
 ## Country Exclusions
 
@@ -73,6 +83,26 @@ Use path exclusions for pages that should not appear in analytics at all, such a
 
 <Callout type="info">
 For client-side-only pageview skipping, you can also use the tracking script's `data-skip-patterns` option. Site-level path exclusions are enforced on the server and also apply to session replay ingestion.
+</Callout>
+
+## Query Param Exclusions
+
+Exclude page URLs that carry a specific query parameter.
+
+Examples:
+
+```txt
+preview
+utm_source=internal
+ref=test-*
+```
+
+- A name on its own (`preview`) matches whenever the parameter is present, whatever its value.
+- `name=value` matches only that value. The value supports `*` wildcards.
+- Parameter names and values match case-insensitively.
+
+<Callout type="warning">
+Query param exclusions need **URL Parameters** tracking turned on for the site. With it off, analytics events are sent without their query string, so these exclusions don't match them. Session replay batches still carry the full page URL, so replay from a matching URL is still excluded.
 </Callout>
 
 ## Hostname Exclusions
@@ -122,10 +152,12 @@ Traffic filters run before normal analytics data is stored. They apply to:
 Rybbit checks exclusions in this order:
 
 1. IP address
-2. Country
-3. Path
-4. Hostname
-5. User agent
+2. ASN
+3. Country
+4. Path
+5. Query parameter
+6. Hostname
+7. User agent
 
 If any filter matches, the event is accepted with a `200` response but is not tracked. Changes usually take effect within 60 seconds because site configuration is cached briefly on the server.
 

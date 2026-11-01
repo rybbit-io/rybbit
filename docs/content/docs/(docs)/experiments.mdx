@@ -20,8 +20,8 @@ An experiment has three moving parts:
 | Part | What it does |
 | --- | --- |
 | **Assignment** | A multivariate feature flag assigns each visitor to one stable variant (for example `control` or `variant_a`) based on its rollout percentages. |
-| **Exposure** | When your code reads the flag with `rybbit.flag()`, Rybbit records an exposure for that variant. The number of distinct sessions exposed to a variant is the denominator for its conversion rate. |
-| **Conversion** | The experiment's primary goal — a page visit or a custom event — counts as a conversion for whichever variant the visitor was assigned. |
+| **Exposure** | When your code reads the flag with `rybbit.flag()`, Rybbit records an exposure for that variant. A session counts toward the variant it was first exposed to, and the number of exposed sessions is the denominator for its conversion rate. |
+| **Conversion** | The experiment's primary goal — a page visit or a custom event — counts as a conversion when it happens in the same session, at or after the session's first exposure. |
 
 Because assignment is sticky for a given visitor, a person sees the same variant on repeat visits, which keeps your results consistent.
 
@@ -35,7 +35,7 @@ Open your site in the Rybbit dashboard, go to **Experiments**, and click **New e
 
 Give the experiment a **name** and, optionally, a **hypothesis** and **description**. The hypothesis is internal context for your team — something like *"Changing the CTA copy will increase signups."* It does not affect assignment or tracking.
 
-New experiments are created as **drafts** so you can add the implementation code before any traffic is split.
+New experiments are created as **drafts**. The status is a label for your team: it does not control traffic (see [Experiment Lifecycle](#experiment-lifecycle)).
 </Step>
 
 <Step>
@@ -64,7 +64,7 @@ Pick the conversion you want to compare variants against:
 <Step>
 ### Review and Implement
 
-Review the assignment flag and goal, then create the experiment. Rybbit creates any new flag or goal you configured, connects them, and shows you the **implementation code** for the flag. The experiment stays in **draft** until you start it from the experiment list.
+Review the assignment flag and goal, then create the experiment. Rybbit creates any new flag or goal you configured, connects them, and shows you the **implementation code** for the flag. A new flag is created **enabled**, so traffic is split as soon as your code calls `rybbit.flag()`, even while the experiment is still a draft. Ship the implementation code when you want the test to begin.
 </Step>
 </Steps>
 
@@ -117,7 +117,7 @@ window.rybbit.onReady((rybbit) => {
 **Page goals** need no extra code — Rybbit counts sessions that reach the goal's path automatically.
 
 <Callout type="info">
-Use a stable variant for the `rybbit.flag()` fallback (usually `"control"`) so visitors still get a sensible experience before the flag resolves or if the experiment is paused.
+Use a stable variant for the `rybbit.flag()` fallback (usually `"control"`) so visitors get a sensible experience before flags resolve. If the flag is disabled, `rybbit.flag()` returns `false` rather than your fallback, so make sure any value other than a test variant renders the control experience, as in the examples above.
 </Callout>
 
 ## Reading Results
@@ -126,17 +126,20 @@ Each experiment shows a results panel comparing every variant. Results respect t
 
 | Metric | Description |
 | --- | --- |
-| **Variant** | The variant key, with the **Control** marked as the baseline. |
+| **Variant** | The variant key. The variant keyed `control` is the baseline; if there is none, the flag's first variant is. |
 | **Sessions** | Sessions exposed to that variant, alongside the number that converted. |
 | **Conversion rate** | Conversions divided by the number of exposed sessions (the **Sessions** figure) for that variant. |
 | **Lift** | The percentage change in conversion rate relative to the control. Positive lift is shown in green, negative in red. |
-| **Confidence** | How confident Rybbit is that the variant's difference from the control is real, based on a two-proportion comparison. |
+| **Confidence** | How confident Rybbit is that the variant's difference from the control is real, based on a two-proportion comparison. Shown only once both the variant and the control have at least 30 sessions. |
+
+If no exposures were recorded for the flag (your code never calls `rybbit.flag()` for it), results fall back to sessions that were **assigned** a variant, using the flag values attached to every event. The panel notes when it is showing assigned rather than exposed visitors.
 
 Rybbit summarizes the state of each experiment at a glance:
 
-- **Gathering data** — Not enough exposures or conversions yet to draw a conclusion.
+- **No conversions yet** — No variant has a conversion in the selected range.
+- **Gathering data** — No variant beats the control with 95% confidence yet. A completed experiment in this state shows **No clear winner**.
 - **Leading** — A variant is outperforming the control with at least **95% confidence**.
-- **Winner** — The variant recorded as the winner once the experiment is decided.
+- **Winner** — Shown when a winning variant has been recorded on the experiment.
 
 <Callout type="warn">
 Avoid stopping an experiment the moment a variant looks ahead. Let it run until it reaches 95% confidence with a meaningful number of conversions, otherwise early noise can masquerade as a real difference.
@@ -144,16 +147,18 @@ Avoid stopping an experiment the moment a variant looks ahead. Let it run until 
 
 ## Experiment Lifecycle
 
-Experiments move through four statuses, which you control from the experiment list:
+Experiments have four statuses, which you set from the experiment list with **Start**, **Pause**, and **Complete**:
 
 | Status | Meaning |
 | --- | --- |
-| **Draft** | Created but not yet collecting results. Add your implementation code here. |
-| **Running** | Actively splitting traffic and recording exposures and conversions. |
-| **Paused** | Temporarily stopped. Visitors keep their existing assignments. |
-| **Completed** | Finished. Use this once you have a result and have shipped (or rolled back) the change. |
+| **Draft** | Created, not started. |
+| **Running** | Started. Rybbit records when the experiment first started. |
+| **Paused** | Marked as paused. |
+| **Completed** | Finished. Rybbit records the end time, and a completed experiment can't be restarted. |
 
-Use **Start**, **Pause**, and **Complete** on each experiment to move between states.
+<Callout type="warn">
+Status is bookkeeping only. It does not start, pause, or stop assignment, exposures, or conversions: the flag keeps serving variants and results keep accruing whatever the status is. To stop splitting traffic, disable the experiment's flag on the **Feature Flags** page (every visitor then gets `false`), or remove the `rybbit.flag()` branch from your code. A flag attached to an experiment can't be deleted until you delete the experiment.
+</Callout>
 
 ## Best Practices
 

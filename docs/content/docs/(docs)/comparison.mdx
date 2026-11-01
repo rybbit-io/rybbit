@@ -13,10 +13,10 @@ import { Check, Minus } from 'lucide-react';
 | **Cookieless & Privacy friendly** | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> |
 | **Advanced Maps**        | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
 | **Advanced Filters**     | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <span className="inline-flex items-center gap-1">Limited</span> | <span className="inline-flex items-center gap-1">Limited</span> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
-| **Web Vitals**           | <span className="inline-flex items-center gap-1">Paid</span> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
+| **Web Vitals**           | <span className="inline-flex items-center gap-1">Cloud</span> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
 | **Session Details**      | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
 | **User Profiles**        | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
-| **Session Replays**      | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
+| **Session Replays**      | <span className="inline-flex items-center gap-1">Pro</span> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
 | **Funnels**              | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <span className="inline-flex items-center gap-1">Paid</span> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
 | **User Journeys**        | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
 | **Retention Analysis**   | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
@@ -29,3 +29,19 @@ import { Check, Minus } from 'lucide-react';
 | **Frog 🐸**              | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> | <Minus className="w-5 h-5 inline" color="gray" strokeWidth={3} /> |
 
 \* Plausible's Community Edition has very limited features compared to their cloud version
+
+In the Rybbit column, a check means the feature is in every current Rybbit Cloud plan (Standard and up) and in self-hosted Rybbit. **Pro** means the Pro plan on Rybbit Cloud; it's included when you self-host. **Cloud** means Rybbit Cloud only (custom dashboards and SQL can also be turned on in a self-built client image; see [that page](/docs/dashboards)). See [Billing](/docs/billing-settings) for plan details.
+
+## Also in Rybbit
+
+| Feature | Rybbit |
+| ------- | ------ |
+| **[Saved segments](/docs/segments)** | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> |
+| **[Chart annotations](/docs/annotations)** | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> |
+| **[Bot detection](/docs/bot-detection)** | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> |
+| **[Data import](/docs/data-import)** (Umami, Simple Analytics, Plausible) | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> |
+| **[MCP server](/docs/mcp)** for AI assistants | <Check className="w-5 h-5 inline" color="green" strokeWidth={3} /> |
+| **[Custom dashboards and SQL](/docs/dashboards)** | <span className="inline-flex items-center gap-1">Cloud</span> |
+| **[Bots page](/docs/feature-guides/bots)** (AI crawler and agent reports) | <span className="inline-flex items-center gap-1">Cloud</span> |
+| **Google Search Console** on the dashboard | <span className="inline-flex items-center gap-1">Cloud</span> |
+
