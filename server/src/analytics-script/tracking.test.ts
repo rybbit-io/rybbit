@@ -266,6 +266,7 @@ describe("Tracker", () => {
       tracker = new Tracker(config);
 
       expect(tracker.getFeatureFlag("checkout_test", "control")).toBe("control");
+      expect(tracker.getFeatureFlags()).not.toHaveProperty("checkout_test");
       expect(tracker.createBasePayload()?.feature_flags).toBeUndefined();
       expect(global.fetch).not.toHaveBeenCalledWith(
         expect.anything(),

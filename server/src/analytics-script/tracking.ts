@@ -348,7 +348,9 @@ export class Tracker {
 
   getFeatureFlags(): Record<string, unknown> {
     return Object.fromEntries(
-      Object.entries(this.config.featureFlags || {}).map(([key, assignment]) => [key, assignment.value])
+      Object.entries(this.config.featureFlags || {})
+        .filter(([, assignment]) => !this.isUnassignedVariant(assignment))
+        .map(([key, assignment]) => [key, assignment.value])
     );
   }
 

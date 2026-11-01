@@ -93,11 +93,12 @@
     }
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
   }
+  var MAX_VISITOR_ID_LENGTH = 64;
   function getOrCreateVisitorId(namespace) {
     const key = `${namespace}-visitor-id`;
     try {
       const stored = localStorage.getItem(key);
-      if (stored) return stored;
+      if (stored && stored.length <= MAX_VISITOR_ID_LENGTH) return stored;
       const visitorId = createVisitorId();
       localStorage.setItem(key, visitorId);
       return visitorId;
@@ -1043,7 +1044,7 @@
     }
     getFeatureFlags() {
       return Object.fromEntries(
-        Object.entries(this.config.featureFlags || {}).map(([key, assignment]) => [key, assignment.value])
+        Object.entries(this.config.featureFlags || {}).filter(([, assignment]) => !this.isUnassignedVariant(assignment)).map(([key, assignment]) => [key, assignment.value])
       );
     }
     getFeatureFlagPayload(key, fallback) {
