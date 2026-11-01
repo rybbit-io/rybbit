@@ -584,7 +584,7 @@ export function CreateExperimentWizard({
 
   const implementationState = savedImplementationState || (isEditing ? buildImplementationState("updated") : null);
 
-  const saveNewFlag = async (enabled: boolean): Promise<FeatureFlag> => {
+  const saveNewFlag = async (): Promise<FeatureFlag> => {
     const variants: FeatureFlagVariant[] = form.variants.map(variant => ({
       key: variant.key.trim(),
       name: variant.name.trim() || undefined,
@@ -593,7 +593,8 @@ export function CreateExperimentWizard({
     const payload: FeatureFlagPayload = {
       key: form.flagKey.trim(),
       description: form.flagDescription.trim() || `Assignment flag for ${form.name.trim()}`,
-      enabled,
+      // Off until the experiment starts; starting it switches the flag on.
+      enabled: false,
       runtime: "client",
       flagType: "multivariate",
       payload: null,
@@ -655,7 +656,7 @@ export function CreateExperimentWizard({
       let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
 
       if (form.assignmentMode === "new") {
-        const createdFlag = await saveNewFlag(false);
+        const createdFlag = await saveNewFlag();
         featureFlagId = createdFlag.flagId;
         flagKey = createdFlag.key;
         variantKeys = getVariantKeys(createdFlag);
@@ -713,7 +714,7 @@ export function CreateExperimentWizard({
       let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
 
       if (form.assignmentMode === "new" && !assignmentLocked) {
-        const createdFlag = await saveNewFlag(false);
+        const createdFlag = await saveNewFlag();
         featureFlagId = createdFlag.flagId;
         flagKey = createdFlag.key;
         variantKeys = getVariantKeys(createdFlag);
