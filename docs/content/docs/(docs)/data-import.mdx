@@ -183,6 +183,8 @@ Each import shows three key metrics:
 
 **Solution:**
 - Upgrade to a plan with a higher monthly event limit
+- After upgrading, delete the import, then import the whole file again. Importing it again without deleting stores the events it already imported twice
+- Start the new import at least 2 hours after the original one finished. Until then its events still count against your limit, even after you delete it
 - Waiting for the next billing cycle doesn't help: imported events count against the months they happened in, and past months don't reset
 
 ### Events Skipped Due to Date Range
@@ -211,7 +213,7 @@ Each import shows three key metrics:
 **Solution:**
 - Keep the tab open while a large file uploads
 - An import that hasn't finished after 2 hours is marked **Failed**, and you can start a new one
-- Events uploaded before it stopped stay in your analytics. Delete the failed import to remove them before importing the file again
+- Events imported before it stopped stay in your analytics. Delete the failed import to remove them before importing the file again
 - Contact support if no events were imported
 
 ## Best Practices
@@ -220,7 +222,7 @@ Each import shows three key metrics:
 
 1. **Export a complete backup** from your current analytics platform
 2. **Test with a small sample** (first 1,000 rows) before importing your full dataset
-3. **Check your monthly event limit** against the busiest month in your source data
+3. **Check each month in your source data** against your monthly event limit, minus what Rybbit already tracked or imported that month
 4. **Verify date ranges** match your plan's historical window
 5. **Review CSV format** matches the required structure for your platform
 
