@@ -5,6 +5,7 @@ import {
   compareToControl,
   expectedLoss,
   MAX_PROJECTION_SCALE,
+  projectedDecision,
   projectedScaleToDecide,
   probabilityBBeatsA,
   relativeLift,
@@ -165,5 +166,26 @@ describe("projectedScaleToDecide", () => {
   it("gives up beyond the maximum scale", () => {
     expect(projectedScaleToDecide({ units: 1000, conversions: 100 }, { units: 1000, conversions: 101 })).toBeNull();
     expect(MAX_PROJECTION_SCALE).toBe(100);
+  });
+});
+
+describe("projectedDecision", () => {
+  const control = { units: 250, conversions: 25 };
+
+  it("says which way a comparison is headed and at what scale", () => {
+    const better = { units: 250, conversions: 35 };
+    expect(projectedDecision(control, better)).toEqual({
+      scale: projectedScaleToDecide(control, better),
+      decision: "winning",
+    });
+    expect(projectedDecision(control, { units: 250, conversions: 16 })?.decision).toBe("losing");
+  });
+
+  it("reports scale 1 for a comparison that has already decided", () => {
+    expect(projectedDecision(control, { units: 250, conversions: 12 })).toEqual({ scale: 1, decision: "losing" });
+  });
+
+  it("returns null when no decision is in reach", () => {
+    expect(projectedDecision({ units: 500, conversions: 50 }, { units: 500, conversions: 50 })).toBeNull();
   });
 });

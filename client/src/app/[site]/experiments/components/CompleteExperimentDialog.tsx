@@ -91,7 +91,7 @@ export function CompleteExperimentDialog({
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate font-mono text-sm text-neutral-900 dark:text-neutral-50">{variant}</span>
-                    {variant === recommended && (
+                    {variant === leader?.variant && (
                       <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                         {t("Recommended")}
                       </span>

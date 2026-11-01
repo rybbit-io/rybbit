@@ -1,4 +1,4 @@
-import { compareToControl, projectedScaleToDecide, sampleRatioMismatch, type VariantStats } from "@rybbit/shared";
+import { compareToControl, projectedDecision, sampleRatioMismatch, type VariantStats } from "@rybbit/shared";
 import { DateTime } from "luxon";
 
 import type { Experiment, ExperimentStatus, ExperimentVariantResult } from "@/api/analytics/endpoints";
@@ -140,6 +140,25 @@ export function hasEnoughData(results: ExperimentVariantResult[], servedVariants
   );
 }
 
+// The verdict needs one variant to win, or every variant to lose: the first projected win
+// settles it, but calling control the winner waits for the last variant to lose.
+function projectRemainingUnits(
+  control: ExperimentVariantResult,
+  comparisons: { result: ExperimentVariantResult }[],
+  totalUnits: number
+): number | null {
+  const projections = comparisons.map(({ result }) => projectedDecision(control, result));
+  const winScales = projections.flatMap(projection => (projection?.decision === "winning" ? [projection.scale] : []));
+  const allLose =
+    projections.length > 0 && projections.every(projection => projection?.decision === "losing");
+  const scale = winScales.length
+    ? Math.min(...winScales)
+    : allLose
+      ? Math.max(...projections.map(projection => projection!.scale))
+      : null;
+  return scale === null ? null : Math.ceil(totalUnits * (scale - 1));
+}
+
 export function getExperimentVerdict(experiment: Experiment, results: ExperimentVariantResult[]) {
   const control = getControlResult(results);
   const enoughData = hasEnoughData(
@@ -169,9 +188,7 @@ export function getExperimentVerdict(experiment: Experiment, results: Experiment
   const leader = srm?.mismatch ? undefined : (winning?.result ?? (controlWinning ? control : undefined));
 
   const totalUnits = results.reduce((sum, result) => sum + result.units, 0);
-  const scales = leader || !control ? [] : comparisons.map(({ result }) => projectedScaleToDecide(control, result));
-  const nearestScale = Math.min(...scales.filter((scale): scale is number => scale !== null));
-  const remainingUnits = Number.isFinite(nearestScale) ? Math.ceil(totalUnits * (nearestScale - 1)) : null;
+  const remainingUnits = leader || !control ? null : projectRemainingUnits(control, comparisons, totalUnits);
 
   return { control, enoughData, statsByVariant, comparisons, weights, srm, leader, remainingUnits };
 }

@@ -1,9 +1,11 @@
 import { DateTime, Settings } from "luxon";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { ExperimentVariantResult } from "@/api/analytics/endpoints";
+import { projectedDecision } from "@rybbit/shared";
 
-import { formatRelativeTime, getVariantStats } from "./experimentHelpers";
+import type { Experiment, ExperimentVariantResult } from "@/api/analytics/endpoints";
+
+import { formatRelativeTime, getExperimentVerdict, getVariantStats } from "./experimentHelpers";
 
 const arm = (overrides: Partial<ExperimentVariantResult>): ExperimentVariantResult => ({
   variant: "control",
@@ -31,9 +33,56 @@ describe("getVariantStats", () => {
     expect(baseline!.decision).not.toBe("winning");
   });
 
+  it("gives an arm with more conversions a higher chance to beat control", () => {
+    const baseline = getVariantStats(control, arm({ variant: "b", units: 100, conversions: 3 }))!;
+    const better = getVariantStats(control, arm({ variant: "c", units: 100, conversions: 9 }))!;
+    expect(better.chanceToBeatControl).toBeGreaterThan(baseline.chanceToBeatControl);
+  });
+
   it("returns null for the control itself and for an arm without units", () => {
     expect(getVariantStats(control, control)).toBeNull();
     expect(getVariantStats(control, arm({ variant: "b", sessions: 20, exposures: 500 }))).toBeNull();
+  });
+});
+
+describe("getExperimentVerdict remaining visitors", () => {
+  const experiment = {
+    status: "running",
+    featureFlag: {
+      variants: [],
+      conditionSets: [
+        {
+          rules: [],
+          variants: [
+            { key: "control", rolloutPercentage: 34 },
+            { key: "a", rolloutPercentage: 33 },
+            { key: "b", rolloutPercentage: 33 },
+          ],
+        },
+      ],
+    },
+  } as unknown as Experiment;
+  const control = arm({ variant: "control", isControl: true, units: 250, conversions: 25 });
+  const results = (a: number, b: number) => [
+    control,
+    arm({ variant: "a", units: 250, conversions: a }),
+    arm({ variant: "b", units: 250, conversions: b }),
+  ];
+  const remainingAt = (scale: number) => Math.ceil(750 * (scale - 1));
+
+  it("waits for the first projected winner, not an earlier projected loser", () => {
+    const winScale = projectedDecision(control, { units: 250, conversions: 34 })!.scale;
+    expect(projectedDecision(control, { units: 250, conversions: 14 })!.scale).toBeLessThan(winScale);
+
+    const verdict = getExperimentVerdict(experiment, results(34, 14));
+    expect(verdict.leader).toBeUndefined();
+    expect(verdict.remainingUnits).toBe(remainingAt(winScale));
+  });
+
+  it("waits for the last variant to lose before control can win", () => {
+    const lastLoss = projectedDecision(control, { units: 250, conversions: 16 })!.scale;
+
+    expect(getExperimentVerdict(experiment, results(16, 14)).remainingUnits).toBe(remainingAt(lastLoss));
   });
 });
 

@@ -135,12 +135,12 @@ export function compareToControl(control: ArmCounts, variant: ArmCounts): Varian
 
 export const MAX_PROJECTION_SCALE = 100;
 
+function scaleArm({ units, conversions }: ArmCounts, scale: number): ArmCounts {
+  return { units: Math.round(units * scale), conversions: Math.round(conversions * scale) };
+}
+
 function decides(control: ArmCounts, variant: ArmCounts, scale: number): boolean {
-  const scaled = ({ units, conversions }: ArmCounts) => ({
-    units: Math.round(units * scale),
-    conversions: Math.round(conversions * scale),
-  });
-  return compareToControl(scaled(control), scaled(variant))?.decision !== "inconclusive";
+  return compareToControl(scaleArm(control, scale), scaleArm(variant, scale))?.decision !== "inconclusive";
 }
 
 export function projectedScaleToDecide(
@@ -163,6 +163,27 @@ export function projectedScaleToDecide(
     else low = middle;
   }
   return high;
+}
+
+export type ProjectedDecision = { scale: number; decision: Exclude<ExperimentDecision, "inconclusive"> };
+
+/**
+ * Which way the comparison is headed if the current rates hold, and at what scale of today's
+ * sample it gets there. A comparison that has already decided reports scale 1.
+ */
+export function projectedDecision(
+  control: ArmCounts,
+  variant: ArmCounts,
+  maxScale = MAX_PROJECTION_SCALE
+): ProjectedDecision | null {
+  const current = compareToControl(control, variant)?.decision;
+  if (!current) return null;
+  if (current !== "inconclusive") return { scale: 1, decision: current };
+
+  const scale = projectedScaleToDecide(control, variant, maxScale);
+  if (scale === null) return null;
+  const decision = compareToControl(scaleArm(control, scale), scaleArm(variant, scale))?.decision;
+  return decision && decision !== "inconclusive" ? { scale, decision } : null;
 }
 
 function upperIncompleteGamma(a: number, x: number): number {
