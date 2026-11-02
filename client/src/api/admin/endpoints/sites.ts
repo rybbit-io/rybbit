@@ -230,17 +230,6 @@ export function fetchSiteIsPublic(siteId: string | number) {
   return authedFetch<{ isPublic: boolean }>(`/sites/${siteId}/is-public`);
 }
 
-export interface VerifyScriptResponse {
-  scriptTagFound: boolean;
-  scriptExecuted: boolean;
-  siteIdMatch: boolean;
-  issues: string[];
-}
-
-export function verifyScript(siteId: number | string) {
-  return authedFetch<VerifyScriptResponse>(`/sites/${siteId}/verify-script`);
-}
-
 export function uploadSiteIcon(siteId: number, icon: string) {
   return authedFetch<{ success: boolean }>(`/sites/${siteId}/icon`, undefined, {
     method: "PUT",

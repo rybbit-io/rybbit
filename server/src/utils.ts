@@ -151,6 +151,8 @@ export function parseSDKUserAgent(userAgent: string): {
   osVersion: string;
   deviceModel: string;
 } | null {
+  // Bounds the regex backtracking cost; matches the 512 B payload limit.
+  if (userAgent.length > 512) return null;
   // 3-part format (with packageName)
   const match3 = userAgent.match(
     /^(.+?)\/(\S+)\s+\([^;]+;\s*(\w+)\s+([^;]+);\s*([^)]+)\)\s+\S+\/\S+$/

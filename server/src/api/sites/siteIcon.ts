@@ -42,6 +42,8 @@ export async function getSiteIcon(
 
     return reply
       .header("Content-Type", "image/png")
+      .header("X-Content-Type-Options", "nosniff")
+      .header("Content-Security-Policy", "default-src 'none'; sandbox")
       .header("ETag", etag)
       .header("Cache-Control", "public, max-age=0, must-revalidate")
       .send(icon);
