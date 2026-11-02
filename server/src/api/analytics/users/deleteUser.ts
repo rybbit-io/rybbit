@@ -26,15 +26,24 @@ export async function deleteUser(req: FastifyRequest<DeleteUserRequest>, res: Fa
   const { userId } = req.params;
   const siteId = Number(req.params.siteId);
 
+  // Anonymous rows carry identified_user_id = '', so an empty id would match
+  // every one of them and erase the site's anonymous history. Any other id,
+  // whitespace included, is a real identity identify() may have stored.
+  if (!userId) {
+    return res.status(400).send({ error: "userId is required" });
+  }
+
   try {
     // Devices linked to this user via identify() calls
     const aliases = await db
       .select({ anonymousId: userAliases.anonymousId })
       .from(userAliases)
       .where(and(eq(userAliases.siteId, siteId), eq(userAliases.userId, userId)));
-    const deviceIds = [userId, ...aliases.map(a => a.anonymousId)];
+    const deviceIds = [userId, ...aliases.map(a => a.anonymousId)].filter(id => id !== "");
 
+    // The `!= ''` guard backstops the check above inside the DELETE itself.
     const userCondition = `site_id = {siteId:UInt16}
+      AND {userId:String} != ''
       AND (
         identified_user_id = {userId:String}
         OR (user_id IN ({deviceIds:Array(String)}) AND identified_user_id = '')

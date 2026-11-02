@@ -17,6 +17,8 @@ GET /api/sites/:site/export/pdf
 
 Generates a downloadable PDF analytics report for a date range.
 
+Needs a role on the site (any role, including viewer). Public-site and private-link visitors cannot call it. On Rybbit Cloud it needs a paid plan: organizations on the free plan or the `appsumo-1` and `appsumo-2` tiers get `403`.
+
 ### Path Parameters
 
 <TypeTable
@@ -60,6 +62,8 @@ Generates a downloadable PDF analytics report for a date range.
 ### Response
 
 Returns a binary PDF file (`Content-Type: application/pdf`). Save the response body to a `.pdf` file rather than parsing it as JSON.
+
+Errors come back as JSON: `400` for a missing or malformed `start_date`, `end_date`, `time_zone`, or `filters`; `403` when the plan does not include PDF export, or for a site that doesn't exist or that you can't access; `404` for a malformed site ID or an unknown text site identifier.
 
 </div>
 <div className="flex flex-col gap-4">

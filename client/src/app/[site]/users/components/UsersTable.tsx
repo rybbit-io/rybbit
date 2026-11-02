@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStore } from "@/lib/store";
+import { useStore, useTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
   BuiltInColumn,
@@ -120,6 +120,9 @@ export function UsersTable({
   const t = useExtracted();
   const site = useStore(state => state.site);
   const privateKey = useStore(state => state.privateKey);
+  const time = useStore(state => state.time);
+  const filters = useStore(state => state.filters);
+  const timeZone = useTimezone();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState<SearchField>("name");
@@ -141,9 +144,13 @@ export function UsersTable({
   const sortBy = sort.column;
   const sortOrder = sort.descending ? "desc" : "asc";
 
-  // Anything that changes which users are listed sends the pager back to page one.
-  const scope = JSON.stringify([fullNarrowing, sortBy, sortOrder, pageSize]);
+  // Anything that changes which users are listed sends the pager back to page one, and keeps it there:
+  // returning to an earlier scope starts on page one too, not on the page it was left at.
+  const scope = JSON.stringify([site, time, filters, timeZone, fullNarrowing, sortBy, sortOrder, pageSize]);
   const page = pageState.scope === scope ? pageState.page : 1;
+  if (pageState.scope !== scope) {
+    setPageState({ scope, page: 1 });
+  }
 
   const list = useGetUsers({
     ...fullNarrowing,
@@ -258,6 +265,14 @@ export function UsersTable({
   const users = list.data?.data ?? [];
   const total = isGrouped ? current?.totals?.users : list.data?.totalCount;
   const searchLimited = isGrouped ? current?.searchLimited : list.data?.searchLimited;
+  const pageCount = Math.max(Math.ceil((list.data?.totalCount ?? 0) / pageSize), 1);
+
+  // A refetch can shrink the list under the current page (a rolling window losing users): step back to the
+  // last page that has rows instead of showing an empty one. Only once this page's query has settled: a
+  // cached total from an earlier visit may be stale, and clamping on it would cancel the page's own fetch.
+  if (!isGrouped && list.data && !list.isPlaceholderData && !list.isFetching && page > pageCount) {
+    setPageState({ scope, page: pageCount });
+  }
 
   const summary =
     total === undefined || isLoading
@@ -466,7 +481,7 @@ export function UsersTable({
           <Pagination
             page={page}
             pageSize={pageSize}
-            pageCount={Math.max(Math.ceil((list.data?.totalCount ?? 0) / pageSize), 1)}
+            pageCount={pageCount}
             totalItems={list.data?.totalCount ?? 0}
             onPageChange={next => setPageState({ scope, page: next })}
             onPageSizeChange={setPageSize}

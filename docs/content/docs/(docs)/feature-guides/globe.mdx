@@ -3,7 +3,7 @@ title: Globe
 description: Visualize geographic traffic distribution
 ---
 
-The Globe tab shows where your visitors connect from on an interactive map.
+The Globe tab shows where your visitors connect from on an interactive map. On Rybbit Cloud, it needs a Standard plan or higher.
 
 ## View Modes
 
@@ -18,12 +18,13 @@ Same four views as 2D, plus:
 - Rotate by dragging
 - Zoom in and out
 - Traffic hotspots glow
+- Pick a map **Style**, such as Standard, Satellite, or Outdoors
 
-The 3D view requires a Mapbox API token. Self-hosted installations need `MAPBOX_TOKEN` in environment variables. Cloud includes this automatically.
+The 3D view requires a Mapbox API token. On a self-hosted installation, set `MAPBOX_TOKEN` in your `.env` and run `./restart.sh` (or `docker compose up -d`) so the backend picks it up. Rybbit Cloud includes a token.
 
 ## Time Controls
 
-Pick date ranges to see how geographic distribution changes over time.
+Pick date ranges to see how geographic distribution changes over time. In the **Timeline** view, drag the scrubber or press **Play** to watch sessions appear over the range, and click a session to see its details.
 
 ## Filtering
 

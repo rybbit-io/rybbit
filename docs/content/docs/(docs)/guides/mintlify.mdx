@@ -22,7 +22,7 @@ Mintlify includes every `.js` file in your docs content directory on every page,
 
 Create a JavaScript file in your content directory, next to `docs.json` and your `.mdx` pages:
 
-```javascript filename="rybbit.js"
+```javascript title="rybbit.js"
 (function () {
   var el = document.createElement("script");
   el.src = "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID";
@@ -35,8 +35,14 @@ Commit and deploy. Mintlify picks the file up automatically; there is nothing to
 
 To pass [script attributes](/docs/script#script-attributes) such as skip patterns, set them on the element before appending it:
 
-```javascript filename="rybbit.js"
-el.setAttribute("data-skip-patterns", JSON.stringify(["/internal/**"]));
+```javascript title="rybbit.js"
+(function () {
+  var el = document.createElement("script");
+  el.src = "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID";
+  el.defer = true;
+  el.setAttribute("data-skip-patterns", JSON.stringify(["/internal/**"]));
+  document.head.appendChild(el);
+})();
 ```
 
 <Callout type="info">

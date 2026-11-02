@@ -9,6 +9,7 @@ import { percentDelta } from "@/lib/delta";
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { AlertCircle, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
+import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
@@ -68,6 +69,7 @@ const Stat = ({
   flash: FlashInputs;
 }) => {
   const { selectedStat, setSelectedStat, site, bucket, time } = useStore();
+  const timeZone = useTimezone();
   const [isHovering, setIsHovering] = useState(false);
   const displayValue = decimals ? Number(value.toFixed(decimals)) : value;
 
@@ -83,9 +85,10 @@ const Stat = ({
       ?.filter(d => {
         // For past-minutes mode, ensure we only show data within the specified time range
         if (time.mode === "past-minutes") {
-          const timestamp = new Date(d.time);
-          const now = new Date();
-          const startTime = new Date(now.getTime() - time.pastMinutesStart * 60 * 1000);
+          // Bucket times are in the dashboard's timezone; the browser's would shift the window.
+          const timestamp = DateTime.fromSQL(d.time, { zone: timeZone });
+          const now = DateTime.now();
+          const startTime = now.minus({ minutes: time.pastMinutesStart });
           return timestamp >= startTime && timestamp <= now;
         }
         return true;

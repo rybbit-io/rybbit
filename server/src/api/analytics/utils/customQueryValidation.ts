@@ -134,16 +134,17 @@ const blockedFunctionPrefixes = [
 ] as const;
 
 const unsupportedSyntaxError =
-  "Quoted identifiers, # and // comments, and $$ strings are not allowed in custom analytics queries";
+  "Quoted identifiers, nested /* comments, # and // comments, $$ strings, and non-ASCII characters outside string literals are not allowed in custom analytics queries";
 
 // Rejects syntax the literal stripper below can't model. ClickHouse treats
-// double quotes and backticks as identifier quoting, `#` / `#!` / `//` as line
-// comments, and `$tag$…$tag$` as string literals. If any of these reached the
-// stripper it would disagree with ClickHouse about where a literal starts and
-// ends, and text it classified as "inside a string" would execute as SQL —
-// e.g. `WHERE 1=1 # '\nUNION ALL SELECT * FROM events -- '`. None of them are
-// needed for analytics SQL, so they're rejected outright outside a
-// single-quoted literal.
+// double quotes, backticks and “…” as identifier quoting, `#` / `#!` / `//` as
+// line comments, `$tag$…$tag$` and ‘…’ as string literals, nests `/* */`
+// comments, and skips Unicode whitespace the JS regexes below don't all match.
+// If any of these reached the stripper it would disagree with ClickHouse about
+// where a literal or comment starts and ends, and text it classified as
+// "inside a string" would execute as SQL. None of them are needed for
+// analytics SQL, so they're rejected outright outside a single-quoted literal
+// (non-ASCII text stays allowed inside literals and comments).
 export function hasUnsupportedSyntax(query: string) {
   let index = 0;
   let state: "normal" | "single" | "line-comment" | "block-comment" = "normal";
@@ -153,7 +154,14 @@ export function hasUnsupportedSyntax(query: string) {
     const next = query[index + 1];
 
     if (state === "normal") {
-      if (char === '"' || char === "`" || char === "#" || char === "$" || (char === "/" && next === "/")) {
+      if (
+        char === '"' ||
+        char === "`" ||
+        char === "#" ||
+        char === "$" ||
+        (char === "/" && next === "/") ||
+        char.charCodeAt(0) > 0x7f
+      ) {
         return true;
       }
       if (char === "'") {
@@ -178,6 +186,11 @@ export function hasUnsupportedSyntax(query: string) {
         state = "normal";
       }
     } else if (state === "block-comment") {
+      // ClickHouse nests block comments, so `/* /* */` is still open after the
+      // first `*/`. Mirror its lexer order: an opener is checked before a closer.
+      if (char === "/" && next === "*") {
+        return true;
+      }
       if (char === "*" && next === "/") {
         state = "normal";
         index++;
@@ -194,6 +207,7 @@ export function stripSqlLiteralsAndComments(query: string) {
   let result = "";
   let index = 0;
   let state: "normal" | "single" | "double" | "backtick" | "line-comment" | "block-comment" = "normal";
+  let commentDepth = 0;
 
   while (index < query.length) {
     const char = query[index];
@@ -215,6 +229,7 @@ export function stripSqlLiteralsAndComments(query: string) {
         index++;
       } else if (char === "/" && next === "*") {
         state = "block-comment";
+        commentDepth = 1;
         result += "  ";
         index++;
       } else {
@@ -256,8 +271,16 @@ export function stripSqlLiteralsAndComments(query: string) {
         result += " ";
       }
     } else if (state === "block-comment") {
-      if (char === "*" && next === "/") {
-        state = "normal";
+      // Block comments nest in ClickHouse; the comment ends at the matching */.
+      if (char === "/" && next === "*") {
+        commentDepth++;
+        result += "  ";
+        index++;
+      } else if (char === "*" && next === "/") {
+        commentDepth--;
+        if (commentDepth === 0) {
+          state = "normal";
+        }
         result += "  ";
         index++;
       } else {
@@ -315,12 +338,27 @@ function isIdentifierChar(char: string) {
   return /[A-Za-z0-9_.]/.test(char);
 }
 
+// ClickHouse joins `db . table` (whitespace, or a stripped comment, around the
+// dot) into one compound identifier. Read it the same way so the qualified
+// name is what gets checked, not just its first part — which could otherwise
+// match a declared CTE.
 function readIdentifier(query: string, start: number): [string, number] {
+  let identifier = "";
   let end = start;
-  while (end < query.length && isIdentifierChar(query[end])) {
-    end++;
+  for (;;) {
+    const partStart = end;
+    while (end < query.length && isIdentifierChar(query[end])) {
+      end++;
+    }
+    identifier += query.slice(partStart, end);
+    const dot = skipWhitespace(query, end);
+    const next = skipWhitespace(query, dot + 1);
+    if (query[dot] !== "." || next >= query.length || !isIdentifierStart(query[next])) {
+      return [identifier, end];
+    }
+    identifier += ".";
+    end = next;
   }
-  return [query.slice(start, end), end];
 }
 
 function skipWhitespace(query: string, index: number): number {
@@ -478,6 +516,14 @@ export function validateScopedQuery(query: string): string | null {
 
   if (/\bWITH\s+scoped_events\s+AS\b/i.test(compactQuery) || /\bAS\s+scoped_events\b/i.test(compactQuery)) {
     return "scoped_events is reserved and cannot be redefined";
+  }
+
+  // getCteNames also matches `, name AS (` outside a WITH clause (e.g. a second
+  // named WINDOW), so a name it reports may not be a CTE ClickHouse knows about.
+  // That's harmless for made-up names, but `events` is the real table: treating
+  // it as a CTE would let `FROM events` through, so it can never be one.
+  if (cteNames.has("events")) {
+    return "events is reserved and cannot be used as a CTE name";
   }
 
   // Every data-source reference must be scoped_events or a declared CTE. collectTableReferences

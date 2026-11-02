@@ -9,6 +9,7 @@ import { useGetSiteUsage } from "@/api/admin/hooks/useSites";
 import { SiteEventCountPoint } from "@/api/analytics/endpoints";
 import { useGetSiteEventCountRange } from "@/api/analytics/hooks/useGetSiteEventCountRange";
 import { EventUsageChart } from "@/components/EventUsageChart";
+import { getPeriodDates, PERIODS, PeriodValue } from "@/components/UsageChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -17,23 +18,6 @@ import { SettingsSection, SettingsSections } from "./SettingsSection";
 
 interface UsageTabProps {
   siteId: number;
-}
-
-const PERIODS = [
-  { value: "7", label: "7D" },
-  { value: "14", label: "14D" },
-  { value: "30", label: "30D" },
-  { value: "60", label: "60D" },
-  { value: "all", label: "All" },
-] as const;
-
-type PeriodValue = (typeof PERIODS)[number]["value"];
-
-function getPeriodDates(period: PeriodValue): { startDate?: string; endDate?: string } {
-  if (period === "all") return {};
-  const end = DateTime.now().toFormat("yyyy-MM-dd");
-  const start = DateTime.now().minus({ days: Number(period) }).toFormat("yyyy-MM-dd");
-  return { startDate: start, endDate: end };
 }
 
 const EMPTY_COUNTS = {

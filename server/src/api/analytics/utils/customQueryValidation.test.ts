@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { sanitizeClickhouseError, validateScopedQuery } from "./customQueryValidation.js";
 
 const SCOPED_ONLY_ERROR = "Queries can only read from scoped_events";
-const QUOTED_IDENTIFIER_ERROR = "Quoted identifiers, # and // comments, and $$ strings are not allowed in custom analytics queries";
+const QUOTED_IDENTIFIER_ERROR = "Quoted identifiers, nested /* comments, # and // comments, $$ strings, and non-ASCII characters outside string literals are not allowed in custom analytics queries";
 
 describe("validateScopedQuery — table reference scoping", () => {
   it("allows reading from scoped_events", () => {
@@ -118,7 +118,7 @@ describe("validateScopedQuery — table reference scoping", () => {
 // Lexer-mismatch bypasses: syntax ClickHouse understands but the literal
 // stripper doesn't. Each of these read another site's rows before the fix.
 describe("validateScopedQuery lexer-mismatch bypasses", () => {
-  const UNSUPPORTED = "Quoted identifiers, # and // comments, and $$ strings are not allowed in custom analytics queries";
+  const UNSUPPORTED = "Quoted identifiers, nested /* comments, # and // comments, $$ strings, and non-ASCII characters outside string literals are not allowed in custom analytics queries";
 
   it("rejects # line comments used to hide a UNION", () => {
     expect(
@@ -146,6 +146,42 @@ describe("validateScopedQuery lexer-mismatch bypasses", () => {
     expect(validateScopedQuery("SELECT $x$'$x$ AS a FROM scoped_events UNION ALL SELECT * FROM events -- '")).toBe(
       UNSUPPORTED
     );
+  });
+
+  it("rejects nested block comments", () => {
+    expect(
+      validateScopedQuery(
+        "SELECT site_id, pathname FROM scoped_events /* /* */ ' */ UNION ALL SELECT site_id, pathname FROM events -- '"
+      )
+    ).toBe(UNSUPPORTED);
+  });
+
+  it("rejects Unicode quotes and whitespace outside literals", () => {
+    expect(validateScopedQuery("SELECT * FROM scoped_events WHERE pathname = \u2018x\u2019")).toBe(UNSUPPORTED);
+    expect(validateScopedQuery("SELECT \u201cpathname\u201d FROM scoped_events")).toBe(UNSUPPORTED);
+    expect(validateScopedQuery("SELECT pathname FROM\u180escoped_events")).toBe(UNSUPPORTED);
+  });
+
+  it("still allows non-ASCII text inside literals and comments", () => {
+    expect(validateScopedQuery("SELECT count() FROM scoped_events WHERE pathname = '/\u00fcber' -- caf\u00e9")).toBeNull();
+    expect(validateScopedQuery("SELECT count() /* a */ /* b */ FROM scoped_events")).toBeNull();
+  });
+
+  it("checks the whole qualified table name, not a first part that matches a CTE", () => {
+    expect(validateScopedQuery("WITH db AS (SELECT 1) SELECT * FROM db . tbl, scoped_events")).toBe(
+      "Queries can only read from scoped_events"
+    );
+  });
+
+  it("never treats events as a CTE name, even when a WINDOW name looks like one", () => {
+    expect(validateScopedQuery("WITH events AS (SELECT * FROM scoped_events) SELECT * FROM events")).toBe(
+      "events is reserved and cannot be used as a CTE name"
+    );
+    expect(
+      validateScopedQuery(
+        "SELECT count() OVER w FROM scoped_events WINDOW w AS (ORDER BY site_id), events AS (ORDER BY site_id)"
+      )
+    ).toBe("events is reserved and cannot be used as a CTE name");
   });
 
   it("still allows # and $ inside single-quoted literals", () => {

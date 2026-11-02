@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   deleteError: null as Error | null,
   updates: [] as Record<string, unknown>[],
   deletes: 0,
+  isCloud: false,
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -61,6 +62,14 @@ vi.mock("../../api/stripe/getSubscription.js", () => ({
   getSubscriptionInner: vi.fn(),
 }));
 
+vi.mock("../../lib/const.js", async importOriginal => ({
+  ...(await importOriginal<typeof import("../../lib/const.js")>()),
+  get IS_CLOUD() {
+    return state.isCloud;
+  },
+}));
+
+import { getSubscriptionInner } from "../../api/stripe/getSubscription.js";
 import { siteConfigurationLifecycle } from "./siteConfigurationLifecycle.js";
 
 function makeSite() {
@@ -80,6 +89,7 @@ beforeEach(() => {
   state.deleteError = null;
   state.updates.length = 0;
   state.deletes = 0;
+  state.isCloud = false;
   mocks.clickhouseCommand.mockResolvedValue(undefined);
   mocks.getConfig.mockResolvedValue({ siteId: 1, id: "abcdef123456", name: "Renamed" });
 });
@@ -110,6 +120,48 @@ describe("siteConfigurationLifecycle", () => {
 
     expect(mocks.invalidate).not.toHaveBeenCalled();
     expect(mocks.getConfig).not.toHaveBeenCalled();
+  });
+
+  describe("Standard feature entitlement on cloud", () => {
+    beforeEach(() => {
+      state.isCloud = true;
+    });
+
+    it("refuses to turn on a Standard feature without an active subscription", async () => {
+      vi.mocked(getSubscriptionInner).mockResolvedValue({ status: "free", includesReplay: false } as any);
+
+      await expect(siteConfigurationLifecycle.update(1, { webVitals: true })).rejects.toMatchObject({
+        code: "standard_features_not_entitled",
+        statusCode: 403,
+      });
+      expect(state.updates).toEqual([]);
+    });
+
+    it.each(["active", "trialing"])("turns a Standard feature on for a %s subscription", async status => {
+      vi.mocked(getSubscriptionInner).mockResolvedValue({ status, includesReplay: false } as any);
+
+      await siteConfigurationLifecycle.update(1, { trackErrors: true });
+
+      expect(state.updates).toEqual([expect.objectContaining({ trackErrors: true })]);
+    });
+
+    it("always lets a Standard feature be turned off", async () => {
+      state.site = { ...makeSite(), trackFormInteractions: true };
+
+      await siteConfigurationLifecycle.update(1, { trackFormInteractions: false });
+
+      expect(getSubscriptionInner).not.toHaveBeenCalled();
+      expect(state.updates).toEqual([expect.objectContaining({ trackFormInteractions: false })]);
+    });
+
+    it("keeps accepting a Standard feature the site already has, e.g. a full-form save", async () => {
+      state.site = { ...makeSite(), webVitals: true };
+
+      await siteConfigurationLifecycle.update(1, { webVitals: true, name: "Renamed" });
+
+      expect(getSubscriptionInner).not.toHaveBeenCalled();
+      expect(state.updates).toEqual([expect.objectContaining({ webVitals: true, name: "Renamed" })]);
+    });
   });
 
   it("owns private-link persistence and invalidation", async () => {

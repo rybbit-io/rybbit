@@ -18,10 +18,15 @@ export const PERIODS = [
 
 export type PeriodValue = (typeof PERIODS)[number]["value"];
 
-export function getPeriodDates(period: PeriodValue): { startDate?: string; endDate?: string } {
+/**
+ * The last `period` calendar days, today included, as dates in `timeZone`: the
+ * zone the counts are requested in, so the range's days are the chart's days.
+ */
+export function getPeriodDates(period: PeriodValue, timeZone = "UTC"): { startDate?: string; endDate?: string } {
   if (period === "all") return {};
-  const end = DateTime.now().toFormat("yyyy-MM-dd");
-  const start = DateTime.now().minus({ days: Number(period) }).toFormat("yyyy-MM-dd");
+  const today = DateTime.now().setZone(timeZone);
+  const end = today.toFormat("yyyy-MM-dd");
+  const start = today.minus({ days: Number(period) - 1 }).toFormat("yyyy-MM-dd");
   return { startDate: start, endDate: end };
 }
 
@@ -34,7 +39,7 @@ export function UsageChart({ organizationId, timeZone = "UTC" }: UsageChartProps
   const t = useExtracted();
   const [period, setPeriod] = useState<PeriodValue>("30");
 
-  const { startDate, endDate } = getPeriodDates(period);
+  const { startDate, endDate } = getPeriodDates(period, timeZone);
 
   const { data, isLoading, error } = useGetOrgEventCount({
     organizationId,

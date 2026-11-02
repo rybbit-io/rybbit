@@ -44,12 +44,12 @@ Returns users matching a specific trait key and value, with location and session
       required: true,
     },
     limit: {
-      description: 'Maximum number of users to return',
+      description: 'Maximum number of users to return. Values above 1,000 are capped at 1,000; a non-integer or a value below 1 returns 400.',
       type: 'number',
       default: '50',
     },
     offset: {
-      description: 'Number of users to skip',
+      description: 'Number of users to skip. Must be a non-negative integer.',
       type: 'number',
       default: '0',
     },

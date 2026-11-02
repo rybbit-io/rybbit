@@ -3,7 +3,7 @@
 This upgrade moves the client, server, API key and SSO packages from 1.6.25 to
 1.7.3. MCP OAuth now uses `@better-auth/mcp`, `@better-auth/oauth-provider` and
 the JWT plugin, with an explicit consent page at `/auth/consent`.
-`@better-auth/infra` keeps its separate 0.1.x version. The MCP SDK and stateless
+The MCP SDK and stateless
 transport remain on their existing versions; dynamic client registration stays
 enabled.
 

@@ -194,6 +194,26 @@ describe("pageview synthesis", () => {
     expect(events).toHaveLength(4);
   });
 
+  it("gives the day's visit_duration to the non-bounced sessions, without truncating late ones", async () => {
+    const { events } = await runImport({
+      "pages.csv": "date,page,hostname,visitors,pageviews,visits\n2024-03-01,/,example.com,3,5,3\n",
+      "visitors.csv": "date,visitors,pageviews,bounces,visits,visit_duration\n2024-03-01,3,5,1,3,72000\n",
+    });
+
+    const bySession = new Map<string, string[]>();
+    for (const e of events) bySession.set(e.session_id, [...(bySession.get(e.session_id) ?? []), e.timestamp]);
+    const seconds = (ts: string) => {
+      const [h, m, s] = ts.slice(11).split(":").map(Number);
+      return h * 3600 + m * 60 + s;
+    };
+    const durations = [...bySession.values()].map(ts => seconds(ts.at(-1)!) - seconds(ts[0])).sort((a, b) => a - b);
+
+    // 1 bounce (0s) and 2 visits of 10 hours each. The session that would start
+    // at 16:00 starts at 13:59:59 instead, so it still ends before midnight.
+    expect(durations).toEqual([0, 36000, 36000]);
+    expect(durations.reduce((a, b) => a + b, 0)).toBe(72000);
+  });
+
   it("is deterministic — the same zip twice yields byte-identical events", async () => {
     const files = {
       "pages.csv": BASIC_PAGES,
@@ -419,7 +439,7 @@ describe("referrers and utm parameters", () => {
 });
 
 describe("custom events", () => {
-  it("attaches custom events to the day's sessions, spread across the day", async () => {
+  it("attaches custom events to the day's sessions at each session's last pageview", async () => {
     const { events } = await runImport({
       "pages.csv": BASIC_PAGES,
       "custom_events.csv": "date,name,visitors,events,path,link_url\n2024-03-01,Signup,2,2,/signup,\n",
@@ -427,16 +447,32 @@ describe("custom events", () => {
 
     const custom = events.filter(e => e.type === "custom_event");
     expect(custom).toHaveLength(2);
+    // Session 1 has pageviews at 00:00:00 and 00:00:30; session 2 has one at
+    // 08:00:00. Neither event stretches its session.
     expect(
       custom.map(e => ({ timestamp: e.timestamp, event_name: e.event_name, pathname: e.pathname, props: e.props }))
     ).toEqual([
-      { timestamp: "2024-03-01 00:00:00", event_name: "Signup", pathname: "/signup", props: "{}" },
-      { timestamp: "2024-03-01 12:00:00", event_name: "Signup", pathname: "/signup", props: "{}" },
+      { timestamp: "2024-03-01 00:00:30", event_name: "Signup", pathname: "/signup", props: "{}" },
+      { timestamp: "2024-03-01 08:00:00", event_name: "Signup", pathname: "/signup", props: "{}" },
     ]);
+    expect(custom[0].session_id).toBe(events[0].session_id);
+    expect(custom[1].session_id).toBe(events[1].session_id);
 
     // They reuse pageview sessions, so the day's user ids do not multiply.
     const pageviewSessions = new Set(events.filter(e => e.type === "pageview").map(e => e.session_id));
     expect(custom.every(e => pageviewSessions.has(e.session_id))).toBe(true);
+  });
+
+  it("skips Plausible's internal engagement events", async () => {
+    const { events } = await runImport({
+      "pages.csv": BASIC_PAGES,
+      "custom_events.csv":
+        "date,name,visitors,events,path,link_url\n" +
+        "2024-03-01,engagement,3,40,,\n" +
+        "2024-03-01,Signup,1,1,/signup,\n",
+    });
+
+    expect(events.filter(e => e.type === "custom_event").map(e => e.event_name)).toEqual(["Signup"]);
   });
 
   it("carries link_url through as a url prop", async () => {

@@ -7,7 +7,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 
-Rybbit doesn't push a websocket stream, but the events endpoint is built for polling: pass a `since_timestamp` and you get only the events that happened after it. This guide builds a self-advancing feed loop you can wire into a dashboard, a terminal ticker, or an alerting rule.
+Rybbit doesn't push a websocket stream, but the events endpoint is built for polling: pass a `since_cursor` and you get the events that arrived after it, plus the cursor to send next time. This guide builds a self-advancing feed loop you can wire into a dashboard, a terminal ticker, or an alerting rule.
 
 **Endpoints used:**
 
@@ -16,22 +16,26 @@ Rybbit doesn't push a websocket stream, but the events endpoint is built for pol
 
 ## How incremental polling works
 
-The events endpoint returns the newest events first. To stream without duplicates, remember the timestamp of the most recent event you've seen and send it as `since_timestamp` on the next request — the API returns only events newer than that, up to 500 per call.
+Every event in the response has an `event_cursor`, its exact place in the event log. Cursors are what you page and poll with:
 
 <Steps>
 <Step>
-**Fetch the initial batch** to establish a starting watermark (the newest timestamp).
+**Fetch the initial batch** with `page_size`. Polling starts 5 seconds before the response's `cursor.newestCursor`, so the first poll gets the same overlap as the ones after it (`cursor.oldestCursor` is for scrolling back with `before_cursor`). A cursor is `<epoch milliseconds>_<16 hex digits>`, so subtract 5000 from the first part and use sixteen zeros for the second.
 </Step>
 <Step>
-**On an interval, request events `since_timestamp`** = your watermark.
+**On an interval, request events with `since_cursor`** set to the cursor you are holding. The response carries `cursor.nextCursor` and `cursor.hasMore`.
 </Step>
 <Step>
-**Process the new events** (print, render, alert) and advance the watermark to the newest one returned.
+**Process the new events**, skipping any whose `event_cursor` you have already seen, and keep `nextCursor` for the next poll. If `hasMore` is `true`, poll again straight away.
 </Step>
 </Steps>
 
-<Callout type="info">
-`since_timestamp` returns up to **500** events per call. If you expect more than 500 events between polls (a very high-traffic site with a long interval), poll more frequently so each batch stays under the cap.
+A `since_cursor` poll reads up to **500** events, starting with the oldest after the cursor, so a backlog bigger than that is read over several polls instead of being skipped (`hasMore` tells you more are waiting). The events in `data` are still sorted newest first.
+
+Events are written in small batches, so one can land slightly after a later one. To avoid missing those, a poll never starts later than 5 seconds before the request, and `nextCursor` points at that overlap. The next poll can therefore return events you already have: drop them by `event_cursor`.
+
+<Callout type="warn">
+`since_timestamp` and `before_timestamp` still work but are legacy whole-second bounds. They skip events that share the boundary second, and `since_timestamp` returns the newest 500 events after it, so a larger backlog loses its oldest events. Use cursors for anything that must not miss events.
 </Callout>
 
 ## Full script
@@ -67,20 +71,42 @@ function describe(e) {
   return `• ${e.type} — ${where}`;
 }
 
-let watermark = null; // ISO timestamp of the newest event we've shown
+let cursor = null;     // where the next poll starts
+const seen = new Set(); // event_cursor values already shown (polls overlap by a few seconds)
+const SEEN_MAX = 5000;
+
+// Timestamps are UTC, formatted "YYYY-MM-DD HH:MM:SS" with no zone marker
+const toDate = (ts) => new Date(ts.replace(' ', 'T') + 'Z');
 
 async function poll() {
   try {
-    const params = watermark ? { since_timestamp: watermark } : { page_size: 20 };
-    const [{ data: events }, count] = await Promise.all([get('/events', params), liveCount()]);
+    const polling = cursor !== null; // false for the initial load
+    const params = polling ? { since_cursor: cursor } : { page_size: 20 };
+    const [res, count] = await Promise.all([get('/events', params), liveCount()]);
 
     // Events come back newest-first; show oldest-first so the feed reads top-to-bottom
-    for (const e of [...events].reverse()) {
-      console.log(`[${new Date(e.timestamp).toLocaleTimeString()}] ${describe(e)}`);
+    for (const e of [...res.data].reverse()) {
+      if (seen.has(e.event_cursor)) continue;
+      seen.add(e.event_cursor);
+      console.log(`[${toDate(e.timestamp).toLocaleTimeString()}] ${describe(e)}`);
     }
-    if (events.length) watermark = events[0].timestamp; // newest event becomes the new watermark
+    // Keep memory bounded by forgetting the oldest cursors; the recent ones cover the overlap
+    for (const old of seen) {
+      if (seen.size <= SEEN_MAX) break;
+      seen.delete(old);
+    }
+
+    if (polling) {
+      cursor = res.cursor.nextCursor;
+    } else if (res.cursor.newestCursor) {
+      // Initial load: start 5 seconds before the newest event, the same overlap
+      // later polls get (newestCursor is null on a site with no events yet)
+      const [ms] = res.cursor.newestCursor.split('_');
+      cursor = `${Number(ms) - 5000}_0000000000000000`;
+    }
 
     process.stdout.write(`\n🟢 ${count} visitors online\n`);
+    if (polling && res.cursor.hasMore) return poll(); // backlog: read the next 500 now
   } catch (err) {
     console.error('poll error:', err.message);
   }
@@ -94,7 +120,7 @@ setInterval(poll, POLL_MS);
 <Tab value="Python">
 ```python title="live_feed.py"
 import os, time
-from datetime import datetime
+from datetime import datetime, timezone
 import requests
 
 API = "https://app.rybbit.io"
@@ -127,25 +153,42 @@ def describe(e):
     return f'• {e["type"]} — {where}'
 
 
-watermark = None  # ISO timestamp of the newest event we've shown
+cursor = None  # where the next poll starts
+seen = {}     # event_cursor values already shown, oldest first (polls overlap by a few seconds)
+SEEN_MAX = 5000
 
 print("Starting live feed… (Ctrl+C to stop)")
 while True:
+    has_more = False
     try:
-        params = {"since_timestamp": watermark} if watermark else {"page_size": 20}
-        events = get("/events", **params)["data"]
+        res = get("/events", **({"since_cursor": cursor} if cursor else {"page_size": 20}))
 
         # Events come back newest-first; show oldest-first so the feed reads top-to-bottom
-        for e in reversed(events):
-            ts = datetime.fromisoformat(e["timestamp"].replace("Z", "+00:00")).strftime("%H:%M:%S")
-            print(f"[{ts}] {describe(e)}")
-        if events:
-            watermark = events[0]["timestamp"]  # newest event becomes the new watermark
+        for e in reversed(res["data"]):
+            if e["event_cursor"] in seen:
+                continue
+            seen[e["event_cursor"]] = True
+            # Timestamps are UTC, formatted "YYYY-MM-DD HH:MM:SS" with no zone marker
+            ts = datetime.strptime(e["timestamp"][:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            print(f"[{ts.astimezone().strftime('%H:%M:%S')}] {describe(e)}")
+        # Keep memory bounded by forgetting the oldest cursors; the recent ones cover the overlap
+        while len(seen) > SEEN_MAX:
+            del seen[next(iter(seen))]
+
+        if cursor:
+            cursor = res["cursor"]["nextCursor"]
+            has_more = res["cursor"]["hasMore"]
+        elif res["cursor"]["newestCursor"]:
+            # Initial load: start 5 seconds before the newest event, the same overlap
+            # later polls get (newestCursor is None on a site with no events yet)
+            ms = int(res["cursor"]["newestCursor"].split("_")[0])
+            cursor = f"{ms - 5000}_0000000000000000"
 
         print(f"\n🟢 {live_count()} visitors online\n")
     except Exception as err:
         print(f"poll error: {err}")
-    time.sleep(POLL_SECONDS)
+    if not has_more:  # with a backlog, read the next 500 straight away
+        time.sleep(POLL_SECONDS)
 ```
 </Tab>
 </Tabs>
@@ -168,7 +211,9 @@ Because each poll hands you the raw events, you can act on them instead of just 
 <Tabs items={['JavaScript']}>
 <Tab value="JavaScript">
 ```javascript title="React to specific events"
-for (const e of events) {
+// Inside poll(), before the loop that prints new events and adds them to `seen`:
+for (const e of res.data) {
+  if (seen.has(e.event_cursor)) continue; // already handled in an earlier poll
   if (e.type === 'pageview' && e.pathname === '/enterprise') {
     await fetch(process.env.SLACK_WEBHOOK, {
       method: 'POST',
@@ -189,5 +234,4 @@ for (const e of events) {
 
 ## Next steps
 
-- [Events API reference](/docs/api/events/list) — full event object fields, plus `before_timestamp` for scrolling backwards through history.
-- [Export Raw Events to Your Warehouse](/docs/api/export-events) — the same `since_timestamp` mechanism, used for durable incremental syncs instead of a live view.
+- [Events API reference](/docs/api/events/list) — full event object fields, plus `before_cursor` for scrolling backwards through history.

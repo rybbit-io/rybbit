@@ -61,7 +61,7 @@ HubSpot forms submit inside the page without a full reload, so track them with a
 <script>
   window.addEventListener("message", function (event) {
     if (event.data.type === "hsFormCallback" && event.data.eventName === "onFormSubmitted") {
-      window.rybbit.event("form_submitted", { formId: event.data.id });
+      window.rybbit?.event("form_submitted", { formId: event.data.id });
     }
   });
 </script>

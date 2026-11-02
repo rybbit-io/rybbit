@@ -190,6 +190,20 @@ function validateMobileFeatures(type: SiteType, input: Pick<CreateSiteInput, "se
   }
 }
 
+function assertStandardFeaturesEntitled(
+  subscription: { status: string } | null,
+  requestedFeatures: ReadonlyArray<(typeof STANDARD_FEATURES)[number]>
+): void {
+  const hasActiveSubscription = subscription?.status === "active" || subscription?.status === "trialing";
+  if (requestedFeatures.length > 0 && !hasActiveSubscription) {
+    throw new SiteLifecycleError(
+      "standard_features_not_entitled",
+      403,
+      `The following features require an active subscription: ${requestedFeatures.join(", ")}`
+    );
+  }
+}
+
 function validateSiteId(siteId: number): void {
   if (!Number.isInteger(siteId) || siteId <= 0) {
     throw new SiteLifecycleError("invalid_site_id", 400, "Invalid site ID: must be a positive integer");
@@ -237,15 +251,10 @@ class SiteConfigurationLifecycle {
           throw new SiteLifecycleError("replay_not_entitled", 403, "Session replay requires a Pro subscription");
         }
 
-        const requestedStandardFeatures = STANDARD_FEATURES.filter(feature => input[feature]);
-        const hasActiveSubscription = subscription.status === "active" || subscription.status === "trialing";
-        if (requestedStandardFeatures.length > 0 && !hasActiveSubscription) {
-          throw new SiteLifecycleError(
-            "standard_features_not_entitled",
-            403,
-            `The following features require an active subscription: ${requestedStandardFeatures.join(", ")}`
-          );
-        }
+        assertStandardFeaturesEntitled(
+          subscription,
+          STANDARD_FEATURES.filter(feature => input[feature])
+        );
 
         const siteLimit = subscription.siteLimit ?? null;
         if (siteLimit !== null) {
@@ -450,11 +459,16 @@ class SiteConfigurationLifecycle {
     }
     validateMobileFeatures(nextSiteType, input);
 
-    if (IS_CLOUD && input.sessionReplay === true) {
+    // Same entitlements as creation. Standard features are checked only when this update turns
+    // one on, so turning them off, or saving other settings on a site that already has them
+    // (from before they needed a plan), keeps working.
+    const enabledStandardFeatures = STANDARD_FEATURES.filter(feature => input[feature] === true && !site[feature]);
+    if (IS_CLOUD && (input.sessionReplay === true || enabledStandardFeatures.length > 0)) {
       const subscription = site.organizationId ? await getSubscriptionInner(site.organizationId) : null;
-      if (!subscription?.includesReplay) {
+      if (input.sessionReplay === true && !subscription?.includesReplay) {
         throw new SiteLifecycleError("replay_not_entitled", 403, "Session replay requires a Pro plan");
       }
+      assertStandardFeaturesEntitled(subscription, enabledStandardFeatures);
     }
 
     if (input.excludedIPs) {

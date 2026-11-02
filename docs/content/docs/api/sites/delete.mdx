@@ -1,6 +1,6 @@
 ---
 title: Delete Site
-description: Permanently deletes a site and all its associated data. This action cannot be undone. Requires admin or owner role.
+description: Permanently deletes a site, its settings, saved reports, and session replays. Collected events and sessions are not deleted. Requires the admin or owner role.
 full: true
 method: DELETE
 ---
@@ -15,7 +15,17 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 DELETE /api/sites/:siteId
 ```
 
-Permanently deletes a site and all its associated data. This action cannot be undone. Requires admin or owner role.
+Permanently deletes a site. This cannot be undone. Requires the admin or owner role (the `sites:delete` permission).
+
+What is deleted:
+
+- The site and its settings, including private link keys and exclusion lists.
+- Everything stored against it: goals, funnels, segments, annotations, dashboards, feature flags, experiments, the Search Console connection, member and team site access, pending transfers, import history, and identified-user profiles and aliases.
+- Session replay rows stored in ClickHouse. On Rybbit Cloud, replay event data kept in R2 object storage is not deleted.
+
+Events and sessions already collected are not deleted from ClickHouse.
+
+Returns `403` for a site that doesn't exist or that you can't access; `404` for a malformed ID or an unknown text site identifier.
 
 ### Path Parameters
 

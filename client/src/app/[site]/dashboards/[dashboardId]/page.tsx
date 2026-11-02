@@ -7,7 +7,7 @@ import type { DashboardCard } from "@rybbit/shared";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
+import { Responsive, WidthProvider, type Layout, type Layouts } from "react-grid-layout";
 import { useGetDashboard, useUpdateDashboard } from "../../../../api/analytics/hooks/useDashboards";
 import { BucketSelection } from "../../../../components/BucketSelection";
 import { DateSelector } from "../../../../components/DateSelector/DateSelector";
@@ -35,8 +35,11 @@ import type { DashboardExample } from "../examples";
 import { cloneCard, createCard, createCardFromExample, MAX_CARDS_PER_DASHBOARD } from "../utils";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
-const GRID_COLS = { lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 };
+const GRID_COLS: Record<string, number> = { lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 };
 const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
+// Stored card positions are in this many columns; narrower breakpoints show a
+// copy squeezed into fewer columns.
+const CANONICAL_COLS = 12;
 
 export default function DashboardDetailPage() {
   useSetPageTitle("Dashboard");
@@ -83,8 +86,13 @@ export default function DashboardDetailPage() {
 
   const editingCard = workingCards.find(card => card.id === editingCardId) ?? null;
 
-  const handleLayoutChange = (next: Layout[]) => {
+  const handleLayoutChange = (next: Layout[], allLayouts: Layouts) => {
     if (!editMode) return;
+    // The grid reports the active breakpoint's layout, keyed under that
+    // breakpoint in allLayouts. Below 12 columns it is the stored layout
+    // clamped to fit, so writing it back would squeeze the desktop layout.
+    const breakpoint = Object.keys(allLayouts).find(key => allLayouts[key] === next);
+    if (!breakpoint || GRID_COLS[breakpoint] !== CANONICAL_COLS) return;
     let changed = false;
     const updated = workingCards.map(card => {
       const item = next.find(entry => entry.i === card.id);

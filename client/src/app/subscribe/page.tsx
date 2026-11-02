@@ -3,7 +3,7 @@
 import { authClient } from "@/lib/auth";
 import { useExtracted } from "next-intl";
 import { useRouter } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { StandardPage } from "../../components/StandardPage";
 import { UsageChart } from "../../components/UsageChart";
 import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
@@ -19,13 +19,24 @@ function SubscribeContent() {
 
   const [siteId, setSiteId] = useQueryState("siteId");
 
-  // Redirect if already subscribed
-  // if (subscription?.status === "active" || subscription?.status === "trialing") {
-  //   router.push("/settings/billing");
-  // }
+  // An organization with a live Stripe subscription changes plan in Billing
+  // (PlanDialog, which updates that subscription). A checkout from here would
+  // start a second subscription, billed alongside the first.
+  const hasStripeSubscription =
+    !!subscription?.id && (subscription.status === "active" || subscription.status === "trialing");
+
+  useEffect(() => {
+    if (hasStripeSubscription) {
+      router.replace("/settings/billing");
+    }
+  }, [hasStripeSubscription, router]);
 
   // Get the active organization ID
   const organizationId = activeOrg?.id;
+
+  if (hasStripeSubscription) {
+    return null;
+  }
 
   if (siteId) {
     return (

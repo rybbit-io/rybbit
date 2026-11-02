@@ -36,7 +36,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     dimension: {
-      description: 'Dimension to break down by',
+      description: 'Dimension to break down by. There is no default: a missing or unknown value fails with 500.',
       type: 'string',
       typeDescription: '"pathname" | "country" | "device_type" | "browser" | "operating_system" | "region"',
       required: true,
@@ -52,7 +52,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       default: 100,
     },
     sort_by: {
-      description: 'Field to sort by',
+      description: 'Field to sort by: the dimension, event_count, or any <metric>_avg / <metric>_p50 / _p75 / _p90 / _p99 field. Any other value silently falls back to event_count. Nulls sort last.',
       type: 'string',
       default: 'event_count',
     },
@@ -71,14 +71,16 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
   type={{
     data: {
       description: 'Paginated response object',
-      type: 'PaginatedResponse',
+      type: '{ data: DimensionPerformance[], totalCount: number }',
     },
   }}
 />
 
+`totalCount` is the number of distinct dimension values. Rows with an empty dimension value are left out.
+
 #### DimensionPerformance Object
 
-Each object includes the dimension value plus all percentiles:
+Each object has the dimension value, `event_count`, and the fields below for each metric (`lcp`, `cls`, `inp`, `fcp`, `ttfb`); LCP is shown. LCP, INP, FCP and TTFB are in milliseconds; CLS is unitless. Averages and percentiles are `null` when no load for that value reported the metric.
 
 <TypeTable
   type={{
@@ -92,22 +94,34 @@ Each object includes the dimension value plus all percentiles:
     },
     lcp_avg: {
       description: 'Average LCP',
-      type: 'number',
+      type: 'number | null',
     },
     lcp_p50: {
       description: 'LCP 50th percentile',
-      type: 'number',
+      type: 'number | null',
     },
     lcp_p75: {
       description: 'LCP 75th percentile',
-      type: 'number',
+      type: 'number | null',
     },
     lcp_p90: {
       description: 'LCP 90th percentile',
-      type: 'number',
+      type: 'number | null',
     },
     lcp_p99: {
       description: 'LCP 99th percentile',
+      type: 'number | null',
+    },
+    lcp_count: {
+      description: 'Page loads that reported LCP',
+      type: 'number',
+    },
+    lcp_good: {
+      description: 'Page loads with a good LCP (at most 2500 ms; CLS 0.1, INP 200 ms, FCP 1800 ms, TTFB 800 ms)',
+      type: 'number',
+    },
+    lcp_poor: {
+      description: 'Page loads with a poor LCP (over 4000 ms; CLS 0.25, INP 500 ms, FCP 3000 ms, TTFB 1800 ms)',
       type: 'number',
     },
   }}
@@ -245,6 +259,9 @@ var data = await response.Content.ReadAsStringAsync();
         "lcp_p75": 3200,
         "lcp_p90": 4100,
         "lcp_p99": 6500,
+        "lcp_count": 12380,
+        "lcp_good": 6900,
+        "lcp_poor": 2150,
         "cls_avg": 0.08,
         "cls_p50": 0.05,
         "cls_p75": 0.12,

@@ -100,7 +100,10 @@ const featureFlagVariantSchema = z.object({
     .regex(
       /^[A-Za-z][A-Za-z0-9_.:-]*$/,
       "Variant key must start with a letter and contain only letters, numbers, _, ., :, or -"
-    ),
+    )
+    // The tracker records a flag that is off for a visitor as "false" (and "true" for on), so a
+    // variant with either key could not be told apart from those in experiment results.
+    .refine(key => key !== "true" && key !== "false", 'Variant key cannot be "true" or "false"'),
   name: z.string().trim().max(120).optional(),
   rolloutPercentage: z.number().int().min(0).max(100),
   payload: payloadValueSchema.optional(),
@@ -142,11 +145,11 @@ const featureFlagUpdateBaseSchema = z.object({
 
 export const featureFlagBodySchema = featureFlagBaseSchema.superRefine(validateFeatureFlagShape);
 
-export const featureFlagUpdateSchema = featureFlagUpdateBaseSchema
-  .refine(data => Object.keys(data).length > 0, {
-    message: "At least one field must be provided",
-  })
-  .superRefine(validateFeatureFlagShape);
+// Shape checks need the whole flag (a patch may omit flagType or variants), so updates
+// run them on the stored flag with the patch applied: validateFeatureFlagUpdate.
+export const featureFlagUpdateSchema = featureFlagUpdateBaseSchema.refine(data => Object.keys(data).length > 0, {
+  message: "At least one field must be provided",
+});
 
 export const evaluateFeatureFlagsSchema = z.object({
   anonymousId: z.string().trim().min(1).max(128),
@@ -165,10 +168,31 @@ export type FeatureFlagBody = z.infer<typeof featureFlagBodySchema>;
 export type FeatureFlagUpdateBody = z.infer<typeof featureFlagUpdateSchema>;
 export type EvaluateFeatureFlagsBody = z.infer<typeof evaluateFeatureFlagsSchema>;
 
-function validateFeatureFlagShape(
-  data: z.infer<typeof featureFlagBaseSchema> | z.infer<typeof featureFlagUpdateBaseSchema>,
-  ctx: z.RefinementCtx
-) {
+type FeatureFlagVariantShape = { key: string; rolloutPercentage: number };
+
+/** The fields the cross-field shape checks read. */
+export type FeatureFlagShape = {
+  flagType?: z.infer<typeof featureFlagTypeSchema>;
+  variants?: FeatureFlagVariantShape[];
+  conditionSets?: Array<{ variants?: FeatureFlagVariantShape[]; rolloutPercentage?: number }>;
+};
+
+const featureFlagShapeSchema = z.custom<FeatureFlagShape>().superRefine(validateFeatureFlagShape);
+
+/**
+ * Validates a partial update against the flag it will produce: the stored flag with the patch
+ * applied. Throws a ZodError (like the body schemas) when the result is not a valid flag, e.g.
+ * duplicate variant keys, variants over 100%, or a type change that leaves stale variants.
+ */
+export function validateFeatureFlagUpdate(stored: Required<FeatureFlagShape>, patch: FeatureFlagUpdateBody): void {
+  featureFlagShapeSchema.parse({
+    flagType: patch.flagType ?? stored.flagType,
+    variants: patch.variants ?? stored.variants,
+    conditionSets: patch.conditionSets ?? stored.conditionSets,
+  });
+}
+
+function validateFeatureFlagShape(data: FeatureFlagShape, ctx: z.RefinementCtx) {
   const variants = data.variants ?? [];
   const conditionSets = data.conditionSets ?? [];
   const flagType = data.flagType;

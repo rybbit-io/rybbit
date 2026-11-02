@@ -71,7 +71,8 @@ function createRequest(overrides: RequestOverrides = {}) {
   return {
     headers: overrides.headers ?? { "stripe-signature": SIGNATURE },
     body: overrides.parsedBody,
-    raw: rawBody === null ? {} : { body: rawBody },
+    // The webhook route's parser (keepRawJsonBody) puts the exact bytes here.
+    rawBody: rawBody === null ? undefined : Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody ?? ""),
     log: requestLogger,
   } as any;
 }
@@ -126,7 +127,7 @@ describe("handleWebhook — signature verification", () => {
     const reply = createReply();
     await handleWebhook(createRequest({ headers: {} }), reply);
 
-    expect(mocks.constructEvent).toHaveBeenCalledWith('{"id":"evt_raw"}', undefined, "whsec_test_secret");
+    expect(mocks.constructEvent).toHaveBeenCalledWith(Buffer.from('{"id":"evt_raw"}'), undefined, "whsec_test_secret");
     expect(reply.statusCode).toBe(400);
     expect(reply.payload).toContain("Webhook Error");
     expectNoDbWrites();
@@ -173,9 +174,10 @@ describe("handleWebhook — signature verification", () => {
     await handleWebhook(createRequest({ rawBody, parsedBody: { id: "evt_1", type: "tampered.event" } }), reply);
 
     expect(mocks.constructEvent).toHaveBeenCalledTimes(1);
-    expect(mocks.constructEvent).toHaveBeenCalledWith(rawBody, SIGNATURE, "whsec_test_secret");
+    expect(mocks.constructEvent).toHaveBeenCalledWith(Buffer.from(rawBody), SIGNATURE, "whsec_test_secret");
     const [firstArg] = mocks.constructEvent.mock.calls[0];
-    expect(typeof firstArg).toBe("string");
+    expect(Buffer.isBuffer(firstArg)).toBe(true);
+    expect(firstArg.toString("utf8")).toBe(rawBody);
     expect(firstArg).not.toEqual({ id: "evt_1", type: "tampered.event" });
   });
 

@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ImportQuotaTracker } from "./importQuotaTracker.js";
 import { db } from "../../db/postgres/postgres.js";
 import { getBestSubscription } from "../../lib/subscriptionUtils.js";
+import { processResults } from "../../api/analytics/utils/utils.js";
+import { importQuotaReserve } from "../../db/redis/redis.js";
 
 vi.mock("../../db/clickhouse/clickhouse.js", () => ({
   clickhouse: { query: vi.fn() },
@@ -23,10 +25,19 @@ vi.mock("../../api/analytics/utils/utils.js", () => ({
   processResults: vi.fn(),
 }));
 
+vi.mock("../../db/redis/redis.js", () => ({
+  importQuotaReserve: vi.fn(),
+}));
+
 // The constructor is private; tests build trackers directly with injected state
 // instead of going through the DB/ClickHouse-backed static create().
-function makeTracker(usage: Record<string, number>, limit: number, oldestAllowedMonth: string): ImportQuotaTracker {
-  return new (ImportQuotaTracker as any)(new Map(Object.entries(usage)), limit, oldestAllowedMonth);
+function makeTracker(
+  usage: Record<string, number>,
+  limit: number,
+  oldestAllowedMonth: string,
+  organizationId: string | null = null
+): ImportQuotaTracker {
+  return new (ImportQuotaTracker as any)(new Map(Object.entries(usage)), limit, oldestAllowedMonth, organizationId);
 }
 
 // Drizzle query builders are thenable; create() awaits `.limit(1)` for the org
@@ -183,6 +194,59 @@ describe("ImportQuotaTracker", () => {
     });
   });
 
+  describe("reserveBatch", () => {
+    it("admits what the shared Redis counts grant, per month and in batch order", async () => {
+      const tracker = makeTracker({ "202405": 3 }, 5, "202312", "org-1");
+      vi.mocked(importQuotaReserve).mockResolvedValueOnce([1, 2]);
+
+      const result = await tracker.reserveBatch([
+        "2024-05-01T10:00:00.000Z",
+        "2024-06-01T10:00:00.000Z",
+        "2024-05-02T10:00:00.000Z",
+        "garbage",
+        "2024-06-02T10:00:00.000Z",
+        "2024-06-03T10:00:00.000Z",
+      ]);
+
+      expect(importQuotaReserve).toHaveBeenCalledWith("import:quota:org-1", 5, expect.any(Number), [
+        { month: "202405", baseline: 3, requested: 2 },
+        { month: "202406", baseline: 0, requested: 3 },
+      ]);
+      expect(result).toEqual([0, 1, 4]);
+    });
+
+    it("seeds later months from local usage, including earlier grants", async () => {
+      const tracker = makeTracker({}, 5, "202312", "org-1");
+      vi.mocked(importQuotaReserve).mockResolvedValueOnce([2]).mockResolvedValueOnce([0]);
+
+      await tracker.reserveBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z"]);
+      await tracker.reserveBatch(["2024-06-03T10:00:00.000Z"]);
+
+      expect(vi.mocked(importQuotaReserve).mock.calls[1][3]).toEqual([{ month: "202406", baseline: 2, requested: 1 }]);
+    });
+
+    it("falls back to this process's counts when Redis fails", async () => {
+      const tracker = makeTracker({ "202406": 4 }, 5, "202312", "org-1");
+      vi.mocked(importQuotaReserve).mockRejectedValueOnce(new Error("redis down"));
+
+      expect(await tracker.reserveBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z"])).toEqual([0]);
+    });
+
+    it("skips Redis when nothing in the batch is importable", async () => {
+      const tracker = makeTracker({}, 5, "202312", "org-1");
+
+      expect(await tracker.reserveBatch(["garbage", "2099-01-01T00:00:00.000Z"])).toEqual([]);
+      expect(importQuotaReserve).not.toHaveBeenCalled();
+    });
+
+    it("never calls Redis for unlimited (self-hosted) trackers", async () => {
+      const tracker = makeTracker({}, Infinity, "190001", "org-1");
+
+      expect(await tracker.reserveBatch(["2024-06-01T10:00:00.000Z"])).toEqual([0]);
+      expect(importQuotaReserve).not.toHaveBeenCalled();
+    });
+  });
+
   describe("getHistoricalWindowMonths (via create)", () => {
     async function createTrackerForSubscription(subscription: Record<string, unknown>) {
       mockDbForCreate();
@@ -234,6 +298,21 @@ describe("ImportQuotaTracker", () => {
       expect(
         tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z", "2024-06-03T10:00:00.000Z"])
       ).toEqual([0, 1]);
+    });
+
+    it("should count existing ClickHouse usage when processResults returns numeric months", async () => {
+      vi.mocked(db.select as any)
+        .mockReturnValueOnce(chainResolving([{ stripeCustomerId: "cus_123" }]))
+        .mockReturnValueOnce(chainResolving([{ siteId: 3000 }]));
+      vi.mocked(getBestSubscription).mockResolvedValueOnce({ source: "free", eventLimit: 5 } as any);
+      // processResults coerces numeric-looking strings, so "202406" arrives as 202406.
+      vi.mocked(processResults).mockResolvedValueOnce([{ month: 202406, count: 4 }] as any);
+
+      const tracker = await ImportQuotaTracker.create("org-1");
+
+      expect(
+        tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z", "2024-05-02T10:00:00.000Z"])
+      ).toEqual([0, 2]);
     });
 
     it("should throw when the organization is not found", async () => {

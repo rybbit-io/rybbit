@@ -78,7 +78,7 @@ export class FeatureComponent {
 
 ## Troubleshooting
 
-- **Pageviews missing after navigation**: this is rare. If it happens, subscribe to `Router.events`, filter for `NavigationEnd` and call `window.rybbit.pageview()`; test the default behaviour first.
+- **Pageviews missing after navigation**: this is rare. If it happens, subscribe to `Router.events`, filter for `NavigationEnd` and call `window.rybbit.pageview()`, skipping the first `NavigationEnd` because the script already tracks the landing page; test the default behaviour first.
 
 ## Next steps
 

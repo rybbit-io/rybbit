@@ -32,7 +32,7 @@ This approach requires no JavaScript and works on any clickable element.
 Tracks a custom event with optional properties.
 
 *   `eventName` (String): The name of the custom event (max 256 characters).
-*   `properties` (Object, Optional): An object containing custom data (max 2KB characters). Only strings numbers are supported as values.
+*   `properties` (Object, Optional): A flat object of custom data. Serialized as JSON it must be at most 2048 characters; larger events are rejected, not truncated. Keep values to strings and numbers.
 
 ```javascript
 // Track a simple custom event
@@ -55,6 +55,23 @@ Tracks a pageview. Useful when automatic SPA navigation tracking is disabled in 
 window.rybbit.pageview();
 ```
 
+### `window.rybbit.error(error, properties)`
+
+Reports an error you caught yourself as an `error` event. It goes through the same filtering as automatic [error tracking](/docs/autocapture#error-tracking): errors from other origins are skipped and identical errors are sent at most once per 60 seconds.
+
+*   `error` (Error): The error object. Its `name` becomes the event name.
+*   `properties` (Object, Optional): Extra context, such as `filename`, `lineno`, and `colno`, plus any custom fields.
+
+```javascript
+try {
+  riskyOperation();
+} catch (err) {
+  window.rybbit.error(err, { feature: "checkout" });
+}
+```
+
+For identifying users, see [Identify Users](/docs/identify-users). For feature flags, see [Feature Flags](/docs/feature-flags). Session replay can also be started and stopped manually with `startSessionReplay()`, `stopSessionReplay()`, and `isSessionReplayActive()`.
+
 ## TypeScript Support
 
 Put this as `rybbit.d.ts` anywhere in your project to avoid having to do `(window as any).rybbit.event()` everywhere.
@@ -72,6 +89,13 @@ interface Rybbit {
      * @param properties Optional properties for the event
      */
     event: (name: string, properties?: Record<string, any>) => void;
+
+    /**
+     * Reports a caught error as an error event
+     * @param error The error object
+     * @param properties Optional context (filename, lineno, colno, custom fields)
+     */
+    error: (error: Error, properties?: Record<string, any>) => void;
 
     /**
      * Sets a custom user ID for tracking logged-in users
@@ -109,7 +133,8 @@ interface Rybbit {
      * Evaluates a feature flag and returns its value. Reading a flag records a
      * feature flag exposure once per flag value/version.
      * @param key The flag key
-     * @param fallback Value returned before flags resolve or if the flag is inactive
+     * @param fallback Value returned before flags resolve or if the flag doesn't exist
+     * (a disabled flag returns false)
      */
     flag: <T = unknown>(key: string, fallback?: T) => T;
 
@@ -137,6 +162,21 @@ interface Rybbit {
      * @param callback Receives the ready rybbit instance
      */
     onReady: (callback: (rybbit: Rybbit) => void) => void;
+
+    /**
+     * Starts session replay recording, if session replay is enabled for the site
+     */
+    startSessionReplay: () => void;
+
+    /**
+     * Stops session replay recording
+     */
+    stopSessionReplay: () => void;
+
+    /**
+     * Returns whether session replay is currently recording
+     */
+    isSessionReplayActive: () => boolean;
 }
 
 declare global {

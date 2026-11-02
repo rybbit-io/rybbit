@@ -46,9 +46,9 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       default: 100,
     },
     stepFilters: {
-      description: 'JSON object to filter specific steps (e.g., {"0": "/"})',
+      description: 'JSON object pinning steps to a page (e.g., {"0": "/"}). A journey is the first `steps` pages of a session, so step 0 is always the landing page: {"0": "/pricing"} keeps sessions that landed on /pricing, not every session that visited it',
       type: 'string',
-      typeDescription: 'JSON string mapping step index to required path',
+      typeDescription: 'JSON string mapping step index (0-based) to a path or pattern',
       required: false,
     },
     endsAt: {
@@ -78,7 +78,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       type: 'Journey[]',
     },
     totalSessions: {
-      description: 'Sessions that visited two or more pages in the period, before stepFilters and endsAt are applied',
+      description: 'Sessions that visited two or more pages in the period, before stepFilters and endsAt are applied. It is 0 when no journeys match, because the total is read from the journey rows',
       type: 'number',
     },
   }}

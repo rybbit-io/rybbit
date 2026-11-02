@@ -44,12 +44,14 @@ function buildReferrerOperatorExpression() {
   return `transform(domainWithoutWWW(referrer), [${domains}], [${operators}], '')`;
 }
 
-export const buildBotAiSummaryQuery = (query: BotAiSummaryRequest["Querystring"]) => {
+export const buildBotAiSummaryQuery = (query: BotAiSummaryRequest["Querystring"], siteId: number) => {
   const timeStatement = getTimeStatement(query);
   const botFilterStatement = getBotFilterStatement(query.filters);
   // The referral half reads `events`, so it takes the events-surface filter
-  // builder rather than the bot-table one.
-  const eventFilterStatement = getFilterStatement(query.filters || "");
+  // builder rather than the bot-table one. Its session-level filters
+  // (event_name, channel) are subqueries over events, bounded to this site and
+  // window like the outer query.
+  const eventFilterStatement = getFilterStatement(query.filters || "", siteId, timeStatement);
   const referrerOperator = buildReferrerOperatorExpression();
 
   return `
@@ -72,7 +74,9 @@ export const buildBotAiSummaryQuery = (query: BotAiSummaryRequest["Querystring"]
       referrals AS (
         SELECT
           ${referrerOperator} AS operator,
-          count() AS referrals
+          -- A referral is a visit: every event of a session landing from an
+          -- AI referrer carries its channel, so count sessions, not rows.
+          count(DISTINCT session_id) AS referrals
         FROM events
         WHERE site_id = {siteId:Int32}
           AND channel = 'AI'
@@ -101,7 +105,7 @@ export const getBotAiSummary = analyticsRoute<BotAiSummaryRequest>(
   "bot ai summary",
   async (req: FastifyRequest<BotAiSummaryRequest>, res: FastifyReply) => {
     const data = await runAnalyticsQuery<BotAiSummaryRow>({
-      query: buildBotAiSummaryQuery(req.query),
+      query: buildBotAiSummaryQuery(req.query, Number(req.params.siteId)),
       params: { siteId: Number(req.params.siteId) },
     });
 

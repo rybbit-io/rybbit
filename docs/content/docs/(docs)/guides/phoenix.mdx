@@ -23,7 +23,7 @@ Phoenix renders every page inside the root layout, `lib/my_app_web/components/la
 
 `config/runtime.exs` runs when the app boots, including inside a release, so it is the right place to read environment variables. Add a `:rybbit` key for your app (replace `:my_app` with your OTP app name):
 
-```elixir filename="config/runtime.exs"
+```elixir title="config/runtime.exs"
 config :my_app, :rybbit,
   instance_url: System.get_env("RYBBIT_INSTANCE_URL", "https://app.rybbit.io"),
   site_id: System.get_env("RYBBIT_SITE_ID")
@@ -40,7 +40,7 @@ export RYBBIT_SITE_ID=YOUR_SITE_ID
 
 Templates in `lib/my_app_web/components/layouts/` are embedded into the `MyAppWeb.Layouts` module, so a function defined there is callable from `root.html.heex`. Add one that returns the config:
 
-```elixir filename="lib/my_app_web/components/layouts.ex"
+```elixir title="lib/my_app_web/components/layouts.ex"
 defmodule MyAppWeb.Layouts do
   use MyAppWeb, :html
 
@@ -54,7 +54,7 @@ end
 
 Open `lib/my_app_web/components/layouts/root.html.heex` and add the tag inside `<head>`, after the existing `app.css` and `app.js` tags:
 
-```html filename="lib/my_app_web/components/layouts/root.html.heex"
+```html title="lib/my_app_web/components/layouts/root.html.heex"
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

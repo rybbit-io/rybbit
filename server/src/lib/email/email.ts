@@ -1,14 +1,25 @@
-import { Resend } from "resend";
 import { render } from "@react-email/components";
+import { Resend } from "resend";
+import type { SiteReport, WeeklyDigest } from "../../services/weekyReports/weeklyReportTypes.js";
+import { welcome } from "../../services/lifecycleEmails/lifecycleContent.js";
 import { IS_CLOUD } from "../const.js";
-import { ApproachingLimitEmail } from "./templates/ApproachingLimitEmail.js";
-import { InvitationEmail } from "./templates/InvitationEmail.js";
-import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
-import { OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
-import { SiteTransferEmail } from "./templates/SiteTransferEmail.js";
-import { WeeklyReportEmail } from "./templates/WeeklyReportEmail.js";
-import type { SiteReport } from "../../services/weekyReports/weeklyReportTypes.js";
 import { signExpiringPayload } from "../signedToken.js";
+import { letterText, type Letter } from "./letter.js";
+import {
+  ApproachingLimitEmail,
+  approachingLimitSubject,
+  type UsageEmailProps,
+} from "./templates/ApproachingLimitEmail.js";
+import { ChangeEmailEmail } from "./templates/ChangeEmailEmail.js";
+import { InvitationEmail, inviterLabel } from "./templates/InvitationEmail.js";
+import { LetterEmail } from "./templates/LetterEmail.js";
+import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
+import { OTP_COPY, OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
+import { SiteTransferEmail, type SiteTransferEmailProps } from "./templates/SiteTransferEmail.js";
+import { TrialGraceEmail, trialGraceSubject, type TrialGraceEmailProps } from "./templates/TrialGraceEmail.js";
+import { VerifyEmailEmail } from "./templates/VerifyEmailEmail.js";
+import { WeeklyDigestEmail, weeklyDigestSubject } from "./templates/WeeklyDigestEmail.js";
+import { WeeklyReportEmail, weeklyReportSubject } from "./templates/WeeklyReportEmail.js";
 
 let resend: Resend | undefined;
 let marketingAudienceId: string | null = null;
@@ -17,13 +28,29 @@ if (IS_CLOUD) {
   resend = new Resend(process.env.RESEND_API_KEY);
 }
 
+/**
+ * The Resend SDK resolves failed requests (HTTP errors, rate limits, network failures) as
+ * { data: null, error } instead of rejecting, so every call must check `error` itself.
+ */
+class ResendRequestError extends Error {
+  constructor(
+    action: string,
+    readonly resendError: { name: string; message: string }
+  ) {
+    super(`Resend ${action} failed (${resendError.name}): ${resendError.message}`);
+    this.name = "ResendRequestError";
+  }
+}
+
 // Marketing audience management
 export const getOrCreateMarketingAudience = async (): Promise<string> => {
   if (marketingAudienceId) return marketingAudienceId;
   if (!resend) throw new Error("Resend not initialized");
 
-  // List existing audiences to check if "Marketing" exists
-  const { data: audiences } = await resend.audiences.list();
+  // List existing audiences to check if "Marketing" exists. A failed list must not fall
+  // through to creating (and caching) a second, empty "Marketing" audience.
+  const { data: audiences, error: listError } = await resend.audiences.list();
+  if (listError) throw new ResendRequestError("audience list", listError);
   const existing = audiences?.data?.find((a: { name: string }) => a.name === "Marketing");
 
   if (existing) {
@@ -32,58 +59,102 @@ export const getOrCreateMarketingAudience = async (): Promise<string> => {
   }
 
   // Create new audience
-  const { data } = await resend.audiences.create({ name: "Marketing" });
-  marketingAudienceId = data!.id;
-  return data!.id;
+  const { data, error: createError } = await resend.audiences.create({ name: "Marketing" });
+  if (createError || !data) {
+    throw new ResendRequestError("audience create", createError ?? { name: "application_error", message: "no data" });
+  }
+  marketingAudienceId = data.id;
+  return data.id;
 };
 
 export const addContactToAudience = async (email: string, firstName?: string): Promise<void> => {
   if (!resend) return;
   try {
     const audienceId = await getOrCreateMarketingAudience();
-    await resend.contacts.create({ audienceId, email, firstName, unsubscribed: false });
+    const { error } = await resend.contacts.create({ audienceId, email, firstName, unsubscribed: false });
+    if (error) throw new ResendRequestError("contact create", error);
   } catch (error) {
     console.error("Failed to add contact to audience:", error);
   }
 };
 
+/**
+ * Whether marketing email to this address must be skipped: the contact unsubscribed, or was
+ * never added to the audience. Throws when Resend can't answer (rate limit, outage), so the
+ * caller skips this send and logs it instead of recording the contact as unsubscribed.
+ */
 export const isContactUnsubscribed = async (email: string): Promise<boolean> => {
   if (!resend) return false;
-  try {
-    const audienceId = await getOrCreateMarketingAudience();
-    const { data: contact } = await resend.contacts.get({ audienceId, email });
-    // If contact doesn't exist or is unsubscribed, return true to skip sending
-    if (!contact) return true;
-    return contact.unsubscribed ?? false;
-  } catch (error) {
-    // If contact doesn't exist (404), don't send email
-    return true;
+  const audienceId = await getOrCreateMarketingAudience();
+  const { data: contact, error } = await resend.contacts.get({ audienceId, email });
+  if (error) {
+    if (error.name === "not_found") return true;
+    throw new ResendRequestError("contact lookup", error);
   }
+  // If contact doesn't exist or is unsubscribed, return true to skip sending
+  if (!contact) return true;
+  return contact.unsubscribed ?? false;
 };
 
+/**
+ * Marks the contact unsubscribed. Throws if Resend rejects the update so the caller can
+ * report the failure instead of confirming an unsubscribe that didn't happen. A contact
+ * that isn't in the audience already receives no marketing email.
+ */
 export const unsubscribeContact = async (email: string): Promise<void> => {
   if (!resend) return;
-  try {
-    const audienceId = await getOrCreateMarketingAudience();
-    await resend.contacts.update({ audienceId, email, unsubscribed: true });
-  } catch (error) {
-    console.error("Failed to unsubscribe contact:", error);
+  const audienceId = await getOrCreateMarketingAudience();
+  const { error } = await resend.contacts.update({ audienceId, email, unsubscribed: true });
+  if (error && error.name !== "not_found") {
+    throw new ResendRequestError("contact unsubscribe", error);
   }
 };
 
-export const sendEmail = async (email: string, subject: string, html: string) => {
+const TRANSACTIONAL_FROM = "Rybbit <automail@email.rybbit.com>";
+const BILL_FROM = "Bill from Rybbit <bill@email.rybbit.com>";
+// Replies to any email land in the monitored support inbox.
+const REPLY_TO = "hello@rybbit.com";
+
+interface SendOptions {
+  text?: string;
+  headers?: Record<string, string>;
+  /** Resend replays the first response for a repeated key (for 24 hours) instead of sending again. */
+  idempotencyKey?: string;
+}
+
+/**
+ * Whether Resend refused a send because its idempotency key was already used: by a request with
+ * a different payload, or by one still in flight. Either way the email went out (or is going out)
+ * under that key, so the caller must not treat the send as failed and try again.
+ */
+export const isIdempotencyConflict = (error: unknown): boolean =>
+  error instanceof ResendRequestError &&
+  (error.resendError.name === "invalid_idempotent_request" ||
+    error.resendError.name === "concurrent_idempotent_requests");
+
+/** Sends a transactional email. Throws when Resend does not accept it. */
+export const sendEmail = async (email: string, subject: string, html: string, options: SendOptions = {}) => {
   if (!resend) {
     return;
     // not sure how to handle self hosted instances without resend
     // throw new Error("Resend is not initialized");
   }
   try {
-    const response = await resend.emails.send({
-      from: "Rybbit <automail@email.rybbit.com>",
-      to: email,
-      subject,
-      html,
-    });
+    const response = await resend.emails.send(
+      {
+        from: TRANSACTIONAL_FROM,
+        replyTo: REPLY_TO,
+        to: email,
+        subject,
+        html,
+        ...(options.text ? { text: options.text } : {}),
+        ...(options.headers ? { headers: options.headers } : {}),
+      },
+      options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
+    );
+    if (response.error) {
+      throw new ResendRequestError("email send", response.error);
+    }
     return response;
   } catch (error) {
     console.error(error);
@@ -91,164 +162,112 @@ export const sendEmail = async (email: string, subject: string, html: string) =>
   }
 };
 
-const OTP_SUBJECTS: Record<OtpEmailType, string> = {
-  "sign-in": "Your Rybbit Sign-In Code",
-  "email-verification": "Verify Your Email Address",
-  "forget-password": "Reset Your Password",
-  "change-email": "Change Your Email Address",
-};
-
 export const sendOtpEmail = async (email: string, otp: string, type: OtpEmailType) => {
-  const html = await render(OtpEmail({ otp, type }));
-  await sendEmail(email, OTP_SUBJECTS[type], html);
+  const html = await render(OtpEmail({ otp, type, email }));
+  await sendEmail(email, OTP_COPY[type].subject, html);
 };
 
 export const sendEmailVerificationLink = async (email: string, verificationUrl: string) => {
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
-      <h2 style="margin: 0 0 16px;">Verify your email</h2>
-      <p>Click the button below to verify this email address on your Rybbit account.</p>
-      <p style="margin: 24px 0;">
-        <a href="${verificationUrl}" style="background: #111; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Verify email</a>
-      </p>
-      <p style="font-size: 12px; color: #666; word-break: break-all;">Or paste this link into your browser: ${verificationUrl}</p>
-    </div>
-  `;
-
-  await sendEmail(email, "Verify your Rybbit email", html);
+  const html = await render(VerifyEmailEmail({ email, verificationUrl }));
+  await sendEmail(email, "Verify your email for Rybbit", html);
 };
 
-export const sendChangeEmailVerification = async (
-  currentEmail: string,
-  newEmail: string,
-  verificationUrl: string
-) => {
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
-      <h2 style="margin: 0 0 16px;">Confirm your new email</h2>
-      <p>We received a request to change the email on your Rybbit account from <strong>${currentEmail}</strong> to <strong>${newEmail}</strong>.</p>
-      <p>Click the button below to confirm the change. If you didn't request this, you can safely ignore this email.</p>
-      <p style="margin: 24px 0;">
-        <a href="${verificationUrl}" style="background: #111; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Confirm email change</a>
-      </p>
-      <p style="font-size: 12px; color: #666; word-break: break-all;">Or paste this link into your browser: ${verificationUrl}</p>
-    </div>
-  `;
-
-  await sendEmail(currentEmail, "Confirm your email change on Rybbit", html);
+export const sendChangeEmailVerification = async (currentEmail: string, newEmail: string, confirmUrl: string) => {
+  const html = await render(ChangeEmailEmail({ currentEmail, newEmail, confirmUrl }));
+  await sendEmail(currentEmail, "Confirm your new Rybbit email address", html);
 };
 
-export const sendInvitationEmail = async (
-  email: string,
-  invitedBy: string,
-  organizationName: string,
-  inviteLink: string
-) => {
-  const html = await render(
-    InvitationEmail({
-      email,
-      invitedBy,
-      organizationName,
-      inviteLink,
-    })
-  );
-
-  await sendEmail(email, "You're Invited to Join an Organization on Rybbit", html);
-};
-
-export const sendSiteTransferEmail = async (props: {
+export const sendInvitationEmail = async (props: {
   email: string;
-  sentBy: string;
-  siteDomain: string;
+  inviterName: string | null;
+  inviterEmail: string;
   organizationName: string;
-  transferLink: string;
+  role: string;
+  expiresAt: Date;
+  inviteLink: string;
 }) => {
+  const html = await render(InvitationEmail(props));
+  const inviter = inviterLabel(props.inviterName, props.inviterEmail);
+  await sendEmail(props.email, `${inviter} invited you to ${props.organizationName} on Rybbit`, html);
+};
+
+export const sendSiteTransferEmail = async (props: SiteTransferEmailProps) => {
   const html = await render(SiteTransferEmail(props));
-  await sendEmail(props.email, `${props.siteDomain} is being transferred to you on Rybbit`, html);
+  await sendEmail(props.email, `${props.sentBy} wants to transfer ${props.siteDomain} to you`, html);
 };
 
-export const sendLimitExceededEmail = async (
-  email: string,
-  organizationName: string,
-  eventCount: number,
-  eventLimit: number
-) => {
-  const upgradeLink = "https://app.rybbit.io/settings/subscription";
-
-  const html = await render(
-    LimitExceededEmail({
-      organizationName,
-      eventCount,
-      eventLimit,
-      upgradeLink,
-    })
-  );
-
-  await sendEmail(email, `Action Required: ${organizationName} has exceeded its monthly event limit`, html);
+export const sendLimitExceededEmail = async (email: string, usage: UsageEmailProps) => {
+  const html = await render(LimitExceededEmail(usage));
+  await sendEmail(email, `Tracking is paused for ${usage.organizationName}`, html);
 };
 
-export const sendApproachingLimitEmail = async (
-  email: string,
-  organizationName: string,
-  eventCount: number,
-  eventLimit: number
-) => {
-  const upgradeLink = "https://app.rybbit.io/settings/subscription";
-
-  const html = await render(
-    ApproachingLimitEmail({
-      organizationName,
-      eventCount,
-      eventLimit,
-      upgradeLink,
-    })
-  );
-
-  await sendEmail(email, `${organizationName} is approaching its monthly event limit`, html);
+export const sendApproachingLimitEmail = async (email: string, usage: UsageEmailProps) => {
+  const html = await render(ApproachingLimitEmail(usage));
+  await sendEmail(email, approachingLimitSubject(usage.organizationName, usage.eventCount, usage.eventLimit), html);
 };
 
-export const sendWeeklyReportEmail = async (
-  email: string,
-  userName: string,
-  organizationName: string,
-  site: SiteReport
-) => {
-  const html = await render(
-    WeeklyReportEmail({
-      userName,
-      organizationName,
-      site,
-    })
-  );
+export const sendTrialGraceEmail = async (email: string, props: TrialGraceEmailProps, idempotencyKey: string) => {
+  const html = await render(TrialGraceEmail(props));
+  await sendEmail(email, trialGraceSubject(props), html, { idempotencyKey });
+};
 
-  const subject = `Weekly Analytics Report - ${site.siteName}`;
+/**
+ * Signed one-click link that turns off weekly reports for one user, used in the
+ * report footer and its List-Unsubscribe header. Same 2-year TTL as the
+ * marketing link: it has to keep working from old emails.
+ */
+export const weeklyReportUnsubscribeUrl = (userId: string): string => {
+  const { exp, sig } = signExpiringPayload(`unsubscribe-reports:${userId}`, 2 * 365 * 24 * 3600);
+  return `${process.env.BASE_URL}/api/user/unsubscribe-reports-oneclick?userId=${encodeURIComponent(userId)}&exp=${exp}&sig=${sig}`;
+};
 
-  await sendEmail(email, subject, html);
+const listUnsubscribeHeaders = (unsubscribeUrl: string) => ({
+  "List-Unsubscribe": `<${unsubscribeUrl}>`,
+  "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+});
+
+export const sendWeeklyReportEmail = async ({
+  email,
+  userId,
+  site,
+}: {
+  email: string;
+  userId: string;
+  site: SiteReport;
+}) => {
+  const unsubscribeUrl = weeklyReportUnsubscribeUrl(userId);
+  const html = await render(WeeklyReportEmail({ site, unsubscribeUrl }));
+  await sendEmail(email, weeklyReportSubject(site), html, { headers: listUnsubscribeHeaders(unsubscribeUrl) });
+};
+
+export const sendWeeklyDigestEmail = async ({
+  email,
+  userId,
+  digest,
+}: {
+  email: string;
+  userId: string;
+  digest: WeeklyDigest;
+}) => {
+  const unsubscribeUrl = weeklyReportUnsubscribeUrl(userId);
+  const html = await render(WeeklyDigestEmail({ digest, unsubscribeUrl }));
+  await sendEmail(email, weeklyDigestSubject(digest), html, { headers: listUnsubscribeHeaders(unsubscribeUrl) });
 };
 
 export const sendWelcomeEmail = async (email: string, name?: string) => {
   if (!resend) return;
 
-  const greeting = name ? `Hi ${name}` : "Hi there";
-  const text = `${greeting},
-
-Welcome to Rybbit! Thanks for signing up.
-
-I'm excited to have you on board. Rybbit is fully self-funded and we're fully committed to making an analytics platform that only serves the interests of our users.
-
-If you run into any issues or have any questions or suggestions, just reply to this email - I'd love to hear from you.
-
-Cheers,
-Bill`;
-
+  const letter = welcome(name);
   try {
-    await resend.emails.send({
-      from: "Bill from Rybbit <bill@email.rybbit.com>",
-      replyTo: "hello@rybbit.com",
+    const { error } = await resend.emails.send({
+      from: BILL_FROM,
+      replyTo: REPLY_TO,
       to: email,
-      subject: "Welcome to Rybbit!",
-      text,
+      subject: letter.subject,
+      html: await render(LetterEmail({ letter })),
+      text: letterText(letter),
     });
+    if (error) throw new ResendRequestError("welcome email send", error);
   } catch (error) {
     console.error("Failed to send welcome email:", error);
   }
@@ -265,8 +284,9 @@ export const marketingUnsubscribeUrl = (email: string): string => {
 };
 
 /**
- * Plain-text lifecycle email from Bill with a monitored reply address.
- * All state-machine onboarding/retention emails go through here.
+ * Lifecycle letter from Bill with a monitored reply address, sent as Ledger
+ * HTML with the same content as plain text. All state-machine
+ * onboarding/retention emails go through here.
  *
  * Returns true only when Resend actually accepted the message: the SDK
  * resolves with { data: null, error } on HTTP/network failures rather than
@@ -274,24 +294,23 @@ export const marketingUnsubscribeUrl = (email: string): string => {
  * stable idempotencyKey (the lifecycle email key) so a retry after an
  * "accepted but response lost" failure can't double-send.
  */
-export const sendLifecycleEmail = async (
-  email: string,
-  subject: string,
-  text: string,
-  idempotencyKey?: string
-): Promise<boolean> => {
+export const sendLifecycleEmail = async (email: string, letter: Letter, idempotencyKey?: string): Promise<boolean> => {
   if (!resend) return false;
 
   const unsubscribeUrl = marketingUnsubscribeUrl(email);
 
   try {
+    const html = await render(
+      LetterEmail({ letter, footer: [{ label: "Unsubscribe from these emails", href: unsubscribeUrl }] })
+    );
     const response = await resend.emails.send(
       {
-        from: "Bill from Rybbit <bill@email.rybbit.com>",
-        replyTo: "hello@rybbit.com",
+        from: BILL_FROM,
+        replyTo: REPLY_TO,
         to: email,
-        subject,
-        text: `${text}\n\n--\nUnsubscribe from these emails: ${unsubscribeUrl}`,
+        subject: letter.subject,
+        html,
+        text: `${letterText(letter)}\n\n--\nUnsubscribe from these emails: ${unsubscribeUrl}`,
         headers: {
           "List-Unsubscribe": `<${unsubscribeUrl}>`,
           "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",

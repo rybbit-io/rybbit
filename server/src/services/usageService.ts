@@ -9,6 +9,7 @@ import { db } from "../db/postgres/postgres.js";
 import { member, organization, sites, user } from "../db/postgres/schema.js";
 import { IS_CLOUD, USAGE_COUNTED_EVENT_TYPES } from "../lib/const.js";
 import { sendApproachingLimitEmail, sendLimitExceededEmail } from "../lib/email/email.js";
+import type { SiteUsage } from "../lib/email/templates/ApproachingLimitEmail.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
 import {
   getAllStripeSubscriptionsByCustomer,
@@ -21,6 +22,7 @@ import {
   subscriptionIncludesReplay,
   SubscriptionInfo,
 } from "../lib/subscriptionUtils.js";
+import { trialGraceEmails } from "./trialGrace/trialGraceEmails.js";
 
 type UsageUpdateCallback = () => void;
 
@@ -28,6 +30,18 @@ type OrgSite = { siteId: number; createdAt: string | null };
 
 // IPC message a worker sends the cluster primary, which owns the blocked-site sets.
 export const REFRESH_ORGANIZATION_USAGE_MESSAGE = "refresh-organization-usage";
+// A worker asks for the current blocked-site sets once its listener is installed; the
+// primary answers with USAGE_STATE_MESSAGE, which it also broadcasts after every update.
+export const USAGE_STATE_REQUEST_MESSAGE = "usage-state-request";
+export const USAGE_STATE_MESSAGE = "usage-state";
+
+export type UsageStateMessage = {
+  type: typeof USAGE_STATE_MESSAGE;
+  sitesOverLimit: number[];
+  sitesWithoutPlan: number[];
+  sitesWithoutReplay: number[];
+};
+
 const REFRESH_RETRY_DELAYS_MS = [0, 15_000, 60_000];
 
 class UsageService {
@@ -73,6 +87,23 @@ class UsageService {
    */
   public setSitesWithoutReplay(sites: Set<number>): void {
     this.sitesWithoutReplay = sites;
+  }
+
+  /** The blocked-site sets as one IPC message, so a worker never applies half of an update. */
+  public getUsageStateMessage(): UsageStateMessage {
+    return {
+      type: USAGE_STATE_MESSAGE,
+      sitesOverLimit: Array.from(this.sitesOverLimit),
+      sitesWithoutPlan: Array.from(this.sitesWithoutPlan),
+      sitesWithoutReplay: Array.from(this.sitesWithoutReplay),
+    };
+  }
+
+  /** Applies a USAGE_STATE_MESSAGE from the cluster primary (workers only). */
+  public applyUsageStateMessage(message: UsageStateMessage): void {
+    this.sitesOverLimit = new Set(message.sitesOverLimit);
+    this.sitesWithoutPlan = new Set(message.sitesWithoutPlan);
+    this.sitesWithoutReplay = new Set(message.sitesWithoutReplay);
   }
 
   /**
@@ -182,24 +213,23 @@ class UsageService {
   }
 
   /**
-   * Gets all sites with their organization IDs (excludes sites without an organization)
+   * Gets all sites with their organization IDs (excludes sites without an organization).
+   * Throws on failure for the same reason as getAllSiteEventCounts: no sites means zero usage.
    */
-  private async getAllSites(): Promise<Array<OrgSite & { organizationId: string }>> {
-    try {
-      const allSites = await db
-        .select({
-          siteId: sites.siteId,
-          organizationId: sites.organizationId,
-          createdAt: sites.createdAt,
-        })
-        .from(sites);
+  private async getAllSites(): Promise<Array<OrgSite & { organizationId: string; domain: string }>> {
+    const allSites = await db
+      .select({
+        siteId: sites.siteId,
+        organizationId: sites.organizationId,
+        createdAt: sites.createdAt,
+        domain: sites.domain,
+      })
+      .from(sites);
 
-      // Filter out sites without an organization ID
-      return allSites.filter(site => site.organizationId !== null) as Array<OrgSite & { organizationId: string }>;
-    } catch (error) {
-      this.logger.error(error as Error, `Error getting all sites`);
-      return [];
-    }
+    // Filter out sites without an organization ID
+    return allSites.filter(site => site.organizationId !== null) as Array<
+      OrgSite & { organizationId: string; domain: string }
+    >;
   }
 
   /**
@@ -219,7 +249,12 @@ class UsageService {
     const stripeSub = stripeSubscriptionInfoFromSnapshot(stripeSubscriptions, orgData.stripeCustomerId);
     // A failed plan lookup throws, so the caller skips this org and keeps its current blocks
     // instead of treating a paying organization as free.
-    const subscription = await getBestSubscriptionFromStripeSub(orgData.id, stripeSub, { throwOnError: true });
+    const subscription = await getBestSubscriptionFromStripeSub(
+      orgData.id,
+      stripeSub,
+      { throwOnError: true },
+      orgData.stripeCustomerId ? stripeSubscriptions.get(orgData.stripeCustomerId) : null
+    );
 
     // Log subscription details
     if (subscription.source === "appsumo") {
@@ -230,6 +265,10 @@ class UsageService {
       this.logger.info(
         `Organization ${orgData.name} using Stripe ${subscription.planName} (${subscription.interval}) with ${subscription.eventLimit} events/month`
       );
+    } else if (subscription.source === "free" && subscription.trialGrace) {
+      this.logger.info(
+        `Organization ${orgData.name} in its post-trial grace period until ${subscription.trialGrace.endsAt.toISOString()} with ${subscription.eventLimit} events/month`
+      );
     } else {
       this.logger.info(`Organization ${orgData.name} on free tier with ${subscription.eventLimit} events/month`);
     }
@@ -239,41 +278,37 @@ class UsageService {
 
   /**
    * Gets monthly event counts for all sites in a single query (for current month)
-   * Returns a map of site_id -> event count
+   * Returns a map of site_id -> event count. Throws on failure: an empty map would read as
+   * "every organization is at zero" and lift every over-limit block.
    */
   private async getAllSiteEventCounts(): Promise<Map<number, number>> {
-    try {
-      const periodStart = this.getStartOfMonth();
+    const periodStart = this.getStartOfMonth();
 
-      const result = await clickhouse.query({
-        query: `
-          SELECT
-            site_id,
-            COUNT(*) as count
-          FROM events
-          WHERE type IN {types:Array(String)}
-            AND timestamp >= toDate({periodStart:String})
-          GROUP BY site_id
-        `,
-        format: "JSONEachRow",
-        query_params: {
-          periodStart: periodStart,
-          types: [...USAGE_COUNTED_EVENT_TYPES],
-        },
-      });
+    const result = await clickhouse.query({
+      query: `
+        SELECT
+          site_id,
+          COUNT(*) as count
+        FROM events
+        WHERE type IN {types:Array(String)}
+          AND timestamp >= toDate({periodStart:String})
+        GROUP BY site_id
+      `,
+      format: "JSONEachRow",
+      query_params: {
+        periodStart: periodStart,
+        types: [...USAGE_COUNTED_EVENT_TYPES],
+      },
+    });
 
-      const rows = await processResults<{ site_id: number; count: string }>(result);
+    const rows = await processResults<{ site_id: number; count: string }>(result);
 
-      const eventCountMap = new Map<number, number>();
-      for (const row of rows) {
-        eventCountMap.set(row.site_id, parseInt(row.count, 10));
-      }
-
-      return eventCountMap;
-    } catch (error) {
-      this.logger.error(error as Error, "Error querying ClickHouse for event counts");
-      return new Map();
+    const eventCountMap = new Map<number, number>();
+    for (const row of rows) {
+      eventCountMap.set(row.site_id, parseInt(row.count, 10));
     }
+
+    return eventCountMap;
   }
 
   /**
@@ -338,18 +373,38 @@ class UsageService {
       // Step 1: Get all sites with their organization IDs
       const allSites = await this.getAllSites();
 
-      // Step 2: Get event and replay counts for all sites (current month, one query each)
-      const [eventCountMap, replayCountMap] = await Promise.all([
-        this.getAllSiteEventCounts(),
-        this.getAllSiteReplayCounts(),
-      ]);
+      // Step 2: Get event and replay counts for all sites (current month, one query each). If
+      // the event count fails, skip the run like a Stripe failure: writing zeros would clear
+      // every over-limit block and re-send "limit exceeded" emails once the counts come back.
+      let eventCountMap: Map<number, number>;
+      let replayCountMap: Map<number, number>;
+      try {
+        [eventCountMap, replayCountMap] = await Promise.all([
+          this.getAllSiteEventCounts(),
+          this.getAllSiteReplayCounts(),
+        ]);
+      } catch (error) {
+        this.logger.error(error as Error, "Skipping usage check: failed to query ClickHouse for event counts");
+        return;
+      }
 
       // Step 3: Build a map of organizationId -> { sites, eventCount, replayCount }
-      const orgDataMap = new Map<string, { sites: OrgSite[]; eventCount: number; replayCount: number }>();
+      const orgDataMap = new Map<
+        string,
+        { sites: Array<OrgSite & { domain: string }>; siteUsage: SiteUsage[]; eventCount: number; replayCount: number }
+      >();
       for (const site of allSites) {
-        const orgData = orgDataMap.get(site.organizationId) || { sites: [], eventCount: 0, replayCount: 0 };
-        orgData.sites.push({ siteId: site.siteId, createdAt: site.createdAt });
-        orgData.eventCount += eventCountMap.get(site.siteId) || 0;
+        const orgData = orgDataMap.get(site.organizationId) || {
+          sites: [],
+          siteUsage: [],
+          eventCount: 0,
+          replayCount: 0,
+        };
+        const siteEvents = eventCountMap.get(site.siteId) || 0;
+        const domain = site.domain ?? String(site.siteId);
+        orgData.sites.push({ siteId: site.siteId, createdAt: site.createdAt, domain });
+        orgData.siteUsage.push({ domain, events: siteEvents });
+        orgData.eventCount += siteEvents;
         orgData.replayCount += replayCountMap.get(site.siteId) || 0;
         orgDataMap.set(site.organizationId, orgData);
       }
@@ -385,6 +440,12 @@ class UsageService {
           const subscription = await this.getOrganizationSubscriptionInfo(orgData, stripeSubscriptions);
           if (this.refreshedSince(orgData.id, runStartedAt)) continue;
           const eventLimit = subscription.eventLimit;
+          const usageEmail = {
+            organizationName: orgData.name,
+            eventCount,
+            eventLimit,
+            sites: [...(orgStats?.siteUsage ?? [])].sort((a, b) => b.events - a.events),
+          };
           const isOverLimit = eventCount > eventLimit;
 
           const replayCount = orgStats?.replayCount || 0;
@@ -416,7 +477,7 @@ class UsageService {
             if (ownerEmails.length > 0) {
               for (const ownerEmail of ownerEmails) {
                 try {
-                  await sendLimitExceededEmail(ownerEmail, orgData.name, eventCount, eventLimit);
+                  await sendLimitExceededEmail(ownerEmail, usageEmail);
                   this.logger.info({ organizationId: orgData.id }, "Sent limit-exceeded email to organization owner");
                 } catch (error) {
                   this.logger.error(
@@ -438,7 +499,7 @@ class UsageService {
             if (ownerEmails.length > 0) {
               for (const ownerEmail of ownerEmails) {
                 try {
-                  await sendApproachingLimitEmail(ownerEmail, orgData.name, eventCount, eventLimit);
+                  await sendApproachingLimitEmail(ownerEmail, usageEmail);
                   this.logger.info(
                     { organizationId: orgData.id },
                     "Sent approaching-limit email to organization owner"
@@ -455,6 +516,14 @@ class UsageService {
                 { organizationId: orgData.id },
                 "No organization owners found; skipping approaching-limit email"
               );
+            }
+          }
+
+          if (subscription.source === "free" && subscription.trialGrace) {
+            try {
+              await trialGraceEmails.sendDue(orgData, subscription.trialGrace, orgSites);
+            } catch (error) {
+              this.logger.error({ err: error, organizationId: orgData.id }, "Failed to send trial grace emails");
             }
           }
 

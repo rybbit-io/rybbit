@@ -90,12 +90,12 @@ Identified users are enriched with their `traits`.
     start_time: {
       description: 'Replay start time',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS.mmm"',
     },
     end_time: {
       description: 'Replay end time',
-      type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      type: 'string | null',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS.mmm"',
     },
     duration_ms: {
       description: 'Duration in milliseconds',
@@ -279,8 +279,8 @@ var data = await response.Content.ReadAsStringAsync();
       "session_id": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
       "user_id": "dev_xyz789",
       "identified_user_id": "user@example.com",
-      "start_time": "2024-01-31T14:00:00.000Z",
-      "end_time": "2024-01-31T14:00:48.200Z",
+      "start_time": "2024-01-31 14:00:00.000",
+      "end_time": "2024-01-31 14:00:48.200",
       "duration_ms": 48200,
       "page_url": "/",
       "event_count": 312,

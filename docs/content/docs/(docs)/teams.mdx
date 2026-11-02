@@ -7,7 +7,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 Teams let you group sites together and control which organization members can access them. This is useful for organizations managing multiple properties where different people are responsible for different sites.
 
-Access teams by clicking on "Teams" or going to [app.rybbit.io/settings/teams](https://app.rybbit.io/settings/teams).
+Open teams by clicking **Teams** in the settings sidebar or going to [app.rybbit.io/settings/teams](https://app.rybbit.io/settings/teams). Only admins and owners see the **Teams** item.
 
 ![teams](/docs/teams.png)
 
@@ -29,8 +29,8 @@ When a member is assigned to a team, they can access all sites within that team.
 ## Creating a Team
 
 1. Go to **Settings > Teams**
-2. Click the **Create Team** button
-3. Enter a team name
+2. Click **Create team**
+3. Enter a **Team Name**
 4. Select which members should belong to the team
 5. Select which sites the team should have access to
 6. Optionally pick a role the team's members get on those sites
@@ -40,17 +40,25 @@ You can also create a team directly from the team filter on the home page.
 
 ## Managing Teams
 
+The **Teams** table lists each team with its **Members**, **Sites** and **Role on its sites**. Click a row to expand it and see what the team does for each member, which sites it covers, and **Add people** or **Add sites** shortcuts.
+
 ### Editing a Team
 
-Click the edit icon on any team card to update its name, members, or site assignments.
+Click the edit (pencil) icon at the end of a team's row to update its name, members, sites, or role on its sites, then click **Save Changes**.
 
 ### Deleting a Team
 
-Click the delete icon on a team card. Sites assigned to the team will become unassigned and visible to all members.
+Click the delete (trash) icon at the end of a team's row and confirm with **Delete Team**. Sites assigned to the team become unassigned and visible to all members.
 
 <Callout type="warn">
   Deleting a team removes all member-to-site associations through that team. Members who only had access via the deleted team will lose access to those sites.
 </Callout>
+
+## Access by site
+
+Below the teams table, **Access by site** lists every site with who can open it, with what role, and why: through a team (shown by the team's name) or a **Direct** grant. When a site role is higher than the person's organization role, the original role is shown as "from" that role. Owners and admins always reach every site, so they're summarized as people with all-site access rather than listed per site.
+
+Use it to check access before and after you change a team.
 
 ## Filtering by Team
 

@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 DELETE /api/sites/:site/annotations/:annotationId
 ```
 
-Deletes an annotation. Admins and owners can delete any annotation on their sites; members can delete only the annotations they created.
+Deletes an annotation. An editor or above can delete any annotation on the site, including through a per-site editor grant. Members and per-site members can delete only the annotations they created. Organization-wide annotations can only be deleted by someone with the editor role or above in the organization, even if they created the annotation. Returns `403` when you may not delete it and `404` when it does not exist on this site.
 
 ### Path Parameters
 

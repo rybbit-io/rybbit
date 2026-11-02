@@ -18,7 +18,7 @@ POST /api/auth/organization/invite-member
 
 Sends an invitation email inviting a user to join an organization with a given role. (To add an existing user directly without an email invite, see Add Member.)
 
-<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie with the request.</Callout>
+<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie and an `Origin` header for your Rybbit instance with the request; without `Origin` it returns `403` (`MISSING_OR_NULL_ORIGIN`). You must be an **owner or admin** of the organization to invite members.</Callout>
 
 ### Request Body
 
@@ -30,8 +30,8 @@ Sends an invitation email inviting a user to join an organization with a given r
       required: true,
     },
     role: {
-      description: 'Role to assign: `owner`, `admin`, `editor`, `member` or `viewer`. You cannot assign a role above your own.',
-      type: 'string | string[]',
+      description: 'Exactly one role: `owner`, `admin`, `editor`, `member` or `viewer`. Anything else, including an array, returns `400`. Only owners can invite owners.',
+      type: 'string',
       required: true,
     },
     organizationId: {
@@ -122,7 +122,8 @@ Returns the created invitation object.
   <Tab value="cURL">
 ```bash title="Request"
 curl -X POST "https://app.rybbit.io/api/auth/organization/invite-member" \
-  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Origin: https://app.rybbit.io" \
   -H "Content-Type: application/json" \
   -d '{"email": "teammate@example.com", "role": "member"}'
 ```
@@ -158,7 +159,8 @@ response = requests.post(
         'role': 'member'
     },
     headers={
-        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+        'Origin': 'https://app.rybbit.io'
     }
 )
 
@@ -176,7 +178,8 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     'role' => 'member'
 ]));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Origin: https://app.rybbit.io',
     'Content-Type: application/json'
 ]);
 
@@ -193,7 +196,8 @@ require 'json'
 
 uri = URI("https://app.rybbit.io/api/auth/organization/invite-member")
 req = Net::HTTP::Post.new(uri)
-req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Origin'] = 'https://app.rybbit.io'
 req['Content-Type'] = 'application/json'
 req.body = {
   email: 'teammate@example.com',
@@ -211,7 +215,8 @@ body := bytes.NewBuffer([]byte(`{
   "role": "member"
 }`))
 req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/auth/organization/invite-member", body)
-req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Origin", "https://app.rybbit.io")
 req.Header.Set("Content-Type", "application/json")
 
 client := &http.Client{}
@@ -227,7 +232,8 @@ json.NewDecoder(resp.Body).Decode(&data)
 let client = reqwest::Client::new();
 let res = client
     .post("https://app.rybbit.io/api/auth/organization/invite-member")
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
     .json(&serde_json::json!({
         "email": "teammate@example.com",
         "role": "member"
@@ -244,7 +250,8 @@ HttpClient client = HttpClient.newHttpClient();
 String json = "{\"email\": \"teammate@example.com\", \"role\": \"member\"}";
 HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://app.rybbit.io/api/auth/organization/invite-member"))
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
     .build();
@@ -255,7 +262,8 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
   <Tab value=".NET">
 ```csharp title="Request"
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Origin", "https://app.rybbit.io");
 
 var content = new StringContent(
     "{\"email\": \"teammate@example.com\", \"role\": \"member\"}",

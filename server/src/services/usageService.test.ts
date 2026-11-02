@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => ({
   getAllStripeSubscriptionsByCustomer: vi.fn(),
   sendLimitExceededEmail: vi.fn(),
   sendApproachingLimitEmail: vi.fn(),
+  sendTrialGraceDue: vi.fn(),
 }));
 
 vi.mock("../db/postgres/postgres.js", () => {
@@ -86,6 +87,10 @@ vi.mock("../api/analytics/utils/utils.js", () => ({
 vi.mock("../lib/email/email.js", () => ({
   sendLimitExceededEmail: mocks.sendLimitExceededEmail,
   sendApproachingLimitEmail: mocks.sendApproachingLimitEmail,
+}));
+
+vi.mock("./trialGrace/trialGraceEmails.js", () => ({
+  trialGraceEmails: { sendDue: mocks.sendTrialGraceDue },
 }));
 
 vi.mock("../lib/logger/logger.js", () => ({
@@ -217,6 +222,8 @@ beforeEach(() => {
   mocks.sendLimitExceededEmail.mockResolvedValue(undefined);
   mocks.sendApproachingLimitEmail.mockReset();
   mocks.sendApproachingLimitEmail.mockResolvedValue(undefined);
+  mocks.sendTrialGraceDue.mockReset();
+  mocks.sendTrialGraceDue.mockResolvedValue(undefined);
 
   // The service is a singleton; clear the blocked sets between tests.
   usageService.setSitesOverLimit(new Set());
@@ -317,14 +324,30 @@ describe("updateOrganizationsMonthlyUsage — event limit boundary", () => {
     expect(usageService.getSitesOverLimit().size).toBe(0);
   });
 
-  it("fails open when ClickHouse cannot be queried", async () => {
-    singleOrg({ subscription: stripeSub({ eventLimit: 1_000 }), eventCount: 10_000_000 });
+  it("skips the run and keeps the last counts and blocks when ClickHouse cannot be queried", async () => {
+    usageService.setSitesOverLimit(new Set([1]));
+    singleOrg({
+      subscription: stripeSub({ eventLimit: 1_000 }),
+      eventCount: 10_000_000,
+      orgOverrides: { overMonthlyLimit: true },
+    });
     state.clickhouseError = new Error("clickhouse is down");
+    const onUpdated = vi.fn();
+    usageService.onUsageUpdated(onUpdated);
 
     await usageService.updateOrganizationsMonthlyUsage();
 
-    expect(state.updates[0]).toMatchObject({ monthlyEventCount: 0, overMonthlyLimit: false });
-    expect(usageService.getSitesOverLimit().size).toBe(0);
+    expect(state.updates).toEqual([]);
+    expect(usageService.isSiteOverLimit(1)).toBe(true);
+    expect(mocks.sendLimitExceededEmail).not.toHaveBeenCalled();
+    expect(onUpdated).not.toHaveBeenCalled();
+
+    // Once ClickHouse is back, the org is still over and was already notified: no repeat email.
+    state.clickhouseError = null;
+    await usageService.updateOrganizationsMonthlyUsage();
+
+    expect(state.updates[0]).toMatchObject({ monthlyEventCount: 10_000_000, overMonthlyLimit: true });
+    expect(mocks.sendLimitExceededEmail).not.toHaveBeenCalled();
   });
 });
 
@@ -336,7 +359,10 @@ describe("updateOrganizationsMonthlyUsage — limit exceeded email", () => {
     await usageService.updateOrganizationsMonthlyUsage();
 
     expect(mocks.sendLimitExceededEmail).toHaveBeenCalledTimes(2);
-    expect(mocks.sendLimitExceededEmail).toHaveBeenCalledWith("a@example.com", "Org org_1", 101, 100);
+    expect(mocks.sendLimitExceededEmail).toHaveBeenCalledWith(
+      "a@example.com",
+      expect.objectContaining({ organizationName: "Org org_1", eventCount: 101, eventLimit: 100 })
+    );
   });
 
   it("does not re-email an org that was already over its limit", async () => {
@@ -378,7 +404,10 @@ describe("updateOrganizationsMonthlyUsage — approaching limit email", () => {
 
     await usageService.updateOrganizationsMonthlyUsage();
 
-    expect(mocks.sendApproachingLimitEmail).toHaveBeenCalledWith("owner@example.com", "Org org_1", 90_000, 100_000);
+    expect(mocks.sendApproachingLimitEmail).toHaveBeenCalledWith(
+      "owner@example.com",
+      expect.objectContaining({ organizationName: "Org org_1", eventCount: 90_000, eventLimit: 100_000 })
+    );
     expect(state.updates[0]).toMatchObject({ approachingLimitNotifiedPeriodStart: "2026-08-01" });
   });
 
@@ -696,6 +725,57 @@ describe("sites that need a plan (cloud, free plan ended 2026-02-13)", () => {
     await Promise.all([firstRefresh, secondRefresh]);
 
     expect(usageService.isSiteWithoutPlan(2)).toBe(false);
+  });
+
+  describe("after an unpaid trial", () => {
+    const graceSub = (endsAt: Date): SubscriptionInfo => ({
+      source: "free",
+      planName: "free",
+      status: "free",
+      periodStart: "2026-08-01",
+      eventLimit: 100_000,
+      trialGrace: {
+        subscriptionId: "sub_trial",
+        planName: "standard100k",
+        trialEndedAt: new Date("2026-07-30T00:00:00Z"),
+        endsAt,
+        retryingPayment: false,
+      },
+    });
+
+    it("keeps every site collecting on the trial's limit and hands the org to the grace emails", async () => {
+      const subscription = graceSub(new Date("2026-09-28T00:00:00Z"));
+      state.subscriptions.set("org_1", subscription);
+      state.eventCounts = [{ site_id: 2, count: "50000" }];
+
+      await usageService.updateOrganizationsMonthlyUsage();
+
+      expect(usageService.getSitesWithoutPlan().size).toBe(0);
+      expect(usageService.isSiteOverLimit(2)).toBe(false);
+      expect(mocks.sendTrialGraceDue).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "org_1" }),
+        (subscription as Extract<SubscriptionInfo, { source: "free" }>).trialGrace,
+        [expect.objectContaining({ siteId: 1, domain: "1" }), expect.objectContaining({ siteId: 2, domain: "2" })]
+      );
+    });
+
+    it("switches the sites off once the grace period is over", async () => {
+      state.subscriptions.set("org_1", graceSub(new Date("2026-08-01T00:00:00Z")));
+
+      await usageService.updateOrganizationsMonthlyUsage();
+
+      expect(usageService.isSiteWithoutPlan(2)).toBe(true);
+    });
+
+    it("still applies the blocks when the grace email fails", async () => {
+      state.subscriptions.set("org_1", graceSub(new Date("2026-09-28T00:00:00Z")));
+      mocks.sendTrialGraceDue.mockRejectedValue(new Error("resend down"));
+
+      await usageService.updateOrganizationsMonthlyUsage();
+
+      expect(state.updates).toHaveLength(1);
+      expect(usageService.isSiteWithoutPlan(2)).toBe(false);
+    });
   });
 
   it("never blocks sites for needing a plan when self-hosted", async () => {

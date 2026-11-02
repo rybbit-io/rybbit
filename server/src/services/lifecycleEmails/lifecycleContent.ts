@@ -1,19 +1,10 @@
+import { appUrl, formatCount, plural } from "../../lib/email/format.js";
+import { greeting, type Letter, type LetterBlock } from "../../lib/email/letter.js";
 import type { PlatformInfo } from "./platformDetect.js";
 
-export interface LifecycleEmail {
-  subject: string;
-  text: string;
-}
+export type LifecycleEmail = Letter;
 
-const appUrl = () => (process.env.BASE_URL || "https://app.rybbit.io").replace(/\/$/, "");
-
-const greeting = (name?: string | null) => {
-  // Email-signup users have their email prefix stored as their name - don't greet with that
-  const clean = name && !name.includes("@") ? name.split(" ")[0] : "";
-  return clean ? `Hi ${clean},` : "Hi,";
-};
-
-const signoff = `\n\nBill\nFounder, Rybbit`;
+const SETUP_GUIDES_URL = "https://rybbit.com/docs/script";
 
 /**
  * Multi-site emails list at most this many sites in the body; the rest are
@@ -29,13 +20,38 @@ export const subjectDomains = (domains: string[]): string => {
   return `${domains[0]} and ${others} other site${others === 1 ? "" : "s"}`;
 };
 
-const overflowLine = (total: number, noun: string) => {
+const overflow = (total: number): LetterBlock[] => {
   const hidden = total - MAX_LISTED_SITES;
-  return hidden > 0 ? `\n...and ${hidden} more ${noun}${hidden === 1 ? "" : "s"}.` : "";
+  return hidden > 0 ? [{ type: "note", text: `Plus ${plural(hidden, "more site")}.` }] : [];
 };
 
 export const snippetFor = (siteId: number) =>
   `<script src="${appUrl()}/api/script.js" data-site-id="${siteId}" defer></script>`;
+
+// ---------------------------------------------------------------------------
+// Signup
+// ---------------------------------------------------------------------------
+
+export const welcome = (name?: string | null): LifecycleEmail => ({
+  subject: "Welcome to Rybbit!",
+  preview: "Thanks for signing up! Here's how to get started.",
+  greeting: greeting(name),
+  blocks: [
+    { type: "p", text: "Welcome to Rybbit, and thanks for signing up! I'm Bill, the founder." },
+    { type: "p", text: "Rybbit is fully self-funded, so we only answer to the people who use it." },
+    { type: "p", text: "Getting set up takes about a minute:" },
+    {
+      type: "steps",
+      steps: [
+        { title: "Add your site", detail: "Just the domain" },
+        { title: "Paste one script tag", detail: "In your site's <head>" },
+        { title: "See your first visitor", detail: "Live on your dashboard" },
+      ],
+    },
+    { type: "button", label: "Add your site", href: appUrl() },
+    { type: "p", text: "If you have any questions or run into problems, just reply to this email." },
+  ],
+});
 
 // ---------------------------------------------------------------------------
 // Stage 1: signed up, no site
@@ -43,24 +59,33 @@ export const snippetFor = (siteId: number) =>
 
 export const noSite1 = (name?: string | null): LifecycleEmail => ({
   subject: "Finish setting up Rybbit",
-  text: `${greeting(name)}
-
-Looks like you haven't added your website yet. It takes about a minute - you give us the domain, we give you one script tag.
-
-Pick up where you left off: ${appUrl()}
-
-If anything was confusing or got in your way, just reply and tell me - I read every response.${signoff}`,
+  preview: "You haven't added a site yet. It only takes a minute.",
+  greeting: greeting(name),
+  blocks: [
+    {
+      type: "p",
+      text: "Looks like you haven't added your website yet. It only takes a minute. Enter your domain and we'll give you a script tag to paste.",
+    },
+    { type: "button", label: "Add your site", href: appUrl() },
+    { type: "p", text: "If something got in the way, just reply and let me know." },
+  ],
 });
 
 export const noSite2 = (name?: string | null): LifecycleEmail => ({
   subject: "Was something unclear?",
-  text: `${greeting(name)}
-
-You signed up for Rybbit a few days ago but haven't added a site. That usually means something got in the way - a question about pricing, self-hosting, privacy, or just timing.
-
-Whatever it was, I'd genuinely like to know. Reply with one line and I'll help, or tell me what we could have done better.
-
-This is the last email I'll send unless you start using Rybbit.${signoff}`,
+  preview: "Just reply and I'll help. This is my last email about it.",
+  greeting: greeting(name),
+  blocks: [
+    {
+      type: "p",
+      text: "You signed up for Rybbit a few days ago but haven't added a site yet. Did something get in the way?",
+    },
+    {
+      type: "p",
+      text: "If you have a question about pricing, privacy or anything else, just reply and I'll help. And if we could have done something better, I'd like to hear that too.",
+    },
+    { type: "p", text: "This is the last email I'll send about it." },
+  ],
 });
 
 // ---------------------------------------------------------------------------
@@ -75,39 +100,67 @@ export interface SnippetSite {
 
 export const installSnippet = (sitesIn: SnippetSite[], name?: string | null): LifecycleEmail => {
   const domains = sitesIn.map(s => s.domain);
+  const preview = "Add one script tag to your site's <head> and you're done.";
   if (sitesIn.length === 1) {
     const [{ domain, siteId, platform }] = sitesIn;
     return {
       subject: `One step left for ${domain}`,
-      text: `${greeting(name)}
-
-${domain} is set up on Rybbit - it just needs the tracking snippet. Add this to the <head> of every page:
-
-${snippetFor(siteId)}
-${
-  platform
-    ? `\nYour site looks like it runs on ${platform.label}. Here's the exact guide for it:\n${platform.guideUrl}\n`
-    : `\nUsing a framework or CMS? We have step-by-step guides for most of them:\nhttps://rybbit.com/docs/script\n`
-}
-As soon as the first pageview arrives you'll see it live on your dashboard. If it's not working after a few minutes, reply and I'll help you debug it.${signoff}`,
+      preview,
+      greeting: greeting(name),
+      blocks: [
+        { type: "p", text: `${domain} is set up. Now add this script to the <head> of every page:` },
+        { type: "code", code: snippetFor(siteId) },
+        {
+          type: "rows",
+          rows: [
+            { label: "Site", value: domain },
+            { label: "Site ID", value: String(siteId), strong: true },
+            ...(platform ? [{ label: "Platform", value: platform.label }] : []),
+          ],
+        },
+        ...(platform
+          ? ([
+              { type: "p", text: `Your site looks like it's built with ${platform.label}. Here's our guide for it.` },
+              { type: "button", label: `Open the ${platform.label} guide`, href: platform.guideUrl },
+            ] as LetterBlock[])
+          : ([
+              { type: "p", text: "Using a framework or CMS? We have setup guides for most of them." },
+              { type: "button", label: "Open the setup guides", href: SETUP_GUIDES_URL },
+            ] as LetterBlock[])),
+        {
+          type: "p",
+          text: "Once it's installed, visits show up on your dashboard right away. If it's not working, just reply and I'll help.",
+        },
+      ],
     };
   }
 
-  const listed = sitesIn
-    .slice(0, MAX_LISTED_SITES)
-    .map(s => `${s.domain}${s.platform ? ` (${s.platform.label}: ${s.platform.guideUrl})` : ""}\n${snippetFor(s.siteId)}`)
-    .join("\n\n");
   return {
     subject: `One step left for ${subjectDomains(domains)}`,
-    text: `${greeting(name)}
-
-You've added ${sitesIn.length} sites to Rybbit - each one just needs its tracking snippet in the <head> of every page. The snippets differ only by site id:
-
-${listed}${overflowLine(sitesIn.length, "site")}
-
-Every site's snippet is also on its dashboard under Settings. Framework and CMS guides: https://rybbit.com/docs/script
-
-As soon as the first pageview arrives you'll see it live on your dashboard. If something isn't working, reply and I'll help you debug it.${signoff}`,
+    preview,
+    greeting: greeting(name),
+    blocks: [
+      {
+        type: "p",
+        text: `You've added ${sitesIn.length} sites to Rybbit. Each one needs its own script in the <head> of every page:`,
+      },
+      ...sitesIn.slice(0, MAX_LISTED_SITES).map((s): LetterBlock => ({
+        type: "site",
+        domain: s.domain,
+        code: snippetFor(s.siteId),
+        ...(s.platform ? { guide: { label: s.platform.label, url: s.platform.guideUrl } } : {}),
+      })),
+      ...overflow(sitesIn.length),
+      {
+        type: "p",
+        text: "Every site's script is also in its site settings, and we have setup guides for most frameworks and CMSs.",
+      },
+      { type: "button", label: "Open the setup guides", href: SETUP_GUIDES_URL },
+      {
+        type: "p",
+        text: "Once it's installed, visits show up on your dashboard right away. If something isn't working, just reply and I'll help.",
+      },
+    ],
   };
 };
 
@@ -116,64 +169,82 @@ export interface CheckSite {
   checkInstallUrl: string;
 }
 
+const INSTALL_CAUSES = [
+  { title: "The script isn't on the live site", detail: "Check the page source of your live site" },
+  { title: "The site hasn't been redeployed since you added it", detail: "Redeploy, then reload the page" },
+  { title: "An adblocker is blocking your own test visit", detail: "Try a private window" },
+];
+
 export const installCheck = (sitesIn: CheckSite[], name?: string | null): LifecycleEmail => {
   const domains = sitesIn.map(s => s.domain);
+  const preview = "Here's how to check that the script is installed.";
   if (sitesIn.length === 1) {
     const [{ domain, checkInstallUrl }] = sitesIn;
     return {
-      subject: `Still nothing from ${domain}`,
-      text: `${greeting(name)}
-
-Your Rybbit snippet hasn't sent any data from ${domain} yet. The three most common causes:
-
-1. The snippet isn't in the <head> of the deployed site (check view-source on the live page)
-2. The site hasn't been redeployed since you added it
-3. An adblocker on your own browser is blocking your test visit - try a private window
-
-Click here and we'll fetch ${domain} right now and tell you whether the snippet is there:
-${checkInstallUrl}
-
-Stuck? Reply to this email and I'll take a look personally.${signoff}`,
+      subject: `No data from ${domain} yet`,
+      preview,
+      greeting: greeting(name),
+      blocks: [
+        { type: "p", text: `We haven't received any data from ${domain} yet. Usually it's one of these:` },
+        { type: "steps", steps: INSTALL_CAUSES },
+        { type: "p", text: `Or click below and we'll check ${domain} for the script.` },
+        { type: "button", label: `Check ${domain} now`, href: checkInstallUrl },
+        { type: "p", text: "Still stuck? Just reply and I'll take a look." },
+      ],
     };
   }
 
-  const listed = sitesIn
-    .slice(0, MAX_LISTED_SITES)
-    .map(s => `${s.domain}\n${s.checkInstallUrl}`)
-    .join("\n\n");
   return {
-    subject: `Still nothing from ${subjectDomains(domains)}`,
-    text: `${greeting(name)}
-
-Your Rybbit snippets haven't sent any data from ${sitesIn.length} of your sites yet. The three most common causes:
-
-1. The snippet isn't in the <head> of the deployed site (check view-source on the live page)
-2. The site hasn't been redeployed since you added it
-3. An adblocker on your own browser is blocking your test visit - try a private window
-
-Click a link and we'll fetch that site right now and tell you whether the snippet is there:
-
-${listed}${overflowLine(sitesIn.length, "site")}
-
-Stuck? Reply to this email and I'll take a look personally.${signoff}`,
+    subject: `No data from ${subjectDomains(domains)} yet`,
+    preview,
+    greeting: greeting(name),
+    blocks: [
+      {
+        type: "p",
+        text: `We haven't received any data from ${sitesIn.length} of your sites yet. Usually it's one of these:`,
+      },
+      { type: "steps", steps: INSTALL_CAUSES },
+      { type: "p", text: "Or click a site below and we'll check it for the script." },
+      {
+        type: "rows",
+        rows: sitesIn
+          .slice(0, MAX_LISTED_SITES)
+          .map(s => ({ label: s.domain, value: "Check now", href: s.checkInstallUrl })),
+      },
+      ...overflow(sitesIn.length),
+      { type: "p", text: "Still stuck? Just reply and I'll take a look." },
+    ],
   };
 };
 
 export const installFinal = (domains: string[], name?: string | null): LifecycleEmail => {
   const single = domains.length === 1;
-  const which = single ? domains[0] : `${domains.length} of your sites`;
-  const listed = single ? "" : `\n\n${domains.slice(0, MAX_LISTED_SITES).join("\n")}${overflowLine(domains.length, "site")}`;
   return {
     subject: `Need a hand with ${subjectDomains(domains)}?`,
-    text: `${greeting(name)}
-
-${which} still ${single ? "isn't" : "aren't"} sending data to Rybbit.${listed}
-
-I won't keep nudging you - this is the last one.
-
-If you hit a technical wall, reply with your platform (WordPress, Next.js, Shopify...) and I'll send you exact instructions. If you decided Rybbit isn't for you, I'd honestly love to know why.
-
-Either way, thanks for giving us a try.${signoff}`,
+    preview: "Reply with your platform and I'll send you setup steps.",
+    greeting: greeting(name),
+    blocks: [
+      {
+        type: "p",
+        text: single
+          ? `${domains[0]} still isn't sending data to Rybbit. This is my last reminder.`
+          : `${domains.length} of your sites still aren't sending data to Rybbit. This is my last reminder.`,
+      },
+      ...(single
+        ? []
+        : ([
+            {
+              type: "rows",
+              rows: domains.slice(0, MAX_LISTED_SITES).map(domain => ({ label: domain, value: "No data yet" })),
+            },
+            ...overflow(domains.length),
+          ] as LetterBlock[])),
+      {
+        type: "p",
+        text: "If you got stuck, reply with what your site runs on (WordPress, Next.js, Shopify…) and I'll send you step-by-step instructions. And if Rybbit isn't for you, I'd love to know why.",
+      },
+      { type: "p", text: "Thanks for trying Rybbit either way." },
+    ],
   };
 };
 
@@ -186,35 +257,60 @@ export interface LiveSite {
   siteId: number;
 }
 
-export const siteLive = (sitesIn: LiveSite[], country: string | null, name?: string | null): LifecycleEmail => {
+/** What we know about a site's first pageview, each field optional. */
+export interface FirstPageview {
+  receivedAt: string | null;
+  country: string | null;
+  pathname: string | null;
+  device: string | null;
+}
+
+export const siteLive = (sitesIn: LiveSite[], first: FirstPageview | null, name?: string | null): LifecycleEmail => {
   const domains = sitesIn.map(s => s.domain);
+  const closing: LetterBlock = {
+    type: "p",
+    text: "In a few days I'll send you a quick summary of what's coming in.",
+  };
   if (sitesIn.length === 1) {
     const [{ domain, siteId }] = sitesIn;
+    const country = first?.country ?? null;
+    const facts = [
+      first?.receivedAt && { label: "Received", value: first.receivedAt },
+      country && { label: "Country", value: country },
+      first?.pathname && { label: "Page", value: first.pathname },
+      first?.device && { label: "Device", value: first.device },
+    ].filter((row): row is { label: string; value: string } => !!row);
     return {
       subject: `Rybbit is live on ${domain}`,
-      text: `${greeting(name)}
-
-Rybbit just received its first pageview from ${domain}${country ? ` - a visitor from ${country}` : ""}. Everything is working.
-
-Watch your traffic live: ${appUrl()}/${siteId}
-
-Let it collect data for a couple of days, then I'll send you the first patterns worth looking at.${signoff}`,
+      preview: country ? `Your first visitor just arrived, from ${country}.` : "Your first visitor just arrived.",
+      greeting: greeting(name),
+      blocks: [
+        {
+          type: "p",
+          text: `You just got your first visitor on ${domain}${country ? `, from ${country}` : ""}. Tracking is working.`,
+        },
+        ...(facts.length > 0 ? [{ type: "rows", rows: facts } as LetterBlock] : []),
+        { type: "button", label: "Watch your traffic live", href: `${appUrl()}/${siteId}` },
+        closing,
+      ],
     };
   }
 
-  const listed = sitesIn
-    .slice(0, MAX_LISTED_SITES)
-    .map(s => `${s.domain}: ${appUrl()}/${s.siteId}`)
-    .join("\n");
   return {
     subject: `Rybbit is live on ${subjectDomains(domains)}`,
-    text: `${greeting(name)}
-
-Rybbit has received its first pageviews from ${sitesIn.length} of your sites. Everything is working.
-
-${listed}${overflowLine(sitesIn.length, "site")}
-
-Let them collect data for a couple of days, then I'll send you the first patterns worth looking at.${signoff}`,
+    preview: `Data is coming in from ${sitesIn.length} of your sites.`,
+    greeting: greeting(name),
+    blocks: [
+      { type: "p", text: `Rybbit is now getting data from ${sitesIn.length} of your sites. Tracking is working.` },
+      {
+        type: "rows",
+        rows: sitesIn
+          .slice(0, MAX_LISTED_SITES)
+          .map(s => ({ label: s.domain, value: "Open dashboard", href: `${appUrl()}/${s.siteId}` })),
+      },
+      ...overflow(sitesIn.length),
+      closing,
+    ],
   };
 };
 
@@ -225,49 +321,100 @@ export interface FirstDaysStats {
   topPage: string | null;
 }
 
-export const firstDays = (domain: string, siteId: number, stats: FirstDaysStats, name?: string | null): LifecycleEmail => ({
+export const firstDays = (
+  domain: string,
+  siteId: number,
+  stats: FirstDaysStats,
+  days: number,
+  name?: string | null
+): LifecycleEmail => ({
   subject: `Your first days of data on ${domain}`,
-  text: `${greeting(name)}
-
-${domain} has been on Rybbit for a few days. So far:
-
-- ${stats.sessions.toLocaleString()} visit${stats.sessions === 1 ? "" : "s"}, ${stats.pageviews.toLocaleString()} pageview${stats.pageviews === 1 ? "" : "s"}${
-    stats.topReferrer ? `\n- Top source: ${stats.topReferrer}` : ""
-  }${stats.topPage ? `\n- Most viewed page: ${stats.topPage}` : ""}
-
-One thing worth knowing: adblockers hide roughly 10-30% of real visitors from Google Analytics, but they rarely block Rybbit. If these numbers look higher than what you're used to, that's your actual traffic.
-
-See the full picture: ${appUrl()}/${siteId}${signoff}`,
+  preview: `${plural(stats.sessions, "visit")} so far.${stats.topReferrer ? ` Your top source is ${stats.topReferrer}.` : ""}`,
+  greeting: greeting(name),
+  blocks: [
+    { type: "p", text: `Here's how ${domain}'s first ${plural(days, "day")} on Rybbit went:` },
+    {
+      type: "stats",
+      stats: [
+        { label: "Visits", value: formatCount(stats.sessions) },
+        { label: "Pageviews", value: formatCount(stats.pageviews) },
+        { label: "Days tracked", value: formatCount(days) },
+      ],
+    },
+    ...(stats.topReferrer || stats.topPage
+      ? [
+          {
+            type: "rows",
+            rows: [
+              ...(stats.topReferrer ? [{ label: "Top source", value: stats.topReferrer }] : []),
+              ...(stats.topPage ? [{ label: "Most viewed page", value: stats.topPage }] : []),
+            ],
+          } as LetterBlock,
+        ]
+      : []),
+    {
+      type: "p",
+      text: "If these numbers look higher than in Google Analytics, that's expected. Adblockers hide 10–30% of visitors from GA, but they rarely block Rybbit.",
+    },
+    { type: "button", label: "Open your dashboard", href: `${appUrl()}/${siteId}` },
+  ],
 });
 
 export const nudgeEvents = (domain: string, siteId: number, name?: string | null): LifecycleEmail => ({
-  subject: `See what visitors actually do on ${domain}`,
-  text: `${greeting(name)}
-
-Pageviews tell you where people go. Custom events tell you what they do - button clicks, signups, downloads. One line:
-
-window.rybbit.event("signup_clicked")
-
-Or straight from HTML, no code:
-
-<button data-rybbit-event="signup_clicked">Sign up</button>
-
-Events show up on your dashboard and work as funnel steps and goals.
-
-Guide: https://rybbit.com/docs/track-events${signoff}`,
+  subject: `Track clicks and signups on ${domain}`,
+  preview: "It takes one line of code, or none.",
+  greeting: greeting(name),
+  blocks: [
+    {
+      type: "p",
+      text: "You can track things like button clicks, signups and downloads with custom events. It's one line of JavaScript:",
+    },
+    { type: "code", code: 'window.rybbit.event("signup_clicked")' },
+    { type: "p", text: "Or add an attribute to your HTML:" },
+    { type: "code", code: '<button data-rybbit-event="signup_clicked">Sign up</button>' },
+    { type: "p", text: "Events show up on your dashboard, and you can use them in goals and funnels." },
+    { type: "button", label: "Read the events guide", href: "https://rybbit.com/docs/track-events" },
+  ],
 });
 
-export const nudgeGoals = (domain: string, siteId: number, convertingPath: string, name?: string | null): LifecycleEmail => ({
-  subject: `Visitors are reaching ${convertingPath} - measure it`,
-  text: `${greeting(name)}
+export interface ConvertingPath {
+  pathname: string;
+  /** Sessions that reached the page in the lookback window. */
+  sessions: number;
+}
 
-Visitors on ${domain} are landing on ${convertingPath}. That looks like a conversion - worth measuring properly.
-
-Set a goal on that path and Rybbit shows your conversion rate broken down by source, country, and device. Funnels go further: define the steps leading up to it and see exactly where people drop off.
-
-Create your first goal: ${appUrl()}/${siteId}/goals
-
-Guide: https://rybbit.com/docs/goals${signoff}`,
+export const nudgeGoals = (
+  domain: string,
+  siteId: number,
+  converting: ConvertingPath,
+  name?: string | null
+): LifecycleEmail => ({
+  subject: `Turn ${converting.pathname} into a goal`,
+  preview: "See your conversion rate by source, country and device.",
+  greeting: greeting(name),
+  blocks: [
+    {
+      type: "p",
+      text: `${plural(converting.sessions, "session")} on ${domain} reached ${converting.pathname} in the last two weeks. That looks like a conversion page.`,
+    },
+    {
+      type: "rows",
+      rows: [
+        { label: "Page", value: converting.pathname },
+        { label: "Reached in 14 days", value: plural(converting.sessions, "session"), strong: true },
+      ],
+    },
+    {
+      type: "p",
+      text: "If you make it a goal, Rybbit will show your conversion rate by source, country and device. You can also build a funnel to see where people drop off on the way there.",
+    },
+    {
+      type: "button",
+      label: `Create a goal for ${converting.pathname}`,
+      href: `${appUrl()}/${siteId}/goals`,
+      secondary: { label: "Goals guide", href: "https://rybbit.com/docs/goals" },
+    },
+  ],
 });
 
 // ---------------------------------------------------------------------------
@@ -285,31 +432,45 @@ export const wentQuiet = (sitesIn: QuietSite[], name?: string | null): Lifecycle
   if (sitesIn.length === 1) {
     const [{ domain, siteId, lastEventAt }] = sitesIn;
     return {
-      subject: `We stopped hearing from ${domain}`,
-      text: `${greeting(name)}
-
-${domain} was sending data to Rybbit, but we haven't received anything since ${lastEventAt}.
-
-A quiet period can be normal if your site has fewer visits. If you expected traffic, check that the tracking snippet is still loading on your site, or see your dashboard: ${appUrl()}/${siteId}
-
-If you removed it on purpose, ignore this - I won't email about it again.${signoff}`,
+      subject: `${domain} stopped sending data`,
+      preview: `Nothing since ${lastEventAt}.`,
+      greeting: greeting(name),
+      blocks: [
+        { type: "p", text: `We haven't received any data from ${domain} since ${lastEventAt}.` },
+        {
+          type: "rows",
+          rows: [
+            { label: "Site", value: domain },
+            { label: "Last event", value: lastEventAt, strong: true },
+          ],
+        },
+        { type: "p", text: "If you were expecting traffic, check that the tracking script is still on your site." },
+        { type: "button", label: "Open the dashboard", href: `${appUrl()}/${siteId}` },
+        { type: "p", text: "If you removed it on purpose, you can ignore this. I won't email about it again." },
+      ],
     };
   }
 
-  const listed = sitesIn
-    .slice(0, MAX_LISTED_SITES)
-    .map(s => `${s.domain} - last event ${s.lastEventAt}: ${appUrl()}/${s.siteId}`)
-    .join("\n");
   return {
-    subject: `We stopped hearing from ${subjectDomains(domains)}`,
-    text: `${greeting(name)}
-
-${sitesIn.length} of your sites were sending data to Rybbit, but we haven't received anything from them for two days or more:
-
-${listed}${overflowLine(sitesIn.length, "site")}
-
-A quiet period can be normal for sites with fewer visits. If you expected traffic, check that the tracking snippet is still loading on each site.
-
-If you removed it on purpose, ignore this - I won't email about these sites again.${signoff}`,
+    subject: `${subjectDomains(domains)} stopped sending data`,
+    preview: `Nothing from ${sitesIn.length} of your sites for two days or more.`,
+    greeting: greeting(name),
+    blocks: [
+      {
+        type: "p",
+        text: `We haven't received any data from ${sitesIn.length} of your sites for two days or more:`,
+      },
+      {
+        type: "rows",
+        rows: sitesIn.slice(0, MAX_LISTED_SITES).map(s => ({ label: s.domain, value: `Last event ${s.lastEventAt}` })),
+      },
+      ...overflow(sitesIn.length),
+      { type: "p", text: "If you were expecting traffic, check that the tracking script is still on each site." },
+      { type: "button", label: "Open Rybbit", href: appUrl() },
+      {
+        type: "p",
+        text: "If you removed them on purpose, you can ignore this. I won't email about these sites again.",
+      },
+    ],
   };
 };

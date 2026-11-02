@@ -32,13 +32,17 @@ SessionsWithStats AS (
     GROUP BY session_id
 )
 SELECT
-    session_stats.time AS time,
-    session_stats.sessions,
-    session_stats.pages_per_session,
-    session_stats.bounce_rate * 100 AS bounce_rate,
-    session_stats.session_duration,
-    page_stats.pageviews,
-    page_stats.users
+    -- A bucket can exist on one side only (with no fill, a day that a session
+    -- crossed into but none started on is page-side only). Without nullable
+    -- join results the missing side's key reads as 1970-01-01, so take
+    -- whichever side has the bucket and zero the other side's metrics.
+    coalesce(session_stats.time, page_stats.time) AS time,
+    coalesce(session_stats.sessions, 0) AS sessions,
+    coalesce(session_stats.pages_per_session, 0) AS pages_per_session,
+    coalesce(session_stats.bounce_rate, 0) * 100 AS bounce_rate,
+    coalesce(session_stats.session_duration, 0) AS session_duration,
+    coalesce(page_stats.pageviews, 0) AS pageviews,
+    coalesce(page_stats.users, 0) AS users
 FROM
 (
     SELECT
@@ -63,8 +67,9 @@ FULL JOIN
         ${timeStatement}
     GROUP BY time ORDER BY time ${fillClause}
 ) AS page_stats
-USING time
-ORDER BY time`;
+ON session_stats.time = page_stats.time
+ORDER BY time
+SETTINGS join_use_nulls = 1`;
 };
 
 type getOverviewBucketed = { time: string; pageviews: number }[];

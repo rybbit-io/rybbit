@@ -87,7 +87,7 @@ If you want to enable 3D map visualizations, you can add the `--mapbox-token` fl
 ```
 
 
-The script will create a `.env` file and then build and start the containers. This might take a few minutes the first time.
+The script creates a `.env` file, then pulls the prebuilt images and starts the containers, including Caddy (`docker compose --profile with-webserver up -d`). This might take a few minutes the first time.
 
 <Callout type="info">
   By default, we assume you are on a blank VPS and automatically setup a Caddy webserver. If you want to use your own webserver or need more control over the setup, check out:

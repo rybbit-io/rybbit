@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Event } from "../../../../../api/analytics/endpoints";
-import { formatPropertyValue, getEventRowData, matchesEventSearch, parseEventProperties } from "./eventLogUtils";
+import {
+  compareEventsNewestFirst,
+  formatPropertyValue,
+  getEventKey,
+  getEventRowData,
+  matchesEventSearch,
+  parseEventProperties,
+} from "./eventLogUtils";
 
 const event = (overrides: Partial<Event> = {}): Event => ({
   timestamp: "2026-09-30 14:32:22",
@@ -29,6 +36,36 @@ const event = (overrides: Partial<Event> = {}): Event => ({
   device_type: "Desktop",
   type: "custom_event",
   ...overrides,
+});
+
+describe("getEventKey", () => {
+  it("tells apart two clicks in the same second", () => {
+    const first = { ...event(), event_cursor: "1790778742100_62316EA00DD5E0A3" };
+    const second = { ...event(), event_cursor: "1790778742900_62316EA00DD5E0A3" };
+
+    expect(getEventKey(first)).not.toBe(getEventKey(second));
+  });
+});
+
+describe("compareEventsNewestFirst", () => {
+  const at = (event_cursor: string) => ({ ...event(), event_cursor });
+
+  it("orders by millisecond, then tie-breaker, newest first", () => {
+    const rows = [
+      at("1790778742100_0000000000000001"),
+      at("1790778742900_0000000000000000"),
+      at("1790778742100_00000000000000FF"),
+      // Before 2001-09-09 the milliseconds have one digit fewer.
+      at("999999999999_FFFFFFFFFFFFFFFF"),
+    ];
+
+    expect(rows.sort(compareEventsNewestFirst).map(row => row.event_cursor)).toEqual([
+      "1790778742900_0000000000000000",
+      "1790778742100_00000000000000FF",
+      "1790778742100_0000000000000001",
+      "999999999999_FFFFFFFFFFFFFFFF",
+    ]);
+  });
 });
 
 describe("formatPropertyValue", () => {

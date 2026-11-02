@@ -66,6 +66,8 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 
 #### Session Object
 
+Session fields are computed from the events inside the requested time range. Sessions are ordered by `session_end`, newest first.
+
 <TypeTable
   type={{
     session_id: {
@@ -73,53 +75,151 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       type: 'string',
     },
     user_id: {
-      description: 'User identifier',
+      description: 'Device fingerprint identifier',
       type: 'string',
     },
     country: {
-      description: 'Country code',
+      description: 'Country code (latest event)',
       type: 'string',
     },
-    browser: {
-      description: 'Browser name',
+    region: {
+      description: 'Region code (latest event)',
       type: 'string',
     },
-    operating_system: {
-      description: 'Operating system',
+    city: {
+      description: 'City (latest event)',
+      type: 'string',
+    },
+    language: {
+      description: 'Browser language (latest event)',
       type: 'string',
     },
     device_type: {
       description: 'Device type',
       type: 'string',
     },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
+    },
+    referrer: {
+      description: 'Referrer of the first event',
+      type: 'string',
+    },
+    channel: {
+      description: 'Traffic channel of the first event',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname of the first event',
+      type: 'string',
+    },
+    page_title: {
+      description: 'Page title of the first event',
+      type: 'string',
+    },
+    querystring: {
+      description: 'Query string of the first event',
+      type: 'string',
+    },
+    utm_source: {
+      description: 'UTM source',
+      type: 'string',
+    },
+    utm_medium: {
+      description: 'UTM medium',
+      type: 'string',
+    },
+    utm_campaign: {
+      description: 'UTM campaign',
+      type: 'string',
+    },
+    utm_term: {
+      description: 'UTM term',
+      type: 'string',
+    },
+    utm_content: {
+      description: 'UTM content',
+      type: 'string',
+    },
+    session_start: {
+      description: 'First event time in the session',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_end: {
+      description: 'Last event time in the session',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_duration: {
+      description: 'Seconds between first and last event',
+      type: 'number',
+    },
     entry_page: {
-      description: 'First page visited',
+      description: 'First page viewed',
       type: 'string',
     },
     exit_page: {
-      description: 'Last page visited',
+      description: 'Last page viewed',
       type: 'string',
     },
     pageviews: {
       description: 'Number of pageviews',
       type: 'number',
     },
-    session_duration: {
-      description: 'Session duration in seconds',
+    events: {
+      description: 'Number of custom events',
       type: 'number',
     },
-    session_start: {
-      description: 'Session start time',
-      type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+    errors: {
+      description: 'Number of error events',
+      type: 'number',
     },
-    session_end: {
-      description: 'Session end time',
+    outbound: {
+      description: 'Number of outbound link clicks',
+      type: 'number',
+    },
+    ip: {
+      description: 'Visitor IP address. null unless the site stores IPs (trackIp).',
+      type: 'string | null',
+    },
+    lat: {
+      description: 'Latitude (latest event)',
+      type: 'number',
+    },
+    lon: {
+      description: 'Longitude (latest event)',
+      type: 'number',
+    },
+    tag: {
+      description: 'Tag set on the latest event',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
     },
   }}
 />
+
+Returns `404` if the goal does not exist and `403` if it belongs to another site.
 
 </div>
 <div className="flex flex-col gap-4">
@@ -302,17 +402,39 @@ class Program
       "session_id": "sess_abc123",
       "user_id": "user_xyz789",
       "country": "US",
-      "browser": "Chrome",
-      "operating_system": "macOS",
+      "region": "US-CA",
+      "city": "San Francisco",
+      "language": "en-US",
       "device_type": "desktop",
+      "browser": "Chrome",
+      "browser_version": "128.0",
+      "operating_system": "macOS",
+      "operating_system_version": "14.5",
+      "screen_width": 1920,
+      "screen_height": 1080,
+      "referrer": "https://google.com",
+      "channel": "Organic Search",
+      "hostname": "example.com",
+      "page_title": "Home",
+      "querystring": "",
+      "utm_source": "",
+      "utm_medium": "",
+      "utm_campaign": "",
+      "utm_term": "",
+      "utm_content": "",
+      "session_start": "2024-01-31 14:00:00",
+      "session_end": "2024-01-31 14:04:05",
+      "session_duration": 245,
       "entry_page": "/",
       "exit_page": "/signup/complete",
       "pageviews": 5,
-      "session_duration": 245,
-      "session_start": "2024-01-31T14:00:00.000Z",
-      "session_end": "2024-01-31T14:04:05.000Z",
-      "referrer": "https://google.com",
-      "channel": "organic"
+      "events": 1,
+      "errors": 0,
+      "outbound": 0,
+      "ip": null,
+      "lat": 37.77,
+      "lon": -122.42,
+      "tag": ""
     }
   ]
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { parseCityValue, useSubdivisions } from "../../../../../lib/geo";
+import { parseCityValue, useGetRegionName } from "../../../../../lib/geo";
 import { getCountryName } from "../../../../../lib/utils";
 import { CountryFlag } from "../../../components/shared/icons/CountryFlag";
 import { BotSectionTabs, type BotSectionTab } from "../BotSectionTabs";
@@ -9,7 +9,7 @@ import { BotSectionTabs, type BotSectionTab } from "../BotSectionTabs";
 type Tab = "countries" | "regions" | "cities";
 
 export function BotCountries() {
-  const { data: subdivisions } = useSubdivisions();
+  const { getRegionName } = useGetRegionName();
 
   const tabs: BotSectionTab<Tab>[] = [
     {
@@ -38,9 +38,6 @@ export function BotCountries() {
         getKey: item => item.value || "unknown",
         getLabel: item => {
           if (!item.value) return "Unknown";
-          const region = subdivisions?.features.find(
-            feature => feature.properties.iso_3166_2 === item.value
-          )?.properties;
           const countryCode = item.value.split("-")[0];
 
           return (
@@ -48,7 +45,7 @@ export function BotCountries() {
               <CountryFlag country={countryCode} />
               {countryCode}
               <ChevronRight className="w-4 h-4 mx-[-4px]" />
-              {region?.name ?? item.value.slice(3)}
+              {getRegionName(item.value) || item.value.slice(3)}
             </div>
           );
         },
@@ -65,9 +62,7 @@ export function BotCountries() {
         getLabel: item => {
           if (!item.value || item.value === "-") return "Unknown";
           const { country, region, city } = parseCityValue(item.value);
-          const regionName = subdivisions?.features.find(
-            feature => feature.properties.iso_3166_2 === `${country}-${region}`
-          )?.properties.name;
+          const regionName = getRegionName(`${country}-${region}`);
 
           return (
             <div className="flex gap-2 items-center">

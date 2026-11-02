@@ -54,9 +54,21 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 
 <TypeTable
   type={{
+    data: {
+      description: 'One row per bucket and event name, oldest first. Buckets with no events are omitted.',
+      type: 'EventBucket[]',
+    },
+  }}
+/>
+
+#### EventBucket Object
+
+<TypeTable
+  type={{
     time: {
       description: 'Start of the time bucket',
       type: 'string',
+      typeDescription: 'Bucket start in the requested time_zone, "YYYY-MM-DD HH:MM:SS"',
     },
     event_name: {
       description: 'Name of the custom event',

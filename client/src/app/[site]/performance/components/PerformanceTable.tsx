@@ -14,7 +14,7 @@ import { percentDelta } from "@/lib/delta";
 import { cn } from "@/lib/utils";
 import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { PerformanceByDimensionItem } from "../../../../api/analytics/endpoints";
-import { useSubdivisions } from "../../../../lib/geo";
+import { useGetRegionName } from "../../../../lib/geo";
 import { addFilter, removeFilter, useStore } from "../../../../lib/store";
 import { getCountryName } from "../../../../lib/utils";
 import { Browser } from "../../components/shared/icons/Browser";
@@ -247,7 +247,7 @@ export function PerformanceTable({ dimension }: { dimension: PerformanceDimensio
   const t = useExtracted();
   const filters = useStore(state => state.filters);
   const { data: siteMetadata } = useGetSite();
-  const { data: subdivisions } = useSubdivisions();
+  const { getRegionName } = useGetRegionName();
   const { selectedPercentile: percentile, selectedPerformanceMetric: selectedMetric } = usePerformanceStore();
   const ratingLabels = useRatingLabels();
   const [pageIndex, setPageIndex] = useState(0);
@@ -278,8 +278,7 @@ export function PerformanceTable({ dimension }: { dimension: PerformanceDimensio
     else addFilter({ parameter: dimension, value: [value], type: "equals" });
   };
 
-  const regionName = (code: string) =>
-    subdivisions?.features.find(feature => feature.properties.iso_3166_2 === code)?.properties.name ?? code.slice(3);
+  const regionName = (code: string) => getRegionName(code) || code.slice(3);
 
   const nameOf = (value: string): string => {
     if (dimension === "country") return getCountryName(value) || value;

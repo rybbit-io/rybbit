@@ -87,3 +87,85 @@ describe("correctReplayClockSkew", () => {
     expect(events[0].timestamp).toBe(NOW);
   });
 });
+
+// The implementation before the single-pass fast path, kept verbatim so the
+// optimisation is checked against it rather than against hand-written cases.
+function referenceCorrection<T extends { timestamp: number }>(events: T[], nowMs: number) {
+  if (events.length === 0) return { events, skewMs: 0 };
+  const upperBound = nowMs + MAX_FUTURE_SKEW_MS;
+  const lowerBound = nowMs - MAX_PAST_SKEW_MS;
+  const sanitize = (t: number) =>
+    Number.isFinite(t) ? t : t === Infinity ? upperBound : t === -Infinity ? lowerBound : nowMs;
+  const timestamps = events.map(event => sanitize(event.timestamp));
+  const sorted = [...timestamps].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const anchor = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  let skewMs = 0;
+  if (anchor > upperBound) skewMs = anchor - nowMs;
+  else if (anchor < lowerBound) skewMs = anchor - nowMs;
+  const allFinite = events.every(event => Number.isFinite(event.timestamp));
+  if (skewMs === 0 && allFinite && timestamps.every(t => t <= upperBound && t >= lowerBound)) {
+    return { events, skewMs: 0 };
+  }
+  return {
+    events: events.map((event, index) => ({
+      ...event,
+      timestamp: Math.min(Math.max(timestamps[index] - skewMs, lowerBound), upperBound),
+    })),
+    skewMs,
+  };
+}
+
+describe("correctReplayClockSkew matches the reference implementation", () => {
+  const upper = NOW + MAX_FUTURE_SKEW_MS;
+  const lower = NOW - MAX_PAST_SKEW_MS;
+  const pool = [
+    NOW,
+    NOW - 1,
+    upper,
+    lower,
+    upper + 1,
+    lower - 1,
+    NOW + 10 * MAX_FUTURE_SKEW_MS,
+    NOW - 10 * MAX_PAST_SKEW_MS,
+    Date.UTC(2090, 6, 2),
+    0,
+    Infinity,
+    -Infinity,
+    NaN,
+  ];
+
+  function check(timestamps: number[]) {
+    const events = batch(...timestamps);
+    const actual = correctReplayClockSkew(events, NOW);
+    const expected = referenceCorrection(events, NOW);
+    expect(actual).toEqual(expected);
+    // Same identity contract: the input array comes back only when untouched.
+    expect(actual.events === events).toBe(expected.events === events);
+  }
+
+  it("keeps the input array for a batch sitting exactly on both bounds", () => {
+    const events = batch(lower, NOW, upper);
+    expect(correctReplayClockSkew(events, NOW).events).toBe(events);
+  });
+
+  it("agrees on every one- and two-event combination of edge values", () => {
+    for (const a of pool) {
+      check([a]);
+      for (const b of pool) check([a, b]);
+    }
+  });
+
+  it("agrees on random mixed batches", () => {
+    // Deterministic LCG so a failure reproduces.
+    let seed = 12345;
+    const next = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
+    for (let round = 0; round < 2000; round++) {
+      const length = 1 + Math.floor(next() * 9);
+      const timestamps = Array.from({ length }, () =>
+        next() < 0.7 ? NOW - Math.floor(next() * MAX_PAST_SKEW_MS) : pool[Math.floor(next() * pool.length)]
+      );
+      check(timestamps);
+    }
+  });
+});

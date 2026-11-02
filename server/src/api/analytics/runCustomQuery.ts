@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { clickhouseQuery } from "../../db/clickhouse/clickhouse.js";
 import { QUERY_USER_LIMITS } from "../../db/clickhouse/queryLimits.js";
+import { isQueryUserIsolated, QUERY_USER_UNAVAILABLE_ERROR, siteScopeHeaders } from "../../db/clickhouse/queryUser.js";
 import { getOrganizationSitesForCaller } from "../../lib/auth-utils.js";
 import {
   MAX_CUSTOM_QUERY_LENGTH,
@@ -55,6 +56,10 @@ export async function runCustomQuery(
     siteIds = [body.data.siteId];
   }
 
+  if (!(await isQueryUserIsolated())) {
+    return reply.status(503).send({ error: QUERY_USER_UNAVAILABLE_ERROR });
+  }
+
   const query = `
     WITH scoped_events AS (
       SELECT *
@@ -76,6 +81,9 @@ export async function runCustomQuery(
         siteIds,
         limit: QUERY_USER_LIMITS.maxResultRows,
       },
+      // The rybbit_query row policy only admits rows from these sites, so the
+      // scoped_events CTE isn't the only thing keeping the query in tenant.
+      http_headers: siteScopeHeaders(siteIds),
       // Execution limits (readonly, max_execution_time, max_memory_usage,
       // max_result_rows, …) come from the rybbit_query settings profile and are
       // pinned there with constraints; sending them here would be rejected.

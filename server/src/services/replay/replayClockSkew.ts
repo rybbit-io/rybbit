@@ -61,19 +61,22 @@ export function correctReplayClockSkew<T extends { timestamp: number }>(
   const upperBound = nowMs + MAX_FUTURE_SKEW_MS;
   const lowerBound = nowMs - MAX_PAST_SKEW_MS;
 
+  // Nearly every batch is healthy: each timestamp is finite and inside the
+  // window, so the median is too and nothing would be corrected. One pass
+  // settles that without copying or sorting the batch. NaN and ±Infinity fail
+  // these comparisons, so they fall through to the full correction below.
+  if (events.every(event => event.timestamp >= lowerBound && event.timestamp <= upperBound)) {
+    return { events, skewMs: 0 };
+  }
+
+  // From here at least one timestamp is non-finite or out of range, so the
+  // batch always comes back as a corrected copy.
   const timestamps = events.map(event => sanitize(event.timestamp, nowMs, lowerBound, upperBound));
   const anchor = median(timestamps);
 
   let skewMs = 0;
   if (anchor > upperBound) skewMs = anchor - nowMs;
   else if (anchor < lowerBound) skewMs = anchor - nowMs;
-
-  // Returning the original array is only safe when nothing needed sanitizing;
-  // otherwise the caller would get the non-finite values straight back.
-  const allFinite = events.every(event => Number.isFinite(event.timestamp));
-  if (skewMs === 0 && allFinite && timestamps.every(t => t <= upperBound && t >= lowerBound)) {
-    return { events, skewMs: 0 };
-  }
 
   return {
     events: events.map((event, index) => ({

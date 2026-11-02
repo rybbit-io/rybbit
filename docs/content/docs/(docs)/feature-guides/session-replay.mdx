@@ -11,13 +11,21 @@ Session replay lets you watch anonymized recordings of real user sessions, showi
 
 Enable session replay in your [site settings](/docs/site-settings). The tracking script picks the setting up automatically — no script tag changes are needed. (Script-tag attributes like `data-replay-batch-size` and the `data-replay-mask-*` options only tune replay behavior; the on/off switch lives in site settings.)
 
+On Rybbit Cloud, session replay is a Pro feature. Pro trials with a monthly limit of 500,000 events or more don't include replay. Self-hosted instances have no plan gate.
+
+Recording makes the tracking script about 8x larger and sends more data from the browser, so only turn it on if you plan to watch replays.
+
 ## What You'll See
 
 - Mouse movements and clicks
 - Scrolling behavior
 - Page navigation
-- Form interactions (with PII masked)
+- Form interactions (inputs masked by default)
 - User details: country, device, browser
+
+Next to the player, the **Timeline** lists what happened in the session: clicks, rage clicks, navigations, typing, and window resizes. Switch between **Key** and **All** to change how much detail it shows. Use the **Min Duration** filter on the Replay page to hide short sessions.
+
+While a replay plays, press `←` or `→` to skip 10 seconds and `Space` to play or pause. See [keyboard shortcuts](/docs/keyboard-shortcuts).
 
 ## Using Session Replay
 
@@ -28,4 +36,16 @@ Enable session replay in your [site settings](/docs/site-settings). The tracking
 
 ## Privacy
 
-Session replay automatically masks sensitive information. Enable PII protection in your settings for additional masking of form inputs and text content.
+There is no masking switch in site settings. You control masking with attributes on the script tag:
+
+- `data-replay-mask-all-inputs` masks every input value. It is on by default; set it to `"false"` to record input values.
+- `data-replay-mask-text-selectors` takes a JSON array of CSS selectors whose text is masked, for example `'[".user-name", "#email"]'`.
+- `data-replay-block-selector` and the `rr-block` class leave elements out of the recording entirely.
+
+See the [script reference](/docs/script) for every `data-replay-*` option.
+
+## Limits
+
+Rybbit stops storing a session's replay once it reaches 50 MB. The rest of the session still shows up in your analytics; only the recording stops. On a self-hosted instance you can change the cap with the `SESSION_REPLAY_MAX_MB_PER_SESSION` environment variable (`0` turns it off).
+
+On Rybbit Cloud, each plan also has a monthly replay quota: the number of recorded sessions is capped at 10% of the plan's monthly event limit (for example, 10,000 replays on a 100,000-event plan). The quota covers all sites in the organization and resets at the start of each calendar month. Once it's used up, new replays aren't recorded until the next month, but the rest of your analytics keeps working. Self-hosted instances have no replay quota.

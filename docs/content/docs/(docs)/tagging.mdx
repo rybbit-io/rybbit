@@ -13,14 +13,15 @@ Add a `data-tag` attribute to your Rybbit script tag. Every event (pageviews, cu
 
 ```html
 <script
-  src="https://app.rybbit.io/api/script.js"
-  async
-  data-site-id="YOUR_SITE_ID"
+  src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+  defer
   data-tag="variant-a"
 ></script>
 ```
 
-The tag is a simple string with a maximum length of 256 characters. If `data-tag` is not set or is empty, no tag is stored.
+The tag is a simple string of at most 256 characters. The script doesn't shorten it: a longer tag makes the server reject every event from the page with `400`, so nothing is tracked. If `data-tag` is not set or is empty, no tag is stored.
+
+Older snippets that pass the site ID as `data-site-id` instead of `?siteId=` still work.
 
 ## Use Cases
 
@@ -30,10 +31,10 @@ Serve different script tags to different user groups and compare behavior:
 
 ```html
 <!-- Variant A -->
-<script src="https://app.rybbit.io/api/script.js" async data-site-id="1" data-tag="homepage-v2-a"></script>
+<script src="https://app.rybbit.io/api/script.js?siteId=1" data-tag="homepage-v2-a" defer></script>
 
 <!-- Variant B -->
-<script src="https://app.rybbit.io/api/script.js" async data-site-id="1" data-tag="homepage-v2-b"></script>
+<script src="https://app.rybbit.io/api/script.js?siteId=1" data-tag="homepage-v2-b" defer></script>
 ```
 
 Then filter by tag in the dashboard to compare metrics between variants.
@@ -44,9 +45,8 @@ Tag events with the current deploy version to correlate releases with changes in
 
 ```html
 <script
-  src="https://app.rybbit.io/api/script.js"
-  async
-  data-site-id="1"
+  src="https://app.rybbit.io/api/script.js?siteId=1"
+  defer
   data-tag="v2.4.1"
 ></script>
 ```
@@ -57,9 +57,8 @@ Label traffic from different sources, campaigns, or user segments:
 
 ```html
 <script
-  src="https://app.rybbit.io/api/script.js"
-  async
-  data-site-id="1"
+  src="https://app.rybbit.io/api/script.js?siteId=1"
+  defer
   data-tag="beta-users"
 ></script>
 ```

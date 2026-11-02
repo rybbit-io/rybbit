@@ -69,6 +69,7 @@ export type ExperimentUpdatePayload = Partial<ExperimentPayload>;
 
 export type ExperimentVariantResult = {
   variant: string;
+  units: number;
   sessions: number;
   exposures: number;
   conversions: number;
@@ -80,10 +81,24 @@ export type ExperimentVariantResult = {
 export type ExperimentResults = {
   experiment: Experiment;
   variants: ExperimentVariantResult[];
+  totalUnits: number;
   totalExposureSessions: number;
   totalConversions: number;
   hasGoal: boolean;
   measurement: "exposure" | "assignment";
+  window: ExperimentWindow;
+};
+
+export type ExperimentWindowMode = "experiment" | "range";
+
+export type ExperimentWindow = { mode: ExperimentWindowMode; start: string | null; end: string | null };
+
+export type ExperimentTimeseriesPoint = { date: string; units: number; conversions: number; conversionRate: number };
+
+export type ExperimentTimeseries = {
+  variants: { variant: string; points: ExperimentTimeseriesPoint[] }[];
+  measurement: "exposure" | "assignment";
+  window: ExperimentWindow;
 };
 
 export async function fetchExperiments(site: string | number): Promise<Experiment[]> {

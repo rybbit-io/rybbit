@@ -186,6 +186,45 @@ describe("Better Auth 1.7 migration and OAuth integration", () => {
     await database.exec(`UPDATE "oauthClient" SET disabled = false WHERE "clientId" = 'existing-public'`);
   });
 
+  it("infers the application type for clients that omit it", async () => {
+    const register = (body: Record<string, unknown>) =>
+      request("/oauth2/register", {
+        client_name: "Untyped client",
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        ...body,
+      });
+
+    const loopback = await register({ redirect_uris: ["http://localhost:8787/callback"] });
+    expect(loopback.status, await loopback.clone().text()).toBe(201);
+    expect((await loopback.json()).application_type).toBe("native");
+
+    const mixed = await register({
+      redirect_uris: ["http://127.0.0.1:8787/callback", "https://client.example.com/callback"],
+    });
+    expect(mixed.status, await mixed.clone().text()).toBe(201);
+
+    const hosted = await register({ redirect_uris: ["https://client.example.com/callback"] });
+    expect(hosted.status, await hosted.clone().text()).toBe(201);
+    expect((await hosted.json()).application_type).toBe("web");
+
+    // The provider's URL parser strips embedded tabs, so this is https too.
+    const normalized = await register({ redirect_uris: ["ht\ttps://client.example.com/callback"] });
+    expect(normalized.status, await normalized.clone().text()).toBe(201);
+    expect((await normalized.json()).application_type).toBe("web");
+
+    // Inference never widens what is accepted: plain http off loopback is
+    // still refused, and an explicit "web" keeps the strict rule.
+    const remoteHttp = await register({ redirect_uris: ["http://client.example.com/callback"] });
+    expect(remoteHttp.status).toBe(400);
+    const explicitWeb = await register({
+      application_type: "web",
+      redirect_uris: ["http://localhost:8787/callback"],
+    });
+    expect(explicitWeb.status).toBe(400);
+  });
+
   it("completes DCR, login, consent, PKCE, refresh and bearer verification", async () => {
     const registration = await request("/oauth2/register", {
       client_name: "Migration integration client",

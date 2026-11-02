@@ -21,21 +21,23 @@ Flask renders Jinja templates, and most apps extend a shared base layout, so the
 
 #### Configure the site ID
 
-Flask loads any environment variable prefixed with `FLASK_` into `app.config` when you call `from_prefixed_env()`. Set the values in your environment (`flask run` also reads a `.env` file when python-dotenv is installed):
+Set the values in your environment (`flask run` also reads a `.env` file when python-dotenv is installed):
 
-```bash filename=".env"
-FLASK_RYBBIT_INSTANCE_URL=https://app.rybbit.io
-FLASK_RYBBIT_SITE_ID=YOUR_SITE_ID
+```bash title=".env"
+RYBBIT_INSTANCE_URL=https://app.rybbit.io
+RYBBIT_SITE_ID=YOUR_SITE_ID
 ```
 
-Then load them where you create the app:
+Then copy them into `app.config` where you create the app:
 
-```python filename="app.py"
+```python title="app.py"
+import os
+
 from flask import Flask, render_template
 
 app = Flask(__name__)
-app.config.setdefault("RYBBIT_INSTANCE_URL", "https://app.rybbit.io")
-app.config.from_prefixed_env()
+app.config["RYBBIT_INSTANCE_URL"] = os.environ.get("RYBBIT_INSTANCE_URL", "https://app.rybbit.io")
+app.config["RYBBIT_SITE_ID"] = os.environ.get("RYBBIT_SITE_ID")
 
 
 @app.route("/")
@@ -43,7 +45,7 @@ def index():
     return render_template("index.html")
 ```
 
-`from_prefixed_env()` parses values as JSON where it can, so a numeric site ID arrives as an `int`. It renders the same in the template.
+Read the site ID with `os.environ` rather than `app.config.from_prefixed_env()`. That method parses values as JSON, which turns some site IDs, such as `123456e78901`, into floats that no longer match your site.
 
 If you keep configuration in a Python file or class instead, add `RYBBIT_INSTANCE_URL` and `RYBBIT_SITE_ID` there and load it with `app.config.from_object()`.
 
@@ -51,7 +53,7 @@ If you keep configuration in a Python file or class instead, add `RYBBIT_INSTANC
 
 Open the template that your pages extend, usually `templates/base.html` (or `templates/layout.html`), and add the tag inside `<head>`:
 
-```jinja filename="templates/base.html"
+```jinja title="templates/base.html"
 <head>
     <meta charset="utf-8">
     <title>{% block title %}My App{% endblock %}</title>
@@ -76,10 +78,10 @@ Templates that do not extend the base layout need the same tag in their own `<he
 
 ## Troubleshooting
 
-- **Tag missing**: `from_prefixed_env()` reads the environment when the app is created, so restart the server after changing `FLASK_RYBBIT_SITE_ID`. Check `app.config["RYBBIT_SITE_ID"]` in `flask shell`.
+- **Tag missing**: the app reads the environment when it is created, so restart the server after changing `RYBBIT_SITE_ID`. Check `app.config["RYBBIT_SITE_ID"]` in `flask shell`.
 - **Macros imported into other templates**: `config` is added to the render context, not to imported templates. A macro that outputs the tag must be imported `with context`.
 - **Content Security Policy**: if you set one with Flask-Talisman or similar, add your Rybbit host to `script-src` and `connect-src`, or [proxy the script](/docs/proxy-guide) through your own domain.
-- **Self-hosted instance**: set `FLASK_RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the template appends the script path to it.
+- **Self-hosted instance**: set `RYBBIT_INSTANCE_URL` to your own domain without a trailing slash; the template appends the script path to it.
 
 ## Next steps
 

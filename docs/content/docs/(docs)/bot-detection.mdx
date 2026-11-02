@@ -6,29 +6,34 @@ description: How Rybbit identifies and filters bot traffic from your analytics
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 
-Rybbit can filter bot traffic before it reaches your normal analytics. When **Block Bot Traffic** is enabled for a site, each incoming tracking request is checked by several detection layers. If any layer identifies the request as bot traffic, the request is excluded from the normal analytics tables and stored separately for bot traffic inspection.
+Rybbit checks every incoming tracking request against several detection layers, on every site. The per-site **Block Bot Traffic** setting decides what happens to a request that a layer flags as a bot.
 
-## Enabling Bot Detection
+## Block Bot Traffic
 
-Bot blocking is configured per site:
+**Block Bot Traffic** is on by default for new sites. To change it:
 
 1. Open your site in the Rybbit dashboard
 2. Go to **Site Settings**
-3. Enable **Block Bot Traffic**
+3. Toggle **Block Bot Traffic**
 
-When this setting is off, Rybbit does not block requests based on bot detection.
+| Setting | What happens to a detected bot |
+| --- | --- |
+| **On** (default) | The request is kept out of your normal analytics and stored as a bot event instead. |
+| **Off** | The request is tracked like any other visit and counts toward usage. It does not appear in bot events. |
 
 ## What Happens to Detected Bots
 
-Detected bot requests are not added to your normal analytics data. This keeps dashboard totals, reports, journeys, funnels, session lists, and usage metrics focused on human traffic.
+With blocking on, detected bot requests are not added to your normal analytics data. This keeps dashboard totals, reports, journeys, funnels, session lists, and usage metrics focused on human traffic.
 
-Detected bot visits also do not count toward billable analytics usage. If bot blocking filters a request, you are not charged for that bot visit.
+Blocked bot requests also do not count toward billable usage, because usage is counted from your normal analytics events only. With blocking off, detected bots are tracked and billed like any other traffic.
 
-Rybbit still stores a compact bot event record so you can inspect what was filtered. Bot event records include route, device, location, ASN, and which detection layers matched.
+For blocked requests, Rybbit stores a compact bot event record so you can inspect what was filtered. Bot event records include route, device, location, ASN, and which detection layers matched.
 
 ## Detection Layers
 
 Rybbit runs all detection layers before making a final decision. A request can match multiple layers, and the bot event records every layer that matched.
+
+For sites set up as mobile apps, the user-agent and header layers are skipped, because native app traffic legitimately looks like a non-browser HTTP client. The other layers still run.
 
 <Steps>
 
@@ -77,14 +82,17 @@ Signals include:
 
 - Automation APIs
 - Zero or impossible window dimensions
-- Default automation viewport sizes such as `800x600` and `1024x768`
+- Default automation viewport sizes on desktop browsers: `800x600`, `1024x768`, and `1280x1200`
+- Square screens (a heuristic: a few real monitors are square, but most square screens in traffic are renderer defaults)
 - Suspicious outer window dimensions
 - Missing browser APIs
 - Missing Chrome globals
 - SwiftShader renderer signals
 - Empty plugin lists
 
-Rybbit combines these into a weighted score. Strong signals can identify bot traffic on their own, while weaker signals contribute supporting evidence.
+The server also notes when a web hit arrives with no screen dimensions at all.
+
+Rybbit combines these into a weighted score. Strong signals (automation APIs, impossible dimensions, the default viewports, and square screens) can identify bot traffic on their own. Weaker signals only add supporting evidence when another layer has already flagged the request.
 
 </Step>
 
@@ -109,17 +117,24 @@ This avoids filtering every legitimate visitor who happens to browse through a c
 
 The `rate_anomaly` layer watches for bursty or crawl-shaped behavior.
 
-It tracks short rolling windows for patterns such as:
+It watches rolling windows, from seconds to a day. Rules that describe a single visitor (one IP and user agent) can flag a request on their own:
 
-- Too many events from the same IP and user-agent
+- Too many events, or too many distinct paths, from the same IP and user agent in a short window
+- Interaction events (clicks, copies, form events) faster than a person can produce them
+- A busy browser fingerprint spread evenly across many browser versions, which real visitor populations don't produce
+- During a traffic flood measured against the site's own normal volume, a burst of one-shot visitors arriving directly, or a single hosting-network address sending a large share of events
+- Very high daily volume from a single address on a hosting or datacenter network
+
+Rules about things many real visitors share, such as one IP address or one popular user agent, only add supporting evidence and never flag a request alone:
+
 - Too many events from the same IP
-- Too many distinct paths visited quickly
-- Too many different user-agents from one IP
+- Too many different user agents from one IP
 - Too many hostnames from one IP
-- High site-wide volume from one user-agent
-- Large volumes of requests missing client-side bot scores
+- High site-wide volume from one user agent
+- High daily volume from one IP address
+- A burst of requests missing the client-side bot score
 
-This layer is designed to catch fast crawlers, floods, and replayed tracking requests that may not have obvious user-agent or browser fingerprint signals.
+This layer is designed to catch fast crawlers, floods, slow distributed crawlers, and replayed tracking requests that may not have obvious user-agent or browser fingerprint signals.
 
 </Step>
 
@@ -176,7 +191,7 @@ Because multiple layers can match the same request, per-layer bot counts can add
 
 ## Server-Side Tracking
 
-Requests sent to `/api/track` with `Authorization: Bearer <api key>` and a valid API key are treated as trusted server-side ingestion. Four of the five layers are skipped: the headers, the client signals, the network address, and the request rate all belong to your server, not to the visitor it is reporting, so scoring them would convict your own backend.
+Requests sent to `/api/track` with `Authorization: Bearer <api key>` and a valid key for the site with the `ingest:write` scope (or an unrestricted key) are treated as trusted server-side ingestion. Four of the five layers are skipped: the headers, the client signals, the network address, and the request rate all belong to your server, not to the visitor it is reporting, so scoring them would convict your own backend.
 
 The user-agent layer still runs, on the `user_agent` you send. Nothing changes for ordinary backend events — a request reporting a real browser's user agent is tracked normally.
 
@@ -195,7 +210,7 @@ If you want to see them, report them from the edge — middleware, a worker, or 
 }
 ```
 
-A forwarded crawler user agent is classified and lands in your bot events with full identity, rather than in your analytics as a phantom visitor.
+With **Block Bot Traffic** on, a forwarded crawler user agent is classified and lands in your bot events with full identity, rather than in your analytics as a phantom visitor. With blocking off, it is tracked as a normal visit.
 
 <Callout type="warn">
 Do not expose API keys in browser JavaScript. API keys are only for server-side requests.
@@ -212,7 +227,9 @@ X-Real-IP: <visitor-ip>
 
 Also preserve the original `User-Agent`, `Referer`, and `Accept-Language` headers where possible.
 
-If the proxy IP is sent instead of the visitor IP, traffic may be geolocated to the proxy location and may inherit the proxy provider's ASN.
+If the proxy IP is sent instead of the visitor IP, traffic may be geolocated to the proxy location, may inherit the proxy provider's ASN, and many visitors can look like one busy address to the rate layer.
+
+Then turn on **First-Party Proxy** in **Site Settings**. It tells Rybbit to read the visitor IP from the forwarded headers (`X-Real-IP`, then `X-Forwarded-For`) instead of inferring whether a proxy is in front.
 
 See the [proxy troubleshooting guide](/docs/proxy-guide/troubleshooting) for examples.
 

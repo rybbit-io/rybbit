@@ -58,14 +58,14 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 
 #### PerformancePoint Object
 
-Each point includes all percentiles for each metric plus:
+Each point has `<metric>_p50`, `_p75`, `_p90` and `_p99` for `lcp`, `cls`, `inp`, `fcp` and `ttfb` (`null` when no load in the bucket reported the metric), plus:
 
 <TypeTable
   type={{
     time: {
       description: 'Start of the time bucket',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'Bucket start in the requested time_zone, "YYYY-MM-DD HH:MM:SS"',
     },
     event_count: {
       description: 'Number of performance events in this bucket',
@@ -198,7 +198,7 @@ var data = await response.Content.ReadAsStringAsync();
 {
   "data": [
     {
-      "time": "2024-01-01T00:00:00.000Z",
+      "time": "2024-01-01 00:00:00",
       "lcp_p50": 1820,
       "lcp_p75": 2350,
       "lcp_p90": 3100,
@@ -214,7 +214,7 @@ var data = await response.Content.ReadAsStringAsync();
       "event_count": 6892
     },
     {
-      "time": "2024-01-02T00:00:00.000Z",
+      "time": "2024-01-02 00:00:00",
       "lcp_p50": 1900,
       "lcp_p75": 2450,
       "lcp_p90": 3250,

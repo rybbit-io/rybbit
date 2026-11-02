@@ -23,7 +23,7 @@ services:
 
   clickhouse:
     container_name: clickhouse
-    image: clickhouse/clickhouse-server:26.3.17.4
+    image: clickhouse/clickhouse-server:26.3.62.3
     volumes:
       - clickhouse-data:/var/lib/clickhouse
       - /etc/rybbit-backup/clickhouse-s3.xml:/etc/clickhouse-server/config.d/backup-s3.xml:ro
@@ -129,6 +129,7 @@ services:
       # AppSumo configuration
       - APPSUMO_CLIENT_ID=${APPSUMO_CLIENT_ID}
       - APPSUMO_CLIENT_SECRET=${APPSUMO_CLIENT_SECRET}
+      - APPSUMO_API_KEY=${APPSUMO_API_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
@@ -148,7 +149,6 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL}
       - CLUSTER_WORKERS=${CLUSTER_WORKERS:-4}
-      - BETTER_AUTH_API_KEY=${BETTER_AUTH_API_KEY}
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -157,6 +157,11 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
     ports:
       - "3001:3001"
 
@@ -183,6 +188,11 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
     ports:
       - "3002:3002"
 

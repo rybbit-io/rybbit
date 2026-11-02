@@ -1,5 +1,5 @@
 import { isClickHouseDateTime, toClickHouseDateTime } from "../../../db/clickhouse/dateTime.js";
-import { clearSelfReferrer, getAllUrlParams } from "../../tracker/utils.js";
+import { clearSelfReferrer, getAllUrlParams, parseEventProperties } from "../../tracker/utils.js";
 import { getChannel } from "../../tracker/getChannel.js";
 import { RybbitEvent } from "./rybbit.js";
 import { z } from "zod";
@@ -59,12 +59,8 @@ export class PlausibleImportMapper {
       if (!parsed.success) return acc;
 
       const data = parsed.data;
-      let parsedProps: Record<string, unknown> = {};
-      try {
-        parsedProps = JSON.parse(data.props || "{}");
-      } catch {
-        // ignore invalid JSON
-      }
+      // Non-object JSON ("[1]", "\"x\"") would fail the whole ClickHouse insert.
+      const parsedProps = parseEventProperties(data.props) ?? {};
 
       const referrer = clearSelfReferrer(data.referrer, data.hostname.replace(/^www\./, ""));
 

@@ -1,6 +1,6 @@
 ---
 title: Delete Segment
-description: Deletes a saved segment. Admins and owners can delete any segment; members can delete segments they created. Links that already expanded the segment's filters keep working.
+description: Deletes a saved segment. Editors and above can delete any segment on the site; members can delete segments they created. Links that already expanded the segment's filters keep working.
 full: true
 method: DELETE
 ---
@@ -15,7 +15,9 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 DELETE /api/sites/:site/segments/:segmentId
 ```
 
-Deletes a saved segment. Admins and owners can delete any segment; members can delete segments they created. Links that already expanded the segment's filters keep working.
+Deletes a saved segment. Links that already expanded the segment's filters keep working.
+
+Editors and above can delete any segment on the site, including through a per-site editor grant; members can delete segments they created. Organization-wide segments need the editor role or above in the organization, even for the segment's creator. Returns `403` when you may not delete it and `404` when it does not exist on this site.
 
 ### Path Parameters
 

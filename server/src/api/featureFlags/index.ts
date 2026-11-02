@@ -6,7 +6,7 @@ import { z } from "zod";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { db } from "../../db/postgres/postgres.js";
-import { featureFlags, userProfiles } from "../../db/postgres/schema.js";
+import { experiments, featureFlags, userProfiles } from "../../db/postgres/schema.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 import { processResults } from "../analytics/utils/utils.js";
 import { getDeviceType, getRequestUserAgent } from "../../utils.js";
@@ -20,6 +20,7 @@ import {
   evaluateFeatureFlagsSchema,
   featureFlagBodySchema,
   featureFlagUpdateSchema,
+  validateFeatureFlagUpdate,
   type EvaluateFeatureFlagsBody,
   type FeatureFlagBody,
   type FeatureFlagUpdateBody,
@@ -167,6 +168,9 @@ export async function createFeatureFlag(
   }
 }
 
+/** A flag update rejected from inside its transaction. */
+class FeatureFlagRequestError extends Error {}
+
 export async function updateFeatureFlag(
   request: FastifyRequest<{
     Params: { siteId: string; flagId: string };
@@ -200,23 +204,43 @@ export async function updateFeatureFlag(
     if (body.rules === undefined) delete updateData.rules;
     if (body.conditionSets === undefined) delete updateData.conditionSets;
 
-    updateData.version = (
-      await db.query.featureFlags.findFirst({
-        columns: { version: true },
-        where: and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flagId)),
-      })
-    )?.version;
+    const flagWhere = and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flagId));
+    // Lock the row so the patch is validated against the flag it actually updates.
+    const updated = await db.transaction(async tx => {
+      const [stored] = await tx
+        .select({
+          version: featureFlags.version,
+          flagType: featureFlags.flagType,
+          variants: featureFlags.variants,
+          conditionSets: featureFlags.conditionSets,
+        })
+        .from(featureFlags)
+        .where(flagWhere)
+        .for("update");
 
-    if (updateData.version === undefined) {
-      return reply.status(404).send({ error: "Feature flag not found" });
-    }
-    updateData.version += 1;
+      if (!stored) return null;
 
-    const [updated] = await db
-      .update(featureFlags)
-      .set(updateData)
-      .where(and(eq(featureFlags.siteId, siteId), eq(featureFlags.flagId, flagId)))
-      .returning();
+      // Checked under the row lock: experiment create and flag reassignment take the same lock,
+      // so an experiment can't be linked while the flag turns server-only.
+      if (body.runtime === "server") {
+        const [experiment] = await tx
+          .select({ name: experiments.name })
+          .from(experiments)
+          .where(and(eq(experiments.siteId, siteId), eq(experiments.featureFlagId, flagId)))
+          .limit(1);
+        if (experiment) {
+          throw new FeatureFlagRequestError(
+            `This flag runs the experiment "${experiment.name}", which needs it evaluated on the client. Use "Client" or "Both".`
+          );
+        }
+      }
+
+      validateFeatureFlagUpdate(stored, body);
+      updateData.version = stored.version + 1;
+
+      const [row] = await tx.update(featureFlags).set(updateData).where(flagWhere).returning();
+      return row ?? null;
+    });
 
     if (!updated) {
       return reply.status(404).send({ error: "Feature flag not found" });
@@ -226,6 +250,9 @@ export async function updateFeatureFlag(
 
     return reply.send({ success: true, data: updated });
   } catch (error) {
+    if (error instanceof FeatureFlagRequestError) {
+      return reply.status(400).send({ error: error.message });
+    }
     const duplicateMessage = getDuplicateKeyMessage(error);
     if (duplicateMessage) {
       return reply.status(409).send({ error: duplicateMessage });
@@ -249,6 +276,19 @@ export async function deleteFeatureFlag(
   const flagId = parseInt(request.params.flagId, 10);
   if (isNaN(flagId) || flagId <= 0) {
     return reply.status(400).send({ error: "Invalid feature flag ID" });
+  }
+
+  // An experiment is cascade-deleted with its flag, so refuse rather than
+  // silently take the experiment down with it.
+  const experiment = await db.query.experiments.findFirst({
+    columns: { name: true },
+    where: and(eq(experiments.siteId, siteId), eq(experiments.featureFlagId, flagId)),
+  });
+
+  if (experiment) {
+    return reply.status(409).send({
+      error: `This flag is used by experiment "${experiment.name}". Delete the experiment first.`,
+    });
   }
 
   const [deleted] = await db

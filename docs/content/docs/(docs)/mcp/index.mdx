@@ -21,6 +21,8 @@ If your client supports the MCP authorization flow — Claude Code, Codex, Claud
 2. Create a key in the **Personal API Keys** section.
 3. Copy it immediately. Rybbit only shows a new key once.
 
+A personal key acts as you. If the connection should belong to the organization and keep working when people leave, an admin or owner can instead create an **organization API key** under **Settings → Organization**. It reaches every site in that organization with admin authority. See [API keys](/docs/api/getting-started#generating-api-keys) for both kinds.
+
 A key created without permissions can do everything its user can do. To hand an agent a narrower credential, create the key with scoped permissions (`POST /api/user/api-keys` with a `permissions` object, e.g. `{"analytics": ["read"], "goals": ["read", "write"]}`): the MCP tool list and every API call are then limited to those `resource:action` scopes. `write` implies `read` on the same resource, and scopes never elevate — org admin/owner requirements still apply. Deleting the key revokes the connection.
 
 ### 2. Add the endpoint
@@ -231,7 +233,8 @@ OAuth clients request scopes through the standard grant. Rybbit advertises the s
 ## Troubleshooting
 
 - **401 Unauthorized:** The client did not send a Bearer credential, or the key/token is invalid, expired, or revoked. OAuth-capable clients re-authenticate automatically via the `WWW-Authenticate` challenge.
-- **OAuth login loop or "table does not exist" (self-hosted):** Run `npm run db:push` in `server/` to create the OAuth tables, then retry.
+- **OAuth login loop or "table does not exist" (self-hosted):** The backend container applies database migrations each time it starts. Check `docker compose logs backend` for a failed migration, fix the cause, and recreate the backend with `docker compose up -d backend`. `docker compose restart` keeps the old environment, so it doesn't pick up changes to `.env`.
+- **OAuth discovery fails (self-hosted):** Your reverse proxy must send `/.well-known/oauth-*` and `/.well-known/openid-configuration*` to the backend, as the built-in Caddy config does. See [Configure your reverse proxy](/docs/self-hosting-guides/self-hosting-manual#configure-your-reverse-proxy).
 - **403 in tool results:** The key's user lacks access to that site or organization, or holds too low a role for the tool (`"Insufficient role"` names the role required). Check the `role` field in `list_sites`.
 - **403 "Insufficient scope":** The credential was created without the `resource:action` scope this tool needs (the `required` field names it). Use a key or OAuth grant that includes it.
 - **429 Too Many Requests:** The API key exceeded its plan's rate limit.

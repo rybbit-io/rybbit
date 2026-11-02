@@ -100,12 +100,15 @@ export function PricingCards({ isLoggedIn }: { isLoggedIn: boolean }) {
         }),
       });
 
-      const data = await response.json();
-      trackAdEvent("checkout", { tier: selectedTierPrice.name });
+      // The server refuses with a JSON { error } (409 for an organization that is
+      // already subscribed); a body that isn't JSON still gets the generic message.
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(data.error || t("Failed to create checkout session."));
       }
+
+      trackAdEvent("checkout", { tier: selectedTierPrice.name });
 
       if (data.clientSecret) {
         setCheckoutClientSecret(data.clientSecret);

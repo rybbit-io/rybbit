@@ -4,8 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionGlobalConfig } from "framer-motion";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGetLiveUserCount } from "@/api/analytics/hooks/useGetLiveUserCount";
-import { useGetSessionsInfinite } from "@/api/analytics/hooks/useGetUserSessions";
+import { LIVE_SESSIONS_POLL_MS, useGetLiveSessions } from "@/api/analytics/hooks/useGetUserSessions";
 import { useStore } from "@/lib/store";
+import { useLiveSessionsForFirstVisitor } from "./firstPageview";
 import { NoData } from "./NoData";
 
 const mocks = vi.hoisted(() => ({
@@ -27,14 +28,14 @@ vi.mock("next-intl", () => ({
 vi.mock("@/hooks/useIsWhiteLabel", () => ({ useWhiteLabel: () => ({ isWhiteLabel: false }) }));
 vi.mock("@/components/CodeSnippet", () => ({ CodeSnippet: ({ code }: { code: string }) => <pre>{code}</pre> }));
 
-// What SubHeader's LiveUserCount mounts on every dashboard page.
+// What SubHeader's LiveUserCount mounts on every dashboard page, with its drawer closed.
 function LiveUserCountProbe() {
   useGetLiveUserCount(5);
-  useGetSessionsInfinite({
-    timeOverride: { mode: "past-minutes", pastMinutesStart: 5, pastMinutesEnd: 0 },
-    limit: 25,
-    refetchInterval: 10000,
-  });
+  return useLiveSessionsForFirstVisitor("7") ? <KeepLiveSessionsProbe /> : null;
+}
+
+function KeepLiveSessionsProbe() {
+  useGetLiveSessions(LIVE_SESSIONS_POLL_MS);
   return null;
 }
 
@@ -213,6 +214,24 @@ describe("NoData", () => {
     await firstPageviewLands();
 
     expect(await screen.findByText("from Germany · Firefox")).toBeTruthy();
+  });
+
+  it("still names the first visitor when switching tabs remounts LiveUserCount mid-arrival", async () => {
+    const { rerender } = show(<LiveUserCountProbe key="first-tab" />);
+    await waitingHeading();
+    await waitFor(() => expect(callsTo("/sites/7/sessions")).toBe(1));
+    mocks.sessions = [{ session_id: "s1", session_start: "2026-09-28 10:01:00", country: "DE", browser: "Firefox" }];
+
+    await firstPageviewLands();
+    // The page's LiveUserCount goes with the tab; NoData, in the layout, stays.
+    rerender(
+      <QueryClientProvider client={client}>
+        <NoData />
+        <LiveUserCountProbe key="next-tab" />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByText("from Germany · Firefox", undefined, { timeout: 3000 })).toBeTruthy();
   });
 
   it("moves focus into the confirmation when it was inside the waiting card", async () => {

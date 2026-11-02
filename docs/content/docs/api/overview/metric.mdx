@@ -36,9 +36,9 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     parameter: {
-      description: 'The dimension to break down by',
+      description: 'The dimension to break down by. There is no default: a missing or unknown value fails with 500.',
       type: 'FilterParameter',
-      typeDescription: 'e.g., "pathname", "country", "browser", "event_name"',
+      typeDescription: 'e.g., "pathname", "entry_page", "exit_page", "page_title", "country", "browser", "event_name"',
       required: true,
     },
     limit: {
@@ -59,7 +59,18 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     data: {
-      description: 'Array of metric results',
+      description: 'The page of results and the total count',
+      type: 'MetricPage',
+    },
+  }}
+/>
+
+#### MetricPage Object
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of metric results, sorted by count descending',
       type: 'MetricItem[]',
       typeDescription: 'See MetricItem structure below',
     },
@@ -89,20 +100,35 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       typeDescription: 'Range: 0-100',
     },
     pageviews: {
-      description: 'Total pageviews (for page-related parameters)',
+      description: 'For pathname: pageviews of this page. For entry_page and exit_page: number of sessions that entered or exited on this page, not total pageviews. For other session dimensions: total pageviews of the sessions with this value. Not returned for page_title or event_name.',
       type: 'number',
       required: false,
     },
     pageviews_percentage: {
-      description: 'Share of total pageviews (for page-related parameters)',
+      description: 'Share of total pageviews. Returned with pageviews.',
       type: 'number',
       typeDescription: 'Range: 0-100',
       required: false,
     },
     bounce_rate: {
-      description: 'Bounce rate percentage',
-      type: 'number',
+      description: 'Percentage of sessions with a single pageview. Not returned for event_name.',
+      type: 'number | null',
       typeDescription: 'Range: 0-100',
+      required: false,
+    },
+    hostname: {
+      description: 'Most common hostname for this path. Only for pathname, entry_page and exit_page.',
+      type: 'string',
+      required: false,
+    },
+    time_on_page_seconds: {
+      description: 'Average seconds on this page before the next pageview (0 for the last page of a session, each view capped at 1800). Only for pathname, entry_page and exit_page.',
+      type: 'number',
+      required: false,
+    },
+    pathname: {
+      description: 'A representative path for this title. Only for page_title.',
+      type: 'string',
       required: false,
     },
   }}

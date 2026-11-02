@@ -17,17 +17,20 @@ import { authClient } from "../../lib/auth";
 import { useConfigs } from "../../lib/configs";
 import { BACKEND_URL, IS_CLOUD } from "../../lib/const";
 import { trackAdEvent } from "../../lib/trackAdEvent";
+import { useStripeSubscription } from "../../lib/subscription/useStripeSubscription";
 import { userStore } from "../../lib/userStore";
 import { cn, isValidDomain, normalizeDomain } from "../../lib/utils";
 import { EVENT_TIERS, findPriceForTier } from "../subscribe/components/utils";
 import { AccountStep } from "./components/AccountStep";
 import { PlanStep } from "./components/PlanStep";
 import { SetupStep } from "./components/SetupStep";
+import { slugFromName } from "./orgSlug";
 
 function SignupPageContent() {
   const { configs, isLoading: isLoadingConfigs } = useConfigs();
   useSetPageTitle("Signup");
   const t = useExtracted();
+  const { data: sessionData, isPending: isSessionPending } = authClient.useSession();
 
   const maxStep = IS_CLOUD ? 3 : 2;
   const [stepParam, setStepParam] = useQueryState("step", parseAsInteger);
@@ -55,20 +58,8 @@ function SignupPageContent() {
 
   // Setup: Organization + website
   const [orgName, setOrgName] = useState("");
-  const [orgSlug, setOrgSlug] = useState("");
   const [referralSource, setReferralSource] = useState("");
   const [domain, setDomain] = useState("");
-
-  const handleOrgNameChange = (value: string) => {
-    setOrgName(value);
-    if (value) {
-      const generatedSlug = value
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "");
-      setOrgSlug(generatedSlug);
-    }
-  };
 
   // Step 1: Account creation submission
   const handleAccountSubmit = async () => {
@@ -115,6 +106,15 @@ function SignupPageContent() {
   // Step 2: Setup submission — create org + site, then advance (cloud) or redirect (self-hosted)
   const [siteId, setSiteId] = useState<number | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  // A reload on the plan step restores it from ?step= but loses the ids the setup
+  // step kept; the organization it created is still the session's active one.
+  const checkoutOrganizationId = organizationId ?? sessionData?.session.activeOrganizationId ?? undefined;
+  // One trial per organization: one restored on the plan step may have had it already,
+  // and checkout then charges straight away.
+  const { data: subscription, isLoading: isLoadingSubscription } = useStripeSubscription(checkoutOrganizationId);
+  const trialEligible = subscription?.trialEligible !== false;
+  // Until the session answers, "no organization" is unknown rather than true.
+  const isResolvingCheckout = isSessionPending || (!!checkoutOrganizationId && isLoadingSubscription);
 
   const handleSetupSubmit = async () => {
     setIsLoading(true);
@@ -127,35 +127,41 @@ function SignupPageContent() {
         return;
       }
 
-      // Create organization
-      const { data, error } = await authClient.organization.create({
-        name: orgName,
-        slug: orgSlug,
-      });
-
-      if (error) {
-        throw new Error(error.message || t("Failed to create organization"));
-      }
-
-      if (!data?.id) {
-        throw new Error(t("No organization ID returned"));
-      }
-
-      await authClient.organization.setActive({ organizationId: data.id });
-
-      if (IS_CLOUD && referralSource && userStore.getState().user?.id) {
-        window.rybbit?.identify(userStore.getState().user?.id || "", {
-          source: referralSource,
+      // Create organization, unless an earlier attempt already did and then failed
+      // to add the site: creating it again would fail.
+      let orgId = organizationId;
+      if (!orgId) {
+        const { data, error } = await authClient.organization.create({
+          name: orgName,
+          slug: slugFromName(orgName),
         });
+
+        if (error) {
+          throw new Error(error.message || t("Failed to create organization"));
+        }
+
+        if (!data?.id) {
+          throw new Error(t("No organization ID returned"));
+        }
+
+        orgId = data.id;
+        setOrganizationId(orgId);
+
+        await authClient.organization.setActive({ organizationId: orgId });
+
+        if (IS_CLOUD && referralSource && userStore.getState().user?.id) {
+          window.rybbit?.identify(userStore.getState().user?.id || "", {
+            source: referralSource,
+          });
+        }
       }
 
       // Add website
       const normalizedDomain = normalizeDomain(domain);
-      const response = await addSite(normalizedDomain, normalizedDomain, data.id);
+      const response = await addSite(normalizedDomain, normalizedDomain, orgId);
 
       if (IS_CLOUD) {
         setSiteId(response.siteId);
-        setOrganizationId(data.id);
         setCurrentStep(3);
       } else {
         router.push(`/${response.siteId}`);
@@ -187,8 +193,14 @@ function SignupPageContent() {
         return;
       }
 
+      if (isResolvingCheckout) return;
+      if (!checkoutOrganizationId) {
+        setCurrentStep(2);
+        return;
+      }
+
       const baseUrl = window.location.origin;
-      const returnUrl = `${baseUrl}/${siteId}?session_id={CHECKOUT_SESSION_ID}`;
+      const returnUrl = `${baseUrl}/${siteId ?? ""}?session_id={CHECKOUT_SESSION_ID}`;
 
       const checkoutResponse = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
         method: "POST",
@@ -197,7 +209,7 @@ function SignupPageContent() {
         body: JSON.stringify({
           priceId: selectedTierPrice.priceId,
           returnUrl,
-          organizationId,
+          organizationId: checkoutOrganizationId,
           referral: (window as any).Rewardful?.referral || undefined,
         }),
       });
@@ -250,8 +262,7 @@ function SignupPageContent() {
             domain={domain}
             setDomain={setDomain}
             orgName={orgName}
-            orgSlug={orgSlug}
-            handleOrgNameChange={handleOrgNameChange}
+            handleOrgNameChange={setOrgName}
             referralSource={referralSource}
             setReferralSource={setReferralSource}
             isLoading={isLoading}
@@ -268,7 +279,8 @@ function SignupPageContent() {
             selectedPlan={selectedPlan}
             setSelectedPlan={setSelectedPlan}
             onSubscribe={handleSubscribe}
-            isLoading={isLoading}
+            isLoading={isLoading || isResolvingCheckout}
+            trialEligible={trialEligible}
           />
         );
       default:
@@ -317,7 +329,7 @@ function SignupPageContent() {
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-medium">
-              {IS_CLOUD ? t("Start your 7-day free trial") : t("Get started with Rybbit")}
+              {IS_CLOUD && trialEligible ? t("Start your 7-day free trial") : t("Get started with Rybbit")}
             </h1>
             {IS_CLOUD && (
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-3">

@@ -7,7 +7,11 @@ import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmail
 import { sessionsService } from "./services/sessions/sessionsService.js";
 import { telemetryService } from "./services/telemetryService.js";
 import { unclaimedSiteCleanupService } from "./services/sites/unclaimedSiteCleanupService.js";
-import { REFRESH_ORGANIZATION_USAGE_MESSAGE, usageService } from "./services/usageService.js";
+import {
+  REFRESH_ORGANIZATION_USAGE_MESSAGE,
+  USAGE_STATE_REQUEST_MESSAGE,
+  usageService,
+} from "./services/usageService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 
 const logger = createServiceLogger("cluster");
@@ -64,20 +68,22 @@ if (workerCount === 0) {
     cluster.fork();
   }
 
-  // Workers ask the primary to re-evaluate an organization's blocked sites when a trial
-  // starts or a site is added, so the change reaches every worker without waiting for the cron
-  cluster.on("message", (_worker, message: { type?: string; organizationId?: unknown }) => {
+  cluster.on("message", (worker, message: { type?: string; organizationId?: unknown }) => {
+    // Workers ask the primary to re-evaluate an organization's blocked sites when a trial
+    // starts or a site is added, so the change reaches every worker without waiting for the cron
     if (message?.type === REFRESH_ORGANIZATION_USAGE_MESSAGE && typeof message.organizationId === "string") {
       void usageService.refreshOrganizationWithRetry(message.organizationId);
     }
+    // A starting worker asks for the current usage state once its listener is installed and
+    // waits for it before serving. Sending on "online" instead raced the worker's module
+    // loading, and a message that arrives before the listener exists is dropped.
+    if (message?.type === USAGE_STATE_REQUEST_MESSAGE && worker.isConnected()) {
+      worker.send(usageService.getUsageStateMessage());
+    }
   });
 
-  // Send current usage state to a worker when it comes online
   cluster.on("online", worker => {
     logger.info(`Worker ${worker.process.pid} is online`);
-    worker.send({ type: "sites-over-limit", siteIds: Array.from(usageService.getSitesOverLimit()) });
-    worker.send({ type: "sites-without-plan", siteIds: Array.from(usageService.getSitesWithoutPlan()) });
-    worker.send({ type: "sites-without-replay", siteIds: Array.from(usageService.getSitesWithoutReplay()) });
   });
 
   // Auto-restart crashed workers (unless shutting down)
@@ -91,22 +97,18 @@ if (workerCount === 0) {
   });
 
   /**
-   * Broadcast the current sitesOverLimit and sitesWithoutReplay sets to all alive workers via IPC
+   * Broadcast the current sitesOverLimit, sitesWithoutPlan and sitesWithoutReplay sets to all alive workers via IPC
    */
   function broadcastUsageState() {
-    const overLimitIds = Array.from(usageService.getSitesOverLimit());
-    const withoutPlanIds = Array.from(usageService.getSitesWithoutPlan());
-    const withoutReplayIds = Array.from(usageService.getSitesWithoutReplay());
+    const message = usageService.getUsageStateMessage();
     for (const id in cluster.workers) {
       const worker = cluster.workers[id];
       if (worker && !worker.isDead()) {
-        worker.send({ type: "sites-over-limit", siteIds: overLimitIds });
-        worker.send({ type: "sites-without-plan", siteIds: withoutPlanIds });
-        worker.send({ type: "sites-without-replay", siteIds: withoutReplayIds });
+        worker.send(message);
       }
     }
     logger.debug(
-      `Broadcasted ${overLimitIds.length} sites-over-limit, ${withoutPlanIds.length} sites-without-plan and ${withoutReplayIds.length} sites-without-replay to workers`
+      `Broadcasted ${message.sitesOverLimit.length} sites-over-limit, ${message.sitesWithoutPlan.length} sites-without-plan and ${message.sitesWithoutReplay.length} sites-without-replay to workers`
     );
   }
 

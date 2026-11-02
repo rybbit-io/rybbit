@@ -48,10 +48,10 @@ export default defineNuxtConfig({
 Options:
 
 - `siteId` (required): your Rybbit site ID.
-- `autoTrackPageview`: track pageviews automatically (on by default).
-- `trackSpa`: track client-side route changes (on by default).
 - `analyticsHost`: script and API host for a self-hosted instance, for example `https://your-instance.com/api`.
-- `sessionReplay`, `webVitals`, `trackOutbound`: optional features.
+- `skipPatterns`, `maskPatterns`, `debounce`: passed to the script as the matching [script attributes](/docs/script#script-attributes). The module drops `debounce: 0`, so the script keeps its 500 ms default; use the `nuxt.config head` method if you need to turn debouncing off.
+
+The module also accepts `autoTrackPageview`, `trackSpa`, `trackQuery`, `trackOutbound`, `trackErrors`, `sessionReplay` and `webVitals`, but the current script ignores them. Turn those features on or off under **Site Settings → Tracking** in your Rybbit dashboard instead.
 
 <Callout type="info">
   To keep the site ID out of source control, leave `siteId` unset and provide `NUXT_PUBLIC_SCRIPTS_RYBBIT_ANALYTICS_SITE_ID` in the environment; Nuxt Scripts reads it at runtime.
@@ -123,7 +123,7 @@ function handleAction() {
 
 ## Troubleshooting
 
-- **Pageviews missing after navigation**: both methods track Nuxt's client-side route changes automatically, so test the default first. If a route change is still not recorded, call `window.rybbit.pageview()` from a `router.afterEach` hook in a client plugin.
+- **Pageviews missing after navigation**: both methods track Nuxt's client-side route changes automatically, so test the default first. If a route change is still not recorded, call `window.rybbit.pageview()` from a `router.afterEach` hook in a client plugin. Skip the first navigation (`from` is `START_LOCATION` from `vue-router`), because the script already tracks the landing page.
 
 ## Next steps
 

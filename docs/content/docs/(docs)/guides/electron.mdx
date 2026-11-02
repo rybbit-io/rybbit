@@ -6,7 +6,6 @@ icon: SiElectron
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
-import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 An Electron renderer is a Chromium page, so Rybbit runs in it the same way it runs in a browser. For a renderer built with a bundler (Vite, webpack, the Electron Forge templates) install the `@rybbit/js` SDK and initialise it in the renderer entry file; for a plain HTML renderer put the snippet in the `<head>` of the HTML file the window loads. In both cases allow `https://app.rybbit.io` in the renderer's Content Security Policy.

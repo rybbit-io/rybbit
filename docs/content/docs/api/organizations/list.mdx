@@ -1,6 +1,6 @@
 ---
 title: Get My Organizations
-description: Returns all organizations the authenticated user is a member of, including all members for each organization. Excludes subscription and billing information. Supports both session cookies and API key (Bearer token) authentication.
+description: Returns the organizations the caller belongs to, with the sites the caller can access in each. Excludes subscription and billing information. Supports both session cookies and API key (Bearer token) authentication.
 full: true
 method: GET
 ---
@@ -16,9 +16,11 @@ import { Callout } from 'fumadocs-ui/components/callout';
 GET /api/organizations
 ```
 
-Returns all organizations the authenticated user is a member of, including all members for each organization. Excludes subscription and billing information. Supports both session cookies and API key (Bearer token) authentication.
+Returns the organizations the caller belongs to, with the sites the caller can access in each. Excludes subscription and billing information. Supports both session cookies and API key (Bearer token) authentication, and needs no particular scope.
 
-<Callout type="warn">The `members` roster is only populated for session-cookie (dashboard) requests. API key / Bearer callers receive `members: []` for every organization — use [GET /organizations/:id/members](/docs/api/organizations/members) to retrieve member data with a key.</Callout>
+<Callout type="warn">The `members` roster is only populated for session-cookie (dashboard) requests. API key / Bearer callers receive `members: []` for every organization; use [GET /organizations/:id/members](/docs/api/organizations/members) to retrieve member data with a key.</Callout>
+
+<Callout>A personal API key returns every organization you belong to, with your role in each. An **organization** API key returns only its own organization, with `role` set to `"admin"`.</Callout>
 
 ### Response
 
@@ -273,7 +275,7 @@ var data = await response.Content.ReadAsStringAsync();
   </Tab>
 </Tabs>
 
-```json title="Response"
+```json title="Response (API key)"
 [
   {
     "id": "org_123",
@@ -282,30 +284,7 @@ var data = await response.Content.ReadAsStringAsync();
     "logo": "https://example.com/logo.png",
     "createdAt": "2024-01-15T10:30:00.000Z",
     "role": "owner",
-    "members": [
-      {
-        "id": "member_abc123",
-        "role": "owner",
-        "userId": "user_xyz789",
-        "createdAt": "2024-01-15T10:30:00.000Z",
-        "user": {
-          "id": "user_xyz789",
-          "name": "John Doe",
-          "email": "john@example.com"
-        }
-      },
-      {
-        "id": "member_def456",
-        "role": "member",
-        "userId": "user_abc456",
-        "createdAt": "2024-02-20T14:15:00.000Z",
-        "user": {
-          "id": "user_abc456",
-          "name": "Jane Smith",
-          "email": "jane@example.com"
-        }
-      }
-    ],
+    "members": [],
     "sites": [
       {
         "id": "456",
@@ -327,30 +306,7 @@ var data = await response.Content.ReadAsStringAsync();
     "logo": null,
     "createdAt": "2024-03-10T08:00:00.000Z",
     "role": "admin",
-    "members": [
-      {
-        "id": "member_ghi789",
-        "role": "owner",
-        "userId": "user_owner123",
-        "createdAt": "2024-03-10T08:00:00.000Z",
-        "user": {
-          "id": "user_owner123",
-          "name": "Alice Johnson",
-          "email": "alice@techstartup.com"
-        }
-      },
-      {
-        "id": "member_jkl012",
-        "role": "admin",
-        "userId": "user_xyz789",
-        "createdAt": "2024-03-12T09:30:00.000Z",
-        "user": {
-          "id": "user_xyz789",
-          "name": "John Doe",
-          "email": "john@example.com"
-        }
-      }
-    ],
+    "members": [],
     "sites": [
       {
         "id": "789",

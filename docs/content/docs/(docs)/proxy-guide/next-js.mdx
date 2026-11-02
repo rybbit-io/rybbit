@@ -7,7 +7,7 @@ import { Steps } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-Next.js provides a powerful [rewrites](https://nextjs.org/docs/app/api-reference/next-config-js/rewrites) feature that makes it easy to proxy Rybbit tracking through your own domain. This guide works with both the App Router (Next.js 13+) and Pages Router.
+Next.js provides a powerful [rewrites](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) feature that makes it easy to proxy Rybbit tracking through your own domain. This guide works with both the App Router (Next.js 13+) and Pages Router.
 
 <Callout type="info">
 Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**. Rewrites on this platform automatically forward the browser's headers and set `X-Forwarded-For` to the visitor IP — the toggle tells Rybbit to trust that forwarded IP directly.
@@ -71,7 +71,7 @@ Add or update the `rewrites` function in your `next.config.js` (or `next.config.
 <Tabs items={['Full Proxy (Recommended)', 'Minimal Proxy', 'ESM (next.config.mjs)']}>
 <Tab>
 
-This configuration proxies all Rybbit endpoints including session replay and Web Vitals:
+This configuration proxies every endpoint the tracking script calls. Web vitals are bundled into `script.js`; `replay.js` loads only when session replay is on. If the feature-flag route isn't proxied, `rybbit.flag()` silently returns your fallback.
 
 ```javascript
 // next.config.js
@@ -95,10 +95,6 @@ const nextConfig = {
         source: '/analytics/replay.js',
         destination: `${rybbitHost}/api/replay.js`,
       },
-      {
-        source: '/analytics/metrics.js',
-        destination: `${rybbitHost}/api/metrics.js`,
-      },
       // Tracking endpoints
       {
         source: '/analytics/track',
@@ -116,6 +112,10 @@ const nextConfig = {
         source: '/analytics/site/tracking-config/:siteId',
         destination: `${rybbitHost}/api/site/tracking-config/:siteId`,
       },
+      {
+        source: '/analytics/site/:siteId/feature-flags/evaluate',
+        destination: `${rybbitHost}/api/site/:siteId/feature-flags/evaluate`,
+      },
     ];
   },
 };
@@ -126,7 +126,7 @@ module.exports = nextConfig;
 </Tab>
 <Tab>
 
-Minimal setup with just script loading and basic event tracking:
+Minimal setup with just the script and the event endpoint:
 
 ```javascript
 // next.config.js
@@ -157,7 +157,7 @@ module.exports = nextConfig;
 ```
 
 <Callout type="warn">
-This minimal setup won't support session replay or Web Vitals. Use the full proxy configuration if you need these features.
+A minimal setup proxies only `script.js` and `/track`. The script then can't fetch your site's tracking config, so it ignores every setting on the site's **Tracking** tab and runs on built-in defaults: pageviews, SPA navigation, query strings and outbound links are tracked; web vitals, error tracking, session replay, button clicks, copy and form tracking stay off; feature flags return their fallback; and `identify()` and `setTraits()` can't reach `/identify`, so traits aren't stored and earlier anonymous activity isn't linked to the user. Use the full proxy unless that's what you want.
 </Callout>
 
 </Tab>
@@ -191,10 +191,6 @@ const nextConfig = {
         destination: `${rybbitHost}/api/replay.js`,
       },
       {
-        source: '/analytics/metrics.js',
-        destination: `${rybbitHost}/api/metrics.js`,
-      },
-      {
         source: '/analytics/identify',
         destination: `${rybbitHost}/api/identify`,
       },
@@ -205,6 +201,10 @@ const nextConfig = {
       {
         source: '/analytics/site/tracking-config/:siteId',
         destination: `${rybbitHost}/api/site/tracking-config/:siteId`,
+      },
+      {
+        source: '/analytics/site/:siteId/feature-flags/evaluate',
+        destination: `${rybbitHost}/api/site/:siteId/feature-flags/evaluate`,
       },
     ];
   },
@@ -218,11 +218,13 @@ export default nextConfig;
 
 <Callout type="info">
 **Custom Path**: You can change `/analytics` to any path you prefer (e.g., `/tracking`, `/stats`, `/rybbit`). Just ensure you use the same path consistently in both your rewrites and script tag.
+
+Keep the proxied file named `script.js`. The script cuts its own URL at `/script.js` to find where to send events, so a renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
 </Callout>
 
 ### Update Your Tracking Script
 
-Update your script tag to load from the proxied path instead of directly from Rybbit:
+Update your script tag to load from the proxied path instead of directly from Rybbit. The site ID goes in the script URL; older snippets that pass it as `data-site-id` still work.
 
 <Tabs items={['App Router (Next.js 13+)', 'Pages Router', 'JavaScript (No TypeScript)']}>
 <Tab>
@@ -243,8 +245,7 @@ export default function RootLayout({
       <body>
         {children}
         <Script
-          src="/analytics/script.js"
-          data-site-id="YOUR_SITE_ID"
+          src="/analytics/script.js?siteId=YOUR_SITE_ID"
           strategy="afterInteractive"
         />
       </body>
@@ -270,8 +271,7 @@ function MyApp({ Component, pageProps }: AppProps) {
     <>
       <Component {...pageProps} />
       <Script
-        src="/analytics/script.js"
-        data-site-id="YOUR_SITE_ID"
+        src="/analytics/script.js?siteId=YOUR_SITE_ID"
         strategy="afterInteractive"
       />
     </>
@@ -296,8 +296,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <Script
-          src="/analytics/script.js"
-          data-site-id="YOUR_SITE_ID"
+          src="/analytics/script.js?siteId=YOUR_SITE_ID"
           strategy="afterInteractive"
         />
       </body>
@@ -346,7 +345,7 @@ Open your website in a browser with Developer Tools:
 The Rybbit tracking script has a built-in auto-discovery mechanism. When it loads from:
 
 ```html
-<script src="/analytics/script.js" data-site-id="123"></script>
+<script src="/analytics/script.js?siteId=123" defer></script>
 ```
 
 It automatically extracts the analytics host from its own `src` attribute:
@@ -356,7 +355,7 @@ It automatically extracts the analytics host from its own `src` attribute:
 const scriptElement = document.currentScript;
 const src = scriptElement.getAttribute('src');
 const analyticsHost = src.split('/script.js')[0];
-// Result: "" (empty string means same domain)
+// Result: "/analytics" (a relative path, so requests stay on your domain)
 ```
 
 This means all tracking requests automatically go to `/analytics/track`, `/analytics/identify`, etc., which Next.js then rewrites to forward to Rybbit's servers.
@@ -381,8 +380,8 @@ Next.js automatically caches responses when possible, but you can optimize furth
 If deployed on Vercel, your rewrites benefit from the global Edge Network, which caches static scripts close to users worldwide.
 
 **Custom caching headers:**
-The Rybbit server sets cache headers on its scripts, which Next.js respects:
-- Scripts (`.js` files): Cached for 1 hour (`script.js`) to 1 day (`replay.js`, `metrics.js`)
+The Rybbit server sets cache headers on its scripts, which Next.js passes through:
+- Scripts (`.js` files): Cached for 1 hour (`script.js`) to 1 day (`replay.js`)
 - Configuration: Not cached by the server (you may cache it for ~5 minutes at your proxy if desired)
 - Tracking POSTs: Not cached
 
@@ -491,7 +490,7 @@ const nextConfig = {
 };
 ```
 
-### Conditional proxy (development only)
+### Conditional proxy (production only)
 
 If you only want proxying in production:
 
@@ -513,4 +512,4 @@ const nextConfig = {
 - [Next.js Integration Guide](/docs/guides/react/next-js) - General Next.js integration
 - [Tracking Script Documentation](/docs/script) - Script configuration options
 - [Custom Events](/docs/track-events) - Track custom events
-- [Next.js Rewrites Documentation](https://nextjs.org/docs/app/api-reference/next-config-js/rewrites) - Official Next.js docs
+- [Next.js Rewrites Documentation](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) - Official Next.js docs

@@ -5,27 +5,38 @@ description: Measure how many users return over time
 
 ![Retention Dashboard](/blog/rybbit_retention_dashboard.webp)
 
-Retention analysis shows how many users come back to your site over time, revealing whether users find lasting value.
+Retention analysis shows how many users come back to your site over time, revealing whether users find lasting value. On Rybbit Cloud, retention needs a Standard plan or higher.
 
 ## Understanding Cohorts
 
-A cohort is a group of users who share a common start date. For example, all users who first visited on January 15th form one cohort.
+A cohort is a group of new users who share a first-visit date. For example, all users who first visited on January 15th form one cohort. A user counts as new if they had no visit in the 90 days before the selected range. Someone returning after a longer gap counts as new again. Filters apply to each user's first visit.
+
+Switch **Cohort period** between **Daily** and **Weekly**. Weekly cohorts start on Monday.
+
+## Stats
+
+The band at the top shows the average retention for the first periods (for example **Day 1 retention**), **Avg. cohort size**, and **Best cohort**: the cohort with the highest day 1 or week 1 retention among cohorts at least half the average size. With a comparison period on, each figure shows its change.
+
+The chart shows average retention by period since first visit. Day 0 (or Week 0) is always 100%, so the curve starts at period 1.
 
 ## Reading the Retention Table
 
 ### Rows
-Each row is a different cohort, grouped by first visit date.
+Each row is a cohort, grouped by first visit date.
 
 ### Columns
 - **Day/Week 0** - Starting point (always 100%)
-- **Day/Week 1, 2, 3...** - Users who returned after that period
+- **Day/Week 1, 2, 3...** - Users who were active again in that period
 
 ### Numbers
-Percentages show what portion of the original cohort returned. 40% in the "Day 7" column means 40% of users came back after a week.
+Use **Show cells as** to switch between percentages (**%**) and **Users**. 40% in the "Day 7" column means 40% of that cohort was active again seven days after their first visit. Click a cell for details on who came back.
+
+Cells for periods that haven't finished yet are marked as in progress, and their figures can still rise.
 
 ### Color Coding
-- Lighter colors = higher retention
-- Darker colors = more drop-off
+Stronger color means higher retention. The legend above the table shows the scale.
+
+Click **Export CSV** to download the table.
 
 ## Key Insights
 

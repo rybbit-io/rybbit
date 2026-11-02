@@ -1,6 +1,6 @@
 import { Time } from "../../../components/DateSelector/types";
 import { SESSION_PAGE_FILTERS, USER_DETAIL_PAGE_FILTERS } from "../../../lib/filterGroups";
-import { getFilteredFilters, useStore } from "../../../lib/store";
+import { getFilteredFilters } from "../../../lib/store";
 import {
   GetSessionsResponse,
   SessionPageviewsAndEvents,
@@ -79,11 +79,15 @@ export function useGetSessionsInfinite({
   timeOverride,
   limit = 100,
   refetchInterval,
+  staleTime = Infinity,
+  abortable,
 }: {
   userId?: string;
   timeOverride?: Time;
   limit?: number;
   refetchInterval?: number;
+  staleTime?: number;
+  abortable?: boolean;
 }) {
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
@@ -101,23 +105,38 @@ export function useGetSessionsInfinite({
     pageParams: page => ({ page }),
     // A full page might have more behind it; a short one is the last.
     getNextPageParam: (lastPage, allPages) => (lastPage.length === limit ? allPages.length + 1 : undefined),
-    staleTime: Infinity,
+    staleTime,
     refetchInterval,
+    abortable,
+  });
+}
+
+export const LIVE_SESSIONS_POLL_MS = 10_000;
+
+/**
+ * The past-5-minute sessions list behind LiveUserCount, polled every 10 s. Its observers are mounted
+ * only while someone needs the list, so unmounting the last one cancels a refetch mid-pages.
+ */
+export function useGetLiveSessions(staleTime: number) {
+  return useGetSessionsInfinite({
+    timeOverride: { mode: "past-minutes", pastMinutesStart: 5, pastMinutesEnd: 0 },
+    limit: 25,
+    refetchInterval: LIVE_SESSIONS_POLL_MS,
+    staleTime,
+    abortable: true,
   });
 }
 
 export function useGetSessionDetailsInfinite(sessionId: string | null) {
-  const time = useStore(state => state.time);
-  // In past-minutes mode the session detail endpoint takes the window as a
-  // minute count rather than a date range.
-  const minutes = time.mode === "past-minutes" ? time.pastMinutesStart : undefined;
-
+  // A known session's details are the whole session, whatever window listed it.
+  // The user page lists other days and full histories, so clipping to a rolling
+  // past-minutes window (the endpoint's `minutes`) cut sessions off or 404ed them.
   return useAnalyticsInfiniteQuery<SessionPageviewsAndEvents>({
     key: ["session-details-infinite", sessionId],
     path: `sessions/${sessionId}`,
     useTime: false,
     useFilters: false,
-    params: { limit: 100, minutes },
+    params: { limit: 100 },
     initialPageParam: 0,
     pageParams: offset => ({ offset }),
     getNextPageParam: lastPage =>

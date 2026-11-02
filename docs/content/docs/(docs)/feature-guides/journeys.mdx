@@ -5,35 +5,56 @@ description: Visualize how users navigate your site
 
 ![User Journeys Dashboard](/blog/rybbit_journey_dashboard.webp)
 
-User journeys show the actual paths people take as they move through your website, revealing how they flow from page to page.
+User journeys show the actual paths people take as they move through your website, revealing how they flow from page to page. Journeys cover sessions that visit two or more pages, starting from the first page of the session. On Rybbit Cloud, journeys need a Standard plan or higher.
+
+## Controls
+
+- **Goal** - Pick a goal to see how many sessions reach it, and to filter the top paths by it
+- **Group pages** - **Exact path** keeps every page separate; **By section** groups pages into their site sections
+- **Starts at** and **Ends at** - Only show paths that start or end on a page or pattern. `*` matches one path segment, `**` matches several.
+- **Steps** - How many steps deep to map, from 2 to 10
+- **Show** - How many top paths to draw
+
+You can also filter each step column by page.
+
+## Stats
+
+The band above the diagram shows **Multi-page sessions**, **Avg path length**, **Top entry page**, **Top exit after 2+ pages**, and, when a goal is selected, the share of sessions that **Reach** it.
 
 ## Reading the Visualization
 
 ### Nodes
-Each bar represents a page or event. Its height indicates how many users reached that point.
+Each bar represents a page. Its height is the number of sessions on the paths shown that reached that point. Click a page name to open it on the [Pages](/docs/feature-guides/pages-tab) tab.
 
 ### Connections
-Lines between nodes show user flow. Thicker connections mean more users took that path.
+Lines between nodes show the flow. Thicker connections mean more sessions took that path.
 
 ### Flow Direction
-The visualization flows left to right, showing progression through time.
+The visualization flows left to right, from the first page of the session onward.
+
+### Pinning a path
+Click a path to pin it. The pinned path shows, step by step, how many sessions got that far and how many continued. Click **Unpin path** to clear it.
+
+## Top Paths
+
+Below the diagram, **Top paths** lists the most common exact page sequences with their sessions, share, and change against the comparison period. Use **Filter paths by page** to find paths that contain a page, and, when a goal is selected, choose **All paths**, **Reach** the goal, or **Never reach it**.
+
+Each path has these actions:
+
+- **Sessions** - List the sessions that took the path. Switch to **With a replay** to see only sessions you can watch.
+- **Replays** - List replays of sessions on the path, when [session replay](/docs/feature-guides/session-replay) is on
+- **Save as funnel** - Open **Create Funnel** with the path as the steps, so you can save it as a [funnel](/docs/funnels)
 
 ## Key Patterns to Look For
 
 - **Happy Path** - The most common route to conversion
-- **Drop-off Points** - Where many users enter but few continue
-- **Backtracking** - Users moving backward, often indicating confusion
+- **Drop-off Points** - Where many sessions enter but few continue
+- **Backtracking** - Sessions moving backward, often indicating confusion
 - **Alternative Routes** - Unexpected paths to important pages
 
 ## Using Journey Insights
 
 - **Simplify complex paths** - Create shortcuts to important pages
-- **Fix drop-off points** - Investigate why users leave at certain pages
+- **Fix drop-off points** - Investigate why visitors leave at certain pages
 - **Amplify successful paths** - Make high-converting routes easier to follow
-- **Reduce backtracking** - Improve navigation where users get lost
-
-## Analysis Types
-
-- **Entry point analysis** - Where do users go from a specific page?
-- **Goal-based analysis** - How did converting users get there?
-- **Full journey mapping** - Overall flow from entry to exit
+- **Reduce backtracking** - Improve navigation where visitors get lost

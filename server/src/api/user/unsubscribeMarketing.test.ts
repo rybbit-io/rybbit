@@ -169,14 +169,25 @@ describe("one-click marketing unsubscribe", () => {
     }
   });
 
-  it("keeps the 200 response for email clients when unsubscribing fails", async () => {
-    mocks.unsubscribeContact.mockRejectedValue(new Error("Contact update failed"));
+  it("reports a failed unsubscribe to the email client so it can retry", async () => {
+    mocks.unsubscribeContact.mockRejectedValue(new Error("Resend contact unsubscribe failed (rate_limit_exceeded)"));
     const request = requestStub("POST", signedQuery());
     const reply = replyStub();
     await oneClickUnsubscribeMarketing(request, reply);
 
     expect(request.log.error).toHaveBeenCalled();
-    expect(reply.status).toHaveBeenCalledWith(200);
-    expect(reply.send).toHaveBeenCalledWith();
+    expect(reply.status).toHaveBeenCalledWith(500);
+    expect(reply.send).toHaveBeenCalledWith({ error: "Failed to unsubscribe" });
+  });
+
+  it("does not show the confirmation page when a link click fails to unsubscribe", async () => {
+    mocks.unsubscribeContact.mockRejectedValue(new Error("Resend contact unsubscribe failed (rate_limit_exceeded)"));
+    const reply = replyStub();
+    await oneClickUnsubscribeMarketing(requestStub("GET", signedQuery()), reply);
+
+    expect(reply.status).toHaveBeenCalledWith(500);
+    expect(reply.type).toHaveBeenCalledWith("text/html");
+    expect(reply.send).not.toHaveBeenCalledWith(expect.stringContaining("<h1>Unsubscribed</h1>"));
+    expect(reply.send).toHaveBeenCalledWith(expect.stringContaining("try the link again"));
   });
 });

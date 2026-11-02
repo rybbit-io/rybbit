@@ -53,18 +53,22 @@ Returns all saved funnels for a site.
       type: 'string',
     },
     steps: {
-      description: 'Array of funnel steps',
+      description: 'Array of funnel steps, as saved (see the FunnelStep object on Analyze Funnel)',
       type: 'FunnelStep[]',
+    },
+    configuration: {
+      description: 'Extra settings stored with older funnels; an empty object for funnels saved through Create Funnel',
+      type: 'object',
     },
     createdAt: {
       description: 'Creation timestamp',
-      type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      type: 'string | null',
+      typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix',
     },
     updatedAt: {
       description: 'Last update timestamp',
-      type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      type: 'string | null',
+      typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix',
     },
   }}
 />
@@ -228,8 +232,9 @@ var data = await response.Content.ReadAsStringAsync();
         { "type": "page", "value": "/signup", "name": "Signup" },
         { "type": "page", "value": "/signup/complete", "name": "Complete" }
       ],
-      "createdAt": "2024-01-10T12:00:00.000Z",
-      "updatedAt": "2024-01-15T09:30:00.000Z"
+      "configuration": {},
+      "createdAt": "2024-01-10 12:00:00.123456",
+      "updatedAt": "2024-01-15 09:30:00.654321"
     }
   ]
 }

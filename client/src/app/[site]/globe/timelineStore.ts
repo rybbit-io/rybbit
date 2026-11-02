@@ -19,6 +19,7 @@ interface TimelineStore {
   setWindowSize: (size: number) => void;
   setManualWindowSize: (size: number | null) => void;
   setAllSessions: (sessions: GetSessionsResponse, hasMoreData: boolean) => void;
+  clearSessions: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: boolean) => void;
   reset: () => void;
@@ -38,6 +39,8 @@ export const useTimelineStore = create<TimelineStore>(set => ({
   setWindowSize: size => set({ windowSize: size }),
   setManualWindowSize: size => set({ manualWindowSize: size, windowSize: size || 60 }),
   setAllSessions: (sessions, hasMoreData) => set({ allSessions: sessions, hasMoreData }),
+  // Drops the loaded sessions and the timeline built from them, keeping the user's window size.
+  clearSessions: () => set({ allSessions: [], hasMoreData: false, timeRange: null, currentTime: null }),
   setLoading: loading => set({ isLoading: loading }),
   setError: error => set({ isError: error }),
   reset: () =>

@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/sites/:site/events/outbound
 ```
 
-Returns a list of outbound link clicks with their occurrence counts.
+Returns a list of outbound link clicks with their occurrence counts, most-clicked first. Returns at most 1,000 URLs.
 
 ### Path Parameters
 
@@ -38,7 +38,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 <TypeTable
   type={{
     data: {
-      description: 'Array of outbound link objects',
+      description: 'Array of outbound link objects, sorted by count descending (at most 1,000)',
       type: 'OutboundLink[]',
     },
   }}
@@ -59,7 +59,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
     lastClicked: {
       description: 'Most recent click timestamp',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
     },
   }}
 />
@@ -188,17 +188,17 @@ var data = await response.Content.ReadAsStringAsync();
     {
       "url": "https://github.com/example/repo",
       "count": 245,
-      "lastClicked": "2024-01-31T14:22:00.000Z"
+      "lastClicked": "2024-01-31 14:22:00"
     },
     {
       "url": "https://twitter.com/example",
       "count": 189,
-      "lastClicked": "2024-01-31T12:15:00.000Z"
+      "lastClicked": "2024-01-31 12:15:00"
     },
     {
       "url": "https://docs.example.com",
       "count": 156,
-      "lastClicked": "2024-01-31T10:30:00.000Z"
+      "lastClicked": "2024-01-31 10:30:00"
     }
   ]
 }

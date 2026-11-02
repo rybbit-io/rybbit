@@ -20,7 +20,7 @@ By default, Rybbit assigns an anonymous ID to each visitor based on their device
 - Store user metadata (traits) like email, name, and custom fields
 - View identified users in your dashboard with their real names
 
-When a new alias is created (i.e., the first time `identify()` is called for a given device), Rybbit retroactively updates all past anonymous events from that device to include the identified user ID. This means pre-login pageviews and events are attributed to the user once they identify themselves.
+When a new alias is created (i.e., the first time `identify()` is called for a given device), Rybbit retroactively updates that device's anonymous events from the last 30 days to include the identified user ID. This means recent pre-login pageviews and events are attributed to the user once they identify themselves. Older events stay anonymous.
 
 ## Special Trait Fields
 
@@ -45,7 +45,7 @@ You can also include any custom fields you need for segmentation and analysis.
 
 Sets a custom user ID for tracking logged-in users across devices and sessions, with optional user traits (metadata).
 
-- `userId` (String): The unique identifier for the user. This will be stored in localStorage and persist across browser sessions. **Note: Custom user IDs are stored exactly as provided without any hashing or modification.**
+- `userId` (String): The unique identifier for the user. This will be stored in localStorage and persist across browser sessions. **Note: Custom user IDs are not hashed. Leading and trailing whitespace is trimmed; otherwise the ID is stored as provided.**
 - `traits` (Object, Optional): An object containing user metadata like email, name, username, or any custom fields. This data is stored in Rybbit and can be used to identify users in the dashboard. Setting a trait to `null` removes it from the user's profile.
 
 ```javascript
@@ -114,7 +114,7 @@ if (currentUserId) {
 - **Identified sessions**: When a custom user ID is present, session assignment includes both the anonymous device fingerprint and the custom user ID. Different identified users therefore remain in separate sessions even when they share the same IP address and user agent.
 - **Shared devices**: If multiple users log in from the same device (same IP address and user agent), calling `identify()` with a new user ID updates the alias to point to the new user. Future events will be attributed to the most recently identified user. Past events that were already backfilled retain their original attribution.
 - **Cross-device tracking**: Identifying the same user on different devices creates separate aliases. Events from each device are linked to the user independently via the `identified_user_id` field.
-- **Retroactive backfill**: The backfill runs asynchronously when a new alias is first created. ClickHouse mutations may take a short time to propagate depending on table size. Subsequent `identify()` calls from the same device (even with a different user ID) do not re-backfill old events.
+- **Retroactive backfill**: The backfill covers the last 30 days and runs asynchronously when a new alias is first created. Backfills are batched and applied every 5 minutes, so pre-login events can take several minutes (longer on large tables) to show the user. Subsequent `identify()` calls from the same device (even with a different user ID) do not re-backfill old events.
 - **`clearUserId()` behavior**: Calling `clearUserId()` removes the user ID from localStorage so future events are anonymous. It does not delete the alias in the database or modify previously attributed events.
 
 ## Complete Example

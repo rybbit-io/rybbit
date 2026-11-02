@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/organizations/:organizationId/sites
 ```
 
-Returns all sites in an organization the caller can access, with usage and subscription info.
+Returns all sites in an organization the caller can access, with usage and subscription info. Any member can call it (`viewer` or above); API keys need the `org:read` scope. Sites are sorted by `sessionsLast24Hours`, highest first.
 
 ### Path Parameters
 
@@ -40,6 +40,15 @@ This endpoint takes no query parameters.
     organization: {
       description: 'The organization record, or null',
       type: 'object | null',
+    },
+    role: {
+      description: "The caller's role in the organization (organization keys act as admin)",
+      type: 'string | null',
+      typeDescription: '"owner" | "admin" | "editor" | "member" | "viewer"',
+    },
+    permissions: {
+      description: 'Permission names that role holds in the organization, e.g. "analytics:read", "sites:create". A scoped key may be narrowed further by its scopes',
+      type: 'string[]',
     },
     sites: {
       description: 'Array of site objects',
@@ -88,7 +97,20 @@ Each site in the `sites` array contains the following fields. Other site-config 
       type: 'number',
     },
     isOwner: {
-      description: 'Whether the caller owns the site',
+      description: 'Whether the caller is an admin or owner for this site. Despite the name, it does not mean the caller created or owns the site',
+      type: 'boolean',
+    },
+    role: {
+      description: "The caller's role on this site, after site grants and teams",
+      type: 'string',
+      typeDescription: '"owner" | "admin" | "editor" | "member" | "viewer"',
+    },
+    permissions: {
+      description: 'Permission names that role holds on this site',
+      type: 'string[]',
+    },
+    requiresPlan: {
+      description: 'True on Rybbit Cloud when the site needs a paid plan to collect data (the organization has no plan and the site was created after free plans ended)',
       type: 'boolean',
     },
     teams: {
@@ -256,6 +278,8 @@ var data = await response.Content.ReadAsStringAsync();
     "slug": "acme",
     "createdAt": "2024-01-15T10:30:00.000Z"
   },
+  "role": "admin",
+  "permissions": ["analytics:read", "sessions:read", "...", "sites:create", "members:manage"],
   "sites": [
     {
       "siteId": 123,
@@ -266,6 +290,9 @@ var data = await response.Content.ReadAsStringAsync();
       "organizationId": "org_abc123",
       "sessionsLast24Hours": 842,
       "isOwner": true,
+      "role": "admin",
+      "permissions": ["analytics:read", "sessions:read", "..."],
+      "requiresPlan": false,
       "teams": [
         {
           "id": "team_xyz789",

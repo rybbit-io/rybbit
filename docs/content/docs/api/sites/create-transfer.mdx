@@ -1,0 +1,287 @@
+---
+title: Create Site Transfer
+description: Starts handing a site to someone outside your organization by emailing them a transfer link.
+full: true
+method: POST
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/sites/:site/transfer
+```
+
+Emails the recipient a link that lets them move the site into one of their own organizations. Nothing moves until they [accept](/docs/api/sites/accept-transfer). A site has at most one pending transfer: creating a new one cancels the previous link. The link expires after 7 days.
+
+The link is also returned in the response, so you can pass it on yourself if the email doesn't arrive.
+
+**Permissions:** the `admin` role or above in the site's organization. API keys need the `sites:write` scope. A transfer must be started by a person, so organization API keys are rejected with `401`.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: "Site ID or site identifier",
+      type: "string | number",
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    email: {
+      description: "Recipient's email address. They must accept while signed in with this address",
+      type: "string",
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+Returns `201` with the pending transfer.
+
+<TypeTable
+  type={{
+    id: {
+      description: "Transfer ID (the secret in the link)",
+      type: "string",
+    },
+    recipientEmail: {
+      description: "Recipient's email address, lowercased",
+      type: "string",
+    },
+    createdAt: {
+      description: "When the transfer was created",
+      type: "string",
+      typeDescription: "ISO 8601 UTC, e.g. 2026-10-31T14:22:05.000Z",
+    },
+    expiresAt: {
+      description: "When the link stops working, 7 days after creation",
+      type: "string",
+      typeDescription: "ISO 8601 UTC",
+    },
+    url: {
+      description: "Link the recipient opens to accept",
+      type: "string",
+    },
+  }}
+/>
+
+### Error Responses
+
+Errors use the standard body `{ error, code, message, resolution }`.
+
+<TypeTable
+  type={{
+    "400": {
+      description: "Missing or invalid email",
+      type: "object",
+    },
+    "401": {
+      description: "No user behind the credential (organization API key)",
+      type: "object",
+    },
+    "403": {
+      description: "Not an admin or owner of the site's organization, or missing the sites:write scope",
+      type: "object",
+    },
+    "404": {
+      description: "Site not found",
+      type: "object",
+    },
+    "409": {
+      description: "The site moved while the request was in flight",
+      type: "object",
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X POST "https://app.rybbit.io/api/sites/123/transfer" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "tay@example.org"
+  }'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/transfer',
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      email: 'tay@example.org'
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.post(
+    'https://app.rybbit.io/api/sites/123/transfer',
+    json={
+        'email': 'tay@example.org'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$body = [
+    'email' => 'tay@example.org'
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/transfer');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/transfer')
+request = Net::HTTP::Post.new(uri)
+request['Authorization'] = 'Bearer your_api_key_here'
+request['Content-Type'] = 'application/json'
+request.body = {
+  email: 'tay@example.org'
+}.to_json
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+data = JSON.parse(response.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+body := map[string]interface{}{
+    "email": "tay@example.org",
+}
+jsonBody, _ := json.Marshal(body)
+
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/sites/123/transfer", bytes.NewBuffer(jsonBody))
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let body = serde_json::json!({
+  "email": "tay@example.org"
+});
+
+let client = reqwest::Client::new();
+let res = client
+    .post("https://app.rybbit.io/api/sites/123/transfer")
+    .header("Authorization", "Bearer your_api_key_here")
+    .json(&body)
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+String json = """
+{
+  "email": "tay@example.org"
+}
+""";
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/transfer"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+var body = new
+{
+    email = "tay@example.org"
+};
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(body),
+    Encoding.UTF8,
+    "application/json");
+
+var response = await client.PostAsync("https://app.rybbit.io/api/sites/123/transfer", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "id": "q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a",
+  "recipientEmail": "tay@example.org",
+  "createdAt": "2026-10-31T14:22:05.000Z",
+  "expiresAt": "2026-11-07T14:22:05.000Z",
+  "url": "https://app.rybbit.io/transfer/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a"
+}
+```
+
+</div>
+</div>

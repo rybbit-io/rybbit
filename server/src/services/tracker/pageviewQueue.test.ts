@@ -138,6 +138,29 @@ describe("pageviewQueue", () => {
     expect(row.timestamp_ms).toBe(expected);
   });
 
+  it.each([['"file.pdf"'], ["[1,2]"], ["123"], ["null"], ["not json"]])(
+    "drops props that aren't a JSON object (%s) and keeps the event",
+    async properties => {
+      await pageviewQueue.add(makePayload({ type: "custom_event", event_name: "download", properties }));
+      await pageviewQueue.add(makePayload({ type: "custom_event", event_name: "ok", properties: '{"plan":"pro"}' }));
+      await vi.advanceTimersByTimeAsync(1000);
+
+      const rows = mocks.insert.mock.calls[0][0].values;
+      expect(rows).toHaveLength(2);
+      expect(rows[0].props).toBeUndefined();
+      expect(rows[1].props).toEqual({ plan: "pro" });
+    }
+  );
+
+  it("inserts with settings that keep one bad row from failing the batch", async () => {
+    await flush();
+
+    expect(mocks.insert.mock.calls[0][0].clickhouse_settings).toMatchObject({
+      type_json_skip_duplicated_paths: 1,
+      input_format_allow_errors_num: "100",
+    });
+  });
+
   it("keeps the repeated daylight-saving hour distinct", async () => {
     Settings.defaultZone = "Europe/Berlin";
     await pageviewQueue.add(makePayload({ timestamp: "2026-10-25T02:30:00.999+02:00" }));

@@ -8,11 +8,13 @@ icon: SiGitbook
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-GitBook does not let you add custom scripts to a published site, and its integration platform does not let third parties inject them either. This page explains what that means and what your options are.
+GitBook does not let you add custom scripts to a published site, and its integration platform does not let third parties inject them either. Rybbit can't track GitBook-hosted pages today. The steps below cover your options for the docs and the snippet for the rest of your site.
 
 <Steps>
 <Step>
 ### Get your tracking snippet
+
+You need the snippet for the parts of your site outside GitBook, or for a docs host that accepts it (see the next step).
 
 <include>../../../partials/guides/get-snippet.mdx</include>
 </Step>
@@ -35,6 +37,8 @@ The rest of your site (marketing pages, app, blog) is unaffected: add the snippe
 
 <Step>
 ### Verify installation
+
+Run this check on the pages where you added the snippet. GitBook-hosted pages won't appear in Rybbit.
 
 <include>../../../partials/guides/verify.mdx</include>
 </Step>

@@ -10,15 +10,40 @@ The main dashboard is your home base in Rybbit Analytics, showing all key metric
 ## Top Metrics
 
 - **Unique Users** - Different people who visited your site
-- **Total Sessions** - Number of visits (30-minute inactivity starts a new session)
-- **Total Pageviews** - Every page load from every visitor
+- **Sessions** - Number of visits (30 minutes of inactivity starts a new session)
+- **Pageviews** - Every page load from every visitor
+- **Pages per Session** - Average pages viewed per visit
 - **Bounce Rate** - Percentage of single-page sessions
-- **Pages Per Session** - Average pages viewed per visit
 - **Session Duration** - Average time spent per visit
+
+Click a metric to plot it on the main chart.
 
 ## Time Controls
 
-Select date ranges: Today, Yesterday, Last 7/30/60 days, This Week, This Month, All Time, or a custom range.
+The date selector offers these presets: **Last 30 Minutes**, **Last 24 Hours**, **Today**, **Yesterday**, **Last 7 Days**, **Last 30 Days**, **This Week**, **This Month**, **This Year**, and **All Time**. Use **Custom range** to pick dates in the calendar.
+
+To get any other window counted back from now, type it into the selector's search box, for example `90m`, `6h`, `60d`, or `2w`. Minutes and hours go up to a week; days and weeks go up to a year.
+
+Each preset except This Week has a single-key shortcut when you're not typing in a field:
+
+| Key | Range |
+| --- | --- |
+| `D` | Today |
+| `E` | Yesterday |
+| `H` | Last 24 Hours |
+| `W` | Last 7 Days |
+| `T` | Last 30 Days |
+| `M` | This Month |
+| `Y` | This Year |
+| `A` | All Time |
+| `R` | Last 30 Minutes |
+| `C` | Custom range |
+
+See [keyboard shortcuts](/docs/keyboard-shortcuts) for the full list.
+
+### Comparison
+
+Compare the current range against another one. Choose **Previous period**, **Matching weekdays**, **Same period last year**, or **Custom range**, or **No comparison** to turn it off. The comparison shows on the chart and in the change figures on the top metrics.
 
 ## Filters
 
@@ -32,27 +57,27 @@ A set of filters you use often can be saved as a [segment](/docs/segments) from 
 
 ## Main Chart
 
-Shows your selected metric over time. Click the metric selector to switch between Users, Sessions, Pageviews, Bounce Rate, Pages Per Session, or Session Duration.
+Shows the selected metric over time. Pick the time bucket (from **Min** up to **Year**) next to the chart. Drag across the chart to zoom into that range; double-click to zoom back out.
 
-## Traffic Sources
+### Annotations
 
-See where your traffic comes from:
-- **Direct** - Typed URL or bookmarks
-- **Search** - Google, Bing, DuckDuckGo, etc.
-- **Social** - Twitter, Facebook, LinkedIn, Reddit
-- **Referral** - Other websites
+Click **Annotate**, or click a point on the chart, to pin a note to a moment, such as a launch, a deploy, or an outage. Pins appear along the chart; hover or click one to read it. See [Annotations](/docs/annotations).
 
-Click any source to filter the entire dashboard to that traffic.
+## Referrers and Channels
 
-## UTM Parameters
+The **Referrers** tab lists the sites that sent you traffic. The **Channels** tab groups every visit into one of 29 channels based on its referrer and UTM tags: Direct, Organic Search, Paid Search, Organic Social, Paid Social, AI, Paid AI, Email, SMS, Push, Referral, Affiliate, Display, Cross-Network, Organic Video, Paid Video, Organic Shopping, Paid Shopping, Audio, Paid Audio, Influencer, Paid Influencer, News, Content, Productivity, Event, Internal, Paid Unknown, and Unknown.
 
-View campaign data: utm_campaign, utm_source, utm_medium, utm_term, utm_content.
+The **Source**, **Medium**, **Campaign**, **Term**, and **Content** tabs show UTM parameters.
+
+Click any row to filter the entire dashboard to that traffic.
 
 ## Additional Breakdowns
 
-- **Top Pages** - Most visited URLs with pageviews, visitors, time on page, and bounce rate
-- **Entry/Exit Pages** - Where visits begin and end
-- **Devices & Browsers** - Desktop/mobile/tablet split, browser and OS breakdown
-- **Screen Resolutions** - What sizes your visitors use
-- **Geographic Data** - Countries and regions
-- **Custom Events** - Click any event to filter to sessions containing it
+- **Pages** - Most visited paths, plus tabs for **Titles**, **Entries**, **Exits**, and **Hostnames**
+- **Devices** - **Browsers**, **Devices**, **Operating Systems**, and **Screen Dimensions**
+- **Countries** - **Countries**, **Regions**, **Cities**, **Languages**, **Timezones**, and a **Map**
+- **Events** - **Custom Events** and **Outbound** links, plus **Buttons**, **Forms**, and **Copies** when [autocapture](/docs/autocapture) is on
+- **Weekly Trends** - A heatmap of the selected metric by weekday and hour
+- **Search Console** (Rybbit Cloud) - **Keywords**, **Pages**, **Countries**, and **Devices** from Google Search Console, once you connect it with **Connect Google Search Console**
+
+Click any row to filter the dashboard to it.

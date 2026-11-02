@@ -23,6 +23,18 @@ const CHART_COLORS = [
   "#f472b6", // pink-400 (input change)
 ];
 
+/**
+ * A row's `event_date` is the wall-clock start of a day in the zone the counts
+ * were requested in. Read it as UTC so it keeps that calendar day: parsing it in
+ * the browser's zone and converting moved every day one back east of UTC. The
+ * chart's time scale and labels are UTC to match.
+ */
+export function parseUsageDay(eventDate: string): DateTime {
+  return DateTime.fromSQL(eventDate, { zone: "utc" });
+}
+
+const UTC_DAY: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", timeZone: "UTC" };
+
 export interface EventUsageChartProps {
   data: EventCountRow[] | undefined;
   isLoading: boolean;
@@ -46,13 +58,20 @@ export function EventUsageChart({
 
   const maxTicks = Math.round((width ?? Infinity) / 200);
 
+  // No day after today is real. The admin charts count in the viewer's zone, so
+  // today is the later of the UTC and local dates.
+  const utcToday = DateTime.utc().toFormat("yyyy-MM-dd");
+  const localToday = DateTime.local().toFormat("yyyy-MM-dd");
+  const lastDay = utcToday > localToday ? utcToday : localToday;
+
   const mapEventData = (key: keyof EventCountRow) =>
     data
       ?.map((e) => {
-        const timestamp = DateTime.fromSQL(e.event_date).toUTC();
-        if (timestamp > DateTime.now()) return null;
+        const timestamp = parseUsageDay(e.event_date);
+        const day = timestamp.toFormat("yyyy-MM-dd");
+        if (day > lastDay) return null;
         return {
-          x: timestamp.toFormat("yyyy-MM-dd"),
+          x: day,
           y: e[key] as number,
           currentTime: timestamp,
         };
@@ -161,7 +180,7 @@ export function EventUsageChart({
               truncateTickAt: 0,
               tickValues: Math.min(maxTicks, maxTickCount),
               format: (value) => {
-                return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(value);
+                return new Intl.DateTimeFormat(locale, UTC_DAY).format(value);
               },
             }}
             axisLeft={{
@@ -192,7 +211,7 @@ export function EventUsageChart({
                 <ChartTooltip>
                   <div className="p-3 min-w-[100px]">
                     <div className="font-medium mb-1">
-                      {formatDateTime(currentTime, { month: "short", day: "numeric", year: "numeric" })}
+                      {formatDateTime(currentTime, { ...UTC_DAY, year: "numeric" })}
                     </div>
                     {slice.points
                       .sort(

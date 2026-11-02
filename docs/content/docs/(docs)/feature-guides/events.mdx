@@ -11,25 +11,41 @@ See the [Track Events guide](/docs/track-events) for implementation details.
 
 ## Events Page
 
-The events page includes:
-- **Events Chart** - Visualize event trends over time
-- **Event Log** - Recent individual event occurrences (click any row to open a details sheet)
+On Rybbit Cloud the Events page needs a Standard plan or higher.
 
-The **Custom Events List** — all tracked events with counts — lives in the Events section of the main dashboard.
+### Stat band
 
-## Event Metrics
+The top of the page shows:
+- **Events** - Custom events in the selected period
+- **Users with an event** - People who sent at least one event, and their share of all users
+- **Events per session** - Average events per session
+- **Event names** - Distinct event names, and how many are new compared with the comparison period
+- **Autocaptured** - Clicks, links, forms, copies, and inputs captured by [autocapture](/docs/autocapture)
 
-For each event in the Custom Events List:
-- **Event Name** - The name you assigned to the event
-- **Count** - Total times triggered in the selected period
-- **Percentage** - Share of total events
+### Chart
 
-## Event Properties
+The chart groups events by **Event type** or **Event name**. When grouped by name, choose how many of the top events to plot. Click a series in the legend to show or hide it. Pageviews are hidden by default.
 
-In the Custom Events List, click the expand arrow on any event to view its properties. Properties show the key-value pairs attached to events, helping you understand event context (e.g., which product was purchased, what button was clicked).
+### Event names table
+
+Every custom event name in the period, with these columns:
+- **Event** - The event name. Expand a row to see its properties and their values.
+- **Events** - Total times it fired
+- **Users** - Distinct users who sent it
+- **Per user** - Events per user
+- **Trend** - A sparkline of the event over the period
+- **Change** - Change against the comparison period, when a comparison is on
+- **Last seen** - When it last fired
+- **Used in** - The goals and saved funnels built on this event. If nothing uses it yet, **Create goal** turns it into a goal in one step.
+
+Click the filter icon on a row to filter the dashboard to that event. Use **Search event names** to find one.
+
+### Event log
+
+The **Event log** lists individual events, newest first. Click any row to open its details, including properties, page, user, and device. **Live** is on by default: the log shows the latest events, updates every 2 seconds, and ignores the date range you picked (filters still apply). Scroll down to pause it. Turn **Live** off to see only events from the selected period.
 
 ## Filtering
 
-- Click any event name to filter the dashboard to sessions containing that event
+- Filter the dashboard to an event from the Event names table
 - Use the filter panel to combine event filters with other dimensions
-- Filter by time range to analyze event trends
+- Change the time range to analyze event trends

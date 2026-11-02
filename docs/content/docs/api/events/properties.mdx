@@ -15,7 +15,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 GET /api/sites/:site/events/properties
 ```
 
-Returns property key-value pairs for a specific event name with their occurrence counts.
+Returns property key-value pairs for a specific event name with their occurrence counts. Returns at most 500 key-value pairs in total, sorted by key, then by count descending, so later keys can be cut off on events with many distinct values.
 
 ### Path Parameters
 
@@ -36,7 +36,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     event_name: {
-      description: 'Event name to get properties for',
+      description: 'Event name to get properties for. Missing returns 400.',
       type: 'string',
       required: true,
     },
@@ -48,7 +48,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 <TypeTable
   type={{
     data: {
-      description: 'Array of property objects',
+      description: 'Array of property objects (at most 500)',
       type: 'EventProperty[]',
     },
   }}
