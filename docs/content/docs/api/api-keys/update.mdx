@@ -20,7 +20,7 @@ POST /api/auth/api-key/update
 
 Updates mutable fields on an existing API key. The key is identified by its `keyId`.
 
-<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie with the request.</Callout>
+<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie and an `Origin` header with the request. To update an organization key, pass `"configId": "org"`; without it the key is not found (`404`). Managing organization keys requires the owner or admin role.</Callout>
 
 ### Request Body
 
@@ -31,8 +31,13 @@ Updates mutable fields on an existing API key. The key is identified by its `key
       type: 'string',
       required: true,
     },
+    configId: {
+      description: 'Set to "org" for an organization key. Omit for a personal key.',
+      type: 'string',
+      required: false,
+    },
     name: {
-      description: 'A new label for the key',
+      description: 'A new label for the key, 1 to 32 characters',
       type: 'string',
       required: false,
     },
@@ -42,17 +47,14 @@ Updates mutable fields on an existing API key. The key is identified by its `key
       required: false,
     },
     expiresIn: {
-      description: 'New expiry in seconds from now. Pass null to make the key never expire.',
+      description: 'New expiry in seconds from now, from 86,400 (1 day) to 31,536,000 (365 days). Pass null to make the key never expire.',
       type: 'number | null',
-      required: false,
-    },
-    rateLimitEnabled: {
-      description: 'Legacy per-key rate limit toggle. Has no effect — [rate limits](/docs/api/getting-started#rate-limits-cloud-only) are enforced per credential owner and follow that owner\'s plan',
-      type: 'boolean',
       required: false,
     },
   }}
 />
+
+Scopes (`permissions`) and the legacy rate-limit fields (`rateLimitEnabled`, `rateLimitMax`, `rateLimitTimeWindow`, `remaining`, `refillAmount`, `refillInterval`) can't be changed over HTTP; sending any of them returns `400`. To change a key's scopes, create a new key and delete the old one.
 
 ### Response
 
@@ -76,8 +78,12 @@ Returns the updated API key object (without the secret key value).
       description: 'The key prefix',
       type: 'string | null',
     },
-    userId: {
-      description: 'ID of the user that owns the key',
+    referenceId: {
+      description: 'Owner of the key: your user ID for personal keys, the organization ID for organization keys',
+      type: 'string',
+    },
+    configId: {
+      description: '"default" for personal keys, "org" for organization keys',
       type: 'string',
     },
     enabled: {
@@ -97,21 +103,23 @@ Returns the updated API key object (without the secret key value).
       type: 'string',
     },
     rateLimitEnabled: {
-      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only))',
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see Rate Limits in Getting Started)',
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number | null',
     },
     rateLimitTimeWindow: {
-      description: 'Unused legacy field. It is ignored — see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only) for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number | null',
     },
   }}
 />
 
 **Note:** Additional fields may be present in the response object.
+
+The `rateLimit*` fields are unused: limits apply per credential owner, see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only).
 
 </div>
 <div className="flex flex-col gap-4">
@@ -120,7 +128,8 @@ Returns the updated API key object (without the secret key value).
   <Tab value="cURL">
 ```bash title="Request"
 curl -X POST "https://app.rybbit.io/api/auth/api-key/update" \
-  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Origin: https://app.rybbit.io" \
   -H "Content-Type: application/json" \
   -d '{"keyId": "key_8f3a1b2c4d5e6f7g", "name": "CI pipeline (rotated)", "enabled": true}'
 ```
@@ -158,7 +167,8 @@ response = requests.post(
         'enabled': True
     },
     headers={
-        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+        'Origin': 'https://app.rybbit.io'
     }
 )
 
@@ -177,7 +187,8 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     'enabled' => true
 ]));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Origin: https://app.rybbit.io',
     'Content-Type: application/json'
 ]);
 
@@ -194,7 +205,8 @@ require 'json'
 
 uri = URI("https://app.rybbit.io/api/auth/api-key/update")
 req = Net::HTTP::Post.new(uri)
-req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Origin'] = 'https://app.rybbit.io'
 req['Content-Type'] = 'application/json'
 req.body = {
   keyId: 'key_8f3a1b2c4d5e6f7g',
@@ -214,7 +226,8 @@ body := bytes.NewBuffer([]byte(`{
   "enabled": true
 }`))
 req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/auth/api-key/update", body)
-req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Origin", "https://app.rybbit.io")
 req.Header.Set("Content-Type", "application/json")
 
 client := &http.Client{}
@@ -230,7 +243,8 @@ json.NewDecoder(resp.Body).Decode(&data)
 let client = reqwest::Client::new();
 let res = client
     .post("https://app.rybbit.io/api/auth/api-key/update")
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
     .json(&serde_json::json!({
         "keyId": "key_8f3a1b2c4d5e6f7g",
         "name": "CI pipeline (rotated)",
@@ -248,7 +262,8 @@ HttpClient client = HttpClient.newHttpClient();
 String json = "{\"keyId\": \"key_8f3a1b2c4d5e6f7g\", \"name\": \"CI pipeline (rotated)\", \"enabled\": true}";
 HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://app.rybbit.io/api/auth/api-key/update"))
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
     .build();
@@ -259,7 +274,8 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
   <Tab value=".NET">
 ```csharp title="Request"
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Origin", "https://app.rybbit.io");
 
 var content = new StringContent(
     "{\"keyId\": \"key_8f3a1b2c4d5e6f7g\", \"name\": \"CI pipeline (rotated)\", \"enabled\": true}",
@@ -277,9 +293,10 @@ var data = await response.Content.ReadAsStringAsync();
 {
   "id": "key_8f3a1b2c4d5e6f7g",
   "name": "CI pipeline (rotated)",
-  "start": "rybbit_sk_live_xxxx",
-  "prefix": "rybbit_sk_live_",
-  "userId": "user_2a9b8c7d6e5f4g3h",
+  "start": "aBcDeF",
+  "prefix": null,
+  "referenceId": "user_2a9b8c7d6e5f4g3h",
+  "configId": "default",
   "enabled": true,
   "expiresAt": "2026-07-25T12:00:00.000Z",
   "createdAt": "2026-06-25T12:00:00.000Z",

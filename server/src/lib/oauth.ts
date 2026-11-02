@@ -1,6 +1,6 @@
 import { mcp } from "@better-auth/mcp";
 import { getOAuthProviderApi } from "@better-auth/oauth-provider";
-import { createAuthEndpoint } from "better-auth/api";
+import { createAuthEndpoint, createAuthMiddleware } from "better-auth/api";
 import { jwt } from "better-auth/plugins";
 import { z } from "zod";
 import { ALL_SCOPE_STRINGS, OIDC_STANDARD_SCOPES } from "./scopes.js";
@@ -10,6 +10,19 @@ export function getAuthBaseUrl(env: NodeJS.ProcessEnv = process.env): string {
     .trim()
     .replace(/\/+$/, "")
     .replace(/\/api\/auth$/, "");
+}
+
+function hasNonHttpsRedirectUri(redirectUris: unknown): boolean {
+  if (!Array.isArray(redirectUris)) return false;
+  return redirectUris.some(uri => {
+    // Parse like the provider does, so the scheme seen here is the one it
+    // validates. Unparseable entries are left for the provider to reject.
+    try {
+      return typeof uri === "string" && new URL(uri).protocol !== "https:";
+    } catch {
+      return false;
+    }
+  });
 }
 
 export function createOAuthPlugins(baseUrl: string) {
@@ -42,9 +55,29 @@ export function createOAuthPlugins(baseUrl: string) {
   return [
     // Non-TLS LAN self-hosting still supports password sessions and API keys.
     // Better Auth 1.7 requires HTTPS (or loopback) for an OAuth resource.
-    ...(supportsOAuth ? [jwt(), mcp(options)] : []),
+    // The JWT plugin is here for OAuth token signing and JWKS only. Without
+    // disableSettingJwtHeader it also signs a session JWT into a set-auth-jwt
+    // header on every getSession, including the server-side lookups behind
+    // each authenticated request, and nothing reads that header.
+    ...(supportsOAuth ? [jwt({ disableSettingJwtHeader: true }), mcp(options)] : []),
     {
       id: "rybbit-oauth",
+      hooks: {
+        before: [
+          {
+            matcher: (ctx: { path?: string }) => ctx.path === "/oauth2/register",
+            // The provider defaults an omitted application_type to "web",
+            // which forbids http://localhost callbacks. Most MCP clients
+            // register a loopback callback and never send the field, so infer
+            // "native" for them. Native validation still vets every URI.
+            handler: createAuthMiddleware(async ctx => {
+              const body = ctx.body as { application_type?: unknown; redirect_uris?: unknown } | undefined;
+              if (!body || body.application_type !== undefined || !hasNonHttpsRedirectUri(body.redirect_uris)) return;
+              return { context: { body: { ...body, application_type: "native" } } };
+            }),
+          },
+        ],
+      },
       endpoints: {
         // Keep verification inside a Better Auth endpoint context so the
         // provider checks signatures, expiry, linked sessions and client state.

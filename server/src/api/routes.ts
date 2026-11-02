@@ -114,6 +114,7 @@ import {
   createExperiment,
   deleteExperiment,
   getExperimentResults,
+  getExperimentTimeseries,
   getExperiments,
   updateExperiment,
 } from "./experiments/index.js";
@@ -187,6 +188,7 @@ import {
   getUserOrganizations,
   listOrganizationMembers,
   oneClickUnsubscribeMarketing,
+  oneClickUnsubscribeReports,
   unsubscribeMarketing,
   updateAccountSettings,
 } from "./user/index.js";
@@ -215,6 +217,7 @@ import {
   type RouteScope,
 } from "../lib/auth-middleware.js";
 import { IS_CLOUD } from "../lib/const.js";
+import { keepRawJsonBody } from "../lib/rawBody.js";
 import { mcpRoutes } from "../mcp/index.js";
 
 // Reject requests whose shared time query params are present but invalid.
@@ -412,9 +415,11 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.post("/sites/:siteId/segments", site("segments:write"), createSegment);
   fastify.put("/sites/:siteId/segments/:segmentId", site("segments:write"), updateSegment);
   fastify.delete("/sites/:siteId/segments/:segmentId", site("segments:write"), deleteSegment);
+  // The card body carries caller-written SQL, so this is a custom query: a
+  // dashboards:read credential alone must not be able to read raw events.
   fastify.post(
     "/sites/:siteId/dashboards/run-card",
-    withRateLimit(site("dashboards:read"), customQueryRateLimit),
+    withRateLimit(site("sql:read"), customQueryRateLimit),
     runDashboardCardQuery
   );
   fastify.get("/sites/:siteId/feature-flags", site("flags:read"), getFeatureFlags);
@@ -428,6 +433,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.put("/sites/:siteId/experiments/:experimentId", site("experiments:write"), updateExperiment);
   fastify.delete("/sites/:siteId/experiments/:experimentId", site("experiments:write"), deleteExperiment);
   fastify.get("/sites/:siteId/experiments/:experimentId/results", site("experiments:read"), getExperimentResults);
+  fastify.get("/sites/:siteId/experiments/:experimentId/timeseries", site("experiments:read"), getExperimentTimeseries);
   fastify.get("/sites/:siteId/events/names", cachedEventsRead, getEventNames);
   fastify.get("/sites/:siteId/events/names/stats", cachedEventsRead, getEventNameStats);
   fastify.get("/sites/:siteId/events/overview", cachedEventsRead, getEventsOverview);
@@ -558,8 +564,19 @@ async function userRoutes(fastify: FastifyInstance) {
   fastify.get("/user/organizations", authenticated({ resource: "org", action: "read" }), getUserOrganizations);
   fastify.post("/user/account-settings", authenticated("deny-scoped"), updateAccountSettings);
   fastify.post("/user/unsubscribe-marketing", authenticated("deny-scoped"), unsubscribeMarketing);
-  fastify.get("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for link clicks
-  fastify.post("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
+  await fastify.register(async oneClick => {
+    // Email clients send RFC 8058 one-click unsubscribes as an
+    // application/x-www-form-urlencoded POST ("List-Unsubscribe=One-Click").
+    // The handlers only read the query string, but without a parser Fastify
+    // answers 415 before they run.
+    oneClick.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, _body, done) =>
+      done(null, {})
+    );
+    oneClick.get("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for link clicks
+    oneClick.post("/user/unsubscribe-marketing-oneclick", publicRoute, oneClickUnsubscribeMarketing); // Public - for List-Unsubscribe header
+    oneClick.get("/user/unsubscribe-reports-oneclick", publicRoute, oneClickUnsubscribeReports); // Public - weekly report footer link
+    oneClick.post("/user/unsubscribe-reports-oneclick", publicRoute, oneClickUnsubscribeReports); // Public - weekly report List-Unsubscribe header
+  });
   fastify.post("/user/api-keys", authenticated("deny-scoped"), createUserApiKey);
   fastify.post("/organizations/:organizationId/api-keys", org("apikeys:manage"), createOrgApiKey);
   fastify.get("/organizations/:organizationId/api-usage", org("org:read"), getOrgApiUsage);
@@ -612,12 +629,20 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
     fastify.get("/stripe/subscription", authenticated("deny-scoped"), getSubscription);
     fastify.get("/stripe/invoices", authenticated("deny-scoped"), getInvoices);
     fastify.post("/stripe/cancellation-feedback", authenticated("deny-scoped"), submitCancellationFeedback);
-    fastify.post("/stripe/webhook", { config: { rawBody: true, access: "public" as RouteAccess } }, handleWebhook); // Public - Stripe webhook
 
     // AppSumo Routes
     fastify.post("/as/activate", authenticated("deny-scoped"), activateAppSumoLicense);
-    fastify.post("/as/webhook", publicRoute, handleAppSumoWebhook); // Public - AppSumo webhook
+
+    await fastify.register(webhookRoutes);
   }
+}
+
+// Public webhooks. Both senders sign the raw request bytes, so this scope keeps
+// them on request.rawBody for the handlers' signature checks.
+async function webhookRoutes(fastify: FastifyInstance) {
+  keepRawJsonBody(fastify);
+  fastify.post("/stripe/webhook", publicRoute, handleWebhook);
+  fastify.post("/as/webhook", publicRoute, handleAppSumoWebhook);
 }
 
 // Main API routes plugin - registers all domain plugins

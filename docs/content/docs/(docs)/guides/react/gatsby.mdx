@@ -92,7 +92,7 @@ export default function TrackedButton({ label, eventName, eventData }) {
 
 ## Troubleshooting
 
-- **Pageviews missing after client-side navigation**: this is rare. If it happens, export `onRouteUpdate` from `gatsby-browser.js` and call `window.rybbit.pageview()` there when `location.pathname` changes. Test the default behaviour first.
+- **Pageviews missing after client-side navigation**: this is rare. If it happens, export `onRouteUpdate` from `gatsby-browser.js` and call `window.rybbit.pageview()` there when `location.pathname` changes. Skip the first call (`prevLocation` is `null`), because the script already tracks the landing page. Test the default behaviour first.
 
 ## Next steps
 

@@ -1,0 +1,192 @@
+---
+title: Decline Site Transfer
+description: Turns down a site transfer sent to you.
+full: true
+method: POST
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/site-transfers/:transferId/decline
+```
+
+Declines a [site transfer](/docs/api/sites/create-transfer). The transfer is deleted and the site stays where it is.
+
+**Authentication:** a signed-in dashboard session belonging to the recipient. API keys don't work here: the route names no site or organization to check a key against, so every API key (personal, scoped or organization) gets `401`. The examples send the session cookie. The JavaScript example is for Node.js: browsers don't let scripts set a `Cookie` header.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    transferId: {
+      description: "Transfer ID, the last segment of the emailed transfer link",
+      type: "string",
+      required: true,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: "Whether the transfer was declined",
+      type: "boolean",
+    },
+  }}
+/>
+
+### Error Responses
+
+Errors use the standard body `{ error, code, message, resolution }`.
+
+<TypeTable
+  type={{
+    "401": {
+      description: "No signed-in session (including any request authenticated only with an API key)",
+      type: "object",
+    },
+    "403": {
+      description: "Signed in with a different email address (reason \"wrong_account\", with a masked recipientEmailHint), or the address isn't verified on Rybbit Cloud (reason \"email_unverified\")",
+      type: "object",
+    },
+    "404": {
+      description: "The transfer doesn't exist, was cancelled, or has expired",
+      type: "object",
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X POST "https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline',
+  {
+    method: 'POST',
+    headers: {
+      'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.post(
+    'https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline',
+    headers={
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline')
+request = Net::HTTP::Post.new(uri)
+request['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+data = JSON.parse(response.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline", nil)
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .post("https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline"))
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .POST(HttpRequest.BodyPublishers.noBody())
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
+
+var response = await client.PostAsync("https://app.rybbit.io/api/site-transfers/q3Zt8xK2mVb7Lp0RfY1nWc4sHd9eJg6a/decline", null);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true
+}
+```
+
+</div>
+</div>

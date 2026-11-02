@@ -1,3 +1,4 @@
+import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
 import { pino } from "pino";
 import { afterEach, describe, expect, it } from "vitest";
@@ -61,6 +62,56 @@ describe("request lifecycle logging", () => {
 
     expect(requestEvents(events)).toEqual([
       expect.objectContaining({ level: 20, route: "/api/track", statusCode: 200, msg: "Request completed" }),
+    ]);
+  });
+
+  it("logs successful tracker config and flag requests at debug", async () => {
+    const { app, events } = createApp();
+    app.get("/api/site/tracking-config/:siteId", () => ({ sessionReplay: false }));
+    app.post("/api/site/:siteId/feature-flags/evaluate", () => ({ flags: {} }));
+
+    await app.inject({ method: "GET", url: "/api/site/tracking-config/abc" });
+    await app.inject({ method: "POST", url: "/api/site/abc/feature-flags/evaluate" });
+
+    expect(requestEvents(events)).toEqual([
+      expect.objectContaining({ level: 20, route: "/api/site/tracking-config/:siteId", statusCode: 200 }),
+      expect.objectContaining({ level: 20, route: "/api/site/:siteId/feature-flags/evaluate", statusCode: 200 }),
+    ]);
+  });
+
+  it("keeps tracker config failures at their normal level", async () => {
+    const { app, events } = createApp();
+    app.get("/api/site/tracking-config/:siteId", (_request, reply) => reply.status(404).send({ error: "not found" }));
+
+    await app.inject({ method: "GET", url: "/api/site/tracking-config/missing" });
+
+    expect(requestEvents(events)).toEqual([
+      expect.objectContaining({ level: 40, statusCode: 404, msg: "Request completed with client error" }),
+    ]);
+  });
+
+  it("logs answered CORS preflights at debug and rejected ones at warn", async () => {
+    const { app, events } = createApp();
+    await app.register(cors, {
+      delegator: (request, callback) =>
+        callback(null, { origin: request.headers.origin === "https://allowed.example" }),
+    });
+    app.post("/api/track", () => ({ success: true }));
+
+    await app.inject({
+      method: "OPTIONS",
+      url: "/api/track",
+      headers: { origin: "https://allowed.example", "access-control-request-method": "POST" },
+    });
+    await app.inject({
+      method: "OPTIONS",
+      url: "/api/track",
+      headers: { origin: "https://blocked.example", "access-control-request-method": "POST" },
+    });
+
+    expect(requestEvents(events)).toEqual([
+      expect.objectContaining({ level: 20, method: "OPTIONS", statusCode: 204, msg: "Request completed" }),
+      expect.objectContaining({ level: 40, method: "OPTIONS", statusCode: 404 }),
     ]);
   });
 

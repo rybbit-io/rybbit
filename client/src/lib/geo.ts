@@ -1,35 +1,54 @@
-import { useGeoStore, getSubdivisions, getCountries } from "./geoStore";
+import { useCallback, useEffect } from "react";
+import { useGeoStore, getSubdivisions, getCountries, lookupRegionName } from "./geoStore";
 
-// Hook-based access (for components that need reactive updates)
+// Hook-based access (for components that need reactive updates). Each hook loads its file the first
+// time a component using it mounts; nothing is fetched on import.
 export const useSubdivisions = () => {
-  const { subdivisions, isLoadingSubdivisions: isLoading, subdivisionsError: error } = useGeoStore();
+  const data = useGeoStore(state => state.subdivisions);
+  const error = useGeoStore(state => state.subdivisionsError);
+
+  useEffect(() => {
+    void useGeoStore.getState().fetchSubdivisions();
+  }, []);
 
   return {
-    data: subdivisions,
-    isLoading,
+    data,
+    isLoading: !data && !error,
     error,
   };
 };
 
 export const useCountries = () => {
-  const { countries, isLoadingCountries: isLoading, countriesError: error } = useGeoStore();
+  const data = useGeoStore(state => state.countries);
+  const error = useGeoStore(state => state.countriesError);
+
+  useEffect(() => {
+    void useGeoStore.getState().fetchCountries();
+  }, []);
 
   return {
-    data: countries,
-    isLoading,
+    data,
+    isLoading: !data && !error,
     error,
   };
 };
 
+/** Subdivision code ("US-NC") → name. Returns "" until the names load and for unknown codes. */
 export const useGetRegionName = () => {
-  const { getRegionName } = useGeoStore();
+  const regionNames = useGeoStore(state => state.regionNames);
+
+  useEffect(() => {
+    void useGeoStore.getState().fetchRegionNames();
+  }, []);
+
+  const getRegionName = useCallback((region: string) => lookupRegionName(regionNames, region), [regionNames]);
 
   return {
     getRegionName,
   };
 };
 
-// Direct access functions (no hooks required)
+// Direct access functions (no hooks required). Reads whatever a hook has already loaded.
 export const getRegionName = (region: string) => {
   return useGeoStore.getState().getRegionName(region);
 };

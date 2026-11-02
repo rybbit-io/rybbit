@@ -71,3 +71,25 @@ describe("API route table", () => {
     expect(table).toMatchSnapshot();
   });
 });
+
+describe("one-click unsubscribe routes", () => {
+  // RFC 8058: mail clients POST "List-Unsubscribe=One-Click" as a form body.
+  // Without a form parser Fastify answers 415 and the handler never runs.
+  it.each(["/api/user/unsubscribe-marketing-oneclick", "/api/user/unsubscribe-reports-oneclick"])(
+    "accept a form-encoded List-Unsubscribe-Post at %s",
+    async url => {
+      const app = Fastify();
+      await app.register(apiRoutes, { prefix: "/api" });
+      const response = await app.inject({
+        method: "POST",
+        url,
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        payload: "List-Unsubscribe=One-Click",
+      });
+      await app.close();
+
+      // No signed query, so the handler itself rejects the request.
+      expect(response.statusCode).toBe(400);
+    }
+  );
+});

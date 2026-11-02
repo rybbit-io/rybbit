@@ -93,6 +93,9 @@ interface PoolDistributions {
 const CHUNK_SIZE = 5000;
 const SECONDS_IN_DAY = 86400;
 const DEFAULT_PAGE_GAP_SECONDS = 30;
+// Plausible's own heartbeat for time-on-page and scroll depth. It is not a
+// user-defined goal, and replaying it as custom events stretches sessions.
+const PLAUSIBLE_INTERNAL_EVENTS = new Set(["engagement"]);
 
 // Simple deterministic pseudo-random based on index
 function deterministicPick<T>(
@@ -502,7 +505,9 @@ export class PlausibleCsvParser {
       }
 
       // Phase 5: Generate custom events, attached to existing sessions so they
-      // share user_ids with pageview activity for the same day.
+      // share user_ids with pageview activity for the same day. Each event is
+      // stamped at its session's last pageview so it never extends the session
+      // beyond the duration Plausible reported.
       const customEventsData = csvFiles.get("custom_events");
       if (customEventsData) {
         for (const row of customEventsData) {
@@ -518,12 +523,13 @@ export class PlausibleCsvParser {
           const linkUrl = row.link_url || "";
           const eventCount = parseInt(row.events || "0", 10);
           if (eventCount <= 0 || !eventName) continue;
+          if (PLAUSIBLE_INTERNAL_EVENTS.has(eventName)) continue;
 
           const propsStr = linkUrl ? JSON.stringify({ url: linkUrl }) : "{}";
 
           for (let i = 0; i < eventCount; i++) {
             const session = pool.sessions[i % pool.sessions.length];
-            const offsetSeconds = Math.floor((i * SECONDS_IN_DAY) / eventCount);
+            const offsetSeconds = session.startSeconds + Math.max(0, session.pagesUsed - 1) * session.perPageSeconds;
             const timestamp = formatTimestamp(date, offsetSeconds);
 
             buffer.push({
@@ -643,6 +649,10 @@ export class PlausibleCsvParser {
       userIds.push(generateUUID(dateSeed + i, dateSeed * 3 + i * 31337));
     }
 
+    // Single-pageview visits contribute nothing to Plausible's visit_duration,
+    // so the day's total belongs to the non-bounced sessions alone.
+    const avgDurationSeconds = visitorsRowDuration > 0 && nonBounce > 0 ? visitorsRowDuration / nonBounce : 0;
+
     const sessions: Session[] = [];
     for (let i = 0; i < numSessions; i++) {
       const isBounce = i < numBounces;
@@ -650,12 +660,17 @@ export class PlausibleCsvParser {
         ? 1
         : Math.max(1, baseNonBounce + (i - numBounces < extraNonBounce ? 1 : 0));
 
-      const startSeconds = Math.floor((i * SECONDS_IN_DAY) / numSessions);
-      const avgDurationSeconds = visitorsRowDuration > 0 ? visitorsRowDuration / numSessions : 0;
       const perPageSeconds =
-        budget > 1
-          ? Math.max(1, Math.floor(avgDurationSeconds / (budget - 1)) || DEFAULT_PAGE_GAP_SECONDS)
+        budget > 1 && avgDurationSeconds > 0
+          ? Math.max(1, Math.round(avgDurationSeconds / (budget - 1)))
           : DEFAULT_PAGE_GAP_SECONDS;
+      // Start late sessions early enough to finish before midnight, so clamping
+      // to the end of the day does not cut their duration short.
+      const plannedSeconds = perPageSeconds * (budget - 1);
+      const startSeconds = Math.min(
+        Math.floor((i * SECONDS_IN_DAY) / numSessions),
+        Math.max(0, SECONDS_IN_DAY - 1 - plannedSeconds)
+      );
 
       sessions.push({
         sessionId: generateUUID(dateSeed * 7 + i, dateSeed * 11 + i * 7919),

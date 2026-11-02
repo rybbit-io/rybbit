@@ -22,7 +22,7 @@ Proxying Rybbit's tracking script through your own domain helps bypass ad blocke
 When you add Rybbit's tracking script directly to your website using the default installation:
 
 ```html
-<script src="https://app.rybbit.io/api/script.js" async data-site-id="YOUR_SITE_ID"></script>
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
 ```
 
 The browser loads the script from `app.rybbit.io`, which ad blockers can identify and block as third-party analytics. Even though Rybbit is privacy-focused and doesn't use cookies, some ad blockers use aggressive blocking rules that target any analytics domains.
@@ -50,7 +50,7 @@ Proxying doesn't compromise user privacy:
 - No cookies are used (Rybbit remains cookieless)
 - User data is still processed according to your privacy policy
 - GDPR, CCPA, and other privacy regulations remain fully satisfied
-- Users can still opt out through browser settings or Do Not Track
+- Visitors who opt out stay opted out: the script does nothing when `window.__RYBBIT_OPTOUT__` is set or `localStorage` holds a `disable-rybbit` key (`disable-<namespace>` if you set `data-namespace`; see [Hiding your own traffic](/docs/hiding-own-traffic)). The script checks for these when it loads, so a change takes effect on the next page load. Rybbit does not read Do Not Track or Global Privacy Control signals.
 
 ### Better Performance (Optional)
 
@@ -66,8 +66,9 @@ Here's the flow when you proxy Rybbit:
 
 1. **User visits your website**: Your HTML includes the tracking script from your domain
    ```html
-   <script src="https://yourdomain.com/analytics/script.js" data-site-id="123"></script>
+   <script src="https://yourdomain.com/analytics/script.js?siteId=123" defer></script>
    ```
+   Older snippets that pass the ID as `data-site-id` still work.
 
 2. **Script loads from your domain**: Your server proxies the request to Rybbit's servers
    - Request: `yourdomain.com/analytics/script.js` → proxied to → `app.rybbit.io/api/script.js`
@@ -78,11 +79,14 @@ Here's the flow when you proxy Rybbit:
    const analyticsHost = src.split("/script.js")[0];
    // Result: "https://yourdomain.com/analytics"
    ```
+   Because of this, keep the proxied file named `script.js`. A renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
 
 4. **Tracking data sent through your domain**: All analytics events are sent to your domain and proxied to Rybbit
    - Event tracking: `yourdomain.com/analytics/track` → proxied to → `app.rybbit.io/api/track`
+   - User identification: `yourdomain.com/analytics/identify` → proxied
    - Session replay: `yourdomain.com/analytics/session-replay/record/{siteId}` → proxied
    - Configuration: `yourdomain.com/analytics/site/tracking-config/{siteId}` → proxied
+   - Feature flags: `yourdomain.com/analytics/site/{siteId}/feature-flags/evaluate` → proxied. If this route is missing, `rybbit.flag()` silently returns your fallback.
 
 5. **Data appears in your Rybbit dashboard**: No changes needed in the Rybbit interface
 

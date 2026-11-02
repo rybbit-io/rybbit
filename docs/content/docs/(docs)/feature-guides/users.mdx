@@ -3,19 +3,31 @@ title: Users
 description: Analyze individual users across sessions
 ---
 
-The Users tab shows unique visitors and their behavior across multiple sessions.
+The Users tab shows unique visitors and their behavior across multiple sessions. On Rybbit Cloud, it needs a Standard plan or higher.
 
-## User Metrics
+## Stats
 
-For each user, you'll see:
+The band at the top shows:
 
-- **User ID** - Anonymized identifier
-- **First/Last Visit** - When they first and most recently visited
-- **Total Sessions** - Number of separate visits
-- **Pages Viewed** - Total pages across all sessions
-- **Events Triggered** - Total custom events
-- **Device Type** - Desktop, mobile, or tablet
-- **Location** - Geographic location
+- **Users** - Users active in the period
+- **Identified** - Users you've [identified](/docs/identify-users), and their share of all users
+- **New** - Users with no visit in the 90 days before the period. Someone returning after a longer gap counts as new.
+- **Returning** - Users who also visited in the days before the period
+- **Sessions per user** - Average sessions per user
+- **Active now** - Users seen in the last few minutes
+
+## Users Table
+
+Each row is a user, with these columns:
+
+- **Last seen** and **First seen**
+- **Sessions**, **Pageviews**, and **Events** in the period
+- **First source** - Where the user first came from
+- **Location** and **Device**
+
+Use **Columns** to choose which columns to show, including any [traits](/docs/identify-users) you've sent. Click a column header to sort.
+
+Use the quick filters to narrow the list to **Identified** users, **New** users, or **Power users** (users with at least a set number of sessions in the period; hover the filter to see the number). Search identified users by **Name**, **Username**, **Email**, or **User ID**.
 
 ## Filtering Users
 
@@ -27,6 +39,21 @@ Filter by the standard dimension filters:
 - Pages visited (pathname, entry, or exit page)
 
 Session count, pageviews, events, and first/last seen aren't filters, but you can sort the user list by those columns.
+
+## User Profiles
+
+Click a user to open their profile. It shows:
+
+- **Traits** for identified users. Click **Edit traits** to change them.
+- **Activity** - The days the user started a session, and their sessions in the range
+- **Goals completed** in the period
+- **Journeys** - The first pages of each of their sessions
+- **Top pages** and events
+- **Acquisition** - First touch and latest channel
+- **Location & device** - Where they visit from and what they use
+- **Segments** the user belongs to
+
+Use **Identify User** to attach your own user ID to an anonymous visitor, and **Delete User** to remove a user's data.
 
 ## Identified Users
 

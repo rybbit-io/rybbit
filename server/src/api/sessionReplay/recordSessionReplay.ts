@@ -1,14 +1,25 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { createAsnLookup } from "../../db/geolocation/asn.js";
 import { siteConfig } from "../../lib/siteConfig.js";
+import { isBlockedReplayBot } from "../../services/replay/replayBotDetection.js";
 import { SessionReplayIngestService } from "../../services/replay/sessionReplayIngestService.js";
 import { usageService } from "../../services/usageService.js";
 import { RecordSessionReplayRequest } from "../../types/sessionReplay.js";
 import { collectCandidateClientIps, resolveClientIp } from "../../services/tracker/resolveClientIp.js";
 import { decideSiteExclusion } from "../../services/sites/siteExclusionDecision.js";
 
+// Bounds match `anonymous_id` on /track. @rybbit/js sends the camelCase
+// spelling, like the rest of this body; the snake_case one is /track's.
+const anonymousIdSchema = z.string().min(1).max(255).optional();
+
 const recordSessionReplaySchema = z.object({
   userId: z.string(),
+  anonymousId: anonymousIdSchema,
+  anonymous_id: anonymousIdSchema,
+  // Only the strong bits can convict, so unknown bits are ignored rather than
+  // costing the batch.
+  _bsm: z.number().int().nonnegative().optional(),
   events: z.array(
     z.object({
       type: z.union([z.string(), z.number()]),
@@ -61,13 +72,17 @@ export async function recordSessionReplay(
   }>,
   reply: FastifyReply
 ) {
+  // Stamped before the first await, as on /track: it picks a salted
+  // fingerprint's day.
+  const receivedAt = new Date();
+
   try {
     // Get the site configuration to get the numeric siteId
     const siteConfiguration = await siteConfig.getConfig(request.params.siteId);
     const { siteId, sessionReplay } = siteConfiguration ?? {};
 
     if (!sessionReplay) {
-      request.log.info({ siteId }, "Skipping session replay event because replay is not enabled");
+      request.log.debug({ siteId }, "Skipping session replay event because replay is not enabled");
       return reply.status(200).send({ success: true, message: "Session replay not enabled" });
     }
 
@@ -81,20 +96,27 @@ export async function recordSessionReplay(
 
     // Check if the site has exceeded its monthly limit
     if (usageService.isSiteOverLimit(Number(siteId))) {
-      request.log.info({ siteId }, "Skipping session replay event because the Site is over its monthly limit");
+      request.log.debug({ siteId }, "Skipping session replay event because the Site is over its monthly limit");
       return reply.status(200).send("Site over monthly limit, event not tracked");
     }
 
     // Check if the site can record replays: the plan may not include them (e.g. enabled
     // before a downgrade from Pro) or the monthly replay quota may be exhausted
     if (usageService.isSiteWithoutReplay(Number(siteId))) {
-      request.log.info({ siteId }, "Skipping session replay event because replay is unavailable for plan or quota");
+      request.log.debug({ siteId }, "Skipping session replay event because replay is unavailable for plan or quota");
       return reply.status(200).send({ success: true, message: "Session replay not available for plan or quota" });
     }
 
-    const body = recordSessionReplaySchema.parse(request.body) as RecordSessionReplayRequest;
+    const {
+      anonymousId,
+      anonymous_id,
+      _bsm: clientBotSignalMask,
+      ...parsedBody
+    } = recordSessionReplaySchema.parse(request.body);
+    const body = parsedBody as RecordSessionReplayRequest;
 
-    const requestIP = resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy });
+    const lookupAsn = createAsnLookup();
+    const requestIP = resolveClientIp(request, { firstPartyProxy: siteConfiguration.firstPartyProxy, lookupAsn });
     const { hostname, pathname, querystring } = parseReplayPageUrl(body.metadata?.pageUrl);
     const userAgent = request.headers["user-agent"] || "";
 
@@ -108,7 +130,7 @@ export async function recordSessionReplay(
     });
 
     if (exclusionDecision.excluded) {
-      request.log.info(
+      request.log.debug(
         { siteId, exclusionReason: exclusionDecision.reason },
         "Skipping session replay event because a Site Exclusion Decision matched"
       );
@@ -118,16 +140,51 @@ export async function recordSessionReplay(
       });
     }
 
+    // Event ingestion keeps a detected bot out of `events` when the Site blocks
+    // bots; its replay shouldn't be stored (or charged to the quota) either.
+    if (
+      isBlockedReplayBot({
+        blockBots: siteConfiguration.blockBots,
+        isMobileSite: siteConfiguration.type === "mobile",
+        headers: request.headers,
+        userAgent: String(userAgent),
+        ipAddress: requestIP,
+        screenWidth: body.metadata?.viewportWidth,
+        screenHeight: body.metadata?.viewportHeight,
+        clientBotSignalMask,
+        lookupAsn,
+      })
+    ) {
+      request.log.debug({ siteId }, "Skipping session replay event because the visitor was detected as a bot");
+      return reply.status(200).send({ success: true, message: "Session replay not recorded - bot detected" });
+    }
+
     const origin = request.headers.origin || "";
     const referrer = request.headers.referer || "";
 
     const sessionReplayService = new SessionReplayIngestService();
-    await sessionReplayService.recordEvents(siteId, body, {
+    const { capped, needsFullSnapshot } = await sessionReplayService.recordEvents(siteId, body, {
       userAgent,
       ipAddress: requestIP,
       origin,
       referrer,
+      anonymousId: anonymousId ?? anonymous_id,
+      saltUserIds: siteConfiguration.saltUserIds,
+      receivedAt,
+      lookupAsn,
     });
+
+    if (capped) {
+      // Tells the tracking script to stop recording, so a capped session stops
+      // sending batches instead of having each one refused.
+      return reply.send({ success: true, stopRecording: true, message: "Session replay size limit reached" });
+    }
+
+    if (needsFullSnapshot) {
+      // Lets the replay move to the visitor's new session (or be playable at
+      // all) from the next batch, instead of whenever rrweb next checks out.
+      return reply.send({ success: true, takeFullSnapshot: true });
+    }
 
     return reply.send({ success: true });
   } catch (error) {

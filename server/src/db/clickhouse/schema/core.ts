@@ -30,6 +30,7 @@ const EVENTS_COLUMNS_TO_ENSURE: ColumnDefinition[] = [
   { name: "import_id", definition: "import_id Nullable(UUID)" },
   { name: "tag", definition: "tag LowCardinality(String) DEFAULT ''" },
   { name: "feature_flags", definition: "feature_flags Map(String, String) DEFAULT map()" },
+  { name: "visitor_id", definition: "visitor_id String DEFAULT ''" },
   { name: "asn", definition: "asn Nullable(UInt32)" },
   { name: "asn_org", definition: "asn_org LowCardinality(String) DEFAULT ''" },
   { name: "is_datacenter_asn", definition: "is_datacenter_asn UInt8 DEFAULT 0" },
@@ -155,7 +156,8 @@ export async function initializeCoreTables() {
         asn_org LowCardinality(String) DEFAULT '',
         is_datacenter_asn UInt8 DEFAULT 0,
         app_version LowCardinality(String) DEFAULT '',
-        device_model LowCardinality(String) DEFAULT ''
+        device_model LowCardinality(String) DEFAULT '',
+        visitor_id String DEFAULT ''
       )
       ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)

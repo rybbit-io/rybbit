@@ -6,6 +6,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { goals, lifecycleEmailLog, member, sites, user } from "../../db/postgres/schema.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { isContactUnsubscribed, sendLifecycleEmail } from "../../lib/email/email.js";
+import { formatDateTime } from "../../lib/email/format.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { signExpiringPayload } from "../../lib/signedToken.js";
 import * as content from "./lifecycleContent.js";
@@ -73,6 +74,13 @@ interface BundleEntry {
   key: string;
   siteId: number | null;
 }
+
+/** "Desktop, Chrome on macOS" from whichever parts the event recorded. */
+const describeDevice = (deviceType?: string, browser?: string, os?: string): string | null => {
+  const client = [browser, os].filter(Boolean).join(" on ");
+  const parts = [deviceType, client].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : null;
+};
 
 const countryName = (code: string | null): string | null => {
   if (!code) return null;
@@ -142,10 +150,10 @@ class LifecycleEmailService {
     return stats;
   }
 
-  private async fetchFirstPageview(siteId: number): Promise<{ country: string | null } | null> {
+  private async fetchFirstPageview(siteId: number): Promise<content.FirstPageview | null> {
     const result = await clickhouse.query({
       query: `
-        SELECT country FROM events
+        SELECT timestamp, country, pathname, device_type, browser, operating_system FROM events
         WHERE site_id = {siteId:Int32} AND type = 'pageview'
           AND timestamp > now() - INTERVAL 7 DAY
         ORDER BY timestamp ASC
@@ -154,9 +162,23 @@ class LifecycleEmailService {
       format: "JSONEachRow",
       query_params: { siteId },
     });
-    const rows = await result.json<{ country: string }>();
+    const rows = await result.json<{
+      timestamp?: string;
+      country?: string;
+      pathname?: string;
+      device_type?: string;
+      browser?: string;
+      operating_system?: string;
+    }>();
     if (rows.length === 0) return null;
-    return { country: rows[0].country || null };
+    const row = rows[0];
+    const receivedAt = row.timestamp ? parseTs(row.timestamp) : null;
+    return {
+      receivedAt: receivedAt?.isValid ? formatDateTime(receivedAt) : null,
+      country: countryName(row.country || null),
+      pathname: row.pathname || null,
+      device: describeDevice(row.device_type, row.browser, row.operating_system),
+    };
   }
 
   private async fetchFirstDaysStats(siteId: number): Promise<content.FirstDaysStats | null> {
@@ -199,30 +221,33 @@ class LifecycleEmailService {
     };
   }
 
-  private async fetchConvertingPath(siteId: number): Promise<string | null> {
+  private async fetchConvertingPath(siteId: number): Promise<content.ConvertingPath | null> {
     const cacheKey = `conv:${siteId}`;
     const retryAfter = this.negativeCache.get(cacheKey);
     if (retryAfter && retryAfter > Date.now()) return null;
 
     const result = await clickhouse.query({
       query: `
-        SELECT pathname, count() AS c
+        SELECT pathname, uniq(session_id) AS sessions
         FROM events
         WHERE site_id = {siteId:Int32}
           AND type = 'pageview'
           AND timestamp > now() - INTERVAL 14 DAY
           AND match(pathname, '(thank|success|checkout|confirmation|purchase|order-complete|welcome)')
         GROUP BY pathname
-        ORDER BY c DESC
+        ORDER BY sessions DESC
         LIMIT 1
       `,
       format: "JSONEachRow",
       query_params: { siteId },
     });
-    const rows = await result.json<{ pathname: string }>();
+    const rows = await result.json<{ pathname: string; sessions?: string | number }>();
     const path = rows[0]?.pathname || null;
-    if (!path) this.negativeCache.set(cacheKey, Date.now() + NEGATIVE_CACHE_TTL_MS);
-    return path;
+    if (!path) {
+      this.negativeCache.set(cacheKey, Date.now() + NEGATIVE_CACHE_TTL_MS);
+      return null;
+    }
+    return { pathname: path, sessions: Number(rows[0].sessions ?? 0) };
   }
 
   private async resolvePlatform(site: OwnedSite): Promise<PlatformInfo | null> {
@@ -281,7 +306,7 @@ class LifecycleEmailService {
         await rollback();
         return false;
       }
-      const sent = await sendLifecycleEmail(email, message.subject, message.text, idempotencyKey);
+      const sent = await sendLifecycleEmail(email, message, idempotencyKey);
       if (!sent) {
         await rollback();
         return false;
@@ -449,7 +474,7 @@ class LifecycleEmailService {
         async claimed => {
           const chosen = liveSites.filter(site => claimed.some(e => e.siteId === site.siteId));
           const first = chosen.length === 1 ? await this.fetchFirstPageview(chosen[0].siteId) : null;
-          return content.siteLive(chosen, countryName(first?.country ?? null), u.name);
+          return content.siteLive(chosen, first, u.name);
         }
       );
       if (sent) return;
@@ -574,7 +599,9 @@ class LifecycleEmailService {
         if (await unsubscribed()) return;
         const sent = await this.sendOnce(u.id, u.email, `first_days:${site.siteId}`, site.siteId, async () => {
           const report = await this.fetchFirstDaysStats(site.siteId);
-          return report ? content.firstDays(site.domain, site.siteId, report, u.name) : null;
+          return report
+            ? content.firstDays(site.domain, site.siteId, report, Math.max(1, Math.floor(dataAgeDays)), u.name)
+            : null;
         });
         if (sent) return;
       }
@@ -719,7 +746,7 @@ class LifecycleEmailService {
               .map(site => ({
                 domain: site.domain,
                 siteId: site.siteId,
-                lastEventAt: lastEventBySite.get(site.siteId)?.toFormat("MMMM d 'at' HH:mm 'UTC'") ?? "two days ago",
+                lastEventAt: lastEventBySite.get(site.siteId)?.toFormat("LLL d 'at' HH:mm 'UTC'") ?? "two days ago",
               })),
             owner.name
           )

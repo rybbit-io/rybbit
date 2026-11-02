@@ -1,8 +1,10 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../../../db/postgres/postgres.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { effectiveUserId } from "../utils/effectiveUserId.js";
+import { pagingParam } from "./userScope.js";
 
 export interface GetUserTraitKeysRequest {
   Params: { siteId: string };
@@ -17,6 +19,28 @@ export interface GetUserTraitValueUsersRequest {
   Params: { siteId: string };
   Querystring: { key: string; value: string; limit?: string; offset?: string };
 }
+
+const traitPageSchema = z.object({ limit: pagingParam("limit", 1), offset: pagingParam("offset", 0) });
+
+/**
+ * A page of a public route's results: malformed params are an error, and the
+ * limit is capped (the users page also sends its ids to ClickHouse as one list).
+ */
+export const parseTraitPage = (
+  query: unknown,
+  defaultLimit: number,
+  maxLimit: number
+): { ok: true; limit: number; offset: number } | { ok: false; error: string } => {
+  const parsed = traitPageSchema.safeParse(query);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid pagination parameters" };
+  }
+  return {
+    ok: true,
+    limit: Math.min(parsed.data.limit ?? defaultLimit, maxLimit),
+    offset: parsed.data.offset ?? 0,
+  };
+};
 
 export const getUserTraitKeys = analyticsRoute<GetUserTraitKeysRequest>(
   "user trait keys",
@@ -45,14 +69,17 @@ export const getUserTraitValues = analyticsRoute<GetUserTraitValuesRequest>(
   "user trait values",
   async (req: FastifyRequest<GetUserTraitValuesRequest>, res: FastifyReply) => {
     const siteId = Number(req.params.siteId);
-    const { key, limit: limitStr = "1000", offset: offsetStr = "0" } = req.query;
+    const { key } = req.query;
 
     if (!key) {
       return res.status(400).send({ error: "key query parameter is required" });
     }
 
-    const limit = parseInt(limitStr, 10);
-    const offset = parseInt(offsetStr, 10);
+    const page = parseTraitPage(req.query, 1000, 10_000);
+    if (!page.ok) {
+      return res.status(400).send({ error: page.error });
+    }
+    const { limit, offset } = page;
 
     const [valuesResult, countResult] = await Promise.all([
       db.execute<{ value: string; user_count: number }>(sql`
@@ -107,14 +134,17 @@ export const getUserTraitValueUsers = analyticsRoute<GetUserTraitValueUsersReque
   "trait value users",
   async (req: FastifyRequest<GetUserTraitValueUsersRequest>, res: FastifyReply) => {
     const siteId = Number(req.params.siteId);
-    const { key, value, limit: limitStr = "50", offset: offsetStr = "0" } = req.query;
+    const { key, value } = req.query;
 
     if (!key || value === undefined) {
       return res.status(400).send({ error: "key and value query parameters are required" });
     }
 
-    const limit = parseInt(limitStr, 10);
-    const offset = parseInt(offsetStr, 10);
+    const page = parseTraitPage(req.query, 50, 1000);
+    if (!page.ok) {
+      return res.status(400).send({ error: page.error });
+    }
+    const { limit, offset } = page;
 
     // Step 1: Find matching user IDs and their traits from Postgres
     const [profilesResult, countResult] = await Promise.all([

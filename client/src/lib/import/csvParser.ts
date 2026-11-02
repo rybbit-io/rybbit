@@ -44,6 +44,7 @@ interface SimpleAnalyticsEvent {
 
 export class CsvParser {
   private cancelled: boolean = false;
+  private finished: boolean = false;
   private readonly siteId: number;
   private readonly importId: string;
   private readonly platform: ImportPlatform;
@@ -71,65 +72,84 @@ export class CsvParser {
 
   startImport(file: File): void {
     if (this.cancelled) {
+      // The import already exists on the server; close it so it can be deleted.
+      void this.finish();
       return;
     }
 
+    // Parsed on the main thread because Papa's worker mode can't pause. Papa doesn't await the
+    // chunk callback, so each chunk pauses the parser until its upload lands: uploads run one at
+    // a time, only one chunk is held in memory, and `complete` (the final batch) can't overtake them.
     Papa.parse(file, {
       header: true,
       skipEmptyLines: "greedy",
-      worker: true,
       chunkSize: 5 * 1024 * 1024, // 5MB CSV chunks to stay under 10MB JSON limit
-      chunk: async (results, parser) => {
-        if (this.cancelled) {
-          parser.abort();
-          return;
-        }
-
-        try {
-          if (this.platform === "umami") {
-            const validEvents: UmamiEvent[] = [];
-            for (const row of results.data) {
-              const event = this.transformRow(row);
-              if (event && this.isDateInRange((event as UmamiEvent).created_at)) {
-                validEvents.push(event as UmamiEvent);
-              }
-            }
-            if (validEvents.length > 0) {
-              await this.uploadChunk(validEvents, false);
-            }
-          } else {
-            const validEvents: SimpleAnalyticsEvent[] = [];
-            for (const row of results.data) {
-              const event = this.transformRow(row);
-              if (event && this.isDateInRange((event as SimpleAnalyticsEvent).added_iso)) {
-                validEvents.push(event as SimpleAnalyticsEvent);
-              }
-            }
-            if (validEvents.length > 0) {
-              await this.uploadChunk(validEvents, false);
-            }
+      chunk: (results, parser) => {
+        parser.pause();
+        this.uploadRows(results.data).then(
+          () => (this.cancelled ? parser.abort() : parser.resume()),
+          (error: unknown) => {
+            console.error("Error uploading chunk:", error);
+            this.cancel();
+            parser.abort();
           }
-        } catch (error) {
-          console.error("Error uploading chunk:", error);
-          this.cancel();
-          parser.abort();
-        }
+        );
       },
-      complete: async () => {
-        if (this.cancelled) return;
-
-        try {
-          // Send final batch to mark import as complete
-          await this.uploadChunk([], true);
-        } catch (error) {
-          console.error("Error completing import:", error);
-        }
+      // Also reached through parser.abort(), so a failed or cancelled import still gets its final
+      // batch: the server only marks an import complete (and deletable) when that batch arrives.
+      complete: () => {
+        void this.finish();
       },
-      error: () => {
-        if (this.cancelled) return;
-        this.cancelled = true;
+      error: (error: Error) => {
+        console.error("Error reading import file:", error);
+        this.cancel();
+        void this.finish();
       },
     });
+  }
+
+  private async uploadRows(rows: unknown[]): Promise<void> {
+    if (this.cancelled) {
+      return;
+    }
+
+    if (this.platform === "umami") {
+      const validEvents: UmamiEvent[] = [];
+      for (const row of rows) {
+        const event = this.transformRow(row);
+        if (event && this.isDateInRange((event as UmamiEvent).created_at)) {
+          validEvents.push(event as UmamiEvent);
+        }
+      }
+      if (validEvents.length > 0) {
+        await this.uploadChunk(validEvents, false);
+      }
+    } else {
+      const validEvents: SimpleAnalyticsEvent[] = [];
+      for (const row of rows) {
+        const event = this.transformRow(row);
+        if (event && this.isDateInRange((event as SimpleAnalyticsEvent).added_iso)) {
+          validEvents.push(event as SimpleAnalyticsEvent);
+        }
+      }
+      if (validEvents.length > 0) {
+        await this.uploadChunk(validEvents, false);
+      }
+    }
+  }
+
+  private async finish(): Promise<void> {
+    if (this.finished) {
+      return;
+    }
+    this.finished = true;
+
+    try {
+      // Send final batch to mark import as complete
+      await this.uploadChunk([], true);
+    } catch (error) {
+      console.error("Error completing import:", error);
+    }
   }
 
   private isDateInRange(dateStr: string): boolean {

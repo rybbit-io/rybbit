@@ -22,8 +22,9 @@ const funnelStepResult = z
     sessions: z.number(),
     /** Deprecated alias of `sessions`. */
     visitors: z.number().optional(),
-    conversion_rate: z.number(),
-    dropoff_rate: z.number(),
+    // null (ClickHouse NaN) when the step it divides by had no sessions.
+    conversion_rate: z.number().nullable(),
+    dropoff_rate: z.number().nullable(),
   })
   .partial()
   .passthrough();

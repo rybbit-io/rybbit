@@ -191,23 +191,19 @@ export const buildJourneyFragments = (
             AND (${options.goalCondition})
         )`
       : null,
+    // Pages are ordered by millisecond arrival, then pathname for exact ties.
+    // Sorting by the whole-second `timestamp` (and relying on groupArray to keep
+    // a subquery's order) let a same-second redirect land before its source.
     `session_paths AS (
           SELECT
             session_id,
-            arrayCompact(groupArray(pathname)) AS path_sequence
-          FROM (
-            SELECT
-              session_id,
-              pathname,
-              timestamp
-            FROM events
-            ${filteredSessionsJoin}
-            WHERE
-              site_id = {siteId:Int32}
-              ${timeStatement || ""}
-              AND type = 'pageview'
-            ORDER BY session_id, timestamp
-          )
+            arrayCompact(arrayMap(page -> page.2, arraySort(groupArray((timestamp_ms, pathname))))) AS path_sequence
+          FROM events
+          ${filteredSessionsJoin}
+          WHERE
+            site_id = {siteId:Int32}
+            ${timeStatement || ""}
+            AND type = 'pageview'
           GROUP BY session_id
         )`,
     `user_paths AS (

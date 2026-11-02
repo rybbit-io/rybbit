@@ -5,7 +5,54 @@ description: Manage your subscription, billing, and usage for Rybbit Cloud
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Access billing settings by hovering over the sidebar and clicking "Billing".
+Billing exists on Rybbit Cloud only. Open it by clicking **Billing** in the settings sidebar or going to [app.rybbit.io/settings/billing](https://app.rybbit.io/settings/billing). Only organization owners see the **Billing** item; anyone else who opens the page is told that only the owner can manage the subscription.
 
-Subscriptions are scoped to a single organization. If you have multiple organizations, each one requires its own subscription. Switching organizations will show that organization's subscription status.
+Subscriptions belong to an organization. If you have several organizations, each one needs its own subscription, and the page shows the plan of the organization that's currently selected.
 
+## Plans and limits
+
+You pick a plan (**Standard** or **Pro**), a monthly event volume, and monthly or annual billing. Each plan has these site and member limits:
+
+| Plan | Sites | Members |
+|------|-------|---------|
+| **Standard** | 5 | 3 |
+| **Pro** | Unlimited | 100 |
+
+Some features need a specific plan. For example, session replay needs Pro, and web vitals, error tracking and API keys need Standard or Pro. Older organizations may be on a **Basic** plan, which allows 1 site and 1 member.
+
+## Free trial
+
+Your first subscription starts with a 7-day free trial. Each organization gets one trial: if it has had a subscription before, checkout charges you right away.
+
+The billing page shows when your trial ends. You can cancel during the trial with **Cancel trial**; you won't be charged, and the plan stays active until the trial ends.
+
+### After a trial ends without payment
+
+If you cancel during the trial, or the first charge fails, your sites keep collecting data for 60 more days at the event limit of the plan you trialed. Subscribe to a plan before then to keep tracking.
+
+## Sites without a plan
+
+Sites created on or after February 13, 2026 in an organization with no trial or paid plan don't collect any data. Start a trial or subscribe to begin tracking. Sites created before that date keep the legacy free tier.
+
+## Usage
+
+Events are counted per organization, across all of its sites, per calendar month in UTC. Usage resets on the 1st of each month.
+
+These count toward your limit: pageviews, custom events, web vitals, outbound link clicks, and autocaptured button clicks, copies, form submits and input changes.
+
+When an organization goes over its monthly event limit, its sites stop collecting until the next month or until you upgrade to a higher limit.
+
+<Callout type="info">
+  Bot traffic filtered by [bot detection](/docs/bot-detection) doesn't count toward your usage.
+</Callout>
+
+## What the billing page shows
+
+- **Plan** - Your current plan, its event, site and member limits, the price, and when it renews, cancels or when the trial ends. Use **Change plan** or **Upgrade plan** to switch plans.
+- **Usage this month** - Events used against your limit, with a projection of when you'll reach it at the current pace, plus the number of **Sites** and **Members** against your plan's limits. If you use organization API keys, it also shows **Org API requests today**.
+- **Usage history** - Events per day over a range you choose.
+- **Payment** - Click **Manage in Stripe** to change your card and billing email.
+- **Cancel subscription** (or **Cancel trial**) - Takes effect at the end of the current period.
+- **Invoices** - Past invoices with their date, amount and status.
+
+You can also see a single site's usage under **Site Settings > Usage**. See [Site settings](/docs/site-settings#usage).

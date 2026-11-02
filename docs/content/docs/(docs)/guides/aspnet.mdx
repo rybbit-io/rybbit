@@ -23,7 +23,7 @@ ASP.NET Core MVC and Razor Pages apps share one layout file, `_Layout.cshtml`, t
 
 Add a `Rybbit` section to `appsettings.json`:
 
-```json filename="appsettings.json"
+```json title="appsettings.json"
 {
   "Rybbit": {
     "InstanceUrl": "https://app.rybbit.io",
@@ -43,7 +43,7 @@ Open the layout file:
 
 Inject `IConfiguration` at the top and add the tag inside `<head>`:
 
-```razor filename="Views/Shared/_Layout.cshtml"
+```razor title="Views/Shared/_Layout.cshtml"
 @inject IConfiguration Configuration
 @{
     var rybbitSiteId = Configuration["Rybbit:SiteId"];

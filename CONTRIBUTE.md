@@ -53,8 +53,41 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Configure the backend environment and its Postgres, ClickHouse, and Redis services
-before starting the app. The client runs on port 3002 and the backend on port 3001.
+Before starting the app, run the databases and point both apps at them:
+
+1. Start only Postgres, ClickHouse, and Redis from the root `docker-compose.yml`.
+   They listen on localhost with the compose defaults (Postgres user and password
+   `frog`, ClickHouse password `frog`, Redis password `changeme`):
+
+   ```bash
+   docker compose up -d postgres clickhouse redis
+   ```
+
+2. Copy `server/.env.example` to `server/.env` and set these values to match
+   the compose defaults:
+
+   ```bash
+   CLICKHOUSE_PASSWORD=frog
+   POSTGRES_USER=frog
+   POSTGRES_PASSWORD=frog
+   REDIS_PASSWORD=changeme
+   BETTER_AUTH_SECRET=<output of openssl rand -hex 32>
+   ```
+
+3. Create `client/.env.local` with the backend URL:
+
+   ```bash
+   NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+   ```
+
+4. Create the Postgres tables (the Docker image does this on start; local dev
+   does not):
+
+   ```bash
+   pnpm --filter rybbit-backend db:migrate
+   ```
+
+The client runs on port 3002 and the backend on port 3001.
 `pnpm dev` builds shared code first, then starts its TypeScript watcher alongside
 both apps. The backend's existing dev command compiles once; restart it after
 backend changes.
@@ -70,7 +103,7 @@ Run these commands from the repository root:
 | `pnpm build:server` | Build shared code and the backend, including the tracker |
 | `pnpm test`         | Build shared code and run both test suites once          |
 | `pnpm typecheck`    | Build shared code and type-check both apps               |
-| `pnpm lint`         | Run the client's ESLint command                          |
+| `pnpm lint`         | Run the client's ESLint command (currently a no-op, since `client/eslint.config.mjs` is commented out; use `pnpm typecheck`) |
 
 The root test command runs one package at a time with four workers to bound the
 memory used by the backend's in-memory Postgres tests.

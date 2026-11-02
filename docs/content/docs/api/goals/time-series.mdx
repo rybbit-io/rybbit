@@ -65,10 +65,23 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 
 <TypeTable
   type={{
+    data: {
+      description: 'One point per goal per bucket. Empty when goal_ids is missing or matches no goal on this site.',
+      type: 'GoalTimeSeriesPoint[]',
+    },
+  }}
+/>
+
+Returns `400` for an unknown `bucket`.
+
+#### GoalTimeSeriesPoint Object
+
+<TypeTable
+  type={{
     time: {
       description: 'Start of the time bucket',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'Bucket start in the requested time_zone, "YYYY-MM-DD HH:MM:SS"',
     },
     goal_id: {
       description: 'ID of the goal',
@@ -215,14 +228,14 @@ var data = await response.Content.ReadAsStringAsync();
 {
   "data": [
     {
-      "time": "2024-01-01T00:00:00.000Z",
+      "time": "2024-01-01 00:00:00",
       "goal_id": 1,
       "conversions": 84,
       "total_sessions": 1250,
       "conversion_rate": 0.0672
     },
     {
-      "time": "2024-01-02T00:00:00.000Z",
+      "time": "2024-01-02 00:00:00",
       "goal_id": 1,
       "conversions": 97,
       "total_sessions": 1420,

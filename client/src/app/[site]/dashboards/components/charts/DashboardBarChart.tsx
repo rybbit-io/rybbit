@@ -3,13 +3,13 @@
 import type { DashboardCardMapping } from "@rybbit/shared";
 import * as d3 from "d3";
 import { useTheme } from "next-themes";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CustomQueryRow } from "@/api/analytics/endpoints";
 import { useStore } from "@/lib/store";
 import { formatter } from "@/lib/utils";
 import { buildChartAxis, buildWideData } from "../../utils";
-import { CardLegend, ChartEmpty, DashboardTooltip, toCardSeries } from "./shared";
+import { CardLegend, ChartEmpty, DashboardTooltip, toCardSeries, useElementSize } from "./shared";
 
 type DashboardBarChartProps = {
   rows: CustomQueryRow[];
@@ -44,20 +44,7 @@ export function DashboardBarChart({ rows, mapping }: DashboardBarChartProps) {
     [wide]
   );
 
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
-  useEffect(() => {
-    if (!wrapperRef.current) return;
-    const el = wrapperRef.current;
-    const ro = new ResizeObserver(entries => {
-      const entry = entries[0];
-      if (!entry) return;
-      const { width, height } = entry.contentRect;
-      setSize({ width, height });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const [wrapperRef, size] = useElementSize<HTMLDivElement>();
 
   const [hover, setHover] = useState<{ index: number; clientX: number; clientY: number } | null>(null);
 

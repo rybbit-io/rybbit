@@ -10,6 +10,7 @@
     "---Usage---",
     "script",
     "script-troubleshooting",
+    "localhost-tracking",
     "track-events",
     "autocapture",
     "identify-users",
@@ -22,10 +23,14 @@
     "filter-traffic",
     "bot-detection",
     "segments",
+    "annotations",
     "goals",
     "funnels",
+    "dashboards",
     "embeds",
+    "rollup",
     "feature-guides",
+    "keyboard-shortcuts",
     "---Self-hosting---",
     "self-hosting",
     "managing-your-installation",
@@ -42,7 +47,6 @@
     "data-import",
     "---Other---",
     "definitions",
-    "privacy",
-    "contact"
+    "roadmap"
   ]
 }

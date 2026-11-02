@@ -21,7 +21,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useGetSiteImports, useCreateSiteImport, useDeleteSiteImport } from "@/api/admin/hooks/useImport";
+import {
+  isImportRunning,
+  useGetSiteImports,
+  useCreateSiteImport,
+  useDeleteSiteImport,
+} from "@/api/admin/hooks/useImport";
+import { GetSiteImportsResponse } from "@/api/admin/endpoints";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { IS_CLOUD } from "@/lib/const";
 import { CsvParser } from "@/lib/import/csvParser";
@@ -174,8 +180,14 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
     }
   };
 
-  const getStatusInfo = (completedAt: string | null) => {
-    if (completedAt === null) {
+  const getStatusInfo = (imp: GetSiteImportsResponse) => {
+    if (imp.completedAt !== null) {
+      return {
+        variant: "success" as const,
+        icon: CheckCircle2,
+        label: t("Completed"),
+      };
+    } else if (isImportRunning(imp)) {
       return {
         variant: "info" as const,
         icon: Loader2,
@@ -183,9 +195,9 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
       };
     } else {
       return {
-        variant: "success" as const,
-        icon: CheckCircle2,
-        label: t("Completed"),
+        variant: "destructive" as const,
+        icon: AlertCircle,
+        label: t("Failed"),
       };
     }
   };
@@ -202,7 +214,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
     });
   }, [data?.data]);
 
-  const hasActiveImport = IS_CLOUD && sortedImports.some(imp => imp.completedAt === null);
+  const hasActiveImport = IS_CLOUD && sortedImports.some(isImportRunning);
 
   const isImportDisabled = !selectedFile || !selectedPlatform || !!fileError || disabled || hasActiveImport;
 
@@ -334,7 +346,8 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
                 </TableHeader>
                 <TableBody>
                   {sortedImports.map(imp => {
-                    const statusInfo = getStatusInfo(imp.completedAt);
+                    const isRunning = isImportRunning(imp);
+                    const statusInfo = getStatusInfo(imp);
                     const StatusIcon = statusInfo.icon;
                     const startedAt = DateTime.fromSQL(imp.startedAt).toFormat("MMM dd, yyyy HH:mm");
 
@@ -346,7 +359,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
                         </TableCell>
                         <TableCell>
                           <Badge variant={statusInfo.variant} className="gap-1">
-                            <StatusIcon className={`h-3 w-3 ${imp.completedAt === null ? "animate-spin" : ""}`} />
+                            <StatusIcon className={`h-3 w-3 ${isRunning ? "animate-spin" : ""}`} />
                             {statusInfo.label}
                           </Badge>
                         </TableCell>
@@ -388,7 +401,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          {imp.completedAt !== null && (
+                          {!isRunning && (
                             <Button
                               variant="outline"
                               size="smIcon"

@@ -454,6 +454,35 @@ describe("getFilterStatement", () => {
       expect(result).toBe("AND (url_parameters['utm_source'] IS NULL OR url_parameters['utm_source'] = '')");
     });
 
+    it.each([
+      ["city", "city"],
+      ["browser_version", "browser_version"],
+      ["operating_system_version", "operating_system_version"],
+    ])("should test the stored %s column, not its never-empty display expression", (parameter, column) => {
+      const isNull = getFilterStatement(JSON.stringify([{ parameter, type: "is_null", value: [] }]));
+      const isNotNull = getFilterStatement(JSON.stringify([{ parameter, type: "is_not_null", value: [] }]));
+      expect(isNull).toBe(`AND (${column} IS NULL OR ${column} = '')`);
+      expect(isNotNull).toBe(`AND (${column} IS NOT NULL AND ${column} != '')`);
+      expect(isNull).not.toContain("concat");
+    });
+
+    it("should treat unknown dimensions as a 0x0 screen", () => {
+      const filters = JSON.stringify([{ parameter: "dimensions", type: "is_null", value: [] }]);
+      expect(getFilterStatement(filters)).toBe("AND (screen_width = 0 AND screen_height = 0)");
+      const notNull = JSON.stringify([{ parameter: "dimensions", type: "is_not_null", value: [] }]);
+      expect(getFilterStatement(notNull)).toBe("AND (screen_width != 0 OR screen_height != 0)");
+    });
+
+    it("should compare unknown coordinates with 0, not ''", () => {
+      // `lat = ''` is CANNOT_PARSE_NUMBER in ClickHouse.
+      expect(getFilterStatement(JSON.stringify([{ parameter: "lat", type: "is_null", value: [] }]))).toBe(
+        "AND lat = 0"
+      );
+      expect(getFilterStatement(JSON.stringify([{ parameter: "lon", type: "is_not_null", value: [] }]))).toBe(
+        "AND lon != 0"
+      );
+    });
+
     it("should handle is_not_null inside a session-level subquery", () => {
       const filters = JSON.stringify([{ parameter: "event_name", type: "is_not_null", value: [] }]);
       const result = getFilterStatement(filters);
@@ -514,11 +543,28 @@ describe("getFilterStatement", () => {
       expect(getFilterStatement(filters)).toBe("AND lat >= 10");
     });
 
-    it("should coerce numeric comparisons on non-numeric parameters", () => {
-      // Pinned behavior: any parameter accepts numeric comparison types; the
-      // value is coerced with Number() and inlined unquoted.
+    it("should reject numeric comparisons on non-numeric parameters", () => {
+      // `pathname >= 10` compares a String with a UInt8, which ClickHouse
+      // rejects (NO_COMMON_TYPE) — a 500 instead of a 400.
       const filters = JSON.stringify([{ parameter: "pathname", type: "greater_than_or_equal", value: ["10"] }]);
-      expect(getFilterStatement(filters)).toBe("AND pathname >= 10");
+      expect(() => getFilterStatement(filters)).toThrow(
+        'greater_than_or_equal filters only apply to lat and lon, not "pathname"'
+      );
+    });
+
+    it("should reject numeric comparisons inside session-level subqueries too", () => {
+      const filters = JSON.stringify([{ parameter: "event_name", type: "less_than", value: ["5"] }]);
+      expect(() => getFilterStatement(filters)).toThrow("only apply to lat and lon");
+    });
+
+    it("should reject string operators on numeric parameters", () => {
+      const filters = JSON.stringify([{ parameter: "lat", type: "contains", value: ["40"] }]);
+      expect(() => getFilterStatement(filters)).toThrow('contains filters do not apply to the numeric parameter "lat"');
+    });
+
+    it("should reject non-numeric values for lat/lon equality", () => {
+      const filters = JSON.stringify([{ parameter: "lon", type: "equals", value: ["east"] }]);
+      expect(() => getFilterStatement(filters)).toThrow("Invalid numeric value for equals filter: east");
     });
 
     it("should throw for non-numeric value with greater_than_or_equal", () => {
@@ -694,8 +740,11 @@ describe("filterParamError", () => {
     expect(
       filterParamError(JSON.stringify([{ parameter: "pathname", type: "regex", value: ["[invalid"] }]))
     ).toBeTruthy();
-    expect(filterParamError(JSON.stringify([{ parameter: "pathname", type: "greater_than", value: ["abc"] }]))).toMatch(
+    expect(filterParamError(JSON.stringify([{ parameter: "lat", type: "greater_than", value: ["abc"] }]))).toMatch(
       /Invalid numeric value/
+    );
+    expect(filterParamError(JSON.stringify([{ parameter: "browser", type: "greater_than", value: ["5"] }]))).toBe(
+      'greater_than filters only apply to lat and lon, not "browser"'
     );
     expect(filterParamError(["array"])).toBe("filters must be a JSON array");
     expect(filterParamError(JSON.stringify([{ parameter: "pathname", type: "equals", value: [] }]))).toMatch(

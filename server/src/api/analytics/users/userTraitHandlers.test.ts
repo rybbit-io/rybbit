@@ -27,6 +27,7 @@ vi.mock("../../../db/postgres/postgres.js", async () => {
 
 import { sql as pgClient } from "../../../db/postgres/postgres.js";
 import { getUserTraitBreakdown } from "./getUserTraitBreakdown.js";
+import { getUserTraitValues } from "./getUserTraits.js";
 import { getUsers } from "./getUsers.js";
 import { MAX_SCOPED_USER_IDS } from "./userScope.js";
 
@@ -289,5 +290,63 @@ describe("getUsers search", () => {
 
     expect(calls().find(isList)!.query_params.matchingUserIds).toHaveLength(MAX_SCOPED_USER_IDS);
     expect(reply.body.searchLimited).toBe(true);
+  });
+});
+
+describe("getUsers pagination", () => {
+  it.each([
+    ["page_size", "abc"],
+    ["page_size", "0"],
+    ["page", "-1"],
+    ["page", "1.5"],
+  ])("rejects %s=%s with a 400 instead of running the query", async (param, value) => {
+    const reply = replyStub();
+    await getUsers(request(SITE, { ...period, [param]: value }), reply);
+
+    expect(reply.statusCode).toBe(400);
+    expect(reply.body.error).toBe(`${param} must be a positive integer`);
+    expect(mocks.clickhouseQuery).not.toHaveBeenCalled();
+  });
+
+  it("rejects a page whose offset cannot be bound", async () => {
+    const reply = replyStub();
+    await getUsers(request(SITE, { ...period, page: "100000000", page_size: "100" }), reply);
+
+    expect(reply.statusCode).toBe(400);
+    expect(mocks.clickhouseQuery).not.toHaveBeenCalled();
+  });
+
+  it("caps an oversized page and reports the size it served", async () => {
+    const reply = replyStub();
+    await getUsers(request(SITE, { ...period, page: "3", page_size: "5000000" }), reply);
+
+    const list = calls().find(isList)!;
+    expect(list.query_params).toMatchObject({ limit: 1000, offset: 2000 });
+    expect(reply.body).toMatchObject({ page: 3, pageSize: 1000 });
+  });
+
+  it("treats empty params as the defaults", async () => {
+    const reply = replyStub();
+    await getUsers(request(SITE, { ...period, page: "", page_size: "" }), reply);
+
+    expect(calls().find(isList)!.query_params).toMatchObject({ limit: 100, offset: 0 });
+  });
+});
+
+describe("getUserTraitValues pagination", () => {
+  it("rejects a malformed limit with a 400", async () => {
+    const reply = replyStub();
+    await getUserTraitValues(request(SITE, { key: "plan", limit: "abc" }), reply);
+
+    expect(reply.statusCode).toBe(400);
+    expect(reply.body.error).toBe("limit must be a positive integer");
+  });
+
+  it("serves an oversized limit capped", async () => {
+    const reply = replyStub();
+    await getUserTraitValues(request(SITE, { key: "plan", limit: "99999999", offset: "0" }), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(reply.body).toMatchObject({ total: 2, hasMore: false });
   });
 });

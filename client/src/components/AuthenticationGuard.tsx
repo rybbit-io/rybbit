@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { redirect, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { userStore } from "../lib/userStore";
 import { useGetSiteIsPublic } from "../api/admin/hooks/useSites";
 
@@ -39,7 +39,10 @@ export function AuthenticationGuard() {
       !isPublicSite &&
       !hasPrivateKey
     ) {
-      redirect("/login");
+      // A document navigation keeps this page on screen until /login has painted. redirect() from an
+      // effect unmounts <html> until then, dropping its theme class, and the URL-state sync's history
+      // writes can discard a pending router.replace().
+      window.location.replace("/login");
     }
   }, [isPending, user, pathname, isCheckingPublic, isPublicSite, hasPrivateKey]);
 

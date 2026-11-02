@@ -176,12 +176,17 @@ export function FeatureFlagDialog({
   const isEditing = !!flag;
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  // Initialize when the dialog opens or switches to another flag, not on every new `flag` object: the
+  // list refetches (on focus, with fresh stats) while the dialog is open, and resetting then would wipe
+  // unsaved edits and flip the post-save snippet back to the form.
+  const flagId = flag?.flagId;
   useEffect(() => {
     if (open) {
       setForm(toFormState(flag));
       setView("form");
     }
-  }, [flag, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flagId, open]);
 
   const updateField = <K extends keyof FlagFormState>(key: K, value: FlagFormState[K]) => {
     setForm(current => ({ ...current, [key]: value }));

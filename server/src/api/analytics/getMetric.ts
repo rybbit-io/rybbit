@@ -413,8 +413,10 @@ export const buildMetricQuery = (
         value,
         COUNT(DISTINCT session_id) as count,
         round((COUNT(DISTINCT session_id) / sum(COUNT(DISTINCT session_id)) OVER ()) * 100, 2) as percentage,
-        COUNT() as pageviews,
-        round((COUNT() / sum(COUNT()) OVER ()) * 100, 2) as pageviews_percentage,
+        -- SessionData holds one row per session, so COUNT() here is sessions;
+        -- pageviews are the attributed sessions' pageview totals.
+        sum(pageviews_in_session) as pageviews,
+        round((sum(pageviews_in_session) / nullIf(sum(sum(pageviews_in_session)) OVER (), 0)) * 100, 2) as pageviews_percentage,
         round((countIf(DISTINCT session_id, pageviews_in_session = 1) / nullIf(COUNT(DISTINCT session_id), 0)) * 100, 2) as bounce_rate
     FROM SessionData
     GROUP BY value

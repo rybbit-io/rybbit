@@ -17,7 +17,7 @@ GET /api/organizations/:organizationId/teams
 
 Returns the teams in an organization, with their members and accessible sites.
 
-Any organization member may call this. Callers who are not an admin or owner only see the teams they belong to.
+Any organization member may call this (`viewer` or above); API keys need the `org:read` scope. Callers who are not an admin or owner only see the teams they belong to. Organization API keys see every team.
 
 ### Path Parameters
 
@@ -82,6 +82,11 @@ Each team in the `teams` array contains:
       description: 'Sites the team can access',
       type: 'array',
     },
+    siteRole: {
+      description: "The role every one of the team's site grants raises members to; null when the grants carry no role (each member's organization role applies) or carry different roles",
+      type: 'string | null',
+      typeDescription: '"editor" | "member" | "viewer" | null',
+    },
   }}
 />
 
@@ -119,6 +124,11 @@ Each team in the `teams` array contains:
     name: {
       description: 'Site name',
       type: 'string',
+    },
+    role: {
+      description: "Role this grant raises the team's members to on the site, or null",
+      type: 'string | null',
+      typeDescription: '"editor" | "member" | "viewer" | null',
     },
   }}
 />
@@ -265,9 +275,11 @@ var data = await response.Content.ReadAsStringAsync();
         {
           "siteId": 123,
           "domain": "example.com",
-          "name": "Example Site"
+          "name": "Example Site",
+          "role": null
         }
-      ]
+      ],
+      "siteRole": null
     }
   ]
 }

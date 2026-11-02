@@ -60,19 +60,21 @@ Call `window.rybbit.event()` from any Svelte component. Guard the call with `typ
   }
 </script>
 
-<button on:click={handleAction}>Perform action</button>
+<button onclick={handleAction}>Perform action</button>
 ```
+
+This uses Svelte 5 event attributes. On Svelte 4, write `on:click={handleAction}` instead.
 
 ## Troubleshooting
 
-- **Pageviews missing after navigation**: automatic route tracking covers SvelteKit's router, so test the default first. If a navigation is still not recorded, trigger it from `afterNavigate` in your root layout:
+- **Pageviews missing after navigation**: automatic route tracking covers SvelteKit's router, so test the default first. If a navigation is still not recorded, trigger it from `afterNavigate` in your root layout. Skip the initial load (`type` is `"enter"`): the script already tracks the landing page, and counting it again doubles it.
 
   ```svelte title="src/routes/+layout.svelte"
   <script>
     import { afterNavigate } from "$app/navigation";
 
-    afterNavigate(() => {
-      if (typeof window !== "undefined" && window.rybbit) {
+    afterNavigate(({ type }) => {
+      if (type !== "enter" && window.rybbit) {
         window.rybbit.pageview();
       }
     });

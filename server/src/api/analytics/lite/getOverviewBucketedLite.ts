@@ -79,6 +79,9 @@ function buildHourBucketQuery(args: {
       ORDER BY time ${fill}
     ) s USING time
     ORDER BY time
+    -- Without nullable join results a bucket missing from p reads as
+    -- 1970-01-01 rather than NULL, and the coalesces above never fall back.
+    SETTINGS join_use_nulls = 1
   `;
 }
 

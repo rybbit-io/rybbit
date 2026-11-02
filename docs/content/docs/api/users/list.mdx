@@ -31,7 +31,7 @@ Returns a paginated list of users with their analytics data. Supports filtering 
 
 ### Query Parameters
 
-Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following. A malformed `page`, `page_size`, `min_sessions`, or flag value returns `400`.
 
 <TypeTable
   type={{
@@ -41,12 +41,12 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       default: 1,
     },
     page_size: {
-      description: 'Number of results per page',
+      description: 'Number of results per page, capped at 1000',
       type: 'number',
       default: 100,
     },
     sort_by: {
-      description: 'Field to sort by',
+      description: 'Field to sort by. Unknown values fall back to last_seen.',
       type: 'string',
       typeDescription: '"first_seen" | "last_seen" | "pageviews" | "sessions" | "events"',
       default: 'last_seen',
@@ -63,8 +63,49 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       typeDescription: '"true" | "false"',
       default: 'false',
     },
+    new_only: {
+      description: 'Only users not seen in the 90 days before the requested period. For an all-time request every user counts as new.',
+      type: 'string',
+      typeDescription: '"true" | "false"',
+      default: 'false',
+    },
+    min_sessions: {
+      description: 'Only users with at least this many sessions in the period',
+      type: 'number',
+      typeDescription: '1 to 1,000,000',
+      required: false,
+    },
+    search: {
+      description: 'Case-insensitive substring search, at most 200 characters. Searches the field named by search_field.',
+      type: 'string',
+      required: false,
+    },
+    search_field: {
+      description: 'What search matches. user_id matches the listed ID (identified ID, or device ID for anonymous users). username, name, and email match profile traits, so they only find identified users; at most 10,000 matching profiles are used (see searchLimited).',
+      type: 'string',
+      typeDescription: '"username" | "name" | "email" | "user_id"',
+      default: 'username',
+    },
+    trait_key: {
+      description: 'Limit to one group of a trait breakdown: users whose trait has this key. Needs trait_value or trait_missing=true, otherwise 400.',
+      type: 'string',
+      required: false,
+    },
+    trait_value: {
+      description: 'With trait_key: only users whose trait equals this value',
+      type: 'string',
+      required: false,
+    },
+    trait_missing: {
+      description: 'With trait_key: only users with no value for that trait (anonymous users included)',
+      type: 'string',
+      typeDescription: '"true" | "false"',
+      default: 'false',
+    },
   }}
 />
+
+Filters qualify sessions; each user's totals then count every event in their matching sessions.
 
 ### Response
 
@@ -83,8 +124,17 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       type: 'number',
     },
     pageSize: {
-      description: 'Number of results per page',
+      description: 'Number of results per page, after the cap',
       type: 'number',
+    },
+    searchLimited: {
+      description: 'True when more than 10,000 profiles matched a username, name, or email search, so the results are partial',
+      type: 'boolean',
+    },
+    breakdownLimited: {
+      description: 'Only on an empty response for a trait_key request: true when more than 10,000 identified users match the filters and time range, so no rows are returned. The count is taken before the trait group is applied, so even a small trait group can come back empty',
+      type: 'boolean',
+      required: false,
     },
   }}
 />
@@ -93,8 +143,12 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
 
 <TypeTable
   type={{
+    effective_user_id: {
+      description: 'The ID the user is listed by: identified_user_id when identified, otherwise user_id',
+      type: 'string',
+    },
     user_id: {
-      description: 'Device fingerprint identifier',
+      description: 'Device fingerprint identifier (latest seen)',
       type: 'string',
     },
     identified_user_id: {
@@ -102,7 +156,7 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       type: 'string',
     },
     traits: {
-      description: 'Custom user traits/properties',
+      description: 'Custom user traits/properties, null for anonymous users',
       type: 'object | null',
     },
     country: {
@@ -125,12 +179,40 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
       description: 'Browser name',
       type: 'string',
     },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
     operating_system: {
       description: 'Operating system name',
       type: 'string',
     },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
     device_type: {
-      description: 'Device type (desktop, mobile, tablet)',
+      description: 'Device type',
+      type: 'string',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
+    },
+    referrer: {
+      description: 'Referrer of the first event that has one',
+      type: 'string',
+    },
+    channel: {
+      description: 'Traffic channel',
+      type: 'string',
+    },
+    tag: {
+      description: 'Tag set on the tracking script, empty string if none',
       type: 'string',
     },
     pageviews: {
@@ -152,12 +234,12 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plu
     first_seen: {
       description: 'First activity timestamp',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
     },
     last_seen: {
       description: 'Most recent activity timestamp',
       type: 'string',
-      typeDescription: 'ISO 8601 datetime',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
     },
   }}
 />
@@ -286,6 +368,7 @@ var data = await response.Content.ReadAsStringAsync();
 {
   "data": [
     {
+      "effective_user_id": "user@example.com",
       "user_id": "abc123def456",
       "identified_user_id": "user@example.com",
       "traits": {
@@ -293,23 +376,31 @@ var data = await response.Content.ReadAsStringAsync();
         "company": "Acme Inc"
       },
       "country": "US",
-      "region": "California",
+      "region": "US-CA",
       "city": "San Francisco",
       "language": "en-US",
       "browser": "Chrome",
+      "browser_version": "120.0",
       "operating_system": "macOS",
-      "device_type": "desktop",
+      "operating_system_version": "14.2",
+      "device_type": "Desktop",
+      "screen_width": 1920,
+      "screen_height": 1080,
+      "referrer": "https://google.com",
+      "channel": "Organic Search",
+      "tag": "",
       "pageviews": 156,
       "events": 23,
       "sessions": 12,
       "hostname": "example.com",
-      "first_seen": "2024-01-15T10:30:00.000Z",
-      "last_seen": "2024-01-31T14:22:00.000Z"
+      "first_seen": "2024-01-15 10:30:00",
+      "last_seen": "2024-01-31 14:22:00"
     }
   ],
   "totalCount": 1247,
   "page": 1,
-  "pageSize": 10
+  "pageSize": 10,
+  "searchLimited": false
 }
 ```
 

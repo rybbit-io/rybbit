@@ -212,6 +212,8 @@ export async function getSubscriptionInner(organizationId: string) {
     // One trial per organization: false once it has had any subscription (trial ended,
     // canceled, lapsed), so the app offers plans instead of a trial.
     trialEligible: !(await hasHadStripeSubscription(org.stripeCustomerId)),
+    // Sites keep collecting until trialGrace.endsAt after an unpaid trial (siteRequiresPlan).
+    ...(subscription.source === "free" && subscription.trialGrace && { trialGrace: subscription.trialGrace }),
     includesReplay,
     ...limits,
   };

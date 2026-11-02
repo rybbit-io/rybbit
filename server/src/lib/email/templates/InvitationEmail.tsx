@@ -1,83 +1,53 @@
-import {
-  Body,
-  Container,
-  Head,
-  Hr,
-  Html,
-  Img,
-  Link,
-  Preview,
-  Text,
-  Tailwind,
-  pixelBasedPreset,
-} from "@react-email/components";
+import { DateTime } from "luxon";
 import * as React from "react";
+import { formatDateTime } from "../format.js";
+import { H1, HELP_URL, LedgerLayout, Note, P, PrimaryButton, Rows } from "./ledger.js";
 
 interface InvitationEmailProps {
-  email: string;
-  invitedBy: string;
+  inviterName: string | null;
+  inviterEmail: string;
   organizationName: string;
+  role: string;
+  expiresAt: Date;
   inviteLink: string;
 }
 
-export const InvitationEmail = ({ email, invitedBy, organizationName, inviteLink }: InvitationEmailProps) => {
-  const currentYear = new Date().getFullYear();
+/** "Sam Chen" when the inviter has a real name, otherwise their email. */
+export const inviterLabel = (name: string | null, email: string) =>
+  name && name.trim() && !name.includes("@") ? name.trim() : email;
 
+const roleLabel = (role: string) => role.charAt(0).toUpperCase() + role.slice(1);
+
+export const InvitationEmail = ({
+  inviterName,
+  inviterEmail,
+  organizationName,
+  role,
+  expiresAt,
+  inviteLink,
+}: InvitationEmailProps) => {
+  const inviter = inviterLabel(inviterName, inviterEmail);
+  const expires = formatDateTime(DateTime.fromJSDate(expiresAt));
   return (
-    <Html>
-      <Head />
-      <Preview>You're invited to join {organizationName} on Rybbit</Preview>
-      <Tailwind
-        config={{
-          presets: [pixelBasedPreset],
-          theme: {
-            extend: {
-              colors: {
-                brand: "#10b981",
-                darkText: "#111827",
-                mutedText: "#6b7280",
-                borderColor: "#e5e7eb",
-              },
-            },
-          },
-        }}
-      >
-        <Body className="bg-white font-sans">
-          <Container className="mx-auto py-8 px-6 max-w-[600px]">
-            <Img
-              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
-              alt="Rybbit"
-              width="120"
-              height="28"
-              className="mb-8"
-            />
-
-            <Text className="text-darkText text-base leading-relaxed mb-4">Hi there,</Text>
-
-            <Text className="text-darkText text-base leading-relaxed mb-4">
-              {invitedBy} has invited you to join <span className="font-semibold">{organizationName}</span> on Rybbit
-              Analytics.
-            </Text>
-
-            <Text className="text-darkText text-base leading-relaxed mb-4">
-              Rybbit is an open-source analytics platform that helps you understand your website traffic while
-              respecting user privacy.
-            </Text>
-
-            <Text className="text-darkText text-base leading-relaxed mb-4">
-              <Link href={inviteLink} className="text-brand underline">
-                Accept the invitation
-              </Link>
-            </Text>
-
-            <Text className="text-mutedText text-sm leading-relaxed">This invitation was sent to {email}.</Text>
-
-            <Hr className="border-borderColor my-8" />
-
-            <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
-          </Container>
-        </Body>
-      </Tailwind>
-    </Html>
+    <LedgerLayout
+      preview={`Join as ${/^[aeiou]/i.test(role) ? "an" : "a"} ${role}. The invitation expires ${expires}.`}
+      footer={[{ label: "Help", href: HELP_URL }]}
+    >
+      <H1>Join {organizationName} on Rybbit</H1>
+      <P>
+        {inviter === inviterEmail ? inviterEmail : `${inviter} (${inviterEmail})`} invited you to join{" "}
+        {organizationName}.
+      </P>
+      <Rows
+        top={24}
+        rows={[
+          { label: "Organization", value: organizationName },
+          { label: "Role", value: roleLabel(role) },
+          { label: "Expires", value: expires },
+        ]}
+      />
+      <PrimaryButton label="Accept invitation" href={inviteLink} />
+      <Note>If you don't have a Rybbit account yet, you'll create one when you accept.</Note>
+    </LedgerLayout>
   );
 };

@@ -12,16 +12,18 @@ import { calculateWindowSize } from "../../../timelineUtils";
 import { MAX_PAGES, PAGE_SIZE } from "./timelineLayerConstants";
 
 export function useTimelineSessions() {
-  const { manualWindowSize, setTimeRange, setWindowSize, setAllSessions, setLoading, setError } = useTimelineStore(
-    useShallow(s => ({
-      manualWindowSize: s.manualWindowSize,
-      setTimeRange: s.setTimeRange,
-      setWindowSize: s.setWindowSize,
-      setAllSessions: s.setAllSessions,
-      setLoading: s.setLoading,
-      setError: s.setError,
-    }))
-  );
+  const { manualWindowSize, setTimeRange, setWindowSize, setAllSessions, clearSessions, setLoading, setError } =
+    useTimelineStore(
+      useShallow(s => ({
+        manualWindowSize: s.manualWindowSize,
+        setTimeRange: s.setTimeRange,
+        setWindowSize: s.setWindowSize,
+        setAllSessions: s.setAllSessions,
+        clearSessions: s.clearSessions,
+        setLoading: s.setLoading,
+        setError: s.setError,
+      }))
+    );
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
   const { site, context } = useAnalyticsContext({
     useFilters: filteredFilters.length > 0,
@@ -72,12 +74,16 @@ export function useTimelineSessions() {
     setError(isError);
   }, [isError, setError]);
 
-  // Update store with allSessions
+  // Mirror this scope's result into the store. The store outlives the query key, so anything but a
+  // non-empty result for the current site/range/filters (still loading, failed, or successfully empty)
+  // clears it; otherwise the previous scope's sessions and markers would stay on the globe.
   useEffect(() => {
     if (allSessions.length > 0) {
       setAllSessions(allSessions, data?.hasMoreData || false);
+    } else {
+      clearSessions();
     }
-  }, [allSessions, data?.hasMoreData, setAllSessions]);
+  }, [allSessions, data?.hasMoreData, setAllSessions, clearSessions]);
 
   // Calculate time range from fetched sessions and initialize timeline
   useEffect(() => {

@@ -1,105 +1,61 @@
-import {
-  Body,
-  Container,
-  Head,
-  Hr,
-  Html,
-  Img,
-  Preview,
-  Section,
-  Text,
-  Tailwind,
-  pixelBasedPreset,
-} from "@react-email/components";
 import * as React from "react";
+import { appUrl } from "../format.js";
+import { CodeBox, H1, HELP_URL, LedgerLayout, Note, P, Rows } from "./ledger.js";
 
 export type OtpEmailType = "sign-in" | "email-verification" | "forget-password" | "change-email";
+
+// Better Auth's email OTP default lifetime; auth.ts doesn't override it.
+export const OTP_EXPIRES_MINUTES = 5;
 
 interface OtpEmailProps {
   otp: string;
   type: OtpEmailType;
+  email: string;
 }
 
-const getContent = (type: OtpEmailType) => {
-  switch (type) {
-    case "sign-in":
-      return {
-        preview: "Your Rybbit sign-in code",
-        description: "Here is your one-time password to sign in to Rybbit:",
-      };
-    case "email-verification":
-      return {
-        preview: "Verify your email address",
-        description: "Here is your verification code for Rybbit:",
-      };
-    case "forget-password":
-      return {
-        preview: "Reset your password",
-        description: "You requested to reset your password for Rybbit. Here is your one-time password:",
-      };
-    case "change-email":
-      return {
-        preview: "Change your email address",
-        description: "Here is your verification code for Rybbit:",
-      };
-  }
+export const OTP_COPY: Record<OtpEmailType, { subject: string; heading: string; lead: string }> = {
+  "sign-in": {
+    subject: "Your Rybbit sign-in code",
+    heading: "Sign in to Rybbit",
+    lead: "Use this code to sign in.",
+  },
+  "email-verification": {
+    subject: "Your Rybbit verification code",
+    heading: "Verify your email",
+    lead: "Use this code to verify your email address.",
+  },
+  "forget-password": {
+    subject: "Your Rybbit password reset code",
+    heading: "Reset your password",
+    lead: "Use this code to set a new password.",
+  },
+  "change-email": {
+    subject: "Your Rybbit email change code",
+    heading: "Change your email",
+    lead: "Use this code to confirm your new email address.",
+  },
 };
 
-export const OtpEmail = ({ otp, type }: OtpEmailProps) => {
-  const currentYear = new Date().getFullYear();
-  const content = getContent(type);
-
+export const OtpEmail = ({ otp, type, email }: OtpEmailProps) => {
+  const copy = OTP_COPY[type];
   return (
-    <Html>
-      <Head />
-      <Preview>{content?.preview}</Preview>
-      <Tailwind
-        config={{
-          presets: [pixelBasedPreset],
-          theme: {
-            extend: {
-              colors: {
-                brand: "#10b981",
-                cardBg: "#f9fafb",
-                darkText: "#111827",
-                mutedText: "#6b7280",
-                borderColor: "#e5e7eb",
-              },
-            },
-          },
-        }}
-      >
-        <Body className="bg-white font-sans">
-          <Container className="mx-auto py-8 px-6 max-w-[600px]">
-            <Img
-              src="https://app.rybbit.io/rybbit/horizontal_black.svg"
-              alt="Rybbit"
-              width="120"
-              height="28"
-              className="mb-8"
-            />
-
-            <Text className="text-darkText text-base leading-relaxed mb-4">Hi there,</Text>
-
-            <Text className="text-darkText text-base leading-relaxed mb-4">{content?.description}</Text>
-
-            <Section className="text-center mb-6">
-              <div className="bg-cardBg py-5 px-6 rounded-md inline-block">
-                <Text className="text-brand text-3xl font-bold tracking-widest m-0">{otp}</Text>
-              </div>
-            </Section>
-
-            <Text className="text-mutedText text-sm leading-relaxed mb-2">This code will expire in 5 minutes.</Text>
-            <Text className="text-mutedText text-sm leading-relaxed">
-              If you didn't request this code, you can safely ignore this email.
-            </Text>
-
-            <Hr className="border-borderColor my-8" />
-
-            <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
-          </Container>
-        </Body>
-      </Tailwind>
-    </Html>
+    <LedgerLayout
+      preview={`Your code is ${otp}. It expires in ${OTP_EXPIRES_MINUTES} minutes.`}
+      footer={[
+        { label: "Help", href: HELP_URL },
+        { label: "Account settings", href: `${appUrl()}/settings/account` },
+      ]}
+    >
+      <H1>{copy.heading}</H1>
+      <P>{copy.lead}</P>
+      <CodeBox code={otp} />
+      <Rows
+        rows={[
+          { label: "Account", value: email },
+          { label: "Expires", value: `In ${OTP_EXPIRES_MINUTES} minutes`, strong: true },
+        ]}
+      />
+      <Note>If you didn't request this, you can ignore this email.</Note>
+    </LedgerLayout>
   );
 };

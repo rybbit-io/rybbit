@@ -23,7 +23,7 @@ Django pages extend a base template, so the snippet goes into the `<head>` of th
 
 Add the Rybbit values to `settings.py`, reading from the environment:
 
-```python filename="settings.py"
+```python title="settings.py"
 import os
 
 RYBBIT_INSTANCE_URL = os.environ.get("RYBBIT_INSTANCE_URL", "https://app.rybbit.io")
@@ -36,7 +36,7 @@ Set `RYBBIT_SITE_ID=YOUR_SITE_ID` in your production environment (or your `.env`
 
 Create a context processor that adds both settings to every template context:
 
-```python filename="myproject/context_processors.py"
+```python title="myproject/context_processors.py"
 from django.conf import settings
 
 
@@ -49,7 +49,7 @@ def rybbit(request):
 
 Register it under `TEMPLATES` in `settings.py`:
 
-```python filename="settings.py"
+```python title="settings.py"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -71,7 +71,7 @@ TEMPLATES = [
 
 Open the template that every page extends, usually `templates/base.html`, and add the tag inside `<head>`:
 
-```jinja filename="templates/base.html"
+```jinja title="templates/base.html"
 <head>
     <meta charset="utf-8">
     <title>{% block title %}My Site{% endblock %}</title>

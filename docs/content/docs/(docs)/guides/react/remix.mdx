@@ -7,7 +7,7 @@ icon: SiRemix
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Remix renders the whole HTML document from `app/root.tsx`, so the snippet goes in the `<head>` of that file and reaches every route.
+Remix renders the whole HTML document from `app/root.tsx`, so the snippet goes in the `<head>` of that file and reaches every route. Remix v2 apps that have moved to React Router v7, its successor, should follow the [React Router guide](/docs/guides/react/react-router) instead.
 
 <Steps>
 <Step>
@@ -72,7 +72,7 @@ export default function OfferRoute() {
 
 ## Troubleshooting
 
-- **Pageviews missing after client-side navigation**: this is rare. If it happens, call `window.rybbit.pageview()` from a root-level effect that runs on `useLocation()` changes; test the default behaviour first.
+- **Pageviews missing after client-side navigation**: this is rare. If it happens, call `window.rybbit.pageview()` from a root-level effect that runs on `useLocation()` changes, skipping its first run because the script already tracks the landing page; test the default behaviour first.
 
 ## Next steps
 

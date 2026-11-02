@@ -20,7 +20,7 @@ Removes a member from an organization. The member can be identified by member ID
 
 <Callout type="warn">This endpoint uses **POST**, not HTTP DELETE. You cannot remove the only remaining owner of an organization.</Callout>
 
-<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie with the request.</Callout>
+<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie and an `Origin` header for your Rybbit instance with the request; without `Origin` it returns `403` (`MISSING_OR_NULL_ORIGIN`). You must be an **owner or admin** of the organization to remove members.</Callout>
 
 ### Request Body
 
@@ -86,7 +86,8 @@ Returns the removed member object.
   <Tab value="cURL">
 ```bash title="Request"
 curl -X POST "https://app.rybbit.io/api/auth/organization/remove-member" \
-  -H "Cookie: better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Origin: https://app.rybbit.io" \
   -H "Content-Type: application/json" \
   -d '{"memberIdOrEmail": "teammate@example.com"}'
 ```
@@ -120,7 +121,8 @@ response = requests.post(
         'memberIdOrEmail': 'teammate@example.com'
     },
     headers={
-        'Cookie': 'better-auth.session_token=YOUR_SESSION_TOKEN'
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+        'Origin': 'https://app.rybbit.io'
     }
 )
 
@@ -137,7 +139,8 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     'memberIdOrEmail' => 'teammate@example.com'
 ]));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Origin: https://app.rybbit.io',
     'Content-Type: application/json'
 ]);
 
@@ -154,7 +157,8 @@ require 'json'
 
 uri = URI("https://app.rybbit.io/api/auth/organization/remove-member")
 req = Net::HTTP::Post.new(uri)
-req['Cookie'] = 'better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Origin'] = 'https://app.rybbit.io'
 req['Content-Type'] = 'application/json'
 req.body = {
   memberIdOrEmail: 'teammate@example.com'
@@ -170,7 +174,8 @@ body := bytes.NewBuffer([]byte(`{
   "memberIdOrEmail": "teammate@example.com"
 }`))
 req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/auth/organization/remove-member", body)
-req.Header.Set("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Origin", "https://app.rybbit.io")
 req.Header.Set("Content-Type", "application/json")
 
 client := &http.Client{}
@@ -186,7 +191,8 @@ json.NewDecoder(resp.Body).Decode(&data)
 let client = reqwest::Client::new();
 let res = client
     .post("https://app.rybbit.io/api/auth/organization/remove-member")
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
     .json(&serde_json::json!({
         "memberIdOrEmail": "teammate@example.com"
     }))
@@ -202,7 +208,8 @@ HttpClient client = HttpClient.newHttpClient();
 String json = "{\"memberIdOrEmail\": \"teammate@example.com\"}";
 HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://app.rybbit.io/api/auth/organization/remove-member"))
-    .header("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(json))
     .build();
@@ -213,7 +220,8 @@ HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.o
   <Tab value=".NET">
 ```csharp title="Request"
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Cookie", "better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Origin", "https://app.rybbit.io");
 
 var content = new StringContent(
     "{\"memberIdOrEmail\": \"teammate@example.com\"}",

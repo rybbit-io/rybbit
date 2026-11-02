@@ -37,11 +37,9 @@ await rybbit.init({
   analyticsHost: "https://app.rybbit.io/api",
   siteId: "YOUR_SITE_ID",
 });
-
-// Extension pages have URLs like chrome-extension://<id>/popup.html.
-// Report a readable path instead:
-rybbit.pageview("/popup");
 ```
+
+`init()` records a pageview for the page by itself (unless [Initial Page View](/docs/site-settings#track-initial-page-view) is turned off for the site), so don't call `rybbit.pageview()` as well or each open counts twice. Extension pages have URLs like `chrome-extension://<id>/popup.html`, so the popup shows up as `/popup.html`.
 
 3. Grant the extension permission to call the analytics host. Requests from extension pages to origins listed in `host_permissions` are not subject to CORS:
 
@@ -87,7 +85,7 @@ document.getElementById("save")?.addEventListener("click", () => {
 - **`Refused to load the script` in the popup console**: the fixed `extension_pages` CSP blocked a remote tag. Remove it and use the SDK.
 - **`POST /api/track` blocked by CORS**: `host_permissions` is missing or does not match. The pattern must include the path wildcard: `https://app.rybbit.io/*`.
 - **Self-hosted Rybbit**: replace `https://app.rybbit.io` in both `analyticsHost` and `host_permissions` with your own instance URL.
-- **Every pageview shows the extension ID as hostname**: expected. Extension pages live on `chrome-extension://<id>`; use `rybbit.pageview("/name")` for readable paths.
+- **Every pageview shows the extension ID as hostname**: expected. Extension pages live on `chrome-extension://<id>`; the path (`/popup.html`, `/options.html`) still tells pages apart. For custom paths, turn off [Initial Page View](/docs/site-settings#track-initial-page-view) under **Site Settings → Tracking** and call `rybbit.pageview("/name")` after `init()` in each page you track. The setting applies to every page using this site ID, not only the popup.
 
 ## Next steps
 

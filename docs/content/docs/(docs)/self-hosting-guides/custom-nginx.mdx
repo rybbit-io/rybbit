@@ -34,9 +34,18 @@ Optionally, include a Mapbox token for globe visualizations:
 ./setup.sh your.domain.name --no-webserver --mapbox-token YOUR_MAPBOX_TOKEN
 ```
 
-This will expose:
-- Backend service on port 3001
-- Client service on port 3002
+This publishes the backend on port 3001 and the client on port 3002 on all interfaces, over plain HTTP.
+
+<Callout type="warn">
+Since Nginx runs on the same host, bind both ports to localhost so they can't be reached from outside. Edit these lines in `.env`:
+
+```bash
+HOST_BACKEND_PORT="127.0.0.1:3001:3001"
+HOST_CLIENT_PORT="127.0.0.1:3002:3002"
+```
+
+Then apply the change with `docker compose up -d`. Ports published by Docker bypass host firewalls such as `ufw`, so don't rely on those to block them.
+</Callout>
 </Step>
 
 <Step>
@@ -69,8 +78,8 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
 
-    # Backend service
-    location ~ ^/(api|\.well-known)/.*$ {
+    # Backend service: the API and the OAuth discovery documents MCP clients use
+    location ~ ^/(api/|\.well-known/oauth-|\.well-known/openid-configuration) {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -195,10 +204,10 @@ If you need to use custom ports for Rybbit:
 ./setup.sh your.domain.name --no-webserver --backend-port 8080 --client-port 8081 --mapbox-token YOUR_MAPBOX_TOKEN
 ```
 
-Update your Nginx configuration accordingly:
+Bind them to localhost the same way, e.g. `HOST_BACKEND_PORT="127.0.0.1:8080:3001"`, and update your Nginx configuration accordingly:
 
 ```nginx
-location /api/ {
+location ~ ^/(api/|\.well-known/oauth-|\.well-known/openid-configuration) {
     proxy_pass http://localhost:8080;  # Custom backend port
     # ... rest of config
 }

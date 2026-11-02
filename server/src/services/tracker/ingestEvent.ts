@@ -5,6 +5,7 @@ import { usageService } from "../usageService.js";
 import { botEventQueue, botObservationQueue } from "./botBlocking/botEventQueue.js";
 import { checkBotBlocking } from "./botBlocking/index.js";
 import { pageviewQueue } from "./pageviewQueue.js";
+import { truncateUrlForStorage } from "./trackingPayload.js";
 import type { TrackingRequest } from "./trackingRequest.js";
 import { createBasePayload } from "./utils.js";
 
@@ -45,25 +46,30 @@ export type IngestOutcome =
  *      `events` plus, when something was detected, `bot_observations`.
  */
 export async function ingestEvent(trackingRequest: TrackingRequest): Promise<IngestOutcome> {
-  const { payload, site } = trackingRequest;
+  const { site } = trackingRequest;
 
+  // Matched against the URL whole: a query string cut to its column limit
+  // first can lose the very parameter an exclusion names.
   const exclusionDecision = await decideSiteExclusion(site, {
     ipAddress: trackingRequest.ipAddress,
     candidateIps: trackingRequest.candidateIps,
-    pathname: payload.pathname,
-    querystring: payload.querystring,
-    hostname: payload.hostname,
+    pathname: trackingRequest.payload.pathname,
+    querystring: trackingRequest.payload.querystring,
+    hostname: trackingRequest.payload.hostname,
     userAgent: trackingRequest.userAgent,
     lookupAsn: trackingRequest.lookupAsn,
   });
 
+  // Everything past the exclusion works on the event as it will be stored.
+  const payload = truncateUrlForStorage(trackingRequest.payload);
+
   if (exclusionDecision.excluded) {
-    logger.info({ siteId: payload.site_id, exclusionReason: exclusionDecision.reason }, "Site exclusion matched");
+    logger.debug({ siteId: payload.site_id, exclusionReason: exclusionDecision.reason }, "Site exclusion matched");
     return { status: "excluded", exclusion: exclusionDecision };
   }
 
   if (usageService.isSiteOverLimit(site.siteId)) {
-    logger.info({ siteId: payload.site_id }, "Skipping event - site over monthly limit");
+    logger.debug({ siteId: payload.site_id }, "Skipping event - site over monthly limit");
     return { status: "over_limit" };
   }
 
@@ -93,7 +99,7 @@ export async function ingestEvent(trackingRequest: TrackingRequest): Promise<Ing
     },
   });
 
-  const eventPayload = await createBasePayload(trackingRequest);
+  const eventPayload = await createBasePayload({ ...trackingRequest, payload });
 
   if (botDetectionResult?.enforced) {
     await botEventQueue.add({

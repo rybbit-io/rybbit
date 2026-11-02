@@ -32,6 +32,13 @@ describe("buildMetricQuery", () => {
       expect(sql).toContain("LIMIT 100");
     });
 
+    it("sums each attributed session's pageviews instead of counting sessions", () => {
+      const sql = buildMetricQuery(baseQuery({ parameter: "country" }), SITE_ID);
+      expect(sql).toContain("sum(pageviews_in_session) as pageviews");
+      expect(sql).toContain("sum(sum(pageviews_in_session)) OVER ()");
+      expect(sql).not.toMatch(/COUNT\(\) as pageviews\b/);
+    });
+
     it("uses the session-channel aggregation for channel", () => {
       const sql = buildMetricQuery(baseQuery({ parameter: "channel" }), SITE_ID);
       expect(sql).toContain(`${SESSION_CHANNEL_AGG} as value`);

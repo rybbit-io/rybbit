@@ -24,7 +24,7 @@ Where the snippet goes depends on the Blazor hosting model: a Blazor Web App kee
 <Tab>
 `App.razor` is rendered on the server, so it can read the site ID from `appsettings.json`. Add a `Rybbit` section:
 
-```json filename="appsettings.json"
+```json title="appsettings.json"
 {
   "Rybbit": {
     "InstanceUrl": "https://app.rybbit.io",
@@ -35,7 +35,7 @@ Where the snippet goes depends on the Blazor hosting model: a Blazor Web App kee
 
 Then inject `IConfiguration` in `Components/App.razor` and add the tag inside `<head>`:
 
-```razor filename="Components/App.razor"
+```razor title="Components/App.razor"
 @inject IConfiguration Configuration
 @{
     var rybbitSiteId = Configuration["Rybbit:SiteId"];
@@ -64,7 +64,7 @@ Override the value per environment with `appsettings.Production.json` or the env
 <Tab>
 A standalone WebAssembly app ships `wwwroot/index.html` as a static file, so add the tag directly inside `<head>`:
 
-```html filename="wwwroot/index.html"
+```html title="wwwroot/index.html"
 <head>
     <base href="/" />
     <link rel="stylesheet" href="css/app.css" />
@@ -79,7 +79,7 @@ The site ID is public on every platform (it is in the page source), so a static 
 <Tab>
 Add the `Rybbit` section to `appsettings.json` as in the Blazor Web App tab, then open `Pages/_Host.cshtml` (or `Pages/_Layout.cshtml` in .NET 6 projects, where the `<head>` lives) and add the tag:
 
-```razor filename="Pages/_Host.cshtml"
+```razor title="Pages/_Host.cshtml"
 @page "/"
 @using Microsoft.Extensions.Configuration
 @inject IConfiguration Configuration

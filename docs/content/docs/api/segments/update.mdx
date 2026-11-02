@@ -1,6 +1,6 @@
 ---
 title: Update Segment
-description: Updates a saved segment. Editors, admins and owners can edit any segment; members can edit segments they created. Only the fields you send change.
+description: Updates a saved segment. Editors and above can edit any segment on the site; members can edit segments they created. Only the fields you send change.
 full: true
 method: PUT
 ---
@@ -15,7 +15,9 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 PUT /api/sites/:site/segments/:segmentId
 ```
 
-Updates a saved segment. Editors, admins and owners can edit any segment; members can edit segments they created. Only the fields you send change.
+Updates a saved segment. Only the fields you send change; omitted fields keep their current values.
+
+Editors and above can edit any segment on the site, including through a per-site editor grant; members can edit segments they created. Organization-wide segments, and moving a segment to `"organization"` scope, need the editor role or above in the organization, even for the segment's creator. The body is strict: unknown fields return `400`.
 
 ### Path Parameters
 
@@ -44,7 +46,7 @@ Updates a saved segment. Editors, admins and owners can edit any segment; member
       required: false,
     },
     filters: {
-      description: 'Filters that define the segment (1–20). Validated with the same schema as the `filters` parameter',
+      description: 'Filters that define the segment (1–20). Uses the `filters` parameter format with stricter limits: at most 50 values per filter, each up to 500 characters; regex filters take exactly one valid pattern; comparison and lat/lon filters need numeric values; every filter except is_null/is_not_null needs at least one value (those two still send `value: []`)',
       type: 'Filter[]',
       typeDescription: 'See Filter Parameters in Getting Started',
       required: false,
@@ -58,13 +60,11 @@ Updates a saved segment. Editors, admins and owners can edit any segment; member
       description: 'Where the segment is available. Organization-wide segments need the editor role or above in the organization',
       type: 'string',
       typeDescription: '"site" | "organization"',
-      default: 'site',
       required: false,
     },
     isPublic: {
       description: 'Show on the public dashboard and private links',
       type: 'boolean',
-      default: 'false',
       required: false,
     },
   }}
@@ -85,8 +85,8 @@ Returns the updated segment.
     isPublic: { description: 'Shown on the public dashboard and private links', type: 'boolean' },
     type: { description: 'Always "segment" today; reserved for cohorts', type: 'string' },
     canEdit: { description: 'Whether the caller may edit or delete this segment', type: 'boolean' },
-    createdAt: { description: 'ISO 8601 timestamp', type: 'string' },
-    updatedAt: { description: 'ISO 8601 timestamp', type: 'string' },
+    createdAt: { description: 'Creation timestamp', type: 'string', typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix' },
+    updatedAt: { description: 'Last update timestamp', type: 'string', typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix' },
   }}
 />
 
@@ -150,8 +150,8 @@ data = response.json()
   "isPublic": true,
   "type": "segment",
   "canEdit": true,
-  "createdAt": "2026-09-02T10:15:00.000Z",
-  "updatedAt": "2026-09-02T10:15:00.000Z"
+  "createdAt": "2026-09-02 10:15:00.482913",
+  "updatedAt": "2026-09-02 10:15:00.482913"
 }
 ```
 

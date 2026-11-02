@@ -21,12 +21,15 @@ function createVisitorId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
+// Matches the server's visitor_id limit: a longer stored id would get every event rejected.
+const MAX_VISITOR_ID_LENGTH = 64;
+
 function getOrCreateVisitorId(namespace: string): string {
   const key = `${namespace}-visitor-id`;
 
   try {
     const stored = localStorage.getItem(key);
-    if (stored) return stored;
+    if (stored && stored.length <= MAX_VISITOR_ID_LENGTH) return stored;
 
     const visitorId = createVisitorId();
     localStorage.setItem(key, visitorId);

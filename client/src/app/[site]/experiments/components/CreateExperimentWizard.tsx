@@ -1,10 +1,21 @@
 "use client";
 
-import type { Experiment, FeatureFlagVariant, GoalType as AnyGoalType } from "@/api/analytics/endpoints";
+import type {
+  Experiment,
+  FeatureFlag,
+  FeatureFlagPayload,
+  FeatureFlagVariant,
+  GoalType as AnyGoalType,
+} from "@/api/analytics/endpoints";
 import { useCreateExperiment, useUpdateExperiment } from "@/api/analytics/hooks/experiments/useExperiments";
-import { useCreateFeatureFlag, useFeatureFlags } from "@/api/analytics/hooks/featureFlags/useFeatureFlags";
-import { useCreateGoal } from "@/api/analytics/hooks/goals/useCreateGoal";
+import {
+  useCreateFeatureFlag,
+  useFeatureFlags,
+  useUpdateFeatureFlag,
+} from "@/api/analytics/hooks/featureFlags/useFeatureFlags";
+import { type CreateGoalRequest, useCreateGoal } from "@/api/analytics/hooks/goals/useCreateGoal";
 import { useGetGoals } from "@/api/analytics/hooks/goals/useGetGoals";
+import { useUpdateGoal } from "@/api/analytics/hooks/goals/useUpdateGoal";
 import { useMetric } from "@/api/analytics/hooks/useGetMetric";
 import { CodeSnippet } from "@/components/CodeSnippet";
 import { Button } from "@/components/ui/button";
@@ -19,7 +30,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Check, FlaskConical, Flag, MousePointerClick, Plus, Target, Trash2 } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 type WizardStep = "basics" | "assignment" | "goal" | "implementation";
@@ -47,6 +58,12 @@ type VariantSourceFlag = {
     name?: string;
     rolloutPercentage: number;
   }>;
+};
+
+// What an earlier, failed save already created, with the request that created it.
+type CreatedResources = {
+  flag?: { request: string; flag: FeatureFlag };
+  goal?: { request: string; goalId: number };
 };
 
 type ImplementationState = {
@@ -86,12 +103,25 @@ function createId() {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// Flag and variant keys must match the server's /^[A-Za-z][A-Za-z0-9_.:-]*$/ (max 100 chars), so a key
+// never starts with a digit or separator: "2026 pricing test" becomes "pricing_test".
+// While typing, a trailing separator stays so the next word can follow it.
+function slugifyWhileTyping(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^[^a-z]+/, "")
+    .slice(0, 100);
+}
+
 function slugify(value: string) {
   return value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+    .replace(/^[^a-z]+/, "")
+    .slice(0, 100)
+    .replace(/_+$/, "");
 }
 
 function getVariantDraftsFromFlag(flag: VariantSourceFlag): VariantDraft[] {
@@ -339,7 +369,9 @@ export function CreateExperimentWizard({
   const { data: pathsData } = useMetric({ parameter: "pathname", limit: 1000, useFilters: false });
   const { data: eventsData } = useMetric({ parameter: "event_name", limit: 1000, useFilters: false });
   const createFeatureFlagMutation = useCreateFeatureFlag();
+  const updateFeatureFlagMutation = useUpdateFeatureFlag();
   const createGoalMutation = useCreateGoal();
+  const updateGoalMutation = useUpdateGoal();
   const createExperimentMutation = useCreateExperiment();
   const updateExperimentMutation = useUpdateExperiment();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -349,7 +381,13 @@ export function CreateExperimentWizard({
   const [savedImplementationState, setSavedImplementationState] = useState<ImplementationState | null>(null);
   const [flagKeyTouched, setFlagKeyTouched] = useState(false);
   const [goalNameTouched, setGoalNameTouched] = useState(false);
+  // A save is up to three requests (flag, goal, experiment) that commit separately. When a later one
+  // fails, the retry reuses what the earlier ones created, updated in place if the form changed since,
+  // instead of creating duplicates: a second flag with the same key is a 409, a second goal an orphan.
+  const createdRef = useRef<CreatedResources>({});
   const isEditing = !!experiment;
+  // Visitors are already assigned by this flag, so the server keeps it once started.
+  const assignmentLocked = !!experiment && experiment.status !== "draft";
 
   const usedFlagIds = useMemo(
     () =>
@@ -359,7 +397,11 @@ export function CreateExperimentWizard({
     [experiment?.experimentId, experiments]
   );
   const availableFlags = useMemo(
-    () => (flags || []).filter(flag => flag.flagType === "multivariate" && !usedFlagIds.has(flag.flagId)),
+    // Server-only flags never reach the tracking script, so they can't record exposures.
+    () =>
+      (flags || []).filter(
+        flag => flag.flagType === "multivariate" && flag.runtime !== "server" && !usedFlagIds.has(flag.flagId)
+      ),
     [flags, usedFlagIds]
   );
   const selectedFlag =
@@ -382,7 +424,9 @@ export function CreateExperimentWizard({
   const activeStepIndex = STEPS.indexOf(step);
   const isSaving =
     createFeatureFlagMutation.isPending ||
+    updateFeatureFlagMutation.isPending ||
     createGoalMutation.isPending ||
+    updateGoalMutation.isPending ||
     createExperimentMutation.isPending ||
     updateExperimentMutation.isPending;
 
@@ -393,6 +437,7 @@ export function CreateExperimentWizard({
     setSavedImplementationState(null);
     setFlagKeyTouched(!!experiment);
     setGoalNameTouched(!!experiment);
+    createdRef.current = {};
   }, [experiment?.experimentId, open]);
 
   useEffect(() => {
@@ -539,6 +584,65 @@ export function CreateExperimentWizard({
 
   const implementationState = savedImplementationState || (isEditing ? buildImplementationState("updated") : null);
 
+  const saveNewFlag = async (): Promise<FeatureFlag> => {
+    const variants: FeatureFlagVariant[] = form.variants.map(variant => ({
+      key: variant.key.trim(),
+      name: variant.name.trim() || undefined,
+      rolloutPercentage: Number(variant.rolloutPercentage),
+    }));
+    const payload: FeatureFlagPayload = {
+      key: form.flagKey.trim(),
+      description: form.flagDescription.trim() || `Assignment flag for ${form.name.trim()}`,
+      // Off until the experiment starts; starting it switches the flag on.
+      enabled: false,
+      runtime: "client",
+      flagType: "multivariate",
+      payload: null,
+      variants: [],
+      rolloutPercentage: 100,
+      rules: [],
+      conditionSets: [
+        {
+          name: "Default",
+          rules: [],
+          variants,
+        },
+      ],
+    };
+    const request = JSON.stringify(payload);
+    const previous = createdRef.current.flag;
+    if (previous?.request === request) return previous.flag;
+
+    const { data: flag } = previous
+      ? await updateFeatureFlagMutation.mutateAsync({ flagId: previous.flag.flagId, payload })
+      : await createFeatureFlagMutation.mutateAsync(payload);
+    createdRef.current.flag = { request, flag };
+    return flag;
+  };
+
+  const saveNewGoal = async (): Promise<number> => {
+    const goal: CreateGoalRequest = {
+      siteId: Number(site),
+      name: form.goalName.trim() || `${form.name.trim()} conversion`,
+      goalType: form.goalType,
+      config:
+        form.goalType === "path" ? { pathPattern: form.pathPattern.trim() } : { eventName: form.eventName.trim() },
+    };
+    const request = JSON.stringify(goal);
+    const previous = createdRef.current.goal;
+    if (previous?.request === request) return previous.goalId;
+
+    let goalId: number;
+    if (previous) {
+      await updateGoalMutation.mutateAsync({ ...goal, goalId: previous.goalId });
+      goalId = previous.goalId;
+    } else {
+      goalId = (await createGoalMutation.mutateAsync(goal)).goalId;
+    }
+    createdRef.current.goal = { request, goalId };
+    return goalId;
+  };
+
   const submitExperiment = async () => {
     const validationError = validateExperimentConfiguration();
     if (validationError) {
@@ -552,34 +656,10 @@ export function CreateExperimentWizard({
       let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
 
       if (form.assignmentMode === "new") {
-        const variants: FeatureFlagVariant[] = form.variants.map(variant => ({
-          key: variant.key.trim(),
-          name: variant.name.trim() || undefined,
-          rolloutPercentage: Number(variant.rolloutPercentage),
-        }));
-
-        const createdFlag = await createFeatureFlagMutation.mutateAsync({
-          key: form.flagKey.trim(),
-          description: form.flagDescription.trim() || `Assignment flag for ${form.name.trim()}`,
-          enabled: true,
-          runtime: "client",
-          flagType: "multivariate",
-          payload: null,
-          variants: [],
-          rolloutPercentage: 100,
-          rules: [],
-          conditionSets: [
-            {
-              name: "Default",
-              rules: [],
-              variants,
-            },
-          ],
-        });
-
-        featureFlagId = createdFlag.data.flagId;
-        flagKey = createdFlag.data.key;
-        variantKeys = getVariantKeys(createdFlag.data);
+        const createdFlag = await saveNewFlag();
+        featureFlagId = createdFlag.flagId;
+        flagKey = createdFlag.key;
+        variantKeys = getVariantKeys(createdFlag);
       }
 
       let primaryGoalId: number | null = form.goalMode === "existing" ? Number(form.existingGoalId) : null;
@@ -587,15 +667,7 @@ export function CreateExperimentWizard({
       let goalLabel = form.goalMode === "none" ? undefined : (goalDisplayPattern(selectedGoal) ?? form.goalName.trim());
 
       if (form.goalMode === "new") {
-        const createdGoal = await createGoalMutation.mutateAsync({
-          siteId: Number(site),
-          name: form.goalName.trim() || `${form.name.trim()} conversion`,
-          goalType: form.goalType,
-          config:
-            form.goalType === "path" ? { pathPattern: form.pathPattern.trim() } : { eventName: form.eventName.trim() },
-        });
-
-        primaryGoalId = createdGoal.goalId;
+        primaryGoalId = await saveNewGoal();
         goalType = form.goalType;
         goalLabel = form.goalType === "path" ? form.pathPattern.trim() : form.eventName.trim();
       }
@@ -608,6 +680,8 @@ export function CreateExperimentWizard({
         primaryGoalId,
         status: "draft",
       });
+      // The experiment now owns them; a later save must not reuse or rewrite them.
+      createdRef.current = {};
 
       setSavedImplementationState({
         mode: "created",
@@ -639,35 +713,11 @@ export function CreateExperimentWizard({
       let flagKey = selectedFlag?.key || form.flagKey.trim();
       let variantKeys = selectedFlag ? getVariantKeys(selectedFlag) : form.variants.map(variant => variant.key.trim());
 
-      if (form.assignmentMode === "new") {
-        const variants: FeatureFlagVariant[] = form.variants.map(variant => ({
-          key: variant.key.trim(),
-          name: variant.name.trim() || undefined,
-          rolloutPercentage: Number(variant.rolloutPercentage),
-        }));
-
-        const createdFlag = await createFeatureFlagMutation.mutateAsync({
-          key: form.flagKey.trim(),
-          description: form.flagDescription.trim() || `Assignment flag for ${form.name.trim()}`,
-          enabled: true,
-          runtime: "client",
-          flagType: "multivariate",
-          payload: null,
-          variants: [],
-          rolloutPercentage: 100,
-          rules: [],
-          conditionSets: [
-            {
-              name: "Default",
-              rules: [],
-              variants,
-            },
-          ],
-        });
-
-        featureFlagId = createdFlag.data.flagId;
-        flagKey = createdFlag.data.key;
-        variantKeys = getVariantKeys(createdFlag.data);
+      if (form.assignmentMode === "new" && !assignmentLocked) {
+        const createdFlag = await saveNewFlag();
+        featureFlagId = createdFlag.flagId;
+        flagKey = createdFlag.key;
+        variantKeys = getVariantKeys(createdFlag);
       }
 
       let primaryGoalId: number | null = form.goalMode === "existing" ? Number(form.existingGoalId) : null;
@@ -675,15 +725,7 @@ export function CreateExperimentWizard({
       let goalLabel = form.goalMode === "none" ? undefined : (goalDisplayPattern(selectedGoal) ?? form.goalName.trim());
 
       if (form.goalMode === "new") {
-        const createdGoal = await createGoalMutation.mutateAsync({
-          siteId: Number(site),
-          name: form.goalName.trim() || `${form.name.trim()} conversion`,
-          goalType: form.goalType,
-          config:
-            form.goalType === "path" ? { pathPattern: form.pathPattern.trim() } : { eventName: form.eventName.trim() },
-        });
-
-        primaryGoalId = createdGoal.goalId;
+        primaryGoalId = await saveNewGoal();
         goalType = form.goalType;
         goalLabel = form.goalType === "path" ? form.pathPattern.trim() : form.eventName.trim();
       }
@@ -698,6 +740,7 @@ export function CreateExperimentWizard({
           primaryGoalId,
         },
       });
+      createdRef.current = {};
 
       setSavedImplementationState({
         mode: "updated",
@@ -748,6 +791,20 @@ export function CreateExperimentWizard({
               placeholder={t("Optional notes for this experiment")}
             />
           </div>
+        </div>
+      );
+    }
+
+    if (step === "assignment" && assignmentLocked && experiment) {
+      return (
+        <div className="grid gap-1.5">
+          <Label>{t("Assignment flag")}</Label>
+          <div className="rounded-md border border-neutral-150 bg-neutral-50 px-3 py-2 font-mono text-sm text-neutral-800 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-100">
+            {experiment.featureFlag.key}
+          </div>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            {t("The flag can't change once the experiment has started, because visitors are already assigned.")}
+          </p>
         </div>
       );
     }
@@ -805,8 +862,9 @@ export function CreateExperimentWizard({
                     value={form.flagKey}
                     onChange={event => {
                       setFlagKeyTouched(true);
-                      updateForm("flagKey", slugify(event.target.value));
+                      updateForm("flagKey", slugifyWhileTyping(event.target.value));
                     }}
+                    onBlur={() => updateForm("flagKey", slugify(form.flagKey))}
                     placeholder="checkout_cta"
                     className="font-mono"
                   />
@@ -856,7 +914,8 @@ export function CreateExperimentWizard({
                     <div key={variant.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_2rem] gap-2">
                       <Input
                         value={variant.key}
-                        onChange={event => updateVariant(variant.id, "key", slugify(event.target.value))}
+                        onChange={event => updateVariant(variant.id, "key", slugifyWhileTyping(event.target.value))}
+                        onBlur={() => updateVariant(variant.id, "key", slugify(variant.key))}
                         placeholder="variant_a"
                         className="font-mono"
                       />
@@ -968,14 +1027,14 @@ export function CreateExperimentWizard({
                   selected={form.goalType === "path"}
                   icon={<Target className="h-4 w-4" />}
                   title={t("Page goal")}
-                  description={t("Count sessions that reach a URL path.")}
+                  description={t("Count visitors that reach a URL path.")}
                   onClick={() => updateForm("goalType", "path")}
                 />
                 <WizardChoice
                   selected={form.goalType === "event"}
                   icon={<MousePointerClick className="h-4 w-4" />}
                   title={t("Event goal")}
-                  description={t("Count sessions where your app fires a named event.")}
+                  description={t("Count visitors for whom your app fires a named event.")}
                   onClick={() => updateForm("goalType", "event")}
                 />
               </div>
@@ -1078,7 +1137,7 @@ window.rybbit.onReady((rybbit) => {
         ) : implementationState.goalType === "path" ? (
           <p className="rounded-md border border-neutral-150 bg-neutral-50 p-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
             {t(
-              "No conversion event code is needed for this path goal. Rybbit will count sessions that reach {goalLabel}.",
+              "No conversion event code is needed for this path goal. Rybbit will count visitors that reach {goalLabel}.",
               {
                 goalLabel: implementationState.goalLabel || "",
               }

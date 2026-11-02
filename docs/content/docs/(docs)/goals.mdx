@@ -9,13 +9,15 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 Goals let you define specific actions — from visiting a page to clicking a button — and measure how often your visitors complete them. Each goal tracks a conversion rate against total sessions, giving you a clear picture of how effectively your site drives key outcomes.
 
+On Rybbit Cloud, goals are available on every paid plan.
+
 ## Creating a Goal
 
 ![Creating a Goal](/docs/goals/3.png)
 <Steps>
 <Step>
-### Click "Create Goal"
-Every goal has:
+### Click "New goal"
+The goal form opens inline at the foot of the goals table. Every goal has:
 
 - **Name** (optional) — A friendly label like "Completed Checkout" or "Signed Up"
 - **Type** — Page, custom event, outbound link, button click, form submission, or copied text
@@ -92,33 +94,51 @@ You can narrow a goal to only count conversions when specific properties match:
 - **Custom event goals** — Filter by event properties (e.g., only count events where `plan=premium`)
 - **Autocaptured interaction goals** — Filter by captured properties such as `url`, `text`, `formName`, `formId`, or `formAction`
 
-Toggle **Match specific URL parameters** or **Match specific event properties** to add filters. You can add multiple filters per goal — all filters must match for a session to count as a conversion.
+Turn on **Match a URL parameter** or **Match an event property** to add filters. You can add multiple filters per goal — all filters must match for a session to count as a conversion.
+
+</Step>
+<Step>
+### Check the preview and save
+
+As you fill in the form, a preview shows how many sessions would have converted in the selected period, drawn from events you already have. Click **Create goal** to save.
 
 </Step>
 </Steps>
+
+To start from an existing goal, open its row menu and choose **Clone goal**. The copy opens in the form with "(Copy)" added to the name. The same menu has **Edit goal** and **Delete goal**.
+
+You can also turn a custom event into a goal from the [Events page](/docs/feature-guides/events) with **Create goal**.
+
 ## Goal Metrics
 
-Each goal card displays:
+A summary band at the top shows:
 
-- **Total Conversions** — The number of distinct sessions that completed the goal
-- **Conversion Rate** — Conversions divided by total sessions in the selected time period, shown as a percentage with a visual progress bar
+- **Sessions** — All sessions in the period, the denominator of every rate
+- **Converting sessions** — Sessions that completed at least one goal
+- **Goal completions** — Conversions across all goals
+- **Best mover** — The goal that gained the most conversions against the comparison period
+- **Slipping** — The goal whose conversion rate dropped the most
 
-Goals respect the global date range and filters (country, device, browser, etc.) applied on the page.
+Below it, each goal is a row in the goals table with:
+
+- **Conversions** — The number of distinct sessions that completed the goal
+- **Rate** — Conversions divided by total sessions in the selected period
+- **Change** — Change in conversions and rate against the comparison period, when a comparison is on
+- A trend of conversions over the period
+
+Click a column header to sort, and use **Filter goals** to find a goal by name. Goals respect the global date range and filters (country, device, browser, etc.) applied on the page.
 
 ## Viewing Converted Sessions
 
 ![Viewing Converted Sessions](/docs/goals/2.png)
 
-Click a goal card to expand it and see the sessions that converted. Each session shows:
+Click a goal row to expand it. You'll see:
 
-- Entry and exit pages
-- Session duration
-- Location (country, region, city)
-- Device, browser, and OS
-- Referrer, channel, and UTM parameters
-- User ID (if identified)
+- A chart of conversions over time, against the comparison period when one is on
+- The funnels that use the goal's page or event, under **Also in**
+- **Converted sessions**, most recent first, with each session's pages, duration, location, device, and referrer. Click the replay button on a session to watch it when [session replay](/docs/feature-guides/session-replay) is on.
 
-Sessions are sorted by most recent first and paginated.
+Click **Open in Sessions** to see every converted session on the [Sessions](/docs/feature-guides/sessions) page with the goal applied as a filter.
 
 ---
 

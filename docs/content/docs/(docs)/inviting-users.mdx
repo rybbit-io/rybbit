@@ -6,15 +6,19 @@ description: Invite team members to your Rybbit organization and control their a
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
 
+Only admins and owners can add people to an organization.
+
 <Callout type="info">
-  On self-hosted instances, this workflow is slightly different. Instead of inviting users, you can create a new user and set their password directly since self-hosted instances don't send emails.
+  On self-hosted instances you don't send invitations. Instead, click **Create User** in the **People** section of **Settings > Organization**, enter the person's email, name, password and role, and click **Create User**. The account is created right away. Site restrictions and team assignments aren't part of this dialog: set them afterwards by editing the member (see [below](#managing-site-access-for-existing-members)) or adding them to a [team](/docs/teams). The steps below are for Rybbit Cloud.
 </Callout>
 
 <Steps>
 <Step>
 ### Add the user to your organization
 
-Go to **Settings > Organization** and click the "Invite Member" button. Enter the user's email address.
+Go to **Settings > Organization** and click **Invite people** in the **People** section. Enter the user's email address.
+
+On Rybbit Cloud your plan limits how many members an organization can have (for example, 3 on Standard and 100 on Pro; see [Billing](/docs/billing-settings#plans-and-limits)). When you reach the limit, the **Invite people** button is disabled until you upgrade.
 </Step>
 
 <Step>
@@ -32,7 +36,7 @@ See [Member Roles](/docs/organization-settings#member-roles) for the full list.
 
 #### Restricting site access
 
-For editors, members and viewers you can restrict access to specific sites. Check "Restrict access to specific sites" and select the sites they should see. If you don't, they can see every site in your organization (except sites that belong to a [team](/docs/teams) they aren't on).
+For editors, members and viewers you can restrict access to specific sites. Turn on **Restrict access to specific sites** and select the sites they should see. If you don't, they can see every site in your organization (except sites that belong to a [team](/docs/teams) they aren't on).
 
 You can also pick a **role on these sites** to raise their role on the selected sites only. For example, invite a client as a **Viewer**, restricted to their own site, with **Editor** on that site: they can configure their site and nothing else. The site role only ever raises the organization role, never lowers it.
 
@@ -44,7 +48,7 @@ You can also pick a **role on these sites** to raise their role on the selected 
 <Step>
 ### Assign teams (optional)
 
-If your organization has [teams](/docs/teams) set up, you can assign the new member to a team during the invitation. When the member accepts the invitation, they will automatically be added to the selected team.
+If your organization has [teams](/docs/teams) set up, you can pick one under **Team** during the invitation. When the member accepts the invitation, they will automatically be added to the selected team.
 
 This is useful for ensuring new members immediately have access to the right group of sites without needing to configure access separately.
 </Step>
@@ -52,7 +56,7 @@ This is useful for ensuring new members immediately have access to the right gro
 <Step>
 ### Send the invite
 
-Click the "Invite" button. The user will receive an email with a link to sign up for Rybbit. You can manage all pending invitations in the Organization settings page.
+Click **Invite**. The user receives an email with a link to sign up for Rybbit. Pending invitations appear in the **People** table, marked **Pending**, where you can **Resend** or **Cancel** them.
 </Step>
 </Steps>
 
@@ -61,12 +65,12 @@ Click the "Invite" button. The user will receive an email with a link to sign up
 You can change a member's site access at any time after they've joined your organization.
 
 1. Go to **Settings > Organization**
-2. Find the member in the list and click the edit (pencil) icon in the Actions column for that member
-3. Toggle "Restrict access to specific sites", select the sites they should have access to, and optionally a role on those sites
-4. Click "Save changes"
+2. Find the member in the **People** table and click the edit (pencil) icon at the end of their row
+3. Turn on **Restrict access to specific sites**, select the sites they should have access to, and optionally a **Role on these sites**
+4. Click **Save Changes**
 
 The member will immediately only see the sites you've selected. If you disable the restriction, they'll regain access to all sites.
 
 <Callout type="info">
-  A person can belong to several organizations, each with its own role. To hand a site over to someone so they can manage it in their own organization, [transfer the site](/docs/site-settings#transfer-site) instead.
+  A person can belong to several organizations, each with its own role. To hand a site over to someone so they can manage it in their own organization, [transfer the site](/docs/site-settings#transfer-to-someone-else) instead.
 </Callout>

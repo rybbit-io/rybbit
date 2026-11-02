@@ -34,7 +34,7 @@ pip install pydantic-settings jinja2
 
 Define the settings, reading from the environment and an optional `.env` file:
 
-```python filename="config.py"
+```python title="config.py"
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 settings = Settings()
 ```
 
-```bash filename=".env"
+```bash title=".env"
 RYBBIT_INSTANCE_URL=https://app.rybbit.io
 RYBBIT_SITE_ID=YOUR_SITE_ID
 ```
@@ -57,7 +57,7 @@ RYBBIT_SITE_ID=YOUR_SITE_ID
 
 `Jinja2Templates` exposes its environment as `templates.env`, so add the settings as globals once, next to where you create the templates object:
 
-```python filename="main.py"
+```python title="main.py"
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -79,7 +79,7 @@ async def index(request: Request):
 
 Open the template your pages extend, usually `templates/base.html`, and add the tag inside `<head>`:
 
-```jinja filename="templates/base.html"
+```jinja title="templates/base.html"
 <head>
     <meta charset="utf-8">
     <title>{% block title %}My App{% endblock %}</title>

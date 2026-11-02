@@ -1,6 +1,19 @@
 import { ScriptConfig, FormSubmitProperties, InputChangeProperties } from "./types.js";
 import { Tracker } from "./tracking.js";
 
+/**
+ * A form's own property, read past its controls. A control named like the
+ * property (<input name="method">, "action", "elements") replaces it on the
+ * form itself — form.method is then that input, and .toUpperCase() throws —
+ * but the prototype's getter still returns the real value.
+ */
+function getFormProperty<K extends "action" | "method" | "elements">(
+  form: HTMLFormElement,
+  key: K
+): HTMLFormElement[K] | undefined {
+  return Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, key)?.get?.call(form);
+}
+
 export class FormTrackingManager {
   private tracker: Tracker;
   private config: ScriptConfig;
@@ -28,15 +41,18 @@ export class FormTrackingManager {
   }
 
   private handleSubmit(event: Event): void {
-    const form = event.target as HTMLFormElement;
-    if (form.tagName !== "FORM") return;
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
 
+    // id and name come from their attributes, which controls named "id" or
+    // "name" can't shadow; form.name would be that input, an object the server
+    // rejects as a form name.
     const properties: FormSubmitProperties = {
-      formId: form.id || "",
-      formName: form.name || "",
-      formAction: form.action || "",
-      method: (form.method || "get").toUpperCase(),
-      fieldCount: form.elements.length,
+      formId: form.getAttribute("id") || "",
+      formName: form.getAttribute("name") || "",
+      formAction: getFormProperty(form, "action") || "",
+      method: (getFormProperty(form, "method") || "get").toUpperCase(),
+      fieldCount: getFormProperty(form, "elements")?.length ?? 0,
       ariaLabel: form.getAttribute("aria-label") || undefined,
       ...this.extractDataAttributes(form),
     };
@@ -79,8 +95,8 @@ export class FormTrackingManager {
       element: tagName.toLowerCase(),
       inputType: tagName === "INPUT" ? (target as HTMLInputElement).type?.toLowerCase() : undefined,
       inputName,
-      formId: (target as HTMLInputElement).form?.id || undefined,
-      formName: (target as HTMLInputElement).form?.name || undefined,
+      formId: (target as HTMLInputElement).form?.getAttribute("id") || undefined,
+      formName: (target as HTMLInputElement).form?.getAttribute("name") || undefined,
       ...this.extractDataAttributes(target),
     };
 

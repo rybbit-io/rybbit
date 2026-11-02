@@ -11,7 +11,7 @@ import { CopyButton } from "../../../../../components/interior/copy-button";
 import { SessionCard, SessionCardSkeleton } from "../../../../../components/Sessions/SessionCard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../../../../../components/ui/sheet";
 import { hour12, userLocale } from "../../../../../lib/dateTimeUtils";
-import { getRegionName } from "../../../../../lib/geo";
+import { useGetRegionName } from "../../../../../lib/geo";
 import { getTimezone, useStore } from "../../../../../lib/store";
 import { getCountryName, getUserDisplayName, truncateString } from "../../../../../lib/utils";
 import { Browser } from "../../../components/shared/icons/Browser";
@@ -32,6 +32,7 @@ export function EventDetailsSheet({ open, onOpenChange, event, site }: EventDeta
   const t = useExtracted();
   const { data: siteMetadata } = useGetSite();
   const isApp = siteMetadata?.type === "mobile";
+  const { getRegionName } = useGetRegionName();
   const { singular: typeLabels } = useEventTypeLabels();
   // Set on a private-link view, so the user link stays inside it.
   const privateKey = useStore(state => state.privateKey);

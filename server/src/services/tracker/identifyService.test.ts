@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   generateUserId: vi.fn(),
   generateUserIdFromClientId: vi.fn(),
   backfillAdd: vi.fn(),
+  isTrustedServerSideIngestion: vi.fn(),
+  resolveClientIp: vi.fn(),
 }));
 
 vi.mock("../../lib/siteConfig.js", () => ({ siteConfig: { getConfig: mocks.getConfig } }));
@@ -20,6 +22,8 @@ vi.mock("../userId/userIdService.js", () => ({
   },
 }));
 vi.mock("./identityBackfillQueue.js", () => ({ identityBackfillQueue: { add: mocks.backfillAdd } }));
+vi.mock("./trackingRequest.js", () => ({ isTrustedServerSideIngestion: mocks.isTrustedServerSideIngestion }));
+vi.mock("./resolveClientIp.js", () => ({ resolveClientIp: mocks.resolveClientIp }));
 vi.mock("../../lib/logger/logger.js", () => {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
   return { logger, createServiceLogger: () => logger };
@@ -37,6 +41,8 @@ function replyStub() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getConfig.mockResolvedValue({ siteId: 7, firstPartyProxy: false });
+  mocks.isSiteWithoutPlan.mockReturnValue(false);
+  mocks.resolveClientIp.mockReturnValue("198.51.100.7");
 });
 
 describe("handleIdentify — site with no plan", () => {
@@ -58,5 +64,41 @@ describe("handleIdentify — site with no plan", () => {
     expect(mocks.insert).not.toHaveBeenCalled();
     expect(mocks.select).not.toHaveBeenCalled();
     expect(mocks.backfillAdd).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleIdentify — ip_address / user_agent overrides", () => {
+  const body = {
+    site_id: "7",
+    user_id: "attacker_pick",
+    ip_address: "203.0.113.50",
+    user_agent: "Victim UA",
+    is_new_identify: false,
+  };
+
+  it("ignores them without a trusted ingest:write bearer and fingerprints the caller instead", async () => {
+    mocks.isTrustedServerSideIngestion.mockResolvedValue(false);
+
+    await handleIdentify({ body, headers: { "user-agent": "Caller UA" } } as any, replyStub());
+
+    expect(mocks.generateUserId).toHaveBeenCalledWith("198.51.100.7", "Caller UA", 7);
+  });
+
+  it("uses them when the request carries a trusted ingest:write bearer", async () => {
+    mocks.isTrustedServerSideIngestion.mockResolvedValue(true);
+
+    await handleIdentify({ body, headers: { "user-agent": "Server UA" } } as any, replyStub());
+
+    expect(mocks.generateUserId).toHaveBeenCalledWith("203.0.113.50", "Victim UA", 7);
+  });
+
+  it("skips the bearer check when no override is sent", async () => {
+    await handleIdentify(
+      { body: { site_id: "7", user_id: "u", is_new_identify: false }, headers: { "user-agent": "Caller UA" } } as any,
+      replyStub()
+    );
+
+    expect(mocks.isTrustedServerSideIngestion).not.toHaveBeenCalled();
+    expect(mocks.generateUserId).toHaveBeenCalledWith("198.51.100.7", "Caller UA", 7);
   });
 });

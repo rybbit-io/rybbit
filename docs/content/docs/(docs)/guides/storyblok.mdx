@@ -56,7 +56,7 @@ The script tracks client-side route changes automatically, so navigation between
 ## Troubleshooting
 
 - **Visual Editor previews count as visits**: the Visual Editor loads your frontend in an iframe at the **Preview URL** set under **Settings > Visual Editor**, appending `_storyblok` and `_storyblok_tk[...]` query parameters. Editors' preview sessions are tracked like real visitors. Point the Preview URL at a separate preview deployment registered as its own site in Rybbit, or leave the tag out of builds that use the preview token.
-- **Preview parameters in tracked URLs**: if the same deployment serves both the live site and the Visual Editor, the `_storyblok` parameters show up in tracked page URLs. Add `data-track-query="false"` to the script tag to drop query strings.
+- **Preview parameters in tracked URLs**: if the same deployment serves both the live site and the Visual Editor, the `_storyblok` parameters show up in tracked page URLs. Turn off [URL Parameters](/docs/site-settings#track-url-parameters) under **Site Settings → Tracking** to drop query strings from tracked URLs. This drops UTM parameters too, so a separate preview deployment is the better fix if you track campaigns.
 - **The Storyblok app is not tracked**: the snippet only runs in your frontend, so time spent in `app.storyblok.com` never appears in Rybbit.
 
 ## Next steps

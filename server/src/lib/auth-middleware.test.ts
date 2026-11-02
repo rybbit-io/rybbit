@@ -344,3 +344,56 @@ describe("auth middleware rate limit reporting", () => {
     expect(response.headers["ratelimit-limit"]).toBeUndefined();
   });
 });
+
+describe("resolveSiteId", () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    app = Fastify();
+    app.get("/sites/:siteId", { preHandler: [resolveSiteId] as any }, async request => ({
+      siteId: (request.params as { siteId: string }).siteId,
+    }));
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  // The access check reads the param with Number(), handlers with parseInt();
+  // any spelling they'd read differently must never reach either.
+  it.each(["1e1", "0x5", "5.0", "+5", "-5", "5a", "%205", "Infinity"])("rejects the non-decimal id %s", async id => {
+    const response = await app.inject({ method: "GET", url: `/sites/${id}` });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("canonicalizes a decimal id so every reader sees the same number", async () => {
+    expect((await app.inject({ method: "GET", url: "/sites/0042" })).json()).toEqual({ siteId: "42" });
+    expect((await app.inject({ method: "GET", url: "/sites/7" })).json()).toEqual({ siteId: "7" });
+  });
+
+  it("resolves a tracking id to its numeric site id", async () => {
+    const { siteConfig } = await import("./siteConfig.js");
+    vi.mocked(siteConfig.resolveSiteId).mockResolvedValueOnce(123);
+    expect((await app.inject({ method: "GET", url: "/sites/abcdef123456" })).json()).toEqual({ siteId: "123" });
+  });
+
+  it("resolves an all-digit tracking id before treating it as a numeric id", async () => {
+    const { siteConfig } = await import("./siteConfig.js");
+    vi.mocked(siteConfig.resolveSiteId).mockResolvedValueOnce(9);
+    expect((await app.inject({ method: "GET", url: "/sites/123456789012" })).json()).toEqual({ siteId: "9" });
+  });
+
+  it("canonicalizes a long zero-padded id that is not a tracking id", async () => {
+    expect((await app.inject({ method: "GET", url: "/sites/000042" })).json()).toEqual({ siteId: "42" });
+  });
+
+  it("rejects an id beyond the safe integer range", async () => {
+    expect((await app.inject({ method: "GET", url: "/sites/99999999999999999999" })).statusCode).toBe(404);
+  });
+
+  it("rejects an unknown non-numeric tracking id", async () => {
+    expect((await app.inject({ method: "GET", url: "/sites/abcdef123456" })).statusCode).toBe(404);
+  });
+});

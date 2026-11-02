@@ -15,7 +15,9 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 POST /api/sites/:siteId/private-link-config
 ```
 
-Generates or revokes a private link key for sharing analytics without authentication. Requires the editor role or above on the site.
+Generates or revokes a private link key for sharing analytics without authentication. Requires the editor role or above on the site (the `sites:configure` permission).
+
+Generating a new key replaces the old one, so links using the old key stop working. Viewers send the key in the `x-private-key` request header.
 
 ### Path Parameters
 

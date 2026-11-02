@@ -41,7 +41,7 @@ Upload events in batches. The request body limit is 50 MB, so split large export
 <TypeTable
   type={{
     events: {
-      description: 'Raw, platform-specific event objects whose shape matches the platform chosen when the import was created (Umami, Simple Analytics, or Plausible export rows)',
+      description: 'Platform-specific event objects matching the platform chosen when the import was created: Umami or Simple Analytics export rows, or, for Plausible, per-event objects (timestamp, session_id, user_id, hostname, pathname, ...) such as the synthetic events the dashboard builds from Plausible aggregate CSV exports. Every key of the platform shape must be present as a string.',
       type: 'object[]',
       required: true,
     },
@@ -55,7 +55,14 @@ Upload events in batches. The request body limit is 50 MB, so split large export
 
 ### Response
 
-Returns `200 OK` with an empty body. Events outside your plan's retention window are skipped and reflected in the import's `skippedEvents` / `invalidEvents` counts (see [List Imports](/docs/api/imports/list)).
+Returns `200 OK` with an empty body. Progress shows up in the import's counts (see [List Imports](/docs/api/imports/list)):
+
+- `400` for the whole batch if the events don't all fit one platform's shape (a missing key, a non-string value, or rows from different platforms in the same batch). Nothing from that batch is stored.
+- The shape check accepts any of the three platforms before the import's own platform is used. A batch in another platform's shape (for example, Umami rows sent to a Plausible import) returns `200`, but every event is dropped and counted in `invalidEvents`.
+- An event whose values don't validate (bad timestamp, malformed ID, over-long field) is dropped and counted in `invalidEvents`.
+- An event is skipped and counted in `skippedEvents` when its timestamp is in the future, is older than your plan's historical window, or falls in a month whose import quota is already used up.
+
+Other errors: `403` on the Rybbit Cloud free plan, `404` if the import does not exist (a site that doesn't exist gets `403`), `400` if the import belongs to another site.
 
 </div>
 <div className="flex flex-col gap-4">

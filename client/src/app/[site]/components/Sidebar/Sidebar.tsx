@@ -6,6 +6,8 @@ import {
   Code,
   Database,
   File,
+  Flag,
+  FlaskConical,
   Funnel,
   Gauge,
   Globe2,
@@ -164,7 +166,7 @@ function SidebarContent() {
           href={getTabPath("retention")}
           icon={<ChartColumnDecreasing className="w-4 h-4" />}
         />
-        {/* {!privateKey && (
+        {!privateKey && (
           <SidebarComponents.Item
             label={t("Feature Flags")}
             active={isActiveTab("feature-flags")}
@@ -179,7 +181,7 @@ function SidebarContent() {
             href={getTabPath("experiments")}
             icon={<FlaskConical className="w-4 h-4" />}
           />
-        )} */}
+        )}
         <SidebarComponents.SectionHeader>{t("Health")}</SidebarComponents.SectionHeader>
         <SidebarComponents.Item
           label={t("Errors")}

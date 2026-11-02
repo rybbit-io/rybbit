@@ -61,8 +61,10 @@ Call `window.rybbit.event()` from any Svelte component:
   }
 </script>
 
-<button on:click={handleAction}>Perform action</button>
+<button onclick={handleAction}>Perform action</button>
 ```
+
+This uses Svelte 5 event attributes. On Svelte 4, write `on:click={handleAction}` instead.
 
 ## Troubleshooting
 

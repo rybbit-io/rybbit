@@ -19,18 +19,24 @@ import {
 import { Button } from "../../../../components/ui/button";
 import { authClient } from "../../../../lib/auth";
 import { useStripeSubscription } from "../../../../lib/subscription/useStripeSubscription";
+import { useUserOrganizations } from "../../../../api/admin/hooks/useOrganizations";
 
 /**
- * Paid plans must be cancelled before the account can be deleted. Deliberately independent of a
- * running deletion, which used to flip the dialog to "Cannot delete account" mid-delete.
+ * Whether to remind the user to cancel the active organization's plan before deleting their
+ * account: they own it and a Stripe plan will renew. Only a hint; the server decides, refusing
+ * only when the user is the last owner of an organization whose subscription will still charge
+ * (it also knows about cancellations scheduled for a date, which this data doesn't carry).
  */
 export function useHasActiveSubscription() {
   const { data: subscription } = useStripeSubscription();
-  return !!(subscription?.planName.startsWith("standard") || subscription?.planName.startsWith("pro"));
+  const { data: session } = authClient.useSession();
+  const { data: organizations } = useUserOrganizations({ enabled: !!session?.user });
+  const activeRole = organizations?.find(org => org.id === session?.session.activeOrganizationId)?.role;
+  // Any Stripe plan (Basic and legacy prices included) that will renew.
+  return activeRole === "owner" && !!subscription?.id && !subscription.cancelAtPeriodEnd;
 }
 
 export function DeleteAccount() {
-  const hasActiveSubscription = useHasActiveSubscription();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -83,14 +89,12 @@ export function DeleteAccount() {
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" color="hsl(var(--red-500))" />
-            {hasActiveSubscription ? t("Cannot delete account") : t("Delete your account?")}
+            {t("Delete your account?")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {hasActiveSubscription
-              ? t("You have an active subscription. Please cancel your subscription before deleting your account.")
-              : t(
-                  "This action cannot be undone. This will permanently delete your account and remove all your data from our servers."
-                )}
+            {t(
+              "This action cannot be undone. This will permanently delete your account and remove all your data from our servers."
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -98,11 +102,9 @@ export function DeleteAccount() {
           <AlertDialogCancel onClick={handleClose} disabled={isDeleting}>
             {t("Cancel")}
           </AlertDialogCancel>
-          {!hasActiveSubscription && (
-            <HoldToConfirm onConfirm={handleAccountDeletion} pending={isDeleting} pendingLabel={t("Deleting...")}>
-              {t("Hold to delete account")}
-            </HoldToConfirm>
-          )}
+          <HoldToConfirm onConfirm={handleAccountDeletion} pending={isDeleting} pendingLabel={t("Deleting...")}>
+            {t("Hold to delete account")}
+          </HoldToConfirm>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

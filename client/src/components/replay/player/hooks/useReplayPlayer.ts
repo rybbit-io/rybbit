@@ -13,9 +13,10 @@ interface UseReplayPlayerProps {
 export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) => {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
-  const { setPlayer, setCurrentTime, setIsPlaying, setDuration } = useReplayStore(
+  const { registerPlayer, unregisterPlayer, setCurrentTime, setIsPlaying, setDuration } = useReplayStore(
     useShallow(s => ({
-      setPlayer: s.setPlayer,
+      registerPlayer: s.registerPlayer,
+      unregisterPlayer: s.unregisterPlayer,
       setCurrentTime: s.setCurrentTime,
       setIsPlaying: s.setIsPlaying,
       setDuration: s.setDuration,
@@ -36,6 +37,7 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
 
       let newPlayer: any = null;
       let handleVisibilityChange: (() => void) | null = null;
+      let durationTimeout: ReturnType<typeof setTimeout> | undefined;
 
       try {
         // Initialize rrweb player
@@ -52,10 +54,15 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
         });
 
         playerRef.current = newPlayer;
-        setPlayer(newPlayer);
+        registerPlayer(newPlayer);
+
+        // Another mounted player (e.g. the maximize drawer's) may own the
+        // shared controls; only the active one writes playback state.
+        const isActive = () => useReplayStore.getState().player === newPlayer;
 
         // Set up event listeners
         newPlayer.addEventListener("ui-update-current-time", (event: any) => {
+          if (!isActive()) return;
           // Validate that current time doesn't exceed duration
           const currentTime = event.payload;
           const playerDuration = newPlayer.getMetaData().totalTime;
@@ -71,17 +78,19 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
         });
 
         newPlayer.addEventListener("ui-update-player-state", (event: any) => {
+          if (!isActive()) return;
           setIsPlaying(event.payload === "playing");
         });
 
         newPlayer.addEventListener("ui-update-duration", (event: any) => {
+          if (!isActive()) return;
           setDuration(event.payload);
         });
 
         // Get the initial duration from the player
-        setTimeout(() => {
+        durationTimeout = setTimeout(() => {
           const playerDuration = newPlayer.getMetaData().totalTime;
-          if (playerDuration) {
+          if (playerDuration && isActive()) {
             setDuration(playerDuration);
           }
         }, 100);
@@ -124,21 +133,30 @@ export const useReplayPlayer = ({ data, width, height }: UseReplayPlayerProps) =
       }
 
       return () => {
-        // Proper cleanup
-        if (newPlayer) {
-          newPlayer.pause();
-        }
-        if (playerContainerRef.current) {
-          playerContainerRef.current.innerHTML = "";
-        }
+        // A destroyed player has no methods left for the duration read to call.
+        clearTimeout(durationTimeout);
         if (handleVisibilityChange) {
           document.removeEventListener("visibilitychange", handleVisibilityChange);
         }
         playerRef.current = null;
-        setPlayer(null);
+        unregisterPlayer(newPlayer);
+        // rrweb-player's fullscreen listeners on document hold the component,
+        // its Replayer and the whole recording until $destroy removes them, so
+        // emptying the container alone leaks every replay that was opened.
+        if (newPlayer) {
+          try {
+            newPlayer.getReplayer().destroy();
+          } catch (error) {
+            console.error("Failed to destroy rrweb replayer:", error);
+          }
+          newPlayer.$destroy();
+        }
+        if (playerContainerRef.current) {
+          playerContainerRef.current.innerHTML = "";
+        }
       };
     }
-  }, [data, setPlayer, setCurrentTime, setIsPlaying, setDuration]);
+  }, [data, registerPlayer, unregisterPlayer, setCurrentTime, setIsPlaying, setDuration]);
 
   // Update dimensions without recreating the player
   useEffect(() => {

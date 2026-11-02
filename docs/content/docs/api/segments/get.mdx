@@ -50,8 +50,8 @@ Returns the segment.
     isPublic: { description: 'Shown on the public dashboard and private links', type: 'boolean' },
     type: { description: 'Always "segment" today; reserved for cohorts', type: 'string' },
     canEdit: { description: 'Whether the caller may edit or delete this segment', type: 'boolean' },
-    createdAt: { description: 'ISO 8601 timestamp', type: 'string' },
-    updatedAt: { description: 'ISO 8601 timestamp', type: 'string' },
+    createdAt: { description: 'Creation timestamp', type: 'string', typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix' },
+    updatedAt: { description: 'Last update timestamp', type: 'string', typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix' },
   }}
 />
 
@@ -110,8 +110,8 @@ data = response.json()
   "isPublic": false,
   "type": "segment",
   "canEdit": true,
-  "createdAt": "2026-09-02T10:15:00.000Z",
-  "updatedAt": "2026-09-02T10:15:00.000Z"
+  "createdAt": "2026-09-02 10:15:00.482913",
+  "updatedAt": "2026-09-02 10:15:00.482913"
 }
 ```
 

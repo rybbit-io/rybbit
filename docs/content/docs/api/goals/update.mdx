@@ -15,7 +15,11 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 PUT /api/sites/:site/goals/:goalId
 ```
 
-Updates an existing goal.
+Updates an existing goal. Requires the member role or above on the site (the `goals:write` permission).
+
+This is a full replacement, not a partial update: send `goalType` and the whole `config` every time. Omitting `name` clears it to `null`. The body is validated the same way as [Create Goal](/docs/api/goals/create), which documents the `GoalConfig` fields.
+
+Returns `404` if the goal does not exist and `403` if it belongs to another site.
 
 ### Path Parameters
 
@@ -39,14 +43,14 @@ Updates an existing goal.
 <TypeTable
   type={{
     name: {
-      description: 'Updated goal name',
+      description: 'Goal name. Omitting it sets the name to null.',
       type: 'string',
       required: false,
     },
     goalType: {
       description: 'Type of goal',
       type: 'string',
-      typeDescription: '"path" | "event"',
+      typeDescription: '"path" | "event" | "outbound" | "button_click" | "form_submit" | "copy"',
       required: true,
     },
     config: {

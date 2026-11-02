@@ -5,7 +5,9 @@ import {
   createCorsOptionsDelegate,
   createRejectUntrustedOriginHook,
   getTrustedCorsOrigins,
+  isTrackerCorsPath,
   normalizeCorsOrigin,
+  TRACKER_PREFLIGHT_MAX_AGE_SECONDS,
 } from "./cors.js";
 
 async function buildCorsTestApp(env: NodeJS.ProcessEnv) {
@@ -18,6 +20,8 @@ async function buildCorsTestApp(env: NodeJS.ProcessEnv) {
   app.delete("/api/sites/:siteId", async () => ({ success: true }));
   app.get("/api/sites/:siteId/sessions", async () => ({ data: [] }));
   app.post("/api/track", async () => ({ success: true }));
+  app.post("/api/session-replay/record/:siteId", async () => ({ success: true }));
+  app.post("/api/site/:siteId/feature-flags/evaluate", async () => ({ flags: {} }));
   app.post("/api/mcp", async () => ({ success: true }));
   app.get("/api/version", async () => ({ version: "0.0.0" }));
 
@@ -234,6 +238,71 @@ describe("CORS policy", () => {
   });
 });
 
+describe("tracker preflight caching", () => {
+  const env = { NODE_ENV: "production", BASE_URL: "https://app.rybbit.example" };
+
+  function preflight(app: Awaited<ReturnType<typeof buildCorsTestApp>>, url: string, origin: string, method = "POST") {
+    return app.inject({
+      method: "OPTIONS",
+      url,
+      headers: {
+        origin,
+        "access-control-request-method": method,
+        "access-control-request-headers": "content-type",
+      },
+    });
+  }
+
+  it("lets browsers cache tracker preflights from any origin", async () => {
+    const app = await buildCorsTestApp(env);
+
+    try {
+      for (const url of [
+        "/api/track",
+        "/api/session-replay/record/abc123",
+        "/api/site/abc123/feature-flags/evaluate",
+      ]) {
+        const res = await preflight(app, url, "https://customer.example");
+
+        expect(res.statusCode).toBe(204);
+        expect(res.headers["access-control-allow-origin"]).toBe("https://customer.example");
+        expect(res.headers["access-control-max-age"]).toBe(String(TRACKER_PREFLIGHT_MAX_AGE_SECONDS));
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("keeps the browser default for dashboard and other public routes", async () => {
+    const app = await buildCorsTestApp(env);
+
+    try {
+      const management = await preflight(app, "/api/sites/1", "https://app.rybbit.example", "DELETE");
+      expect(management.statusCode).toBe(204);
+      expect(management.headers["access-control-max-age"]).toBeUndefined();
+
+      const sessions = await preflight(app, "/api/sites/81/sessions", "https://docs.rybbit.com", "GET");
+      expect(sessions.statusCode).toBe(204);
+      expect(sessions.headers["access-control-max-age"]).toBeUndefined();
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("matches only the endpoints the tracking script calls", () => {
+    expect(isTrackerCorsPath("/api/track")).toBe(true);
+    expect(isTrackerCorsPath("/api/identify")).toBe(true);
+    expect(isTrackerCorsPath("/api/session-replay/record/abc")).toBe(true);
+    expect(isTrackerCorsPath("/api/site/tracking-config/abc")).toBe(true);
+    expect(isTrackerCorsPath("/api/site/abc/feature-flags/evaluate")).toBe(true);
+
+    expect(isTrackerCorsPath("/api/version")).toBe(false);
+    expect(isTrackerCorsPath("/api/sites/abc/sessions")).toBe(false);
+    expect(isTrackerCorsPath("/api/sites/abc/feature-flags/evaluate")).toBe(false);
+    expect(isTrackerCorsPath("/api/site/abc/feature-flags/evaluate/extra")).toBe(false);
+  });
+});
+
 describe("trusted CORS origins", () => {
   it("normalizes quoted URLs to origins", () => {
     expect(normalizeCorsOrigin('"https://rybbit.example.com/path"')).toBe("https://rybbit.example.com");
@@ -255,5 +324,4 @@ describe("trusted CORS origins", () => {
       })
     ).toEqual(["https://rybbit.example.com", "http://localhost:3002", "http://127.0.0.1:3002"]);
   });
-
 });

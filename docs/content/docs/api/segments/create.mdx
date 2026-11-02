@@ -17,6 +17,8 @@ POST /api/sites/:site/segments
 
 Creates a saved segment. Members create site segments they own; editors, admins and owners can also create organization-wide segments.
 
+The body is strict: unknown fields return `400`. Creating an organization-wide segment without the editor role in the organization returns `403`.
+
 ### Path Parameters
 
 <TypeTable
@@ -39,7 +41,7 @@ Creates a saved segment. Members create site segments they own; editors, admins 
       required: true,
     },
     filters: {
-      description: 'Filters that define the segment (1–20). Validated with the same schema as the `filters` parameter',
+      description: 'Filters that define the segment (1–20). Uses the `filters` parameter format with stricter limits: at most 50 values per filter, each up to 500 characters; regex filters take exactly one valid pattern; comparison and lat/lon filters need numeric values; every filter except is_null/is_not_null needs at least one value (those two still send `value: []`)',
       type: 'Filter[]',
       typeDescription: 'See Filter Parameters in Getting Started',
       required: true,
@@ -80,8 +82,8 @@ Returns the created segment with status 201.
     isPublic: { description: 'Shown on the public dashboard and private links', type: 'boolean' },
     type: { description: 'Always "segment" today; reserved for cohorts', type: 'string' },
     canEdit: { description: 'Whether the caller may edit or delete this segment', type: 'boolean' },
-    createdAt: { description: 'ISO 8601 timestamp', type: 'string' },
-    updatedAt: { description: 'ISO 8601 timestamp', type: 'string' },
+    createdAt: { description: 'Creation timestamp', type: 'string', typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix' },
+    updatedAt: { description: 'Last update timestamp', type: 'string', typeDescription: '"YYYY-MM-DD HH:MM:SS.ffffff", no time zone suffix' },
   }}
 />
 
@@ -145,8 +147,8 @@ data = response.json()
   "isPublic": false,
   "type": "segment",
   "canEdit": true,
-  "createdAt": "2026-09-02T10:15:00.000Z",
-  "updatedAt": "2026-09-02T10:15:00.000Z"
+  "createdAt": "2026-09-02 10:15:00.482913",
+  "updatedAt": "2026-09-02 10:15:00.482913"
 }
 ```
 

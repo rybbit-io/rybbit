@@ -52,6 +52,7 @@ export function useDeleteFeatureFlag() {
     mutationFn: (flagId: number) => deleteFeatureFlag(site, flagId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feature-flags", site] });
+      queryClient.invalidateQueries({ queryKey: ["experiments", site] });
     },
   });
 }

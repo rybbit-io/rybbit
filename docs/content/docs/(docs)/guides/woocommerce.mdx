@@ -81,7 +81,7 @@ function rybbit_track_purchase( $order_id ) {
     ?>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        window.rybbit.event('purchase', <?php echo wp_json_encode( $purchase ); ?>);
+        window.rybbit?.event('purchase', <?php echo wp_json_encode( $purchase ); ?>);
     });
     </script>
     <?php
@@ -117,7 +117,7 @@ function rybbit_track_add_to_cart() {
             var data = <?php echo wp_json_encode( $data ); ?>;
             var qty = form.querySelector('input.qty');
             data.quantity = qty && parseInt(qty.value, 10) > 0 ? parseInt(qty.value, 10) : 1;
-            window.rybbit.event('add_to_cart', data);
+            window.rybbit?.event('add_to_cart', data);
         });
     });
     </script>
@@ -134,7 +134,7 @@ function rybbit_track_ajax_add_to_cart() {
     <script>
     jQuery(document.body).on('added_to_cart', function (event, fragments, cartHash, $button) {
         if (!$button || !$button.length) return;
-        window.rybbit.event('add_to_cart', {
+        window.rybbit?.event('add_to_cart', {
             item_id: $button.data('product_id'),
             quantity: $button.data('quantity') || 1,
             source: 'ajax_add_to_cart'

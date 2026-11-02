@@ -110,6 +110,13 @@ describe("PlausibleImportMapper", () => {
       expect(result[0].props).toEqual({});
     });
 
+    it.each(["[1]", '"x"', "123", "null"])("should drop props that aren't a JSON object (%s)", props => {
+      const result = PlausibleImportMapper.transform([makeEvent({ props })], 1, "import-1");
+
+      expect(result).toHaveLength(1);
+      expect(result[0].props).toEqual({});
+    });
+
     it("should handle invalid JSON in props", () => {
       const events = [makeEvent({ props: "{bad json" })];
       const result = PlausibleImportMapper.transform(events, 1, "import-1");

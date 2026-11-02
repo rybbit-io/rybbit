@@ -9,10 +9,20 @@ const state = {
   queriedUserIds: [] as string[],
 };
 
+// ClickHouse answers an aggregate without GROUP BY over no rows with one
+// all-default row, not an empty result. The profile query only comes back empty
+// for an unknown user because it filters that row out, so the stub returns the
+// default row unless the query does.
+const emptyProfileResult = (query: string) =>
+  /HAVING count\(\) > 0/.test(query) ? [] : [{ sessions: 0, user_id: "", identified_user_id: "", pageviews: 0 }];
+
 vi.mock("../utils/analyticsQuery.js", () => ({
-  runAnalyticsQuery: vi.fn(async ({ params }: { params: { userId: string } }) => {
+  runAnalyticsQuery: vi.fn(async ({ query, params }: { query: string; params: { userId: string } }) => {
     state.queriedUserIds.push(params.userId);
-    return state.rowsByUserId[params.userId] ?? [];
+    // Only the profile query is keyed to user rows here; the vitals, location
+    // and device breakdowns come back empty.
+    if (!query.includes("COUNT(DISTINCT session_id) AS sessions")) return [];
+    return state.rowsByUserId[params.userId] ?? emptyProfileResult(query);
   }),
 }));
 

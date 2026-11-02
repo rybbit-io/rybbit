@@ -151,6 +151,9 @@ export interface AnalyticsInfiniteQueryOptions<TPage, TCursor> extends Analytics
   refetchInterval?: number;
   enabled?: boolean;
   refetchOnWindowFocus?: boolean;
+  // Hand the query's abort signal to the request. Cancelling the query (or unmounting its last
+  // observer) then aborts the request and stops a refetch before it walks the remaining pages.
+  abortable?: boolean;
 }
 
 export function useAnalyticsInfiniteQuery<TPage, TCursor = number>(
@@ -160,11 +163,13 @@ export function useAnalyticsInfiniteQuery<TPage, TCursor = number>(
 
   return useInfiniteQuery<TPage, Error, InfiniteData<TPage>, readonly unknown[], TCursor>({
     queryKey: [...buildQueryKey(options.key, scope, request), "infinite"],
-    queryFn: ({ pageParam }) =>
-      fetchAnalytics<TPage>(site!, {
-        ...request,
-        params: { ...request.params, ...options.pageParams(pageParam as TCursor) },
-      }),
+    // `signal` is read only when abortable: reading it is what opts a query into cancellation.
+    queryFn: context =>
+      fetchAnalytics<TPage>(
+        site!,
+        { ...request, params: { ...request.params, ...options.pageParams(context.pageParam as TCursor) } },
+        options.abortable ? context.signal : undefined
+      ),
     initialPageParam: options.initialPageParam,
     getNextPageParam: options.getNextPageParam,
     staleTime: options.staleTime ?? 60_000,

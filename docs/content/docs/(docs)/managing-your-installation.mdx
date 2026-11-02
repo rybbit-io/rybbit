@@ -13,13 +13,36 @@ You probably need to run `chmod +x *.sh` before running the scripts.
 
 ### Updating Your Installation
 
-Rybbit is updated frequently with new features and bug fixes. You can update your installation by running the following commands:
+Rybbit is updated frequently with new features and bug fixes. To update, run:
 
-**update.sh**: Update to the latest version by pulling new code and rebuilding containers
-  ```bash
-  git pull
-  ./update.sh
-  ```
+```bash
+./update.sh
+```
+
+The script runs `git stash` and `git pull` to update the repository, pulls the latest Docker images, and recreates the containers.
+
+<Callout type="warn">
+`update.sh` stashes any local changes to tracked files, such as edits to `Caddyfile` or `docker-compose.yml`, and does not restore them. Your `.env` file is not affected. To get stashed edits back, run `git stash list` and `git stash pop`. Keep your customizations in `.env` and in a `docker-compose.override.yml` file, which Docker Compose loads automatically and `git stash` leaves alone.
+</Callout>
+
+### Image tags
+
+The backend and client images are published to `ghcr.io/rybbit-io/rybbit-backend` and `ghcr.io/rybbit-io/rybbit-client` with these tags:
+
+| Tag | Points to |
+| --- | --- |
+| `latest` | The most recent release (the default) |
+| `vX.Y.Z` | A specific release, e.g. `v2.9.2` |
+| `edge` | The latest commit on `master`, which may not be released yet |
+| `sha-<short commit>` | A single commit |
+
+`docker compose pull` fetches whatever `IMAGE_TAG` points to. To pin a release, set it in `.env`:
+
+```bash
+IMAGE_TAG=v2.9.2
+```
+
+Then run `./update.sh` or `docker compose pull` followed by your usual start command. Remove the line to go back to `latest`.
 
 ### Restarting Your Installation
 
@@ -76,13 +99,15 @@ You can access the databases by running the following commands:
   ```
 ### Edit Session Replay Retention Policy
 
-The default session replay retention policy is 30 days. This may be too long for some users as session replays can take up a lot of space. You can edit it by running the following command:
+The default session replay retention policy is 30 days. This may be too long for some users as session replays can take up a lot of space. You can edit it by running the following commands:
 
 ```bash
 docker exec -it clickhouse clickhouse-client --database analytics
 ALTER TABLE session_replay_events MODIFY TTL toDateTime(timestamp) + INTERVAL 14 DAY;
-ALTER TABLE session_replay_metadata MODIFY TTL start_time + INTERVAL 14 DAY;
+ALTER TABLE session_replay_metadata_v2 MODIFY TTL toDateTime(start_time) + INTERVAL 14 DAY;
 ```
+
+The older `session_replay_metadata` table is no longer written to, so its 30-day TTL empties it on its own.
 
 ## Anonymous Usage Telemetry
 

@@ -11,4 +11,5 @@ export interface TrackingPayload {
   referrer: string;
   tag?: string;
   feature_flags?: Record<string, string>;
+  visitor_id?: string;
 }

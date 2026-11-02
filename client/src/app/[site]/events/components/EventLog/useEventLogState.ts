@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Arrivals, NO_ARRIVALS, recordArrivals } from "@/components/interior/use-arrival-highlight";
-import { Event } from "../../../../../api/analytics/endpoints";
-import { useGetEventsCursor, useNewEventsPoll } from "../../../../../api/analytics/hooks/events/useGetEvents";
+import {
+  type EventLogEvent,
+  useGetEventsCursor,
+  useNewEventsPoll,
+} from "../../../../../api/analytics/hooks/events/useGetEvents";
 import { useStore } from "../../../../../lib/store";
-import { getEventKey } from "./eventLogUtils";
+import { compareEventsNewestFirst, getEventKey } from "./eventLogUtils";
 
 const MAX_EVENTS = 10_000;
 const PAGE_SIZE = 100;
@@ -17,9 +20,11 @@ export function useEventLogState(
   const [isRealtime, setIsRealtime] = useState(true);
 
   // --- Prepended events from polling (realtime mode) ---
-  const [prependedEvents, setPrependedEvents] = useState<Event[]>([]);
+  const [prependedEvents, setPrependedEvents] = useState<EventLogEvent[]>([]);
   const seenKeysRef = useRef(new Set<string>());
-  const latestTimestampRef = useRef<string | null>(null);
+  // Where the next poll resumes, as the endpoint's cursor: seeded from the newest loaded event, then
+  // whatever each poll returns.
+  const latestCursorRef = useRef<string | null>(null);
 
   // --- Pause / buffer state ---
   const [isLive, setIsLive] = useState(true);
@@ -27,12 +32,12 @@ export function useEventLogState(
   isLiveRef.current = isLive;
   const isRealtimeRef = useRef(true);
   isRealtimeRef.current = isRealtime;
-  const bufferedEventsRef = useRef<Event[]>([]);
+  const bufferedEventsRef = useRef<EventLogEvent[]>([]);
   const [bufferedCount, setBufferedCount] = useState(0);
 
   // --- Rows that just entered the list (event key → arrival time), for a brief highlight ---
   const [arrivals, setArrivals] = useState<Arrivals>(NO_ARRIVALS);
-  const markArrived = useCallback((events: Event[]) => {
+  const markArrived = useCallback((events: EventLogEvent[]) => {
     const now = performance.now();
     const keys = events.map(getEventKey);
     setArrivals(prev => recordArrivals(prev, keys, now));
@@ -55,15 +60,18 @@ export function useEventLogState(
 
   // --- Derive cursor events from query data ---
   const cursorEvents = useMemo(() => cursorData?.pages.flatMap(p => p.data) ?? [], [cursorData]);
+  const newestCursor = cursorData?.pages[0]?.cursor?.newestCursor ?? null;
 
   // --- Combined event list ---
   // The cursor query refetches (staleTime 0, window refocus) and then returns events that already
-  // arrived live, so drop those from the prepended rows.
+  // arrived live, so drop those from the prepended rows. A live event can also be older than rows
+  // already shown (the poll re-reads recent events that were inserted late), so put each one in its
+  // place. Both lists are nearly in order already, which the sort handles in close to linear time.
   const mergedEvents = useMemo(() => {
     if (prependedEvents.length === 0) return cursorEvents;
     const cursorKeys = new Set(cursorEvents.map(getEventKey));
     const liveOnly = prependedEvents.filter(ev => !cursorKeys.has(getEventKey(ev)));
-    return [...liveOnly, ...cursorEvents].slice(0, MAX_EVENTS);
+    return [...liveOnly, ...cursorEvents].sort(compareEventsNewestFirst).slice(0, MAX_EVENTS);
   }, [prependedEvents, cursorEvents]);
 
   // --- Client-side type filter ---
@@ -80,7 +88,7 @@ export function useEventLogState(
   const resetKey = `${isRealtime}|${site}|${filtersKey}`;
   const resetKeyRef = useRef(resetKey);
 
-  // --- Rebuild seenKeys + set latestTimestamp when cursor data changes, resetting live state first on a new key ---
+  // --- Rebuild seenKeys + set latestCursor when cursor data changes, resetting live state first on a new key ---
   // One effect, so a reset always re-seeds the poll cursor from the rows on screen and never re-adds the
   // keys of live rows it just discarded.
   useEffect(() => {
@@ -88,7 +96,7 @@ export function useEventLogState(
     resetKeyRef.current = resetKey;
     if (isReset) {
       setPrependedEvents([]);
-      latestTimestampRef.current = null;
+      latestCursorRef.current = null;
       bufferedEventsRef.current = [];
       setBufferedCount(0);
       setIsLive(true);
@@ -97,29 +105,37 @@ export function useEventLogState(
 
     seenKeysRef.current = new Set(cursorEvents.map(getEventKey));
     if (!isReset) {
-      for (const ev of prependedEvents) {
+      // Buffered rows too: every poll returns recent events again.
+      for (const ev of [...prependedEvents, ...bufferedEventsRef.current]) {
         seenKeysRef.current.add(getEventKey(ev));
       }
     }
-    if (cursorEvents.length > 0 && !latestTimestampRef.current) {
-      latestTimestampRef.current = cursorEvents[0].timestamp;
+    if (newestCursor && !latestCursorRef.current) {
+      latestCursorRef.current = newestCursor;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cursorEvents, resetKey]);
 
   // --- Poll query (realtime only) ---
-  const getSinceTimestamp = useCallback(() => latestTimestampRef.current, []);
+  const getSinceCursor = useCallback(() => latestCursorRef.current, []);
   const { data: pollData } = useNewEventsPoll({
-    getSinceTimestamp,
+    getSinceCursor,
     enabled: isRealtime,
   });
 
   // --- Handle poll results (realtime only) ---
   useEffect(() => {
-    if (!isRealtime || !pollData?.data?.length) return;
+    if (!isRealtime || !pollData) return;
+
+    // Taken as is, even when it is older than the cursor sent: it trails the newest event by the
+    // window the server reads again, for events inserted out of order.
+    if (pollData.cursor) {
+      latestCursorRef.current = pollData.cursor.nextCursor;
+    }
+    if (!pollData.data.length) return;
 
     const incoming = pollData.data;
-    const newEvents: Event[] = [];
+    const newEvents: EventLogEvent[] = [];
     for (const ev of incoming) {
       const key = getEventKey(ev);
       if (!seenKeysRef.current.has(key)) {
@@ -128,12 +144,6 @@ export function useEventLogState(
       }
     }
     if (newEvents.length === 0) return;
-
-    // Update latest timestamp
-    const newestTs = newEvents[0].timestamp;
-    if (!latestTimestampRef.current || newestTs > latestTimestampRef.current) {
-      latestTimestampRef.current = newestTs;
-    }
 
     if (isLiveRef.current) {
       setPrependedEvents(prev => {

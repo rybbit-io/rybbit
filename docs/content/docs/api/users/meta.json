@@ -1,4 +1,11 @@
 {
   "title": "Users",
-  "pages": ["list", "session-count", "info"]
+  "pages": [
+    "list",
+    "session-count",
+    "info",
+    "identify",
+    "update-traits",
+    "delete"
+  ]
 }
