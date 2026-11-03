@@ -180,6 +180,14 @@ describe("siteConfigurationLifecycle", () => {
     expect(mocks.invalidate).toHaveBeenCalledWith(state.site);
   });
 
+  it("queues the replay deletes instead of waiting behind other mutations", async () => {
+    await siteConfigurationLifecycle.delete(1);
+
+    for (const [call] of mocks.clickhouseCommand.mock.calls) {
+      expect(call.clickhouse_settings).toEqual({ lightweight_deletes_sync: "0" });
+    }
+  });
+
   it("keeps replay data when the Postgres delete fails", async () => {
     state.deleteError = new Error("foreign key violation");
 

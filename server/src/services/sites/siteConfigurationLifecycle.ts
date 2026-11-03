@@ -556,14 +556,25 @@ class SiteConfigurationLifecycle {
   }
 
   private async deleteReplayData(siteId: number): Promise<void> {
+    // A lightweight DELETE is a mutation, and mutations on a table run one at a
+    // time. The replay tables also take the identity backfill's UPDATE
+    // mutations, so a DELETE that waits for completion (the default,
+    // lightweight_deletes_sync=2) can sit behind them for an hour. In prod
+    // that ran past the client's 300s timeout, so the Postgres delete rolled
+    // back and the site couldn't be deleted. With 0 the server returns once
+    // the mutation is queued. ClickHouse keeps queued mutations across
+    // restarts, so the replay rows are still removed later.
+    const settings = { lightweight_deletes_sync: "0" };
     await Promise.all([
       clickhouse.command({
         query: "DELETE FROM session_replay_events WHERE site_id = {id:UInt32}",
         query_params: { id: siteId },
+        clickhouse_settings: settings,
       }),
       clickhouse.command({
         query: "DELETE FROM session_replay_metadata_v2 WHERE site_id = {id:UInt32}",
         query_params: { id: siteId },
+        clickhouse_settings: settings,
       }),
     ]);
   }
@@ -572,8 +583,9 @@ class SiteConfigurationLifecycle {
     const site = await this.findSite(siteId);
     // Delete the Postgres rows first so a constraint failure can't leave the
     // Site in place with its replays already wiped. import_status is the one
-    // table whose foreign key to sites doesn't cascade. Replay cleanup runs
-    // inside the transaction, so a ClickHouse failure rolls the Site back.
+    // table whose foreign key to sites doesn't cascade. Replay cleanup is
+    // queued inside the transaction, so a failure to queue it rolls the Site
+    // back.
     await db.transaction(async tx => {
       await tx.delete(importStatus).where(eq(importStatus.siteId, siteId));
       await tx.delete(sites).where(eq(sites.siteId, siteId));
