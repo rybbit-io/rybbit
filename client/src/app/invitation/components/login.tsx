@@ -8,6 +8,7 @@ import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
 import { SocialButtons } from "@/components/auth/SocialButtons";
+import { TwoFactorStep } from "@/components/auth/TwoFactorStep";
 
 interface LoginProps {
   callbackURL: string;
@@ -19,6 +20,7 @@ export function Login({ callbackURL }: LoginProps) {
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +33,10 @@ export function Login({ callbackURL }: LoginProps) {
         password,
       });
 
-      if (data?.user) {
+      if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        setPassword("");
+        setNeedsTwoFactor(true);
+      } else if (data && "user" in data && data.user) {
         userStore.setState({
           user: data.user,
         });
@@ -48,6 +53,18 @@ export function Login({ callbackURL }: LoginProps) {
       setIsLoading(false);
     }
   };
+
+  if (needsTwoFactor) {
+    return (
+      <TwoFactorStep
+        onVerified={user => {
+          userStore.setState({ user });
+          window.location.reload();
+        }}
+        onCancel={() => setNeedsTwoFactor(false)}
+      />
+    );
+  }
 
   return (
     <form onSubmit={handleLogin}>
