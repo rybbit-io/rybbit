@@ -101,10 +101,17 @@ export function segmentBelongsToSite(
 export const segmentsForSiteCondition = (siteId: number, organizationId: string) =>
   and(eq(segments.organizationId, organizationId), or(isNull(segments.siteId), eq(segments.siteId, siteId)));
 
+/** segment_id is a Postgres serial (int4); a larger id names no segment, and comparing it errors. */
+const MAX_SEGMENT_ID = 2_147_483_647;
+
 export async function loadSegmentForSite(
   siteId: number,
   segmentId: number
 ): Promise<{ segment: SegmentRow; organizationId: string } | null> {
+  if (segmentId > MAX_SEGMENT_ID) {
+    return null;
+  }
+
   const [organizationId, segment] = await Promise.all([
     getSiteOrganizationId(siteId),
     db.query.segments.findFirst({ where: eq(segments.segmentId, segmentId) }),

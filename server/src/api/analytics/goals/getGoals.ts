@@ -125,6 +125,11 @@ export const getGoals = analyticsRoute<GetGoalsRequest>(
       return reply.status(400).send({ error: "Invalid page size, must be between 1 and 100" });
     }
 
+    // An offset past the safe-integer range would make the page query fail in Postgres.
+    if (!Number.isSafeInteger((pageNumber - 1) * pageSizeNumber)) {
+      return reply.status(400).send({ error: "Invalid page number" });
+    }
+
     // Apply sorting
     let orderBy;
     // Only allow sorting by valid columns
