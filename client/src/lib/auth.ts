@@ -1,4 +1,4 @@
-import { adminClient, organizationClient, emailOTPClient } from "better-auth/client/plugins";
+import { adminClient, organizationClient, emailOTPClient, twoFactorClient } from "better-auth/client/plugins";
 import { apiKeyClient } from "@better-auth/api-key/client";
 import { createAuthClient } from "better-auth/react";
 import { oauthProviderClient } from "@better-auth/oauth-provider/client";
@@ -37,6 +37,8 @@ export const authClient = createAuthClient({
       },
     }),
     emailOTPClient(),
+    // No onTwoFactorRedirect: the code step stays on the login URL, which OAuth logins need.
+    twoFactorClient(),
     apiKeyClient(),
     oauthProviderClient(),
   ],

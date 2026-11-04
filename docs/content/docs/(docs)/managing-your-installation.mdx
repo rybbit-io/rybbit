@@ -109,6 +109,36 @@ ALTER TABLE session_replay_metadata_v2 MODIFY TTL toDateTime(start_time) + INTER
 
 The older `session_replay_metadata` table is no longer written to, so its 30-day TTL empties it on its own.
 
+## Resetting two-factor authentication
+
+When a user has lost their authenticator app and their backup codes, an admin can turn [two-factor authentication](/docs/account-settings#two-factor-authentication) off for them. Not in 2.9.2; applies to `edge` images and the next release.
+
+1. Go to `/admin` on your Rybbit domain and open **Users**. The admin panel only shows in the sidebar when `DEPLOYMENT` is set, but the address works without it.
+2. Find the user. The **2FA** column shows who has it on.
+3. Open the row's menu, click **Reset two-factor** and confirm
+
+This also revokes the user's backup codes and trusted devices. They can then sign in with their password alone and turn two-factor authentication on again.
+
+<Callout type="warn">
+Only reset it once you're sure it's really the user asking. Anyone who knows their password can then sign in.
+</Callout>
+
+If you're the only admin and you're locked out yourself, reset it in Postgres, with your own email address:
+
+```bash
+docker exec -it postgres psql -U frog -d analytics
+```
+
+```sql
+BEGIN;
+UPDATE "user" SET "twoFactorEnabled" = false WHERE email = 'you@example.com';
+DELETE FROM "twoFactor" WHERE "userId" = (SELECT id FROM "user" WHERE email = 'you@example.com');
+DELETE FROM verification WHERE identifier LIKE 'trust-device-%' AND value = (SELECT id FROM "user" WHERE email = 'you@example.com');
+COMMIT;
+```
+
+If a statement fails, run `ROLLBACK;` and start again.
+
 ## Anonymous Usage Telemetry
 
 To help us improve Rybbit, self-hosted instances automatically send anonymous usage statistics to our cloud service. This includes:

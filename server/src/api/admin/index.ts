@@ -1,6 +1,7 @@
 // Admin
 export { deleteAdminApiKey, getAdminApiKeys, updateAdminApiKey } from "./adminApiKeys.js";
 export { adminMoveSite } from "./adminMoveSite.js";
+export { resetAdminUserTwoFactor } from "./adminTwoFactor.js";
 export {
   deleteAdminOrganizationMember,
   getAdminOrganizationMember,

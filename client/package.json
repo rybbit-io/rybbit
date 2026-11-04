@@ -87,6 +87,7 @@
     "ol": "^10.6.1",
     "ol-mapbox-style": "^13.4.3",
     "papaparse": "^5.5.3",
+    "qrcode.react": "4.2.0",
     "react": "^19.2.4",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.4",
