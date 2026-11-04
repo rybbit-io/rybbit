@@ -4,6 +4,7 @@ exports[`API route table > pins the access each route requires 1`] = `
 [
   "DELETE /api/admin/api-keys/:keyId → system-admin",
   "DELETE /api/admin/organizations/:organizationId/members/:memberId → system-admin",
+  "DELETE /api/admin/users/:userId/two-factor → system-admin",
   "DELETE /api/mcp → public",
   "DELETE /api/organizations/:organizationId/teams/:teamId → org teams:manage [admin+]",
   "DELETE /api/sites/:siteId → site sites:delete [admin+]",

@@ -12,20 +12,10 @@ import { authClient } from "@/lib/auth";
 type VerifiedUser = NonNullable<Awaited<ReturnType<typeof authClient.twoFactor.verifyTotp>>["data"]>["user"];
 
 interface TwoFactorStepProps {
-  /** Called with the signed-in user once a code is accepted. */
   onVerified: (user: VerifiedUser) => void;
-  /** Back to the password form, e.g. to sign in with another account. */
   onCancel: () => void;
 }
 
-/**
- * Second step of password sign-in for accounts with two-factor on: an
- * authenticator code, or one of the backup codes.
- *
- * Render it in place of the password form, on the same page. During an MCP
- * OAuth login the page URL carries the signed authorization query, and the
- * verify request picks it up from there to continue to the consent page.
- */
 export function TwoFactorStep({ onVerified, onCancel }: TwoFactorStepProps) {
   const t = useExtracted();
   const [useBackupCode, setUseBackupCode] = useState(false);
@@ -44,15 +34,12 @@ export function TwoFactorStep({ onVerified, onCancel }: TwoFactorStepProps) {
         ? await authClient.twoFactor.verifyBackupCode(body)
         : await authClient.twoFactor.verifyTotp(body);
       if (error?.code === "INVALID_TWO_FACTOR_COOKIE") {
-        // The challenge from the password step lasts 10 minutes.
         setError(t("This sign-in has expired. Go back and sign in again."));
       } else if (error) {
         setError(error.message || t("That code didn't work. Try again."));
       } else if (data?.user) {
         onVerified(data.user);
       }
-      // Otherwise the server answered with an OAuth redirect, which the auth
-      // client follows on its own.
     } catch (error) {
       setError(String(error));
     }
@@ -88,7 +75,6 @@ export function TwoFactorStep({ onVerified, onCancel }: TwoFactorStepProps) {
             required
             autoFocus
             value={code}
-            // Authenticator apps often show and copy the code as "123 456".
             onChange={e => setCode(useBackupCode ? e.target.value : e.target.value.replace(/\D/g, "").slice(0, 6))}
           />
         </div>

@@ -21,14 +21,9 @@ import { BackupCodes, PasswordForm } from "./TwoFactorShared";
 
 const MUTED = "text-neutral-500 dark:text-neutral-400";
 
-/**
- * The two-factor row of Settings → Account. Two-factor protects password
- * sign-in only; Google and GitHub sign-in rely on the provider's own.
- */
 export function TwoFactor() {
   const t = useExtracted();
   const session = authClient.useSession();
-  // Returned by the server but not part of the client's inferred session type.
   const user = session.data?.user as { id: string; email: string; twoFactorEnabled?: boolean | null } | undefined;
   const accounts = useQuery({
     queryKey: ["user-accounts", user?.id],
@@ -67,6 +62,7 @@ export function TwoFactor() {
           {t("You sign in with Google or GitHub. Turn on two-factor authentication in that account instead.")}
         </p>
       )}
+      {/* Outside the on/off switch: confirming the first code turns the row on before the backup codes are shown. */}
       <TwoFactorSetup open={setupOpen} onOpenChange={setSetupOpen} email={user.email} />
     </>
   );

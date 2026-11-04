@@ -37,8 +37,7 @@ export const authClient = createAuthClient({
       },
     }),
     emailOTPClient(),
-    // No onTwoFactorRedirect: the sign-in forms read twoFactorRedirect from
-    // the response and show TwoFactorStep in place, keeping the page URL.
+    // No onTwoFactorRedirect: the code step stays on the login URL, which OAuth logins need.
     twoFactorClient(),
     apiKeyClient(),
     oauthProviderClient(),

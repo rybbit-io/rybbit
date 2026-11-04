@@ -14,7 +14,6 @@ const secret = "test-only-two-factor-secret-at-least-32-characters";
 const password = "strong-test-password-123";
 const migrationDirectory = new URL("../../drizzle/", import.meta.url);
 
-/** RFC 6238 code for the secret in an otpauth:// URI (SHA-1, 6 digits, 30 s). */
 function totpCode(totpURI: string, at = Date.now()) {
   const base32 = new URL(totpURI).searchParams.get("secret")!.replace(/=+$/, "").toUpperCase();
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -28,7 +27,6 @@ function totpCode(totpURI: string, at = Date.now()) {
   return String((hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
 
-/** Cookie header carrying every cookie the responses set, later ones winning. */
 function cookieJar(...responses: Response[]) {
   const jar = new Map<string, string>();
   for (const response of responses) {
@@ -105,7 +103,6 @@ describe("two-factor authentication", () => {
     return ((await response.json()) as { user?: { email: string; twoFactorEnabled?: boolean } } | null)?.user;
   }
 
-  /** Signs up a user, turns two-factor on and returns what the user saw. */
   async function userWithTwoFactor(email: string) {
     const signup = await request("/sign-up/email", { name: email, email, password });
     expect(signup.status, await signup.clone().text()).toBe(200);
@@ -113,7 +110,6 @@ describe("two-factor authentication", () => {
     const enable = await request("/two-factor/enable", { password }, cookie);
     expect(enable.status, await enable.clone().text()).toBe(200);
     const { totpURI, backupCodes } = (await enable.json()) as { totpURI: string; backupCodes: string[] };
-    // Not on until the first code proves the authenticator app has the secret.
     expect((await sessionUser(cookie))?.twoFactorEnabled).toBe(false);
     const confirm = await request("/two-factor/verify-totp", { code: totpCode(totpURI) }, cookie);
     expect(confirm.status, await confirm.clone().text()).toBe(200);
@@ -121,7 +117,6 @@ describe("two-factor authentication", () => {
     return { totpURI, backupCodes };
   }
 
-  /** Password sign-in; returns the response and the cookies it set. */
   async function signIn(email: string, extra: Record<string, unknown> = {}, cookie?: string) {
     const response = await request("/sign-in/email", { email, password, ...extra }, cookie);
     expect(response.status, await response.clone().text()).toBe(200);
@@ -213,6 +208,35 @@ describe("two-factor authentication", () => {
     expect((await sessionUser(again.cookie))?.email).toBe("trusted@example.com");
   });
 
+  it("revokes every trusted device when two-factor is turned off", async () => {
+    const email = "devices@example.com";
+    const { totpURI } = await userWithTwoFactor(email);
+    const trustDevice = async () => {
+      const { cookie } = await signIn(email);
+      const verify = await request("/two-factor/verify-totp", { code: totpCode(totpURI), trustDevice: true }, cookie);
+      expect(verify.status, await verify.clone().text()).toBe(200);
+      return cookieJar(verify);
+    };
+    const laptop = await trustDevice();
+    await trustDevice();
+    const trustedDevices = async () =>
+      (
+        await database.query<{ count: number }>(
+          `SELECT count(*)::int AS count FROM verification
+           WHERE identifier LIKE 'trust-device-%' AND value = (SELECT id FROM "user" WHERE email = $1)`,
+          [email]
+        )
+      ).rows[0].count;
+    expect(await trustedDevices()).toBe(2);
+
+    expect((await request("/two-factor/disable", { password: "not-the-password" }, laptop)).status).toBe(400);
+    expect(await trustedDevices()).toBe(2);
+
+    const disable = await request("/two-factor/disable", { password }, laptop);
+    expect(disable.status, await disable.clone().text()).toBe(200);
+    expect(await trustedDevices()).toBe(0);
+  });
+
   it("refuses email-code sign-in for accounts with two-factor on", async () => {
     await userWithTwoFactor("emailcode@example.com");
     await request("/email-otp/send-verification-otp", { email: "emailcode@example.com", type: "sign-in" });
@@ -222,7 +246,6 @@ describe("two-factor authentication", () => {
     expect(await response.json()).toMatchObject({ code: "INVALID_OTP" });
     expect(cookieJar(response)).not.toContain("session_token");
 
-    // Accounts without two-factor keep the endpoint's normal behavior.
     await request("/email-otp/send-verification-otp", { email: "plain@example.com", type: "sign-in" });
     const plain = await request("/sign-in/email-otp", {
       email: "plain@example.com",
@@ -256,8 +279,6 @@ describe("two-factor authentication", () => {
     const authorize = await request(`/oauth2/authorize?${query}`);
     const loginUrl = new URL(((await authorize.json()) as { url: string }).url);
     expect(loginUrl.pathname).toBe("/login");
-    // The login page posts both steps from the same URL, so both carry the
-    // signed query (oauthProviderClient adds it to every POST).
     const oauthQuery = loginUrl.search.slice(1);
 
     const first = await signIn("oauth@example.com", { oauth_query: oauthQuery });

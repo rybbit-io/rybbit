@@ -15,6 +15,7 @@ import {
   getAdminSites,
   getClickhouseStats,
   getClickhouseQueryLog,
+  resetAdminUserTwoFactor,
   updateAdminApiKey,
   updateAdminOrganizationMember,
   updateAdminSubscriptionOverride,
@@ -608,6 +609,7 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
   fastify.get("/admin/api-keys", systemAdmin, getAdminApiKeys);
   fastify.patch("/admin/api-keys/:keyId", systemAdmin, updateAdminApiKey);
   fastify.delete("/admin/api-keys/:keyId", systemAdmin, deleteAdminApiKey);
+  fastify.delete("/admin/users/:userId/two-factor", systemAdmin, resetAdminUserTwoFactor);
   fastify.post(
     "/admin/telemetry",
     {

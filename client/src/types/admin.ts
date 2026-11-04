@@ -4,6 +4,7 @@ export type AdminUser = {
   email: string;
   role?: string;
   createdAt: string | Date;
+  twoFactorEnabled?: boolean | null;
 };
 
 export interface UsersResponse {

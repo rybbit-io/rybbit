@@ -30,14 +30,6 @@ interface TwoFactorSetupProps {
   email: string;
 }
 
-/**
- * Turns two-factor on: password, then scan the QR code and confirm with a
- * first code, then save the backup codes.
- *
- * Kept mounted by the parent while open: confirming the first code turns
- * two-factor on and refreshes the session, which switches the parent to its
- * "on" state while this dialog still has the backup codes to show.
- */
 export function TwoFactorSetup({ open, onOpenChange, email }: TwoFactorSetupProps) {
   const t = useExtracted();
   const [step, setStep] = useState<Step>({ name: "password" });
@@ -61,7 +53,6 @@ export function TwoFactorSetup({ open, onOpenChange, email }: TwoFactorSetupProp
       onOpenChange(true);
       return;
     }
-    // Two-factor is already on at this point; the codes can't be shown again.
     if (step.name === "codes" && !codesSaved && !confirmClose) {
       setConfirmClose(true);
       return;
@@ -120,7 +111,6 @@ export function TwoFactorSetup({ open, onOpenChange, email }: TwoFactorSetupProp
 
         {step.name === "scan" && (
           <form onSubmit={verify} className="space-y-4">
-            {/* QR codes need a light background to scan, also in dark mode. */}
             <div className="mx-auto w-fit rounded-lg bg-white p-3">
               <QRCodeSVG
                 value={step.totpURI}

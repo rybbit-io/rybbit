@@ -99,7 +99,6 @@ describe("TwoFactor", () => {
     expect(await within(dialog).findByText(CODES[0])).toBeTruthy();
     expect(mocks.verifyTotp).toHaveBeenCalledWith({ code: "123456" });
 
-    // Verifying refreshes the session; the row switches while the dialog stays.
     mocks.user = { ...mocks.user!, twoFactorEnabled: true };
     row.rerender();
     expect(screen.getByText("On")).toBeTruthy();

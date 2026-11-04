@@ -23,7 +23,6 @@ async function submit(code: string) {
 }
 
 beforeEach(() => {
-  // The Radix checkbox renders a hidden input inside the form and measures it.
   vi.stubGlobal(
     "ResizeObserver",
     class {

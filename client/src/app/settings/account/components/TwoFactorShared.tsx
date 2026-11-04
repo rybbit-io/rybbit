@@ -14,12 +14,10 @@ interface PasswordFormProps {
   submitLabel: string;
   pendingLabel: string;
   variant?: "success" | "destructive";
-  /** Resolves to an error message to show, or nothing on success. */
   onSubmit: (password: string) => Promise<string | void>;
   onCancel: () => void;
 }
 
-/** Asks for the account password, which the two-factor endpoints require. */
 export function PasswordForm({
   submitLabel,
   pendingLabel,
@@ -83,13 +81,10 @@ export function PasswordForm({
 interface BackupCodesProps {
   codes: string[];
   email: string;
-  /** Called once the user copied or downloaded the codes. */
   onSaved: () => void;
-  /** Show the warning that closing now loses the codes. */
   showCloseWarning: boolean;
 }
 
-/** The backup codes, shown once, with ways to keep them. */
 export function BackupCodes({ codes, email, onSaved, showCloseWarning }: BackupCodesProps) {
   const t = useExtracted();
 
