@@ -240,7 +240,7 @@ export const twoFactor = pgTable(
     failedVerificationCount: integer().default(0),
     lockedUntil: timestamp({ mode: "string" }),
   },
-  table => [index("twoFactor_secret_idx").on(table.secret), index("twoFactor_userId_idx").on(table.userId)]
+  table => [index("twoFactor_secret_idx").on(table.secret), uniqueIndex("twoFactor_userId_uidx").on(table.userId)]
 );
 
 // Organization table (BetterAuth)

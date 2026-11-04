@@ -16,4 +16,4 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "twoFactor_secret_idx" ON "twoFactor" USING btree ("secret");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "twoFactor_userId_idx" ON "twoFactor" USING btree ("userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "twoFactor_userId_uidx" ON "twoFactor" USING btree ("userId");

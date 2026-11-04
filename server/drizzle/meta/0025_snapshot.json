@@ -1,5 +1,5 @@
 {
-  "id": "147d576a-bbdd-4692-b9f5-b5e972f22cdd",
+  "id": "ab0e42d0-7cd5-49ab-b7a5-a0bc6a294e34",
   "prevId": "56adc13a-c882-46cd-b5ae-e366f7f67bf0",
   "version": "7",
   "dialect": "postgresql",
@@ -4350,8 +4350,8 @@
           "method": "btree",
           "with": {}
         },
-        "twoFactor_userId_idx": {
-          "name": "twoFactor_userId_idx",
+        "twoFactor_userId_uidx": {
+          "name": "twoFactor_userId_uidx",
           "columns": [
             {
               "expression": "userId",
@@ -4360,7 +4360,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}

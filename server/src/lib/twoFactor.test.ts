@@ -153,6 +153,16 @@ describe("two-factor authentication", () => {
     expect(rows).toEqual([]);
   });
 
+  it("keeps one two-factor secret per user", async () => {
+    await userWithTwoFactor("unique@example.com");
+    await expect(
+      database.query(
+        `INSERT INTO "twoFactor" (id, secret, "backupCodes", "userId")
+         SELECT 'duplicate', 's', 'c', id FROM "user" WHERE email = 'unique@example.com'`
+      )
+    ).rejects.toThrow(/twoFactor_userId_uidx/);
+  });
+
   it("signs in with a password alone while two-factor is off", async () => {
     await request("/sign-up/email", { name: "Plain", email: "plain@example.com", password });
     const { body, cookie } = await signIn("plain@example.com");
