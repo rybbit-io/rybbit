@@ -28,8 +28,8 @@ export function createTwoFactorPlugins() {
         ],
         after: [
           {
-            // The plugin only revokes the trusted device that calls /two-factor/disable.
-            matcher: (ctx: { path?: string }) => ctx.path === "/two-factor/disable",
+            // Turning two-factor off only revokes the calling device, so drop the rest before it comes back on.
+            matcher: (ctx: { path?: string }) => ctx.path === "/two-factor/enable",
             handler: createAuthMiddleware(async ctx => {
               const userId = ctx.context.session?.user.id;
               if (!userId || ctx.context.returned instanceof Error) return;

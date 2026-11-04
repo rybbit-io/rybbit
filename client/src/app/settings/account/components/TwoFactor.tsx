@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "../../../../components/ui/dialog";
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { authClient } from "../../../../lib/auth";
@@ -37,11 +38,15 @@ export function TwoFactor() {
   const [setupOpen, setSetupOpen] = useState(false);
 
   if (!user || accounts.isLoading) return <Skeleton className="h-9 w-40" />;
+  if (accounts.isError) {
+    return <p className={`flex min-h-9 items-center text-sm ${MUTED}`}>{t("Couldn't load your sign-in methods.")}</p>;
+  }
 
   const hasPassword = accounts.data?.some(account => account.providerId === "credential");
 
   return (
-    <>
+    // Wraps the row so confirming the first code, which turns the row on, doesn't close the dialog.
+    <TwoFactorSetup open={setupOpen} onOpenChange={setSetupOpen} email={user.email}>
       {user.twoFactorEnabled ? (
         <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2">
           <Badge variant="success">{t("On")}</Badge>
@@ -53,24 +58,25 @@ export function TwoFactor() {
       ) : hasPassword ? (
         <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2">
           <span className={`text-sm ${MUTED}`}>{t("Off")}</span>
-          <Button size="sm" className="ml-auto" onClick={() => setSetupOpen(true)}>
-            {t("Turn on")}
-          </Button>
+          <DialogTrigger asChild>
+            <Button size="sm" className="ml-auto">
+              {t("Turn on")}
+            </Button>
+          </DialogTrigger>
         </div>
       ) : (
         <p className={`flex min-h-9 items-center text-sm ${MUTED}`}>
           {t("You sign in with Google or GitHub. Turn on two-factor authentication in that account instead.")}
         </p>
       )}
-      {/* Outside the on/off switch: confirming the first code turns the row on before the backup codes are shown. */}
-      <TwoFactorSetup open={setupOpen} onOpenChange={setSetupOpen} email={user.email} />
-    </>
+    </TwoFactorSetup>
   );
 }
 
 function TurnOff() {
   const t = useExtracted();
   const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
 
   const turnOff = async (password: string) => {
     const { error } = await authClient.twoFactor.disable({ password });
@@ -80,10 +86,12 @@ function TurnOff() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        {t("Turn off")}
-      </Button>
+    <Dialog open={open} onOpenChange={isOpen => (isOpen || !pending) && setOpen(isOpen)}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">
+          {t("Turn off")}
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{t("Turn off two-factor authentication?")}</DialogTitle>
@@ -98,6 +106,7 @@ function TurnOff() {
             variant="destructive"
             onSubmit={turnOff}
             onCancel={() => setOpen(false)}
+            onPendingChange={setPending}
           />
         )}
       </DialogContent>
@@ -111,8 +120,10 @@ function NewBackupCodes({ email }: { email: string }) {
   const [codes, setCodes] = useState<string[] | null>(null);
   const [codesSaved, setCodesSaved] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [pending, setPending] = useState(false);
 
   const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen && pending) return;
     if (!isOpen && codes && !codesSaved && !confirmClose) {
       setConfirmClose(true);
       return;
@@ -133,9 +144,11 @@ function NewBackupCodes({ email }: { email: string }) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        {t("New backup codes")}
-      </Button>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          {t("New backup codes")}
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>{t("New backup codes")}</DialogTitle>
@@ -166,6 +179,7 @@ function NewBackupCodes({ email }: { email: string }) {
               pendingLabel={t("Creating...")}
               onSubmit={generate}
               onCancel={() => handleOpenChange(false)}
+              onPendingChange={setPending}
             />
           )
         )}

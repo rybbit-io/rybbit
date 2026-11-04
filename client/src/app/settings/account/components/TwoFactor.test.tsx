@@ -12,6 +12,7 @@ type User = { id: string; email: string; twoFactorEnabled: boolean };
 const mocks = vi.hoisted(() => ({
   user: null as User | null,
   providers: ["credential"],
+  accountsError: false,
   enable: vi.fn(),
   verifyTotp: vi.fn(),
   disable: vi.fn(),
@@ -28,7 +29,10 @@ vi.mock("@/components/ui/sonner", () => ({ toast: { success: vi.fn(), error: vi.
 vi.mock("../../../../lib/auth", () => ({
   authClient: {
     useSession: () => ({ data: mocks.user ? { user: mocks.user } : null }),
-    listAccounts: async () => ({ data: mocks.providers.map(providerId => ({ providerId })), error: null }),
+    listAccounts: async () =>
+      mocks.accountsError
+        ? { data: null, error: { message: "Failed to list accounts" } }
+        : { data: mocks.providers.map(providerId => ({ providerId })), error: null },
     twoFactor: {
       enable: mocks.enable,
       verifyTotp: mocks.verifyTotp,
@@ -63,6 +67,7 @@ async function submitPassword(dialog: HTMLElement, button: string, password = "s
 beforeEach(() => {
   mocks.user = { id: "user-1", email: "user@example.com", twoFactorEnabled: false };
   mocks.providers = ["credential"];
+  mocks.accountsError = false;
   mocks.enable.mockResolvedValue({ data: { totpURI: TOTP_URI, backupCodes: CODES }, error: null });
   mocks.verifyTotp.mockResolvedValue({ data: { token: "t" }, error: null });
   mocks.disable.mockResolvedValue({ data: { status: true }, error: null });
@@ -82,6 +87,61 @@ describe("TwoFactor", () => {
     renderRow();
     expect(await screen.findByText(/You sign in with Google or GitHub/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Turn on" })).toBeNull();
+  });
+
+  it("says so when the sign-in methods can't be loaded", async () => {
+    mocks.accountsError = true;
+    renderRow();
+    expect(await screen.findByText("Couldn't load your sign-in methods.")).toBeTruthy();
+    expect(screen.queryByText(/You sign in with Google or GitHub/)).toBeNull();
+  });
+
+  it("returns focus to Turn on when the setup is cancelled", async () => {
+    renderRow();
+    const turnOn = await screen.findByRole("button", { name: "Turn on" });
+    fireEvent.click(turnOn);
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(turnOn));
+  });
+
+  it("can't be closed while the first code is being checked", async () => {
+    let finish: (value: unknown) => void = () => {};
+    mocks.verifyTotp.mockReturnValue(new Promise(resolve => (finish = resolve)));
+    renderRow();
+    fireEvent.click(await screen.findByRole("button", { name: "Turn on" }));
+    const dialog = screen.getByRole("dialog");
+    await submitPassword(dialog, "Continue");
+    fireEvent.change(await within(dialog).findByLabelText("Code from the app"), { target: { value: "123456" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Turn on" }));
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(dialog.isConnected).toBe(true);
+
+    finish({ data: { token: "t" }, error: null });
+    expect(await within(dialog).findByText(CODES[0])).toBeTruthy();
+  });
+
+  it("recovers when checking the first code fails to reach the server", async () => {
+    mocks.verifyTotp.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderRow();
+    fireEvent.click(await screen.findByRole("button", { name: "Turn on" }));
+    const dialog = screen.getByRole("dialog");
+    await submitPassword(dialog, "Continue");
+    fireEvent.change(await within(dialog).findByLabelText("Code from the app"), { target: { value: "123456" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Turn on" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toBe("Something went wrong. Try again.");
+    expect((within(dialog).getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("recovers when the password check fails to reach the server", async () => {
+    mocks.enable.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderRow();
+    fireEvent.click(await screen.findByRole("button", { name: "Turn on" }));
+    const dialog = screen.getByRole("dialog");
+    await submitPassword(dialog, "Continue");
+    expect((await within(dialog).findByRole("alert")).textContent).toBe("Something went wrong. Try again.");
+    expect((within(dialog).getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("turns two-factor on and keeps the backup codes on screen when the session flips to on", async () => {

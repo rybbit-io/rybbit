@@ -100,14 +100,16 @@ export function TwoFactorStep({ onVerified, onCancel }: TwoFactorStepProps) {
           <button
             type="button"
             onClick={switchMethod}
-            className="text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+            disabled={isLoading}
+            className="text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors disabled:opacity-50"
           >
             {useBackupCode ? t("Use your authenticator app") : t("Use a backup code")}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+            disabled={isLoading}
+            className="text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors disabled:opacity-50"
           >
             {t("Back to sign in")}
           </button>

@@ -16,6 +16,7 @@ interface PasswordFormProps {
   variant?: "success" | "destructive";
   onSubmit: (password: string) => Promise<string | void>;
   onCancel: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }
 
 export function PasswordForm({
@@ -24,6 +25,7 @@ export function PasswordForm({
   variant = "success",
   onSubmit,
   onCancel,
+  onPendingChange,
 }: PasswordFormProps) {
   const t = useExtracted();
   const [password, setPassword] = useState("");
@@ -35,10 +37,17 @@ export function PasswordForm({
       onSubmit={async e => {
         e.preventDefault();
         setPending(true);
+        onPendingChange?.(true);
         setError("");
-        const message = await onSubmit(password);
-        setPending(false);
-        if (message) setError(message);
+        try {
+          const message = await onSubmit(password);
+          if (message) setError(message);
+        } catch {
+          setError(t("Something went wrong. Try again."));
+        } finally {
+          setPending(false);
+          onPendingChange?.(false);
+        }
       }}
     >
       <div className="space-y-2 py-2">

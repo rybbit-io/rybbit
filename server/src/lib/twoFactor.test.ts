@@ -27,6 +27,14 @@ function totpCode(totpURI: string, at = Date.now()) {
   return String((hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
 
+function wrongCode(totpURI: string) {
+  const accepted = new Set([-30, 0, 30, 60].map(seconds => totpCode(totpURI, Date.now() + seconds * 1000)));
+  for (let candidate = 0; ; candidate++) {
+    const code = String(candidate).padStart(6, "0");
+    if (!accepted.has(code)) return code;
+  }
+}
+
 function cookieJar(...responses: Response[]) {
   const jar = new Map<string, string>();
   for (const response of responses) {
@@ -169,7 +177,7 @@ describe("two-factor authentication", () => {
     expect(cookie).not.toContain("session_token");
     expect(await sessionUser(cookie)).toBeUndefined();
 
-    expect((await request("/two-factor/verify-totp", { code: "000000" }, cookie)).status).toBe(401);
+    expect((await request("/two-factor/verify-totp", { code: wrongCode(totpURI) }, cookie)).status).toBe(401);
     const verify = await request("/two-factor/verify-totp", { code: totpCode(totpURI) }, cookie);
     expect(verify.status, await verify.clone().text()).toBe(200);
     expect((await sessionUser(cookieJar(verify)))?.email).toBe("totp@example.com");
@@ -208,17 +216,20 @@ describe("two-factor authentication", () => {
     expect((await sessionUser(again.cookie))?.email).toBe("trusted@example.com");
   });
 
-  it("revokes every trusted device when two-factor is turned off", async () => {
+  it("revokes old trusted devices when two-factor is turned back on", async () => {
     const email = "devices@example.com";
     const { totpURI } = await userWithTwoFactor(email);
     const trustDevice = async () => {
       const { cookie } = await signIn(email);
       const verify = await request("/two-factor/verify-totp", { code: totpCode(totpURI), trustDevice: true }, cookie);
       expect(verify.status, await verify.clone().text()).toBe(200);
-      return cookieJar(verify);
+      return verify;
     };
     const laptop = await trustDevice();
-    await trustDevice();
+    const phoneTrust = cookieJar(await trustDevice())
+      .split("; ")
+      .filter(pair => pair.includes("trust_device"))
+      .join("; ");
     const trustedDevices = async () =>
       (
         await database.query<{ count: number }>(
@@ -227,14 +238,24 @@ describe("two-factor authentication", () => {
           [email]
         )
       ).rows[0].count;
-    expect(await trustedDevices()).toBe(2);
 
-    expect((await request("/two-factor/disable", { password: "not-the-password" }, laptop)).status).toBe(400);
-    expect(await trustedDevices()).toBe(2);
-
-    const disable = await request("/two-factor/disable", { password }, laptop);
+    const disable = await request("/two-factor/disable", { password }, cookieJar(laptop));
     expect(disable.status, await disable.clone().text()).toBe(200);
+    expect(await trustedDevices()).toBe(1);
+
+    const cookie = cookieJar(laptop, disable);
+    expect((await request("/two-factor/enable", { password: "not-the-password" }, cookie)).status).toBe(400);
+    expect(await trustedDevices()).toBe(1);
+
+    const enable = await request("/two-factor/enable", { password }, cookie);
+    expect(enable.status, await enable.clone().text()).toBe(200);
     expect(await trustedDevices()).toBe(0);
+    const { totpURI: newTotpURI } = (await enable.json()) as { totpURI: string };
+    const confirm = await request("/two-factor/verify-totp", { code: totpCode(newTotpURI) }, cookie);
+    expect(confirm.status, await confirm.clone().text()).toBe(200);
+
+    const phone = await signIn(email, {}, phoneTrust);
+    expect(phone.body).toMatchObject({ twoFactorRedirect: true });
   });
 
   it("refuses email-code sign-in for accounts with two-factor on", async () => {

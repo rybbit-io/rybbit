@@ -2,7 +2,7 @@
 
 import { useExtracted } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { CopyButton } from "@/components/interior/copy-button";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "../../../../components/ui/button";
@@ -28,13 +28,15 @@ interface TwoFactorSetupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   email: string;
+  children: ReactNode;
 }
 
-export function TwoFactorSetup({ open, onOpenChange, email }: TwoFactorSetupProps) {
+export function TwoFactorSetup({ open, onOpenChange, email, children }: TwoFactorSetupProps) {
   const t = useExtracted();
   const [step, setStep] = useState<Step>({ name: "password" });
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [checkingPassword, setCheckingPassword] = useState(false);
   const [codeError, setCodeError] = useState("");
   const [codesSaved, setCodesSaved] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -53,6 +55,7 @@ export function TwoFactorSetup({ open, onOpenChange, email }: TwoFactorSetupProp
       onOpenChange(true);
       return;
     }
+    if (verifying || checkingPassword) return;
     if (step.name === "codes" && !codesSaved && !confirmClose) {
       setConfirmClose(true);
       return;
@@ -71,19 +74,25 @@ export function TwoFactorSetup({ open, onOpenChange, email }: TwoFactorSetupProp
     if (step.name !== "scan") return;
     setVerifying(true);
     setCodeError("");
-    const { error } = await authClient.twoFactor.verifyTotp({ code });
-    setVerifying(false);
-    if (error) {
-      setCodeError(error.message || t("That code didn't work. Try again."));
-      return;
+    try {
+      const { error } = await authClient.twoFactor.verifyTotp({ code });
+      if (error) {
+        setCodeError(error.message || t("That code didn't work. Try again."));
+        return;
+      }
+      setStep({ name: "codes", backupCodes: step.backupCodes });
+    } catch {
+      setCodeError(t("Something went wrong. Try again."));
+    } finally {
+      setVerifying(false);
     }
-    setStep({ name: "codes", backupCodes: step.backupCodes });
   };
 
   const secret = step.name === "scan" ? (new URL(step.totpURI).searchParams.get("secret") ?? "") : "";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
+      {children}
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>
@@ -106,6 +115,7 @@ export function TwoFactorSetup({ open, onOpenChange, email }: TwoFactorSetupProp
             pendingLabel={t("Checking...")}
             onSubmit={enable}
             onCancel={close}
+            onPendingChange={setCheckingPassword}
           />
         )}
 

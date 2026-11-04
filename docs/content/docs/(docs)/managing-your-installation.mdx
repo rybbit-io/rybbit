@@ -130,10 +130,14 @@ docker exec -it postgres psql -U frog -d analytics
 ```
 
 ```sql
+BEGIN;
 UPDATE "user" SET "twoFactorEnabled" = false WHERE email = 'you@example.com';
 DELETE FROM "twoFactor" WHERE "userId" = (SELECT id FROM "user" WHERE email = 'you@example.com');
 DELETE FROM verification WHERE identifier LIKE 'trust-device-%' AND value = (SELECT id FROM "user" WHERE email = 'you@example.com');
+COMMIT;
 ```
+
+If a statement fails, run `ROLLBACK;` and start again.
 
 ## Anonymous Usage Telemetry
 

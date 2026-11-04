@@ -88,6 +88,17 @@ describe("TwoFactorStep", () => {
     expect(onVerified).not.toHaveBeenCalled();
   });
 
+  it("can't go back while a code is being verified", async () => {
+    mocks.verifyTotp.mockReturnValue(new Promise(() => {}));
+    const onCancel = vi.fn();
+    render(<TwoFactorStep onVerified={vi.fn()} onCancel={onCancel} />);
+    await submit("123456");
+    const back = screen.getByRole("button", { name: "Back to sign in" }) as HTMLButtonElement;
+    expect(back.disabled).toBe(true);
+    fireEvent.click(back);
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
   it("goes back to the password form", () => {
     const onCancel = vi.fn();
     render(<TwoFactorStep onVerified={vi.fn()} onCancel={onCancel} />);
