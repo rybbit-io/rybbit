@@ -105,12 +105,13 @@ export async function loadSegmentForSite(
   siteId: number,
   segmentId: number
 ): Promise<{ segment: SegmentRow; organizationId: string } | null> {
-  const organizationId = await getSiteOrganizationId(siteId);
+  const [organizationId, segment] = await Promise.all([
+    getSiteOrganizationId(siteId),
+    db.query.segments.findFirst({ where: eq(segments.segmentId, segmentId) }),
+  ]);
   if (!organizationId) {
     return null;
   }
-
-  const segment = await db.query.segments.findFirst({ where: eq(segments.segmentId, segmentId) });
   if (!segment || !segmentBelongsToSite(segment, siteId, organizationId)) {
     return null;
   }

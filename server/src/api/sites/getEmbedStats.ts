@@ -47,53 +47,55 @@ export async function getEmbedStats(
     return res.send(cached.data);
   }
 
-  const numericId = Number(siteId);
+  const queryParams = { siteId: Number(siteId), minutes: minutesNum };
 
-  const countResult = await clickhouse.query({
-    query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events
-            WHERE timestamp > now() - interval {minutes:Int32} minute
-              AND site_id = {siteId:Int32}`,
-    format: "JSONEachRow",
-    query_params: { siteId: numericId, minutes: minutesNum },
-  });
-  const countRows = await processResults<{ count: number }>(countResult);
-  const count = Number(countRows[0]?.count ?? 0);
-
-  let series: { time: string; users: number }[] = [];
-  if (includeChart) {
-    const seriesResult = await clickhouse.query({
-      query: `SELECT toString(${bucketExpr(minutesNum)}) AS time,
-                     COUNT(DISTINCT session_id) AS users
-              FROM events
-              WHERE timestamp > now() - interval {minutes:Int32} minute
-                AND site_id = {siteId:Int32}
-              GROUP BY time
-              ORDER BY time`,
-      format: "JSONEachRow",
-      query_params: { siteId: numericId, minutes: minutesNum },
-    });
-    const rows = await processResults<{ time: string; users: number }>(seriesResult);
-    series = rows.map(r => ({ time: r.time, users: Number(r.users) }));
-  }
-
-  let topCountries: { country: string; users: number }[] = [];
-  if (includeCountries) {
-    const countriesResult = await clickhouse.query({
-      query: `SELECT country,
-                     COUNT(DISTINCT session_id) AS users
-              FROM events
-              WHERE timestamp > now() - interval {minutes:Int32} minute
-                AND site_id = {siteId:Int32}
-                AND country != ''
-              GROUP BY country
-              ORDER BY users DESC
-              LIMIT 5`,
-      format: "JSONEachRow",
-      query_params: { siteId: numericId, minutes: minutesNum },
-    });
-    const rows = await processResults<{ country: string; users: number }>(countriesResult);
-    topCountries = rows.map(r => ({ country: r.country, users: Number(r.users) }));
-  }
+  // The three reads are independent, so a cache miss pays for the slowest one only.
+  const [count, series, topCountries] = await Promise.all([
+    clickhouse
+      .query({
+        query: `SELECT COUNT(DISTINCT(session_id)) AS count FROM events
+                WHERE timestamp > now() - interval {minutes:Int32} minute
+                  AND site_id = {siteId:Int32}`,
+        format: "JSONEachRow",
+        query_params: queryParams,
+      })
+      .then(result => processResults<{ count: number }>(result))
+      .then(rows => Number(rows[0]?.count ?? 0)),
+    includeChart
+      ? clickhouse
+          .query({
+            query: `SELECT toString(${bucketExpr(minutesNum)}) AS time,
+                           COUNT(DISTINCT session_id) AS users
+                    FROM events
+                    WHERE timestamp > now() - interval {minutes:Int32} minute
+                      AND site_id = {siteId:Int32}
+                    GROUP BY time
+                    ORDER BY time`,
+            format: "JSONEachRow",
+            query_params: queryParams,
+          })
+          .then(result => processResults<{ time: string; users: number }>(result))
+          .then(rows => rows.map(r => ({ time: r.time, users: Number(r.users) })))
+      : [],
+    includeCountries
+      ? clickhouse
+          .query({
+            query: `SELECT country,
+                           COUNT(DISTINCT session_id) AS users
+                    FROM events
+                    WHERE timestamp > now() - interval {minutes:Int32} minute
+                      AND site_id = {siteId:Int32}
+                      AND country != ''
+                    GROUP BY country
+                    ORDER BY users DESC
+                    LIMIT 5`,
+            format: "JSONEachRow",
+            query_params: queryParams,
+          })
+          .then(result => processResults<{ country: string; users: number }>(result))
+          .then(rows => rows.map(r => ({ country: r.country, users: Number(r.users) })))
+      : [],
+  ]);
 
   const data: EmbedStats = { count, series, topCountries };
   cache.set(cacheKey, { data, expiresAt: now + CACHE_TTL_MS });

@@ -98,8 +98,7 @@ beforeEach(async () => {
   mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
     status === "active" ? { data: [fakeSubscription("active")] } : { data: [] }
   );
-  mocks.subscriptionsUpdate.mockResolvedValue({ id: "sub_1" });
-  mocks.subscriptionsRetrieve.mockResolvedValue({
+  mocks.subscriptionsUpdate.mockResolvedValue({
     id: "sub_1",
     status: "active",
     items: { data: [{ current_period_end: 1760000000 }] },
@@ -128,6 +127,8 @@ describe("updateSubscription — authorization", () => {
       proration_behavior: "always_invoice",
     });
     expect(mocks.invalidateStripeSubscriptionCache).toHaveBeenCalledWith("cus_1");
+    // The update's response already carries the new state.
+    expect(mocks.subscriptionsRetrieve).not.toHaveBeenCalled();
   });
 
   it("rejects a non-owner member with 403 and touches nothing in Stripe", async () => {
