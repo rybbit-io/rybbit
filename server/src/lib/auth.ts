@@ -30,6 +30,7 @@ import {
 import { getTrustedCorsOrigins } from "./cors.js";
 import { hasRenewingStripeSubscription } from "./subscriptionUtils.js";
 import { createServiceLogger } from "./logger/logger.js";
+import { createTwoFactorPlugins } from "./twoFactor.js";
 
 dotenv.config();
 
@@ -283,6 +284,7 @@ const pluginList = [
       await sendOtpEmail(email, otp, type);
     },
   }),
+  ...createTwoFactorPlugins(),
   // Add Cloudflare Turnstile captcha (cloud only)
   ...(IS_CLOUD && process.env.TURNSTILE_SECRET_KEY && process.env.NODE_ENV === "production"
     ? [
