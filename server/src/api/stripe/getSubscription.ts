@@ -92,6 +92,8 @@ export async function getSubscriptionInner(organizationId: string) {
       monthlyEventCount: organization.monthlyEventCount,
       createdAt: organization.createdAt,
       name: organization.name,
+      customPlan: organization.customPlan,
+      planOverride: organization.planOverride,
     })
     .from(organization)
     .where(eq(organization.id, organizationId))
@@ -103,8 +105,9 @@ export async function getSubscriptionInner(organizationId: string) {
     return null;
   }
 
-  // Get the best subscription (highest event limit from AppSumo or Stripe)
-  const subscription = await getBestSubscription(organizationId, org.stripeCustomerId);
+  // Get the best subscription (highest event limit from AppSumo or Stripe). The org row
+  // read above already holds the custom plan and override, so it isn't read again.
+  const subscription = await getBestSubscription(organizationId, org.stripeCustomerId, { orgPlan: org });
   const includesReplay = subscriptionIncludesReplay(subscription);
 
   // Compute member/site limits

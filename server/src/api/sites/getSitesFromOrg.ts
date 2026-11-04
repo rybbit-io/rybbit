@@ -11,6 +11,30 @@ import { siteRequiresPlan } from "../../lib/subscriptionUtils.js";
 import { getSubscriptionInner } from "../stripe/getSubscription.js";
 import { buildSiteSessionCountsQuery } from "./siteSessionCountsQuery.js";
 
+/** Sessions in the last 24 hours for each of these sites. */
+async function getSessionCountMap(siteIds: number[]): Promise<Map<number, number>> {
+  const sessionCountMap = new Map<number, number>();
+  if (siteIds.length === 0) {
+    return sessionCountMap;
+  }
+
+  const sessionCountsResult = await clickhouse.query({
+    query: buildSiteSessionCountsQuery(LITE_DASHBOARD),
+    query_params: { siteIds },
+    format: "JSONEachRow",
+  });
+  const sessionCounts = await processResults(sessionCountsResult);
+
+  if (Array.isArray(sessionCounts)) {
+    sessionCounts.forEach((row: any) => {
+      if (row && typeof row.site_id === "number" && typeof row.total_sessions === "number") {
+        sessionCountMap.set(Number(row.site_id), row.total_sessions);
+      }
+    });
+  }
+  return sessionCountMap;
+}
+
 export async function getSitesFromOrg(
   req: FastifyRequest<{
     Params: {
@@ -22,59 +46,33 @@ export async function getSitesFromOrg(
   try {
     const { organizationId } = req.params;
 
-    // The organization's sites the caller can reach, each with their role on
-    // it — member and team restrictions already applied.
-    const [sitesData, orgInfo] = await Promise.all([
-      getOrganizationSitesForCaller(req, organizationId),
+    // Four independent reads. The session counts need the site list, so they
+    // chain onto it instead of waiting for the subscription lookup (which can
+    // call Stripe).
+    const [{ sitesData, sessionCountMap }, orgInfo, subscription, teamSiteMappings] = await Promise.all([
+      // The organization's sites the caller can reach, each with their role on
+      // it — member and team restrictions already applied.
+      getOrganizationSitesForCaller(req, organizationId).then(async sitesData => ({
+        sitesData,
+        sessionCountMap: await getSessionCountMap(sitesData.map(site => site.siteId)),
+      })),
       db.select().from(organization).where(eq(organization.id, organizationId)).limit(1),
+      // Self-hosted instances have no plan and unlimited events.
+      IS_CLOUD ? getSubscriptionInner(organizationId) : null,
+      // Team info for all sites in this org
+      db
+        .select({
+          siteId: teamSiteAccess.siteId,
+          teamId: team.id,
+          teamName: team.name,
+        })
+        .from(teamSiteAccess)
+        .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
+        .where(eq(team.organizationId, organizationId)),
     ]);
 
-    // Query session counts for the sites
-    const sessionCountMap = new Map<number, number>();
-
-    if (sitesData.length > 0) {
-      const siteIds = sitesData.map(site => site.siteId);
-
-      const sessionCountsResult = await clickhouse.query({
-        query: buildSiteSessionCountsQuery(LITE_DASHBOARD),
-        query_params: { siteIds },
-        format: "JSONEachRow",
-      });
-      const sessionCounts = await processResults(sessionCountsResult);
-
-      if (Array.isArray(sessionCounts)) {
-        sessionCounts.forEach((row: any) => {
-          if (row && typeof row.site_id === "number" && typeof row.total_sessions === "number") {
-            sessionCountMap.set(Number(row.site_id), row.total_sessions);
-          }
-        });
-      }
-    }
-
-    // Get subscription info
-    let subscription = null;
-    let monthlyEventCount = 0;
-    let eventLimit = DEFAULT_EVENT_LIMIT;
-
-    if (!IS_CLOUD) {
-      // Self-hosted version has unlimited events
-      eventLimit = Infinity;
-    } else {
-      subscription = await getSubscriptionInner(organizationId);
-      monthlyEventCount = subscription?.monthlyEventCount || 0;
-      eventLimit = subscription?.eventLimit || DEFAULT_EVENT_LIMIT;
-    }
-
-    // Get team info for all sites in this org
-    const teamSiteMappings = await db
-      .select({
-        siteId: teamSiteAccess.siteId,
-        teamId: team.id,
-        teamName: team.name,
-      })
-      .from(teamSiteAccess)
-      .innerJoin(team, eq(teamSiteAccess.teamId, team.id))
-      .where(eq(team.organizationId, organizationId));
+    const monthlyEventCount = subscription?.monthlyEventCount || 0;
+    const eventLimit = IS_CLOUD ? subscription?.eventLimit || DEFAULT_EVENT_LIMIT : Infinity;
 
     const siteTeamMap = new Map<number, { id: string; name: string }[]>();
     for (const mapping of teamSiteMappings) {

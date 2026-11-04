@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   appsumoLicenses: [] as Array<{ tier: string; status: string }>,
   orgSelectError: null as Error | null,
   appsumoError: null as Error | null,
+  orgSelects: 0,
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -33,7 +34,7 @@ vi.mock("./const.js", async importOriginal => {
 });
 
 vi.mock("../db/postgres/postgres.js", () => {
-  // Drizzle builders are thenable; both org lookups await `.limit(1)`.
+  // Drizzle builders are thenable; the org lookup awaits `.limit(1)`.
   function chain(rows: () => unknown[]) {
     const builder: any = {
       from: () => builder,
@@ -51,11 +52,11 @@ vi.mock("../db/postgres/postgres.js", () => {
 
   return {
     db: {
-      // The two org reads are told apart by the column each one selects.
-      select: (fields: Record<string, unknown>) =>
-        chain(() =>
-          "customPlan" in fields ? [{ customPlan: state.customPlan }] : [{ planOverride: state.planOverride }]
-        ),
+      // One org read selects the custom plan and the plan override together.
+      select: () => {
+        state.orgSelects += 1;
+        return chain(() => [{ customPlan: state.customPlan, planOverride: state.planOverride }]);
+      },
       execute: async () => {
         if (state.appsumoError) {
           throw state.appsumoError;
@@ -276,6 +277,7 @@ beforeEach(() => {
   state.appsumoLicenses = [];
   state.orgSelectError = null;
   state.appsumoError = null;
+  state.orgSelects = 0;
   mocks.stripeEnabled = true;
   mocks.isCloud = true;
   mocks.list.mockReset();
@@ -863,6 +865,29 @@ describe("getBestSubscription priority", () => {
       "stripe is down"
     );
     await expect(getBestSubscription("org_1", nextCustomer())).resolves.toMatchObject({ source: "free" });
+  });
+
+  it("reads the custom plan and override with a single organization query", async () => {
+    state.planOverride = "standard1m";
+
+    await expect(getBestSubscription("org_1", nextCustomer())).resolves.toMatchObject({ source: "override" });
+    expect(state.orgSelects).toBe(1);
+  });
+
+  it("uses plan columns the caller already read instead of querying the organization", async () => {
+    state.orgSelectError = new Error("must not query");
+
+    await expect(
+      getBestSubscription("org_1", nextCustomer(), {
+        orgPlan: { customPlan: { events: 3_000_000, members: null, websites: null }, planOverride: "appsumo-7" },
+      })
+    ).resolves.toMatchObject({ source: "custom", eventLimit: 3_000_000 });
+    await expect(
+      getBestSubscription("org_1", nextCustomer(), { orgPlan: { customPlan: null, planOverride: "standard1m" } })
+    ).resolves.toMatchObject({ source: "override", planName: "standard1m" });
+    // null: the caller found no organization row, so there is no plan of its own.
+    await expect(getBestSubscription("org_1", null, { orgPlan: null })).resolves.toMatchObject({ source: "free" });
+    expect(state.orgSelects).toBe(0);
   });
 });
 

@@ -156,67 +156,83 @@ export async function getAppSumoSubscription(
   }
 }
 
+/** The organization's own plan columns. A custom plan, then a plan override, outrank every other source. */
+export type OrgPlanFields = Pick<typeof organization.$inferSelect, "customPlan" | "planOverride">;
+
+/**
+ * Reads the organization's custom plan and plan override in one query. Null when the
+ * organization doesn't exist, or (without `throwOnError`) when the read fails.
+ */
+async function getOrgPlanFields(
+  organizationId: string,
+  { throwOnError = false }: LookupOptions = {}
+): Promise<OrgPlanFields | null> {
+  try {
+    const [org] = await db
+      .select({ customPlan: organization.customPlan, planOverride: organization.planOverride })
+      .from(organization)
+      .where(eq(organization.id, organizationId))
+      .limit(1);
+    return org ?? null;
+  } catch (error) {
+    console.error("Error checking custom plan and plan override:", error);
+    if (throwOnError) throw error;
+    return null;
+  }
+}
+
+function overrideSubscriptionFrom(planOverride: string | null | undefined): OverrideSubscriptionInfo | null {
+  if (!planOverride) {
+    return null;
+  }
+
+  // Check if it's an AppSumo tier override (e.g., "appsumo-1" through "appsumo-7")
+  const appsumoMatch = planOverride.match(/^appsumo-([1-7])$/);
+  if (appsumoMatch) {
+    const tier = appsumoMatch[1] as keyof typeof APPSUMO_TIER_LIMITS;
+    const eventLimit = APPSUMO_TIER_LIMITS[tier];
+
+    return {
+      source: "override",
+      planName: planOverride,
+      eventLimit,
+      replayLimit: APPSUMO_REPLAY_LIMITS[tier] ?? 0,
+      periodStart: getStartOfMonth(),
+      status: "active",
+      interval: "lifetime",
+      cancelAtPeriodEnd: false,
+    };
+  }
+
+  // Look up plan details from the plan name (Stripe plans)
+  const planDetails = getStripePrices().find((plan: StripePlan) => plan.name === planOverride);
+
+  if (!planDetails) {
+    console.error("Plan override not found in price list:", planOverride);
+    return null;
+  }
+
+  return {
+    source: "override",
+    planName: planDetails.name,
+    eventLimit: planDetails.limits.events,
+    replayLimit: planDetails.limits.replays,
+    periodStart: getStartOfMonth(),
+    status: "active",
+    interval: planDetails.interval,
+    cancelAtPeriodEnd: false,
+  };
+}
+
 /**
  * Gets plan override subscription info for an organization
  * @returns Override subscription info or null if no override set
  */
 export async function getOverrideSubscription(
   organizationId: string,
-  { throwOnError = false }: LookupOptions = {}
+  lookup: LookupOptions = {}
 ): Promise<OverrideSubscriptionInfo | null> {
-  try {
-    const orgResult = await db
-      .select({ planOverride: organization.planOverride })
-      .from(organization)
-      .where(eq(organization.id, organizationId))
-      .limit(1);
-
-    const org = orgResult[0];
-    if (!org?.planOverride) {
-      return null;
-    }
-
-    // Check if it's an AppSumo tier override (e.g., "appsumo-1" through "appsumo-7")
-    const appsumoMatch = org.planOverride.match(/^appsumo-([1-7])$/);
-    if (appsumoMatch) {
-      const tier = appsumoMatch[1] as keyof typeof APPSUMO_TIER_LIMITS;
-      const eventLimit = APPSUMO_TIER_LIMITS[tier];
-
-      return {
-        source: "override",
-        planName: org.planOverride,
-        eventLimit,
-        replayLimit: APPSUMO_REPLAY_LIMITS[tier] ?? 0,
-        periodStart: getStartOfMonth(),
-        status: "active",
-        interval: "lifetime",
-        cancelAtPeriodEnd: false,
-      };
-    }
-
-    // Look up plan details from the plan name (Stripe plans)
-    const planDetails = getStripePrices().find((plan: StripePlan) => plan.name === org.planOverride);
-
-    if (!planDetails) {
-      console.error("Plan override not found in price list:", org.planOverride);
-      return null;
-    }
-
-    return {
-      source: "override",
-      planName: planDetails.name,
-      eventLimit: planDetails.limits.events,
-      replayLimit: planDetails.limits.replays,
-      periodStart: getStartOfMonth(),
-      status: "active",
-      interval: planDetails.interval,
-      cancelAtPeriodEnd: false,
-    };
-  } catch (error) {
-    console.error("Error checking plan override:", error);
-    if (throwOnError) throw error;
-    return null;
-  }
+  return overrideSubscriptionFrom((await getOrgPlanFields(organizationId, lookup))?.planOverride);
 }
 
 /**
@@ -665,44 +681,38 @@ function buildStripeSubscriptionInfo(subscription: Stripe.Subscription): StripeS
   };
 }
 
+function customPlanSubscriptionFrom(cp: OrgPlanFields["customPlan"] | undefined): CustomPlanSubscriptionInfo | null {
+  if (!cp) {
+    return null;
+  }
+
+  return {
+    source: "custom",
+    planName: "custom",
+    eventLimit: cp.events,
+    memberLimit: cp.members ?? null,
+    siteLimit: cp.websites ?? null,
+    periodStart: getStartOfMonth(),
+    status: "active",
+    interval: "lifetime",
+    cancelAtPeriodEnd: false,
+  };
+}
+
 /**
  * Gets custom plan subscription info for an organization
  * @returns Custom plan subscription info or null if no custom plan set
  */
 export async function getCustomPlanSubscription(
   organizationId: string,
-  { throwOnError = false }: LookupOptions = {}
+  lookup: LookupOptions = {}
 ): Promise<CustomPlanSubscriptionInfo | null> {
-  try {
-    const orgResult = await db
-      .select({ customPlan: organization.customPlan })
-      .from(organization)
-      .where(eq(organization.id, organizationId))
-      .limit(1);
+  return customPlanSubscriptionFrom((await getOrgPlanFields(organizationId, lookup))?.customPlan);
+}
 
-    const org = orgResult[0];
-    if (!org?.customPlan) {
-      return null;
-    }
-
-    const cp = org.customPlan;
-
-    return {
-      source: "custom",
-      planName: "custom",
-      eventLimit: cp.events,
-      memberLimit: cp.members ?? null,
-      siteLimit: cp.websites ?? null,
-      periodStart: getStartOfMonth(),
-      status: "active",
-      interval: "lifetime",
-      cancelAtPeriodEnd: false,
-    };
-  } catch (error) {
-    console.error("Error checking custom plan:", error);
-    if (throwOnError) throw error;
-    return null;
-  }
+/** The plan the organization's own columns set: its custom plan, else its override, else none. */
+function orgOwnPlan(fields: OrgPlanFields | null): CustomPlanSubscriptionInfo | OverrideSubscriptionInfo | null {
+  return customPlanSubscriptionFrom(fields?.customPlan) ?? overrideSubscriptionFrom(fields?.planOverride);
 }
 
 /**
@@ -713,20 +723,23 @@ export async function getCustomPlanSubscription(
 export async function getBestSubscription(
   organizationId: string,
   stripeCustomerId: string | null,
-  { throwOnStripeError = false, throwOnLookupError = false }: { throwOnStripeError?: boolean; throwOnLookupError?: boolean } = {}
+  {
+    throwOnStripeError = false,
+    throwOnLookupError = false,
+    orgPlan,
+  }: {
+    throwOnStripeError?: boolean;
+    throwOnLookupError?: boolean;
+    /** The organization's plan columns, when the caller already read its row (null: no such row). */
+    orgPlan?: OrgPlanFields | null;
+  } = {}
 ): Promise<SubscriptionInfo> {
   const lookup = { throwOnError: throwOnLookupError };
 
-  // Check custom plan first - highest priority
-  const customSub = await getCustomPlanSubscription(organizationId, lookup);
-  if (customSub) {
-    return customSub;
-  }
-
-  // Check override next
-  const overrideSub = await getOverrideSubscription(organizationId, lookup);
-  if (overrideSub) {
-    return overrideSub;
+  // Custom plan first, then override - both from the organization row
+  const ownPlan = orgOwnPlan(orgPlan !== undefined ? orgPlan : await getOrgPlanFields(organizationId, lookup));
+  if (ownPlan) {
+    return ownPlan;
   }
 
   // Get both subscription types
@@ -760,14 +773,9 @@ export async function getBestSubscriptionFromStripeSub(
   lookup: LookupOptions = {},
   latestStripeSub?: Stripe.Subscription | null
 ): Promise<SubscriptionInfo> {
-  const customSub = await getCustomPlanSubscription(organizationId, lookup);
-  if (customSub) {
-    return customSub;
-  }
-
-  const overrideSub = await getOverrideSubscription(organizationId, lookup);
-  if (overrideSub) {
-    return overrideSub;
+  const ownPlan = orgOwnPlan(await getOrgPlanFields(organizationId, lookup));
+  if (ownPlan) {
+    return ownPlan;
   }
 
   if (stripeSub) {

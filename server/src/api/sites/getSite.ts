@@ -16,11 +16,17 @@ async function getSiteRequiresPlan(site: { organizationId: string | null; create
     return false;
   }
   const [org] = await db
-    .select({ stripeCustomerId: organization.stripeCustomerId })
+    .select({
+      stripeCustomerId: organization.stripeCustomerId,
+      customPlan: organization.customPlan,
+      planOverride: organization.planOverride,
+    })
     .from(organization)
     .where(eq(organization.id, site.organizationId))
     .limit(1);
-  const subscription = await getBestSubscription(site.organizationId, org?.stripeCustomerId ?? null);
+  const subscription = await getBestSubscription(site.organizationId, org?.stripeCustomerId ?? null, {
+    orgPlan: org ?? null,
+  });
   return siteRequiresPlan(subscription, site.createdAt);
 }
 

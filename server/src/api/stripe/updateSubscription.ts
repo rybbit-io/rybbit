@@ -98,16 +98,15 @@ export async function updateSubscription(
     // account-wide snapshot used by the admin endpoints and usage cron).
     invalidateStripeSubscriptionCache(org.stripeCustomerId);
 
-    // Get the updated subscription details
-    const updatedSubscriptionDetails = await (stripe as Stripe).subscriptions.retrieve(updatedSubscription.id);
-    const updatedItem = updatedSubscriptionDetails.items.data[0];
+    // The update returns the subscription as it now stands, items included.
+    const updatedItem = updatedSubscription.items.data[0];
 
     // 6. Return success response
     return reply.send({
       success: true,
       subscription: {
-        id: updatedSubscriptionDetails.id,
-        status: updatedSubscriptionDetails.status,
+        id: updatedSubscription.id,
+        status: updatedSubscription.status,
         currentPeriodEnd: new Date(updatedItem.current_period_end * 1000).toISOString(),
       },
     });

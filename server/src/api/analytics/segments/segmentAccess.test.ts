@@ -243,6 +243,16 @@ describe("GET /segments/:id", () => {
     await getSegment(asAdmin(), reply);
     expect(reply.statusCode).toBe(404);
   });
+
+  it("answers 404 for an id beyond the serial column's range instead of querying with it", async () => {
+    // The fixture returns this row for any id, so only the range check can refuse it.
+    state.segments = [segmentRow()];
+    const request = asAdmin();
+    request.params.segmentId = "2147483648";
+    const reply = fakeReply();
+    await getSegment(request, reply);
+    expect(reply.statusCode).toBe(404);
+  });
 });
 
 describe("POST /segments", () => {
