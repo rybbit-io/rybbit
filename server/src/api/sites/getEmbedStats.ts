@@ -11,6 +11,7 @@ interface EmbedStats {
 
 type CacheEntry = { data: EmbedStats; expiresAt: number };
 const cache = new Map<string, CacheEntry>();
+const inFlight = new Map<string, Promise<EmbedStats>>();
 const CACHE_TTL_MS = 60_000;
 const ALLOWED_MINUTES = new Set([30, 1440, 10080]);
 
@@ -47,7 +48,29 @@ export async function getEmbedStats(
     return res.send(cached.data);
   }
 
-  const queryParams = { siteId: Number(siteId), minutes: minutesNum };
+  // Concurrent misses for one key share a single set of reads, so an expiring
+  // cache entry on a busy widget doesn't fan out into three queries per request.
+  let pending = inFlight.get(cacheKey);
+  if (!pending) {
+    pending = loadEmbedStats(Number(siteId), minutesNum, includeChart, includeCountries).finally(() =>
+      inFlight.delete(cacheKey)
+    );
+    inFlight.set(cacheKey, pending);
+  }
+  const data = await pending;
+  cache.set(cacheKey, { data, expiresAt: now + CACHE_TTL_MS });
+
+  res.header("Cache-Control", "public, max-age=60");
+  return res.send(data);
+}
+
+async function loadEmbedStats(
+  siteId: number,
+  minutesNum: number,
+  includeChart: boolean,
+  includeCountries: boolean
+): Promise<EmbedStats> {
+  const queryParams = { siteId, minutes: minutesNum };
 
   // The three reads are independent, so a cache miss pays for the slowest one only.
   const [count, series, topCountries] = await Promise.all([
@@ -97,9 +120,5 @@ export async function getEmbedStats(
       : [],
   ]);
 
-  const data: EmbedStats = { count, series, topCountries };
-  cache.set(cacheKey, { data, expiresAt: now + CACHE_TTL_MS });
-
-  res.header("Cache-Control", "public, max-age=60");
-  return res.send(data);
+  return { count, series, topCountries };
 }
