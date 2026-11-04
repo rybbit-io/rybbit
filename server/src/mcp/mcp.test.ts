@@ -108,6 +108,15 @@ describe("mcp endpoint", () => {
 
   async function buildApp(options: McpRouteOptions): Promise<FastifyInstance> {
     const instance = Fastify();
+    // The MCP transport hands the raw request to @hono/node-server, which never
+    // sees the body end (Fastify already read it) and so, 500ms after the
+    // response, calls socket.destroySoon() to drain it. inject()'s mock socket
+    // has no destroySoon, and that timer outlives the test: it threw an
+    // uncaught TypeError in whichever test file the worker ran next.
+    instance.addHook("onRequest", async request => {
+      const socket = request.raw.socket as { destroySoon?: () => void };
+      socket.destroySoon ??= () => {};
+    });
     instance.register(
       async fastify => {
         await fastify.register(mcpRoutes, options);
