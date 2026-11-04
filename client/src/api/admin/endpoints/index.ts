@@ -62,6 +62,10 @@ export type {
 export { getAdminSites, adminMoveSite } from "./adminSites";
 export type { AdminSiteData } from "./adminSites";
 
+// Admin API Keys endpoints
+export { getAdminApiKeys, updateAdminApiKey, deleteAdminApiKey } from "./adminApiKeys";
+export type { AdminApiKeyData } from "./adminApiKeys";
+
 // Admin Service Event Count endpoints
 export { getAdminServiceEventCount } from "./adminServiceEventCount";
 export type {
