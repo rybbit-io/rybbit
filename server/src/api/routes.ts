@@ -4,15 +4,18 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   adminMoveSite,
   collectTelemetry,
+  deleteAdminApiKey,
   deleteAdminOrganizationMember,
   getAdminOrganizationMember,
   getAdminOrganizationOptions,
+  getAdminApiKeys,
   getAdminOrganizations,
   getAdminSubscriptionPlans,
   getAdminServiceEventCount,
   getAdminSites,
   getClickhouseStats,
   getClickhouseQueryLog,
+  updateAdminApiKey,
   updateAdminOrganizationMember,
   updateAdminSubscriptionOverride,
 } from "./admin/index.js";
@@ -602,6 +605,9 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
   fastify.patch("/admin/organizations/:organizationId/members/:memberId", systemAdmin, updateAdminOrganizationMember);
   fastify.delete("/admin/organizations/:organizationId/members/:memberId", systemAdmin, deleteAdminOrganizationMember);
   fastify.get("/admin/service-event-count", systemAdmin, getAdminServiceEventCount);
+  fastify.get("/admin/api-keys", systemAdmin, getAdminApiKeys);
+  fastify.patch("/admin/api-keys/:keyId", systemAdmin, updateAdminApiKey);
+  fastify.delete("/admin/api-keys/:keyId", systemAdmin, deleteAdminApiKey);
   fastify.post(
     "/admin/telemetry",
     {

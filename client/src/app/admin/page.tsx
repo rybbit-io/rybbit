@@ -11,13 +11,14 @@ import { AppSidebar } from "../../components/AppSidebar";
 import { Button } from "../../components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../../components/ui/sheet";
 import { DEPLOYMENT, IS_CLOUD } from "../../lib/const";
+import { ApiKeys } from "./components/apiKeys/ApiKeys";
 import { Database } from "./components/database/Database";
 import { Organizations } from "./components/organizations/Organizations";
 import { AdminLayout } from "./components/shared/AdminLayout";
 import { Sites } from "./components/sites/Sites";
 import { Users } from "./components/users/Users";
 
-const ADMIN_TABS = ["organizations", "sites", "users", "database"] as const;
+const ADMIN_TABS = ["organizations", "sites", "users", "api-keys", "database"] as const;
 
 function MobileSidebar() {
   const t = useExtracted();
@@ -61,12 +62,16 @@ export default function AdminPage() {
             <h1 className="text-xl font-semibold tracking-tight">{t("Admin")}</h1>
           </div>
           <Tabs value={activeTab} onValueChange={value => setActiveTab(value as (typeof ADMIN_TABS)[number])}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="organizations">{t("Organizations")}</TabsTrigger>
-              <TabsTrigger value="sites">{t("Sites")}</TabsTrigger>
-              <TabsTrigger value="users">{t("Users")}</TabsTrigger>
-              <TabsTrigger value="database">{t("Database")}</TabsTrigger>
-            </TabsList>
+            {/* Five tabs outgrow a phone screen; scroll the strip instead of clipping it. */}
+            <div className="mb-4 overflow-x-auto">
+              <TabsList>
+                <TabsTrigger value="organizations">{t("Organizations")}</TabsTrigger>
+                <TabsTrigger value="sites">{t("Sites")}</TabsTrigger>
+                <TabsTrigger value="users">{t("Users")}</TabsTrigger>
+                <TabsTrigger value="api-keys">{t("API Keys")}</TabsTrigger>
+                <TabsTrigger value="database">{t("Database")}</TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="organizations">
               <Organizations />
@@ -78,6 +83,10 @@ export default function AdminPage() {
 
             <TabsContent value="users">
               <Users />
+            </TabsContent>
+
+            <TabsContent value="api-keys">
+              <ApiKeys />
             </TabsContent>
 
             <TabsContent value="database">

@@ -40,7 +40,7 @@ const MUTED = "text-neutral-500 dark:text-neutral-400";
 const FORM_ROW = "px-4 md:grid-cols-[244px_minmax(0,1fr)]";
 
 /** "Full access", or what a restricted key may touch, with the full list on hover. */
-function PermissionsSummary({ permissions }: { permissions: Record<string, string[]> | null | undefined }) {
+export function PermissionsSummary({ permissions }: { permissions: Record<string, string[]> | null | undefined }) {
   const t = useExtracted();
   const entries = permissions ? Object.entries(permissions) : [];
 
@@ -361,6 +361,9 @@ export function ApiKeyManager({ organizationId }: { organizationId?: string }) {
                 <TableRow key={key.id} className="dark:border-b-neutral-850">
                   <TableCell className="whitespace-nowrap py-3 font-medium">
                     {key.name || <span className={cn("font-normal italic", MUTED)}>{t("Unnamed")}</span>}
+                    {key.enabled === false && (
+                      <span className="ml-2 text-xs font-normal text-red-600 dark:text-red-400">{t("Disabled")}</span>
+                    )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap py-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">
                     {key.start ? `${key.start}…` : "••••"}
