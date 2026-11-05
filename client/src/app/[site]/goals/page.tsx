@@ -19,6 +19,7 @@ import { Input } from "../../../components/ui/input";
 import { useCanOnSite } from "../../../hooks/usePermissions";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { GOALS_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { useSiteFilters } from "../../../hooks/useSiteFilters";
 import { useComparisonEnabled, useStore } from "../../../lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { GoalEditor } from "./components/GoalEditor";
@@ -132,7 +133,7 @@ export default function GoalsPage() {
   return (
     <DisabledOverlay message="Goals" featurePath="goals" requiredPlan="basic">
       <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
-        <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
+        <SubHeader availableFilters={useSiteFilters(GOALS_PAGE_FILTERS)} />
 
         {/* if site is not loaded, show skeleton */}
         {isLoading || !site ? (

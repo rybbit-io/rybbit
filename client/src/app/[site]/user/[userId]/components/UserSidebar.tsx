@@ -1,6 +1,7 @@
 "use client";
 
 import { Bookmark, Pencil, Plus } from "lucide-react";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
@@ -73,6 +74,8 @@ export function UserSidebar({
   getRegionName,
 }: UserSidebarProps) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const zone = useTimezone();
   const { configs } = useConfigs();
   const { formatDateTime, formatRelative } = useDateTimeFormat();
@@ -213,7 +216,9 @@ export function UserSidebar({
           </SidebarSection>
         )}
 
-        {/* Acquisition (first-touch attribution) */}
+        {/* Acquisition (first-touch attribution). Channels, referrers and landing
+            pages are web concepts - native app traffic has none of them. */}
+        {!isApp && (
         <SidebarSection>
           <SidebarHeader title={t("Acquisition")} right={<SidebarHint>{t("First touch")}</SidebarHint>} />
           {isLoadingAcquisition ? (
@@ -285,6 +290,7 @@ export function UserSidebar({
             </div>
           )}
         </SidebarSection>
+        )}
 
         {/* Location & device */}
         <SidebarSection>
@@ -301,7 +307,7 @@ export function UserSidebar({
         </SidebarSection>
 
         {/* Web vitals (p75 across this user's performance events) */}
-        {vitals && vitalsToShow.length > 0 && (
+        {!isApp && vitals && vitalsToShow.length > 0 && (
           <SidebarSection>
             <SidebarHeader title={t("Web vitals")} right={<SidebarHint>p75</SidebarHint>} />
             <div>
