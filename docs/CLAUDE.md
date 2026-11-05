@@ -45,7 +45,7 @@ This is the documentation and marketing website for Rybbit, built with Next.js 1
 ### Internationalization (i18n)
 
 - **Library**: `next-intl` v4 with experimental extract mode enabled
-- **Supported Locales**: `en` (default), `de`, `fr`, `zh`, `es`, `pl`, `it`, `ko`, `pt`, `ja`
+- **Supported Locales**: `en` (default), `de`, `fr`, `zh`, `es`, `pl`, `it`, `ko`, `pt`, `ja`, `tr`
 - **Message Files**: `messages/{locale}.json` — one JSON file per locale with ~242 keys
 - **Config Files** in `src/i18n/`:
   - `routing.ts`: Locale list and prefix strategy (`as-needed` — no prefix for default `en`)

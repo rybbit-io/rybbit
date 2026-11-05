@@ -21,7 +21,7 @@ Install with `pnpm install` at the repository root. Root `pnpm dev:client` and
 - **Server state**: TanStack React Query 5
 - **Auth**: Better-auth (admin, organization, emailOTP, apiKey plugins)
 - **Forms**: React Hook Form + Zod
-- **i18n**: next-intl (10 locales: en, de, fr, zh, es, pl, it, ko, pt, ja)
+- **i18n**: next-intl (10 locales: en, de, fr, zh, es, pl, it, ko, pt, ja, tr)
 - **Charts**: Nivo (bar, calendar, line), D3, Mapbox GL
 - **Date/time**: Luxon, date-fns
 - **URL state**: nuqs (query string), vaul (drawer)
