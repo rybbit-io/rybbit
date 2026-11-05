@@ -60,7 +60,7 @@
     "dotenv": "16.5.0",
     "drizzle-kit": "0.31.9",
     "drizzle-orm": "0.45.2",
-    "fastify": "5.8.5",
+    "fastify": "5.12.7",
     "i18n-iso-countries": "^7.14.0",
     "ioredis": "^5.8.2",
     "ip-address": "^10.0.1",
