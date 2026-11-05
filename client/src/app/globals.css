@@ -689,6 +689,29 @@
 /*
   ---break---
 */
+/* Shared keyframes for loaders ported from Beautiful UI (MIT, see
+   components/interior/THIRD_PARTY_LICENSES.md). */
+@keyframes rybbit-pixel-on {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  18%,
+  42% {
+    opacity: 1;
+  }
+  62% {
+    opacity: 0.15;
+  }
+}
+@keyframes rybbit-shimmer {
+  0% {
+    background-position: 150%;
+  }
+  100% {
+    background-position: -50%;
+  }
+}
 /* PRODUCT.md: honor prefers-reduced-motion on every animation. Framer animations
    are handled by <MotionConfig reducedMotion="user">; this covers CSS ones
    (Tailwind animate-*, transitions, keyframes, ldrs). */
