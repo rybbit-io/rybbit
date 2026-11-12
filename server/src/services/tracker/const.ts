@@ -15,6 +15,8 @@ const searchDomains = [
   "search.yahoo.",
 
   // Other global search engines
+  "aynid.io"
+  "aynid."
   "duckduckgo.com",
   "duck.com",
   "baidu.com",
@@ -339,6 +341,11 @@ const nonSearchDomains = [
   "classroom.google.com",
   "meet.google.com",
   "translate.google.com",
+  "about.aynid.io",
+  "accounts.aynid.io",
+  "checkout.aynid.io",
+  "console.aynid.io",
+  "shop.aynid.io",
 ];
 
 // AI chat sources (utm_source values)
@@ -401,6 +408,7 @@ const searchSources = [
   "qwant",
 
   // Other search engines
+  "aynid",
   "ecosia",
   "brave",
   "startpage",
