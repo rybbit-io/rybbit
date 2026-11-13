@@ -1,0 +1,168 @@
+---
+title: Export Events
+description: Downloads a site's raw events as a CSV or NDJSON file.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/export/events
+```
+
+Streams every event in a date range as a file, one row per event, oldest first. Covers pageviews, custom events, outbound clicks, errors, web vitals and autocaptured interactions. IP addresses are never included.
+
+Needs a role on the site (any role, including viewer) or an API key with the `events:read` scope. Public-site and private-link visitors cannot call it. The same export is available in the dashboard under **Site Settings → Export**.
+
+**Limits:** one request returns at most 2,000,000 events. Larger ranges get `413` before any data is sent, so fetch long histories month by month. Rate limit: 10 requests per minute per user (per organization for organization API keys), on top of the [standard API limits](/docs/api/getting-started#rate-limits-cloud-only).
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters). With no time parameters, exports all time.
+
+<TypeTable
+  type={{
+    format: {
+      description: 'File format. NDJSON is one JSON object per line.',
+      type: 'string',
+      typeDescription: '"csv" | "ndjson"',
+      default: 'csv',
+    },
+  }}
+/>
+
+### Response
+
+The response body is the file itself, not JSON: `text/csv` with a header row, or `application/x-ndjson`. `Content-Disposition` names the file, and `X-Export-Rows` gives the number of events. Stream it to disk rather than buffering it.
+
+#### Columns
+
+<TypeTable
+  type={{
+    timestamp: { description: 'When the event happened, ISO-8601 UTC with milliseconds', type: 'string' },
+    type: { description: 'Event type', type: 'string', typeDescription: '"pageview" | "custom_event" | "outbound" | "error" | "performance" | "button_click" | "copy" | "form_submit" | "input_change"' },
+    event_name: { description: 'Custom event or error name; empty for pageviews', type: 'string' },
+    props: { description: 'Event properties. A JSON string in CSV, an object in NDJSON.', type: 'string | object' },
+    session_id: { description: 'Session ID', type: 'string' },
+    user_id: { description: 'Anonymous visitor ID', type: 'string' },
+    identified_user_id: { description: 'Your user ID, when the visitor was identified', type: 'string' },
+    hostname: { description: 'Page hostname', type: 'string' },
+    pathname: { description: 'Page path', type: 'string' },
+    querystring: { description: 'Page query string', type: 'string' },
+    page_title: { description: 'Page title', type: 'string' },
+    referrer: { description: 'Referrer URL', type: 'string' },
+    channel: { description: 'Acquisition channel', type: 'string' },
+    browser: { description: 'Browser name', type: 'string' },
+    browser_version: { description: 'Browser version', type: 'string' },
+    operating_system: { description: 'Operating system', type: 'string' },
+    operating_system_version: { description: 'Operating system version', type: 'string' },
+    device_type: { description: 'Device type', type: 'string' },
+    screen_width: { description: 'Screen width in pixels', type: 'number' },
+    screen_height: { description: 'Screen height in pixels', type: 'number' },
+    language: { description: 'Browser language', type: 'string' },
+    country: { description: 'ISO 3166-1 alpha-2 country code', type: 'string' },
+    region: { description: 'Region or state', type: 'string' },
+    city: { description: 'City', type: 'string' },
+    lat: { description: 'Approximate latitude of the city', type: 'number' },
+    lon: { description: 'Approximate longitude of the city', type: 'number' },
+    'lcp, cls, inp, fcp, ttfb': { description: 'Web vitals, on performance events only; empty otherwise', type: 'number | null' },
+    tag: { description: 'Tag set on the tracking script', type: 'string' },
+  }}
+/>
+
+Errors come back as JSON: `400` for malformed time parameters, filters or `format`; `403` for a site that doesn't exist or that you can't access; `413` when the range holds more than 2,000,000 events (the body includes `rows` and `maxRows`); `429` when rate limited.
+
+### Counting first
+
+`GET /api/sites/:site/export/events/count` takes the same parameters and returns `{ "data": { "rows": 48210, "maxRows": 2000000 } }`, so a script can check a range before downloading it.
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'Go']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl "https://app.rybbit.io/api/sites/123/export/events?start_date=2026-01-01&end_date=2026-01-31&time_zone=UTC&format=csv" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -o events-2026-01.csv
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+import { createWriteStream } from 'node:fs';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/export/events?start_date=2026-01-01&end_date=2026-01-31&time_zone=UTC&format=ndjson',
+  { headers: { Authorization: 'Bearer your_api_key_here' } }
+);
+if (!response.ok) throw new Error((await response.json()).error);
+
+await pipeline(Readable.fromWeb(response.body), createWriteStream('events-2026-01.ndjson'));
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+with requests.get(
+    'https://app.rybbit.io/api/sites/123/export/events',
+    params={
+        'start_date': '2026-01-01',
+        'end_date': '2026-01-31',
+        'time_zone': 'UTC',
+        'format': 'csv',
+    },
+    headers={'Authorization': 'Bearer your_api_key_here'},
+    stream=True,
+) as response:
+    response.raise_for_status()
+    with open('events-2026-01.csv', 'wb') as f:
+        for chunk in response.iter_content(chunk_size=1 << 20):
+            f.write(chunk)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/export/events?start_date=2026-01-01&end_date=2026-01-31&time_zone=UTC&format=csv", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+resp, err := http.DefaultClient.Do(req)
+if err != nil {
+    log.Fatal(err)
+}
+defer resp.Body.Close()
+
+out, _ := os.Create("events-2026-01.csv")
+defer out.Close()
+io.Copy(out, resp.Body)
+```
+  </Tab>
+</Tabs>
+
+```csv title="Response (CSV, first rows)"
+"timestamp","type","event_name","props","session_id","user_id",...
+"2026-01-01T00:00:04.212Z","pageview","","{}","8f3c…","a91e…",...
+"2026-01-01T00:00:19.870Z","custom_event","signup","{""plan"":""pro""}","8f3c…","a91e…",...
+```
+
+</div>
+</div>
