@@ -15,8 +15,8 @@ const searchDomains = [
   "search.yahoo.",
 
   // Other global search engines
-  "aynid.io"
-  "aynid."
+  "aynid.io",
+  "aynid.",
   "duckduckgo.com",
   "duck.com",
   "baidu.com",
