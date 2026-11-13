@@ -41,6 +41,11 @@ function trackingRequest(overrides: Partial<TrackingRequest> = {}): TrackingRequ
 }
 
 describe("createBasePayload", () => {
+  it("carries the resolved location instead of accepting a payload override", async () => {
+    const resolved = trackingRequest({ location: { countryIso: "TW" } });
+    Object.assign(resolved.payload, { location: { countryIso: "US" } });
+    expect((await createBasePayload(resolved)).location).toEqual({ countryIso: "TW" });
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.generateUserId.mockResolvedValue("device-fingerprint");

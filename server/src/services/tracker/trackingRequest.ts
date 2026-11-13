@@ -1,5 +1,7 @@
 import type { FastifyRequest } from "fastify";
 import { createAsnLookup, type AsnLookup } from "../../db/geolocation/asn.js";
+import { getCloudflareLocation } from "../../db/geolocation/cloudflare.js";
+import type { LocationResponse } from "../../db/geolocation/types.js";
 import { checkApiKey } from "../../lib/auth-utils.js";
 import { hasScope } from "../../lib/scopes.js";
 import { siteConfig, type SiteConfigData } from "../../lib/siteConfig.js";
@@ -52,6 +54,8 @@ export interface TrackingRequest {
    * never disagree about the day.
    */
   receivedAt: Date;
+  /** Validated location from an explicitly trusted Cloudflare proxy path. */
+  location?: LocationResponse;
 }
 
 /**
@@ -109,5 +113,8 @@ export async function resolveTrackingRequest(
     headers: request.headers,
     lookupAsn,
     receivedAt,
+    location: trustedServerSideIngestion
+      ? null
+      : getCloudflareLocation(request.headers, request.raw?.socket?.remoteAddress, ipAddress),
   };
 }
