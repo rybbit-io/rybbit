@@ -16,6 +16,7 @@ vi.mock("../../db/clickhouse/clickhouse.js", async () => {
   return { clickhouse: process.env.CLICKHOUSE_TEST_URL ? createClient({ ...clientConfig, database }) : {} };
 });
 
+import { Readable } from "node:stream";
 import Fastify from "fastify";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import {
@@ -24,9 +25,35 @@ import {
   EXPORT_MAX_ROWS,
   exportEvents,
   exportFilename,
+  failOnClickhouseException,
   getExportEventsCount,
   parseExportFormat,
 } from "./exportEvents.js";
+
+describe("Event export: mid-stream ClickHouse errors", () => {
+  const consume = async (stream: NodeJS.ReadableStream) => {
+    let text = "";
+    for await (const chunk of stream) text += chunk.toString();
+    return text;
+  };
+
+  it("fails a stream that ends in ClickHouse's tagged exception block, without forwarding it", async () => {
+    const rows = "1,a\n".repeat(50_000);
+    const block =
+      "\r\n__exception__\r\nTAG\nCode: 241. DB::Exception: Memory limit exceeded\n52 TAG\r\n__exception__\r\n";
+    let text = "";
+    const guarded = failOnClickhouseException(Readable.from([Buffer.from(rows), Buffer.from(block)]), "TAG");
+    guarded.on("data", chunk => (text += chunk.toString()));
+    await expect(consume(guarded)).rejects.toThrow(/Memory limit exceeded/);
+    expect(text).not.toContain("__exception__");
+  });
+
+  it("leaves streams without the response's tag alone", async () => {
+    const body = "1,__exception__\r\nOTHER\n";
+    expect(await consume(failOnClickhouseException(Readable.from([Buffer.from(body)]), "TAG"))).toBe(body);
+    expect(await consume(failOnClickhouseException(Readable.from([Buffer.from(body)]), undefined))).toBe(body);
+  });
+});
 
 describe("Event export: parameters", () => {
   it("defaults to CSV and rejects unknown formats", () => {
@@ -47,12 +74,12 @@ describe("Event export: parameters", () => {
 
 describe.skipIf(!process.env.CLICKHOUSE_TEST_URL)("Event export: ClickHouse results", () => {
   let client: ReturnType<typeof createClient>;
-  const run = async (sql: string, format: "csv" | "ndjson" | "count") => {
+  const run = async (sql: string, format: "csv" | "ndjson" | "count", siteId = 1) => {
     if (format === "count") {
-      const result = await client.query({ query: sql, query_params: { siteId: 1 }, format: "JSONEachRow" });
+      const result = await client.query({ query: sql, query_params: { siteId }, format: "JSONEachRow" });
       return result.json<{ rows: string }>();
     }
-    const result = await client.exec({ query: sql, query_params: { siteId: 1 } });
+    const result = await client.exec({ query: sql, query_params: { siteId } });
     let text = "";
     for await (const chunk of result.stream) text += chunk.toString();
     return text;
@@ -84,6 +111,15 @@ describe.skipIf(!process.env.CLICKHOUSE_TEST_URL)("Event export: ClickHouse resu
         (1, '2026-09-10 09:00:05', '2026-09-10 09:00:05.000', 's1', '/pricing', 'custom_event', 'signup', '{"plan":"pro","seats":3}', 'US', '1.2.3.4', ''),
         (1, '2026-09-11 09:00:00', '2026-09-11 09:00:00.000', 's2', '/', 'pageview', '', '{}', 'DE', '5.6.7.8', ''),
         (2, '2026-09-10 09:00:00', '2026-09-10 09:00:00.000', 's3', '/', 'pageview', '', '{}', 'FR', '9.9.9.9', '')`,
+    });
+    // Site 5: two inserts, so two parts, with the later millisecond written
+    // first; and visitor strings a spreadsheet would run as formulas.
+    const site5 = `INSERT INTO events (site_id, timestamp, timestamp_ms, session_id, pathname, type, event_name, props, page_title)`;
+    await client.command({
+      query: `${site5} VALUES (5, '2026-09-10 12:00:00', '2026-09-10 12:00:00.900', 'late', '=HYPERLINK("x")', 'custom_event', '+cmd', '{"a":"=1"}', '-2+3')`,
+    });
+    await client.command({
+      query: `${site5} VALUES (5, '2026-09-10 12:00:00', '2026-09-10 12:00:00.100', 'early', '/ok', 'pageview', '', '{}', '@SUM(A1)')`,
     });
   });
 
@@ -171,5 +207,87 @@ describe.skipIf(!process.env.CLICKHOUSE_TEST_URL)("Event export: ClickHouse resu
 
     const bad = await app().inject({ url: "/sites/1/export/events?format=xml" });
     expect(bad.statusCode).toBe(400);
+  });
+
+  it("neutralizes formula-looking cells in CSV only", async () => {
+    const site5 = { start_date: "2026-09-10", end_date: "2026-09-10", time_zone: "UTC" };
+    const csv = (await run(buildExportQuery(site5, 5, "csv"), "csv", 5)) as string;
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`);
+    expect(csv).toContain(`"'+cmd"`);
+    expect(csv).toContain(`"'-2+3"`);
+    expect(csv).toContain(`"'@SUM(A1)"`);
+    expect(csv).toContain(`"/ok"`);
+
+    const ndjson = (await run(buildExportQuery(site5, 5, "ndjson"), "ndjson", 5)) as string;
+    const rows = ndjson
+      .trim()
+      .split("\n")
+      .map(line => JSON.parse(line));
+    expect(rows.map(row => row.page_title)).toEqual(["@SUM(A1)", "-2+3"]);
+  });
+
+  it("orders events within a second by their milliseconds", async () => {
+    const ndjson = (await run(buildExportQuery({}, 5, "ndjson"), "ndjson", 5)) as string;
+    expect(
+      ndjson
+        .trim()
+        .split("\n")
+        .map(line => JSON.parse(line).session_id)
+    ).toEqual(["early", "late"]);
+  });
+
+  it("filters on stored columns, not on the guarded CSV aliases", async () => {
+    const filters = JSON.stringify([{ parameter: "pathname", type: "equals", value: ['=HYPERLINK("x")'] }]);
+    const csv = (await run(buildExportQuery({ filters }, 5, "csv"), "csv", 5)) as string;
+    expect(csv.trim().split("\n")).toHaveLength(2);
+    expect(csv).toContain('"late"');
+  });
+
+  it("fails the download when ClickHouse errors after streaming has started", async () => {
+    // ClickHouse sends a 200, streams rows, then appends a tagged exception
+    // block and cuts the connection. The client must see a failed download,
+    // never a complete file, and the error text must not reach it.
+    const fastify = Fastify();
+    fastify.get("/fail", async (_request, reply) => {
+      const result = await client.exec({
+        query: "SELECT number, throwIf(number = 500000) FROM numbers(1000000) FORMAT CSV",
+        clickhouse_settings: { max_block_size: "1000" },
+      });
+      const tag = result.response_headers["x-clickhouse-exception-tag"] as string | undefined;
+      expect(tag).toBeTruthy();
+      return reply.header("Content-Type", "text/csv").send(failOnClickhouseException(result.stream, tag));
+    });
+    const address = await fastify.listen({ port: 0, host: "127.0.0.1" });
+    try {
+      const response = await fetch(`${address}/fail`);
+      expect(response.status).toBe(200);
+      let text = "";
+      const read = async () => {
+        const decoder = new TextDecoder();
+        const reader = response.body!.getReader();
+        for (let part = await reader.read(); !part.done; part = await reader.read()) {
+          text += decoder.decode(part.value, { stream: true });
+        }
+      };
+      await expect(read()).rejects.toThrow();
+      expect(text.length).toBeGreaterThan(0);
+      expect(text).not.toContain("__exception__");
+      expect(text).not.toContain("FUNCTION_THROW_IF");
+    } finally {
+      await fastify.close();
+    }
+  });
+
+  it("passes a clean stream through unchanged", async () => {
+    const query = "SELECT number FROM numbers(200000) FORMAT CSV";
+    const raw = await client.exec({ query });
+    let expected = "";
+    for await (const chunk of raw.stream) expected += chunk.toString();
+
+    const guarded = await client.exec({ query });
+    const tag = guarded.response_headers["x-clickhouse-exception-tag"] as string | undefined;
+    let text = "";
+    for await (const chunk of failOnClickhouseException(guarded.stream, tag)) text += chunk.toString();
+    expect(text).toBe(expected);
   });
 });

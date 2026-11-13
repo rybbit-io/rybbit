@@ -9,30 +9,59 @@ import { eventExportUrl, EventExportFormat, EventExportParams } from "@/api/anal
 import { useGetEventExportCount } from "@/api/analytics/hooks/useGetEventExportCount";
 import { CodeSnippet } from "@/components/CodeSnippet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BACKEND_URL } from "@/lib/const";
 import { useTimezone } from "@/lib/store";
 
 import { SettingRow, SettingsSection, SettingsSections } from "./SettingsSection";
 
-type RangeKey = "last-30-days" | "last-90-days" | "last-12-months" | "this-year" | "last-year" | "all-time";
+type PresetKey =
+  | "yesterday"
+  | "last-7-days"
+  | "last-30-days"
+  | "last-90-days"
+  | "last-12-months"
+  | "this-year"
+  | "last-year"
+  | "all-time";
+type RangeKey = PresetKey | "custom";
 
-const RANGE_KEYS: RangeKey[] = ["last-30-days", "last-90-days", "last-12-months", "this-year", "last-year", "all-time"];
+// Short presets first: a busy site can pass the per-file cap within a month.
+const RANGE_KEYS: RangeKey[] = [
+  "yesterday",
+  "last-7-days",
+  "last-30-days",
+  "last-90-days",
+  "last-12-months",
+  "this-year",
+  "last-year",
+  "all-time",
+  "custom",
+];
 
-function rangeDates(range: RangeKey, timeZone: string): Pick<EventExportParams, "startDate" | "endDate"> {
-  const today = DateTime.now().setZone(timeZone).startOf("day");
-  const iso = (date: DateTime) => date.toFormat("yyyy-MM-dd");
+const iso = (date: DateTime) => date.toFormat("yyyy-MM-dd");
+const today = (timeZone: string) => DateTime.now().setZone(timeZone).startOf("day");
+
+function presetDates(range: PresetKey, timeZone: string): Pick<EventExportParams, "startDate" | "endDate"> {
+  const now = today(timeZone);
   switch (range) {
+    case "yesterday": {
+      const yesterday = iso(now.minus({ days: 1 }));
+      return { startDate: yesterday, endDate: yesterday };
+    }
+    case "last-7-days":
+      return { startDate: iso(now.minus({ days: 6 })), endDate: iso(now) };
     case "last-30-days":
-      return { startDate: iso(today.minus({ days: 29 })), endDate: iso(today) };
+      return { startDate: iso(now.minus({ days: 29 })), endDate: iso(now) };
     case "last-90-days":
-      return { startDate: iso(today.minus({ days: 89 })), endDate: iso(today) };
+      return { startDate: iso(now.minus({ days: 89 })), endDate: iso(now) };
     case "last-12-months":
-      return { startDate: iso(today.minus({ months: 12 }).plus({ days: 1 })), endDate: iso(today) };
+      return { startDate: iso(now.minus({ months: 12 }).plus({ days: 1 })), endDate: iso(now) };
     case "this-year":
-      return { startDate: iso(today.startOf("year")), endDate: iso(today) };
+      return { startDate: iso(now.startOf("year")), endDate: iso(now) };
     case "last-year": {
-      const lastYear = today.minus({ years: 1 });
+      const lastYear = now.minus({ years: 1 });
       return { startDate: iso(lastYear.startOf("year")), endDate: iso(lastYear.endOf("year")) };
     }
     case "all-time":
@@ -44,23 +73,30 @@ export function ExportTab({ siteId }: { siteId: number }) {
   const t = useExtracted();
   const timeZone = useTimezone();
   const [range, setRange] = useState<RangeKey>("last-30-days");
+  const [custom, setCustom] = useState(() => presetDates("last-7-days", timeZone));
   const [format, setFormat] = useState<EventExportFormat>("csv");
 
-  const params: EventExportParams = { ...rangeDates(range, timeZone), timeZone };
-  const { data: count, isLoading, error } = useGetEventExportCount(siteId, params);
+  const dates = range === "custom" ? custom : presetDates(range, timeZone);
+  const validRange =
+    range !== "custom" || (!!custom.startDate && !!custom.endDate && custom.startDate <= custom.endDate);
+  const params: EventExportParams = { ...dates, timeZone };
+  const { data: count, isLoading, error } = useGetEventExportCount(siteId, params, { enabled: validRange });
   const tooLarge = !!count && count.rows > count.maxRows;
-  const canDownload = !!count && count.rows > 0 && !tooLarge;
+  const canDownload = validRange && !!count && count.rows > 0 && !tooLarge;
 
   const rangeLabels: Record<RangeKey, string> = {
+    yesterday: t("Yesterday"),
+    "last-7-days": t("Last 7 days"),
     "last-30-days": t("Last 30 days"),
     "last-90-days": t("Last 90 days"),
     "last-12-months": t("Last 12 months"),
     "this-year": t("This year"),
     "last-year": t("Last year"),
     "all-time": t("All time"),
+    custom: t("Custom range"),
   };
 
-  const apiExample = `curl "${BACKEND_URL}/sites/${siteId}/export/events?start_date=2026-01-01&end_date=2026-01-31&time_zone=UTC&format=csv" \\
+  const apiExample = `curl --fail "${BACKEND_URL}/sites/${siteId}/export/events?start_date=2026-01-01&end_date=2026-01-31&time_zone=UTC&format=csv" \\
   -H "Authorization: Bearer $RYBBIT_API_KEY" \\
   -o events-2026-01.csv`;
 
@@ -86,6 +122,27 @@ export function ExportTab({ siteId }: { siteId: number }) {
             </SelectContent>
           </Select>
         </SettingRow>
+        {range === "custom" && (
+          <SettingRow label={t("From")} description={t("Both dates are included.")}>
+            <Input
+              type="date"
+              aria-label={t("From")}
+              className="w-[150px]"
+              value={custom.startDate}
+              max={iso(today(timeZone))}
+              onChange={event => setCustom({ ...custom, startDate: event.target.value })}
+            />
+            <span className="text-sm text-muted-foreground">{t("to")}</span>
+            <Input
+              type="date"
+              aria-label={t("To")}
+              className="w-[150px]"
+              value={custom.endDate}
+              max={iso(today(timeZone))}
+              onChange={event => setCustom({ ...custom, endDate: event.target.value })}
+            />
+          </SettingRow>
+        )}
         <SettingRow
           label={t("Format")}
           description={t("CSV opens in spreadsheets. NDJSON is one JSON object per line, for scripts.")}
@@ -102,18 +159,20 @@ export function ExportTab({ siteId }: { siteId: number }) {
         </SettingRow>
         <div className="flex items-center justify-between gap-6 rounded-md border border-neutral-150 px-4 py-3 dark:border-neutral-850">
           <p className="text-sm text-muted-foreground tabular-nums">
-            {isLoading
-              ? t("Counting events…")
-              : error
-                ? t("Couldn't count events for this range.")
-                : tooLarge
-                  ? t("{rows} events is more than one file can hold ({max}). Pick a shorter range.", {
-                      rows: count.rows.toLocaleString(),
-                      max: count.maxRows.toLocaleString(),
-                    })
-                  : count?.rows === 0
-                    ? t("No events in this range.")
-                    : t("{rows} events", { rows: (count?.rows ?? 0).toLocaleString() })}
+            {!validRange
+              ? t("Pick a start date on or before the end date.")
+              : isLoading
+                ? t("Counting events…")
+                : error
+                  ? t("Couldn't count events for this range.")
+                  : tooLarge
+                    ? t("{rows} events is more than one file can hold ({max}). Pick a shorter range.", {
+                        rows: count.rows.toLocaleString(),
+                        max: count.maxRows.toLocaleString(),
+                      })
+                    : count?.rows === 0
+                      ? t("No events in this range.")
+                      : t("{rows} events", { rows: (count?.rows ?? 0).toLocaleString() })}
           </p>
           {canDownload ? (
             <Button asChild size="sm">
@@ -124,7 +183,11 @@ export function ExportTab({ siteId }: { siteId: number }) {
             </Button>
           ) : (
             <Button size="sm" disabled>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {validRange && isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
               {t("Download")}
             </Button>
           )}

@@ -19,7 +19,7 @@ Streams every event in a date range as a file, one row per event, oldest first. 
 
 Needs a role on the site (any role, including viewer) or an API key with the `events:read` scope. Public-site and private-link visitors cannot call it. The same export is available in the dashboard under **Site Settings → Export**.
 
-**Limits:** one request returns at most 2,000,000 events. Larger ranges get `413` before any data is sent, so fetch long histories month by month. Rate limit: 10 requests per minute per user (per organization for organization API keys), on top of the [standard API limits](/docs/api/getting-started#rate-limits-cloud-only).
+**Limits:** one request returns at most 2,000,000 events. Larger ranges get `413` before any data is sent, so fetch long histories month by month (or day by day for very busy sites). Rate limit: 10 requests per minute per user (per organization for organization API keys), on top of the [standard API limits](/docs/api/getting-started#rate-limits-cloud-only).
 
 ### Path Parameters
 
@@ -50,7 +50,13 @@ Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (ti
 
 ### Response
 
-The response body is the file itself, not JSON: `text/csv` with a header row, or `application/x-ndjson`. `Content-Disposition` names the file, and `X-Export-Rows` gives the number of events. Stream it to disk rather than buffering it.
+The response body is the file itself, not JSON: `text/csv` with a header row, or `application/x-ndjson`. `Content-Disposition` names the file, and `X-Export-Rows` gives the number of events counted just before streaming began (events arriving meanwhile can make the file slightly longer). Stream it to disk rather than buffering it.
+
+Events are ordered oldest first, to the millisecond.
+
+In CSV, text cells that start with `=`, `+`, `-`, `@`, a tab or a carriage return get a leading `'` so spreadsheets show them as text instead of running them as formulas. NDJSON values are exactly as stored.
+
+If the export fails after the file has started (a server limit is hit mid-stream), the connection is cut before the end, so your HTTP client reports an incomplete download. Treat any download that does not complete normally as failed and retry it.
 
 #### Columns
 
@@ -87,11 +93,11 @@ The response body is the file itself, not JSON: `text/csv` with a header row, or
   }}
 />
 
-Errors come back as JSON: `400` for malformed time parameters, filters or `format`; `403` for a site that doesn't exist or that you can't access; `413` when the range holds more than 2,000,000 events (the body includes `rows` and `maxRows`); `429` when rate limited.
+Errors before the file starts come back as JSON: `400` for malformed time parameters, filters or `format`; `403` for a site that doesn't exist or that you can't access; `413` when the range holds more than 2,000,000 events (the body includes `rows` and `maxRows`); `429` when rate limited.
 
 ### Counting first
 
-`GET /api/sites/:site/export/events/count` takes the same parameters and returns `{ "data": { "rows": 48210, "maxRows": 2000000 } }`, so a script can check a range before downloading it.
+`GET /api/sites/:site/export/events/count` takes the same parameters and returns `{ "data": { "rows": 48210, "maxRows": 2000000 } }`, so a script can check a range before downloading it. It is rate limited to 30 requests per minute.
 
 </div>
 <div className="flex flex-col gap-4">
@@ -99,7 +105,7 @@ Errors come back as JSON: `400` for malformed time parameters, filters or `forma
 <Tabs items={['cURL', 'JavaScript', 'Python', 'Go']}>
   <Tab value="cURL">
 ```bash title="Request"
-curl "https://app.rybbit.io/api/sites/123/export/events?start_date=2026-01-01&end_date=2026-01-31&time_zone=UTC&format=csv" \
+curl --fail "https://app.rybbit.io/api/sites/123/export/events?start_date=2026-01-01&end_date=2026-01-31&time_zone=UTC&format=csv" \
   -H "Authorization: Bearer your_api_key_here" \
   -o events-2026-01.csv
 ```

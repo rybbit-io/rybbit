@@ -1,6 +1,6 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ fetchEventExportCount: vi.fn() }));
@@ -15,6 +15,28 @@ vi.mock("@/api/analytics/endpoints", async importOriginal => ({
 }));
 vi.mock("@/components/CodeSnippet", () => ({ CodeSnippet: ({ code }: { code: string }) => <pre>{code}</pre> }));
 vi.mock("@/lib/store", () => ({ useTimezone: () => "UTC" }));
+// Radix Select needs pointer APIs jsdom lacks; a native select drives the same props.
+vi.mock("@/components/ui/select", () => ({
+  Select: ({
+    value,
+    onValueChange,
+    children,
+  }: {
+    value: string;
+    onValueChange: (value: string) => void;
+    children: React.ReactNode;
+  }) => (
+    <select value={value} onChange={event => onValueChange(event.target.value)}>
+      {children}
+    </select>
+  ),
+  SelectTrigger: () => null,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
+    <option value={value}>{children}</option>
+  ),
+}));
 
 import { ExportTab } from "./ExportTab";
 
@@ -61,5 +83,34 @@ describe("Export tab", () => {
 
     await waitFor(() => expect(screen.getByText("No events in this range.")).toBeTruthy());
     expect((screen.getByRole("button", { name: "Download" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("exports a custom range and refuses an inverted one", async () => {
+    mocks.fetchEventExportCount.mockResolvedValue({ rows: 10, maxRows: 2_000_000 });
+    renderExport();
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "custom" } });
+
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-03-01" } });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-03-02" } });
+    const link = await screen.findByRole("link", { name: "Download" });
+    const url = new URL(link.getAttribute("href")!, "http://localhost");
+    expect(url.searchParams.get("start_date")).toBe("2026-03-01");
+    expect(url.searchParams.get("end_date")).toBe("2026-03-02");
+
+    const calls = mocks.fetchEventExportCount.mock.calls.length;
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-03-05" } });
+    expect(screen.getByText("Pick a start date on or before the end date.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Download" })).toBeNull();
+    expect(mocks.fetchEventExportCount.mock.calls.length).toBe(calls);
+  });
+
+  it("offers a one-day range for busy sites", async () => {
+    mocks.fetchEventExportCount.mockResolvedValue({ rows: 10, maxRows: 2_000_000 });
+    renderExport();
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "yesterday" } });
+
+    const link = await screen.findByRole("link", { name: "Download" });
+    const url = new URL(link.getAttribute("href")!, "http://localhost");
+    expect(url.searchParams.get("start_date")).toBe(url.searchParams.get("end_date"));
   });
 });
