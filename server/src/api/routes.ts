@@ -192,6 +192,7 @@ import {
   unsubscribeMarketing,
   updateAccountSettings,
 } from "./user/index.js";
+import { exportEvents, getExportEventsCount } from "./analytics/exportEvents.js";
 import { createDashboardCache } from "./analytics/utils/dashboardCache.js";
 import { filterParamError } from "./analytics/utils/getFilterStatement.js";
 import { validateHttpTimeParams } from "./analytics/utils/query-validation.js";
@@ -320,6 +321,12 @@ const publicSegmentsRead = publicSite("segments:read");
 // one query per card), and /generate spends OpenRouter credit. Cap per user.
 const customQueryRateLimit = { max: 60, timeWindow: "1 minute" };
 const generateQueryRateLimit = { max: 20, timeWindow: "1 minute" };
+// Each export streams up to EXPORT_MAX_ROWS rows; a few per minute covers a
+// script walking month by month.
+const exportRateLimit = { max: 10, timeWindow: "1 minute" };
+// The count scans the same range as the export; the settings tab asks once per
+// range change.
+const exportCountRateLimit = { max: 30, timeWindow: "1 minute" };
 // The inline goal form asks for a preview as the pattern is typed (debounced).
 const goalPreviewRateLimit = { max: 60, timeWindow: "1 minute" };
 const withRateLimit = <T extends { preHandler: unknown; config?: object }>(
@@ -461,6 +468,13 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/bots/by-dimension", publicAnalyticsRead, getBotDimension);
   fastify.get("/sites/:siteId/bots/ai-summary", publicAnalyticsRead, getBotAiSummary);
   fastify.get("/sites/:siteId/export/pdf", site("analytics:read"), generatePdfReport);
+  // Raw event export. Not open to public-site or private-link visitors.
+  fastify.get("/sites/:siteId/export/events", withRateLimit(site("events:read"), exportRateLimit), exportEvents);
+  fastify.get(
+    "/sites/:siteId/export/events/count",
+    withRateLimit(site("events:read"), exportCountRateLimit),
+    getExportEventsCount
+  );
 }
 
 async function sessionReplayRoutes(fastify: FastifyInstance) {
