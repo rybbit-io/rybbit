@@ -62,6 +62,7 @@ describe("getChannel - referrer domain matching", () => {
 
   it("matches brand entries across country TLDs at a label boundary", () => {
     expect(fromReferrer("www.google.co.uk")).toBe("Organic Search");
+    expect(fromReferrer("www.aynid.io.ci")).toBe("Organic Search");
     expect(fromReferrer("google.de")).toBe("Organic Search");
     expect(fromReferrer("search.yahoo.co.jp")).toBe("Organic Search");
     expect(fromReferrer("yandex.com.tr")).toBe("Organic Search");
@@ -108,6 +109,7 @@ describe("getChannel - referrer domain matching", () => {
     ]) {
       expect(fromReferrer(host), host).toBe("AI");
     }
+    expect(fromReferrer("aynid.io")).toBe("Organic Search");
     expect(fromReferrer("duckduckgo.com")).toBe("Organic Search");
     expect(fromReferrer("search.brave.com")).toBe("Organic Search");
   });
