@@ -219,5 +219,5 @@ export type {
 export type { TraitKey, TraitKeysResponse, TraitGroupStats, TraitValueGroup, TraitBreakdown } from "./userTraits";
 
 // Export endpoints
-export { exportPdfReport } from "./export";
-export type { ExportPdfParams } from "./export";
+export { eventExportUrl, exportPdfReport, fetchEventExportCount } from "./export";
+export type { EventExportCount, EventExportFormat, EventExportParams, ExportPdfParams } from "./export";

@@ -133,6 +133,7 @@ import {
 import { connectGSC, disconnectGSC, getGSCData, getGSCStatus, gscCallback, selectGSCProperty } from "./gsc/index.js";
 import { updateMemberSiteAccess } from "./memberAccess/index.js";
 import { listTeams, createTeam, updateTeam, deleteTeam } from "./teams/index.js";
+import { signDpa } from "./dpa/signDpa.js";
 import {
   deleteSessionReplay,
   getSessionReplayEvents,
@@ -193,6 +194,7 @@ import {
   unsubscribeMarketing,
   updateAccountSettings,
 } from "./user/index.js";
+import { exportEvents, getExportEventsCount } from "./analytics/exportEvents.js";
 import { createDashboardCache } from "./analytics/utils/dashboardCache.js";
 import { filterParamError } from "./analytics/utils/getFilterStatement.js";
 import { validateHttpTimeParams } from "./analytics/utils/query-validation.js";
@@ -321,6 +323,12 @@ const publicSegmentsRead = publicSite("segments:read");
 // one query per card), and /generate spends OpenRouter credit. Cap per user.
 const customQueryRateLimit = { max: 60, timeWindow: "1 minute" };
 const generateQueryRateLimit = { max: 20, timeWindow: "1 minute" };
+// Each export streams up to EXPORT_MAX_ROWS rows; a few per minute covers a
+// script walking month by month.
+const exportRateLimit = { max: 10, timeWindow: "1 minute" };
+// The count scans the same range as the export; the settings tab asks once per
+// range change.
+const exportCountRateLimit = { max: 30, timeWindow: "1 minute" };
 // The inline goal form asks for a preview as the pattern is typed (debounced).
 const goalPreviewRateLimit = { max: 60, timeWindow: "1 minute" };
 const withRateLimit = <T extends { preHandler: unknown; config?: object }>(
@@ -462,6 +470,13 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/bots/by-dimension", publicAnalyticsRead, getBotDimension);
   fastify.get("/sites/:siteId/bots/ai-summary", publicAnalyticsRead, getBotAiSummary);
   fastify.get("/sites/:siteId/export/pdf", site("analytics:read"), generatePdfReport);
+  // Raw event export. Not open to public-site or private-link visitors.
+  fastify.get("/sites/:siteId/export/events", withRateLimit(site("events:read"), exportRateLimit), exportEvents);
+  fastify.get(
+    "/sites/:siteId/export/events/count",
+    withRateLimit(site("events:read"), exportCountRateLimit),
+    getExportEventsCount
+  );
 }
 
 async function sessionReplayRoutes(fastify: FastifyInstance) {
@@ -543,6 +558,17 @@ async function organizationsRoutes(fastify: FastifyInstance) {
 
   // Member site access management (admin/owner only)
   fastify.put("/organizations/:organizationId/members/:memberId/sites", org("members:manage"), updateMemberSiteAccess);
+
+  // Data Processing Agreement: a countersigned agreement with Rybbit Cloud, so self-hosted has none.
+  if (IS_CLOUD) {
+    const dpa = org("dpa:manage");
+    fastify.post(
+      "/organizations/:organizationId/dpa",
+      // Each signature launches a browser to print the PDF.
+      { ...dpa, bodyLimit: 16 * 1024, config: { ...dpa.config, rateLimit: { max: 10, timeWindow: "1 hour" } } },
+      signDpa
+    );
+  }
 }
 
 async function teamsRoutes(fastify: FastifyInstance) {

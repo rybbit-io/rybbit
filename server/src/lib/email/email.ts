@@ -11,6 +11,7 @@ import {
   type UsageEmailProps,
 } from "./templates/ApproachingLimitEmail.js";
 import { ChangeEmailEmail } from "./templates/ChangeEmailEmail.js";
+import { DpaSignedEmail, dpaSignedSubject, type DpaSignedEmailProps } from "./templates/DpaSignedEmail.js";
 import { InvitationEmail, inviterLabel } from "./templates/InvitationEmail.js";
 import { LetterEmail } from "./templates/LetterEmail.js";
 import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
@@ -118,6 +119,7 @@ const REPLY_TO = "hello@rybbit.com";
 interface SendOptions {
   text?: string;
   headers?: Record<string, string>;
+  attachments?: { filename: string; content: Buffer }[];
   /** Resend replays the first response for a repeated key (for 24 hours) instead of sending again. */
   idempotencyKey?: string;
 }
@@ -149,6 +151,7 @@ export const sendEmail = async (email: string, subject: string, html: string, op
         html,
         ...(options.text ? { text: options.text } : {}),
         ...(options.headers ? { headers: options.headers } : {}),
+        ...(options.attachments ? { attachments: options.attachments } : {}),
       },
       options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
     );
@@ -194,6 +197,22 @@ export const sendInvitationEmail = async (props: {
 export const sendSiteTransferEmail = async (props: SiteTransferEmailProps) => {
   const html = await render(SiteTransferEmail(props));
   await sendEmail(props.email, `${props.sentBy} wants to transfer ${props.siteDomain} to you`, html);
+};
+
+/** Sends the countersigned DPA as a PDF attachment, keyed on the agreement so a retry can't send it twice. */
+export const sendDpaSignedEmail = async (
+  to: string[],
+  props: DpaSignedEmailProps,
+  pdf: { filename: string; content: Buffer }
+) => {
+  const html = await render(DpaSignedEmail(props));
+  const unique = [...new Set(to.map(address => address.toLowerCase()))];
+  for (const address of unique) {
+    await sendEmail(address, dpaSignedSubject(props.companyName), html, {
+      attachments: [pdf],
+      idempotencyKey: `dpa-signed:${props.agreementId}:${address}`,
+    });
+  }
 };
 
 export const sendLimitExceededEmail = async (email: string, usage: UsageEmailProps) => {
