@@ -48,6 +48,7 @@
     "@fastify/cors": "11.2.0",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/static": "10.1.11",
+    "@fontsource/dancing-script": "^5.3.0",
     "@maxmind/geoip2-node": "6.1.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@mongodb-js/zstd": "^2.0.1",

@@ -42,6 +42,14 @@ const infrastructure: Subprocessor[] = [
     location: "United States (global edge network)",
     website: "https://www.cloudflare.com",
   },
+  {
+    name: "Backblaze",
+    entity: "Backblaze, Inc.",
+    purpose: "Encrypted off-site backups of the databases that run the Rybbit service.",
+    data: "Copies of customer account data and analytics data collected on your behalf.",
+    location: "Netherlands (EU)",
+    website: "https://www.backblaze.com",
+  },
 ];
 
 const operations: Subprocessor[] = [
@@ -73,20 +81,12 @@ const operations: Subprocessor[] = [
 
 const ai: Subprocessor[] = [
   {
-    name: "Anthropic",
-    entity: "Anthropic, PBC",
-    purpose: "Large language model provider for AI-assisted features.",
-    data: "Content you submit to AI features and the analytics data those features summarize. Not used to train models.",
-    location: "United States",
-    website: "https://www.anthropic.com",
-  },
-  {
-    name: "OpenAI",
-    entity: "OpenAI, L.L.C.",
-    purpose: "Large language model provider for AI-assisted features.",
-    data: "Content you submit to AI features and the analytics data those features summarize. Not used to train models.",
-    location: "United States",
-    website: "https://openai.com",
+    name: "OpenRouter",
+    entity: "OpenRouter, Inc.",
+    purpose: "Routes requests from AI-assisted features to large language model providers.",
+    data: "The text you enter into an AI feature and the database schema needed to answer it. Stored analytics data is not sent.",
+    location: "United States (model providers may process requests in other countries)",
+    website: "https://openrouter.ai",
   },
 ];
 
@@ -139,7 +139,7 @@ export default function Subprocessors() {
   return (
     <LegalPageShell
       title="Subprocessors"
-      lastUpdated="September 13, 2026"
+      lastUpdated="November 17, 2026"
       intro="The third parties we rely on to run Rybbit, what each one does, and where it processes data."
     >
       <p>
@@ -163,17 +163,18 @@ export default function Subprocessors() {
 
       <h2 className="text-2xl font-semibold mt-8 mb-4">AI features</h2>
       <p>
-        These providers are only used when you use an AI-assisted feature. Data sent to them is limited to the request
-        you make and the analytics data needed to answer it. Our agreements with these providers prohibit using your
-        data to train their models.
+        This provider is only used when you use an AI-assisted feature, such as writing a SQL query from a question. It
+        receives the text you enter and the database schema, not the analytics data stored in Rybbit. Rybbit does not
+        use your data to train models.
       </p>
       <SubprocessorTable rows={ai} />
 
       <h2 className="text-2xl font-semibold mt-8 mb-4">International transfers</h2>
       <p>
-        Analytics data is stored on Hetzner servers in the European Union. Where a subprocessor processes personal
-        data outside the European Economic Area, we rely on the European Commission&apos;s Standard Contractual Clauses
-        or, where applicable, the EU-U.S. Data Privacy Framework.
+        Analytics data is stored on Hetzner servers in the European Union. Rybbit is operated by a US company, and some
+        subprocessors process personal data outside the European Economic Area. For these transfers, our{" "}
+        <Link href="/dpa">Data Processing Agreement</Link> incorporates the European Commission&apos;s Standard
+        Contractual Clauses, with the UK Addendum and Swiss amendments.
       </p>
 
       <h2 className="text-2xl font-semibold mt-8 mb-4">Changes to this list</h2>
@@ -187,6 +188,10 @@ export default function Subprocessors() {
 
       <h2 className="text-2xl font-semibold mt-8 mb-4">Change log</h2>
       <ul className="list-disc pl-6 space-y-2">
+        <li>
+          <strong>November 17, 2026:</strong> Added Backblaze (backups) and OpenRouter (AI features). Removed
+          Anthropic and OpenAI, which Rybbit does not call directly: AI requests go through OpenRouter.
+        </li>
         <li>
           <strong>September 13, 2026:</strong> Published this page. Added Google Workspace (Gmail), Anthropic, and
           OpenAI to the list previously maintained in the DPA.

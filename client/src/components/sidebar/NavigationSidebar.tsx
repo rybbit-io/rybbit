@@ -1,5 +1,5 @@
 "use client";
-import { AppWindow, Building2, Combine, CreditCard, UserCircle, Users } from "lucide-react";
+import { AppWindow, Building2, Combine, CreditCard, FileSignature, UserCircle, Users } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useActiveOrgName } from "../../hooks/useActiveOrgName";
@@ -13,7 +13,8 @@ export function NavigationSidebar() {
   const pathname = usePathname();
   const { can } = useOrgPermissions();
   const activeOrgName = useActiveOrgName();
-  const showOrgSettings = can("members:manage") || can("teams:manage") || (IS_CLOUD && can("billing:manage"));
+  const showOrgSettings =
+    can("members:manage") || can("teams:manage") || (IS_CLOUD && (can("billing:manage") || can("dpa:manage")));
 
   return (
     <Sidebar.Root>
@@ -63,6 +64,14 @@ export function NavigationSidebar() {
             active={pathname.startsWith("/settings/billing")}
             href="/settings/billing"
             icon={<CreditCard className="w-4 h-4" />}
+          />
+        )}
+        {IS_CLOUD && can("dpa:manage") && (
+          <Sidebar.Item
+            label={t("DPA")}
+            active={pathname.startsWith("/settings/dpa")}
+            href="/settings/dpa"
+            icon={<FileSignature className="w-4 h-4" />}
           />
         )}
       </Sidebar.Items>

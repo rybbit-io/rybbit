@@ -3,6 +3,7 @@ import type { AnnotationColor, DashboardConfig, Filter, SegmentType } from "@ryb
 import {
   boolean,
   check,
+  customType,
   foreignKey,
   index,
   integer,
@@ -927,4 +928,37 @@ export const lifecycleEmailLog = pgTable(
     sentAt: timestamp("sent_at", { mode: "string" }).defaultNow().notNull(),
   },
   table => [unique("lifecycle_email_log_user_email_key_unique").on(table.userId, table.emailKey)]
+);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
+
+// Data Processing Agreements signed in Settings → DPA. Each row is one signature,
+// and keeps the countersigned PDF exactly as it was issued (with its SHA-256), so
+// a later change to the DPA text or template never rewrites a signed copy. An
+// organization can sign again (say, after a rename); the newest row is current.
+export const dpaAgreements = pgTable(
+  "dpa_agreements",
+  {
+    id: text("id").primaryKey().notNull(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    dpaVersion: text("dpa_version").notNull(),
+    companyName: text("company_name").notNull(),
+    companyAddress: text("company_address").notNull(),
+    signerName: text("signer_name").notNull(),
+    signerTitle: text("signer_title").notNull(),
+    signerEmail: text("signer_email").notNull(),
+    signedByUserId: text("signed_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    signerIp: text("signer_ip"),
+    signerUserAgent: text("signer_user_agent"),
+    pdf: bytea("pdf").notNull(),
+    pdfSha256: text("pdf_sha256").notNull(),
+    signedAt: timestamp("signed_at", { mode: "string" }).notNull(),
+  },
+  table => [index("dpa_agreements_organization_id_idx").on(table.organizationId, table.signedAt)]
 );

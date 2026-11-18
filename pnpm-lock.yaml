@@ -368,6 +368,9 @@ importers:
       '@fastify/static':
         specifier: 10.1.11
         version: 10.1.11
+      '@fontsource/dancing-script':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@maxmind/geoip2-node':
         specifier: 6.1.0
         version: 6.1.0
@@ -1339,6 +1342,9 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource/dancing-script@5.3.0':
+    resolution: {integrity: sha512-/FFbz4ZCNN+eG2a6phkZB41iKmyCC6rq2blA/kG9OFeI3/tpzLNazND1bBdEnogLhpfg7o4NfauTbEEYSpSUGg==}
 
   '@formatjs/fast-memoize@3.1.5':
     resolution: {integrity: sha512-KLi3fan6WnCHmigd9pmEEN8Hid0v4wiFBW576M/d07KMWYecf1CvyMI3n34vCmHT4AoVqG2n702kiHbXjzZX2A==}
@@ -8848,6 +8854,8 @@ snapshots:
   '@floating-ui/utils@0.2.10': {}
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@fontsource/dancing-script@5.3.0': {}
 
   '@formatjs/fast-memoize@3.1.5': {}
 

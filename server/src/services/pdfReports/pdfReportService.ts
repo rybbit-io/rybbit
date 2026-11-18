@@ -1,4 +1,3 @@
-import puppeteer from "puppeteer";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DateTime } from "luxon";
 import { eq } from "drizzle-orm";
@@ -7,6 +6,7 @@ import { sites } from "../../db/postgres/schema.js";
 import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { processResults } from "../../api/analytics/utils/utils.js";
 import { getTimeStatement } from "../../api/analytics/utils/timeWindow.js";
+import { htmlToPdf } from "../../lib/htmlToPdf.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import {
   BreakdownDimension,
@@ -32,7 +32,7 @@ class PdfReportService {
     const html = this.renderHtml(reportData);
 
     // Convert to PDF
-    const pdfBuffer = await this.htmlToPdf(html);
+    const pdfBuffer = await htmlToPdf(html, { margin: { top: "0", right: "0", bottom: "0", left: "0" } });
 
     this.logger.info({ siteId: params.siteId }, "PDF report generated successfully");
     return pdfBuffer;
@@ -203,34 +203,6 @@ class PdfReportService {
   private renderHtml(data: PdfReportData): string {
     const element = PdfReportTemplate({ reportData: data });
     return renderToStaticMarkup(element);
-  }
-
-  private async htmlToPdf(html: string): Promise<Buffer> {
-    const browser = await puppeteer.launch({
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
-
-    try {
-      const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: "networkidle0" });
-
-      const pdfBuffer = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: {
-          top: "0",
-          right: "0",
-          bottom: "0",
-          left: "0",
-        },
-      });
-
-      return Buffer.from(pdfBuffer);
-    } finally {
-      await browser.close();
-    }
   }
 }
 
