@@ -813,3 +813,465 @@ describe("observeTrackingAnomaly (Redis-backed)", () => {
     expect(second.counters.tupleEvents10s).toBe(2);
   });
 });
+
+describe("hosting range volume (shadow, in-process fallback)", () => {
+  beforeEach(() => {
+    resetAnomalyScorerForTests();
+    setRedisAnomalyEnabledForTests(false);
+  });
+
+  const scraper = {
+    ...baseInput,
+    isHostingAsn: true,
+    asn: 203020,
+    screenWidth: 375 as number | undefined,
+    screenHeight: 812 as number | undefined,
+    capturesHumanInteractions: true,
+  };
+
+  /** One pageview every minute, each from the next address in one /24. */
+  const crawl = async (count: number, overrides: Partial<typeof scraper> = {}) => {
+    let result = await observeTrackingAnomaly({ ...scraper, ...overrides });
+    for (let index = 0; index < count; index++) {
+      result = await observeTrackingAnomaly({
+        ...scraper,
+        ...overrides,
+        ipAddress: `198.51.100.${index % 250}`,
+        pathname: `/players/${index}`,
+        nowMs: baseInput.nowMs + index * 60_000,
+      });
+    }
+    return result;
+  };
+  const shadowRules = (result: Awaited<ReturnType<typeof crawl>>) => result.shadowReasons.map(reason => reason.rule);
+
+  it("records a scraper rotating addresses inside one hosting range, without convicting", async () => {
+    const result = await crawl(1100);
+
+    // No single address comes near the per-address threshold, which is the gap.
+    expect(result.reasons.map(reason => reason.rule)).not.toContain("hosting_actor_events_1d");
+    expect(shadowRules(result)).toEqual(["hosting_range_events_1d"]);
+    expect(result.convictingReasons).toEqual([]);
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("stays quiet below the daily threshold", async () => {
+    expect(shadowRules(await crawl(900))).toEqual([]);
+  });
+
+  it("never fires for a range outside hosting space", async () => {
+    expect(shadowRules(await crawl(1100, { isHostingAsn: false }))).toEqual([]);
+  });
+
+  it("says nothing on a site that could not have recorded an interaction", async () => {
+    // Button, copy and form tracking default off: zero clicks is not evidence.
+    expect(shadowRules(await crawl(1100, { capturesHumanInteractions: false }))).toEqual([]);
+  });
+
+  it("stands down once the actor has interacted", async () => {
+    for (const eventType of ["button_click", "outbound"]) {
+      resetAnomalyScorerForTests();
+      await crawl(600);
+      await observeTrackingAnomaly({
+        ...scraper,
+        ipAddress: "198.51.100.7",
+        eventType,
+        nowMs: baseInput.nowMs + 600 * 60_000,
+      });
+      const result = await crawl(1100);
+
+      expect(result.counters.hostingRangeInteractions1d, eventType).toBe(1);
+      expect(shadowRules(result), eventType).toEqual([]);
+    }
+  });
+
+  it("does not count a custom event as a human interaction", async () => {
+    await observeTrackingAnomaly({ ...scraper, ipAddress: "198.51.100.7", eventType: "custom_event" });
+    const result = await crawl(1100);
+
+    expect(result.counters.hostingRangeInteractions1d).toBe(0);
+    expect(shadowRules(result)).toEqual(["hosting_range_events_1d"]);
+  });
+
+  it("stands down for a range showing many screens, which is a crowd", async () => {
+    for (const [screenWidth, screenHeight] of [
+      [390, 844],
+      [393, 852],
+      [430, 932],
+    ]) {
+      await observeTrackingAnomaly({ ...scraper, ipAddress: "198.51.100.7", screenWidth, screenHeight });
+    }
+    const result = await crawl(1100);
+
+    expect(result.counters.hostingRangeScreens1d).toBeGreaterThan(2);
+    expect(shadowRules(result)).toEqual([]);
+  });
+
+  it("does not count a hit with no screen size as a display, and needs one that is known", async () => {
+    const blind = await crawl(1100, { screenWidth: undefined, screenHeight: undefined });
+
+    expect(blind.counters.hostingRangeScreens1d).toBe(0);
+    expect(shadowRules(blind)).toEqual([]);
+
+    // The same range, once a real display shows up, is judged on that display.
+    const seen = await crawl(10);
+    expect(seen.counters.hostingRangeScreens1d).toBe(1);
+    expect(shadowRules(seen)).toEqual(["hosting_range_events_1d"]);
+  });
+
+  it("neither judges nor counts relay and SASE networks", async () => {
+    for (const asn of [13335, 36183, 20940, 54113, 13150]) {
+      resetAnomalyScorerForTests();
+      const result = await crawl(1100, { asn });
+
+      expect(result.counters.hostingRangeEvents1d, String(asn)).toBe(0);
+      expect(shadowRules(result), String(asn)).toEqual([]);
+    }
+  });
+
+  it("keeps two browsers in one range apart", async () => {
+    await crawl(600);
+    const result = await crawl(600, {
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    });
+
+    expect(result.counters.hostingRangeEvents1d).toBe(600);
+    expect(shadowRules(result)).toEqual([]);
+  });
+});
+
+describe("hosting range volume after a Redis outage", () => {
+  beforeEach(() => {
+    resetAnomalyScorerForTests();
+    setRedisAnomalyEnabledForTests(true);
+    mocks.anomalyObserve.mockReset();
+  });
+
+  const hit = {
+    ...baseInput,
+    isHostingAsn: true,
+    asn: 203020,
+    screenWidth: 375,
+    screenHeight: 812,
+    capturesHumanInteractions: true,
+  };
+  type Spec = { key: string; readOnly?: boolean };
+  /** A range over the threshold with no interactions and one screen. */
+  const overThreshold = (gap: number) => (_nowMs: number, specs: Spec[]) =>
+    Promise.resolve(
+      specs.map(spec => {
+        const total = spec.key.startsWith("bot:a:hre:")
+          ? 5000
+          : spec.key.startsWith("bot:a:hrs:")
+            ? 1
+            : spec.key.startsWith("bot:a:gap:")
+              ? gap
+              : 0;
+        return { total, top: 0, distinct: 0 };
+      })
+    );
+  const gapSpec = () => {
+    const calls = mocks.anomalyObserve.mock.calls;
+    const specs = calls[calls.length - 1][1] as Spec[];
+    return specs.find(spec => spec.key.startsWith("bot:a:gap:"));
+  };
+
+  it("records the range while the day's counters are whole", async () => {
+    mocks.anomalyObserve.mockImplementation(overThreshold(0));
+    const result = await observeTrackingAnomaly(hit);
+
+    expect(result.shadowReasons.map(reason => reason.rule)).toEqual(["hosting_range_events_1d"]);
+    expect(gapSpec()?.readOnly).toBe(true);
+  });
+
+  it("goes quiet once any worker has marked the day as incomplete", async () => {
+    mocks.anomalyObserve.mockImplementation(overThreshold(1));
+    const result = await observeTrackingAnomaly(hit);
+
+    expect(result.shadowReasons).toEqual([]);
+  });
+
+  it("marks the day after falling back, so a click taken in-process is not read as none", async () => {
+    mocks.anomalyObserve.mockRejectedValueOnce(new Error("redis down"));
+    await observeTrackingAnomaly({ ...hit, eventType: "button_click" });
+
+    // Redis is back and has never heard of that click.
+    mocks.anomalyObserve.mockImplementation(overThreshold(1));
+    const result = await observeTrackingAnomaly({ ...hit, nowMs: baseInput.nowMs + 60_000 });
+
+    expect(gapSpec()?.readOnly).toBe(false);
+    expect(result.shadowReasons).toEqual([]);
+  });
+
+  it("starts the next day whole again", async () => {
+    mocks.anomalyObserve.mockRejectedValueOnce(new Error("redis down"));
+    await observeTrackingAnomaly(hit);
+
+    mocks.anomalyObserve.mockImplementation(overThreshold(0));
+    const result = await observeTrackingAnomaly({ ...hit, nowMs: baseInput.nowMs + 24 * 60 * 60 * 1000 });
+
+    expect(gapSpec()?.readOnly).toBe(true);
+    expect(result.shadowReasons.map(reason => reason.rule)).toEqual(["hosting_range_events_1d"]);
+  });
+});
+
+describe("one-shot cohort, by day (in-process fallback)", () => {
+  beforeEach(() => {
+    resetAnomalyScorerForTests();
+    setRedisAnomalyEnabledForTests(false);
+  });
+
+  const DAY_MS = 86_400_000;
+  const dayStart = Math.floor(2_000_000_000_000 / DAY_MS) * DAY_MS;
+  const desktop = (version: number) =>
+    `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version}.0.0.0 Safari/537.36`;
+
+  interface FleetOptions {
+    versions: number[];
+    referrer?: string;
+    asns?: number;
+    revisit?: number;
+    userAgent?: (version: number) => string;
+  }
+
+  /** `count` desktop pageviews, one per fresh address, spread across the day. */
+  const visit = async (count: number, options: FleetOptions) => {
+    let result = await observeTrackingAnomaly({ ...baseInput, nowMs: dayStart });
+    for (let index = 0; index < count; index++) {
+      const actor = Math.floor(index / (options.revisit ?? 1));
+      const version = options.versions[actor % options.versions.length];
+      result = await observeTrackingAnomaly({
+        ...baseInput,
+        ipAddress: `10.${Math.floor(actor / 250)}.${actor % 250}.1`,
+        userAgent: (options.userAgent ?? desktop)(version),
+        screenWidth: 2560,
+        screenHeight: 1600,
+        language: "en-US",
+        referrer: options.referrer ?? "",
+        asn: 1000 + (index % (options.asns ?? 60)),
+        pathname: `/page-${index}`,
+        nowMs: dayStart + index * 60_000,
+      });
+    }
+    return result;
+  };
+
+  const flat = [118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129];
+  const peaked = [157, 157, 157, 157, 157, 157, 157, 157, 157, 156];
+
+  it("records a one-shot cohort drawing its versions from a list, without convicting", async () => {
+    const result = await visit(260, { versions: flat });
+
+    // The verdict would be inherited by every direct visitor on that screen,
+    // so it is recorded under both names and scored under neither.
+    expect(result.shadowReasons.map(reason => reason.rule)).toEqual([
+      "cohort_oneshot_direct_1d",
+      "cohort_oneshot_flat_versions_1d",
+    ]);
+    expect(result.convictingReasons).toEqual([]);
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("records only the shape when the cohort sits on current versions", async () => {
+    const result = await visit(260, { versions: peaked });
+
+    // A shared link looks like this too, so it is evidence being gathered.
+    expect(result.shadowReasons.map(reason => reason.rule)).toEqual(["cohort_oneshot_direct_1d"]);
+    expect(result.convictingReasons).toEqual([]);
+    expect(result.isAnomalous).toBe(false);
+    expect(result.score).toBe(0);
+  });
+
+  it("stays quiet below the daily volume gate", async () => {
+    const result = await visit(150, { versions: flat });
+
+    expect(result.shadowReasons).toEqual([]);
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("leaves a cohort alone when its visitors arrive with a referrer", async () => {
+    const result = await visit(260, { versions: flat, referrer: "https://www.google.com/" });
+
+    expect(result.shadowReasons).toEqual([]);
+    expect(result.reasons.map(reason => reason.rule)).not.toContain("cohort_oneshot_flat_versions_1d");
+  });
+
+  it("leaves a cohort alone when its visitors come back for more pages", async () => {
+    const result = await visit(260, { versions: flat, revisit: 3 });
+
+    expect(result.shadowReasons).toEqual([]);
+  });
+
+  it("leaves a cohort alone when it sits on a handful of networks", async () => {
+    const result = await visit(260, { versions: flat, asns: 5 });
+
+    expect(result.shadowReasons).toEqual([]);
+  });
+
+  it("does not count a phone cohort, whose screen millions share", async () => {
+    const result = await visit(260, {
+      versions: flat,
+      userAgent: version =>
+        `Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version}.0.0.0 Mobile Safari/537.36`,
+    });
+
+    expect(result.counters.cohortPageviews1d).toBe(0);
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("spares a visitor in the convicted cohort who arrived from somewhere", async () => {
+    await visit(260, { versions: flat });
+    const result = await observeTrackingAnomaly({
+      ...baseInput,
+      ipAddress: "192.0.2.50",
+      userAgent: desktop(157),
+      screenWidth: 2560,
+      screenHeight: 1600,
+      language: "en-US",
+      referrer: "https://news.ycombinator.com/",
+      asn: 7922,
+      nowMs: dayStart + 300 * 60_000,
+    });
+
+    expect(result.isAnomalous).toBe(false);
+  });
+
+  it("judges a vitals event by the cohort its pageviews built, without counting it", async () => {
+    const afterPageviews = await visit(260, { versions: flat });
+    const vitals = await observeTrackingAnomaly({
+      ...baseInput,
+      ipAddress: "10.9.9.9",
+      userAgent: desktop(120),
+      screenWidth: 2560,
+      screenHeight: 1600,
+      language: "en-US",
+      referrer: "",
+      asn: 1001,
+      eventType: "performance",
+      nowMs: dayStart + 300 * 60_000,
+    });
+
+    expect(vitals.counters.cohortPageviews1d).toBe(afterPageviews.counters.cohortPageviews1d);
+    expect(vitals.counters.cohortDistinctActors1d).toBe(afterPageviews.counters.cohortDistinctActors1d);
+    expect(vitals.shadowReasons.map(reason => reason.rule)).toContain("cohort_oneshot_flat_versions_1d");
+  });
+
+  it("starts each day from nothing", async () => {
+    await visit(260, { versions: flat });
+    const result = await observeTrackingAnomaly({
+      ...baseInput,
+      ipAddress: "10.9.9.9",
+      userAgent: desktop(120),
+      screenWidth: 2560,
+      screenHeight: 1600,
+      language: "en-US",
+      referrer: "",
+      asn: 1001,
+      nowMs: dayStart + DAY_MS + 1,
+    });
+
+    expect(result.counters.cohortPageviews1d).toBe(1);
+    expect(result.isAnomalous).toBe(false);
+  });
+});
+
+describe("read-only counters (Redis-backed)", () => {
+  beforeEach(() => {
+    resetAnomalyScorerForTests();
+    setRedisAnomalyEnabledForTests(true);
+    mocks.anomalyObserve.mockReset();
+    mocks.anomalyObserve.mockResolvedValue([]);
+  });
+
+  const desktopHit = {
+    ...baseInput,
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    screenWidth: 1920,
+    screenHeight: 1080,
+    language: "en-US",
+    isHostingAsn: true,
+    asn: 8075,
+  };
+
+  const readOnlyByKey = (specs: { key: string; readOnly?: boolean }[]) =>
+    Object.fromEntries(specs.map(spec => [spec.key.split(":").slice(0, 3).join(":"), spec.readOnly === true]));
+
+  it("counts a pageview into the day cohort and only reads the interaction counter", async () => {
+    await observeTrackingAnomaly(desktopHit);
+
+    const flags = readOnlyByKey(mocks.anomalyObserve.mock.calls[0][1]);
+    expect(flags["bot:o:v"]).toBe(false);
+    expect(flags["bot:o:a"]).toBe(false);
+    expect(flags["bot:o:d"]).toBe(false);
+    expect(flags["bot:o:n"]).toBe(false);
+    expect(flags["bot:a:hre"]).toBe(false);
+    expect(flags["bot:a:hri"]).toBe(true);
+  });
+
+  it("only reads the day cohort on a vitals event", async () => {
+    await observeTrackingAnomaly({ ...desktopHit, eventType: "performance" });
+
+    const flags = readOnlyByKey(mocks.anomalyObserve.mock.calls[0][1]);
+    expect(flags["bot:o:v"]).toBe(true);
+    expect(flags["bot:o:a"]).toBe(true);
+    expect(flags["bot:o:d"]).toBe(true);
+    expect(flags["bot:o:n"]).toBe(true);
+  });
+
+  it("does not count a referred pageview as direct", async () => {
+    await observeTrackingAnomaly({ ...desktopHit, referrer: "https://www.google.com/" });
+
+    const flags = readOnlyByKey(mocks.anomalyObserve.mock.calls[0][1]);
+    expect(flags["bot:o:v"]).toBe(false);
+    expect(flags["bot:o:d"]).toBe(true);
+  });
+
+  it("counts a click into the interaction counter", async () => {
+    await observeTrackingAnomaly({ ...desktopHit, eventType: "button_click" });
+
+    const flags = readOnlyByKey(mocks.anomalyObserve.mock.calls[0][1]);
+    expect(flags["bot:a:hri"]).toBe(false);
+  });
+
+  it("only reads the screen set on a hit with no screen size", async () => {
+    await observeTrackingAnomaly({ ...desktopHit, screenWidth: undefined, screenHeight: undefined });
+
+    const flags = readOnlyByKey(mocks.anomalyObserve.mock.calls[0][1]);
+    expect(flags["bot:a:hrs"]).toBe(true);
+    expect(flags["bot:a:hre"]).toBe(false);
+  });
+
+  it("expires day keys shortly after their UTC day ends, not a day after the last write", async () => {
+    const day = 24 * 60 * 60 * 1000;
+    // Two hours before midnight UTC.
+    await observeTrackingAnomaly({ ...desktopHit, nowMs: 5 * day - 2 * 60 * 60 * 1000 });
+
+    const specs = mocks.anomalyObserve.mock.calls[0][1] as { key: string; windowMs: number }[];
+    const dayKeys = specs.filter(spec => spec.key.startsWith("bot:a:hr") || spec.key.startsWith("bot:o:"));
+    expect(dayKeys.length).toBeGreaterThan(0);
+    for (const spec of dayKeys) {
+      expect(spec.windowMs, spec.key).toBe(2 * 60 * 60 * 1000 + 10 * 60 * 1000);
+    }
+  });
+
+  it("sends no hosting-range counters for a relay or SASE network", async () => {
+    for (const asn of [13335, 20940, 22616]) {
+      mocks.anomalyObserve.mockClear();
+      await observeTrackingAnomaly({ ...desktopHit, asn });
+
+      const keys = (mocks.anomalyObserve.mock.calls[0][1] as { key: string }[]).map(spec => spec.key);
+      expect(
+        keys.some(key => key.startsWith("bot:a:hr") || key.startsWith("bot:a:gap")),
+        String(asn)
+      ).toBe(false);
+    }
+  });
+
+  it("sends no hosting or day-cohort counters for an ordinary phone visitor", async () => {
+    await observeTrackingAnomaly(baseInput);
+
+    const keys = (mocks.anomalyObserve.mock.calls[0][1] as { key: string }[]).map(spec => spec.key);
+    expect(keys.some(key => key.startsWith("bot:a:hr") || key.startsWith("bot:o:"))).toBe(false);
+  });
+});

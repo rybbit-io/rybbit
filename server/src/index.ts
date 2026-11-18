@@ -26,6 +26,7 @@ import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmail
 import { telemetryService } from "./services/telemetryService.js";
 import { handleIdentify } from "./services/tracker/identifyService.js";
 import { trackEvent } from "./services/tracker/trackEvent.js";
+import { startAsnEngagementRefresh } from "./services/tracker/botBlocking/asnEngagement.js";
 import { startSiteBaselineRefresh } from "./services/tracker/botBlocking/siteBaseline.js";
 import {
   USAGE_STATE_MESSAGE,
@@ -176,6 +177,8 @@ const start = async () => {
     // Every process runs this: the ClickHouse refresh is elected through Redis,
     // and each worker mirrors the shared result for the site-flood rules.
     startSiteBaselineRefresh();
+    // Same election, for the shadow-mode low-engagement network list.
+    startAsnEngagementRefresh();
 
     // Cron jobs should only run on the primary process (or in single-process mode)
     if (!cluster.isWorker) {

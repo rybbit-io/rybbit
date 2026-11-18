@@ -50,7 +50,11 @@ export function isBlockedReplayBot(input: ReplayBotCheckInput): boolean {
   const { userAgent } = input;
 
   if (!input.isMobileSite) {
-    if (classifyUA(userAgent).isBot || classifyStaleBrowserVersion(userAgent).isStale) {
+    const uaClassification = classifyUA(userAgent);
+    if (
+      (uaClassification.isBot && !uaClassification.supportingOnly) ||
+      classifyStaleBrowserVersion(userAgent).isStale
+    ) {
       return true;
     }
     if (detectBot(input.headers, userAgent).isBot) {

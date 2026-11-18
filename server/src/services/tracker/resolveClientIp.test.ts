@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FastifyRequest } from "fastify";
+import { isProxyEdgeAsn, PROXY_EDGE_ASN_COUNT } from "./proxyEdgeAsns.js";
 import { collectCandidateClientIps, resolveClientIp } from "./resolveClientIp.js";
 
 function requestWithHeaders(headers: Record<string, string | string[]>, ip = "198.51.100.10"): FastifyRequest {
@@ -9,6 +10,35 @@ function requestWithHeaders(headers: Record<string, string | string[]>, ip = "19
 // Inject a deterministic edge predicate so tests don't depend on the MaxMind DB.
 const proxied = () => true;
 const direct = () => false;
+
+describe("resolveClientIp edge classification", () => {
+  const request = requestWithHeaders({
+    "cf-connecting-ip": "13.224.0.1",
+    "x-forwarded-for": "203.0.113.10, 13.224.0.1",
+  });
+  const onAsn = (asn: number) => () => ({ asn, organization: "test" });
+
+  it("trusts forwarded headers behind an edge on a proxy-edge network", () => {
+    expect(isProxyEdgeAsn(16509)).toBe(true); // Amazon — CloudFront, EC2
+    expect(resolveClientIp(request, { lookupAsn: onAsn(16509) })).toBe("203.0.113.10");
+  });
+
+  it("ignores forwarded headers when the edge is an access network", () => {
+    expect(isProxyEdgeAsn(7922)).toBe(false); // Comcast
+    expect(resolveClientIp(request, { lookupAsn: onAsn(7922) })).toBe("13.224.0.1");
+  });
+
+  it("treats an edge with no ASN as direct", () => {
+    expect(resolveClientIp(request, { lookupAsn: () => null })).toBe("13.224.0.1");
+  });
+
+  it("keeps its own list, so regenerating bot detection's hosting list cannot change it", () => {
+    // The proxy list began as the 2026-08-07 hosting list and only grows. If
+    // this count ever falls, a network was removed and some customer's proxy
+    // may have stopped being trusted: that needs a reason, not a regeneration.
+    expect(PROXY_EDGE_ASN_COUNT).toBeGreaterThanOrEqual(12352);
+  });
+});
 
 describe("resolveClientIp", () => {
   it("trusts the forwarded visitor IP when the edge is a datacenter (proxied)", () => {
