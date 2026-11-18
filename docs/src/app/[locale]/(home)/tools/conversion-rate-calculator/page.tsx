@@ -308,7 +308,7 @@ export default function ConversionRatePage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Track conversion rates with Rybbit"
-      ctaDescription="Monitor conversion rates across pages, campaigns, and channels in real-time with Rybbit's analytics platform."
+      ctaDescription="Monitor conversion rates across pages, campaigns, and channels in real time with Rybbit's analytics platform."
       ctaEventLocation="conversion_rate_calculator_cta"
       structuredData={structuredData}
     />

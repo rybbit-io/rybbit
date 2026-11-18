@@ -105,7 +105,7 @@ export const cloudflareAnalyticsExtendedData = {
         heading: "What “free” costs you here",
         paragraphs: [
           <>
-            Cloudflare Web Analytics is genuinely free, and it&apos;s honest about how it manages that. Per
+            Cloudflare Web Analytics is free, and it&apos;s honest about how it manages that. Per
             Cloudflare&apos;s developer docs, the dashboard is built on a roughly 10% sample of page-load events:
             unsampled data is kept for about seven days before being aggregated, and retention is limited to around 30
             days, even though the UI exposes date ranges up to six months. For a high-traffic site a 10% sample still
@@ -125,10 +125,10 @@ export const cloudflareAnalyticsExtendedData = {
         heading: "A signal vs something you can act on",
         paragraphs: [
           <>
-            The deeper difference isn&apos;t accuracy, it&apos;s the kind of question each tool can answer. Cloudflare
+            Beyond accuracy, the deeper difference is the kind of question each tool can answer. Cloudflare
             Web Analytics answers &ldquo;is traffic roughly up or down?&rdquo; For that, it&apos;s fine.
             But it has no custom events, no goals, and no funnels, so it can&apos;t tell you whether visitors signed
-            up, where they dropped out of checkout, or which campaign actually converted.
+            up, where they dropped out of checkout, or which campaign converted.
           </>,
           <>
             Rybbit is built for the follow-up question: &ldquo;what should we change?&rdquo; Custom events with
@@ -145,9 +145,9 @@ export const cloudflareAnalyticsExtendedData = {
         heading: "The actually-free alternative",
         paragraphs: [
           <>
-            If free is the requirement rather than a nice-to-have, the honest comparison point isn&apos;t
-            Rybbit&apos;s cloud plans: it&apos;s{" "}
-            <Link href="/docs/self-hosting">self-hosting the open-source version</Link>. Rybbit&apos;s code is open
+            If free is the requirement rather than a nice-to-have, the comparison point is{" "}
+            <Link href="/docs/self-hosting">self-hosting the open-source version</Link>, not Rybbit&apos;s cloud
+            plans. Rybbit&apos;s code is open
             source and self-hosting costs $0 in licenses: you pay only for your own server, and you get unsampled
             data, full retention under your control, and the complete feature set, with events never leaving your
             infrastructure. If you&apos;d rather not run it yourself, cloud{" "}
@@ -226,7 +226,7 @@ export const cloudflareAnalyticsExtendedData = {
     {
       title: "Pricing",
       href: "/pricing",
-      description: "Simple, transparent pricing for every team size",
+      description: "Plans and prices",
     },
   ] satisfies RelatedResource[],
 };

@@ -81,7 +81,7 @@ export default function ForCreatorsPage() {
       <InteriorPageHero
         eyebrow="Rybbit for creators & publishers"
         title="Know what resonates. Skip the surveillance."
-        description="See which posts land, where readers come from, and which searches bring them in. No cookies, no fingerprinting, no consent banner on the people who read you."
+        description="See which posts land, where readers come from, and which searches bring them in, with no cookies, fingerprinting, or consent banner on the people who read you."
         eventLocation="for_creators_hero"
       />
 
@@ -163,7 +163,7 @@ export default function ForCreatorsPage() {
               <h3 className="text-lg font-semibold tracking-tight">Goals for the numbers that pay</h3>
               <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600 dark:text-neutral-400">
                 Set a goal on newsletter signups or a product page, and see which posts convert readers into
-                subscribers. That&apos;s the difference between traffic and an audience.
+                subscribers.
               </p>
               <Link
                 href="/features/goals"
@@ -188,7 +188,7 @@ export default function ForCreatorsPage() {
               id="creators-public-title"
               className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] text-balance md:text-5xl"
             >
-              Build in public. Literally.
+              Build in public.
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
               Make your dashboard fully public and put the link in your bio, or share it privately with a secret link

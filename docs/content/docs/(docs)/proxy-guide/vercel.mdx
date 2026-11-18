@@ -11,12 +11,12 @@ Vercel makes it easy to proxy Rybbit tracking through their Edge Network. If you
 This guide is for static sites or other frameworks deployed on Vercel.
 
 <Callout type="info">
-Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**. Rewrites on this platform automatically forward the browser's headers and set `X-Forwarded-For` to the visitor IP — the toggle tells Rybbit to trust that forwarded IP directly.
+Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**. Rewrites on this platform automatically forward the browser's headers and set `X-Forwarded-For` to the visitor IP. The toggle tells Rybbit to trust that forwarded IP directly.
 </Callout>
 
 ## Overview
 
-Vercel supports rewrites in `vercel.json`, allowing you to proxy requests through their global Edge Network. This provides excellent performance with automatic caching at edge locations worldwide.
+Vercel supports rewrites in `vercel.json`, allowing you to proxy requests through their global Edge Network. This provides automatic caching at edge locations worldwide.
 
 **What you'll achieve:**
 - Proxy Rybbit through Vercel's Edge Network
@@ -126,8 +126,6 @@ Vercel's Edge Network handles rewrites at the edge, close to your users:
 2. Edge server rewrites and proxies to Rybbit
 3. Responses Rybbit marks as cacheable (the scripts) can be cached at the edge
 4. Subsequent requests for those scripts are served from the edge cache
-
-This provides excellent performance with minimal configuration.
 
 ## Performance Benefits
 

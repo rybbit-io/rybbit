@@ -135,7 +135,7 @@ export default function ForStartupsPage() {
                 Your first week with Rybbit.
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                An honest sequence, not a setup project. Each step works on the data the previous one already collected.
+                A sequence, not a setup project. Each step works on the data the previous one already collected.
               </p>
             </div>
           </div>

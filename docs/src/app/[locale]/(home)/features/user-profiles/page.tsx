@@ -97,7 +97,7 @@ export default function UserProfilesPage() {
             Identification is <strong className="text-neutral-900 dark:text-white">completely opt-in and privacy-first</strong>. Users are only identified when you explicitly call <code className="bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-sm">rybbit.identify()</code>. There&apos;s no fingerprinting, no cross-site tracking, and no passive data collection. You decide exactly what information to attach: plan type, company, role, or any custom trait.
           </>,
           <>
-            The <strong className="text-neutral-900 dark:text-white">Traits explorer</strong> lets you browse the distribution of user properties across your entire user base. How many users are on the free plan vs. pro? Which companies have the most active users? Combined with session replay and event tracking, user profiles give your team <strong className="text-neutral-900 dark:text-white">the full picture</strong> of individual user behavior without compromising privacy.
+            The <strong className="text-neutral-900 dark:text-white">Traits explorer</strong> lets you browse the distribution of user properties across your entire user base, such as how many users are on the free plan vs. pro, or which companies have the most active users. Combined with session replay and event tracking, user profiles give your team <strong className="text-neutral-900 dark:text-white">the full picture</strong> of individual user behavior without compromising privacy.
           </>,
         ]}
         capabilities={capabilities}

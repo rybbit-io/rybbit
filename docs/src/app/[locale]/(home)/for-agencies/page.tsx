@@ -142,7 +142,7 @@ const depthRows = [
   {
     href: "/features/goals",
     title: "Goals",
-    fact: "Track the conversions each client actually cares about: purchases, bookings, form fills",
+    fact: "Track the conversions each client cares about: purchases, bookings, form fills",
   },
   {
     href: "/features/session-replay",
@@ -224,7 +224,7 @@ export default function ForAgenciesPage() {
                   id="agency-problem-title"
                   className="mt-5 max-w-2xl scroll-mt-24 text-4xl font-semibold leading-[1.04] tracking-[-0.035em] text-balance md:text-5xl"
                 >
-                  Your clients don&apos;t want analytics. They want answers.
+                  Your clients want answers, not analytics.
                 </h2>
               </div>
             </div>
@@ -483,8 +483,8 @@ export default function ForAgenciesPage() {
                 .
               </p>
               <p className="max-w-lg text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                Moving clients off Google Analytics? GA4 history can&apos;t be imported (no tool maps its event model
-                honestly), so those clients start fresh with numbers they can finally read. The comparison pages cover
+                For clients moving off Google Analytics, GA4 history can&apos;t be imported (no tool maps its event
+                model accurately), so they start fresh with numbers they can finally read. The comparison pages cover
                 how the metrics line up, and answer &ldquo;why don&apos;t these match GA?&rdquo; before a client asks:{" "}
                 <Link
                   href="/compare/google-analytics"
@@ -604,7 +604,7 @@ export default function ForAgenciesPage() {
               </Link>
             ))}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 px-5 py-5 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 sm:px-8 lg:px-10">
-              <span>Want your own brand on the dashboards?</span>
+              <span>Put your own brand on the dashboards.</span>
               <Link
                 href="/white-label"
                 className="group inline-flex items-center gap-1.5 rounded-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
@@ -617,7 +617,7 @@ export default function ForAgenciesPage() {
               </Link>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 px-5 py-5 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400 sm:px-8 lg:px-10">
-              <span>Referring clients instead of hosting them?</span>
+              <span>Refer clients instead of hosting them.</span>
               <Link
                 href="/affiliate"
                 className="group inline-flex items-center gap-1.5 rounded-sm font-medium text-emerald-700 transition-colors duration-200 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
@@ -641,7 +641,7 @@ export default function ForAgenciesPage() {
               id="agency-lockin-title"
               className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] text-balance md:text-5xl"
             >
-              Easy to leave. That&apos;s the point.
+              Easy to leave, by design.
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
               Rybbit is 100% open source under AGPL v3. If you or a client ever want out of the cloud, self-host the

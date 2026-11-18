@@ -7,7 +7,7 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 ![Funnels Dashboard](/docs/funnels/1.png)
 
-Funnels let you define a sequence of steps — page visits, custom events, or autocaptured interactions — and measure how many users progress through each stage. You can see where users convert, where they drop off, and drill into the sessions at each step to understand why.
+Funnels let you define a sequence of steps (page visits, custom events, or autocaptured interactions) and measure how many users progress through each stage. You can see where users convert, where they drop off, and drill into the sessions at each step to understand why.
 
 On Rybbit Cloud, funnels need a Standard plan or higher.
 
@@ -28,7 +28,7 @@ Each funnel has:
 
 A funnel always must have at least two steps.
 
-There are six types of funnel steps. Path and custom event steps require a value. For the four autocaptured interaction types, the pattern is optional—leave it empty to match every interaction of that type.
+There are six types of funnel steps. Path and custom event steps require a value. For the four autocaptured interaction types, the pattern is optional: leave it empty to match every interaction of that type.
 
 <Tabs items={['Path', 'Custom Event', 'Outbound Link', 'Button Click', 'Form Submit', 'Copy']}>
 <Tab value="Path">
@@ -36,8 +36,8 @@ Path steps match pageview events by URL path.
 
 - Enter a URL path starting with `/`
 - Wildcards are supported:
-  - `*` matches a single path segment — `/products/*` matches `/products/shoes`
-  - `**` matches multiple segments — `/docs/**` matches `/docs/api/v2/intro`
+  - `*` matches a single path segment: `/products/*` matches `/products/shoes`
+  - `**` matches multiple segments: `/docs/**` matches `/docs/api/v2/intro`
 
 </Tab>
 <Tab value="Custom Event">
@@ -121,7 +121,7 @@ For each step, you'll see:
 
 When a comparison period is on, each step also shows how its numbers changed.
 
-Steps are evaluated sequentially — each step must occur after the previous one within the same session.
+Steps are evaluated sequentially: each step must occur after the previous one within the same session.
 
 ## Viewing Sessions and Replays
 

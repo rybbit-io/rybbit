@@ -282,7 +282,7 @@ export default function CustomerLifetimeValuePage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Track CLV and customer metrics with Rybbit"
-      ctaDescription="Monitor customer lifetime value, retention cohorts, and revenue trends in real-time with Rybbit's analytics platform."
+      ctaDescription="Monitor customer lifetime value, retention cohorts, and revenue trends in real time with Rybbit's analytics platform."
       ctaEventLocation="customer_lifetime_value_calculator_cta"
       structuredData={structuredData}
     />

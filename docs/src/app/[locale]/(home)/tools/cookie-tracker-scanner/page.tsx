@@ -134,7 +134,7 @@ export default function CookieTrackerScannerPage() {
     <ToolPageLayout
       toolSlug="cookie-tracker-scanner"
       title="Cookie / Tracker Scanner"
-      description="Inspect a public page's first response for cookies and recognizable tracking code, with honest scope and readable evidence."
+      description="Inspect a public page's first response for cookies and recognizable tracking code, with a clearly stated scope and readable evidence."
       toolComponent={<CookieTrackerScannerForm />}
       educationalContent={educationalContent}
       faqs={faqs}

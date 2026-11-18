@@ -64,7 +64,7 @@ const structuredData = {
           name: "What should a privacy policy include?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "A comprehensive privacy policy should include: what information you collect, how you collect it, how you use it, who you share it with, how you protect it, user rights (access, deletion, etc.), cookie usage, contact information, and how you notify users of changes.",
+            text: "A complete privacy policy should include: what information you collect, how you collect it, how you use it, who you share it with, how you protect it, user rights (access, deletion, etc.), cookie usage, contact information, and how you notify users of changes.",
           },
         },
         {
@@ -88,7 +88,7 @@ const structuredData = {
           name: "Can I use this generated policy without consulting a lawyer?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "While this tool provides a comprehensive starting point, privacy laws vary by jurisdiction and business type. For websites handling sensitive data, operating in regulated industries, or dealing with international users, consulting a legal professional is recommended to ensure full compliance with applicable laws.",
+            text: "While this tool provides a thorough starting point, privacy laws vary by jurisdiction and business type. For websites handling sensitive data, operating in regulated industries, or dealing with international users, consulting a legal professional is recommended to ensure full compliance with applicable laws.",
           },
         },
       ],
@@ -180,7 +180,7 @@ const educationalContent = (
         <strong>Select Your Practices:</strong> Check the boxes that match your website's data collection practices.
       </li>
       <li>
-        <strong>Generate Your Policy:</strong> The tool will create a comprehensive privacy policy tailored to your
+        <strong>Generate Your Policy:</strong> The tool will create a complete privacy policy tailored to your
         selections.
       </li>
       <li>
@@ -219,13 +219,13 @@ const faqs = [
     ),
   },
   {
-    question: "What should a comprehensive privacy policy include?",
+    question: "What should a complete privacy policy include?",
     answer: (
       <>
-        A comprehensive privacy policy should include: what information you collect, how you collect it, how you use it,
-        who you share it with, how you protect it, user rights (access, deletion, etc.), cookie usage, contact
-        information, children's privacy practices (if applicable), and how you notify users of changes. This tool covers
-        all essential sections to help ensure compliance.
+        A complete privacy policy should include: what information you collect, how you collect it, how you use it, who
+        you share it with, how you protect it, user rights (access, deletion, etc.), cookie usage, contact information,
+        children's privacy practices (if applicable), and how you notify users of changes. This tool covers all
+        essential sections to help ensure compliance.
       </>
     ),
   },
@@ -257,9 +257,9 @@ const faqs = [
     question: "Can I use this generated policy without consulting a lawyer?",
     answer: (
       <>
-        This tool provides a comprehensive starting point for most websites. However, if you handle sensitive data
-        (health, financial info), operate in regulated industries, serve international users, or have specific legal
-        concerns, consulting a legal professional is recommended to ensure full compliance with applicable laws in your
+        This tool provides a thorough starting point for most websites. However, if you handle sensitive data (health,
+        financial info), operate in regulated industries, serve international users, or have specific legal concerns,
+        consulting a legal professional is recommended to ensure full compliance with applicable laws in your
         jurisdiction.
       </>
     ),

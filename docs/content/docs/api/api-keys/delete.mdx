@@ -18,7 +18,7 @@ POST /api/auth/api-key/delete
 
 Revokes (deletes) an existing API key. The key is identified by its `keyId`.
 
-<Callout type="warn">This endpoint uses **POST**, not HTTP DELETE. Revoking a key is immediate and permanent — any client still using it will start receiving 401 responses.</Callout>
+<Callout type="warn">This endpoint uses **POST**, not HTTP DELETE. Revoking a key is immediate and permanent: any client still using it will start receiving 401 responses.</Callout>
 
 <Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie and an `Origin` header with the request. To delete an organization key, pass `"configId": "org"`; without it the key is not found (`404`). Managing organization keys requires the owner or admin role.</Callout>
 

@@ -264,7 +264,7 @@ export default function RetentionRatePage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Track retention metrics with Rybbit"
-      ctaDescription="Monitor retention rates, churn patterns, and customer behavior in real-time with Rybbit's analytics platform."
+      ctaDescription="Monitor retention rates, churn patterns, and customer behavior in real time with Rybbit's analytics platform."
       ctaEventLocation="retention_rate_calculator_cta"
       structuredData={structuredData}
     />

@@ -106,8 +106,8 @@ export const posthogExtendedData = {
         heading: "Two different products in the same category",
         paragraphs: [
           <>
-            Let&apos;s be clear: PostHog is genuinely excellent at what it does. It isn&apos;t really an analytics tool.
-            It&apos;s a full product platform: product analytics, session replay, feature flags, experiments,
+            PostHog is excellent at what it does. It&apos;s a full product platform rather than an analytics tool:
+            product analytics, session replay, feature flags, experiments,
             surveys, and a SQL-queryable event warehouse, with 2026&apos;s headline push being agentic AI that works
             toward &ldquo;self-driving&rdquo; product decisions. For an engineering-led product team that wants all of
             that in one place, it&apos;s one of the best tools on the market.
@@ -126,9 +126,9 @@ export const posthogExtendedData = {
         heading: "Flat subscription vs per-event metering",
         paragraphs: [
           <>
-            PostHog&apos;s free tier is genuinely huge: 1 million events per month, no card required, one project, one
+            PostHog&apos;s free tier is huge: 1 million events per month, no card required, one project, one
             year of data retention, unlimited team members, and the free allowance keeps applying after you
-            upgrade. If you&apos;re a small site, you may pay nothing for a long time, and that&apos;s a real point in
+            upgrade. If you&apos;re a small site, you may pay nothing for a long time, and that&apos;s a point in
             PostHog&apos;s favor.
           </>,
           <>
@@ -165,7 +165,7 @@ export const posthogExtendedData = {
             the source of truth for traffic. Marketing, founders, and support get a dashboard they can read without
             training, with cookieless numbers that aren&apos;t gated behind consent, while the product team keeps its
             full PostHog toolkit. The two scripts don&apos;t conflict, and Rybbit&apos;s flat plan means the second
-            tool doesn&apos;t add a second metered bill. For a wider look at the landscape, see our{" "}
+            tool doesn&apos;t add a second metered bill. For a wider look at the options, see our{" "}
             <Link href="/blog/best-web-analytics-tools">guide to the best web analytics tools</Link>.
           </>,
         ],
@@ -230,7 +230,7 @@ export const posthogExtendedData = {
     {
       title: "Pricing",
       href: "/pricing",
-      description: "Simple, transparent pricing for every team size",
+      description: "Plans and prices",
     },
   ] satisfies RelatedResource[],
 };

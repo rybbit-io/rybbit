@@ -62,7 +62,7 @@ const faqItems = [
   {
     question: "Will I actually understand the dashboard?",
     answer:
-      "That's the whole idea. Rybbit shows visitors, where they came from, your top pages, and your goals on a single screen you can read at a glance. No analyst and no GA4 walkthrough needed.",
+      "Yes. Rybbit shows visitors, where they came from, your top pages, and your goals on a single screen you can read at a glance. No analyst and no GA4 walkthrough needed.",
   },
   {
     question: "Can I track sales, bookings, or signups?",

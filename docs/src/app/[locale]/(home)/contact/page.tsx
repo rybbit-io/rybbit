@@ -46,7 +46,7 @@ export default function Contact() {
     <div className="overflow-x-clip">
       <InteriorPageHero
         title={t("Contact Us")}
-        description={t("Have questions about Rybbit? Reach out through any of these channels:")}
+        description={t("For questions about Rybbit, reach out through any of these channels:")}
         eventLocation="contact_hero"
         primaryAction={null}
         secondaryAction={null}
@@ -106,7 +106,7 @@ export default function Contact() {
               </h2>
               <p className="mt-3 max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400">
                 {t(
-                  "Looking to white-label Rybbit for your organization or need a custom analytics solution? We offer tailored implementations to meet your specific requirements."
+                  "If you want to white-label Rybbit for your organization or need a custom analytics setup, we offer implementations tailored to your requirements."
                 )}
               </p>
               <p className="mt-4 max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400">

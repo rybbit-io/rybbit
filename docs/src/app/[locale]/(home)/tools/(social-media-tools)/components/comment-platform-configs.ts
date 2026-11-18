@@ -24,7 +24,7 @@ export const commentPlatformConfigs: Record<string, CommentPlatformConfig> = {
       "Discord is a casual, community-focused platform. Comments should feel conversational and match the server's vibe. Emojis and reactions are common.",
     educationalContent: `Discord is a platform built around communities and real-time conversation. Comments and replies are essential for building relationships, participating in discussions, and contributing to server culture.
 
-Effective Discord comments are conversational, contextual, and respectful of the community's tone. Whether you're in a gaming server, study group, or hobby community, your comments should add value to the discussion while matching the server's atmosphere.`,
+Effective Discord comments are conversational, contextual, and respectful of the community's tone. In a gaming server, study group, or hobby community, your comments should add value to the discussion while matching the server's atmosphere.`,
   },
   x: {
     id: "x",
@@ -39,7 +39,7 @@ Effective Discord comments are conversational, contextual, and respectful of the
       "X/Twitter prioritizes brevity and impact. Comments should be concise, engaging, and often use hashtags or mentions strategically.",
     educationalContent: `X (formerly Twitter) is a fast-paced platform where replies and comments drive conversations and engagement. The 280-character limit means every word counts.
 
-Effective X comments are concise, timely, and add meaningful perspective to the conversation. They can spark discussions, build connections, or showcase expertise. The best replies balance brevity with substance.`,
+Effective X comments are concise, timely, and add meaningful perspective to the conversation. They can spark discussions, build connections, or show expertise. The best replies balance brevity with substance.`,
   },
   reddit: {
     id: "reddit",
@@ -52,7 +52,7 @@ Effective X comments are concise, timely, and add meaningful perspective to the 
     colorHex: "#FF4500",
     contextGuidelines:
       "Reddit values substance and authenticity. Comments should be detailed, well-reasoned, and respect subreddit culture. Avoid self-promotion.",
-    educationalContent: `Reddit thrives on in-depth discussion and community-driven conversations. Comments can range from brief reactions to comprehensive explanations, and quality content is rewarded with upvotes.
+    educationalContent: `Reddit thrives on in-depth discussion and community-driven conversations. Comments can range from brief reactions to thorough explanations, and quality content is rewarded with upvotes.
 
 Effective Reddit comments demonstrate understanding of the topic, add unique insights, and respect subreddit rules and culture. The best comments are detailed without being verbose, helpful without being condescending.`,
   },
@@ -69,7 +69,7 @@ Effective Reddit comments demonstrate understanding of the topic, add unique ins
       "Facebook is personal and relationship-focused. Comments should be friendly, supportive, and appropriate for a mixed audience of friends and family.",
     educationalContent: `Facebook comments appear on posts from friends, family, pages, and groups. They're essential for maintaining relationships and participating in community discussions.
 
-Effective Facebook comments are warm, genuine, and appropriate for a broad audience. They acknowledge the original post, add personal perspective, and maintain a friendly tone. Context matters—comments on a friend's achievement differ from comments on a news article.`,
+Effective Facebook comments are warm, genuine, and appropriate for a broad audience. They acknowledge the original post, add personal perspective, and maintain a friendly tone. Context matters: comments on a friend's achievement differ from comments on a news article.`,
   },
   instagram: {
     id: "instagram",
@@ -82,7 +82,7 @@ Effective Facebook comments are warm, genuine, and appropriate for a broad audie
     colorHex: "#E4405F",
     contextGuidelines:
       "Instagram is visual and positive. Comments should be brief, supportive, and often include emojis. Engagement is key.",
-    educationalContent: `Instagram comments drive engagement and build community around visual content. Whether on photos, reels, or carousel posts, comments help you connect with creators and participate in conversations.
+    educationalContent: `Instagram comments drive engagement and build community around visual content. On photos, reels, and carousel posts, comments help you connect with creators and participate in conversations.
 
 Effective Instagram comments are positive, authentic, and concise. They reference specific elements of the post, use emojis naturally, and feel genuine rather than generic. The best comments spark conversation or show meaningful appreciation.`,
   },
@@ -144,7 +144,7 @@ Effective TikTok comments are witty, timely, and culturally aware. They might re
       "Pinterest is inspirational and helpful. Comments should appreciate creativity, ask practical questions, or share related ideas.",
     educationalContent: `Pinterest comments appear on pins and help build community around creative inspiration, DIY projects, recipes, and ideas. They're often practical and appreciative.
 
-Effective Pinterest comments show genuine appreciation, ask helpful questions, or share related tips. They might request more details, share success with a project, or suggest complementary ideas. The tone is supportive and constructive.`,
+Effective Pinterest comments show appreciation, ask helpful questions, or share related tips. They might request more details, share success with a project, or suggest complementary ideas. The tone is supportive and constructive.`,
   },
   vk: {
     id: "vk",

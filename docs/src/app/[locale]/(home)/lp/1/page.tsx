@@ -17,7 +17,7 @@ export default function LandingPage1() {
   return (
     <LandingPageTemplate
       title="Simple analytics you wish you had before."
-      subtitle="See where your visitors come from, watch what they do, and find exactly where you lose them, in one dashboard that takes 5 minutes to set up. No developers, no cookie banners, no guesswork. Just clarity."
+      subtitle="See where your visitors come from, watch what they do, and find exactly where you lose them, in one dashboard that takes 5 minutes to set up, with no developers, cookie banners, or guesswork."
       showEUFlag={false}
     />
   );

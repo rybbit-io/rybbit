@@ -58,7 +58,7 @@ export default async function OSSFriendsPage() {
     <div className="overflow-x-clip">
       <InteriorPageHero
         title="OSS Friends"
-        description="We're proud to be part of the open source community. Here are some amazing open source projects we love and support."
+        description="We're proud to be part of the open source community. Here are some open source projects we love and support."
         eventLocation="oss_friends_hero"
         primaryAction={null}
         secondaryAction={null}

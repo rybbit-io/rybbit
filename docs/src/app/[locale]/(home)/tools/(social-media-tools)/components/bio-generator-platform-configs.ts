@@ -21,7 +21,7 @@ export const bioGeneratorPlatformConfigs: Record<
     name: "Instagram",
     displayName: "Instagram Bio Generator",
     description:
-      "Generate compelling Instagram bios with AI. Create bios within the 150-character limit that showcase your personality and drive engagement.",
+      "Generate compelling Instagram bios with AI. Create bios within the 150-character limit that show your personality and drive engagement.",
     simpleIconSlug: "instagram",
     colorHex: "#E4405F",
     characterLimit: 150,
@@ -30,7 +30,7 @@ export const bioGeneratorPlatformConfigs: Record<
       "Instagram bios are limited to 150 characters. Make every character count with a clear value proposition, personality, and call-to-action. Use line breaks and emojis strategically.",
     educationalContent: `Instagram bios have a strict 150-character limit, making them one of the most constrained bio formats. Your bio is prime real estate that appears at the top of your profile and in search results.
 
-Effective Instagram bios quickly communicate who you are, what you do, and why people should follow you. The best bios use emojis for visual breaks, line breaks for readability, and include a clear call-to-action. Many successful accounts use their bio to establish credibility, showcase personality, and direct traffic to their link.`,
+Effective Instagram bios quickly communicate who you are, what you do, and why people should follow you. The best bios use emojis for visual breaks, line breaks for readability, and include a clear call-to-action. Many successful accounts use their bio to establish credibility, show personality, and direct traffic to their link.`,
     tones: [
       "Professional",
       "Casual & Friendly",
@@ -45,14 +45,14 @@ Effective Instagram bios quickly communicate who you are, what you do, and why p
     name: "X (Twitter)",
     displayName: "X (Twitter) Bio Generator",
     description:
-      "Generate impactful X (Twitter) bios with AI. Craft bios within the 160-character limit that make a strong first impression.",
+      "Generate X (Twitter) bios with AI. Craft bios within the 160-character limit that make a strong first impression.",
     simpleIconSlug: "x",
     colorHex: "#000000",
     characterLimit: 160,
     bioType: "bio",
     contextGuidelines:
       "X bios are limited to 160 characters. Focus on your expertise, interests, or unique perspective. Many users include their location, profession, and a touch of personality.",
-    educationalContent: `X (Twitter) bios have a 160-character limit—just 10 more characters than Instagram. Your bio appears on your profile and in search results, making it crucial for first impressions.
+    educationalContent: `X (Twitter) bios have a 160-character limit, just 10 more characters than Instagram. Your bio appears on your profile and in search results, making it crucial for first impressions.
 
 Great X bios balance professionalism with personality. They often include your profession or expertise, key interests, and sometimes a hint of humor or unique perspective. Location can be important for local networking. The best bios make it clear why someone should follow you and what value you provide.`,
     tones: [
@@ -93,13 +93,13 @@ Effective TikTok bios often use emojis to replace words, focus on a clear conten
     name: "LinkedIn",
     displayName: "LinkedIn Bio Generator",
     description:
-      "Generate professional LinkedIn bios (About section) with AI. Create compelling professional narratives that showcase your expertise and career story.",
+      "Generate professional LinkedIn bios (About section) with AI. Create compelling professional narratives that show your expertise and career story.",
     simpleIconSlug: "linkedin",
     colorHex: "#0A66C2",
     characterLimit: 2600,
     bioType: "About section",
     contextGuidelines:
-      "LinkedIn About sections can be up to 2,600 characters. Use this space to tell your professional story, highlight achievements, showcase expertise, and include keywords for searchability. Only the first 300 characters are visible before 'see more.'",
+      "LinkedIn About sections can be up to 2,600 characters. Use this space to tell your professional story, highlight achievements, show expertise, and include keywords for searchability. Only the first 300 characters are visible before 'see more.'",
     educationalContent: `LinkedIn's About section allows up to 2,600 characters, giving you room to tell your full professional story. However, only the first 300 characters appear before the "see more" button, so front-load key information.
 
 Great LinkedIn About sections balance professional achievements with personality. They often include your current role, expertise, career highlights, what drives you, and a call-to-action. The best bios use storytelling to make you memorable, include keywords for search optimization, and speak directly to your target audience (recruiters, clients, or collaborators).`,
@@ -150,7 +150,7 @@ Effective Threads bios are conversational, genuine, and often more casual than o
       "YouTube channel descriptions can be up to 1,000 characters. Describe your content, upload schedule, and what viewers can expect. Include keywords for search optimization and links to social media.",
     educationalContent: `YouTube channel descriptions have a 1,000-character limit and play a crucial role in channel discovery. Your description appears on your channel page and helps YouTube understand what your content is about.
 
-Great YouTube channel descriptions clearly explain what your channel is about, what viewers will learn or gain, and how often you upload. They include relevant keywords for search optimization, showcase your unique perspective, and often list social media links. The best descriptions balance SEO with personality, making it clear why someone should subscribe.`,
+Great YouTube channel descriptions clearly explain what your channel is about, what viewers will learn or gain, and how often you upload. They include relevant keywords for search optimization, show your unique perspective, and often list social media links. The best descriptions balance SEO with personality, making it clear why someone should subscribe.`,
     tones: [
       "Professional",
       "Enthusiastic & Engaging",
@@ -165,7 +165,7 @@ Great YouTube channel descriptions clearly explain what your channel is about, w
     name: "Pinterest",
     displayName: "Pinterest Bio Generator",
     description:
-      "Generate Pinterest profile bios with AI. Create bios within the 160-character limit that showcase your interests and drive engagement.",
+      "Generate Pinterest profile bios with AI. Create bios within the 160-character limit that show your interests and drive engagement.",
     simpleIconSlug: "pinterest",
     colorHex: "#E60023",
     characterLimit: 160,
@@ -189,7 +189,7 @@ Effective Pinterest bios describe your niche, what people can expect from your p
     name: "GitHub",
     displayName: "GitHub Bio Generator",
     description:
-      "Generate professional GitHub bios with AI. Create bios within the 160-character limit that showcase your technical expertise.",
+      "Generate professional GitHub bios with AI. Create bios within the 160-character limit that show your technical expertise.",
     simpleIconSlug: "github",
     colorHex: "#181717",
     characterLimit: 160,
@@ -222,7 +222,7 @@ Great GitHub bios clearly communicate your technical expertise, current focus, o
       "Twitch bios can be up to 300 characters. Describe your streaming content, schedule, and community vibe. Be welcoming and let your personality shine through.",
     educationalContent: `Twitch bios have a 300-character limit and appear on your channel page. They help viewers understand what to expect from your streams and whether they'll fit into your community.
 
-Effective Twitch bios describe what games or content you stream, your streaming schedule, and the vibe of your community. They're often friendly and welcoming, showcasing personality while setting expectations. The best bios make viewers feel invited to join your community and give them a reason to follow.`,
+Effective Twitch bios describe what games or content you stream, your streaming schedule, and the vibe of your community. They're often friendly and welcoming, showing personality while setting expectations. The best bios make viewers feel invited to join your community and give them a reason to follow.`,
     tones: [
       "Friendly & Welcoming",
       "Energetic & Hype",
@@ -270,7 +270,7 @@ Great Medium bios communicate your writing focus, expertise, or unique perspecti
       "Substack author bios should be concise (aim for ~200 characters for short bio). Establish credibility, explain your newsletter's value, and give readers a reason to subscribe.",
     educationalContent: `Substack bios establish your authority and help convince readers to subscribe to your newsletter. They appear on your publication page and in email previews.
 
-Effective Substack bios balance credentials with personality. They communicate what you write about, why you're qualified to write it, and what value subscribers will get. The best bios build trust quickly, showcase expertise, and make the subscription decision easy by clearly communicating the newsletter's value.`,
+Effective Substack bios balance credentials with personality. They communicate what you write about, why you're qualified to write it, and what value subscribers will get. The best bios build trust quickly, show expertise, and make the subscription decision easy by clearly communicating the newsletter's value.`,
     tones: [
       "Professional & Credible",
       "Authoritative",
@@ -357,7 +357,7 @@ Great Discord bios share interests, hobbies, gaming preferences, or fun facts ab
     name: "Reddit",
     displayName: "Reddit Bio Generator",
     description:
-      "Generate Reddit profile bios with AI. Create bios within the 200-character limit that showcase your interests and Reddit personality.",
+      "Generate Reddit profile bios with AI. Create bios within the 200-character limit that show your interests and Reddit personality.",
     simpleIconSlug: "reddit",
     colorHex: "#FF4500",
     characterLimit: 200,

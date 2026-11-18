@@ -90,13 +90,13 @@ export default function FunnelsPage() {
         demoCaption="Live funnels demo: see real conversion data"
         introParagraphs={[
           <>
-            You&apos;re driving traffic to your site, but <strong className="text-neutral-900 dark:text-white">how many visitors actually complete the journey</strong> from landing page to signup, onboarding to activation, or browse to purchase? Without funnel analysis, you&apos;re flying blind, optimizing pages that might not be the real bottleneck.
+            You&apos;re driving traffic to your site, but that doesn&apos;t tell you <strong className="text-neutral-900 dark:text-white">how many visitors actually complete the journey</strong> from landing page to signup, onboarding to activation, or browse to purchase. Without funnel analysis, you&apos;re flying blind, optimizing pages that might not be the real bottleneck.
           </>,
           <>
             Rybbit funnels give you a <strong className="text-neutral-900 dark:text-white">step-by-step breakdown of your conversion flow</strong> with precise drop-off percentages at every stage. No sampling, no estimation: every event is counted. Mix page paths and custom events freely to model any conversion flow, from a simple two-step signup to a complex multi-stage onboarding.
           </>,
           <>
-            Combined with <strong className="text-neutral-900 dark:text-white">session replay and user journey mapping</strong>, funnels do more than flag the problem. Spot the drop-off in your funnel, then watch the sessions where users left to understand <em>why</em>. It&apos;s the difference between knowing you have a problem and knowing how to fix it.
+            Combined with <strong className="text-neutral-900 dark:text-white">session replay and user journey mapping</strong>, funnels do more than flag the problem. Spot the drop-off in your funnel, then watch the sessions where users left to understand <em>why</em>.
           </>,
         ]}
         capabilities={capabilities}

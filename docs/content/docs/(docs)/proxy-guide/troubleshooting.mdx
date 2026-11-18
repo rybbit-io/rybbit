@@ -202,7 +202,7 @@ proxy_pass https://app.rybbit.io;
 **Solutions:**
 
 <Callout type="warn">
-**Critical**: The `X-Forwarded-For` header must contain the original client IP for accurate geolocation and user identification, and the **First-Party Proxy** toggle must be enabled in your site settings. Don't rely on `X-Real-IP` — on Rybbit Cloud it never reaches the backend (our edge network consumes it), and AWS CloudFront cannot send it at all.
+**Critical**: The `X-Forwarded-For` header must contain the original client IP for accurate geolocation and user identification, and the **First-Party Proxy** toggle must be enabled in your site settings. Don't rely on `X-Real-IP`: on Rybbit Cloud it never reaches the backend (our edge network consumes it), and AWS CloudFront cannot send it at all.
 </Callout>
 
 **Nginx:**
@@ -257,7 +257,7 @@ There are two independent causes on the proxy side, and server-side proxies ofte
 
 #### Cause 1: Your proxy strips the browser's headers
 
-Rybbit's bot detection scores requests on headers that every real browser sends: `Accept`, `Accept-Language`, `Accept-Encoding` (with `gzip`), and the `Sec-Fetch-*` headers that all Chromium browsers attach. A proxy that forwards only `User-Agent` and the visitor IP produces requests indistinguishable from a script — they are accepted with `200 OK` but classified as bots.
+Rybbit's bot detection scores requests on headers that every real browser sends: `Accept`, `Accept-Language`, `Accept-Encoding` (with `gzip`), and the `Sec-Fetch-*` headers that all Chromium browsers attach. A proxy that forwards only `User-Agent` and the visitor IP produces requests indistinguishable from a script: they are accepted with `200 OK` but classified as bots.
 
 **Fix:** forward **all** incoming request headers, minus `Host` and hop-by-hop headers (`Connection`, `Content-Length`). Hand-picking headers is the most common mistake in PHP/WordPress-style proxies.
 
@@ -274,7 +274,7 @@ $headers[] = 'X-Forwarded-For: ' . $_SERVER['REMOTE_ADDR'];
 
 #### Cause 2: Rybbit sees your proxy's IP instead of the visitor's
 
-First-party proxies typically run on hosting/datacenter infrastructure, so if the visitor IP is not forwarded (or not trusted), traffic carries a datacenter ASN and reinforces bot classification — and geolocation points at your proxy's region.
+First-party proxies typically run on hosting/datacenter infrastructure, so if the visitor IP is not forwarded (or not trusted), traffic carries a datacenter ASN and reinforces bot classification, and geolocation points at your proxy's region.
 
 **Fix:**
 
@@ -684,9 +684,9 @@ When troubleshooting, work through this checklist:
 - [ ] Config, identify and feature flag endpoints are proxied (`/analytics/site/tracking-config/:siteId`, `/analytics/identify`, `/analytics/site/:siteId/feature-flags/evaluate`)
 - [ ] No body parser consumes POST bodies before the proxy
 - [ ] POST requests preserve method and body
-- [ ] Client IP is forwarded in `X-Forwarded-For` (not just `X-Real-IP` — that header doesn't survive Rybbit Cloud's edge)
+- [ ] Client IP is forwarded in `X-Forwarded-For` (not just `X-Real-IP`, which doesn't survive Rybbit Cloud's edge)
 - [ ] **First-Party Proxy** toggle is enabled in Site Settings → Privacy & Security
-- [ ] Full browser header set is forwarded (`Accept`, `Accept-Language`, `Accept-Encoding`, `Sec-Fetch-*`) — not just `User-Agent`
+- [ ] Full browser header set is forwarded (`Accept`, `Accept-Language`, `Accept-Encoding`, `Sec-Fetch-*`), not just `User-Agent`
 - [ ] User-Agent header is preserved
 - [ ] CORS headers are preserved (check response headers)
 - [ ] Request size limits allow tracking data (1MB minimum)

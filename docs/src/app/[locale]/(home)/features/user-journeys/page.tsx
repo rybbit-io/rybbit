@@ -91,7 +91,7 @@ export default function UserJourneysPage() {
         demoCaption="Live user journeys demo: interactive Sankey diagrams from real traffic"
         introParagraphs={[
           <>
-            You designed your site with a specific flow in mind. But do users actually follow it? <strong className="text-neutral-900 dark:text-white">User journeys show you the real navigation patterns</strong>: the paths users take, the pages they skip, and the detours they make before reaching your goal.
+            You designed your site with a specific flow in mind, but users may not follow it. <strong className="text-neutral-900 dark:text-white">User journeys show you the real navigation patterns</strong>: the paths users take, the pages they skip, and the detours they make before reaching your goal.
           </>,
           <>
             Unlike funnels, which track a predefined sequence, user journeys are <strong className="text-neutral-900 dark:text-white">exploratory</strong>. They reveal paths you didn&apos;t design for: the blog post that accidentally became your best conversion page, the documentation section that&apos;s acting as a landing page, or the settings page where users get stuck.

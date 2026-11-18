@@ -119,11 +119,11 @@ Returns the created API key object. The full `key` value carries the `rb_org_` p
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored; see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number',
     },
     rateLimitTimeWindow: {
-      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored; see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number',
     },
   }}
@@ -285,7 +285,7 @@ var data = await response.Content.ReadAsStringAsync();
   </Tab>
 </Tabs>
 
-<Callout type="warn">The full `key` value is returned **only once**, at creation. Store it securely — it cannot be retrieved again.</Callout>
+<Callout type="warn">The full `key` value is returned **only once**, at creation. Store it securely. It cannot be retrieved again.</Callout>
 
 ```json title="Response"
 {
@@ -308,7 +308,7 @@ var data = await response.Content.ReadAsStringAsync();
 }
 ```
 
-<Callout>On Rybbit Cloud, organization API keys require the organization to be on a Standard or Pro plan; free/basic plans receive HTTP 403. Each organization also has a plan-based key-count limit — creating a key past the limit returns HTTP 403.</Callout>
+<Callout>On Rybbit Cloud, organization API keys require the organization to be on a Standard or Pro plan; free/basic plans receive HTTP 403. Each organization also has a plan-based key-count limit. Creating a key past the limit returns HTTP 403.</Callout>
 
 </div>
 </div>

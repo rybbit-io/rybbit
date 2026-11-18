@@ -53,7 +53,7 @@ const structuredData = {
           name: "How does the Analytics Detector tool work?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "This tool fetches the website's HTML, analyzes the scripts and tags, and uses AI to identify analytics platforms, tag managers, and tracking technologies. It looks for common patterns, script URLs, and tracking identifiers to provide a comprehensive overview of the tracking infrastructure.",
+            text: "This tool fetches the website's HTML, analyzes the scripts and tags, and uses AI to identify analytics platforms, tag managers, and tracking technologies. It looks for common patterns, script URLs, and tracking identifiers to provide a full overview of the tracking infrastructure.",
           },
         },
         {
@@ -105,7 +105,7 @@ const educationalContent = (
       <p className="text-neutral-700 dark:text-neutral-300 mb-4 leading-relaxed">Common analytics platforms include:</p>
       <ul className="list-disc list-inside space-y-2 text-neutral-700 dark:text-neutral-300 ml-4">
         <li>
-          <strong>Google Analytics</strong> - The most widely used analytics platform with comprehensive tracking
+          <strong>Google Analytics</strong> - The most widely used analytics platform with extensive tracking
         </li>
         <li>
           <strong>Facebook Pixel</strong> - Tracks user behavior for ad targeting and conversion measurement
@@ -227,7 +227,7 @@ const faqs = [
   {
     question: "How does the Analytics Detector tool work?",
     answer:
-      "This tool fetches the website's HTML, analyzes the scripts and tags, and uses AI to identify analytics platforms, tag managers, and tracking technologies. It looks for common patterns, script URLs, and tracking identifiers to provide a comprehensive overview of the tracking infrastructure installed on any website.",
+      "This tool fetches the website's HTML, analyzes the scripts and tags, and uses AI to identify analytics platforms, tag managers, and tracking technologies. It looks for common patterns, script URLs, and tracking identifiers to provide a full overview of the tracking infrastructure installed on any website.",
   },
   {
     question: "What do the privacy scores mean?",

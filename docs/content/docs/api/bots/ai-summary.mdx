@@ -18,7 +18,7 @@ GET /api/sites/:site/bots/ai-summary
 
 Returns one row per AI operator: how much of your site it read, and how many visits it sent back.
 
-The two numbers come from different places. Reads are bot events whose user agent names the operator; visits back are sessions in your normal analytics that arrived from that company's product (the `AI` acquisition channel). Neither is very interesting alone — "OpenAI read 4,120 pages and sent 12 visits" is the sentence this endpoint exists to produce.
+The two numbers come from different places. Reads are bot events whose user agent names the operator; visits back are sessions in your normal analytics that arrived from that company's product (the `AI` acquisition channel). Neither is very interesting alone: "OpenAI read 4,120 pages and sent 12 visits" is the sentence this endpoint exists to produce.
 
 Operators that only read, and operators that only referred, both appear; the missing side reads `0`.
 
@@ -80,14 +80,14 @@ Filters apply differently to each half. The crawl half (`crawls`, `training_craw
       type: 'number',
     },
     crawls_per_referral: {
-      description: 'Reads per visit sent back. 0 when the operator sent nobody back — there is no rate to report.',
+      description: 'Reads per visit sent back. 0 when the operator sent nobody back; there is no rate to report.',
       type: 'number',
     },
   }}
 />
 
 <Callout>
-Only bots that execute JavaScript reach Rybbit. Crawlers that fetch HTML and run nothing — which includes most training crawlers — are absent unless your server reports them. See [Bot detection](/docs/bot-detection#reporting-crawlers-that-never-run-javascript).
+Only bots that execute JavaScript reach Rybbit. Crawlers that fetch HTML and run nothing (which includes most training crawlers) are absent unless your server reports them. See [Bot detection](/docs/bot-detection#reporting-crawlers-that-never-run-javascript).
 </Callout>
 
 </div>

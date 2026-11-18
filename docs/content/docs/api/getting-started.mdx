@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Authentication, common parameters, and best practices for the Rybbit Stats API
+description: Authentication, common parameters, rate limits, and error responses for the Rybbit Stats API
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -26,7 +26,7 @@ This is the recommended way to familiarize yourself with the API before integrat
 
 ## Guides
 
-Looking for what to *build* with the API? These end-to-end recipes chain endpoints together to solve a real problem:
+These end-to-end recipes show what to *build* with the API by chaining endpoints together to solve a real problem:
 
 - [**Automated Weekly Report**](/docs/api/weekly-report) — a scheduled digest of last week's traffic, week-over-week change, and top pages and sources.
 - [**Find Where Users Drop Off**](/docs/api/funnel-dropoff) — locate the biggest leak in a funnel, then see where the people who abandon go instead.
@@ -143,7 +143,7 @@ Requests are limited in two ways: a **burst** limit that is the same on every pl
 | **Standard** | 50 requests per 10 seconds | 5,000 requests per day |
 | **Pro** | 50 requests per 10 seconds | 25,000 requests per day |
 
-The burst limit is a bucket of 50 requests that refills continuously at 5 requests per second. You can spend all 50 at once, then keep going at 5 per second — so short spikes are fine and there is no window boundary to line up with.
+The burst limit is a bucket of 50 requests that refills continuously at 5 requests per second. You can spend all 50 at once, then keep going at 5 per second, so short spikes are fine and there is no window boundary to line up with.
 
 The daily quota resets at **00:00 UTC**.
 
@@ -151,7 +151,7 @@ Requests refused by the burst limit don't count against your daily quota.
 
 #### Which budget a request is charged to
 
-Limits apply per **credential owner**, never per key — creating more keys splits an existing budget rather than adding to it:
+Limits apply per **credential owner**, never per key; creating more keys splits an existing budget rather than adding to it:
 
 | Credential | Budget |
 |------------|--------|
@@ -161,7 +161,7 @@ Limits apply per **credential owner**, never per key — creating more keys spli
 
 A personal key's quota follows the most generous plan among the organizations you belong to.
 
-Self-hosted instances are not rate limited at all — neither tier applies, and no rate limit headers are sent.
+Self-hosted instances are not rate limited at all: neither tier applies, and no rate limit headers are sent.
 
 #### Reading your remaining budget
 

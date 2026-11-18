@@ -136,7 +136,7 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Code className="w-6 h-6" />,
     title: "Developers",
     description:
-      "One function call to track anything. No tag managers, no complex configuration, no vendor lock-in.",
+      "One function call to track anything, without tag managers, complex configuration, or vendor lock-in.",
   },
   {
     icon: <Rocket className="w-6 h-6" />,
@@ -150,7 +150,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "How do I track a custom event?",
     answer:
-      "Call rybbit.event('event_name') or rybbit.event('event_name', { key: 'value' }) from anywhere in your JavaScript code. That's it. The event will appear in your dashboard immediately.",
+      "Call rybbit.event('event_name') or rybbit.event('event_name', { key: 'value' }) from anywhere in your JavaScript code. The event will appear in your dashboard immediately.",
   },
   {
     question: "What's the difference between pageviews and custom events?",

@@ -16,10 +16,10 @@ export default function Security() {
   return (
     <LegalPageShell
       title="Security"
-      intro="Security and privacy are at the core of everything we do at Rybbit. Here's how we protect your data and maintain a secure analytics platform."
+      intro="Here's how we protect your data and maintain a secure analytics platform."
     >
         <h2 className="text-2xl font-semibold mt-8 mb-4">Visitor Privacy Protection</h2>
-        <p>Your website visitors' privacy is paramount. Here's how we protect it:</p>
+        <p>Here's how we protect your website visitors' privacy:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>No cookies or local storage used for tracking</li>
           <li>IP addresses are hashed and anonymized</li>
@@ -59,7 +59,7 @@ export default function Security() {
         <p>We take account security seriously:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>Passwords are hashed and salted</li>
-          <li>Each password gets a unique salt - no rainbow table attacks possible</li>
+          <li>Each password gets a unique salt (no rainbow table attacks possible)</li>
           <li>We never store passwords in plain text</li>
           <li>Sessions expire after 14 days of inactivity</li>
           <li>Secure password reset flows</li>
@@ -102,7 +102,7 @@ export default function Security() {
         <ul className="list-disc pl-6 space-y-2">
           <li>Continuous infrastructure monitoring</li>
           <li>Regular security updates and patches</li>
-          <li>Comprehensive automated testing</li>
+          <li>Automated testing</li>
           <li>Public changelog of all updates</li>
           <li>Dependency vulnerability scanning</li>
         </ul>

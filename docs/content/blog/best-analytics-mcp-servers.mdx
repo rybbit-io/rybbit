@@ -128,7 +128,7 @@ You authenticate with a Matomo `token_auth` sent as a Bearer token, or with OAut
 
 Plausible doesn't maintain an MCP server itself. Its [data access docs](https://plausible.io/docs/data-access) point to one "built by the Sentry team": [getsentry/plausible-mcp](https://github.com/getsentry/plausible-mcp) (MIT). It has four read-only tools (`get_timeseries`, `get_breakdown`, `get_conversions` and `compare_periods`) and runs either locally over stdio or on Sentry's hosted instance at `https://plausible-mcp.sentry.dev/mcp`, where you pass your own Plausible API key as a Bearer token.
 
-That key is the catch. The server needs a Stats API key, and per the [Stats API docs](https://plausible.io/docs/stats-api), "Stats API is a Business plan feature," with a default limit of 600 requests per hour. On Plausible's lower plans, there's no key to connect with. For the analytics products themselves, see [Rybbit vs Plausible](/compare/plausible).
+The server needs a Stats API key, and per the [Stats API docs](https://plausible.io/docs/stats-api), "Stats API is a Business plan feature," with a default limit of 600 requests per hour. On Plausible's lower plans, there's no key to connect with. For the analytics products themselves, see [Rybbit vs Plausible](/compare/plausible).
 
 **Setup:** hosted and local configs are in the [getsentry/plausible-mcp README](https://github.com/getsentry/plausible-mcp).
 

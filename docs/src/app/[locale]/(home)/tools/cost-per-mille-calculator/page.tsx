@@ -260,7 +260,7 @@ export default function CostPerMillePage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Track CPM and ad performance with Rybbit"
-      ctaDescription="Monitor CPM, impressions, and campaign metrics across all platforms in real-time with Rybbit's analytics."
+      ctaDescription="Monitor CPM, impressions, and campaign metrics across all platforms in real time with Rybbit's analytics."
       ctaEventLocation="cost_per_mille_calculator_cta"
       structuredData={structuredData}
     />

@@ -36,7 +36,7 @@ Supported formats:
 
 IP exclusions are checked against every client IP the request reports in its headers (`CF-Connecting-IP`, `X-Real-IP`, and each `X-Forwarded-For` entry), not only the IP Rybbit resolves as the visitor's. The address of the direct network connection is not checked when forwarding headers are present. That keeps "exclude my own IP" working behind proxies, at the cost of also excluding anyone whose request passes through an excluded address.
 
-For setup instructions and best practices, see [Hiding Your Own Traffic](/docs/hiding-own-traffic).
+For setup instructions and recommendations, see [Hiding Your Own Traffic](/docs/hiding-own-traffic).
 
 ## ASN Exclusions
 

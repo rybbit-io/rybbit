@@ -5,11 +5,10 @@ import { ToolPageLayout } from "../components/ToolPageLayout";
 export const metadata: Metadata = {
   title: "Free Page Speed Calculator | Website Load Time Impact Calculator",
   description:
-    "Calculate how page load time affects your conversions and revenue. See the real cost of a slow website. Use our free page speed impact calculator to understand performance metrics.",
+    "Calculate how page load time affects your conversions and revenue. See what a slow website costs. Use our free page speed impact calculator to understand performance metrics.",
   openGraph: {
     title: "Free Page Speed Calculator | Website Load Time Impact Calculator",
-    description:
-      "Calculate how page load time affects your conversions and revenue. See the real cost of a slow website.",
+    description: "Calculate how page load time affects your conversions and revenue. See what a slow website costs.",
     type: "website",
     url: "https://rybbit.com/tools/page-speed-calculator",
     siteName: "Rybbit",
@@ -30,8 +29,7 @@ const structuredData = {
     {
       "@type": "WebApplication",
       name: "Page Speed Impact Calculator",
-      description:
-        "Calculate how page load time affects your conversions and revenue. See the real cost of a slow website.",
+      description: "Calculate how page load time affects your conversions and revenue. See what a slow website costs.",
       url: "https://rybbit.com/tools/page-speed-calculator",
       applicationCategory: "WebApplication",
       offers: {
@@ -198,7 +196,7 @@ export default function PageSpeedCalculatorPage() {
     <ToolPageLayout
       toolSlug="page-speed-calculator"
       title="Page Speed Impact Calculator"
-      description="Calculate how page load time affects your conversions and revenue. See the real cost of a slow website."
+      description="Calculate how page load time affects your conversions and revenue. See what a slow website costs."
       badge="Free Tool"
       toolComponent={<PageSpeedForm />}
       educationalContent={educationalContent}

@@ -89,7 +89,7 @@ Keep the proxied file named `script.js`. The script cuts its own URL at `/script
 
 **Key requirements:**
 - Preserve the HTTP method (GET or POST)
-- Forward the browser's original request headers — pass through **all** incoming headers except `Host` and hop-by-hop headers (`Connection`, `Content-Length`), rather than hand-picking a few. See [Request Header Forwarding](#request-header-forwarding) for why this matters.
+- Forward the browser's original request headers: pass through **all** incoming headers except `Host` and hop-by-hop headers (`Connection`, `Content-Length`), rather than hand-picking a few. See [Request Header Forwarding](#request-header-forwarding) for why this matters.
 - Maintain request/response body for POST requests
 - Set appropriate Content-Type headers
 - Forward the visitor IP in `X-Forwarded-For`
@@ -97,7 +97,7 @@ Keep the proxied file named `script.js`. The script cuts its own URL at `/script
 
 ### Enable First-Party Proxy in Site Settings
 
-In your Rybbit dashboard, open **Site Settings → Privacy & Security** and enable **First-Party Proxy**. This tells Rybbit that requests for this site arrive via your proxy, so the visitor IP in `X-Forwarded-For` is trusted directly instead of being inferred from network topology. Without it, Rybbit may attribute traffic to your proxy server's IP — producing wrong geolocation and merging all visitors into a few users.
+In your Rybbit dashboard, open **Site Settings → Privacy & Security** and enable **First-Party Proxy**. This tells Rybbit that requests for this site arrive via your proxy, so the visitor IP in `X-Forwarded-For` is trusted directly instead of being inferred from network topology. Without it, Rybbit may attribute traffic to your proxy server's IP, producing wrong geolocation and merging all visitors into a few users.
 
 ### Configure Caching (Optional but Recommended)
 
@@ -173,9 +173,9 @@ Referrer-Policy: strict-origin-when-cross-origin
 
 ## Request Header Forwarding
 
-Forward the browser's original headers to the Rybbit backend. The simplest and most robust approach is to pass through **every** incoming request header except `Host` and hop-by-hop headers (`Connection`, `Content-Length` — let your HTTP client recompute those).
+Forward the browser's original headers to the Rybbit backend. The simplest and most robust approach is to pass through **every** incoming request header except `Host` and hop-by-hop headers (`Connection`, `Content-Length`). Let your HTTP client recompute those.
 
-Why this matters: Rybbit's bot detection scores requests on headers that every real browser sends. A proxy that forwards only `User-Agent` and the visitor IP produces requests that look exactly like a script — the events return `200 OK` but are classified as bot traffic and never appear in your dashboard.
+Why this matters: Rybbit's bot detection scores requests on headers that every real browser sends. A proxy that forwards only `User-Agent` and the visitor IP produces requests that look exactly like a script: the events return `200 OK` but are classified as bot traffic and never appear in your dashboard.
 
 If you must whitelist headers instead of passing everything through, this is the minimum set:
 
@@ -199,7 +199,7 @@ If you must whitelist headers instead of passing everything through, this is the
 Set `X-Forwarded-For` to the original visitor IP before forwarding the request to Rybbit, and enable the **First-Party Proxy** toggle in your site settings so Rybbit trusts it unconditionally.
 
 <Callout type="warn">
-**Use `X-Forwarded-For`, not `X-Real-IP`.** On Rybbit Cloud, `X-Real-IP` is consumed by our edge network (Cloudflare treats it as an internal header) and never reaches the backend — a proxy that relies on it will silently fall back to the wrong IP. `X-Forwarded-For` passes through intact. Coincidentally, AWS CloudFront also cannot send `X-Real-IP` (it's on the [origin custom-header denylist](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/add-origin-custom-headers.html#add-origin-custom-headers-denylist)). Setting `X-Real-IP` as well does no harm on self-hosted instances, but never make it the only IP header.
+**Use `X-Forwarded-For`, not `X-Real-IP`.** On Rybbit Cloud, `X-Real-IP` is consumed by our edge network (Cloudflare treats it as an internal header) and never reaches the backend. A proxy that relies on it will silently fall back to the wrong IP. `X-Forwarded-For` passes through intact. Coincidentally, AWS CloudFront also cannot send `X-Real-IP` (it's on the [origin custom-header denylist](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/add-origin-custom-headers.html#add-origin-custom-headers-denylist)). Setting `X-Real-IP` as well does no harm on self-hosted instances, but never make it the only IP header.
 </Callout>
 
 **Cloudflare Worker example:**
@@ -300,7 +300,7 @@ https://yourdomain.com/analytics/track      →  https://app.rybbit.io/api/track
 **Pros:**
 - No additional DNS lookup
 - Single SSL certificate
-- Truly first-party from browser perspective
+- First-party from browser perspective
 
 **Cons:**
 - Must ensure proxy path doesn't conflict with your app routes
@@ -341,7 +341,7 @@ If something isn't working, check:
 2. **CORS errors**: Ensure CORS headers are preserved from Rybbit backend
 3. **404 errors**: Check that URL paths exactly match expected format
 4. **Incorrect geolocation**: Verify `X-Forwarded-For` is set to the visitor IP and the **First-Party Proxy** toggle is enabled in site settings
-5. **`/track` returns 200 but nothing appears in the dashboard**: Your proxy is probably forwarding too few headers and events are being classified as bot traffic — forward the full browser header set (see [Request Header Forwarding](#request-header-forwarding))
+5. **`/track` returns 200 but nothing appears in the dashboard**: Your proxy is probably forwarding too few headers and events are being classified as bot traffic. Forward the full browser header set (see [Request Header Forwarding](#request-header-forwarding))
 6. **Session replay not working**: Add `/api/replay.js` and `/api/session-replay/record/:siteId` endpoints
 7. **Tracking tab settings ignored, or `identify()` does nothing**: Proxy `/api/site/tracking-config/:siteId` and `/api/identify`
 8. **`rybbit.flag()` always returns the fallback**: Proxy `/api/site/:siteId/feature-flags/evaluate`

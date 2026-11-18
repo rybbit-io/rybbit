@@ -21,7 +21,7 @@ An experiment has three moving parts:
 | --- | --- |
 | **Assignment** | A multivariate feature flag assigns each visitor to one stable variant (for example `control` or `variant_a`) based on its rollout percentages. |
 | **Exposure** | When your code reads the flag with `rybbit.flag()`, Rybbit records an exposure for that variant. A session counts toward the variant it was first exposed to, and the number of exposed sessions is the denominator for its conversion rate. |
-| **Conversion** | The experiment's primary goal — a page visit or a custom event — counts as a conversion when it happens in the same session, at or after the session's first exposure. |
+| **Conversion** | The experiment's primary goal (a page visit or a custom event) counts as a conversion when it happens in the same session, at or after the session's first exposure. |
 
 Because assignment is sticky for a given visitor, a person sees the same variant on repeat visits, which keeps your results consistent.
 
@@ -33,7 +33,7 @@ Open your site in the Rybbit dashboard, go to **Experiments**, and click **New e
 <Step>
 ### Basics
 
-Give the experiment a **name** and, optionally, a **hypothesis** and **description**. The hypothesis is internal context for your team — something like *"Changing the CTA copy will increase signups."* It does not affect assignment or tracking.
+Give the experiment a **name** and, optionally, a **hypothesis** and **description**. The hypothesis is internal context for your team, something like *"Changing the CTA copy will increase signups."* It does not affect assignment or tracking.
 
 New experiments are created as **drafts**. The status is a label for your team: it does not control traffic (see [Experiment Lifecycle](#experiment-lifecycle)).
 </Step>
@@ -114,7 +114,7 @@ window.rybbit.onReady((rybbit) => {
 });
 ```
 
-**Page goals** need no extra code — Rybbit counts sessions that reach the goal's path automatically.
+**Page goals** need no extra code: Rybbit counts sessions that reach the goal's path automatically.
 
 <Callout type="info">
 Use a stable variant for the `rybbit.flag()` fallback (usually `"control"`) so visitors get a sensible experience before flags resolve. If the flag is disabled, `rybbit.flag()` returns `false` rather than your fallback, so make sure any value other than a test variant renders the control experience, as in the examples above.

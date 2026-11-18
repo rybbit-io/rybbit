@@ -87,7 +87,7 @@ const structuredData = {
           name: "How can I improve my conversion funnel?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Optimize high drop-off steps first by: simplifying forms and checkout processes, improving page load speed, enhancing trust signals and social proof, clarifying value propositions, reducing friction (fewer clicks), improving mobile experience, A/B testing changes, and removing distractions. Track these improvements with Rybbit Analytics to measure the actual impact on conversions.",
+            text: "Optimize high drop-off steps first by: simplifying forms and checkout processes, improving page load speed, enhancing trust signals and social proof, clarifying value propositions, reducing friction (fewer clicks), improving mobile experience, A/B testing changes, and removing distractions. Track these improvements with Rybbit Analytics to measure the impact on conversions.",
           },
         },
       ],
@@ -247,7 +247,7 @@ const faqs = [
         <Link href="https://app.rybbit.io" className="text-emerald-600 dark:text-emerald-400 hover:underline">
           Rybbit Analytics
         </Link>{" "}
-        to measure the actual impact on conversions.
+        to measure the impact on conversions.
       </>
     ),
   },

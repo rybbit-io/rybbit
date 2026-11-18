@@ -9,8 +9,6 @@ author: Rybbit Team
 
 The Google Analytics MCP server is Google's official, open-source bridge between GA4 and AI assistants. It runs on your own computer, reads your properties through the Google Analytics Admin and Data APIs, and lets Claude, Gemini and other MCP clients answer questions like "how many users did I have yesterday?" It is free, read-only and still labeled experimental. Setup takes Python and pipx, the gcloud CLI, a Google Cloud project with two APIs enabled, an OAuth client and one entry in your AI client's config.
 
-This guide covers that setup in Claude Code, Claude Desktop and Gemini CLI using Google's documented configuration, then the nine tools (the README names seven), fixes for common errors, the server's limits, and hosted alternatives.
-
 Disclosure: we build [Rybbit](/features/web-analytics), a privacy-first analytics tool with its own hosted MCP server, which appears in the alternatives. Every claim about Google's server, Stape and Zapier comes from that vendor's own documentation, repository or pricing page, linked inline and checked in September 2026.
 
 ## Google Analytics MCP at a glance
@@ -258,7 +256,7 @@ Rybbit's [MCP server](/features/mcp) isn't a Google Analytics connector: it read
 - **Search Console in the same chat.** On Rybbit Cloud, once a site admin connects Search Console under Site settings > Integrations, `get_search_console_status` and `get_search_console_data` return clicks, impressions, CTR and position by query, page, country, device or date, with filters, up to 25,000 rows per call. No URL Inspection, sitemaps or indexing requests.
 - **Cookieless tracking.** Rybbit is cookieless by default, so its own tracking needs no consent banner, and the cloud is EU-hosted.
 
-The limits, plainly. Rybbit can't import GA history: its [importers](/docs/data-import) cover Plausible, Umami and Simple Analytics only, so switching means running both side by side for a while. If your reporting leans on GA's Google Ads data, keep GA. [Standard](/pricing) starts at $19 a month for 100k events and Pro at $39, after a 7-day trial with the card collected at signup. Rybbit is open source under AGPL-3.0, and self-hosted installs include the MCP endpoint (the Search Console tools are Cloud-only). Our [Google Analytics comparison](/compare/google-analytics) goes feature by feature, and the [best Google Analytics alternatives](/blog/best-google-analytics-alternatives) roundup covers the rest of the field.
+Rybbit can't import GA history: its [importers](/docs/data-import) cover Plausible, Umami and Simple Analytics only, so switching means running both side by side for a while. If your reporting leans on GA's Google Ads data, keep GA. [Standard](/pricing) starts at $19 a month for 100k events and Pro at $39, after a 7-day trial with the card collected at signup. Rybbit is open source under AGPL-3.0, and self-hosted installs include the MCP endpoint (the Search Console tools are Cloud-only). Our [Google Analytics comparison](/compare/google-analytics) goes feature by feature, and the [best Google Analytics alternatives](/blog/best-google-analytics-alternatives) roundup covers the rest of the field.
 
 ## Which option should you use?
 
@@ -289,4 +287,4 @@ No. It uses the Data API, which Google says doesn't support Universal Analytics 
 
 ---
 
-*Want an MCP server with no Google Cloud project to set up? [Start a Rybbit trial](https://app.rybbit.io/signup), connect it to Claude with one command, or read the [MCP docs](/docs/mcp) first.*
+*For an MCP server with no Google Cloud project to set up, [start a Rybbit trial](https://app.rybbit.io/signup), connect it to Claude with one command, or read the [MCP docs](/docs/mcp) first.*

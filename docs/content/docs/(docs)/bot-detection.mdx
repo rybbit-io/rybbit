@@ -150,7 +150,7 @@ Every detected bot carries the layers that caught it. Bots matched by one of Ryb
 | `bot_operator` | `OpenAI` | Who runs it |
 | `bot_purpose` | `ai_training` | What the fetch is for |
 
-A bot matched only by a broad pattern (`crawl`, `spider`) is still filtered, but has no published identity — those rows read as **Unnamed**, which is more useful than a guess.
+A bot matched only by a broad pattern (`crawl`, `spider`) is still filtered, but has no published identity. Those rows read as **Unnamed**, which is more useful than a guess.
 
 ### Purposes
 
@@ -193,13 +193,13 @@ Because multiple layers can match the same request, per-layer bot counts can add
 
 Requests sent to `/api/track` with `Authorization: Bearer <api key>` and a valid key for the site with the `ingest:write` scope (or an unrestricted key) are treated as trusted server-side ingestion. Four of the five layers are skipped: the headers, the client signals, the network address, and the request rate all belong to your server, not to the visitor it is reporting, so scoring them would convict your own backend.
 
-The user-agent layer still runs, on the `user_agent` you send. Nothing changes for ordinary backend events — a request reporting a real browser's user agent is tracked normally.
+The user-agent layer still runs, on the `user_agent` you send. Nothing changes for ordinary backend events: a request reporting a real browser's user agent is tracked normally.
 
 ### Reporting crawlers that never run JavaScript
 
 Rybbit's tracker is JavaScript, so a crawler that fetches your HTML and executes nothing never reaches Rybbit at all. Most AI training crawlers work exactly that way, which is why the Bots dashboard carries a note about its own coverage.
 
-If you want to see them, report them from the edge — middleware, a worker, or a reverse proxy — forwarding the real request's `user_agent`:
+If you want to see them, report them from the edge (middleware, a worker, or a reverse proxy), forwarding the real request's `user_agent`:
 
 ```json
 {

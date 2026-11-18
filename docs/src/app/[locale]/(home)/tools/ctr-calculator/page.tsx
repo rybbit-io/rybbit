@@ -219,7 +219,7 @@ const educationalContent = (
       <li>Test one variable at a time: headlines, images, CTAs, landing pages</li>
       <li>Run tests long enough to gather statistically significant data</li>
       <li>Implement winning variations and test new elements</li>
-      <li>Document learnings to continuously improve performance</li>
+      <li>Document findings to continuously improve performance</li>
     </ul>
 
     <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3 mt-6">Ad Extensions (Google Ads)</h3>
@@ -289,7 +289,7 @@ export default function CTRCalculatorPage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Track your campaign performance with Rybbit"
-      ctaDescription="Monitor CTR, conversions, and other key metrics in real-time."
+      ctaDescription="Monitor CTR, conversions, and other key metrics in real time."
       ctaEventLocation="ctr_calculator_cta"
       structuredData={structuredData}
     />
