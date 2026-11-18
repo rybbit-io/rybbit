@@ -40,7 +40,7 @@ export default function DataProcessingAgreement() {
       lastUpdated={lastUpdated}
       intro={
         <>
-          Need a signed copy? Admins can sign this DPA in Rybbit under{" "}
+          Admins can sign this DPA in Rybbit under{" "}
           <a
             href="https://app.rybbit.io/settings/dpa"
             className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
