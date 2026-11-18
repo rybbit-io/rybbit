@@ -399,7 +399,7 @@ export function FeatureFlagDialog({
                   value={form.description}
                   onChange={event => updateField("description", event.target.value)}
                   rows={2}
-                  placeholder={t("Optional — describe what this flag controls")}
+                  placeholder={t("Optional: describe what this flag controls")}
                 />
               </section>
             </div>

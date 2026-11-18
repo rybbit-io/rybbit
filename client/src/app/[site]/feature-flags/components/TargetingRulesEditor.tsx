@@ -58,7 +58,7 @@ export function TargetingRulesEditor({
       {rules.length === 0 ? (
         <div className="rounded-md border border-dashed border-neutral-200 px-3 py-4 text-center text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
           <span className="font-mono text-neutral-400 dark:text-neutral-500">{"//"}</span>{" "}
-          {t("Applies to everyone — add a rule to narrow targeting")}
+          {t("Applies to everyone. Add a rule to narrow targeting.")}
         </div>
       ) : (
         <div className="grid gap-1.5">

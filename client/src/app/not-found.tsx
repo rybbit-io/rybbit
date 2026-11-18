@@ -27,7 +27,7 @@ export default function NotFound() {
         <div className="space-y-2 max-w-md">
           <h2 className="text-2xl font-semibold text-neutral-800 dark:text-neutral-200">{t("Page Not Found")}</h2>
           <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
-            {t("The page you're looking for doesn't exist or has been moved. Let's get you back to analyzing your data.")}
+            {t("The page you're looking for doesn't exist or has been moved.")}
           </p>
         </div>
 
@@ -50,7 +50,7 @@ export default function NotFound() {
 
         {/* Help Links */}
         <div className="pt-8 space-y-2">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("Need help? Check out our resources:")}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("For help, check out our resources:")}</p>
           <div className="flex flex-wrap justify-center gap-4 text-sm">
             <Link
               href="https://rybbit.com/docs"

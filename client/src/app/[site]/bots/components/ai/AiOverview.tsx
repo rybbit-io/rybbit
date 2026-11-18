@@ -75,7 +75,7 @@ export function AiOverview() {
           <AiStat
             label="AI agents"
             value={overview?.ai_agent_requests ?? 0}
-            hint="A person asked an assistant to open a page and it fetched it there and then — ChatGPT-User, Claude-User, Perplexity-User and friends. Closer to a visit than to a crawl."
+            hint="A person asked an assistant to open a page and it fetched it there and then (ChatGPT-User, Claude-User, Perplexity-User and friends). Closer to a visit than to a crawl."
             isLoading={isLoading}
           />
           <AiStat

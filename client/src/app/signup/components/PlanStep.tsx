@@ -115,7 +115,7 @@ export function PlanStep({
         ) : (
           <div className="p-4 rounded-lg border border-neutral-200 dark:border-neutral-800 text-center">
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              {t("Need more than 20M events? Contact us for a custom plan.")}
+              {t("For more than 20M events, contact us for a custom plan.")}
             </p>
             <a
               href="mailto:hello@rybbit.com"

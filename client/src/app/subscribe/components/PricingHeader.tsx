@@ -25,7 +25,7 @@ export function PricingHeader() {
         {t("Start for Free")}
       </h1>
       <p className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">
-        {t("Start your 7-day free trial — no credit card charges until the trial ends.")}
+        {t("Start your 7-day free trial. No credit card charges until the trial ends.")}
       </p>
     </div>
   );
