@@ -132,6 +132,7 @@ import {
 import { connectGSC, disconnectGSC, getGSCData, getGSCStatus, gscCallback, selectGSCProperty } from "./gsc/index.js";
 import { updateMemberSiteAccess } from "./memberAccess/index.js";
 import { listTeams, createTeam, updateTeam, deleteTeam } from "./teams/index.js";
+import { signDpa } from "./dpa/signDpa.js";
 import {
   deleteSessionReplay,
   getSessionReplayEvents,
@@ -556,6 +557,17 @@ async function organizationsRoutes(fastify: FastifyInstance) {
 
   // Member site access management (admin/owner only)
   fastify.put("/organizations/:organizationId/members/:memberId/sites", org("members:manage"), updateMemberSiteAccess);
+
+  // Data Processing Agreement: a countersigned agreement with Rybbit Cloud, so self-hosted has none.
+  if (IS_CLOUD) {
+    const dpa = org("dpa:manage");
+    fastify.post(
+      "/organizations/:organizationId/dpa",
+      // Each signature launches a browser to print the PDF.
+      { ...dpa, bodyLimit: 16 * 1024, config: { ...dpa.config, rateLimit: { max: 10, timeWindow: "1 hour" } } },
+      signDpa
+    );
+  }
 }
 
 async function teamsRoutes(fastify: FastifyInstance) {

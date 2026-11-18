@@ -135,6 +135,7 @@ services:
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - RESEND_API_KEY=${RESEND_API_KEY}
+      - DPA_ARCHIVE_EMAIL=${DPA_ARCHIVE_EMAIL}
       # R2 storage for session replay (cloud only)
       - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
