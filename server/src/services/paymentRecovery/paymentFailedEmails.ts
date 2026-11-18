@@ -95,16 +95,18 @@ class PaymentFailedEmails {
       const org = await this.organizationOf(customerId);
       if (!org) return;
 
-      // Sites keep collecting during the grace period after a trial; otherwise the plan is off
-      // until the charge goes through.
+      // Sites keep collecting while a plan that has been paid for is retried, and during the
+      // grace period after a trial; otherwise the plan is off until the charge goes through.
       invalidateStripeSubscriptionCache(customerId);
       const subscription = await getBestSubscription(org.id, customerId);
       const tracking =
-        subscription.source !== "free"
-          ? "unknown"
-          : subscription.trialGrace && subscription.trialGrace.endsAt > new Date()
-            ? "on"
-            : "paused";
+        subscription.source === "stripe" && subscription.pastDue
+          ? "on"
+          : subscription.source !== "free"
+            ? "unknown"
+            : subscription.trialGrace && subscription.trialGrace.endsAt > new Date()
+              ? "on"
+              : "paused";
 
       await this.notifyOwners(org, `payment_failed:${invoice.id}`, {
         stage: "failed",

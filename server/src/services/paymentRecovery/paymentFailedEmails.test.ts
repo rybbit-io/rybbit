@@ -141,6 +141,22 @@ describe("paymentFailedEmails.onPaymentFailed", () => {
     expect(mocks.sendPaymentFailedEmail.mock.calls[0][1]).toMatchObject({ tracking: "on" });
   });
 
+  it("says tracking is still on when a plan that has been paid for is kept on", async () => {
+    state.plan = { source: "stripe", pastDue: { subscriptionId: "sub_1", planName: "standard100k" } };
+
+    await paymentFailedEmails.onPaymentFailed(invoice());
+
+    expect(mocks.sendPaymentFailedEmail.mock.calls[0][1]).toMatchObject({ tracking: "on" });
+  });
+
+  it("doesn't say either way when another plan covers the organization", async () => {
+    state.plan = { source: "appsumo" };
+
+    await paymentFailedEmails.onPaymentFailed(invoice());
+
+    expect(mocks.sendPaymentFailedEmail.mock.calls[0][1]).toMatchObject({ tracking: "unknown" });
+  });
+
   it("emails once per invoice however many retries fail", async () => {
     await paymentFailedEmails.onPaymentFailed(invoice());
     await paymentFailedEmails.onPaymentFailed(invoice({ next_payment_attempt: null }));

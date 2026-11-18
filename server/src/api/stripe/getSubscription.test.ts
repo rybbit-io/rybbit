@@ -7,17 +7,29 @@ import type {
   OverrideSubscriptionInfo,
   StripeSubscriptionInfo,
 } from "../../lib/subscriptionUtils.js";
-import { computeLimits } from "./getSubscription.js";
+import { computeLimits, getSubscriptionInner } from "./getSubscription.js";
+
+const mocks = vi.hoisted(() => ({ getBestSubscription: vi.fn() }));
 
 // getSubscription.ts imports the DB pool and subscription utils (which pull in the
 // Stripe client) at module load time. Mock both so importing computeLimits is
-// side-effect free.
+// side-effect free. The only query is the organization read in getSubscriptionInner.
 vi.mock("../../db/postgres/postgres.js", () => ({
-  db: {},
+  db: {
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: async () => [{ stripeCustomerId: "cus_1", monthlyEventCount: 1_234, name: "Acme" }],
+        }),
+      }),
+    }),
+  },
 }));
 
 vi.mock("../../lib/subscriptionUtils.js", () => ({
-  getBestSubscription: vi.fn(),
+  getBestSubscription: mocks.getBestSubscription,
+  hasHadStripeSubscription: async () => true,
+  subscriptionIncludesReplay: () => false,
 }));
 
 const START_OF_MONTH = "2026-07-01";
@@ -200,5 +212,33 @@ describe("computeLimits", () => {
       // (e.g. "Unknown Plan" from an unmapped price ID) gets the free-tier limits.
       expect(computeLimits(stripeSubscription("Unknown Plan"))).toEqual({ memberLimit: 1, siteLimit: 1 });
     });
+  });
+});
+
+describe("getSubscriptionInner", () => {
+  const pastDue = { subscriptionId: "sub_123", planName: "standard100k" };
+
+  it("reports a plan kept on during payment retries as active, with the failed charge", async () => {
+    mocks.getBestSubscription.mockResolvedValue(stripeSubscription("standard100k", { pastDue }));
+
+    await expect(getSubscriptionInner("org_1")).resolves.toMatchObject({
+      id: "sub_123",
+      planName: "standard100k",
+      status: "active",
+      eventLimit: 100_000,
+      pastDue,
+    });
+  });
+
+  it("leaves the failed charge off an ordinary active plan", async () => {
+    mocks.getBestSubscription.mockResolvedValue(stripeSubscription("standard100k"));
+
+    await expect(getSubscriptionInner("org_1")).resolves.not.toHaveProperty("pastDue");
+  });
+
+  it("reports the failed charge on the free tier when the plan isn't kept on", async () => {
+    mocks.getBestSubscription.mockResolvedValue({ ...freeSubscription(), pastDue });
+
+    await expect(getSubscriptionInner("org_1")).resolves.toMatchObject({ status: "free", pastDue });
   });
 });

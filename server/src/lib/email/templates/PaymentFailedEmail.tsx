@@ -20,8 +20,9 @@ export interface PaymentFailedEmailProps {
   /** When Stripe will try the card again, if it has scheduled another attempt. */
   nextAttemptAt?: Date | null;
   /**
-   * Whether the organization's sites are still collecting: "on" during the grace period after
-   * a trial, "paused" when the plan is off until the charge goes through.
+   * Whether the organization's sites are still collecting: "on" while a paid plan's renewal is
+   * retried and during the grace period after a trial, "paused" when the plan is off until the
+   * charge goes through.
    */
   tracking?: "on" | "paused" | "unknown";
 }
