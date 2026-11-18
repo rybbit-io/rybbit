@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import * as React from "react";
 import { appUrl, formatDateTime } from "../format.js";
-import { H1, HELP_URL, LedgerLayout, Note, P, PrimaryButton, Rows } from "./ledger.js";
+import { H1, HELP_URL, LedgerLayout, Note, P, Rows } from "./ledger.js";
 
 export interface DpaSignedEmailProps {
   agreementId: string;
@@ -41,7 +41,9 @@ export const DpaSignedEmail = ({
         { label: "Document", value: agreementId },
       ]}
     />
-    <PrimaryButton label="Open DPA settings" href={`${appUrl()}/settings/dpa`} />
-    <Note>Admins in your organization can download it again from Settings any time.</Note>
+    <Note>
+      Keep this PDF for your records. We don't keep a copy in your account, so if you lose it, an admin can sign again
+      in Settings → DPA.
+    </Note>
   </LedgerLayout>
 );

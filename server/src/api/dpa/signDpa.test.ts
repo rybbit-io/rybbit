@@ -1,11 +1,9 @@
-import { createHash } from "node:crypto";
 import { DPA_VERSION } from "@rybbit/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   ready: vi.fn(() => true),
-  insertValues: vi.fn(async (_row: Record<string, unknown>) => undefined),
   renderDpaPdf: vi.fn(async () => Buffer.from("%PDF-test")),
   sendDpaSignedEmail: vi.fn(async () => undefined),
 }));
@@ -14,16 +12,13 @@ vi.mock("@rybbit/shared", async importOriginal => ({
   ...(await importOriginal<typeof import("@rybbit/shared")>()),
   isDpaCountersignatureReady: mocks.ready,
 }));
-vi.mock("../../db/postgres/postgres.js", () => ({
-  db: { insert: () => ({ values: mocks.insertValues }) },
-}));
 vi.mock("../../services/dpa/dpaPdf.js", () => ({
   renderDpaPdf: mocks.renderDpaPdf,
   dpaPdfFilename: () => "rybbit-dpa-acme-2026-11-17.pdf",
 }));
 vi.mock("../../lib/email/email.js", () => ({ sendDpaSignedEmail: mocks.sendDpaSignedEmail }));
 
-import { signDpa, signDpaBodySchema } from "./dpaAgreements.js";
+import { signDpa, signDpaBodySchema } from "./signDpa.js";
 
 const validBody = {
   dpaVersion: DPA_VERSION,
@@ -88,9 +83,14 @@ describe("signDpa", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.ready.mockReturnValue(true);
+    vi.stubEnv("DPA_ARCHIVE_EMAIL", "dpa-archive@rybbit.example");
   });
 
-  it("refuses to sign while Rybbit's countersignature details are placeholders", async () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("refuses to sign while the agreement still has placeholders", async () => {
     mocks.ready.mockReturnValue(false);
     const reply = await sign(validBody);
     expect(reply.statusCode).toBe(503);
@@ -100,7 +100,7 @@ describe("signDpa", () => {
   it("refuses a signature on an older version of the text", async () => {
     const reply = await sign({ ...validBody, dpaVersion: "2020-01-01" });
     expect(reply.statusCode).toBe(409);
-    expect(mocks.insertValues).not.toHaveBeenCalled();
+    expect(mocks.renderDpaPdf).not.toHaveBeenCalled();
   });
 
   it("rejects invalid details", async () => {
@@ -108,45 +108,59 @@ describe("signDpa", () => {
     expect(reply.statusCode).toBe(400);
   });
 
-  it("stores the PDF with its hash and emails it to the signer and the account that signed", async () => {
+  it("returns the PDF and emails it to the signer, the signing account, and the archive", async () => {
     const reply = await sign(validBody);
 
-    expect(reply.statusCode).toBe(201);
-    expect(reply.body.emailed).toBe(true);
-    expect(reply.body.agreement).toMatchObject({ companyName: "Acme GmbH", dpaVersion: DPA_VERSION });
-
-    const row = mocks.insertValues.mock.calls[0][0];
-    expect(row).toMatchObject({
-      organizationId: "org-1",
-      signedByUserId: "user-1",
-      signerIp: "203.0.113.7",
-      signerUserAgent: "vitest",
-      pdfSha256: createHash("sha256").update("%PDF-test").digest("hex"),
+    expect(reply.statusCode).toBe(200);
+    expect(reply.body).toEqual({
+      filename: "rybbit-dpa-acme-2026-11-17.pdf",
+      pdf: Buffer.from("%PDF-test").toString("base64"),
+      emailed: true,
     });
 
-    expect(mocks.renderDpaPdf).toHaveBeenCalledWith(expect.objectContaining({ accountEmail: "admin@acme.example" }));
+    expect(mocks.renderDpaPdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({ companyName: "Acme GmbH" }),
+        signerIp: "203.0.113.7",
+        accountEmail: "admin@acme.example",
+      })
+    );
+    const attachment = expect.objectContaining({ filename: "rybbit-dpa-acme-2026-11-17.pdf" });
     expect(mocks.sendDpaSignedEmail).toHaveBeenCalledWith(
       ["legal@acme.example", "admin@acme.example"],
       expect.objectContaining({ companyName: "Acme GmbH" }),
-      expect.objectContaining({ filename: "rybbit-dpa-acme-2026-11-17.pdf" })
+      attachment
+    );
+    expect(mocks.sendDpaSignedEmail).toHaveBeenCalledWith(
+      ["dpa-archive@rybbit.example"],
+      expect.anything(),
+      attachment
     );
   });
 
-  it("still succeeds when the email fails, so they can download it instead", async () => {
+  it("skips the archive copy when no archive address is set", async () => {
+    vi.stubEnv("DPA_ARCHIVE_EMAIL", "");
+    const reply = await sign(validBody);
+
+    expect(reply.statusCode).toBe(200);
+    expect(mocks.sendDpaSignedEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("still returns the PDF when the email fails", async () => {
     mocks.sendDpaSignedEmail.mockRejectedValueOnce(new Error("resend down"));
     const reply = await sign(validBody, { id: "user-1", email: "LEGAL@acme.example" });
 
-    expect(reply.statusCode).toBe(201);
+    expect(reply.statusCode).toBe(200);
     expect(reply.body.emailed).toBe(false);
+    expect(reply.body.pdf).toBeTruthy();
     expect(mocks.renderDpaPdf).toHaveBeenCalledWith(expect.objectContaining({ accountEmail: null }));
   });
 
-  it("does not store anything when the PDF can't be rendered", async () => {
+  it("sends nothing when the PDF can't be rendered", async () => {
     mocks.renderDpaPdf.mockRejectedValueOnce(new Error("no chromium"));
     const reply = await sign(validBody);
 
     expect(reply.statusCode).toBe(500);
-    expect(mocks.insertValues).not.toHaveBeenCalled();
     expect(mocks.sendDpaSignedEmail).not.toHaveBeenCalled();
   });
 });

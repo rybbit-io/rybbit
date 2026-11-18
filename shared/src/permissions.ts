@@ -123,8 +123,8 @@ export const PERMISSIONS = {
   "members:manage": { minRole: "admin", scope: write("org") },
   "teams:manage": { minRole: "admin", scope: write("org") },
   "apikeys:manage": { minRole: "admin", scope: "deny-scoped" },
-  // Signing the Data Processing Agreement binds the company, so no API key or
-  // OAuth token may do it, and only admins see or download signed copies.
+  // Signing the Data Processing Agreement binds the company, so only admins may
+  // do it, and never with an API key or OAuth token.
   "dpa:manage": { minRole: "admin", scope: "deny-scoped" },
   // Enforced by better-auth's organization access control (orgRoles in the
   // server's auth.ts); listed here so the client can ask for it by name.

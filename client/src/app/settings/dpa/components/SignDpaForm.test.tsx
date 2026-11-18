@@ -1,4 +1,5 @@
 import React from "react";
+import { DPA_VERSION } from "@rybbit/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   signDpa: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  downloadBlob: vi.fn(),
 }));
 
 vi.mock("next-intl", () => ({
@@ -16,18 +18,14 @@ vi.mock("next-intl", () => ({
 vi.mock("next/font/google", () => ({ Dancing_Script: () => ({ className: "signature-font" }) }));
 vi.mock("@/api/admin/endpoints/dpa", () => ({ signDpa: mocks.signDpa }));
 vi.mock("@/components/ui/sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.toastError } }));
+vi.mock("@/lib/export", () => ({ downloadBlob: mocks.downloadBlob }));
 
 import { SignDpaForm } from "./SignDpaForm";
 
 const renderForm = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <SignDpaForm
-        organizationId="org-1"
-        currentVersion="2026-06-25"
-        hasSigned={false}
-        defaults={{ signerName: "Jo Example", signerEmail: "jo@acme.example" }}
-      />
+      <SignDpaForm organizationId="org-1" defaults={{ signerName: "Jo Example", signerEmail: "jo@acme.example" }} />
     </QueryClientProvider>
   );
 
@@ -72,8 +70,8 @@ describe("SignDpaForm", () => {
     expect(mocks.signDpa).not.toHaveBeenCalled();
   });
 
-  it("signs the version it showed, with the trimmed details", async () => {
-    mocks.signDpa.mockResolvedValue({ agreement: { id: "a-1" }, emailed: true });
+  it("signs the version it showed, with the trimmed details, and downloads the PDF", async () => {
+    mocks.signDpa.mockResolvedValue({ filename: "rybbit-dpa-acme.pdf", pdf: btoa("%PDF-test"), emailed: true });
     renderForm();
     type("Company legal name", "  Acme GmbH ");
     type("Registered address", "Musterstraße 12\n10115 Berlin");
@@ -88,11 +86,17 @@ describe("SignDpaForm", () => {
       signerName: "Jo Example",
       signerTitle: "CEO",
       signerEmail: "jo@acme.example",
-      dpaVersion: "2026-06-25",
+      dpaVersion: DPA_VERSION,
       agreed: true,
     });
     await waitFor(() =>
-      expect(mocks.toastSuccess).toHaveBeenCalledWith("DPA signed. We emailed the PDF to jo@acme.example.")
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        "DPA signed. The PDF is downloading, and we emailed a copy to jo@acme.example."
+      )
     );
+    const [filename, blob] = mocks.downloadBlob.mock.calls[0];
+    expect(filename).toBe("rybbit-dpa-acme.pdf");
+    expect(blob.type).toBe("application/pdf");
+    expect(await blob.text()).toBe("%PDF-test");
   });
 });

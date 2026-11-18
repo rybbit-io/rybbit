@@ -1,6 +1,6 @@
 "use client";
 
-import { DPA_FIELD_LIMITS, type DpaCustomerDetails } from "@rybbit/shared";
+import { DPA_FIELD_LIMITS, DPA_VERSION, type DpaCustomerDetails } from "@rybbit/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FileSignature } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { downloadBlob } from "@/lib/export";
 import { cn } from "@/lib/utils";
 import { LedgerRow, LedgerRows, LedgerSection } from "../../components/Ledger";
 import { DpaPreview, signatureFont } from "./DpaPreview";
@@ -24,17 +25,16 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{message}</p>;
 }
 
+function pdfBlob(base64: string) {
+  return new Blob([Uint8Array.from(atob(base64), char => char.charCodeAt(0))], { type: "application/pdf" });
+}
+
 export function SignDpaForm({
   organizationId,
-  currentVersion,
-  hasSigned,
   defaults,
 }: {
   organizationId: string;
-  currentVersion: string;
-  /** The organization already has a signed copy, so this one replaces it as current. */
-  hasSigned: boolean;
-  /** Prefill: the current copy's details when signing again, else the signed-in user. */
+  /** Prefill from the signed-in user. */
   defaults: Partial<DpaCustomerDetails>;
 }) {
   const t = useExtracted();
@@ -76,12 +76,14 @@ export function SignDpaForm({
     try {
       const result = await signDpa.mutateAsync({
         organizationId,
-        data: { ...details, dpaVersion: currentVersion, agreed: true },
+        data: { ...details, dpaVersion: DPA_VERSION, agreed: true },
       });
+      // Rybbit keeps no copy, so hand over the PDF right away.
+      downloadBlob(result.filename, pdfBlob(result.pdf));
       toast.success(
         result.emailed
-          ? t("DPA signed. We emailed the PDF to {email}.", { email: details.signerEmail })
-          : t("DPA signed. Download the PDF from the list above.")
+          ? t("DPA signed. The PDF is downloading, and we emailed a copy to {email}.", { email: details.signerEmail })
+          : t("DPA signed. The PDF is downloading. We couldn't email it, so keep that copy safe.")
       );
       form.reset({ ...details, agreed: false });
     } catch (error) {
@@ -94,12 +96,8 @@ export function SignDpaForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-12" noValidate>
       <LedgerSection
-        title={hasSigned ? t("Sign a new copy") : t("Your company")}
-        description={
-          hasSigned
-            ? t("Changed your company name or address? Sign again and the new copy becomes current.")
-            : t("The details that go into the agreement, exactly as they should appear on it.")
-        }
+        title={t("Your company")}
+        description={t("The details that go into the agreement, exactly as they should appear on it.")}
       >
         <LedgerRows>
           <LedgerRow
@@ -167,7 +165,9 @@ export function SignDpaForm({
 
       <LedgerSection
         title={t("Review and sign")}
-        description={t("Rybbit has already signed. It takes effect when you sign, and we email you the PDF.")}
+        description={t(
+          "Rybbit has already signed. It takes effect when you sign. The PDF downloads right away and we email you a copy. Need another later? Sign again."
+        )}
       >
         <div
           className="max-h-[28rem] overflow-y-auto rounded-lg border border-neutral-150 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900"
