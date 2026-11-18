@@ -77,7 +77,7 @@ describe("createUserApiKey — scoped permissions", () => {
   });
 
   it("rejects unknown resources and invalid actions", async () => {
-    for (const permissions of [{ bogus: ["read"] }, { sql: ["write"] }, { goals: [] }]) {
+    for (const permissions of [{ bogus: ["read"] }, { sql: ["write"] }, { ingest: ["read"] }, { goals: [] }]) {
       const response = await app.inject({ method: "POST", url: "/api-keys", payload: { name: "bad", permissions } });
       expect(response.statusCode).toBe(400);
     }

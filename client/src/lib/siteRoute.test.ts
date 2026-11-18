@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  getMainDashboardPath,
-  getSiteRouteContext,
-  isSyncedAnalyticsRoute,
-  PRIVATE_KEY_PATTERN,
-  SYNCED_ANALYTICS_ROUTES,
-} from "./siteRoute";
+import { getMainDashboardPath, getSiteRouteContext, isSyncedAnalyticsRoute, PRIVATE_KEY_PATTERN } from "./siteRoute";
 
 describe("getSiteRouteContext", () => {
   it("reads a normal site route", () => {
@@ -67,8 +61,8 @@ describe("private-key recognition", () => {
 });
 
 describe("isSyncedAnalyticsRoute", () => {
-  it("accepts every declared synchronized route", () => {
-    for (const route of SYNCED_ANALYTICS_ROUTES) {
+  it("accepts the analytics pages that sync their state to the URL", () => {
+    for (const route of ["main", "sessions", "users", "events", "funnels"]) {
       expect(isSyncedAnalyticsRoute(route), route).toBe(true);
     }
   });

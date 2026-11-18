@@ -118,7 +118,6 @@ describe("fromDateTimeInput", () => {
   it("normalizes a wall clock that the spring-forward gap skips", () => {
     expect(fromDateTimeInput("2026-03-08T02:30", "America/New_York")).toBe("2026-03-08T07:30:00.000Z");
     expect(fromDateTimeInput("2026-03-08T03:00", "America/New_York")).toBe("2026-03-08T07:00:00.000Z");
-    expect("2026-03-08T03:00" > "2026-03-08T02:30").toBe(true);
   });
 });
 
@@ -127,7 +126,9 @@ describe("parseAnnotationInstant", () => {
     expect(parseAnnotationInstant("2026-08-18T07:00:00.000Z").toMillis()).toBe(Date.UTC(2026, 7, 18, 7));
     expect(parseAnnotationInstant("2026-08-18 07:00:00+00").toMillis()).toBe(Date.UTC(2026, 7, 18, 7));
     expect(parseAnnotationInstant("2026-08-18 09:00:00+02").toMillis()).toBe(Date.UTC(2026, 7, 18, 7));
-    expect(formatAnnotationDate({ ...base, date: "2026-08-18 07:00:00+00" }, "America/Los_Angeles")).toBe("Aug 18, 2026");
+    expect(formatAnnotationDate({ ...base, date: "2026-08-18 07:00:00+00" }, "America/Los_Angeles")).toBe(
+      "Aug 18, 2026"
+    );
   });
 });
 

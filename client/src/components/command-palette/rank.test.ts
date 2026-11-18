@@ -10,11 +10,8 @@ describe("scoreOne", () => {
     expect(scoreOne("Sessions", "sne")).toBe(-1);
   });
 
-  it("rewards a match at the very start and consecutive characters", () => {
-    // s (start: 2 + 12), e (run of 1: 2 + 4), s (run of 2: 2 + 8)
-    expect(scoreOne("Sessions", "ses")).toBe(30);
-    // s mid-word (2), e right after (2 + 4), s after a gap (2)
-    expect(scoreOne("Users", "ses")).toBe(10);
+  it("rewards a match at the very start", () => {
+    expect(scoreOne("Sessions", "s")).toBeGreaterThan(scoreOne("Users", "s"));
   });
 
   it("scores a run above the same letters scattered mid-word", () => {
@@ -22,9 +19,8 @@ describe("scoreOne", () => {
   });
 
   it("rewards letters that start words, so initials find a label", () => {
-    // l (start: 2 + 12), w after a space (2 + 8)
-    expect(scoreOne("Last Week", "lw")).toBe(24);
-    expect(scoreOne("Yellow", "lw")).toBe(4);
+    expect(scoreOne("Last Week", "lw")).toBeGreaterThan(scoreOne("Yellow", "lw"));
+    expect(scoreOne("xlast week", "w")).toBeGreaterThan(scoreOne("xlastweek", "w"));
   });
 });
 

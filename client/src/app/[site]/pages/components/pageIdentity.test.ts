@@ -4,8 +4,7 @@ import { formatSection, getPageFilters, getRowId, getTrendKeys } from "./pageIde
 
 describe("page identity", () => {
   it("tells a page from the section of the same name", () => {
-    expect(getRowId({ kind: "page", key: "/docs" })).toBe("page:/docs");
-    expect(getRowId({ kind: "section", key: "/docs" })).toBe("section:/docs");
+    expect(getRowId({ kind: "page", key: "/docs" })).not.toBe(getRowId({ kind: "section", key: "/docs" }));
   });
 
   it("writes sections with a trailing slash", () => {

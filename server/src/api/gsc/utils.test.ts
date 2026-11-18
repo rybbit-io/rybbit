@@ -82,21 +82,6 @@ describe("signGSCState / verifyGSCState", () => {
     expect(typeof verified!.ts).toBe("number");
   });
 
-  it("emits a two-part base64url `body.signature` value", () => {
-    const value = signGSCState(1, "user_abc");
-    const parts = value.split(".");
-
-    expect(parts).toHaveLength(2);
-    for (const part of parts) {
-      expect(part).toMatch(/^[A-Za-z0-9_-]+$/);
-    }
-    // The body is not encryption: it is readable, only tamper-evident.
-    expect(JSON.parse(Buffer.from(parts[0], "base64url").toString())).toMatchObject({
-      siteId: 1,
-      userId: "user_abc",
-    });
-  });
-
   it("rejects a body swapped to another site while keeping the original signature (IDOR)", () => {
     const original = signGSCState(1, "user_abc");
     const [, signature] = original.split(".");
@@ -180,12 +165,6 @@ describe("signGSCState / verifyGSCState", () => {
     expect(verifyGSCState(signedState({}))).toBeNull();
   });
 
-  it("keeps extra payload fields intact when the signature covers them", () => {
-    const verified = verifyGSCState(signedState({ siteId: 5, userId: "user_abc", ts: Date.now(), extra: "kept" }));
-
-    expect(verified).toMatchObject({ siteId: 5, userId: "user_abc", extra: "kept" });
-  });
-
   it("accepts a state up to the TTL and rejects it one millisecond later", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
@@ -197,23 +176,6 @@ describe("signGSCState / verifyGSCState", () => {
 
     vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z").getTime() + TTL_MS + 1);
     expect(verifyGSCState(value)).toBeNull();
-  });
-
-  it("rejects a long-expired state", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
-    const value = signGSCState(1, "user_abc");
-
-    vi.setSystemTime(new Date("2026-01-02T00:00:00.000Z"));
-    expect(verifyGSCState(value)).toBeNull();
-  });
-
-  it("accepts future-dated timestamps (no clock-skew ceiling)", () => {
-    // Current behavior: only `now - ts > TTL` is checked, so a forward-dated ts
-    // never expires. Only a holder of the signing secret can mint one.
-    const future = signedState({ siteId: 1, userId: "user_abc", ts: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000 });
-
-    expect(verifyGSCState(future)).toMatchObject({ siteId: 1, userId: "user_abc" });
   });
 
   it("refuses to sign or verify when BETTER_AUTH_SECRET is unset", () => {

@@ -48,11 +48,18 @@ describe("createBasePayload", () => {
   });
 
   it("uses the request's resolved identity rather than re-deriving one", async () => {
-    const payload = await createBasePayload(trackingRequest({ ipAddress: "203.0.113.10", userAgent: "ServerSDK/1.0" }));
+    const payload = await createBasePayload(
+      trackingRequest({
+        ipAddress: "203.0.113.10",
+        userAgent: "ServerSDK/1.0",
+        site: { ...site, saltUserIds: true } as SiteConfigData,
+      })
+    );
 
     expect(mocks.generateUserId).toHaveBeenCalledWith("203.0.113.10", "ServerSDK/1.0", 42, {
-      saltUserIds: false,
+      saltUserIds: true,
       lookupAsn,
+      // The event's own instant decides its salt day, not the clock at hash time.
       receivedAt: new Date("2026-08-14T10:38:37.000Z"),
     });
     expect(payload).toMatchObject({

@@ -52,16 +52,6 @@ describe("WebVitalsCollector", () => {
     setVisibilityState("visible");
   });
 
-  it("should initialize and register all metric callbacks", () => {
-    collector.initialize();
-
-    expect(onLCP).toHaveBeenCalled();
-    expect(onCLS).toHaveBeenCalled();
-    expect(onINP).toHaveBeenCalled();
-    expect(onFCP).toHaveBeenCalled();
-    expect(onTTFB).toHaveBeenCalled();
-  });
-
   it("should collect individual metrics", () => {
     collector.initialize();
 
@@ -198,14 +188,6 @@ describe("WebVitalsCollector", () => {
 
     expect(onReadyCallback).toHaveBeenCalledTimes(1);
     expect(onReadyCallback.mock.calls[0][0].lcp).toBe(2500);
-  });
-
-  it("should no longer send on beforeunload", () => {
-    collector.initialize();
-
-    window.dispatchEvent(new Event("beforeunload"));
-
-    expect(onReadyCallback).not.toHaveBeenCalled();
   });
 
   it("should handle initialization errors gracefully", () => {

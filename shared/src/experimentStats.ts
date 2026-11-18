@@ -56,7 +56,8 @@ export function normalCdf(z: number): number {
   const x = Math.abs(z) / Math.SQRT2;
   const t = 1 / (1 + 0.3275911 * x);
   const erf =
-    1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    1 -
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
   return z >= 0 ? 0.5 * (1 + erf) : 0.5 * (1 - erf);
 }
 
@@ -133,7 +134,7 @@ export function compareToControl(control: ArmCounts, variant: ArmCounts): Varian
   };
 }
 
-export const MAX_PROJECTION_SCALE = 100;
+const MAX_PROJECTION_SCALE = 100;
 
 function scaleArm({ units, conversions }: ArmCounts, scale: number): ArmCounts {
   return { units: Math.round(units * scale), conversions: Math.round(conversions * scale) };

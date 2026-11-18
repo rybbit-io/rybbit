@@ -170,6 +170,8 @@ describe("InvitationRow", () => {
       siteIds: [],
       resend: true,
     });
+    // An unexpired invitation stays in place.
+    expect(mocks.cancelInvitation).not.toHaveBeenCalled();
     expect(mocks.refetch).toHaveBeenCalledTimes(1);
   });
 
@@ -198,14 +200,6 @@ describe("InvitationRow", () => {
     });
     expect(mocks.cancelInvitation).toHaveBeenCalledWith({ invitationId: "inv-1" });
     expect(mocks.refetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("leaves an unexpired invitation in place when resending it", async () => {
-    renderRow();
-    fireEvent.click(screen.getByRole("button", { name: "Resend invitation to ada@example.com" }));
-
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalled());
-    expect(mocks.cancelInvitation).not.toHaveBeenCalled();
   });
 
   it("reports a failed resend instead of claiming success", async () => {

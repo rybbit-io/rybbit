@@ -9,37 +9,26 @@ vi.mock("../../../db/postgres/postgres.js", () => ({
 
 import { buildPerformanceByDimensionQuery } from "./getPerformanceByDimension.js";
 import { buildPerformanceOverviewQuery } from "./getPerformanceOverview.js";
-import {
-  WEB_VITAL_LIMITS,
-  WEB_VITAL_METRICS,
-  WEB_VITAL_RATING_COLUMNS,
-  webVitalRatingCounts,
-} from "./webVitalRatings.js";
+import { WEB_VITAL_RATING_COLUMNS, webVitalRatingCounts } from "./webVitalRatings.js";
 
 const SITE_ID = 1;
 const baseParams = { start_date: "2026-09-01", end_date: "2026-09-30", time_zone: "UTC", filters: "[]" };
 
 describe("web vital rating counts", () => {
-  it("counts measured, good and poor loads for every metric", () => {
+  it("counts measured, good and poor loads for every metric against Google's limits", () => {
     const sql = webVitalRatingCounts();
 
-    expect(WEB_VITAL_METRICS).toEqual(["lcp", "cls", "inp", "fcp", "ttfb"]);
-    for (const metric of WEB_VITAL_METRICS) {
-      const { good, poor } = WEB_VITAL_LIMITS[metric];
+    for (const [metric, good, poor] of [
+      ["lcp", 2500, 4000],
+      ["cls", 0.1, 0.25],
+      ["inp", 200, 500],
+      ["fcp", 1800, 3000],
+      ["ttfb", 800, 1800],
+    ]) {
       expect(sql).toContain(`countIf(${metric} IS NOT NULL) AS ${metric}_count`);
       expect(sql).toContain(`countIf(${metric} IS NOT NULL AND ${metric} <= ${good}) AS ${metric}_good`);
       expect(sql).toContain(`countIf(${metric} IS NOT NULL AND ${metric} > ${poor}) AS ${metric}_poor`);
     }
-  });
-
-  it("uses Google's limits, with good below poor", () => {
-    expect(WEB_VITAL_LIMITS).toEqual({
-      lcp: { good: 2500, poor: 4000 },
-      cls: { good: 0.1, poor: 0.25 },
-      inp: { good: 200, poor: 500 },
-      fcp: { good: 1800, poor: 3000 },
-      ttfb: { good: 800, poor: 1800 },
-    });
   });
 
   it("is part of the overview, next to the percentiles and the load count", () => {

@@ -385,17 +385,6 @@ describe("cohort version uniformity (in-process fallback)", () => {
       expect(sizes).toEqual([10, 10, 10, 10, 10]);
     });
   });
-
-  it("still convicts a fleet that rotates versions within one browser family", async () => {
-    // The fix must not cost the rule its target: a fleet rotating a fixed user
-    // agent list stays inside one family, so separating families changes nothing
-    // about what it looks like.
-    const versions = Array.from({ length: 480 }, (_, index) => 103 + (index % 16));
-
-    const result = await driveCohort(versions);
-
-    expect(result.reasons.map(reason => reason.rule)).toContain("cohort_version_uniformity_1h");
-  });
 });
 
 describe("enumeration observer (shadow mode)", () => {

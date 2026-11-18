@@ -200,11 +200,5 @@ describe("computeLimits", () => {
       // (e.g. "Unknown Plan" from an unmapped price ID) gets the free-tier limits.
       expect(computeLimits(stripeSubscription("Unknown Plan"))).toEqual({ memberLimit: 1, siteLimit: 1 });
     });
-
-    it("matches plan names case-sensitively", () => {
-      // Pinned current behavior: planName.includes("pro") is case sensitive, so a
-      // capitalized name falls through to the free-tier limits.
-      expect(computeLimits(stripeSubscription("Pro100k"))).toEqual({ memberLimit: 1, siteLimit: 1 });
-    });
   });
 });

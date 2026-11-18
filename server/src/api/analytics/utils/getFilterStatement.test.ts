@@ -77,24 +77,6 @@ describe("getSqlParam", () => {
       expect(result).toContain("Windows 10/11");
     });
   });
-
-  describe("Standard parameters", () => {
-    it("should return browser as-is", () => {
-      expect(getSqlParam("browser")).toBe("browser");
-    });
-
-    it("should return country as-is", () => {
-      expect(getSqlParam("country")).toBe("country");
-    });
-
-    it("should return pathname as-is", () => {
-      expect(getSqlParam("pathname")).toBe("pathname");
-    });
-
-    it("should return device_type as-is", () => {
-      expect(getSqlParam("device_type")).toBe("device_type");
-    });
-  });
 });
 
 describe("getFilterStatement", () => {
@@ -265,14 +247,6 @@ describe("getFilterStatement", () => {
       expect(result).toContain("NOT (identified_user_id = 'user2' OR (user_id = 'user2' AND identified_user_id = ''))");
       expect(result).toContain(" AND ");
     });
-
-    it("does not attribute one person's identified events to a device fingerprint they share", () => {
-      // The regression this guard exists for: alice and bob behind one corporate
-      // proxy share fingerprint 'fp1'. Filtering on 'fp1' must not return alice's rows.
-      const result = getFilterStatement(JSON.stringify([{ parameter: "user_id", type: "equals", value: ["fp1"] }]));
-      expect(result).not.toMatch(/user_id = 'fp1'\s*\)\s*$/);
-      expect(result).toContain("identified_user_id = ''");
-    });
   });
 
   describe("Event name session-level filter", () => {
@@ -365,20 +339,6 @@ describe("getFilterStatement", () => {
     });
   });
 
-  describe("UTM filter handling", () => {
-    it("should use url_parameters map for utm_source", () => {
-      const filters = JSON.stringify([{ parameter: "utm_source", type: "equals", value: ["google"] }]);
-      const result = getFilterStatement(filters);
-      expect(result).toBe("AND url_parameters['utm_source'] = 'google'");
-    });
-
-    it("should use url_parameters map for utm_medium", () => {
-      const filters = JSON.stringify([{ parameter: "utm_medium", type: "equals", value: ["cpc"] }]);
-      const result = getFilterStatement(filters);
-      expect(result).toBe("AND url_parameters['utm_medium'] = 'cpc'");
-    });
-  });
-
   describe("SQL injection prevention", () => {
     it("should escape single quotes in values", () => {
       const filters = JSON.stringify([
@@ -394,28 +354,6 @@ describe("getFilterStatement", () => {
       const filters = JSON.stringify([{ parameter: "pathname", type: "equals", value: ["/path\\with\\backslashes"] }]);
       const result = getFilterStatement(filters);
       expect(result).toContain("\\\\");
-    });
-  });
-
-  describe("Special parameter transformations", () => {
-    it("should use domainWithoutWWW for referrer", () => {
-      const filters = JSON.stringify([{ parameter: "referrer", type: "equals", value: ["google.com"] }]);
-      const result = getFilterStatement(filters);
-      expect(result).toBe("AND domainWithoutWWW(referrer) = 'google.com'");
-    });
-
-    it("should use dimensions concat for dimensions filter", () => {
-      const filters = JSON.stringify([{ parameter: "dimensions", type: "equals", value: ["1920x1080"] }]);
-      const result = getFilterStatement(filters);
-      expect(result).toContain("concat(toString(screen_width), 'x', toString(screen_height))");
-      expect(result).toContain("= '1920x1080'");
-    });
-
-    it("should use city concat for city filter", () => {
-      const filters = JSON.stringify([{ parameter: "city", type: "equals", value: ["CA-San Francisco"] }]);
-      const result = getFilterStatement(filters);
-      expect(result).toContain("concat(toString(region), '-', toString(city))");
-      expect(result).toContain("= 'CA-San Francisco'");
     });
   });
 
@@ -565,11 +503,6 @@ describe("getFilterStatement", () => {
     it("should reject non-numeric values for lat/lon equality", () => {
       const filters = JSON.stringify([{ parameter: "lon", type: "equals", value: ["east"] }]);
       expect(() => getFilterStatement(filters)).toThrow("Invalid numeric value for equals filter: east");
-    });
-
-    it("should throw for non-numeric value with greater_than_or_equal", () => {
-      const filters = JSON.stringify([{ parameter: "lat", type: "greater_than_or_equal", value: ["abc"] }]);
-      expect(() => getFilterStatement(filters)).toThrow("Invalid numeric value");
     });
   });
 

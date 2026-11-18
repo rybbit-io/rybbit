@@ -183,6 +183,5 @@ describe("agent-readable HTTP behavior", () => {
       }
     );
     assert.equal(new Set(operations.map(operation => operation.operationId)).size, operations.length);
-    assert.doesNotThrow(() => JSON.stringify(document));
   });
 });

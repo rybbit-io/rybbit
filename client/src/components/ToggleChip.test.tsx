@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { ToggleChip } from "./ToggleChip";
 
 // Proof of life for the jsdom project in vitest.config.ts: a purely
@@ -16,21 +16,6 @@ describe("ToggleChip", () => {
     const button = screen.getByRole("button", { name: "Chrome" });
     expect(button).toBeTruthy();
     expect(button.getAttribute("type")).toBe("button");
-  });
-
-  it("calls onClick when clicked", () => {
-    const onClick = vi.fn();
-    render(<ToggleChip isSelected={false} onClick={onClick} label="Chrome" />);
-
-    screen.getByRole("button").click();
-
-    expect(onClick).toHaveBeenCalledOnce();
-  });
-
-  it("renders no indicator unless one is asked for", () => {
-    const { container } = render(<ToggleChip isSelected={false} onClick={() => {}} label="Chrome" />);
-
-    expect(container.querySelectorAll("div")).toHaveLength(0);
   });
 
   it("renders a colour swatch when given one, and dims it while unselected", () => {

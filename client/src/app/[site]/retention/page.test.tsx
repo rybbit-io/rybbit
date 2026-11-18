@@ -109,13 +109,6 @@ describe("RetentionPage", () => {
     expect(mocks.calls.some(call => call.options?.periodTime === "previous")).toBe(true);
   });
 
-  it("defaults to daily cohorts on a short range", () => {
-    useStore.setState({ time: { mode: "range", startDate: "2026-09-24", endDate: "2026-09-30" } });
-    render(<RetentionPage />);
-
-    expect(mocks.calls[0]).toMatchObject({ mode: "day" });
-  });
-
   it("states the average retention, cohort size and best cohort", () => {
     render(<RetentionPage />);
 

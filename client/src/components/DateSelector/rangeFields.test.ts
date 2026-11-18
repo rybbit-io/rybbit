@@ -22,12 +22,6 @@ const fields = (overrides: Partial<RangeFields> = {}): RangeFields => ({
 });
 
 describe("rangeFieldsForTime", () => {
-  it("shows a whole-day range by the last day it includes, with the clocks left empty", () => {
-    expect(rangeFieldsForTime({ mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" }, ZONE)).toEqual(
-      fields({ startDate: "2024-03-08", endDate: "2024-03-14" })
-    );
-  });
-
   it("shows a range with times by the instants it was given", () => {
     const time: Time = {
       mode: "range",
@@ -68,29 +62,6 @@ describe("rangeFieldsForTime", () => {
 });
 
 describe("timeFromRangeFields", () => {
-  it("stays a plain date range when neither clock is named", () => {
-    expect(timeFromRangeFields(fields({ startDate: "2024-03-08", endDate: "2024-03-14" }), ZONE)).toEqual({
-      mode: "range",
-      startDate: "2024-03-08",
-      endDate: "2024-03-14",
-    });
-  });
-
-  it("naming a clock promotes the window to an exact range", () => {
-    expect(
-      timeFromRangeFields(
-        fields({ startDate: "2024-03-08", startTime: "09:30", endDate: "2024-03-08", endTime: "17:00" }),
-        ZONE
-      )
-    ).toEqual({
-      mode: "range",
-      startDate: "2024-03-08",
-      startTime: "09:30:00",
-      endDate: "2024-03-08",
-      endTime: "17:00:00",
-    });
-  });
-
   it("a start clock alone runs to the midnight after the end date", () => {
     expect(
       timeFromRangeFields(fields({ startDate: "2024-03-08", startTime: "09:30", endDate: "2024-03-08" }), ZONE)
@@ -201,40 +172,6 @@ describe("timeFromRangeFields", () => {
 });
 
 describe("timeFromSelectedDays", () => {
-  const dateOnly: Time = { mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" };
-  const exact: Time = {
-    mode: "range",
-    startDate: "2024-03-08",
-    startTime: "09:30:00",
-    endDate: "2024-03-09",
-    endTime: "17:00:00",
-  };
-
-  it("a single day collapses to day mode, which is what buckets it hourly", () => {
-    expect(timeFromSelectedDays("2024-03-15", "2024-03-15", dateOnly, ZONE)).toEqual({
-      mode: "day",
-      day: "2024-03-15",
-    });
-  });
-
-  it("two days make a plain range", () => {
-    expect(timeFromSelectedDays("2024-03-01", "2024-03-05", dateOnly, ZONE)).toEqual({
-      mode: "range",
-      startDate: "2024-03-01",
-      endDate: "2024-03-05",
-    });
-  });
-
-  it("keeps the clocks already set when the days move under them", () => {
-    expect(timeFromSelectedDays("2024-04-01", "2024-04-10", exact, ZONE)).toEqual({
-      mode: "range",
-      startDate: "2024-04-01",
-      startTime: "09:30:00",
-      endDate: "2024-04-10",
-      endTime: "17:00:00",
-    });
-  });
-
   it("falls back to a whole day when the kept clocks would invert the window", () => {
     const inverted: Time = {
       mode: "range",

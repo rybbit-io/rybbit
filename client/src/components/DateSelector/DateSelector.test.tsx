@@ -81,7 +81,7 @@ describe("DateSelector", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: /Mar 8/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Mar 8, (9:30 AM|09:30) - (5:00 PM|17:00)/ })).toBeTruthy();
   });
 
   it("re-seeds the panel when the timezone moves the preset to another day", () => {
@@ -120,20 +120,6 @@ describe("DateSelector", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByPlaceholderText(/Search/)).toBeNull();
-  });
-
-  it("hides the realtime presets when a caller disables them", () => {
-    render(
-      <DateSelector
-        time={{ mode: "range", startDate: "2024-03-08", endDate: "2024-03-14" }}
-        setTime={setTime}
-        pastMinutesEnabled={false}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /Mar 8/ }));
-    expect(screen.queryByText("Last 30 Minutes")).toBeNull();
-    expect(screen.getByText("Today")).toBeTruthy();
   });
 });
 

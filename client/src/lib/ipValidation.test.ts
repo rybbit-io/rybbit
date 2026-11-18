@@ -58,10 +58,6 @@ describe("CIDR notation", () => {
     invalid("/24", "Invalid CIDR notation");
     invalid("192.168.1.1/abc", "Invalid CIDR notation");
   });
-
-  it("checks the slash before the dash, so a slash always means CIDR", () => {
-    invalid("192.168.1.1-192.168.1.10/24", "Invalid CIDR notation");
-  });
 });
 
 describe("range notation", () => {
@@ -89,15 +85,5 @@ describe("range notation", () => {
   it("rejects a range whose endpoints are not addresses", () => {
     invalid("hello-world", "Invalid IP addresses in range");
     invalid("192.168.1.1-notanip", "Invalid IP addresses in range");
-  });
-
-  it("routes any dash-containing text through the range branch", () => {
-    // "not-an-ip" splits into three parts, so it fails on arity rather than on
-    // address parsing.
-    invalid("not-an-ip", "Invalid range format");
-  });
-
-  it("does not check that the range is ordered", () => {
-    valid("192.168.1.10-192.168.1.1");
   });
 });

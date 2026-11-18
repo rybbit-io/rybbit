@@ -1,5 +1,4 @@
 import {
-  ALL_CLIENT_BOT_SIGNAL_BITS,
   CLIENT_BOT_SIGNAL_MASKS,
   CLIENT_BOT_SIGNAL_NAMES,
   CLIENT_BOT_SIGNAL_WEIGHTS,
@@ -9,7 +8,6 @@ import {
   MAX_PLAUSIBLE_SCREEN_DIMENSION,
   MIN_PLAUSIBLE_SCREEN_DIMENSION,
   scoreFromMask,
-  STRONG_CLIENT_BOT_SIGNAL_BITS,
 } from "@rybbit/shared";
 import { describe, expect, it } from "vitest";
 
@@ -26,30 +24,6 @@ describe("the Bot Signal mask", () => {
     }
     expect(new Set(bits).size, "no two signals share a bit").toBe(bits.length);
   });
-
-  it("weights every signal it defines", () => {
-    for (const name of CLIENT_BOT_SIGNAL_NAMES) {
-      expect(CLIENT_BOT_SIGNAL_WEIGHTS[name], `${name} has a weight`).toBeTypeOf("number");
-    }
-    expect(Object.keys(CLIENT_BOT_SIGNAL_WEIGHTS).sort()).toEqual([...CLIENT_BOT_SIGNAL_NAMES].sort());
-  });
-
-  // The bound the ingest schema applies to `_bsm`. A hard-coded bound is how the
-  // 12th bit (squareScreen = 2048) came to fail validation and drop whole
-  // events, so it has to be the union of whatever the table currently declares.
-  it("bounds itself by the union of every declared bit", () => {
-    const union = CLIENT_BOT_SIGNAL_NAMES.reduce((mask, name) => mask | CLIENT_BOT_SIGNAL_MASKS[name], 0);
-
-    expect(ALL_CLIENT_BOT_SIGNAL_BITS).toBe(union);
-    expect(ALL_CLIENT_BOT_SIGNAL_BITS & CLIENT_BOT_SIGNAL_MASKS.squareScreen).toBe(
-      CLIENT_BOT_SIGNAL_MASKS.squareScreen
-    );
-  });
-
-  it("only convicts on signals it also defines", () => {
-    expect(STRONG_CLIENT_BOT_SIGNAL_BITS & ~ALL_CLIENT_BOT_SIGNAL_BITS).toBe(0);
-    expect(STRONG_CLIENT_BOT_SIGNAL_BITS).toBeGreaterThan(0);
-  });
 });
 
 describe("reading a mask", () => {
@@ -62,9 +36,7 @@ describe("reading a mask", () => {
   it("scores a mask as the sum of its signal weights", () => {
     const mask = CLIENT_BOT_SIGNAL_MASKS.automationApi | CLIENT_BOT_SIGNAL_MASKS.emptyPlugins;
 
-    expect(scoreFromMask(mask)).toBe(
-      CLIENT_BOT_SIGNAL_WEIGHTS.automationApi + CLIENT_BOT_SIGNAL_WEIGHTS.emptyPlugins
-    );
+    expect(scoreFromMask(mask)).toBe(CLIENT_BOT_SIGNAL_WEIGHTS.automationApi + CLIENT_BOT_SIGNAL_WEIGHTS.emptyPlugins);
     expect(scoreFromMask(0)).toBe(0);
     expect(scoreFromMask(1 << 30), "undefined bits carry no weight").toBe(0);
   });

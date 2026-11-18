@@ -4,7 +4,6 @@ import { Time } from "@/components/DateSelector/types";
 import {
   analyticsParsers,
   appSumoCallbackParsers,
-  invitationParsers,
   parseAsFilters,
   parseAsStatType,
   parseAsStringArray,
@@ -88,11 +87,6 @@ describe("parseAsStringArray", () => {
   it("round-trips a string array", () => {
     expect(parseAsStringArray.parse(parseAsStringArray.serialize(["a", "b"]))).toEqual(["a", "b"]);
   });
-
-  it("does not validate its contents — anything json-shaped comes back as-is", () => {
-    expect(parseAsStringArray.parse("[1,2]")).toEqual([1, 2]);
-    expect(parseAsStringArray.parse('{"a":1}')).toEqual({ a: 1 });
-  });
 });
 
 describe("enum parsers", () => {
@@ -165,20 +159,9 @@ describe("analyticsParsers", () => {
     expect(analyticsParsers.past_minutes_start.parse("30")).toBe(30);
     expect(analyticsParsers.past_minutes_end.parse("abc")).toBeNull();
   });
-
-  it("leaves date params as opaque strings", () => {
-    expect(analyticsParsers.day.parse("2024-03-15")).toBe("2024-03-15");
-    expect(analyticsParsers.startDate.parse("whenever")).toBe("whenever");
-  });
 });
 
 describe("callback parsers", () => {
-  it("reads invitation params as strings", () => {
-    expect(invitationParsers.organization.parse("acme")).toBe("acme");
-    expect(invitationParsers.inviterEmail.parse("a@b.com")).toBe("a@b.com");
-    expect(invitationParsers.invitationId.parse("inv_1")).toBe("inv_1");
-  });
-
   it("reads the AppSumo step as an integer", () => {
     expect(appSumoCallbackParsers.code.parse("abc123")).toBe("abc123");
     expect(appSumoCallbackParsers.step.parse("2")).toBe(2);

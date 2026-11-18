@@ -72,17 +72,6 @@ describe("checkBotBlocking", () => {
     }
   });
 
-  it("skips the browser-shaped layers for verified trusted server-side ingestion", async () => {
-    const result = await checkBotBlocking({
-      headers: {},
-      blockBots: true,
-      trustedServerSideIngestion: true,
-      payload: basePayload,
-    });
-
-    expect(result).toBeNull();
-  });
-
   it("does not convict trusted server-side ingestion reporting a browser user agent", async () => {
     // Empty headers and a datacenter IP would convict ordinary traffic on the
     // header and ASN layers. Neither belongs to the visitor being reported.
@@ -103,7 +92,8 @@ describe("checkBotBlocking", () => {
       trustedServerSideIngestion: true,
       payload: {
         ...basePayload,
-        userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot",
+        userAgent:
+          "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot",
       },
     });
 

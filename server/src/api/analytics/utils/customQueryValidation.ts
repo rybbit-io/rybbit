@@ -145,7 +145,7 @@ const unsupportedSyntaxError =
 // "inside a string" would execute as SQL. None of them are needed for
 // analytics SQL, so they're rejected outright outside a single-quoted literal
 // (non-ASCII text stays allowed inside literals and comments).
-export function hasUnsupportedSyntax(query: string) {
+function hasUnsupportedSyntax(query: string) {
   let index = 0;
   let state: "normal" | "single" | "line-comment" | "block-comment" = "normal";
 
@@ -203,7 +203,7 @@ export function hasUnsupportedSyntax(query: string) {
   return false;
 }
 
-export function stripSqlLiteralsAndComments(query: string) {
+function stripSqlLiteralsAndComments(query: string) {
   let result = "";
   let index = 0;
   let state: "normal" | "single" | "double" | "backtick" | "line-comment" | "block-comment" = "normal";
@@ -298,7 +298,7 @@ export function normalizeCustomQuery(query: string) {
   return query.trim().replace(/;+$/g, "").trim();
 }
 
-export function getCteNames(query: string) {
+function getCteNames(query: string) {
   const cteNames = new Set<string>();
   const ctePattern = /(?:\bWITH|,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(/gi;
   let match: RegExpExecArray | null;
@@ -372,7 +372,7 @@ function skipWhitespace(query: string, index: number): number {
 // each FROM/JOIN and every comma-separated entry in a FROM list (`FROM a, b`), which
 // a FROM/JOIN-keyword-only scan would miss. Subquery references (`FROM ( SELECT … )`)
 // are skipped here — their inner FROM/JOIN clauses are reached by this same scan.
-export function collectTableReferences(query: string): string[] {
+function collectTableReferences(query: string): string[] {
   const references: string[] = [];
   const length = query.length;
 
@@ -439,7 +439,7 @@ export function collectTableReferences(query: string): string[] {
   return references;
 }
 
-export function collectInTableReferences(query: string): string[] {
+function collectInTableReferences(query: string): string[] {
   const references: string[] = [];
   const inPattern = /\b(?:GLOBAL\s+)?(?:NOT\s+)?IN\b/gi;
   let match: RegExpExecArray | null;

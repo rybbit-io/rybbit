@@ -4,7 +4,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SegmentedControl, interpolateSegment, seekEnabled, type SegmentedControlOption } from "./segmented-control";
+import { SegmentedControl, interpolateSegment, type SegmentedControlOption } from "./segmented-control";
 
 type Period = "day" | "week" | "month";
 
@@ -274,24 +274,5 @@ describe("interpolateSegment", () => {
     expect(interpolateSegment(rects, -0.3)).toEqual({ left: 0, width: 40 });
     expect(interpolateSegment(rects, 2.4)).toEqual({ left: 120, width: 60 });
     expect(interpolateSegment([], 1)).toEqual({ left: 0, width: 0 });
-  });
-});
-
-describe("seekEnabled", () => {
-  const options = [{}, { disabled: true }, {}, {}];
-
-  it("steps in either direction and wraps", () => {
-    expect(seekEnabled(options, 2, 1)).toBe(3);
-    expect(seekEnabled(options, 3, 1)).toBe(0);
-    expect(seekEnabled(options, 0, -1)).toBe(3);
-  });
-
-  it("skips disabled options", () => {
-    expect(seekEnabled(options, 0, 1)).toBe(2);
-    expect(seekEnabled(options, 2, -1)).toBe(0);
-  });
-
-  it("returns -1 when every option is disabled", () => {
-    expect(seekEnabled([{ disabled: true }, { disabled: true }], 0, 1)).toBe(-1);
   });
 });

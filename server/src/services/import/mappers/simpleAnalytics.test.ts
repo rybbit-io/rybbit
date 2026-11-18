@@ -81,7 +81,7 @@ describe("SimpleAnalyticsImportMapper", () => {
         props: {},
         import_id: "import-1",
       });
-      expect(result[0].channel).toBeTruthy();
+      expect(result[0].channel).toBe("Organic Search");
     });
 
     it("should transform a non-pageview datapoint into a custom event", () => {
@@ -259,21 +259,6 @@ describe("SimpleAnalyticsImportMapper", () => {
         const result = SimpleAnalyticsImportMapper.transform([makeEvent({ uuid: "not-a-uuid" })], 1, "i");
         expect(result).toHaveLength(0);
       });
-    });
-
-    it("should keep valid rows when mixed with invalid ones", () => {
-      const events = [
-        makeEvent({ path: "/valid" }),
-        makeEvent({ added_iso: "bad" }),
-        makeEvent({ path: "/also-valid" }),
-      ];
-      const result = SimpleAnalyticsImportMapper.transform(events, 1, "i");
-      expect(result).toHaveLength(2);
-      expect(result.map(e => e.pathname)).toEqual(["/valid", "/also-valid"]);
-    });
-
-    it("should return empty array for empty input", () => {
-      expect(SimpleAnalyticsImportMapper.transform([], 1, "i")).toHaveLength(0);
     });
   });
 });

@@ -1,6 +1,6 @@
 import { FilterParams } from "@rybbit/shared";
 import { FilterType, TimeBucket } from "../types.js";
-import { buildStringFilterCondition, wrapLikeValue } from "../utils/getFilterStatement.js";
+import { buildStringFilterCondition } from "../utils/getFilterStatement.js";
 import { validateFilters } from "../utils/query-validation.js";
 
 // Lite endpoints back the simplified high-traffic dashboard. They read from
@@ -54,10 +54,6 @@ const LITE_SUPPORTED_FILTER_TYPES = new Set<FilterType>([
   "starts_with",
   "ends_with",
 ]);
-
-// LIKE-value wrapping is shared with the events surface; re-exported under the
-// historical lite name for existing importers and tests.
-export const wrapLiteLikeValue = wrapLikeValue;
 
 // Build a WHERE-clause fragment (prefixed " AND ") against sessions_mv_target
 // columns. Returns `supported: false` when any filter targets a column or type

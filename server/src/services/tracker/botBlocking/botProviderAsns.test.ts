@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyBotAsn, CURATED_BOT_PROVIDER_ASN_COUNT, EXTRA_DATACENTER_ASNS } from "./botProviderAsns.js";
+import { classifyBotAsn, EXTRA_DATACENTER_ASNS } from "./botProviderAsns.js";
 
 describe("bot ASN classification", () => {
   it("matches ipverse hosting ASNs", () => {
@@ -61,6 +61,5 @@ describe("bot ASN classification", () => {
 
   it("does not match arbitrary business ASNs", () => {
     expect(classifyBotAsn(13949)).toEqual({ isBotInfrastructure: false });
-    expect(CURATED_BOT_PROVIDER_ASN_COUNT).toBeGreaterThan(0);
   });
 });

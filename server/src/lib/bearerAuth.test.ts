@@ -35,7 +35,9 @@ describe("resolveBearerIdentity", () => {
   it("resolves a valid API key to its user and statements", async () => {
     const identity = await resolveBearerIdentity(
       "k",
-      deps({ verifyApiKey: async () => ({ valid: true, key: { referenceId: "u1", permissions: { goals: ["read"] } } }) })
+      deps({
+        verifyApiKey: async () => ({ valid: true, key: { referenceId: "u1", permissions: { goals: ["read"] } } }),
+      })
     );
     expect(identity).toEqual({ status: "valid", userId: "u1", statements: { goals: ["read"] } });
   });
@@ -61,7 +63,13 @@ describe("resolveBearerIdentity", () => {
   it("falls back to a valid OAuth token, honoring its scopes", async () => {
     const identity = await resolveBearerIdentity(
       "t",
-      deps({ getOAuthSession: async () => ({ userId: "u2", accessTokenExpiresAt: future(), scopes: "openid analytics:read" }) })
+      deps({
+        getOAuthSession: async () => ({
+          userId: "u2",
+          accessTokenExpiresAt: future(),
+          scopes: "openid analytics:read",
+        }),
+      })
     );
     expect(identity).toEqual({ status: "valid", userId: "u2", statements: { analytics: ["read"] } });
   });
@@ -70,7 +78,10 @@ describe("resolveBearerIdentity", () => {
     const verifyApiKey = vi.fn(async () => ({ valid: false, error: { code: "KEY_NOT_FOUND" } }));
     const identity = await resolveBearerIdentity(
       "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1MiJ9.c2ln",
-      deps({ verifyApiKey, getOAuthSession: async () => ({ userId: "u2", accessTokenExpiresAt: future(), scopes: "openid" }) })
+      deps({
+        verifyApiKey,
+        getOAuthSession: async () => ({ userId: "u2", accessTokenExpiresAt: future(), scopes: "openid" }),
+      })
     );
     expect(verifyApiKey).not.toHaveBeenCalled();
     expect(identity.status).toBe("valid");
@@ -172,13 +183,6 @@ describe("resolveBearerIdentity rate limiting", () => {
 });
 
 describe("bearer handoff", () => {
-  it("returns the identity for a matching nonce and token", () => {
-    const identity = { status: "valid" as const, userId: "u1", statements: null };
-    const nonce = registerBearerHandoff("tok", identity);
-    expect(consumeBearerHandoff(nonce, "tok")).toBe(identity);
-    releaseBearerHandoff(nonce);
-  });
-
   it("fails safe on a mismatched token, missing nonce, or wrong type", () => {
     const nonce = registerBearerHandoff("tok", { status: "valid", userId: "u1", statements: null });
     // Wrong token -> null (falls through to real verification)

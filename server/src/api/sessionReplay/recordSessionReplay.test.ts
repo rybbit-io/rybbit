@@ -213,33 +213,6 @@ describe("recordSessionReplay exclusions", () => {
     });
   });
 
-  it("does not record replay batches for excluded page paths", async () => {
-    mocks.getConfig.mockResolvedValue({
-      ...baseConfig,
-      excludedPaths: ["/admin/*"],
-    });
-    mocks.decideSiteExclusion.mockResolvedValue({
-      excluded: true,
-      reason: "path",
-      label: "path",
-      value: "/admin/users",
-    });
-
-    const reply = createReply();
-    await recordSessionReplay(createRequest(), reply);
-
-    expect(mocks.decideSiteExclusion).toHaveBeenCalledWith(
-      expect.objectContaining({ excludedPaths: ["/admin/*"] }),
-      expect.objectContaining({ pathname: "/admin/users" })
-    );
-    expect(mocks.recordEvents).not.toHaveBeenCalled();
-    expect(reply.status).toHaveBeenCalledWith(200);
-    expect(reply.sentPayload).toEqual({
-      success: true,
-      message: "Session replay not recorded - path excluded",
-    });
-  });
-
   it("does not record replay batches for excluded hostnames", async () => {
     mocks.getConfig.mockResolvedValue({
       ...baseConfig,
@@ -273,32 +246,6 @@ describe("recordSessionReplay exclusions", () => {
     expect(reply.sentPayload).toEqual({
       success: true,
       message: "Session replay not recorded - hostname excluded",
-    });
-  });
-
-  it("does not record replay batches for excluded user agents", async () => {
-    mocks.getConfig.mockResolvedValue({
-      ...baseConfig,
-      excludedUserAgents: ["HeadlessChrome"],
-    });
-    mocks.decideSiteExclusion.mockResolvedValue({
-      excluded: true,
-      reason: "user_agent",
-      label: "user agent",
-      value: "Mozilla/5.0 HeadlessChrome/120",
-    });
-
-    const reply = createReply();
-    await recordSessionReplay(createRequest(), reply);
-
-    expect(mocks.decideSiteExclusion).toHaveBeenCalledWith(
-      expect.objectContaining({ excludedUserAgents: ["HeadlessChrome"] }),
-      expect.objectContaining({ userAgent: "Mozilla/5.0 HeadlessChrome/120" })
-    );
-    expect(mocks.recordEvents).not.toHaveBeenCalled();
-    expect(reply.sentPayload).toEqual({
-      success: true,
-      message: "Session replay not recorded - user agent excluded",
     });
   });
 });

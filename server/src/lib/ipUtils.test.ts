@@ -29,13 +29,6 @@ describe("validateIPPattern", () => {
     }
   });
 
-  it("accepts zero-padded IPv4 octets (ip-address normalizes them)", () => {
-    // Documenting current behavior: "01.2.3.4" parses as 1.2.3.4 rather than
-    // being rejected as ambiguous octal-looking input.
-    expect(validateIPPattern("01.2.3.4")).toEqual({ valid: true });
-    expect(validateIPPattern("192.168.001.1")).toEqual({ valid: true });
-  });
-
   it("accepts CIDR notation for IPv4 and IPv6", () => {
     expect(validateIPPattern("192.168.1.0/24")).toEqual({ valid: true });
     expect(validateIPPattern("10.0.0.1/32")).toEqual({ valid: true });
@@ -63,11 +56,6 @@ describe("validateIPPattern", () => {
     expect(validateIPPattern("10.0.0.5-10.0.0.5")).toEqual({ valid: true });
   });
 
-  it("does not enforce range ordering", () => {
-    // A reversed range validates but can never match; see matchesRange.
-    expect(validateIPPattern("192.168.1.10-192.168.1.1")).toEqual({ valid: true });
-  });
-
   it("rejects incomplete range notation", () => {
     for (const pattern of ["192.168.1.1-", "-192.168.1.1", "-", " - "]) {
       expect(validateIPPattern(pattern)).toEqual({ valid: false, error: "Invalid range format" });
@@ -84,8 +72,6 @@ describe("validateIPPattern", () => {
       valid: false,
       error: "Invalid IP addresses in range",
     });
-    // Three endpoints: the third is ignored, but the second must still parse.
-    expect(validateIPPattern("10.0.0.1-10.0.0.5-10.0.0.9")).toEqual({ valid: true });
   });
 
   it("points IPv6 ranges at CIDR notation instead", () => {
@@ -195,11 +181,6 @@ describe("matchesRange", () => {
 
   it("tolerates whitespace around the endpoints", () => {
     expect(matchesRange("192.168.1.5", " 192.168.1.1 - 192.168.1.10 ")).toBe(true);
-  });
-
-  it("uses only the first two endpoints when extra dashes are present", () => {
-    expect(matchesRange("10.0.0.3", "10.0.0.1-10.0.0.5-10.0.0.9")).toBe(true);
-    expect(matchesRange("10.0.0.7", "10.0.0.1-10.0.0.5-10.0.0.9")).toBe(false);
   });
 
   it("returns false for a pattern without a dash", () => {

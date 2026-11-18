@@ -91,13 +91,17 @@ describe("SankeyDiagram", () => {
   it("fades everything off the hovered path", () => {
     const { container } = render(<SankeyDiagram journeys={JOURNEYS} steps={4} maxJourneys={50} domain="example.com" />);
     const bands = () =>
-      [...container.querySelectorAll('path:not([stroke="transparent"])')].map(band => band.getAttribute("opacity"));
+      [...container.querySelectorAll('path:not([stroke="transparent"])')].map(band =>
+        Number(band.getAttribute("opacity"))
+      );
 
-    expect(new Set(bands())).toEqual(new Set(["0.2"]));
+    // At rest every band is drawn alike.
+    expect(new Set(bands()).size).toBe(1);
+    const rest = bands()[0];
     fireEvent.mouseEnter(label("/demo").closest("g")!);
-    // / → /demo → /pricing → /signup stays; the three other bands fade.
-    expect(bands().filter(opacity => opacity === "0.45")).toHaveLength(3);
-    expect(bands().filter(opacity => opacity === "0.07")).toHaveLength(3);
+    // / → /demo → /pricing → /signup stands out; the three other bands fade.
+    expect(bands().filter(opacity => opacity > rest)).toHaveLength(3);
+    expect(bands().filter(opacity => opacity < rest)).toHaveLength(3);
   });
 
   it("pins the largest path through a clicked bar or band", () => {
@@ -114,21 +118,31 @@ describe("SankeyDiagram", () => {
   });
 
   it("draws the pinned path at full strength over faded bands", () => {
-    const { container } = render(
-      <SankeyDiagram
-        journeys={JOURNEYS}
-        steps={4}
-        maxJourneys={50}
-        domain="example.com"
-        pinnedPath={["/", "/demo", "/pricing", "/signup"]}
-      />
-    );
-    const opacities = [...container.querySelectorAll('path:not([stroke="transparent"])')].map(band =>
-      band.getAttribute("opacity")
+    const opacities = (container: HTMLElement) =>
+      [...container.querySelectorAll('path:not([stroke="transparent"])')].map(band =>
+        Number(band.getAttribute("opacity"))
+      );
+    const rest = opacities(
+      render(<SankeyDiagram journeys={JOURNEYS} steps={4} maxJourneys={50} domain="example.com" />).container
+    )[0];
+    cleanup();
+
+    const pinned = opacities(
+      render(
+        <SankeyDiagram
+          journeys={JOURNEYS}
+          steps={4}
+          maxJourneys={50}
+          domain="example.com"
+          pinnedPath={["/", "/demo", "/pricing", "/signup"]}
+        />
+      ).container
     );
 
-    expect(opacities.filter(opacity => opacity === "0.9")).toHaveLength(3);
-    expect(opacities.filter(opacity => opacity === "0.14")).toHaveLength(6);
+    // The pinned path's three bands are drawn over the six bands of the diagram, all faded below rest.
+    const strongest = Math.max(...pinned);
+    expect(pinned.filter(opacity => opacity === strongest)).toHaveLength(3);
+    expect(pinned.filter(opacity => opacity < rest)).toHaveLength(6);
   });
 
   it("sends page names to the app page it is given, and leaves non-pages unlinked", () => {

@@ -66,7 +66,7 @@ describe("UmamiImportMapper", () => {
         props: {},
         import_id: "import-1",
       });
-      expect(result[0].channel).toBeTruthy();
+      expect(result[0].channel).toBe("Organic Search");
     });
 
     it("should transform a custom event", () => {
@@ -280,21 +280,6 @@ describe("UmamiImportMapper", () => {
         const result = UmamiImportMapper.transform([makeEvent({ screen: "1920*1080" })], 1, "i");
         expect(result).toHaveLength(0);
       });
-
-      it("should keep valid rows when mixed with invalid ones", () => {
-        const events = [
-          makeEvent({ url_path: "/valid" }),
-          makeEvent({ session_id: "bad" }),
-          makeEvent({ url_path: "/also-valid" }),
-        ];
-        const result = UmamiImportMapper.transform(events, 1, "i");
-        expect(result).toHaveLength(2);
-        expect(result.map(e => e.pathname)).toEqual(["/valid", "/also-valid"]);
-      });
-    });
-
-    it("should return empty array for empty input", () => {
-      expect(UmamiImportMapper.transform([], 1, "i")).toHaveLength(0);
     });
   });
 });

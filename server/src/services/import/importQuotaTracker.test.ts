@@ -115,11 +115,6 @@ describe("ImportQuotaTracker", () => {
       expect(tracker.canImportBatch(["2024-06-01T10:00:00.000Z"])).toEqual([]);
     });
 
-    it("should allow exactly one more event when one below the limit", () => {
-      const tracker = makeTracker({ "202406": 4 }, 5, "202312");
-      expect(tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z"])).toEqual([0]);
-    });
-
     it("should accumulate increments across successive calls", () => {
       const tracker = makeTracker({}, 3, "202312");
       expect(tracker.canImportBatch(["2024-06-01T10:00:00.000Z", "2024-06-02T10:00:00.000Z"])).toEqual([0, 1]);

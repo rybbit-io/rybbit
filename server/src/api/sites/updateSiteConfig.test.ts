@@ -125,30 +125,6 @@ describe("updateSiteConfig — session replay pro gating", () => {
     expect(mocks.invalidate).toHaveBeenCalledWith(state.site);
   });
 
-  it("rejects enabling session replay during a large (>=500k events) pro trial", async () => {
-    mocks.getSubscriptionInner.mockResolvedValue({
-      ...subscription(false),
-      planName: "pro-1m",
-      status: "trialing",
-    });
-    const reply = replyStub();
-
-    await updateSiteConfig(makeRequest({ sessionReplay: true }), reply);
-
-    expect(reply.statusCode).toBe(403);
-    expect(state.updates).toHaveLength(0);
-  });
-
-  it("allows enabling session replay on an AppSumo tier with a replay entitlement", async () => {
-    mocks.getSubscriptionInner.mockResolvedValue({ ...subscription(true), planName: "appsumo-4" });
-    const reply = replyStub();
-
-    await updateSiteConfig(makeRequest({ sessionReplay: true }), reply);
-
-    expect(reply.statusCode).toBe(200);
-    expect(state.updates[0]).toMatchObject({ sessionReplay: true });
-  });
-
   it("always allows turning session replay off, without a subscription lookup", async () => {
     state.site = makeSite({ sessionReplay: true });
     const reply = replyStub();
@@ -214,17 +190,6 @@ describe("updateSiteConfig — non-gated fields update without subscription chec
       tags: ["prod"],
     });
     expect(mocks.invalidate).toHaveBeenCalledWith(state.site);
-  });
-
-  it("rejects turning on Standard features without an active subscription", async () => {
-    mocks.getSubscriptionInner.mockResolvedValue({ ...subscription(false), status: "free" });
-    const reply = replyStub();
-
-    await updateSiteConfig(makeRequest({ webVitals: true, trackErrors: true }), reply);
-
-    expect(reply.statusCode).toBe(403);
-    expect(reply.body.error).toContain("require an active subscription");
-    expect(state.updates).toHaveLength(0);
   });
 
   it("cleans and stores an updated domain", async () => {

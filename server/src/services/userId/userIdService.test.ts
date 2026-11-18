@@ -39,16 +39,18 @@ describe("userIdService", () => {
     vi.useRealTimers();
   });
 
-  it("reads the Site Configuration when the caller does not supply saltUserIds", async () => {
-    await userIdService.generateUserId("198.51.100.10", "Mozilla/5.0", 42);
+  it("falls back to the Site Configuration's salt setting when the caller does not supply one", async () => {
+    mocks.getConfig.mockResolvedValue({ saltUserIds: true });
+    const dayOne = await userIdService.generateUserId("198.51.100.10", "Mozilla/5.0", 42, { receivedAt: DAY_END });
+    const dayTwo = await userIdService.generateUserId("198.51.100.10", "Mozilla/5.0", 42, { receivedAt: NEXT_DAY });
+    expect(dayTwo).not.toBe(dayOne);
 
-    expect(mocks.getConfig).toHaveBeenCalledWith(42);
-  });
-
-  it("skips the Site Configuration read when the caller already knows the setting", async () => {
-    await userIdService.generateUserId("198.51.100.10", "Mozilla/5.0", 42, { saltUserIds: true });
-
-    expect(mocks.getConfig).not.toHaveBeenCalled();
+    mocks.getConfig.mockResolvedValue({ saltUserIds: false });
+    const unsaltedOne = await userIdService.generateUserId("198.51.100.10", "Mozilla/5.0", 42, { receivedAt: DAY_END });
+    const unsaltedTwo = await userIdService.generateUserId("198.51.100.10", "Mozilla/5.0", 42, {
+      receivedAt: NEXT_DAY,
+    });
+    expect(unsaltedTwo).toBe(unsaltedOne);
   });
 
   // The event's UTC day comes from receivedAt, not from the clock at hashing

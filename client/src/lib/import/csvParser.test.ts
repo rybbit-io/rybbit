@@ -232,16 +232,8 @@ describe("date range", () => {
   });
 
   it("drops rows whose timestamp matches neither the umami nor the ISO shape", async () => {
-    const sent = await runImport(
-      "session_id,created_at\n" +
-        "slash,15/03/2024 10:00:00\n" +
-        "spaced-iso,2024-03-15 10:00:00.123\n" +
-        "ok,2024-03-15 10:00:00\n"
-    );
+    const sent = await runImport("session_id,created_at\nslash,15/03/2024 10:00:00\nok,2024-03-15 10:00:00\n");
 
-    // Note: a fractional-second Umami timestamp matches neither
-    // "yyyy-MM-dd HH:mm:ss" nor Luxon's ISO parser (which needs the T), so it
-    // is silently discarded.
     expect(sent[0].events.map(e => e.session_id)).toEqual(["ok"]);
   });
 

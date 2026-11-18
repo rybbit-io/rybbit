@@ -44,25 +44,18 @@ describe("uniqueness", () => {
       expect(new Set(group).size).toBe(group.length);
     }
   );
-
-  it("EVENT_FILTERS is the exception — it re-adds page_title, which BASE_FILTERS already has", () => {
-    // Current behaviour, and a bug: the filter picker gets page_title twice.
-    expect(EVENT_FILTERS.filter(parameter => parameter === "page_title")).toHaveLength(2);
-    expect(new Set(EVENT_FILTERS).size).toBe(EVENT_FILTERS.length - 1);
-  });
 });
 
 describe("group relationships", () => {
   it("scopes the user detail page to everything but user_id", () => {
     expect(SESSION_PAGE_FILTERS).toContain("user_id");
     expect(USER_DETAIL_PAGE_FILTERS).not.toContain("user_id");
-    expect(USER_DETAIL_PAGE_FILTERS).toEqual(SESSION_PAGE_FILTERS.filter(f => f !== "user_id"));
   });
 
-  it("gives goals and funnels the same base set, without page-level parameters", () => {
-    expect(GOALS_PAGE_FILTERS).toEqual(FUNNEL_PAGE_FILTERS);
+  it("keeps page-level parameters off goals and funnels", () => {
     for (const pageLevel of ["pathname", "entry_page", "exit_page", "event_name"] as FilterParameter[]) {
       expect(GOALS_PAGE_FILTERS).not.toContain(pageLevel);
+      expect(FUNNEL_PAGE_FILTERS).not.toContain(pageLevel);
     }
   });
 

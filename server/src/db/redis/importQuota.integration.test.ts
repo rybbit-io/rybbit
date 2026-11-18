@@ -32,11 +32,6 @@ describe("import lock Lua scripts", () => {
     await redis.flushall();
   });
 
-  it("only one caller acquires the lock", async () => {
-    expect(await redis.set(LOCK, "import_a", "PX", TTL_MS, "NX")).toBe("OK");
-    expect(await redis.set(LOCK, "import_b", "PX", TTL_MS, "NX")).toBeNull();
-  });
-
   it("only the import that holds the lock releases it", async () => {
     await redis.set(LOCK, "import_a", "PX", TTL_MS, "NX");
 

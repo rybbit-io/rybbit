@@ -114,7 +114,8 @@ describe("buildRetentionModel", () => {
     const model = buildRetentionModel(data);
 
     expect(model.cohorts[1]).toMatchObject({ key: "2026-09-07", size: 0 });
-    expect(model.average[1]).toEqual({ users: 400, size: 3000, pct: (400 / 3000) * 100 });
+    expect(model.average[1]).toMatchObject({ users: 400, size: 3000 });
+    expect(model.average[1]?.pct).toBeCloseTo(13.33, 2);
   });
 
   it("scales the heat and the axis to the highest finished figure after period 0", () => {
