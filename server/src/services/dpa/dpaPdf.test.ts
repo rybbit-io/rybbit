@@ -48,11 +48,6 @@ describe("renderDpaHtml", () => {
     expect(html).not.toContain("Acme <GmbH>");
   });
 
-  it("inlines the signature font instead of fetching it", () => {
-    expect(html).toMatch(/@font-face \{ font-family: 'DPA Signature'.*src: url\(data:font\/woff2;base64,/);
-    expect(html).not.toMatch(/https?:\/\/fonts\./);
-  });
-
   it("leaves out the account line when the signer signed with their own address", () => {
     expect(html).not.toContain("Rybbit account");
     const other = renderDpaHtml({ ...props, accountEmail: "admin@acme.example" });

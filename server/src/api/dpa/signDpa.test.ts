@@ -3,15 +3,10 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  ready: vi.fn(() => true),
   renderDpaPdf: vi.fn(async () => Buffer.from("%PDF-test")),
   sendDpaSignedEmail: vi.fn(async () => undefined),
 }));
 
-vi.mock("@rybbit/shared", async importOriginal => ({
-  ...(await importOriginal<typeof import("@rybbit/shared")>()),
-  isDpaCountersignatureReady: mocks.ready,
-}));
 vi.mock("../../services/dpa/dpaPdf.js", () => ({
   renderDpaPdf: mocks.renderDpaPdf,
   dpaPdfFilename: () => "rybbit-dpa-acme-2026-11-17.pdf",
@@ -22,8 +17,8 @@ import { signDpa, signDpaBodySchema } from "./signDpa.js";
 
 const validBody = {
   dpaVersion: DPA_VERSION,
-  companyName: "  Acme\tGmbH ",
-  companyAddress: "Musterstraße 12\r\n\r\n\r\n10115   Berlin  ",
+  companyName: "  Acme GmbH ",
+  companyAddress: "Musterstraße 12\n10115 Berlin  ",
   signerName: "Jördis Example",
   signerTitle: "Managing Director",
   signerEmail: "legal@acme.example",
@@ -63,10 +58,10 @@ async function sign(
 }
 
 describe("signDpaBodySchema", () => {
-  it("normalizes whitespace, keeping the address's line breaks", () => {
+  it("trims what the customer typed", () => {
     const parsed = signDpaBodySchema.parse(validBody);
     expect(parsed.companyName).toBe("Acme GmbH");
-    expect(parsed.companyAddress).toBe("Musterstraße 12\n\n10115 Berlin");
+    expect(parsed.companyAddress).toBe("Musterstraße 12\n10115 Berlin");
   });
 
   it.each([
@@ -82,19 +77,11 @@ describe("signDpaBodySchema", () => {
 describe("signDpa", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.ready.mockReturnValue(true);
     vi.stubEnv("DPA_ARCHIVE_EMAIL", "dpa-archive@rybbit.example");
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
-  });
-
-  it("refuses to sign while the agreement still has placeholders", async () => {
-    mocks.ready.mockReturnValue(false);
-    const reply = await sign(validBody);
-    expect(reply.statusCode).toBe(503);
-    expect(mocks.renderDpaPdf).not.toHaveBeenCalled();
   });
 
   it("refuses a signature on an older version of the text", async () => {
@@ -125,16 +112,10 @@ describe("signDpa", () => {
         accountEmail: "admin@acme.example",
       })
     );
-    const attachment = expect.objectContaining({ filename: "rybbit-dpa-acme-2026-11-17.pdf" });
     expect(mocks.sendDpaSignedEmail).toHaveBeenCalledWith(
-      ["legal@acme.example", "admin@acme.example"],
+      ["legal@acme.example", "admin@acme.example", "dpa-archive@rybbit.example"],
       expect.objectContaining({ companyName: "Acme GmbH" }),
-      attachment
-    );
-    expect(mocks.sendDpaSignedEmail).toHaveBeenCalledWith(
-      ["dpa-archive@rybbit.example"],
-      expect.anything(),
-      attachment
+      expect.objectContaining({ filename: "rybbit-dpa-acme-2026-11-17.pdf" })
     );
   });
 
@@ -143,7 +124,11 @@ describe("signDpa", () => {
     const reply = await sign(validBody);
 
     expect(reply.statusCode).toBe(200);
-    expect(mocks.sendDpaSignedEmail).toHaveBeenCalledTimes(1);
+    expect(mocks.sendDpaSignedEmail).toHaveBeenCalledWith(
+      ["legal@acme.example", "admin@acme.example"],
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   it("still returns the PDF when the email fails", async () => {

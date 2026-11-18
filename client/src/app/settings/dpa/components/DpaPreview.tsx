@@ -8,11 +8,7 @@ import {
   type DpaCustomerDetails,
   type DpaSection,
 } from "@rybbit/shared";
-import { Dancing_Script } from "next/font/google";
 import { cn } from "@/lib/utils";
-
-// The typed signature, in the same face the server prints on the PDF.
-export const signatureFont = Dancing_Script({ subsets: ["latin", "latin-ext"], weight: "400" });
 
 const BLANK = "text-neutral-400 dark:text-neutral-500";
 
@@ -32,8 +28,7 @@ function SignatureBlock({ label, name, title }: { label: string; name: string; t
       <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</div>
       <div
         className={cn(
-          signatureFont.className,
-          "mt-1 min-h-10 truncate border-b border-neutral-300 pb-1 text-3xl leading-10 dark:border-neutral-700",
+          "mt-1 min-h-10 truncate border-b border-neutral-300 pb-1 font-serif text-2xl leading-10 italic dark:border-neutral-700",
           !name && BLANK
         )}
       >

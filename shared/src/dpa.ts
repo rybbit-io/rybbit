@@ -437,30 +437,3 @@ export const DPA_ANNEXES: DpaSection[] = [
     ],
   },
 ];
-
-/** Bracketed text in the agreement still waiting for a real value, e.g. "[backup retention period]". */
-export function dpaPlaceholders(
-  party: DpaParty = RYBBIT_DPA_PARTY,
-  sections: DpaSection[] = [...DPA_SECTIONS, ...DPA_ANNEXES]
-): string[] {
-  const texts = [
-    DPA_PREAMBLE,
-    ...Object.values(party),
-    ...sections.flatMap(section =>
-      section.blocks.flatMap(block =>
-        block.type === "p"
-          ? [block.text]
-          : block.items.map(item => (typeof item === "string" ? item : `${item.term} ${item.text}`))
-      )
-    ),
-  ];
-  return texts.flatMap(text => text.match(/\[[^\]]*\]/g) ?? []);
-}
-
-/** Signing stays off while Rybbit's details or the text still hold a placeholder or a blank. */
-export function isDpaCountersignatureReady(
-  party: DpaParty = RYBBIT_DPA_PARTY,
-  sections: DpaSection[] = [...DPA_SECTIONS, ...DPA_ANNEXES]
-): boolean {
-  return Object.values(party).every(value => value.trim() !== "") && dpaPlaceholders(party, sections).length === 0;
-}

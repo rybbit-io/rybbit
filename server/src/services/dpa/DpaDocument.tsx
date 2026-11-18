@@ -24,9 +24,6 @@ export interface DpaDocumentProps {
   party?: DpaParty;
 }
 
-/** CSS font-family for the typed signatures; the @font-face rules come from dpaPdf.ts. */
-export const SIGNATURE_FONT = "'DPA Signature', 'Apple Chancery', cursive";
-
 const CSS = `
   @page { size: A4; }
   * { box-sizing: border-box; }
@@ -44,7 +41,7 @@ const CSS = `
   .address { white-space: pre-line; }
   .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; break-inside: avoid; }
   .signature-box { border: 1px solid #ccc; padding: 10px 12px; }
-  .signature { font-family: ${SIGNATURE_FONT}; font-size: 24pt; line-height: 1.2; min-height: 40px; border-bottom: 1px solid #111; margin: 4px 0 8px; overflow-wrap: anywhere; }
+  .signature { font-style: italic; font-size: 20pt; line-height: 1.2; min-height: 40px; border-bottom: 1px solid #111; margin: 4px 0 8px; overflow-wrap: anywhere; }
   .field { display: grid; grid-template-columns: 52px 1fr; gap: 6px; font-size: 9.5pt; }
   .field span:first-child { color: #666; }
   .record { margin-top: 18px; border-top: 1px solid #ccc; padding-top: 10px; font-family: Helvetica, Arial, sans-serif; font-size: 8pt; color: #444; break-inside: avoid; }

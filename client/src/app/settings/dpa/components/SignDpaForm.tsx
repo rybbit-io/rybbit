@@ -14,9 +14,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { downloadBlob } from "@/lib/export";
-import { cn } from "@/lib/utils";
 import { LedgerRow, LedgerRows, LedgerSection } from "../../components/Ledger";
-import { DpaPreview, signatureFont } from "./DpaPreview";
+import { DpaPreview } from "./DpaPreview";
 
 type FormValues = DpaCustomerDetails & { agreed: boolean };
 
@@ -217,7 +216,7 @@ export function SignDpaForm({
             {values.signerName?.trim() && (
               <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
                 {t("Your typed name is your signature:")}{" "}
-                <span className={cn(signatureFont.className, "text-xl text-neutral-900 dark:text-neutral-100")}>
+                <span className="font-serif text-base text-neutral-900 italic dark:text-neutral-100">
                   {values.signerName}
                 </span>
               </p>

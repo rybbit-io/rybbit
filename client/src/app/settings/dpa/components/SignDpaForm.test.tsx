@@ -15,7 +15,6 @@ vi.mock("next-intl", () => ({
   useExtracted: () => (message: string, values?: Record<string, string>) =>
     message.replace(/\{(\w+)\}/g, (_, key) => values?.[key] ?? ""),
 }));
-vi.mock("next/font/google", () => ({ Dancing_Script: () => ({ className: "signature-font" }) }));
 vi.mock("@/api/admin/endpoints/dpa", () => ({ signDpa: mocks.signDpa }));
 vi.mock("@/components/ui/sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.toastError } }));
 vi.mock("@/lib/export", () => ({ downloadBlob: mocks.downloadBlob }));

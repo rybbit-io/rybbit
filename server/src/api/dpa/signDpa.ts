@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { DPA_FIELD_LIMITS, DPA_VERSION, isDpaCountersignatureReady, type DpaCustomerDetails } from "@rybbit/shared";
+import { DPA_FIELD_LIMITS, DPA_VERSION, type DpaCustomerDetails } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { sendDpaSignedEmail } from "../../lib/email/email.js";
@@ -10,33 +10,14 @@ const logger = createServiceLogger("dpa");
 
 type OrgParams = { organizationId: string };
 
-/** Collapses whitespace (newlines included) and drops control characters. */
-const singleLine = (value: string) =>
-  value
-    .replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-/** Keeps line breaks, at most one blank line in a row, and nothing else invisible. */
-const multiLine = (value: string) =>
-  value
-    .replace(/\r\n?/g, "\n")
-    .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, " ")
-    .split("\n")
-    .map(line => line.replace(/\s+/g, " ").trim())
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-const requiredText = (max: number, normalize: (value: string) => string) =>
-  z.string().transform(normalize).pipe(z.string().min(1).max(max));
+const requiredText = (max: number) => z.string().trim().min(1).max(max);
 
 export const signDpaBodySchema = z.object({
   dpaVersion: z.string(),
-  companyName: requiredText(DPA_FIELD_LIMITS.companyName, singleLine),
-  companyAddress: requiredText(DPA_FIELD_LIMITS.companyAddress, multiLine),
-  signerName: requiredText(DPA_FIELD_LIMITS.signerName, singleLine),
-  signerTitle: requiredText(DPA_FIELD_LIMITS.signerTitle, singleLine),
+  companyName: requiredText(DPA_FIELD_LIMITS.companyName),
+  companyAddress: requiredText(DPA_FIELD_LIMITS.companyAddress),
+  signerName: requiredText(DPA_FIELD_LIMITS.signerName),
+  signerTitle: requiredText(DPA_FIELD_LIMITS.signerTitle),
   signerEmail: z.string().trim().max(DPA_FIELD_LIMITS.signerEmail).email(),
   agreed: z.literal(true),
 });
@@ -46,10 +27,6 @@ export async function signDpa(request: FastifyRequest<{ Params: OrgParams; Body:
   const user = request.user as { id: string; email?: string } | undefined;
   if (!user?.id) {
     return reply.status(401).send({ error: "Unauthorized" });
-  }
-
-  if (!isDpaCountersignatureReady()) {
-    return reply.status(503).send({ error: "DPA signing isn't available yet." });
   }
 
   const parsed = signDpaBodySchema.safeParse(request.body);
@@ -98,28 +75,26 @@ export async function signDpa(request: FastifyRequest<{ Params: OrgParams; Body:
     "DPA signed"
   );
 
-  const emailProps = {
-    agreementId,
-    companyName: details.companyName,
-    signerName: details.signerName,
-    signerTitle: details.signerTitle,
-    signedAt,
-  };
-  const attachment = { filename, content: pdf };
+  // Archive copy last, so a failure there can't stop the customer's emails.
   const archiveEmail = process.env.DPA_ARCHIVE_EMAIL?.trim();
-  const [customerEmail, archive] = await Promise.allSettled([
-    sendDpaSignedEmail([details.signerEmail, ...(accountEmail ? [accountEmail] : [])], emailProps, attachment),
-    archiveEmail ? sendDpaSignedEmail([archiveEmail], emailProps, attachment) : Promise.resolve(),
-  ]);
-  if (customerEmail.status === "rejected") {
-    logger.error({ error: customerEmail.reason, organizationId, agreementId }, "Failed to email signed DPA");
-  }
-  if (archive.status === "rejected") {
-    logger.error({ error: archive.reason, organizationId, agreementId, pdfSha256 }, "Failed to archive signed DPA");
-  } else if (!archiveEmail) {
-    logger.warn({ organizationId, agreementId }, "DPA_ARCHIVE_EMAIL is not set; Rybbit kept no copy of this DPA");
+  let emailed = true;
+  try {
+    await sendDpaSignedEmail(
+      [details.signerEmail, ...(accountEmail ? [accountEmail] : []), ...(archiveEmail ? [archiveEmail] : [])],
+      {
+        agreementId,
+        companyName: details.companyName,
+        signerName: details.signerName,
+        signerTitle: details.signerTitle,
+        signedAt,
+      },
+      { filename, content: pdf }
+    );
+  } catch (error) {
+    emailed = false;
+    logger.error({ error, organizationId, agreementId, pdfSha256 }, "Failed to email signed DPA");
   }
 
   // The signature is complete either way: the browser downloads the PDF from this response.
-  return reply.send({ filename, pdf: pdf.toString("base64"), emailed: customerEmail.status === "fulfilled" });
+  return reply.send({ filename, pdf: pdf.toString("base64"), emailed });
 }
