@@ -182,6 +182,7 @@ exports[`API route table > pins the access each route requires 1`] = `
   "POST   /api/stripe/create-checkout-session → authenticated",
   "POST   /api/stripe/create-portal-session → authenticated",
   "POST   /api/stripe/preview-subscription-update → authenticated",
+  "POST   /api/stripe/retry-payment → authenticated",
   "POST   /api/stripe/update-subscription → authenticated",
   "POST   /api/stripe/webhook → public",
   "POST   /api/user/account-settings → authenticated",

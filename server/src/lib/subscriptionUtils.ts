@@ -63,6 +63,16 @@ export interface TrialGrace {
   retryingPayment: boolean;
 }
 
+/**
+ * A card subscription whose latest charge failed and that Stripe is still retrying. The
+ * organization is on the free tier meanwhile; the app asks its owners to update the card.
+ */
+export interface PastDuePayment {
+  subscriptionId: string;
+  /** The plan being charged for, when its price is one of ours. */
+  planName: string | null;
+}
+
 export interface FreeSubscriptionInfo {
   source: "free";
   eventLimit: number;
@@ -71,6 +81,8 @@ export interface FreeSubscriptionInfo {
   status: "free";
   /** Set while the organization is in the grace period after an unpaid trial. */
   trialGrace?: TrialGrace;
+  /** Set while Stripe is retrying a failed charge on the organization's subscription. */
+  pastDue?: PastDuePayment;
 }
 
 export interface OverrideSubscriptionInfo {
@@ -526,6 +538,19 @@ async function fetchStripeSubscription(stripeCustomerId: string): Promise<Stripe
 const LAPSED_STATUSES = new Set<Stripe.Subscription.Status>(["canceled", "past_due", "unpaid"]);
 
 /**
+ * The failed charge Stripe is retrying on a subscription, if any. Invoiced subscriptions
+ * (send_invoice) go past due when an invoice is late; there is no card to update for those.
+ */
+export function pastDuePayment(subscription: Stripe.Subscription | null | undefined): PastDuePayment | null {
+  if (!subscription || subscription.status !== "past_due" || subscription.collection_method === "send_invoice") {
+    return null;
+  }
+  const priceId = subscription.items?.data[0]?.price.id;
+  const plan = getStripePrices().find((p: StripePlan) => p.priceId === priceId);
+  return { subscriptionId: subscription.id, planName: plan?.name ?? null };
+}
+
+/**
  * The grace period a lapsed subscription would earn from its trial: the trial ended (or was
  * canceled) less than TRIAL_GRACE_DAYS ago. Pure; resolveTrialGrace also checks that the
  * subscription never took a payment, which is what makes the trial "unpaid".
@@ -757,7 +782,10 @@ export async function getBestSubscription(
     return appsumoSub;
   }
 
-  return freeSubscription(await resolveTrialGrace(stripeState.latest, { throwOnError: throwOnStripe }));
+  return freeSubscription(
+    await resolveTrialGrace(stripeState.latest, { throwOnError: throwOnStripe }),
+    pastDuePayment(stripeState.latest)
+  );
 }
 
 /**
@@ -787,7 +815,7 @@ export async function getBestSubscriptionFromStripeSub(
     return appsumoSub;
   }
 
-  return freeSubscription(await resolveTrialGrace(latestStripeSub, lookup));
+  return freeSubscription(await resolveTrialGrace(latestStripeSub, lookup), pastDuePayment(latestStripeSub));
 }
 
 /**
@@ -860,7 +888,10 @@ export function siteRequiresPlan(
   return siteCreatedAt.slice(0, 10) >= FREE_PLAN_CUTOFF_DATE;
 }
 
-function freeSubscription(trial: { grace: TrialGrace; eventLimit: number } | null = null): FreeSubscriptionInfo {
+function freeSubscription(
+  trial: { grace: TrialGrace; eventLimit: number } | null = null,
+  pastDue: PastDuePayment | null = null
+): FreeSubscriptionInfo {
   return {
     source: "free",
     // The grace period keeps the trialed plan's allowance, so sites don't stop at the free one.
@@ -869,5 +900,6 @@ function freeSubscription(trial: { grace: TrialGrace; eventLimit: number } | nul
     planName: "free",
     status: "free",
     ...(trial && { trialGrace: trial.grace }),
+    ...(pastDue && { pastDue }),
   };
 }

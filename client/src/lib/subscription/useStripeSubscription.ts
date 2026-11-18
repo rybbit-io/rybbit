@@ -21,6 +21,9 @@ export interface SubscriptionData {
   // Only on "free": false once the organization has had any subscription, so it is offered
   // plans instead of another trial (checkout skips the trial too).
   trialEligible?: boolean;
+  // Only on "free": Stripe is retrying a failed charge on this subscription, so the app asks
+  // for a new card instead of offering plans.
+  pastDue?: { subscriptionId: string; planName: string | null };
   memberLimit: number | null;
   siteLimit: number | null;
 }

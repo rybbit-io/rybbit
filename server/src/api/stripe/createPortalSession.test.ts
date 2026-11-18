@@ -212,7 +212,12 @@ describe("createPortalSession — flow types", () => {
 
     expect(mocks.subscriptionsList).not.toHaveBeenCalled();
     expect(mocks.portalSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ flow_data: { type: "payment_method_update" } })
+      expect.objectContaining({
+        flow_data: {
+          type: "payment_method_update",
+          after_completion: { type: "redirect", redirect: { return_url: validBody.returnUrl } },
+        },
+      })
     );
   });
 });

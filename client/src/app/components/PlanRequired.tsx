@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useOrganizationMembers } from "@/api/admin/hooks/useOrganizationMembers";
 import { useUserOrganizations } from "@/api/admin/hooks/useOrganizations";
+import { PaymentFailedNotice } from "@/components/subscription/PaymentFailedNotice";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
@@ -35,6 +36,7 @@ export function usePlanPrompt(organizationId: string | undefined) {
     // Starting a plan is billing, which the server lets owners (and system admins) do.
     isOwner: !!permissions?.includes("billing:manage"),
     trialEligible: subscription?.trialEligible !== false,
+    paymentFailed: !!subscription?.pastDue,
   };
 }
 
@@ -119,12 +121,15 @@ export function PlanRequiredNotice({
   className?: string;
 }) {
   const t = useExtracted();
-  const { isLoading, isOwner, trialEligible } = usePlanPrompt(organizationId);
+  const { isLoading, isOwner, trialEligible, paymentFailed } = usePlanPrompt(organizationId);
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [planFlowStarted, setPlanFlowStarted] = useState(false);
 
   // Wait for the role and the organization's history rather than promising a trial it can't have.
   if (isLoading) return null;
+
+  // The organization has a plan whose charge failed: it needs a working card, not a second plan.
+  if (paymentFailed) return <PaymentFailedNotice organizationId={organizationId} className={className} />;
 
   const title = siteName
     ? t("{site} isn't collecting data", { site: siteName })

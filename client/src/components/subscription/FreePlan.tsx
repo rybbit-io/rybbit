@@ -5,6 +5,7 @@ import { authClient } from "@/lib/auth";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 import { Button } from "../ui/button";
 import { InvoicesSection } from "./components/InvoicesSection";
+import { PaymentFailedNotice } from "./PaymentFailedNotice";
 import { PlanDialog } from "./components/PlanDialog";
 import { PlanAllowances, PlanSection } from "./components/PlanSection";
 import { UsageHistorySection } from "./components/UsageHistorySection";
@@ -25,13 +26,17 @@ export function FreePlan() {
   return (
     <>
       <PlanDialog open={showPlanDialog} onOpenChange={setShowPlanDialog} hasActiveSubscription={false} />
+      <PaymentFailedNotice organizationId={organizationId} />
       <PlanSection
         name={planName}
         details={<PlanAllowances subscription={subscription} />}
+        // A new plan now would bill next to the subscription Stripe is still retrying.
         action={
-          <Button onClick={() => setShowPlanDialog(true)} variant="success">
-            {t("Upgrade to Pro")} <ArrowRight className="h-4 w-4" />
-          </Button>
+          subscription.pastDue ? undefined : (
+            <Button onClick={() => setShowPlanDialog(true)} variant="success">
+              {t("Upgrade to Pro")} <ArrowRight className="h-4 w-4" />
+            </Button>
+          )
         }
       />
       <UsageSection

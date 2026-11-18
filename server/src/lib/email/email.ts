@@ -16,6 +16,11 @@ import { InvitationEmail, inviterLabel } from "./templates/InvitationEmail.js";
 import { LetterEmail } from "./templates/LetterEmail.js";
 import { LimitExceededEmail } from "./templates/LimitExceededEmail.js";
 import { OTP_COPY, OtpEmail, type OtpEmailType } from "./templates/OtpEmail.js";
+import {
+  PaymentFailedEmail,
+  paymentFailedSubject,
+  type PaymentFailedEmailProps,
+} from "./templates/PaymentFailedEmail.js";
 import { SiteTransferEmail, type SiteTransferEmailProps } from "./templates/SiteTransferEmail.js";
 import { TrialGraceEmail, trialGraceSubject, type TrialGraceEmailProps } from "./templates/TrialGraceEmail.js";
 import { VerifyEmailEmail } from "./templates/VerifyEmailEmail.js";
@@ -228,6 +233,11 @@ export const sendApproachingLimitEmail = async (email: string, usage: UsageEmail
 export const sendTrialGraceEmail = async (email: string, props: TrialGraceEmailProps, idempotencyKey: string) => {
   const html = await render(TrialGraceEmail(props));
   await sendEmail(email, trialGraceSubject(props), html, { idempotencyKey });
+};
+
+export const sendPaymentFailedEmail = async (email: string, props: PaymentFailedEmailProps, idempotencyKey: string) => {
+  const html = await render(PaymentFailedEmail(props));
+  await sendEmail(email, paymentFailedSubject(props), html, { idempotencyKey });
 };
 
 /**

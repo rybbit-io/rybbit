@@ -125,8 +125,11 @@ export async function createPortalSession(request: FastifyRequest<{ Body: Portal
           };
         }
       } else if (flowType === "payment_method_update") {
+        // Send the customer back once the card is saved, so the app can charge it right away
+        // (see retryPayment) instead of leaving them on the portal's home page.
         sessionConfig.flow_data = {
           type: "payment_method_update",
+          after_completion: { type: "redirect", redirect: { return_url: returnUrl } },
         };
       }
     }
