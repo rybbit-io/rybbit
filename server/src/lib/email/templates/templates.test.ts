@@ -10,6 +10,7 @@ import { InvitationEmail } from "./InvitationEmail.js";
 import { LetterEmail } from "./LetterEmail.js";
 import { LimitExceededEmail } from "./LimitExceededEmail.js";
 import { OtpEmail } from "./OtpEmail.js";
+import { formatMoney, PaymentFailedEmail, paymentFailedSubject } from "./PaymentFailedEmail.js";
 import { SiteTransferEmail } from "./SiteTransferEmail.js";
 import { TrialGraceEmail, trialGraceSubject } from "./TrialGraceEmail.js";
 import { VerifyEmailEmail } from "./VerifyEmailEmail.js";
@@ -308,5 +309,48 @@ describe("trial grace emails", () => {
     expect(trialGraceSubject(final)).toBe("Your Rybbit data will be deleted after Dec 19");
     const html = await render(TrialGraceEmail(final));
     expect(html).toContain("That&#x27;s 5 days from now");
+  });
+});
+
+describe("payment failed email", () => {
+  const failed = {
+    stage: "failed" as const,
+    organizationId: "org 1",
+    organizationName: "Acme Inc",
+    amountDue: 1900,
+    currency: "usd",
+    nextAttemptAt: new Date("2026-11-20T20:31:58Z"),
+    tracking: "paused" as const,
+  };
+
+  it("formats amounts in the currency's own smallest unit", () => {
+    expect(formatMoney(1900, "usd")).toBe("$19.00");
+    expect(formatMoney(1900, "jpy")).toBe("¥1,900");
+  });
+
+  it("gives the amount, the next try and a link to the organization's billing page", async () => {
+    const html = await render(PaymentFailedEmail(failed));
+
+    expect(paymentFailedSubject(failed)).toBe("We couldn't charge your card for Rybbit");
+    expect(html).toContain("The $19.00 payment for Acme Inc");
+    expect(html).toContain("Nov 20, 2026");
+    expect(html).toContain("On hold");
+    expect(html).toContain("/settings/billing?organization=org%201");
+  });
+
+  it("says tracking is still on during a trial's grace period", async () => {
+    const html = await render(PaymentFailedEmail({ ...failed, tracking: "on" }));
+
+    expect(html).toContain("still being tracked while we retry");
+    expect(html).not.toContain("On hold");
+  });
+
+  it("tells the owner the plan was canceled and how to get it back", async () => {
+    const canceled = { stage: "canceled" as const, organizationId: "org_1", organizationName: "Acme Inc" };
+    const html = await render(PaymentFailedEmail(canceled));
+
+    expect(paymentFailedSubject(canceled)).toBe("Your Rybbit plan was canceled");
+    expect(html).toContain("the payment kept failing");
+    expect(html).toContain("Choose a plan");
   });
 });

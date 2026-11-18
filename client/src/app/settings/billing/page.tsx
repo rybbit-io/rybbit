@@ -10,6 +10,7 @@ import { CustomPlan } from "@/components/subscription/CustomPlan";
 import { ExpiredTrialPlan } from "@/components/subscription/ExpiredTrialPlan";
 import { FreePlan } from "@/components/subscription/FreePlan";
 import { OverridePlan } from "@/components/subscription/OverridePlan";
+import { useChargeUpdatedCard } from "@/components/subscription/PaymentFailedNotice";
 import { PaidPlan } from "@/components/subscription/PaidPlain/PaidPlan";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCanInOrg } from "@/hooks/usePermissions";
@@ -94,6 +95,8 @@ export default function OrganizationBillingPage() {
       window.rewardful?.("convert", { email: session.user.email });
     }
   }, [session?.user?.email]);
+
+  useChargeUpdatedCard();
 
   const canManageBilling = useCanInOrg("billing:manage", activeOrg?.id);
 

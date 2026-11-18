@@ -92,6 +92,7 @@ import {
   invalidateStripeSubscriptionCache,
   lapsedTrialGrace,
   OverrideSubscriptionInfo,
+  pastDuePayment,
   StripeSubscriptionInfo,
   stripeSubscriptionInfoFromSnapshot,
   siteRequiresPlan,
@@ -1115,6 +1116,35 @@ describe("post-trial grace period", () => {
     it("ends after TRIAL_GRACE_DAYS", () => {
       expect(lapsedTrialGrace(lapsedTrial(TRIAL_GRACE_DAYS - 1))).not.toBeNull();
       expect(lapsedTrialGrace(lapsedTrial(TRIAL_GRACE_DAYS + 1))).toBeNull();
+    });
+  });
+
+  describe("pastDuePayment", () => {
+    it("names the plan Stripe is still trying to charge for", () => {
+      const sub = lapsedTrial(1, { status: "past_due", endedAt: null });
+
+      expect(pastDuePayment(sub)).toEqual({ subscriptionId: sub.id, planName: "standard100k" });
+    });
+
+    it("is only set while a card subscription is past due", () => {
+      expect(pastDuePayment(lapsedTrial(1))).toBeNull();
+      expect(pastDuePayment(lapsedTrial(1, { status: "active" }))).toBeNull();
+      expect(
+        pastDuePayment({ ...lapsedTrial(1, { status: "past_due" }), collection_method: "send_invoice" })
+      ).toBeNull();
+      expect(pastDuePayment(null)).toBeNull();
+    });
+
+    it("is reported on the free tier next to the trial's grace period", async () => {
+      const customer = nextCustomer();
+      const sub = lapsedTrial(1, { customer, status: "past_due", endedAt: null });
+      listReturns([sub]);
+      paidInvoices(0);
+
+      const best = (await getBestSubscription("org_1", customer)) as FreeSubscriptionInfo;
+
+      expect(best.pastDue).toEqual({ subscriptionId: sub.id, planName: "standard100k" });
+      expect(best.trialGrace?.retryingPayment).toBe(true);
     });
   });
 

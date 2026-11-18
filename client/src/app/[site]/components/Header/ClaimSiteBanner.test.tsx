@@ -82,6 +82,7 @@ vi.mock("./AffiliateBanner", () => ({ AffiliateBanner: () => null }));
 vi.mock("./DemoSignupBanner", () => ({ DemoSignupBanner: () => null }));
 vi.mock("./UsageBanners", () => ({ UsageBanners: () => null }));
 vi.mock("@/components/FreePlanBanner", () => ({ FreePlanBanner: () => null }));
+vi.mock("@/components/subscription/PaymentFailedNotice", () => ({ PaymentFailedNotice: () => null }));
 import { Header } from "./Header";
 
 let client: QueryClient;

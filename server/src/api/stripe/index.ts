@@ -7,3 +7,4 @@ export { previewSubscriptionUpdate } from "./previewSubscriptionUpdate.js";
 export { submitCancellationFeedback } from "./submitCancellationFeedback.js";
 export { updateSubscription } from "./updateSubscription.js";
 export { handleWebhook } from "./webhook.js";
+export { retryPayment } from "./retryPayment.js";

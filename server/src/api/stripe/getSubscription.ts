@@ -217,6 +217,8 @@ export async function getSubscriptionInner(organizationId: string) {
     trialEligible: !(await hasHadStripeSubscription(org.stripeCustomerId)),
     // Sites keep collecting until trialGrace.endsAt after an unpaid trial (siteRequiresPlan).
     ...(subscription.source === "free" && subscription.trialGrace && { trialGrace: subscription.trialGrace }),
+    // Stripe is retrying a failed charge: the app asks the owners to update the card.
+    ...(subscription.source === "free" && subscription.pastDue && { pastDue: subscription.pastDue }),
     includesReplay,
     ...limits,
   };

@@ -5,6 +5,7 @@ import { organization } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
+import { paymentFailedEmails } from "../../services/paymentRecovery/paymentFailedEmails.js";
 import { usageService } from "../../services/usageService.js";
 import dotenv from "dotenv";
 
@@ -114,8 +115,19 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
       } catch (dbError) {
         request.log.warn({ err: dbError, stripeCustomerId: changedCustomerId }, "Could not refresh organization usage");
       }
+      // Stripe ran out of retries on a paid plan: tell the owners why tracking stopped.
+      if (event.type === "customer.subscription.deleted") {
+        await paymentFailedEmails.onSubscriptionCanceled(changedSubscription);
+      }
       break;
     }
+
+    // A renewal, or the first charge after a trial, was declined. The subscription going past
+    // due arrives as its own customer.subscription.updated event; this one emails the owners.
+    // Never throws: a failed email must not make Stripe redeliver the event.
+    case "invoice.payment_failed":
+      await paymentFailedEmails.onPaymentFailed(event.data.object as Stripe.Invoice);
+      break;
 
     // ... handle other event types as needed
 
