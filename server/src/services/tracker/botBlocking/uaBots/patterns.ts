@@ -354,7 +354,15 @@ export const EXTRA_BOT_PATTERNS: BotPattern[] = [
 
   // Search crawlers whose names can be swallowed by generic "*bot*" rules
   { pattern: "yandexbot", category: "search", name: "YandexBot", operator: "Yandex", purpose: "search" },
-  { pattern: "duckduckgo", category: "search", name: "DuckDuckBot", operator: "DuckDuckGo", purpose: "search" },
+  // Not a bare "duckduckgo": the DuckDuckGo browser carries `DuckDuckGo/7` in a
+  // real Safari/Chrome user agent, and its users were being named DuckDuckBot.
+  {
+    pattern: "duckduckbot|duckduckgo-favicons-bot",
+    category: "search",
+    name: "DuckDuckBot",
+    operator: "DuckDuckGo",
+    purpose: "search",
+  },
   { pattern: "slurp", category: "search", name: "Yahoo! Slurp", operator: "Yahoo", purpose: "search" },
 
   // Social link previewers not caught by upstream

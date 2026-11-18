@@ -64,6 +64,12 @@ const SIGNAL_KEYS = Object.keys(clientBotSignalTotals) as ClientBotSignalTotal[]
 let totalRequests = 0;
 let totalBotRequests = 0;
 let totalEnforcedBotRequests = 0;
+// Hits no layer convicted but a rule under evaluation would have. Kept apart
+// from the detection totals: nothing was detected, and counting these there
+// would widen the detected-versus-enforced gap with traffic that was never
+// going to be blocked.
+let totalShadowObservations = 0;
+const shadowRuleTotals: Record<string, number> = {};
 
 function getBotRequestPercentage(requests = totalRequests, botRequests = totalBotRequests) {
   if (requests === 0) {
@@ -141,11 +147,26 @@ export function recordBotDetections(methods: readonly BotDetectionMethod[], enfo
   }
 }
 
+/**
+ * A clean hit that one or more shadow rules would have convicted. Shadow rules
+ * that fire on a hit another layer already convicted are not counted here —
+ * they are in that row's `anomaly_reasons` — so this is each rule's marginal
+ * catch, which is the number that decides whether to promote it.
+ */
+export function recordShadowObservation(rules: readonly string[]) {
+  totalShadowObservations++;
+  for (const rule of rules) {
+    shadowRuleTotals[rule] = (shadowRuleTotals[rule] ?? 0) + 1;
+  }
+}
+
 export function getBotDetectionStats() {
   return {
     totalRequests,
     totalBotRequests,
     totalEnforcedBotRequests,
+    totalShadowObservations,
+    shadowRuleTotals: { ...shadowRuleTotals },
     botRequestPercentage: getBotRequestPercentage(),
     totals: { ...totals },
     clientBotScoreHistogram: { ...clientBotScoreHistogram },
@@ -157,6 +178,10 @@ export function resetBotDetectionStatsForTests() {
   totalRequests = 0;
   totalBotRequests = 0;
   totalEnforcedBotRequests = 0;
+  totalShadowObservations = 0;
+  for (const rule of Object.keys(shadowRuleTotals)) {
+    delete shadowRuleTotals[rule];
+  }
   for (const method of BOT_DETECTION_METHODS) {
     totals[method] = 0;
   }
@@ -169,13 +194,21 @@ export function resetBotDetectionStatsForTests() {
   lastFlushed = {};
 }
 
+// Shadow rules are named by whoever defines them, so their hash fields are
+// discovered by prefix rather than enumerated.
+const SHADOW_FIELD_PREFIX = "sh:";
+
 // Flatten the in-process counters to the hash field names used in Redis.
 function flattenLocalCounters(): Record<string, number> {
   const flat: Record<string, number> = {
     totalRequests,
     totalBotRequests,
     totalEnforcedBotRequests,
+    totalShadowObservations,
   };
+  for (const [rule, count] of Object.entries(shadowRuleTotals)) {
+    flat[`${SHADOW_FIELD_PREFIX}${rule}`] = count;
+  }
   for (const method of BOT_DETECTION_METHODS) {
     flat[`m:${method}`] = totals[method];
   }
@@ -207,6 +240,13 @@ function structureAggregate(hash: Record<string, string>) {
     signalTotals[key] = num(`sig:${key}`);
   }
 
+  const shadowTotals: Record<string, number> = {};
+  for (const field of Object.keys(hash)) {
+    if (field.startsWith(SHADOW_FIELD_PREFIX)) {
+      shadowTotals[field.slice(SHADOW_FIELD_PREFIX.length)] = num(field);
+    }
+  }
+
   const requests = num("totalRequests");
   const botRequests = num("totalBotRequests");
 
@@ -214,6 +254,8 @@ function structureAggregate(hash: Record<string, string>) {
     totalRequests: requests,
     totalBotRequests: botRequests,
     totalEnforcedBotRequests: num("totalEnforcedBotRequests"),
+    totalShadowObservations: num("totalShadowObservations"),
+    shadowRuleTotals: shadowTotals,
     botRequestPercentage: getBotRequestPercentage(requests, botRequests),
     botDetectionTotals: aggregateTotals,
     clientBotScoreHistogram: histogram,

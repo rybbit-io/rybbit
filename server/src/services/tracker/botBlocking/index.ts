@@ -13,8 +13,9 @@ import { lookupAsn, type AsnInfo, type AsnLookup } from "../../../db/geolocation
 import { logger } from "../../../lib/logger/logger.js";
 import type { AnomalyCounters } from "./anomalyScorer.js";
 import { observeTrackingAnomaly } from "./anomalyScorer.js";
+import { isLowEngagementAsn } from "./asnEngagement.js";
 import type { BotDetectionMethod } from "./botDetectionStats.js";
-import { recordBotBlockingRequest, recordBotDetections } from "./botDetectionStats.js";
+import { recordBotBlockingRequest, recordBotDetections, recordShadowObservation } from "./botDetectionStats.js";
 import { classifyBotAsn } from "./botProviderAsns.js";
 import { CLIENT_BOT_SCORE_THRESHOLD } from "./config.js";
 import { detectBot } from "./headerHeuristics.js";
@@ -56,6 +57,12 @@ interface BotBlockingInput {
    * are skipped for mobile sites (see checkBotBlocking).
    */
   isMobileSite?: boolean;
+  /**
+   * Whether the site records any human interaction (outbound, button, copy or
+   * form tracking). The hosting-range rule reads "no interactions today" as
+   * evidence only where an interaction could have been recorded.
+   */
+  capturesHumanInteractions?: boolean;
   payload: BotBlockingPayload;
   /** Request-scoped ASN resolver, shared with the rest of the ingestion path. */
   lookupAsn?: AsnLookup;
@@ -91,8 +98,15 @@ export interface BotBlockingDetection {
   anomalyCounters?: AnomalyCounters;
 }
 
+/**
+ * How a shadow rule is written into `anomaly_reasons`. The prefix keeps a rule
+ * under evaluation from ever being read as one that convicted.
+ */
+const SHADOW_REASON_PREFIX = "shadow:";
+
 export interface BotEventProperties {
-  isBot: true;
+  /** False only on a shadow observation, where no layer convicted. */
+  isBot: boolean;
   botAsn?: number;
   botAsnOrg?: string;
   detectedUaPattern: boolean;
@@ -121,7 +135,9 @@ export interface BotEventProperties {
   clientBotScore?: number;
   clientSignalMask?: number;
   /**
-   * Which anomaly rules fired, comma-separated, and what they summed to. The
+   * Which anomaly rules fired, comma-separated, and what they summed to. Rules
+   * still in shadow mode follow, each prefixed `shadow:` — they are listed on a
+   * convicted hit too, so their overlap with the live layers can be measured. The
    * other layers name themselves — a UA pattern or an ASN is its own
    * explanation — but "rate anomaly" covers a dozen rules with very different
    * meanings, and without these an audit row cannot answer why the request was
@@ -129,6 +145,25 @@ export interface BotEventProperties {
    */
   anomalyReasons: string;
   anomalyScore: number;
+}
+
+/**
+ * A hit no layer convicted, but which a rule still under evaluation would have.
+ *
+ * It is never enforced, whatever `blockBots` says: the event is tracked as
+ * normal and the observation goes to `bot_observations` with every layer column
+ * false and the rule named in `anomaly_reasons`. That is the whole point of
+ * shadow mode — the rule's catch and its collateral are both sitting in
+ * ClickHouse, joined to real sessions, before it is allowed to cost anyone a
+ * visitor.
+ */
+export interface BotShadowObservation {
+  isBot: false;
+  enforced: false;
+  /** Always empty: a shadow rule is not a detection. */
+  detections: BotBlockingDetection[];
+  shadowRules: string[];
+  eventProperties: BotEventProperties;
 }
 
 export interface BotDetectionResult {
@@ -149,15 +184,21 @@ export interface BotDetectionResult {
 function buildBotEventProperties(
   detections: BotBlockingDetection[],
   asnInfo: AsnInfo | null,
-  clientSignalResult: ReturnType<typeof getClientSignalResult>
+  clientSignalResult: ReturnType<typeof getClientSignalResult>,
+  shadowRules: readonly string[] = []
 ): BotEventProperties {
   const detectionLayers = new Set(detections.map(detection => detection.layer));
   const uaDetection = detections.find(detection => detection.layer === "ua_pattern");
   const anomalyDetection = detections.find(detection => detection.layer === "rate_anomaly");
   const asnDetection = detections.find(detection => detection.layer === "bot_asn");
 
+  const anomalyReasons = [
+    ...(anomalyDetection?.anomalyReasons ?? []).map(reason => reason.rule),
+    ...shadowRules.map(rule => SHADOW_REASON_PREFIX + rule),
+  ];
+
   return {
-    isBot: true,
+    isBot: detections.length > 0,
     botAsn: asnInfo?.asn,
     botAsnOrg: asnInfo?.organization ?? "",
     detectedUaPattern: detectionLayers.has("ua_pattern"),
@@ -173,7 +214,7 @@ function buildBotEventProperties(
     asnProvider: asnDetection?.asnProvider ?? "",
     clientBotScore: clientSignalResult.scoreForStats,
     clientSignalMask: clientSignalResult.maskForStats,
-    anomalyReasons: (anomalyDetection?.anomalyReasons ?? []).map(reason => reason.rule).join(","),
+    anomalyReasons: anomalyReasons.join(","),
     anomalyScore: anomalyDetection?.score ?? 0,
   };
 }
@@ -254,7 +295,7 @@ function classifyTrustedIngestion(
   clientSignalResult: ReturnType<typeof getClientSignalResult>
 ): BotDetectionResult | null {
   const uaClassification = classifyUA(userAgent);
-  if (!uaClassification.isBot) {
+  if (!uaClassification.isBot || uaClassification.supportingOnly) {
     return null;
   }
 
@@ -287,9 +328,10 @@ export async function checkBotBlocking({
   blockBots,
   trustedServerSideIngestion = false,
   isMobileSite = false,
+  capturesHumanInteractions = false,
   payload,
   lookupAsn: asnLookup = lookupAsn,
-}: BotBlockingInput): Promise<BotDetectionResult | null> {
+}: BotBlockingInput): Promise<BotDetectionResult | BotShadowObservation | null> {
   const userAgent = payload.userAgent || (headers["user-agent"] as string) || "";
   const clientSignalResult = getClientSignalResult(payload, userAgent, !isMobileSite && !trustedServerSideIngestion);
   recordBotBlockingRequest(
@@ -337,19 +379,28 @@ export async function checkBotBlocking({
   // first-party mobile SDK legitimately looks exactly like that, so skip these
   // layers for app/mobile sites and rely on the client-signal, ASN, and
   // rate-anomaly layers below, which apply equally to native traffic.
+  let supportingUaDetection: BotBlockingDetection | null = null;
   if (!isMobileSite) {
     // Layer 1: User-agent classification (vendored from isbot patterns, with categories)
     const uaClassification = classifyUA(userAgent);
-    if (uaClassification.isBot) {
-      addDetection("Bot detected using ua-pattern", {
-        layer: "ua_pattern",
-        botCategory: uaClassification.category,
-        matchedPattern: uaClassification.matchedPattern,
-        botName: uaClassification.name,
-        botOperator: uaClassification.operator,
-        botPurpose: uaClassification.purpose,
-      });
+    const uaDetection: BotBlockingDetection | null = uaClassification.isBot
+      ? {
+          layer: "ua_pattern",
+          botCategory: uaClassification.category,
+          matchedPattern: uaClassification.matchedPattern,
+          botName: uaClassification.name,
+          botOperator: uaClassification.operator,
+          botPurpose: uaClassification.purpose,
+        }
+      : null;
+    if (uaDetection && !uaClassification.supportingOnly) {
+      addDetection("Bot detected using ua-pattern", uaDetection);
     } else {
+      // A generic substring on an otherwise ordinary browser user agent — an
+      // in-app browser carrying its host app's name — corroborates but does not
+      // convict, like the weak client signals and generic hosting ASNs below.
+      supportingUaDetection = uaDetection;
+
       // Layer 1b: a browser release too old to have run the tracker that
       // reported the hit. Shares the ua_pattern layer so it lands in the
       // existing bot_category/matched_ua_pattern columns for auditing.
@@ -360,6 +411,9 @@ export async function checkBotBlocking({
           botCategory: "stale_version",
           matchedPattern: staleBrowser.matchedVersion,
         });
+        // One hit, one ua_pattern detection: the stale version is the stronger
+        // statement about this user agent.
+        supportingUaDetection = null;
       }
     }
 
@@ -437,6 +491,7 @@ export async function checkBotBlocking({
     language: payload.language,
     isHostingAsn,
     asn: asnInfo?.asn,
+    capturesHumanInteractions,
   });
   if (anomaly.isAnomalous) {
     addDetection("Bot detected using rate anomaly", {
@@ -450,6 +505,9 @@ export async function checkBotBlocking({
   // Supporting evidence attaches only when a convicting layer already fired —
   // two supporting signals must not convict each other.
   const hasConvictingDetection = detections.length > 0;
+  if (hasConvictingDetection && supportingUaDetection) {
+    addDetection("Bot detected using ua-pattern", supportingUaDetection);
+  }
   if (hasConvictingDetection && supportingClientSignalDetection) {
     addDetection("Bot detected using client signals", supportingClientSignalDetection);
   }
@@ -457,8 +515,25 @@ export async function checkBotBlocking({
     addDetection("Bot detected using bot asn", supportingHostingAsnDetection);
   }
 
+  // Rules under evaluation. They never reach `detections`, so nothing below can
+  // enforce them; they only decide whether an otherwise clean hit is recorded.
+  const shadowRules = anomaly.shadowReasons.map(reason => reason.rule);
+  if (isLowEngagementAsn(asnInfo?.asn)) {
+    shadowRules.push("asn_low_engagement");
+  }
+
   if (detections.length === 0) {
-    return null;
+    if (shadowRules.length === 0) {
+      return null;
+    }
+    recordShadowObservation(shadowRules);
+    return {
+      isBot: false,
+      enforced: false,
+      detections,
+      shadowRules,
+      eventProperties: buildBotEventProperties(detections, asnInfo, clientSignalResult, shadowRules),
+    };
   }
 
   if (LOG_BOT_DETECTIONS) {
@@ -483,6 +558,6 @@ export async function checkBotBlocking({
     enforced: blockBots,
     message: blockMessage ?? "Bot detected",
     detections,
-    eventProperties: buildBotEventProperties(detections, asnInfo, clientSignalResult),
+    eventProperties: buildBotEventProperties(detections, asnInfo, clientSignalResult, shadowRules),
   };
 }

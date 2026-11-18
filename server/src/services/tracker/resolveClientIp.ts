@@ -1,7 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { lookupAsn, type AsnLookup } from "../../db/geolocation/asn.js";
 import { getIpAddress } from "../../utils.js";
-import { isDatacenterAsn } from "./botBlocking/datacenterAsns.js";
+import { isProxyEdgeAsn } from "./proxyEdgeAsns.js";
 
 /**
  * ASN-aware client IP resolution — the durable successor to `getIpAddress`.
@@ -29,6 +29,12 @@ import { isDatacenterAsn } from "./botBlocking/datacenterAsns.js";
  * it delegates to `getIpAddress` (the simple header-precedence primitive).
  * Requires `GeoLite2-ASN.mmdb` (the same DB Layer-4 bot detection uses); see the
  * fallback note on `isProxiedEdge` below for the DB-missing behaviour.
+ *
+ * Which networks count as a proxy edge is this module's own list
+ * (`proxyEdgeAsns.ts`), not bot detection's hosting list. They started as the
+ * same data, but the hosting list is regenerated wholesale and this one must
+ * not be: a network dropped from it stops being trusted as a proxy, and every
+ * visitor behind a customer's proxy there collapses into the proxy's address.
  */
 
 /** First non-empty `X-Forwarded-For` entry, or null. */
@@ -81,7 +87,7 @@ const CF_WORKER_SUBREQUEST_IP = "2a06:98c0:3600::103";
  */
 function isProxiedEdge(ip: string, asnLookup: AsnLookup): boolean {
   if (ip.toLowerCase() === CF_WORKER_SUBREQUEST_IP) return true;
-  return isDatacenterAsn(asnLookup(ip)?.asn);
+  return isProxyEdgeAsn(asnLookup(ip)?.asn);
 }
 
 export interface ResolveClientIpOptions {

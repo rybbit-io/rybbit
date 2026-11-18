@@ -1,6 +1,6 @@
-import { Address4, Address6 } from "ip-address";
 import { lookupAsn } from "../../db/geolocation/asn.js";
 import { isDatacenterAsn } from "../tracker/botBlocking/datacenterAsns.js";
+import { toIpRange } from "./ipRange.js";
 
 /**
  * The IP string to feed into the anonymous user-ID hash.
@@ -26,12 +26,5 @@ export function bucketIpForIdentity(
     return ip;
   }
 
-  try {
-    if (ip.includes(":")) {
-      return `${new Address6(`${ip}/48`).startAddress().correctForm()}/48`;
-    }
-    return `${new Address4(`${ip}/24`).startAddress().correctForm()}/24`;
-  } catch {
-    return ip;
-  }
+  return toIpRange(ip);
 }

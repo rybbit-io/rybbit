@@ -82,6 +82,8 @@ export async function ingestEvent(trackingRequest: TrackingRequest): Promise<Ing
     blockBots: site.blockBots,
     trustedServerSideIngestion: trackingRequest.trustedServerSideIngestion,
     isMobileSite: site.type === "mobile",
+    capturesHumanInteractions:
+      site.trackOutbound || site.trackButtonClicks || site.trackCopy || site.trackFormInteractions,
     lookupAsn: trackingRequest.lookupAsn,
     payload: {
       siteId: site.siteId,
@@ -122,8 +124,9 @@ export async function ingestEvent(trackingRequest: TrackingRequest): Promise<Ing
     sessionId,
   });
 
-  // The Site has bot blocking turned off, so this hit is tracked like any other
-  // — but it was detected, and the detection is worth keeping. Mirroring it to
+  // Either the Site has bot blocking turned off, or nothing convicted and only a
+  // rule still in shadow mode fired. Both ways this hit is tracked like any other
+  // — but something was seen, and that is worth keeping. Mirroring it to
   // bot_observations is what lets the Site's owner see what turning blocking on
   // would have removed, which is otherwise unanswerable: before this, a Site
   // that opted out was never evaluated at all.
