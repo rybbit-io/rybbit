@@ -7,7 +7,7 @@ import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { RybbitTextLogo } from "../../components/RybbitLogo";
 import { SpinningGlobe } from "../../components/SpinningGlobe";
@@ -29,7 +29,6 @@ function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [turnstileToken, setTurnstileToken] = useState<string>("");
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +61,10 @@ function LoginPage() {
         userStore.setState({
           user: data.user,
         });
-        router.push(returnTo);
+        // A document navigation, not router.push(): this page subscribed to the active organization
+        // while signed out and got a 401, and a client-side push keeps that stale result, so the
+        // home page finds no organization and shows no sites until a reload.
+        window.location.assign(returnTo);
       }
 
       if (error) {
