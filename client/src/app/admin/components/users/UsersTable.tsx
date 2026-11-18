@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AdminUser } from "@/types/admin";
-import { MoreVertical, User, UserMinus, UserPlus } from "lucide-react";
+import { MoreVertical, ShieldOff, User, UserMinus, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +43,7 @@ import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { parseUtcTimestamp } from "../../../../lib/dateTimeUtils";
 import { AddToOrganizationDialog } from "./AddToOrganizationDialog";
 import { useRemoveUserFromOrganization } from "@/api/admin/hooks/useOrganizations";
+import { useResetAdminUserTwoFactor } from "@/api/admin/hooks/useAdminUserTwoFactor";
 import { toast } from "@/components/ui/sonner";
 import { Label } from "@/components/ui/label";
 import { CopyText } from "../../../../components/CopyText";
@@ -84,8 +85,10 @@ export function UsersTable({
   const [showRemoveConfirmDialog, setShowRemoveConfirmDialog] = useState(false);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>("");
   const [selectedOrganizationName, setSelectedOrganizationName] = useState<string>("");
+  const [resetTwoFactorUser, setResetTwoFactorUser] = useState<AdminUser | null>(null);
 
   const removeUserFromOrganization = useRemoveUserFromOrganization();
+  const resetTwoFactor = useResetAdminUserTwoFactor();
   const t = useExtracted();
   const { formatRelative } = useDateTimeFormat();
 
@@ -104,6 +107,17 @@ export function UsersTable({
       setSelectedOrganizationName("");
     } catch (error: any) {
       toast.error(error.message || t("Failed to remove user from organization"));
+    }
+  };
+
+  const handleResetTwoFactor = async () => {
+    if (!resetTwoFactorUser) return;
+    try {
+      await resetTwoFactor.mutateAsync(resetTwoFactorUser.id);
+      toast.success(t("Two-factor authentication reset for {email}", { email: resetTwoFactorUser.email }));
+      setResetTwoFactorUser(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("Failed to reset two-factor authentication"));
     }
   };
 
@@ -133,6 +147,17 @@ export function UsersTable({
             <span className="text-neutral-500 dark:text-neutral-400">{role}</span>
           );
         },
+      },
+      {
+        accessorKey: "twoFactorEnabled",
+        enableSorting: false,
+        header: () => <span>{t("2FA")}</span>,
+        cell: ({ row }) =>
+          row.original.twoFactorEnabled ? (
+            <Badge variant="success">{t("On")}</Badge>
+          ) : (
+            <span className="text-neutral-500 dark:text-neutral-400">{t("Off")}</span>
+          ),
       },
       {
         accessorKey: "createdAt",
@@ -184,6 +209,12 @@ export function UsersTable({
                   <UserPlus className="h-4 w-4" />
                   {t("Add to Organization")}
                 </DropdownMenuItem>
+                {row.original.twoFactorEnabled && (
+                  <DropdownMenuItem onClick={() => setResetTwoFactorUser(row.original)}>
+                    <ShieldOff className="h-4 w-4" />
+                    {t("Reset two-factor")}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {
@@ -286,6 +317,37 @@ export function UsersTable({
           onOpenChange={setShowAddToOrgDialog}
         />
       )}
+
+      <AlertDialog
+        open={resetTwoFactorUser !== null}
+        onOpenChange={open => {
+          if (!open && !resetTwoFactor.isPending) setResetTwoFactorUser(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Reset two-factor authentication?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "{email} can then sign in with their password alone, and their backup codes and trusted devices stop working. Only do this once you're sure it's really them asking.",
+                { email: resetTwoFactorUser?.email ?? "" }
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetTwoFactor.isPending}>{t("Cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={e => {
+                e.preventDefault();
+                handleResetTwoFactor();
+              }}
+              disabled={resetTwoFactor.isPending}
+            >
+              {resetTwoFactor.isPending ? t("Resetting...") : t("Reset two-factor")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Remove from Organization Confirmation */}
       <AlertDialog open={showRemoveConfirmDialog} onOpenChange={setShowRemoveConfirmDialog}>

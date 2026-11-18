@@ -40,6 +40,37 @@ The language used for menus and labels in the dashboard.
 
 Click **Change password**, enter your current password and a new one, and confirm it. Passwords must be at least 8 characters.
 
+### Two-factor authentication
+
+With two-factor authentication on, signing in with your email and password also asks for a code from an authenticator app, such as 1Password, Google Authenticator or Authy. Not in 2.9.2; applies to `edge` images and the next release.
+
+<Callout type="info">
+  Two-factor authentication applies to signing in with a password. If you sign in with Google or GitHub, turn on two-factor authentication in that account instead.
+</Callout>
+
+To turn it on:
+
+1. Click **Turn on** next to **Two-factor authentication**
+2. Enter your password and click **Continue**
+3. Scan the QR code with your authenticator app. If you can't scan it, copy the key below the code and enter it in the app.
+4. Enter the 6-digit code from the app and click **Turn on**
+5. Save your backup codes with **Copy codes** or **Download**, and keep them somewhere safe
+
+<Callout type="warn">
+  You see the backup codes once. Each code signs you in once, for when you can't use your authenticator app.
+</Callout>
+
+When you sign in, Rybbit asks for the code after your password. Click **Use a backup code** to enter a backup code instead. Tick **Trust this device for 30 days** to skip the code in that browser for 30 days.
+
+While two-factor authentication is on, you can:
+
+- Click **New backup codes** to replace your backup codes. Your old codes stop working.
+- Click **Turn off** to sign in with your password alone again. Your backup codes and trusted devices stop working.
+
+Both ask for your password.
+
+If you've lost your authenticator app and your backup codes, ask an admin of your Rybbit installation to [reset your two-factor authentication](/docs/managing-your-installation#resetting-two-factor-authentication). On Rybbit Cloud, contact Rybbit support.
+
 ## Personal API keys
 
 Personal API keys act as you, with your role in each organization, and stop working if you leave that organization. For an integration that should keep working when people leave, use an [organization API key](/docs/organization-settings#organization-api-keys) instead.

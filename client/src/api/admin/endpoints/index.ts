@@ -144,3 +144,6 @@ export type {
   ClickhouseQueryLogResponse,
   QueryLogParams,
 } from "./clickhouseStats";
+
+// Admin Users endpoints
+export { resetAdminUserTwoFactor } from "./adminUsers";

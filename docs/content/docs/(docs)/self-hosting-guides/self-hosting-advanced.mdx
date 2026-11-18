@@ -78,6 +78,10 @@ BETTER_AUTH_SECRET=generated_secret
 DISABLE_SIGNUP=false
 ```
 
+<Callout type="warn">
+Keep `BETTER_AUTH_SECRET` once Rybbit is running. Changing it signs everyone out, and users with two-factor authentication can't sign in with their password until an admin [resets their two-factor authentication](/docs/managing-your-installation#resetting-two-factor-authentication).
+</Callout>
+
 Optional variables that can be added:
 
 ```bash

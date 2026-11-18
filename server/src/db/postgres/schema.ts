@@ -46,6 +46,7 @@ export const user = pgTable(
     // deprecated - Resend IDs from the retired tip sequence; retained until the
     // separate contract migration audits and drops the legacy data
     scheduledTipEmailIds: jsonb("scheduled_tip_email_ids").$type<string[]>().default([]),
+    twoFactorEnabled: boolean().default(false),
   },
   table => [unique("user_username_unique").on(table.username), unique("user_email_unique").on(table.email)]
 );
@@ -224,6 +225,23 @@ export const account = pgTable("account", {
   createdAt: timestamp({ mode: "string" }).notNull(),
   updatedAt: timestamp({ mode: "string" }).notNull(),
 });
+
+// Two-factor table (BetterAuth). Encrypted with BETTER_AUTH_SECRET: rotating it locks out every user with two-factor on.
+export const twoFactor = pgTable(
+  "twoFactor",
+  {
+    id: text().primaryKey().notNull(),
+    secret: text().notNull(),
+    backupCodes: text().notNull(),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    verified: boolean().default(true),
+    failedVerificationCount: integer().default(0),
+    lockedUntil: timestamp({ mode: "string" }),
+  },
+  table => [index("twoFactor_secret_idx").on(table.secret), uniqueIndex("twoFactor_userId_uidx").on(table.userId)]
+);
 
 // Organization table (BetterAuth)
 export const organization = pgTable(

@@ -5,6 +5,7 @@ import { AuthError } from "@/components/auth/AuthError";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
+import { TwoFactorStep } from "@/components/auth/TwoFactorStep";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -29,6 +30,7 @@ function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,7 +60,10 @@ function LoginPage() {
           },
         }
       );
-      if (data?.user) {
+      if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        setPassword("");
+        setNeedsTwoFactor(true);
+      } else if (data && "user" in data && data.user) {
         userStore.setState({
           user: data.user,
         });
@@ -74,6 +79,11 @@ function LoginPage() {
     setIsLoading(false);
   };
 
+  const cancelTwoFactor = () => {
+    setNeedsTwoFactor(false);
+    setTurnstileToken("");
+  };
+
   const turnstileEnabled = IS_CLOUD && process.env.NODE_ENV === "production";
 
   return (
@@ -87,73 +97,85 @@ function LoginPage() {
           </a>
         </div>
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
-          <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">{t("Welcome back")}</h1>
-          <div className="flex flex-col gap-4">
-            <SocialButtons onError={setError} callbackURL={returnTo} />
-            <form onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-4">
-                <AuthInput
-                  id="email"
-                  label={t("Email")}
-                  type="email"
-                  autoComplete="email"
-                  placeholder="example@email.com"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
-
-                <AuthInput
-                  id="password"
-                  label={t("Password")}
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  rightElement={
-                    IS_CLOUD && (
-                      <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
-                        {t("Forgot password?")}
-                      </Link>
-                    )
-                  }
-                />
-
-                {turnstileEnabled && (
-                  <Turnstile
-                    onSuccess={token => setTurnstileToken(token)}
-                    onError={() => setTurnstileToken("")}
-                    onExpire={() => setTurnstileToken("")}
-                    className="flex justify-center"
+          <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">
+            {needsTwoFactor ? t("Two-factor authentication") : t("Welcome back")}
+          </h1>
+          {needsTwoFactor ? (
+            <TwoFactorStep
+              onVerified={user => {
+                userStore.setState({ user });
+                router.push(returnTo);
+              }}
+              onCancel={cancelTwoFactor}
+            />
+          ) : (
+            <div className="flex flex-col gap-4">
+              <SocialButtons onError={setError} callbackURL={returnTo} />
+              <form onSubmit={handleSubmit}>
+                <div className="flex flex-col gap-4">
+                  <AuthInput
+                    id="email"
+                    label={t("Email")}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="example@email.com"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
                   />
-                )}
 
-                <AuthButton
-                  isLoading={isLoading}
-                  loadingText={t("Logging in...")}
-                  disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
-                >
-                  {t("Login")}
-                </AuthButton>
+                  <AuthInput
+                    id="password"
+                    label={t("Password")}
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    rightElement={
+                      IS_CLOUD && (
+                        <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
+                          {t("Forgot password?")}
+                        </Link>
+                      )
+                    }
+                  />
 
-                <AuthError error={error} title={t("Error Logging In")} />
-              </div>
-            </form>
+                  {turnstileEnabled && (
+                    <Turnstile
+                      onSuccess={token => setTurnstileToken(token)}
+                      onError={() => setTurnstileToken("")}
+                      onExpire={() => setTurnstileToken("")}
+                      className="flex justify-center"
+                    />
+                  )}
 
-            {(!configs?.disableSignup || !isLoadingConfigs) && (
-              <div className="text-center text-sm">
-                {t("Don't have an account?")}{" "}
-                <Link
-                  href="/signup"
-                  className="underline underline-offset-4 hover:text-emerald-400 transition-colors duration-300"
-                >
-                  {t("Sign up")}
-                </Link>
-              </div>
-            )}
-          </div>
+                  <AuthButton
+                    isLoading={isLoading}
+                    loadingText={t("Logging in...")}
+                    disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
+                  >
+                    {t("Login")}
+                  </AuthButton>
+
+                  <AuthError error={error} title={t("Error Logging In")} />
+                </div>
+              </form>
+
+              {(!configs?.disableSignup || !isLoadingConfigs) && (
+                <div className="text-center text-sm">
+                  {t("Don't have an account?")}{" "}
+                  <Link
+                    href="/signup"
+                    className="underline underline-offset-4 hover:text-emerald-400 transition-colors duration-300"
+                  >
+                    {t("Sign up")}
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {!IS_CLOUD && (

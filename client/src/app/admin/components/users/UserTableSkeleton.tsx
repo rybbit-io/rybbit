@@ -23,6 +23,10 @@ export function UserTableSkeleton({ rowCount = 10 }: UserTableSkeletonProps) {
           <TableCell>
             <Skeleton className="h-4 w-12" />
           </TableCell>
+          {/* 2FA */}
+          <TableCell>
+            <Skeleton className="h-4 w-8" />
+          </TableCell>
           {/* Created */}
           <TableCell>
             <Skeleton className="h-4 w-24" />
