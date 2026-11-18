@@ -165,7 +165,7 @@ export function SignDpaForm({
       <LedgerSection
         title={t("Review and sign")}
         description={t(
-          "Rybbit has already signed. It takes effect when you sign. The PDF downloads right away and we email you a copy. Need another later? Sign again."
+          "Rybbit has already signed. It takes effect when you sign. The PDF downloads right away and we email you a copy. To get another copy later, sign again."
         )}
       >
         <div
