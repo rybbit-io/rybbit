@@ -668,7 +668,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
             <strong>Type or paste your text</strong> into the text area above
           </li>
           <li>
-            <strong>Watch the character count</strong> update in real-time
+            <strong>Watch the character count</strong> update in real time
           </li>
           <li>
             <strong>Monitor the progress bar</strong> to see how close you are to the limit
@@ -725,7 +725,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
       {
         question: "How does this character counter work?",
         answer:
-          "This tool counts characters in real-time as you type or paste text. It shows your total character count, remaining characters, and a visual progress bar. All counting happens locally in your browser for complete privacy.",
+          "This tool counts characters in real time as you type or paste text. It shows your total character count, remaining characters, and a visual progress bar. All counting happens locally in your browser for complete privacy.",
       },
       {
         question: "What counts as a character?",
@@ -1211,7 +1211,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
     const faqs = [
       {
         question: `How does the ${platform.name} post generator work?`,
-        answer: `This tool uses AI to create platform-optimized posts based on your topic and chosen style. It considers ${platform.name}'s best practices, character limits, and engagement patterns to generate content that resonates with your audience.`,
+        answer: `This tool uses AI to create platform-optimized posts based on your topic and chosen style. It considers ${platform.name}'s conventions, character limits, and engagement patterns to generate content that resonates with your audience.`,
       },
       {
         question: "What post styles are available?",
@@ -1261,7 +1261,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
         faqs={faqs}
         relatedToolsCategory="social-media"
         ctaTitle={`Optimize your ${platform.name} strategy with Rybbit`}
-        ctaDescription="Track which posts drive the most engagement and refine your content strategy with data-driven insights."
+        ctaDescription="Track which posts drive the most engagement and refine your content strategy."
         ctaEventLocation={`${platform.id}_post_generator_cta`}
         structuredData={structuredData}
       />
@@ -1358,7 +1358,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
         question: `How does the ${platform.name} ${platform.pageType} name generator work?`,
         answer: `This tool uses AI to analyze your topic and keywords, then generates creative, memorable ${platform.pageType.toLowerCase()} names that are optimized for ${
           platform.name
-        }. It considers platform-specific best practices and naming conventions.`,
+        }. It considers platform-specific guidelines and naming conventions.`,
       },
       {
         question: "Can I customize the generated names?",
@@ -1489,7 +1489,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
 
         <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-6">
           <strong>Note:</strong> While this tool generates comments using AI, always review and personalize them before
-          posting. Authentic engagement is key to building genuine connections on {platform.name}.
+          posting. Authentic engagement is key to building connections on {platform.name}.
         </p>
       </>
     );
@@ -1497,7 +1497,7 @@ export default async function PlatformToolPage({ params }: PageProps) {
     const faqs = [
       {
         question: `How does the ${platform.name} comment generator work?`,
-        answer: `This tool uses AI to analyze the content you provide and generate contextually relevant comments based on your chosen tone and length preference. It considers ${platform.name}-specific best practices to create authentic, engaging responses.`,
+        answer: `This tool uses AI to analyze the content you provide and generate contextually relevant comments based on your chosen tone and length preference. It considers ${platform.name}-specific conventions to create authentic, engaging responses.`,
       },
       {
         question: "Can I edit the generated comments before posting?",

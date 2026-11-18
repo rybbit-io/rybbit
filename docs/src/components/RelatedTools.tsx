@@ -826,7 +826,7 @@ const allTools: Tool[] = [
   },
   {
     name: "X (Twitter) Hashtag Generator",
-    description: "Generate impactful X hashtags to join conversations",
+    description: "Generate X hashtags to join conversations",
     href: "/tools/x-hashtag-generator",
     category: "social-media",
     platform: "x",
@@ -963,7 +963,7 @@ const allTools: Tool[] = [
   },
   {
     name: "X (Twitter) Bio Generator",
-    description: "Generate impactful X bios with AI within 160-character limit",
+    description: "Generate X bios with AI within 160-character limit",
     href: "/tools/x-bio-generator",
     category: "social-media",
     platform: "x",

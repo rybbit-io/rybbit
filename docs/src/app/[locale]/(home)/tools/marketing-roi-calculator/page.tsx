@@ -166,7 +166,7 @@ const educationalContent = (
       </li>
     </ul>
     <p className="text-sm text-neutral-600 dark:text-neutral-400">
-      Use our calculator above to apply these formulas instantly. All calculations are performed in real-time as you
+      Use our calculator above to apply these formulas instantly. All calculations are performed in real time as you
       enter your numbers.
     </p>
 

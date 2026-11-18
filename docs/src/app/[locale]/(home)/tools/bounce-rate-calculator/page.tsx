@@ -252,7 +252,7 @@ export default function BounceRateCalculatorPage() {
       educationalContent={educationalContent}
       faqs={faqs}
       relatedToolsCategory="analytics"
-      ctaTitle="Track bounce rate in real-time with Rybbit"
+      ctaTitle="Track bounce rate in real time with Rybbit"
       ctaDescription="Monitor bounce rate by page, source, and device."
       ctaEventLocation="bounce_rate_calculator_cta"
       structuredData={structuredData}

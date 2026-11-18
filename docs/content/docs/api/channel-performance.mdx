@@ -1,13 +1,13 @@
 ---
 title: Compare Channel Performance
-description: Rank your acquisition channels by how well they convert — not just how much traffic they send — by combining the metric, overview, and goals endpoints with channel filters.
+description: Rank your acquisition channels by how well they convert, not just how much traffic they send, by combining the metric, overview, and goals endpoints with channel filters.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 
-The channel that sends the most visitors is rarely the channel that sends the most *customers*. This guide ranks each acquisition channel by conversion rate so you can see which sources punch above their weight — and which ones are vanity traffic.
+The channel that sends the most visitors is rarely the channel that sends the most *customers*. This guide ranks each acquisition channel by conversion rate so you can see which sources punch above their weight, and which ones are vanity traffic.
 
 **Endpoints used:**
 
@@ -15,7 +15,7 @@ The channel that sends the most visitors is rarely the channel that sends the mo
 - [`GET /goals`](/docs/api/goals/list) — conversion metrics, scoped with a channel filter
 
 <Callout type="info">
-The key technique here is the [`filters` parameter](/docs/api/getting-started#filter-parameters). Almost every endpoint accepts it, so you can take any site-wide metric and recompute it for a single segment — here, one channel at a time.
+The key technique here is the [`filters` parameter](/docs/api/getting-started#filter-parameters). Almost every endpoint accepts it, so you can take any site-wide metric and recompute it for a single segment (here, one channel at a time).
 </Callout>
 
 ## The workflow
@@ -34,7 +34,7 @@ The key technique here is the [`filters` parameter](/docs/api/getting-started#fi
 
 ## Full script
 
-This script ranks every channel by the conversion rate of a chosen goal (here, goal `1` — your signup goal). Swap in whichever goal matters to your business. `/goals` returns 10 goals per page by default, newest first, so the script asks for `page_size=100` (the maximum); with more than 100 goals, page through with `page` until you find yours.
+This script ranks every channel by the conversion rate of a chosen goal (here, goal `1`, your signup goal). Swap in whichever goal matters to your business. `/goals` returns 10 goals per page by default, newest first, so the script asks for `page_size=100` (the maximum); with more than 100 goals, page through with `page` until you find yours.
 
 <Tabs items={['JavaScript', 'Python']}>
 <Tab value="JavaScript">
@@ -167,16 +167,16 @@ Paid Search            2,310     142     6.15%
 Social                 6,150     119     1.93%
 ```
 
-Social sends the **most** traffic (6,150 sessions) but converts the **worst** (1.93%). Referral sends a fraction of the volume but converts nine times better. The takeaway writes itself: the referral partnerships deserve more investment, and the social strategy needs a hard look before more budget goes into it.
+Social sends the **most** traffic (6,150 sessions) but converts the **worst** (1.93%). Referral sends a fraction of the volume but converts nine times better. The referral partnerships deserve more investment, and the social strategy needs a hard look before more budget goes into it.
 
 <Callout type="warn">
-Conversion rate alone can mislead on tiny samples — Email looks healthy at 9% but it's only 88 conversions. Always show the raw `sessions` and `conversions` columns next to the rate so a channel with 12 sessions and one fluke conversion doesn't top your list.
+Conversion rate alone can mislead on tiny samples: Email looks healthy at 9% but it's only 88 conversions. Always show the raw `sessions` and `conversions` columns next to the rate so a channel with 12 sessions and one fluke conversion doesn't top your list.
 </Callout>
 
 ## Variations
 
 - **By UTM campaign instead of channel:** swap `parameter: 'channel'` for `parameter: 'utm_campaign'`, and filter on `utm_campaign` in the goals call. Same code, campaign-level granularity.
-- **Engagement instead of conversion:** call [`/overview`](/docs/api/overview/overview) with the channel filter to compare `bounce_rate` and `session_duration` per channel — useful when you don't have a goal defined yet.
+- **Engagement instead of conversion:** call [`/overview`](/docs/api/overview/overview) with the channel filter to compare `bounce_rate` and `session_duration` per channel (useful when you don't have a goal defined yet).
 - **Full-funnel by channel:** run [`/funnels/analyze`](/docs/api/funnels/analyze) with a channel filter to see *where* in the funnel each channel's visitors fall out, not just the final rate.
 
 ## Next steps

@@ -92,7 +92,7 @@ export default function DashboardSharingPage() {
         introParagraphs={[
           <>
             Analytics that only you can log into is analytics going to waste. Clients want to see the campaign working, communities want proof of traction, and your own site might deserve a live visitor counter. Rybbit gives you{" "}
-            <strong className="text-neutral-900 dark:text-white">four ways to share</strong>, each with its own clearly-drawn access boundary.
+            <strong className="text-neutral-900 dark:text-white">four ways to share</strong>, each with its own clearly drawn access boundary.
           </>,
           <>
             Go fully open with a <strong className="text-neutral-900 dark:text-white">public dashboard</strong>: one toggle and anyone can view your stats, read-only. Or keep it selective with a{" "}

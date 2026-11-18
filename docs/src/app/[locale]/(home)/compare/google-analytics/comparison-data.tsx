@@ -134,7 +134,7 @@ export const googleAnalyticsExtendedData = {
             of these; Google&apos;s answer to replay and heatmaps has always been third-party tools.
           </>,
           <>
-            What GA4 genuinely does better is the Google ecosystem: bidirectional Google Ads integration, BigQuery
+            What GA4 does better is the Google ecosystem: bidirectional Google Ads integration, BigQuery
             export, and advanced attribution modeling for paid campaigns. If your team lives in Google Ads, keeping GA4
             for ad attribution while running Rybbit as your source of truth for real traffic is a reasonable setup;
             the two scripts don&apos;t conflict.
@@ -252,7 +252,7 @@ export const googleAnalyticsExtendedData = {
     {
       title: "Pricing",
       href: "/pricing",
-      description: "Simple, transparent pricing for every team size",
+      description: "Plans and prices",
     },
   ] satisfies RelatedResource[],
 };

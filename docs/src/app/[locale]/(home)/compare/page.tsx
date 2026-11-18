@@ -133,7 +133,7 @@ export default function ComparePage() {
         <InteriorPageHero
           eyebrow="Platform comparisons"
           title="Rybbit vs The Competition"
-          description="See how Rybbit stacks up against every major analytics platform. Privacy-first, open source, and built for modern teams."
+          description="See how Rybbit stacks up against every major analytics platform. Privacy-first and open source."
           eventLocation="comparison_hub_hero"
         />
 
@@ -179,7 +179,7 @@ export default function ComparePage() {
                     Head-to-head comparisons
                   </h2>
                   <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                    Choosing between two other tools? These pages compare them directly, with a source for every claim.
+                    If you&apos;re choosing between two other tools, these pages compare them directly, with a source for every claim.
                   </p>
                 </div>
               </div>
@@ -208,7 +208,7 @@ export default function ComparePage() {
                   Buying guides
                 </h2>
                 <p className="mt-5 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                  Weighing more than two tools? These roundups compare the wider field, Rybbit included.
+                  If you&apos;re weighing more than two tools, these roundups compare the wider field, Rybbit included.
                 </p>
               </div>
             </div>

@@ -7,15 +7,15 @@ import { Steps } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-Next.js provides a powerful [rewrites](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) feature that makes it easy to proxy Rybbit tracking through your own domain. This guide works with both the App Router (Next.js 13+) and Pages Router.
+Next.js provides a [rewrites](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) feature that makes it easy to proxy Rybbit tracking through your own domain. This guide works with both the App Router (Next.js 13+) and Pages Router.
 
 <Callout type="info">
-Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**. Rewrites on this platform automatically forward the browser's headers and set `X-Forwarded-For` to the visitor IP — the toggle tells Rybbit to trust that forwarded IP directly.
+Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**. Rewrites on this platform automatically forward the browser's headers and set `X-Forwarded-For` to the visitor IP. The toggle tells Rybbit to trust that forwarded IP directly.
 </Callout>
 
 ## Overview
 
-Next.js rewrites allow you to map incoming request paths to different destination URLs transparently. This is perfect for proxying analytics since the browser sees requests to your domain while Next.js forwards them to Rybbit's servers behind the scenes.
+Next.js rewrites allow you to map incoming request paths to different destination URLs transparently. This works well for proxying analytics since the browser sees requests to your domain while Next.js forwards them to Rybbit's servers behind the scenes.
 
 **What you'll achieve:**
 - Serve Rybbit scripts from your domain (e.g., `/analytics/script.js`)
@@ -448,7 +448,7 @@ Add the session replay endpoints to your rewrites:
 
 When deploying to Vercel:
 1. Add `NEXT_PUBLIC_RYBBIT_HOST` environment variable in your Vercel project settings
-2. Rewrites automatically work at the edge with zero configuration
+2. Rewrites run at the edge automatically
 3. Bandwidth is generous on all Vercel plans
 
 ### Self-Hosted

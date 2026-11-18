@@ -25,10 +25,10 @@ export const postGeneratorPlatformConfigs: Record<
     colorHex: "#0A66C2",
     characterLimit: 3000,
     contextGuidelines:
-      "LinkedIn posts should be professional, insightful, and value-driven. Focus on career insights, industry trends, and thought leadership.",
+      "LinkedIn posts should be professional, insightful, and value-driven. Focus on career insights, industry trends, and your expertise.",
     educationalContent: `LinkedIn is a professional networking platform where quality content builds your personal brand and attracts opportunities. Posts that share insights, lessons learned, and valuable perspectives perform best.
 
-Effective LinkedIn posts are authentic, provide value, and encourage professional discussion. They often include personal stories, data-driven insights, or actionable advice. The best posts strike a balance between professional and personable.`,
+Effective LinkedIn posts are authentic, provide value, and encourage professional discussion. They often include personal stories, data-driven insights, or practical advice. The best posts strike a balance between professional and personable.`,
     recommendedStyles: [
       "Professional Insight",
       "Thought Leadership",
@@ -44,12 +44,12 @@ Effective LinkedIn posts are authentic, provide value, and encourage professiona
     name: "X (Twitter)",
     displayName: "X (Twitter) Post Generator",
     description:
-      "Generate engaging X (Twitter) posts with AI. Create concise, impactful tweets that capture attention and drive engagement.",
+      "Generate engaging X (Twitter) posts with AI. Create concise tweets that capture attention and drive engagement.",
     simpleIconSlug: "x",
     colorHex: "#000000",
     characterLimit: 280,
     contextGuidelines:
-      "X/Twitter posts must be concise and impactful. Every word counts. Focus on hooks, clarity, and engagement.",
+      "X/Twitter posts must be concise and punchy. Every word counts. Focus on hooks, clarity, and engagement.",
     educationalContent: `X (Twitter) is a fast-paced platform where brevity and impact are essential. The 280-character limit means every word must earn its place. Great posts capture attention immediately and encourage interaction.
 
 Effective X posts are concise, clear, and compelling. They often use strong hooks, pose questions, or share surprising insights. The best posts are easily quotable and retweetable.`,
@@ -145,8 +145,8 @@ Effective Threads posts are conversational, timely, and invite responses. They o
     colorHex: "#FF4500",
     characterLimit: 40000,
     contextGuidelines:
-      "Reddit posts should provide genuine value and respect community rules. Avoid self-promotion and focus on authentic contribution.",
-    educationalContent: `Reddit values authentic, valuable content that contributes to community discussions. Each subreddit has its own culture and rules. Posts should respect these norms and provide real value to the community.
+      "Reddit posts should provide value and respect community rules. Avoid self-promotion and focus on authentic contribution.",
+    educationalContent: `Reddit values authentic, valuable content that contributes to community discussions. Each subreddit has its own culture and rules. Posts should respect these norms and provide value to the community.
 
 Effective Reddit posts are detailed, helpful, and genuine. They might ask thoughtful questions, share unique experiences, or provide in-depth information. The best posts spark meaningful discussion and earn upvotes through quality.`,
     recommendedStyles: [

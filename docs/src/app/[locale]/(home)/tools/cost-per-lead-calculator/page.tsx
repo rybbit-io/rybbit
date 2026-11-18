@@ -297,7 +297,7 @@ export default function CostPerLeadPage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Track CPL and lead metrics with Rybbit"
-      ctaDescription="Monitor cost per lead, lead quality, and channel performance in real-time with Rybbit's analytics platform."
+      ctaDescription="Monitor cost per lead, lead quality, and channel performance in real time with Rybbit's analytics platform."
       ctaEventLocation="cost_per_lead_calculator_cta"
       structuredData={structuredData}
     />

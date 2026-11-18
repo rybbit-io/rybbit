@@ -1,6 +1,6 @@
 ---
 title: Build a Live Visitor Feed
-description: Poll the live visitor count and the events endpoint to build a real-time activity stream — the foundation for a live dashboard, an internal "who's online" widget, or an alert when a key page gets traffic.
+description: Poll the live visitor count and the events endpoint to build a real-time activity stream: the foundation for a live dashboard, an internal "who's online" widget, or an alert when a key page gets traffic.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -40,7 +40,7 @@ Events are written in small batches, so one can land slightly after a later one.
 
 ## Full script
 
-A Node script that prints a live count plus a rolling feed of activity. The same loop drives a browser dashboard — just replace `console.log` with DOM updates.
+A Node script that prints a live count plus a rolling feed of activity. The same loop drives a browser dashboard: just replace `console.log` with DOM updates.
 
 <Tabs items={['JavaScript', 'Python']}>
 <Tab value="JavaScript">
@@ -229,7 +229,7 @@ for (const e of res.data) {
 </Tabs>
 
 <Callout type="warn">
-**Mind the daily quota.** On Rybbit Cloud, a continuous poll is measured against your plan's daily quota (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only)), not just its per-second rate. A 10-second poll running around the clock is 8,640 requests/day — over the Standard quota of 5,000, and 17,280 with the live-count call added. Poll every 20-30 seconds, or only while someone is actually watching the page, and check `X-RateLimit-Daily-Remaining` to see where you stand. Self-hosted instances are not rate limited.
+**Mind the daily quota.** On Rybbit Cloud, a continuous poll is measured against your plan's daily quota (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only)), not just its per-second rate. A 10-second poll running around the clock is 8,640 requests/day, over the Standard quota of 5,000, and 17,280 with the live-count call added. Poll every 20-30 seconds, or only while someone is actually watching the page, and check `X-RateLimit-Daily-Remaining` to see where you stand. Self-hosted instances are not rate limited.
 </Callout>
 
 ## Next steps

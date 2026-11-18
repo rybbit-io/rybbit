@@ -7,13 +7,13 @@ import { Callout } from "fumadocs-ui/components/callout";
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { SiClaude } from "@icons-pack/react-simple-icons";
 
-Rybbit includes a hosted [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) endpoint. It gives an AI assistant read and write access to your analytics: exploring traffic and behavior data, and managing sites, goals, funnels, organization members, teams, and user profiles — through the same API the dashboard uses, with the same access checks, roles, and rate limits.
+Rybbit includes a hosted [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) endpoint. It gives an AI assistant read and write access to your analytics: exploring traffic and behavior data, and managing sites, goals, funnels, organization members, teams, and user profiles, all through the same API the dashboard uses, with the same access checks, roles, and rate limits.
 
 Your MCP client connects to Rybbit over HTTPS and sends your API key with each protocol request. Rybbit verifies the key before processing any message, and every tool call is authorized against the key user's role and site access.
 
 ## Connect a client
 
-If your client supports the MCP authorization flow — Claude Code, Codex, Claude Desktop, and opencode all do — you can [connect with OAuth](#or-connect-with-oauth) and skip API keys entirely. The steps below describe the API-key path, which works in every client and supports scoped credentials.
+If your client supports the MCP authorization flow (Claude Code, Codex, Claude Desktop, and opencode all do), you can [connect with OAuth](#or-connect-with-oauth) and skip API keys entirely. The steps below describe the API-key path, which works in every client and supports scoped credentials.
 
 ### 1. Create an API key
 
@@ -23,7 +23,7 @@ If your client supports the MCP authorization flow — Claude Code, Codex, Claud
 
 A personal key acts as you. If the connection should belong to the organization and keep working when people leave, an admin or owner can instead create an **organization API key** under **Settings → Organization**. It reaches every site in that organization with admin authority. See [API keys](/docs/api/getting-started#generating-api-keys) for both kinds.
 
-A key created without permissions can do everything its user can do. To hand an agent a narrower credential, create the key with scoped permissions (`POST /api/user/api-keys` with a `permissions` object, e.g. `{"analytics": ["read"], "goals": ["read", "write"]}`): the MCP tool list and every API call are then limited to those `resource:action` scopes. `write` implies `read` on the same resource, and scopes never elevate — org admin/owner requirements still apply. Deleting the key revokes the connection.
+A key created without permissions can do everything its user can do. To hand an agent a narrower credential, create the key with scoped permissions (`POST /api/user/api-keys` with a `permissions` object, e.g. `{"analytics": ["read"], "goals": ["read", "write"]}`): the MCP tool list and every API call are then limited to those `resource:action` scopes. `write` implies `read` on the same resource, and scopes never elevate: org admin/owner requirements still apply. Deleting the key revokes the connection.
 
 ### 2. Add the endpoint
 
@@ -60,13 +60,13 @@ MCP clients use different configuration formats. A typical remote-server configu
 }
 ```
 
-Use your client's secret or environment-variable support when available instead of saving the key in a file. Query-string API keys are not accepted by the MCP endpoint. Per-client walkthroughs — Claude Code, Codex, Claude Desktop, Cursor, VS Code, opencode — are in [Client guides](#client-guides) below.
+Use your client's secret or environment-variable support when available instead of saving the key in a file. Query-string API keys are not accepted by the MCP endpoint. Per-client walkthroughs (Claude Code, Codex, Claude Desktop, Cursor, VS Code, opencode) are in [Client guides](#client-guides) below.
 
 ### Or connect with OAuth
 
 Clients that support the MCP authorization flow can skip API keys entirely: add the endpoint URL with no headers, and the client discovers Rybbit's authorization server through the standard well-known metadata (`/.well-known/oauth-protected-resource`), registers itself, and opens a browser window for you to log in and approve access. The resulting access token acts with your user's role, exactly like an API key would.
 
-OAuth grants support the same `resource:action` scopes as API keys (advertised in `scopes_supported`). A grant that requests only the standard OIDC scopes is unrestricted; a grant that requests custom scopes like `analytics:read` is limited to them. The requesting client controls which scopes it asks for — consent is currently approve-or-deny as a whole.
+OAuth grants support the same `resource:action` scopes as API keys (advertised in `scopes_supported`). A grant that requests only the standard OIDC scopes is unrestricted; a grant that requests custom scopes like `analytics:read` is limited to them. The requesting client controls which scopes it asks for. Consent is currently approve-or-deny as a whole.
 
 ### 3. Start with context
 
@@ -78,7 +78,7 @@ Ask the assistant to call `list_sites`, or prompt it with something like:
 
 ## Client guides
 
-Coding agents can use the endpoint to pull analytics into your development workflow — checking whether an error you just fixed still occurs in production, or looking up which pages matter before a refactor — and chat clients like Claude Desktop turn it into a conversational analytics interface. Follow the guide for your client:
+Coding agents can use the endpoint to pull analytics into your development workflow (checking whether an error you just fixed still occurs in production, or looking up which pages matter before a refactor) and chat clients like Claude Desktop turn it into a conversational analytics interface. Follow the guide for your client:
 
 <Cards>
   <Card
@@ -213,7 +213,7 @@ The MCP surface mirrors the REST API's permission model:
 
 A key acts with its user's role on each site, including [site-specific roles](/docs/organization-settings#member-roles) from site restrictions and teams, and it reaches exactly the sites that user can see. The REST layer enforces all of this: an underprivileged key gets a 403 `"Insufficient role"` naming the role required.
 
-To give an assistant a read-only or read-mostly view, create a **scoped** API key (see step 1): grant only the `resource:action` scopes it needs — e.g. `{"analytics": ["read"], "sessions": ["read"]}` for a reporting agent. The MCP tool list is filtered to those scopes, and any out-of-scope call returns `403 { "error": "Insufficient scope", "required": "goals:write" }`. Alternatively, connect with a viewer's key: it hides nothing but refuses every write.
+To give an assistant a read-only or read-mostly view, create a **scoped** API key (see step 1): grant only the `resource:action` scopes it needs, e.g. `{"analytics": ["read"], "sessions": ["read"]}` for a reporting agent. The MCP tool list is filtered to those scopes, and any out-of-scope call returns `403 { "error": "Insufficient scope", "required": "goals:write" }`. Alternatively, connect with a viewer's key: it hides nothing but refuses every write.
 
 OAuth clients request scopes through the standard grant. Rybbit advertises the same `resource:action` scopes in its discovery metadata; a grant carrying no custom scopes (or only the standard OIDC scopes) is treated as full access, for backward compatibility.
 
@@ -224,7 +224,7 @@ OAuth clients request scopes through the standard grant. Rybbit advertises the s
 ## Data and security boundary
 
 - The API key is verified before any MCP message is processed, and each tool call re-runs the corresponding REST route's own access checks, role requirements, and rate limits.
-- The surface returns whatever the REST API returns for your role — including session-level records and, where a site has IP tracking enabled, visitor IP addresses. Connect only AI clients you trust with that data, and use a separate, revocable API key per integration.
+- The surface returns whatever the REST API returns for your role, including session-level records and, where a site has IP tracking enabled, visitor IP addresses. Connect only AI clients you trust with that data, and use a separate, revocable API key per integration.
 - Text originating in tracked traffic (page titles, paths, referrers, event names, traits) is stripped of control and bidi-override characters. AI clients should still treat these values as untrusted data, never as instructions.
 - `run_query` is restricted to a read-only, site-scoped table with row and execution-time caps.
 - The server does not contain an AI model or send analytics to an AI provider. Data only leaves Rybbit in response to the MCP client you configure.

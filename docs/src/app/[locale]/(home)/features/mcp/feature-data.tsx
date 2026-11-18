@@ -98,7 +98,7 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Terminal className="w-6 h-6" />,
     title: "Developers & coding agents",
     description:
-      "Check whether the error you just fixed still occurs in production, or look up which pages actually matter before a refactor, without leaving the editor.",
+      "Check whether the error you just fixed still occurs in production, or look up which pages matter before a refactor, without leaving the editor.",
   },
   {
     icon: <Rocket className="w-6 h-6" />,
@@ -199,6 +199,6 @@ export const relatedFeatures: RelatedFeature[] = [
   {
     title: "Dashboard Sharing",
     href: "/features/dashboard-sharing",
-    description: "Prefer humans over agents? Share the dashboard directly.",
+    description: "For humans rather than agents, share the dashboard directly.",
   },
 ];

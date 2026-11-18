@@ -122,7 +122,7 @@ export default function EnterprisePage() {
         description="SSO, dedicated instances, on-premise installation, infinite retention, and an SLA, all on a codebase your security review can audit line by line instead of taking on faith."
         eventLocation="enterprise_hero"
         primaryAction={{ href: "/contact", label: "Contact us", eventName: "contact" }}
-        note="Prefer self-serve? Every plan starts with a 7-day free trial."
+        note="If you'd rather self-serve, every plan starts with a 7-day free trial."
       />
 
       <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="enterprise-proof">
@@ -164,7 +164,7 @@ export default function EnterprisePage() {
               </h2>
               <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
                 Enterprise is everything in Pro (funnels, replays, unlimited websites and team members) plus the layer
-                large organizations actually negotiate over.
+                large organizations negotiate over.
               </p>
               <Link
                 href="/pricing"

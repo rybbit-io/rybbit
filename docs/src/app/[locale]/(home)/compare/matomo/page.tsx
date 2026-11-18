@@ -80,7 +80,7 @@ const structuredData = {
           name: "Does Matomo have features Rybbit doesn't?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes, Matomo offers heatmaps, A/B testing, form analytics, and a custom report builder that Rybbit doesn't have. However, many of these require paid plugins. Rybbit focuses on delivering the analytics features most teams actually need, with a much simpler experience.",
+            text: "Yes, Matomo offers heatmaps, A/B testing, form analytics, and a custom report builder that Rybbit doesn't have. However, many of these require paid plugins. Rybbit focuses on delivering the analytics features most teams need, with a much simpler experience.",
           },
         },
       ],

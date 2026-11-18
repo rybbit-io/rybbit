@@ -288,7 +288,7 @@ export default function CostPerViewPage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Track CPV and video metrics with Rybbit"
-      ctaDescription="Monitor cost per view, video engagement, and campaign performance across all platforms in real-time with Rybbit."
+      ctaDescription="Monitor cost per view, video engagement, and campaign performance across all platforms in real time with Rybbit."
       ctaEventLocation="cost_per_view_calculator_cta"
       structuredData={structuredData}
     />

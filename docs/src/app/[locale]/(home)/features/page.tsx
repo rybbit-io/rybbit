@@ -300,7 +300,7 @@ export default function FeaturesPage() {
     {
       icon: <Database className="w-5 h-5" />,
       title: t("Data ownership"),
-      description: t("Your data, your rules. Self-host or use our cloud; you're always in control."),
+      description: t("Self-host or use our cloud; either way, you control your data."),
     },
   ];
 
@@ -383,7 +383,7 @@ export default function FeaturesPage() {
       />
 
       <CTASection
-        title={t("Ready to get started?")}
+        title={t("Get started with Rybbit")}
         description={t("Add the script and start understanding your traffic in minutes.")}
         eventLocation="features_bottom_cta"
       />

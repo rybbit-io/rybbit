@@ -103,7 +103,7 @@ export default function McpPage() {
             <strong className="text-neutral-900 dark:text-white">OAuth or scoped, revocable API keys</strong>, and every tool call is authorized against your role, site access, and rate limits. Rybbit runs no AI model of its own. Your data goes only to the client you configure, on cloud or self-hosted.
           </>,
           <>
-            Weighing your options? We compare the{" "}
+            If you&apos;re weighing your options, we compare the{" "}
             <Link href="/blog/best-analytics-mcp-servers">best analytics MCP servers</Link>, walk through
             setting up the <Link href="/blog/google-analytics-mcp">Google Analytics MCP server</Link>, and show how
             to get <Link href="/blog/google-search-console-mcp">Google Search Console data over MCP</Link>.

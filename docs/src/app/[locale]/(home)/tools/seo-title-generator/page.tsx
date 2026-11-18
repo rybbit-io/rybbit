@@ -122,8 +122,7 @@ const educationalContent = (
         content.
       </li>
       <li>
-        <strong>Match search intent:</strong> Align your title with what users are actually searching for and expecting
-        to find.
+        <strong>Match search intent:</strong> Align your title with what users are searching for and expecting to find.
       </li>
       <li>
         <strong>Include modifiers:</strong> Words like "best," "guide," "2024," or "free" can help you rank for
@@ -228,7 +227,7 @@ export default function SEOTitleGeneratorPage() {
       faqs={faqs}
       relatedToolsCategory="seo"
       ctaTitle="Track your SEO performance with Rybbit"
-      ctaDescription="Monitor organic traffic, CTR, and page performance in real-time."
+      ctaDescription="Monitor organic traffic, CTR, and page performance in real time."
       ctaEventLocation="seo_title_generator_cta"
       structuredData={structuredData}
     />

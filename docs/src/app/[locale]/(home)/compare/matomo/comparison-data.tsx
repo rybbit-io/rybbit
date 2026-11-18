@@ -62,7 +62,7 @@ export const matomoExtendedData = {
   introParagraphs: [
     "Matomo (formerly Piwik) has been around since 2007 and positions itself as the open-source Google Analytics alternative. It's feature-rich with 70+ reports, heatmaps, A/B testing, and form analytics. But that breadth comes with Google Analytics-level complexity, and most teams need training just to find the metrics they care about, and the PHP/MySQL stack feels increasingly dated.",
     "Rybbit is built the way a modern analytics tool should be. A single-page dashboard shows all essential metrics on one screen, with no training required. Privacy works by default: no cookies, no consent banners, no configuration needed. The stack (TypeScript, ClickHouse) is built for performance, and the managed cloud option means zero server maintenance. You get session replay, user journeys, Web Vitals, and error tracking without installing plugins.",
-    "Matomo's cloud pricing starts at €29/month for just 50k hits, and many useful features require paid plugins on top of that. Rybbit starts at $19/month with all features included. If you're tired of Matomo's complexity, maintenance burden, or plugin costs, Rybbit is a much simpler path to the analytics your team actually needs.",
+    "Matomo's cloud pricing starts at €29/month for just 50k hits, and many useful features require paid plugins on top of that. Rybbit starts at $19/month with all features included. If you're tired of Matomo's complexity, maintenance burden, or plugin costs, Rybbit is a much simpler path to the analytics your team needs.",
   ],
 
   chooseRybbit: [
@@ -134,8 +134,8 @@ export const matomoExtendedData = {
         heading: "“Free self-hosting” and the plugin-bundle math",
         paragraphs: [
           <>
-            Matomo&apos;s On-Premise Community Edition is genuinely free forever, with unlimited users and hits,
-            a real point in its favor. The catch is what happens when you want the advanced features. On self-hosted
+            Matomo&apos;s On-Premise Community Edition is free forever, with unlimited users and hits,
+            a point in its favor. The catch is what happens when you want the advanced features. On self-hosted
             Matomo, those come as paid plugin bundles: the Team bundle starts at &euro;275 for 4 users and 5M hits per
             month, Business runs &euro;1,450, and Enterprise &euro;3,400. &ldquo;Free&rdquo; quietly becomes a
             line-item negotiation over which capabilities your deployment is licensed for.
@@ -196,7 +196,7 @@ export const matomoExtendedData = {
   otherAlternatives: {
     title: "Other Matomo alternatives",
     intro:
-      "Most teams leaving Matomo want less server upkeep or a simpler interface. These are the other Matomo alternatives worth a look, with the main trade-off of each and a link to the full comparison.",
+      "Most teams leaving Matomo want less server upkeep or a simpler interface. These are other Matomo alternatives, with the main trade-off of each and a link to the full comparison.",
     items: pickAlternatives(["google-analytics", "plausible", "posthog", "umami", "fathom", "simpleanalytics"]),
   } satisfies OtherAlternatives,
 
@@ -219,7 +219,7 @@ export const matomoExtendedData = {
     },
     {
       question: "Does Matomo have features Rybbit doesn't?",
-      answer: "Yes, Matomo offers heatmaps, A/B testing, form analytics, and a custom report builder that Rybbit doesn't have. However, many of these require paid plugins. Rybbit focuses on delivering the analytics features most teams actually need, with a much simpler experience.",
+      answer: "Yes, Matomo offers heatmaps, A/B testing, form analytics, and a custom report builder that Rybbit doesn't have. However, many of these require paid plugins. Rybbit focuses on delivering the analytics features most teams need, with a much simpler experience.",
     },
   ] satisfies FAQItem[],
 
@@ -252,7 +252,7 @@ export const matomoExtendedData = {
     {
       title: "Pricing",
       href: "/pricing",
-      description: "Simple, transparent pricing for every team size",
+      description: "Plans and prices",
     },
   ] satisfies RelatedResource[],
 };

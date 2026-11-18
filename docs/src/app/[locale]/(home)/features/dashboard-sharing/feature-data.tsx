@@ -63,7 +63,7 @@ export const howItWorks: HowItWorksStep[] = [
     step: 1,
     title: "Pick your audience",
     description:
-      "The whole world? Enable Public Analytics. Specific people? Generate a private link. Your own website? Embed the full dashboard or the live visitor widget.",
+      "For the whole world, enable Public Analytics. For specific people, generate a private link. For your own website, embed the full dashboard or the live visitor widget.",
   },
   {
     step: 2,

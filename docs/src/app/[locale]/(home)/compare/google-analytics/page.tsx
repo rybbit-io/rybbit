@@ -65,7 +65,7 @@ const structuredData = {
           name: "Does Rybbit offer the same features as GA4?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Rybbit offers all essential analytics features plus session replay, funnels, user journeys, and real-time data. While GA4 has more advanced enterprise features, Rybbit provides what most businesses actually need without the complexity.",
+            text: "Rybbit offers all essential analytics features plus session replay, funnels, user journeys, and real-time data. While GA4 has more advanced enterprise features, Rybbit provides what most businesses need without the complexity.",
           },
         },
         {

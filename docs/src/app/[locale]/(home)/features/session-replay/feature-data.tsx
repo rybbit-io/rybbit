@@ -121,7 +121,7 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Package className="w-6 h-6" />,
     title: "Startup founders",
     description:
-      "Understand your first users deeply. Watch how they discover and use your product to iterate faster and build what actually matters.",
+      "Understand your first users deeply. Watch how they discover and use your product to iterate faster and build what matters.",
   },
 ];
 

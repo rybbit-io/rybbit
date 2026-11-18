@@ -276,7 +276,7 @@ export function FeaturePage({
       )}
 
       <CTASection
-        title={ctaTitle || t("Ready for better analytics?")}
+        title={ctaTitle || t("Switch to better analytics")}
         description={
           ctaDescription ||
           t("The full analytics surface on one dashboard: cookieless, open source, and live in minutes.")

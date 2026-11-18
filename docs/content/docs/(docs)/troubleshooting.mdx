@@ -118,12 +118,12 @@ Change the **Type** dropdown to `host` and click **OK**.
 
 <Step>
 ### Fully stop and start the VM
-A reboot from inside the guest is not enough — do a full **Stop** and then **Start** from Proxmox for the CPU change to take effect.
+A reboot from inside the guest is not enough. Do a full **Stop** and then **Start** from Proxmox for the CPU change to take effect.
 </Step>
 </Steps>
 
 <Callout type="info">
-The `host` CPU type can prevent live migration between Proxmox nodes with different CPU models. If you need migration, any CPU type that includes SSE 4.2 (e.g. `x86-64-v2-AES` on a host that supports it, or newer) may also work — but `host` is the most reliable option.
+The `host` CPU type can prevent live migration between Proxmox nodes with different CPU models. If you need migration, any CPU type that includes SSE 4.2 (e.g. `x86-64-v2-AES` on a host that supports it, or newer) may also work, but `host` is the most reliable option.
 </Callout>
 
 ## I ran out of disk space

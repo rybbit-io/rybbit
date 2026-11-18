@@ -103,11 +103,11 @@ Returns the created API key object.
       type: 'boolean',
     },
     rateLimitMax: {
-      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored; see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number',
     },
     rateLimitTimeWindow: {
-      description: 'Unused legacy field. It is ignored — see Rate Limits in Getting Started for the limits that actually apply',
+      description: 'Unused legacy field. It is ignored; see Rate Limits in Getting Started for the limits that actually apply',
       type: 'number',
     },
   }}
@@ -269,7 +269,7 @@ var data = await response.Content.ReadAsStringAsync();
   </Tab>
 </Tabs>
 
-<Callout type="warn">The full `key` value is returned **only once**, at creation. Store it securely — it cannot be retrieved again.</Callout>
+<Callout type="warn">The full `key` value is returned **only once**, at creation. Store it securely. It cannot be retrieved again.</Callout>
 
 ```json title="Response"
 {
@@ -292,7 +292,7 @@ var data = await response.Content.ReadAsStringAsync();
 }
 ```
 
-<Callout>On Rybbit Cloud, API keys require a Standard or Pro plan; free/basic plans receive HTTP 403. [Rate limits](/docs/api/getting-started#rate-limits-cloud-only) are charged to **you**, the owning user, and are shared by every personal key you hold across every organization you belong to — creating a key does not add budget, and a plan change applies to keys you already have. For a budget that belongs to the organization instead, create an [organization key](/docs/api/api-keys/create-org).</Callout>
+<Callout>On Rybbit Cloud, API keys require a Standard or Pro plan; free/basic plans receive HTTP 403. [Rate limits](/docs/api/getting-started#rate-limits-cloud-only) are charged to **you**, the owning user, and are shared by every personal key you hold across every organization you belong to. Creating a key does not add budget, and a plan change applies to keys you already have. For a budget that belongs to the organization instead, create an [organization key](/docs/api/api-keys/create-org).</Callout>
 
 </div>
 </div>

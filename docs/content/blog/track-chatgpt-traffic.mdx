@@ -89,7 +89,7 @@ Top to bottom:
 
 The same rows come from the API as [`GET /api/sites/:site/bots/ai-summary`](/docs/api/bots/ai-summary).
 
-The coverage note is the honest limit of browser-based tracking, and it has a fix: report the non-JavaScript crawlers from the edge. Middleware, a worker, or a reverse proxy forwards the request to the tracking API with an API key and the real `user_agent`, and a forwarded GPTBot user agent lands in your bot events with full identity rather than in your analytics as a phantom visitor ([how to report crawlers that never run JavaScript](/docs/bot-detection#reporting-crawlers-that-never-run-javascript)).
+The coverage note describes the limit of browser-based tracking, and that limit has a fix: report the non-JavaScript crawlers from the edge. Middleware, a worker, or a reverse proxy forwards the request to the tracking API with an API key and the real `user_agent`, and a forwarded GPTBot user agent lands in your bot events with full identity rather than in your analytics as a phantom visitor ([how to report crawlers that never run JavaScript](/docs/bot-detection#reporting-crawlers-that-never-run-javascript)).
 
 ## What to do with the data
 

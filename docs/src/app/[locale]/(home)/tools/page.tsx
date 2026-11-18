@@ -108,8 +108,7 @@ const calculators = [
     href: "/tools/page-speed-calculator",
     icon: Gauge,
     title: "Page Speed Impact Calculator",
-    description:
-      "Calculate how page load time affects your conversions and revenue. See the real cost of a slow website.",
+    description: "Calculate how page load time affects your conversions and revenue. See what a slow website costs.",
   },
   {
     href: "/tools/cost-per-acquisition-calculator",

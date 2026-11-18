@@ -342,7 +342,7 @@ export default function SampleSizeCalculatorPage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Run better A/B tests with Rybbit"
-      ctaDescription="Track conversions, variants, and statistical significance in real-time. Know exactly when you've reached statistical significance and avoid costly false positives."
+      ctaDescription="Track conversions, variants, and statistical significance in real time. Know exactly when you've reached statistical significance and avoid costly false positives."
       ctaEventLocation="sample_size_calculator_cta"
       structuredData={structuredData}
     />

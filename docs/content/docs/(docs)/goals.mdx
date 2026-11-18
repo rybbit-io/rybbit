@@ -7,7 +7,7 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 ![Goals Dashboard](/docs/goals/1.png)
 
-Goals let you define specific actions — from visiting a page to clicking a button — and measure how often your visitors complete them. Each goal tracks a conversion rate against total sessions, giving you a clear picture of how effectively your site drives key outcomes.
+Goals let you define specific actions, from visiting a page to clicking a button, and measure how often your visitors complete them. Each goal tracks a conversion rate against total sessions.
 
 On Rybbit Cloud, goals are available on every paid plan.
 
@@ -27,7 +27,7 @@ The goal form opens inline at the foot of the goals table. Every goal has:
 <Step>
 ### Choose a Goal Type
 
-There are six goal types. Page and custom event goals require a value. For the four autocaptured interaction types, the pattern is optional—leave it empty to count every interaction of that type.
+There are six goal types. Page and custom event goals require a value. For the four autocaptured interaction types, the pattern is optional: leave it empty to count every interaction of that type.
 
 <Tabs items={['Page', 'Custom Event', 'Outbound Link', 'Button Click', 'Form Submit', 'Copy']}>
 <Tab value="Page">
@@ -35,8 +35,8 @@ Page goals track when a user visits a URL matching a given path pattern.
 
 - The value must be a path starting with `/` (not a full URL)
 - Wildcards are supported:
-  - `*` matches a single path segment — `/blog/*` matches `/blog/my-post`
-  - `**` matches multiple segments — `/docs/**` matches `/docs/api/v2/intro`
+  - `*` matches a single path segment: `/blog/*` matches `/blog/my-post`
+  - `**` matches multiple segments: `/docs/**` matches `/docs/api/v2/intro`
 
 The form provides autocomplete suggestions based on actual paths seen on your site.
 
@@ -94,7 +94,7 @@ You can narrow a goal to only count conversions when specific properties match:
 - **Custom event goals** — Filter by event properties (e.g., only count events where `plan=premium`)
 - **Autocaptured interaction goals** — Filter by captured properties such as `url`, `text`, `formName`, `formId`, or `formAction`
 
-Turn on **Match a URL parameter** or **Match an event property** to add filters. You can add multiple filters per goal — all filters must match for a session to count as a conversion.
+Turn on **Match a URL parameter** or **Match an event property** to add filters. You can add multiple filters per goal. All filters must match for a session to count as a conversion.
 
 </Step>
 <Step>

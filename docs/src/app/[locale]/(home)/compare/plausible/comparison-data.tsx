@@ -113,7 +113,7 @@ export const plausibleExtendedData = {
         heading: "Two philosophies of privacy-first analytics",
         paragraphs: [
           <>
-            Plausible deserves real credit here: it pioneered the modern privacy-first analytics category and proved
+            Plausible deserves credit here: it pioneered the modern privacy-first analytics category and proved
             that teams would pay for cookieless traffic stats instead of tolerating Google Analytics. Its scope is
             deliberately minimal: a clean dashboard of pageviews, sources, and goals, with no session replay, no
             error tracking, and no user profiles. That restraint is a feature, not an oversight; Plausible has never
@@ -125,7 +125,7 @@ export const plausibleExtendedData = {
             scope. It ships <Link href="/features/session-replay">session replay</Link>,{" "}
             <Link href="/features/funnels">funnels</Link>,{" "}
             <Link href="/features/user-journeys">user journeys</Link>, error tracking, Web Vitals, and user profiles as
-            part of the core product. The honest framing: Plausible tells you how much traffic you got and where it
+            part of the core product. Plausible tells you how much traffic you got and where it
             came from; Rybbit also shows you what visitors did once they arrived, where they dropped off, and what
             broke.
           </>,
@@ -145,7 +145,7 @@ export const plausibleExtendedData = {
             Vitals are on every plan, so you never upgrade just to unlock funnels; session replay and unlimited sites
             and seats come with Pro. At low traffic Plausible is the cheaper bill; once you&apos;d otherwise be
             paying for replay, funnels, and error tracking as separate tools, the math flips. Full details are on the{" "}
-            <Link href="/pricing">pricing page</Link>. And both products keep an honest exit: Plausible&apos;s
+            <Link href="/pricing">pricing page</Link>. And both products leave an exit open: Plausible&apos;s
             Community Edition and Rybbit&apos;s open-source version are each free to self-host.
           </>,
         ],
@@ -178,7 +178,7 @@ export const plausibleExtendedData = {
         heading: "When Plausible is the better choice",
         paragraphs: [
           <>
-            If a traffic dashboard is genuinely all you want, Plausible is an excellent one, arguably the best
+            If a traffic dashboard is all you want, Plausible is an excellent one, arguably the best
             at being exactly that. It has the longest track record in the category, an EU-owned and EU-hosted cloud, a
             famously tiny script (Plausible advertises it as 54&times; smaller than Google Analytics; Rybbit&apos;s is
             around 11KB compressed), and a 30-day trial with no card required versus Rybbit&apos;s 7 days. Choosing it means
@@ -247,7 +247,7 @@ export const plausibleExtendedData = {
     {
       title: "Pricing",
       href: "/pricing",
-      description: "Simple, transparent pricing for every team size",
+      description: "Plans and prices",
     },
   ] satisfies RelatedResource[],
 };

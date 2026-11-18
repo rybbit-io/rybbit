@@ -54,7 +54,7 @@ export function FAQAccordion() {
             </p>
             <br />
             <p>
-              {t("We have advanced features like session replay, error tracking, web vitals, and funnels - but you don't need to spend days learning how to use them.")}
+              {t("We have advanced features like session replay, error tracking, web vitals, and funnels, but you don't need to spend days learning how to use them.")}
             </p>
           </AccordionContent>
         </AccordionItem>

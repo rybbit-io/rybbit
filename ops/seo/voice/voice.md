@@ -60,7 +60,7 @@ People who run a website or product and want to know what's happening on it with
 
 - **Disclose.** Any post that ranks or prices competitors carries a line like `posthog-pricing.mdx`'s: "Disclosure: we build Rybbit, an open-source analytics tool that appears in the comparison near the end."
 - **Say what Rybbit lacks, in the Rybbit section.** No click or scroll heatmaps, no surveys, no GA4 importer, no mobile session replay, no console or network capture in replay, replay needs Pro on Rybbit Cloud. Then say who should pick something else, as `hotjar-alternatives.mdx` does: "If heatmaps are why you open Hotjar, Clarity or Mouseflow will serve you better."
-- **Credit competitors' strengths.** "The free tier is genuinely generous" (`posthog-pricing.mdx`). A verdict section may recommend a competitor for some readers (`best-web-analytics-tools.mdx` sends $0-budget sites to Umami).
+- **Credit competitors' strengths.** "The free tier is generous" (`posthog-pricing.mdx`). A verdict section may recommend a competitor for some readers (`best-web-analytics-tools.mdx` sends $0-budget sites to Umami).
 - **Competitor facts from the vendor, dated.** Pricing, limits and features come from the vendor's own rendered page, checked the week the post ships, with "(September 2026)" next to the number. Pricing pages are often JS-rendered; render them rather than trusting a text fetch. Never from memory, a listicle, or an older Rybbit page.
 - **No punching down.** State the fact ("Umami rotates its session salt monthly by default") and let the reader judge. No "clunky", "outdated", "bloated" unless you give the measurement.
 

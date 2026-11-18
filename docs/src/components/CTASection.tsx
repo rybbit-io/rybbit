@@ -26,7 +26,7 @@ export function CTASection({
   eventLocation = "bottom_cta",
 }: CTASectionProps) {
   const t = useExtracted();
-  const resolvedTitle = title ?? t("Ready for better analytics?");
+  const resolvedTitle = title ?? t("Switch to better analytics");
   const resolvedDescription =
     description ?? t("The full analytics surface on one dashboard: cookieless, open source, and live in minutes.");
   const resolvedPrimaryButtonHref = primaryButtonHref ?? "https://app.rybbit.io/signup";

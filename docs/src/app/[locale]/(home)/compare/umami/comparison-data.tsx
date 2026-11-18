@@ -171,7 +171,7 @@ export const umamiExtendedData = {
         ],
       },
       {
-        heading: "Pricing and self-hosting, honestly",
+        heading: "Pricing and self-hosting",
         paragraphs: [
           <>
             Umami Cloud&apos;s Hobby plan is free for 100K events a month on one website, with six months of data
@@ -318,7 +318,7 @@ export const umamiExtendedData = {
     {
       title: "Pricing",
       href: "/pricing",
-      description: "Simple, transparent pricing for every team size",
+      description: "Plans and prices",
     },
   ] satisfies RelatedResource[],
 };

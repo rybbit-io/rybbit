@@ -28,7 +28,7 @@ A funnel tells you *how many* people fall out at each step. The funnel step sess
 </Step>
 </Steps>
 
-## Step 1 — Analyze the funnel
+## Step 1: Analyze the funnel
 
 Define the path a converting user should take and post it to the analyze endpoint.
 
@@ -97,7 +97,7 @@ def analyze_funnel():
 </Tab>
 </Tabs>
 
-A response looks like this — note that `dropoff_rate` is the percentage who left **between the previous step and this one**:
+A response looks like this. Note that `dropoff_rate` is the percentage who left **between the previous step and this one**:
 
 ```json
 {
@@ -110,9 +110,9 @@ A response looks like this — note that `dropoff_rate` is the percentage who le
 }
 ```
 
-## Step 2 — Find the worst step
+## Step 2: Find the worst step
 
-The leak isn't always the step with the fewest sessions — it's the step with the steepest **drop-off**. Pick the maximum `dropoff_rate`.
+The leak isn't always the step with the fewest sessions; it's the step with the steepest **drop-off**. Pick the maximum `dropoff_rate`.
 
 <Tabs items={['JavaScript', 'Python']}>
 <Tab value="JavaScript">
@@ -153,9 +153,9 @@ print(
 </Tab>
 </Tabs>
 
-In the example above, the steepest drop-off is **60%, between Pricing and Signup** — of the 4,500 people who reached the pricing page, only 1,800 went on to signup. That makes the **pricing page** the one to investigate: it's where the audience was sitting right before the biggest leak.
+In the example above, the steepest drop-off is **60%, between Pricing and Signup**: of the 4,500 people who reached the pricing page, only 1,800 went on to signup. That makes the **pricing page** the one to investigate: it's where the audience was sitting right before the biggest leak.
 
-## Step 3 — See where the leavers ended up
+## Step 3: See where the leavers ended up
 
 [`POST /funnels/:stepNumber/sessions?mode=dropped`](/docs/api/funnels/step-sessions) returns the sessions that reached step `stepNumber` but never reached the next one, using the same `steps` body as the analyze call. Each session carries `exit_page`, the last page it viewed in the requested range. Count those across a few pages of results to see where people who stalled ended their visit.
 
@@ -239,7 +239,7 @@ Last page viewed by 500 sessions that left after Pricing:
   /enterprise   (68 sessions, 13.6%)
 ```
 
-In this example more than a quarter of the people who reached Pricing and didn't sign up ended their visit on the FAQ, a sign that pricing raises questions the FAQ has to answer. That is more actionable than "the pricing page has a 60% drop-off."
+In this example more than a quarter of the people who reached Pricing and didn't sign up ended their visit on the FAQ, a sign that pricing raises questions the FAQ has to answer. That gives you more to act on than "the pricing page has a 60% drop-off."
 
 This samples the most recent dropped sessions (up to 500 here). Raise `pages` for a fuller count; each page is one request against your [rate limit](/docs/api/getting-started#rate-limits-cloud-only).
 

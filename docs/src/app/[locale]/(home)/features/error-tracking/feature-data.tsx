@@ -154,7 +154,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "Does error tracking impact performance?",
     answer:
-      "No. Error tracking hooks into the browser's built-in error handling APIs which have negligible overhead. No additional network requests are made until an error actually occurs.",
+      "No. Error tracking hooks into the browser's built-in error handling APIs which have negligible overhead. No additional network requests are made until an error occurs.",
   },
 ];
 

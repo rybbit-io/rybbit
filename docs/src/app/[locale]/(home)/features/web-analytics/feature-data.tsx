@@ -136,7 +136,7 @@ export const whoUses: WhoUsesItem[] = [
     icon: <Users className="w-6 h-6" />,
     title: "Privacy-conscious teams",
     description:
-      "No cookies, no consent banners, GDPR compliant by default. Ship analytics your legal team actually approves of.",
+      "No cookies, no consent banners, GDPR compliant by default. Ship analytics your legal team approves of.",
   },
   {
     icon: <TrendingUp className="w-6 h-6" />,

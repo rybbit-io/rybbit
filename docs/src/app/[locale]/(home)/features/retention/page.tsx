@@ -90,13 +90,13 @@ export default function RetentionPage() {
         demoCaption="Live retention demo: real cohort analysis data"
         introParagraphs={[
           <>
-            Acquisition numbers are vanity metrics if users don&apos;t come back. <strong className="text-neutral-900 dark:text-white">Retention is the single most important metric</strong> for understanding whether your product or content is delivering real value. If users return, you&apos;re building something that matters. If they don&apos;t, no amount of traffic will save you.
+            Acquisition numbers are vanity metrics if users don&apos;t come back. <strong className="text-neutral-900 dark:text-white">Retention is the single most important metric</strong> for understanding whether your product or content is delivering value. If users return, you&apos;re building something that matters. If they don&apos;t, no amount of traffic will save you.
           </>,
           <>
             Rybbit&apos;s retention analysis groups users into <strong className="text-neutral-900 dark:text-white">cohorts by their first visit date</strong> and tracks what percentage return on each subsequent day or week. The result is a color-coded heatmap that makes it instantly obvious whether your retention is improving, degrading, or holding steady.
           </>,
           <>
-            Filter by any dimension to compare retention across segments. Do users from organic search retain better than paid? Do mobile users come back as often as desktop? <strong className="text-neutral-900 dark:text-white">Segment your retention data</strong> to find the channels and experiences that build lasting engagement, all without cookies and fully GDPR compliant.
+            Filter by any dimension to compare retention across segments: whether users from organic search retain better than paid, or whether mobile users come back as often as desktop. <strong className="text-neutral-900 dark:text-white">Segment your retention data</strong> to find the channels and experiences that build lasting engagement, all without cookies and fully GDPR compliant.
           </>,
         ]}
         capabilities={capabilities}
@@ -104,7 +104,7 @@ export default function RetentionPage() {
         whoUses={whoUses}
         faqItems={faqItems}
         relatedFeatures={relatedFeatures}
-        ctaTitle="Measure what really matters"
+        ctaTitle="Measure what matters"
         ctaDescription="Cohort retention analysis with no cookies and no setup."
       />
     </>

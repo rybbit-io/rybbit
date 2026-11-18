@@ -105,7 +105,7 @@ Effective Instagram captions tell a story, provide context, or ask questions tha
       "Facebook technically allows up to 63,206 characters, but posts longer than 477 characters are truncated with a 'See More' button. Research shows shorter posts (40-80 characters) often get more engagement.",
     educationalContent: `While Facebook allows extremely long posts (up to 63,206 characters), data shows that shorter posts typically perform better. Posts under 250 characters tend to get higher engagement rates.
 
-Facebook's algorithm favors content that sparks meaningful interactions. Whether you write a short, punchy update or a longer storytelling post, focus on creating value for your audience. The platform truncates posts after about 477 characters, so front-load important information.`,
+Facebook's algorithm favors content that sparks meaningful interactions. In a short, punchy update or a longer storytelling post, focus on creating value for your audience. The platform truncates posts after about 477 characters, so front-load important information.`,
     bestPractices: [
       "Keep posts under 250 characters for best engagement",
       "Front-load key information before the 'See More' cutoff",
@@ -128,9 +128,9 @@ Facebook's algorithm favors content that sparks meaningful interactions. Whether
     contentType: "post",
     countingRules:
       "LinkedIn allows up to 3,000 characters for posts. Posts longer than 140 characters are truncated with a 'see more' link in the feed, so make your opening count.",
-    educationalContent: `LinkedIn posts can be up to 3,000 characters, giving you space for thought leadership and professional insights. However, only the first 140 characters appear in the feed before the 'see more' link.
+    educationalContent: `LinkedIn posts can be up to 3,000 characters, giving you space for expert commentary and professional insights. However, only the first 140 characters appear in the feed before the 'see more' link.
 
-The most successful LinkedIn posts balance length with value. Longer posts work well for storytelling and insights, but your opening must hook readers immediately. Many top creators use a compelling first line, then expand with bullet points, personal stories, or actionable tips.`,
+The most successful LinkedIn posts balance length with value. Longer posts work well for storytelling and insights, but your opening must hook readers immediately. Many top creators use a compelling first line, then expand with bullet points, personal stories, or practical tips.`,
     bestPractices: [
       "Hook readers in the first 140 characters",
       "Use line breaks and formatting for readability",
