@@ -37,7 +37,7 @@ export function Footer({ disabled = false }: FooterProps) {
             {!IS_CLOUD && (
               <div className="space-y-3">
                 <div className="text-sm text-neutral-600 dark:text-neutral-200">
-                  {t("Liking Rybbit? Consider sponsoring the project!")}
+                  {t("If you like Rybbit, consider sponsoring the project!")}
                 </div>
                 <a href="https://github.com/sponsors/goldflag" target="_blank" rel="noopener noreferrer">
                   <Button>

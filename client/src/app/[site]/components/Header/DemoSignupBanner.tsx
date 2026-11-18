@@ -28,7 +28,7 @@ export function DemoSignupBanner() {
     <div className="mt-4 px-4 py-3 rounded-lg border border-emerald-300 dark:border-emerald-400/30 bg-emerald-200/80 dark:bg-emerald-900/20 text-sm flex gap-4 items-center">
       <div className="text-emerald-700 dark:text-emerald-300 flex items-center font-medium">
         <Sparkles className="h-4 w-4" />
-        <span>{t("Enjoying the demo? Get started with your own analytics dashboard!")}</span>
+        <span>{t("Get started with your own analytics dashboard!")}</span>
       </div>
       <Button variant="success" size="sm" asChild>
         <Link href="https://app.rybbit.io/signup" target="_blank" rel="noopener">

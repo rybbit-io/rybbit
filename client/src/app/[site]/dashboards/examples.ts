@@ -354,7 +354,7 @@ LIMIT 30`,
   {
     id: "traffic-heatmap",
     title: "Traffic by hour & weekday",
-    description: "Pageviews bucketed by day of week (1=Mon) and hour of day — find your peak times.",
+    description: "Pageviews bucketed by day of week (1=Mon) and hour of day. Find your peak times.",
     category: "Behavior",
     beyondPrebuilt: true,
     vizType: "table",
