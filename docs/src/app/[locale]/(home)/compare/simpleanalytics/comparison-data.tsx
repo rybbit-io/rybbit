@@ -134,7 +134,7 @@ export const simpleAnalyticsExtendedData = {
             The trade-off is depth. There&apos;s no <Link href="/features/session-replay">session replay</Link>, no{" "}
             <Link href="/features/funnels">funnel analysis</Link>, no user journeys, no error tracking, no Web Vitals,
             and no user profiles. When a conversion drops, Simple Analytics can tell you that it happened, but
-            not where in the flow or what the user saw. Rybbit stays cookieless with a daily-rotating salt while
+            not where in the flow or what the user saw. Rybbit stays cookieless, with an optional daily-rotating salt, while
             shipping all of those, so you don&apos;t have to choose between privacy and being able to answer
             &ldquo;why.&rdquo;
           </>,

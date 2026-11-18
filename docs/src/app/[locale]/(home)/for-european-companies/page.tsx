@@ -37,7 +37,7 @@ const faqItems = [
   {
     question: "Is Rybbit GDPR and CCPA compliant?",
     answer:
-      "Yes. Rybbit doesn't use cookies or collect personal data that could identify visitors, and user IDs are salted daily so nobody can be fingerprinted. You won't need to show a cookie consent banner for analytics.",
+      "Yes. Rybbit doesn't use cookies or collect personal data that could identify visitors, and an optional daily salt for user IDs stops visitors from being linked across days. You won't need to show a cookie consent banner for analytics.",
   },
   {
     question: "Where is the cloud hosted?",
@@ -74,7 +74,7 @@ const complianceRows = [
   {
     title: "No fingerprinting, by construction",
     description:
-      "Visitor IDs are salted daily, so they can't be used to fingerprint or follow a person over time. That's a design property, not a policy promise.",
+      "Visitor IDs are one-way hashes, and with the optional daily salt turned on they can't be used to follow a person across days. That's a design property, not a policy promise.",
   },
   {
     title: "DPA ready to sign",

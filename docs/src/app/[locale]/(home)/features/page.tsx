@@ -290,7 +290,7 @@ export default function FeaturesPage() {
     {
       icon: <UserX className="w-5 h-5" />,
       title: t("Data anonymization"),
-      description: t("Every visitor is anonymous by default, and IDs are re-salted daily so no one is tracked across days."),
+      description: t("Every visitor is anonymous by default, and an optional daily salt stops anyone being tracked across days."),
     },
     {
       icon: <Cookie className="w-5 h-5" />,

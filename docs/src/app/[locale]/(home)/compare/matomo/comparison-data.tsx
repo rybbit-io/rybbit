@@ -156,8 +156,8 @@ export const matomoExtendedData = {
             Matomo can run without cookies. It&apos;s a supported configuration, and the company takes privacy
             seriously. But it&apos;s a configuration, not the default posture, and many real-world Matomo deployments
             (especially older ones) still set cookies and still ship a consent flow. Rybbit doesn&apos;t have a
-            cookie mode to turn off: it&apos;s cookieless only, identifying visitors with a salted hash whose salt
-            rotates daily, so there&apos;s no persistent identifier to consent to in the first place. That difference
+            cookie mode to turn off: it&apos;s cookieless only, identifying visitors with a salted hash rather than anything stored on the device, so there&apos;s
+            nothing on the device to consent to in the first place. That difference
             matters less for the compliance paperwork and more for the data: no consent banner means no consent-decline
             gap in your numbers.
           </>,

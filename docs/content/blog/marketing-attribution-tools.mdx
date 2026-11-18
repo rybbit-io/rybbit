@@ -44,7 +44,7 @@ Most companies don't do attribution at all. They use what's called "last-click a
 
 **Last-click attribution** means you give 100% credit to the last touchpoint before conversion. So in our example above, the email newsletter gets 100% credit. Everything else that happened is ignored.
 
-This is insanely common because it's easy to implement (Google Analytics does it by default). But it's also insanely misleading.
+This is insanely common because it's easy to implement (it was the default in Universal Analytics, and GA4 still offers it). But it's also insanely misleading.
 
 Here's why last-click attribution breaks down:
 
@@ -89,7 +89,7 @@ There are several different attribution models. Each one allocates credit differ
 **Why to use it:**
 - Easiest to implement
 - Works for bottom-funnel optimization
-- Default in Google Analytics
+- Default in Universal Analytics (GA4 now defaults to data-driven attribution)
 
 **Why not to use it:**
 - Ignores all the awareness and consideration work that feeds those conversions
@@ -204,7 +204,7 @@ Pick a model (time-decay or position-based are good defaults), implement it, und
 
 What you're really doing with attribution is creating a consistent framework for how you evaluate marketing performance. The specific percentages matter less than the discipline of looking at the full customer journey instead of just the last click.
 
-## The Best Marketing Attribution Tools for 2025
+## The Best Marketing Attribution Tools for 2026
 
 ### Top Tier: Best Overall Tools
 
@@ -297,7 +297,7 @@ GA4 now offers multi-touch attribution modeling.
 **What makes GA4 great for attribution:**
 
 - **Free** (with limitations)
-- **Multiple attribution models**: Offers time-decay, first-click, last-click, etc.
+- **Attribution models**: Data-driven and last-click (Google removed first-click, linear, time-decay, and position-based models in 2023)
 - **Data-driven attribution**: Machine learning model that learns from your data
 - **Cross-platform tracking**: See journeys across web and app
 - **Integration with ads**: Direct integration with Google Ads
@@ -459,7 +459,7 @@ Your business changes. Sales cycle changes. New channels emerge. Your attributio
 
 ### Privacy Changes
 
-Apple's App Tracking Transparency is killing third-party cookies. This makes attribution harder because you have less data about users across the web.
+Safari blocks third-party cookies by default, and Apple's App Tracking Transparency lets iPhone users opt out of cross-app tracking. This makes attribution harder because you have less data about users across the web.
 
 This actually increases the importance of first-party data collection. Tools like Rybbit that use server-side tracking and your own data become more valuable.
 

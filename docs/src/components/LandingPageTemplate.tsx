@@ -40,7 +40,7 @@ const faqSchema = {
       name: "Is Rybbit GDPR and CCPA compliant?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.",
+        text: "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. You can turn on a daily salt for user IDs so visitors can't be linked across days. You will not need to display a cookie consent banner to your users.",
       },
     },
     {
@@ -216,7 +216,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
               <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
                 <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
                   {t(
-                    "Capture every interaction automatically, watch the sessions behind it, then measure what converts and how fast it feels."
+                    "Capture pageviews and interactions, watch the sessions behind them, then measure what converts and how fast it feels."
                   )}
                 </p>
               </div>

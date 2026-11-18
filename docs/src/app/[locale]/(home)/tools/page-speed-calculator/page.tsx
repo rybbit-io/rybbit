@@ -59,7 +59,7 @@ const structuredData = {
           name: "What are Google Core Web Vitals and why are they important?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Google Core Web Vitals are three key metrics that measure user experience: Largest Contentful Paint (LCP, visual loading speed), First Input Delay (FID, responsiveness), and Cumulative Layout Shift (CLS, visual stability). Google uses these metrics as ranking factors in search results, making them essential for SEO.",
+            text: "Google Core Web Vitals are three key metrics that measure user experience: Largest Contentful Paint (LCP, visual loading speed), Interaction to Next Paint (INP, responsiveness), and Cumulative Layout Shift (CLS, visual stability). Google uses these metrics as ranking factors in search results, making them essential for SEO.",
           },
         },
         {
@@ -106,7 +106,7 @@ const educationalContent = (
       </li>
       <li>
         <strong>Google Core Web Vitals:</strong> Google uses Core Web Vitals as ranking factors. Sites with poor page
-        speed are penalized in search results, reducing organic visibility. LCP, FID, and CLS are critical metrics to
+        speed are penalized in search results, reducing organic visibility. LCP, INP, and CLS are critical metrics to
         monitor and optimize.
       </li>
     </ul>
@@ -131,8 +131,8 @@ const educationalContent = (
         <strong>Content Delivery:</strong> Use a CDN to serve content from servers geographically closer to your users.
       </li>
       <li>
-        <strong>Tool Selection:</strong> Choose lightweight tools like Rybbit (3KB) instead of heavyweight analytics
-        solutions that slow down your site.
+        <strong>Tool Selection:</strong> Choose lightweight tools like Rybbit (about 11 KB) instead of heavyweight
+        analytics solutions that slow down your site.
       </li>
     </ul>
   </>
@@ -154,8 +154,8 @@ const faqs = [
     answer: (
       <>
         Google Core Web Vitals are three key metrics that measure user experience: Largest Contentful Paint (LCP, visual
-        loading speed), First Input Delay (FID, responsiveness), and Cumulative Layout Shift (CLS, visual stability).
-        Google uses these metrics as ranking factors in search results, making them essential for SEO.
+        loading speed), Interaction to Next Paint (INP, responsiveness), and Cumulative Layout Shift (CLS, visual
+        stability). Google uses these metrics as ranking factors in search results, making them essential for SEO.
       </>
     ),
   },
@@ -203,7 +203,7 @@ export default function PageSpeedCalculatorPage() {
       faqs={faqs}
       relatedToolsCategory="analytics"
       ctaTitle="Optimize your site speed with Rybbit"
-      ctaDescription="Rybbit is a lightweight analytics solution (3KB) that won't slow down your site. Monitor performance while maintaining fast load times."
+      ctaDescription="Rybbit is a lightweight analytics solution (about 11 KB) that won't slow down your site. Monitor performance while maintaining fast load times."
       ctaEventLocation="page_speed_calculator_cta"
       structuredData={structuredData}
     />

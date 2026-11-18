@@ -107,7 +107,7 @@ export default function ForCreatorsPage() {
             <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
               <p className="max-w-md text-lg leading-8 text-neutral-600 text-pretty dark:text-neutral-400">
                 Free analytics is paid for with your audience's data. Rybbit's answer is structural: no cookies, no
-                personal data, daily-salted IDs that can't fingerprint anyone, and a subscription instead of an ad
+                personal data, hashed visitor IDs (with an optional daily salt), and a subscription instead of an ad
                 machine behind the numbers.
               </p>
             </div>

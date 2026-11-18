@@ -120,7 +120,7 @@ export const plausibleExtendedData = {
             pretended to be a product-analytics tool.
           </>,
           <>
-            Rybbit starts from the same privacy foundation (cookieless tracking with a daily-rotating salt, open
+            Rybbit starts from the same privacy foundation (cookieless tracking with an optional daily-rotating salt, open
             source, free to <Link href="/docs/self-hosting">self-host</Link>) but takes the opposite position on
             scope. It ships <Link href="/features/session-replay">session replay</Link>,{" "}
             <Link href="/features/funnels">funnels</Link>,{" "}

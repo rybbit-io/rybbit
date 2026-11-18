@@ -200,7 +200,6 @@
   "Sx-ZtL": "Contact us at",
   "T0PIgk": "takes one script tag, or install @rybbit/js from npm. Most sites are collecting data in under 5 minutes, and the docs and support are there if you get stuck.",
   "T3VKLM": "Everything behind one script tag.",
-  "TGRfv1": "Every visitor is anonymous by default, and IDs are re-salted daily so no one is tracked across days.",
   "T_yWuy": "Full API access to query your data and build custom integrations.",
   "TySFLg": "Up to {count}",
   "TzhzIH": "Creators",
@@ -209,7 +208,6 @@
   "UHOrJ-": "Bot blocking",
   "ULRaOP": "Included",
   "UYVFhG": "Analytics API",
-  "UzdW4t": "Capture every interaction automatically, watch the sessions behind it, then measure what converts and how fast it feels.",
   "VKfWR3": "Recommended",
   "VWP8tD": "Startups",
   "VbSu0i": "Brand Kit",
@@ -279,7 +277,6 @@
   "dcOW07": "Can I invite my team to my organization?",
   "djUnVg": "Core Web Vitals from real visits. See where your pages feel slow by route, country, and device.",
   "dvrL1q": "Track the conversions that matter",
-  "eJ41hc": "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.",
   "eMrptM": "Who uses this",
   "eRzcbw": "Stay private",
   "ecaClI": "Make your dashboards publicly accessible with a single click. No login required.",
@@ -426,5 +423,8 @@
   "l9F0Gx": "Self-host or use our cloud; either way, you control your data.",
   "30oHz8": "For questions about Rybbit, reach out through any of these channels:",
   "2bcVy-": "If you want to white-label Rybbit for your organization or need a custom analytics setup, we offer implementations tailored to your requirements.",
-  "slzRBY": "We have advanced features like session replay, error tracking, web vitals, and funnels, but you don't need to spend days learning how to use them."
+  "slzRBY": "We have advanced features like session replay, error tracking, web vitals, and funnels, but you don't need to spend days learning how to use them.",
+  "bU7YBb": "Every visitor is anonymous by default, and an optional daily salt stops anyone being tracked across days.",
+  "OkIzoA": "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. You can turn on a daily salt for user IDs so visitors can't be linked across days. You will not need to display a cookie consent banner to your users.",
+  "b8rrb7": "Capture pageviews and interactions, watch the sessions behind them, then measure what converts and how fast it feels."
 }

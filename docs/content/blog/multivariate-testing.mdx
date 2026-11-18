@@ -191,8 +191,6 @@ Use the Pages dashboard to analyze which page variations are performing best, sh
 **What you'll see:**
 - Conversion rate for each variation
 - Which combinations perform best
-- Statistical significance (are differences real or random?)
-- How long it takes to reach statistical significance
 
 ### Step 5: Analyze Interaction Effects
 
@@ -202,7 +200,7 @@ To understand which variable combinations matter most, create additional analysi
 
 This is crucial: **Don't stop the test too early just because one variation is winning.**
 
-Rybbit doesn't automatically calculate statistical significance (you'll need to use an external tool like [this calculator](https://www.optimizely.com/sample-size-calculator/)), but you can estimate:
+If you run the test as a Rybbit [experiment](/docs/experiments), Rybbit compares each variant with the control and shows its confidence once both have at least 30 sessions. If you compare variations in the Pages dashboard instead, use an external tool like [this calculator](https://www.optimizely.com/sample-size-calculator/), or estimate:
 
 **Rule of thumb:** Run the test until each variation has at least 100-200 conversions.
 

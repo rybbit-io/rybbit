@@ -23,7 +23,7 @@ export default function Security() {
         <ul className="list-disc pl-6 space-y-2">
           <li>No cookies or local storage used for tracking</li>
           <li>IP addresses are hashed and anonymized</li>
-          <li>User-Agent strings are hashed daily with rotating salts</li>
+          <li>Visitor IDs are one-way hashes of IP address and user agent, with an optional daily-rotating salt</li>
           <li>Raw visitor data is never stored</li>
         </ul>
 

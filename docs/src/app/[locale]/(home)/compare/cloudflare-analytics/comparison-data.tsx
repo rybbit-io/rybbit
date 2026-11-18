@@ -135,8 +135,8 @@ export const cloudflareAnalyticsExtendedData = {
             attributes and conversion goals tell you what visitors did;{" "}
             <Link href="/features/funnels">funnels</Link> and user journeys show where they stalled; session replay and
             error tracking show why; <Link href="/features/web-vitals">Web Vitals monitoring</Link> and user profiles
-            round out the picture. All of it ships on every plan, from a ~11KB script that stays cookieless with a
-            daily-rotating salt, so you keep the privacy posture that likely drew you to Cloudflare in the first
+            round out the picture. All of it ships on every plan, from a ~11KB script that stays cookieless (with an optional
+            daily-rotating salt), so you keep the privacy posture that likely drew you to Cloudflare in the first
             place.
           </>,
         ],

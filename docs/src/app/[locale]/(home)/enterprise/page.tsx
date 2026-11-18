@@ -57,7 +57,7 @@ const faqItems = [
   {
     question: "Is there a Data Processing Agreement?",
     answer:
-      "Yes. A DPA is available at rybbit.com/dpa, alongside a public security page. The cloud is EU-hosted, and visitor tracking is cookieless with daily-salted IDs.",
+      "Yes. A DPA is available at rybbit.com/dpa, alongside a public security page. The cloud is EU-hosted, and visitor tracking is cookieless, with an optional daily salt for visitor IDs.",
   },
   {
     question: "Can we white-label the dashboard?",

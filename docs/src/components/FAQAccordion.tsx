@@ -10,7 +10,7 @@ export function FAQAccordion() {
         <AccordionItem value="item-1">
           <AccordionTrigger className="md:text-lg">{t("Is Rybbit GDPR and CCPA compliant?")}</AccordionTrigger>
           <AccordionContent>
-            {t("Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.")}
+            {t("Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. You can turn on a daily salt for user IDs so visitors can't be linked across days. You will not need to display a cookie consent banner to your users.")}
           </AccordionContent>
         </AccordionItem>
 

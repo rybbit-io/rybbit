@@ -34,7 +34,7 @@ export function BuiltByRybbit() {
       </dl>
 
       <p className="mt-5 text-sm leading-6 text-neutral-600 dark:text-neutral-300">
-        Self-host it or use the free cloud tier. Learn why teams choose Rybbit as a{" "}
+        Self-host it for free or start a 7-day trial of Rybbit Cloud. Learn why teams choose Rybbit as a{" "}
         <Link href="/compare/google-analytics" className={inlineLinkClassName}>
           Google Analytics alternative
         </Link>

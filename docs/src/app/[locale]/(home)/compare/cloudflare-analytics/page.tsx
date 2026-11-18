@@ -6,7 +6,7 @@ import { createOGImageUrl } from "@/lib/metadata";
 export const metadata: Metadata = {
   title: "Rybbit: The Full-Featured Cloudflare Analytics Alternative",
   description:
-    "Looking for a Cloudflare Web Analytics alternative? Rybbit adds session replay, funnels, custom events, and real referrer data, with a free tier included.",
+    "Looking for a Cloudflare Web Analytics alternative? Rybbit adds session replay, funnels, custom events, and real referrer data, and is free to self-host.",
   openGraph: {
     title: "Rybbit vs Cloudflare Analytics: Basic vs Full-Featured",
     description: "Cloudflare is free but limited. Rybbit offers the full analytics experience. Compare features.",

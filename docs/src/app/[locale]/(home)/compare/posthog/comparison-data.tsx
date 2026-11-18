@@ -148,7 +148,7 @@ export const posthogExtendedData = {
         paragraphs: [
           <>
             Both tools are open source, but their out-of-the-box privacy postures differ. Rybbit is cookieless by
-            default: no consent banner needed, no persistent identifiers, and visitor hashes rotate with a daily salt.
+            default: no consent banner needed, no persistent identifiers, and visitor hashes can rotate with an optional daily salt.
             PostHog can be configured for cookieless tracking, but its default configuration generally needs a consent
             banner in the EU, and every visitor who declines is a session your product data never sees. If
             &ldquo;accurate traffic numbers without a banner&rdquo; is the goal, the tool that does it with zero

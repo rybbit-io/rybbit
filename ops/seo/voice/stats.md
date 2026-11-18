@@ -88,9 +88,7 @@ That post calls the hosted version "freemium". That's no longer accurate; don't 
 
 Claims live on rybbit.com that the code contradicts. Don't copy them into posts; fix the pages separately.
 
-- **Daily salt described as the default.** The code default is off. Wrong on: homepage FAQ (`LandingPageTemplate.tsx:43`, "We salt user IDs daily"), `features/page.tsx:293`, `for-european-companies/page.tsx:40,77`, compare pages for Plausible (`comparison-data.tsx:123`), Simple Analytics (`:137`) and Cloudflare (`:139`), and `blog/best-google-analytics-alternatives.mdx:46`. Stated correctly on `compare/umami/comparison-data.tsx:288` and `features/retention/feature-data.tsx:136`.
-- **"Capture every interaction automatically"** (`LandingPageTemplate.tsx:219`). Button, copy and form capture are off by default.
-- **AI operator table** in `blog/track-chatgpt-traffic.mdx` lists 10 operators; the registry now has 11 (Cohere).
+None known. The daily-salt-as-default claims, "Capture every interaction automatically", the 3KB script size, FID listed as a Core Web Vital, and "free cloud tier" mentions were fixed on 2026-11-18. The AI operator table in `blog/track-chatgpt-traffic.mdx` already lists all 11 operators, including Cohere.
 
 ## Unverified: ask Bill
 

@@ -143,7 +143,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "How does this work with privacy and cookie-free tracking?",
     answer:
-      "Rybbit uses daily rotating salt-based identifiers to recognize returning visitors without cookies or personal data. This means retention data is accurate while remaining fully GDPR compliant.",
+      "Rybbit recognizes returning visitors with an anonymous hashed identifier, without cookies or personal data. This means retention data is accurate while remaining fully GDPR compliant.",
   },
 ];
 
