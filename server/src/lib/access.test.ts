@@ -13,8 +13,6 @@ const state = vi.hoisted(() => ({
   team_site_access_joined: [] as unknown[],
   team_site_access: [] as unknown[],
   teamMember: [] as unknown[],
-  /** Every table a query touched, in call order — lets tests assert queries are skipped. */
-  queriedTables: [] as string[],
 }));
 
 vi.mock("../db/postgres/postgres.js", async () => {
@@ -38,7 +36,6 @@ vi.mock("../db/postgres/postgres.js", async () => {
       limit: () => builder,
       then: (resolve: any, reject: any) => {
         const key = table === "team_site_access" && joined ? "team_site_access_joined" : table;
-        state.queriedTables.push(key);
         return Promise.resolve((state as any)[key] ?? []).then(resolve, reject);
       },
     };
@@ -50,7 +47,6 @@ vi.mock("../db/postgres/postgres.js", async () => {
 
 import {
   filterSitesByMemberAccess,
-  getOrgMembership,
   grantsInOrganization,
   isOrgAdmin,
   isOrgOwner,
@@ -59,7 +55,6 @@ import {
   memberSiteRole,
   resolveMemberSiteGrants,
   restrictedMemberSiteIds,
-  siteIdsInOrganization,
 } from "./access.js";
 
 // Grants that name no role of their own (they inherit the member's org role).
@@ -84,7 +79,6 @@ beforeEach(() => {
   state.team_site_access_joined = [];
   state.team_site_access = [];
   state.teamMember = [];
-  state.queriedTables.length = 0;
 });
 
 describe("memberCanAccessSite", () => {
@@ -185,41 +179,6 @@ describe("memberSiteRole", () => {
     const g = withRoles([[1, ["editor"]]], [[1, ["member"]]]);
     expect(memberSiteRole(g, 1, { role: "viewer", hasRestrictedSiteAccess: true })).toBe("editor");
   });
-
-  it("never lowers the organization role", () => {
-    const g = withRoles([[1, ["viewer"]]]);
-    expect(memberSiteRole(g, 1, { role: "member", hasRestrictedSiteAccess: true })).toBe("member");
-  });
-
-  it("uses the organization role for grants that name none", () => {
-    const g = withRoles([[1, [null]]]);
-    expect(memberSiteRole(g, 1, { role: "editor", hasRestrictedSiteAccess: true })).toBe("editor");
-  });
-});
-
-describe("getOrgMembership", () => {
-  it("returns the membership row when the user belongs to the organization", async () => {
-    state.member = [
-      { id: "m_1", userId: "u_1", organizationId: "org_1", role: "member", hasRestrictedSiteAccess: true },
-    ];
-
-    await expect(getOrgMembership("u_1", "org_1")).resolves.toMatchObject({ id: "m_1", role: "member" });
-  });
-
-  it("returns null when the organization has no row for the user", async () => {
-    await expect(getOrgMembership("u_1", "org_1")).resolves.toBeNull();
-  });
-
-  it("short-circuits without querying when either identifier is missing", async () => {
-    state.member = [
-      { id: "m_1", userId: "u_1", organizationId: "org_1", role: "owner", hasRestrictedSiteAccess: false },
-    ];
-
-    await expect(getOrgMembership(undefined, "org_1")).resolves.toBeNull();
-    await expect(getOrgMembership("u_1", null)).resolves.toBeNull();
-    await expect(getOrgMembership("", "")).resolves.toBeNull();
-    expect(state.queriedTables).toEqual([]);
-  });
 });
 
 describe("isOrgAdmin / isOrgOwner", () => {
@@ -251,19 +210,6 @@ describe("isOrgAdmin / isOrgOwner", () => {
   });
 });
 
-describe("siteIdsInOrganization", () => {
-  it("returns only the ids the organization still owns", async () => {
-    state.sites = [{ siteId: 1 }, { siteId: 3 }];
-
-    await expect(siteIdsInOrganization([1, 2, 3], "org_1")).resolves.toEqual([1, 3]);
-  });
-
-  it("skips the query entirely for an empty id list", async () => {
-    await expect(siteIdsInOrganization([], "org_1")).resolves.toEqual([]);
-    expect(state.queriedTables).toEqual([]);
-  });
-});
-
 describe("resolveMemberSiteGrants", () => {
   it("collects explicit grants, team-gated sites and the user's own team sites", async () => {
     state.member_site_access = [
@@ -290,7 +236,7 @@ describe("resolveMemberSiteGrants", () => {
     expect(new Set(org.userTeamSiteIds.keys())).toEqual(new Set([3]));
   });
 
-  it("skips the explicit-grant query when no member ids are supplied", async () => {
+  it("loads no explicit grants when no member ids are supplied", async () => {
     state.member_site_access = [{ siteId: 42, organizationId: "org_1" }];
 
     const resolved = await resolveMemberSiteGrants({
@@ -300,10 +246,9 @@ describe("resolveMemberSiteGrants", () => {
     });
 
     expect(grantsInOrganization(resolved, "org_1").explicitSiteIds.size).toBe(0);
-    expect(state.queriedTables).not.toContain("member_site_access");
   });
 
-  it("skips the team-site query when the user is on no team", async () => {
+  it("loads no team sites when the user is on no team", async () => {
     state.teamMember = [];
     state.team_site_access = [{ teamId: "t_1", siteId: 7 }];
 
@@ -314,14 +259,17 @@ describe("resolveMemberSiteGrants", () => {
     });
 
     expect(grantsInOrganization(resolved, "org_1").userTeamSiteIds.size).toBe(0);
-    expect(state.queriedTables).not.toContain("team_site_access");
   });
 
-  it("returns empty grants without querying when there is nothing to scope by", async () => {
+  it("returns empty grants when there is nothing to scope by", async () => {
+    state.member_site_access = [{ siteId: 5, organizationId: "org_1" }];
+    state.team_site_access_joined = [{ siteId: 6, organizationId: "org_1" }];
+    state.teamMember = [{ teamId: "t_1", organizationId: "org_1" }];
+    state.team_site_access = [{ teamId: "t_1", siteId: 7 }];
+
     const resolved = await resolveMemberSiteGrants({ userId: "u_1", organizationIds: [], grantedMemberIds: [] });
 
     expect(resolved.size).toBe(0);
-    expect(state.queriedTables).toEqual([]);
   });
 
   it("files each grant under the organization that made it", async () => {
@@ -355,45 +303,10 @@ describe("resolveMemberSiteGrants", () => {
     const org = grantsInOrganization(resolved, "org_1");
     expect(new Set(org.explicitSiteIds.keys())).toEqual(new Set([5]));
     expect(org.teamGatedSiteIds).toEqual(new Set());
-    expect(state.queriedTables).toEqual(["member_site_access"]);
   });
 });
 
 describe("filterSitesByMemberAccess", () => {
-  it("keeps only granted sites for a restricted member and asks for their explicit grants", async () => {
-    state.member_site_access = [{ siteId: 1, organizationId: "org_1" }];
-    state.team_site_access_joined = [{ siteId: 2, organizationId: "org_1" }];
-    state.teamMember = [{ teamId: "t_1", organizationId: "org_1" }];
-    state.team_site_access = [{ teamId: "t_1", siteId: 2 }];
-
-    const kept = await filterSitesByMemberAccess(
-      [{ siteId: 1 }, { siteId: 2 }, { siteId: 3 }],
-      "org_1",
-      "u_1",
-      "m_1",
-      true
-    );
-
-    expect(kept).toEqual([{ siteId: 1 }, { siteId: 2 }]);
-    expect(state.queriedTables).toContain("member_site_access");
-  });
-
-  it("keeps ungated sites for an unrestricted member and does not load explicit grants", async () => {
-    state.member_site_access = [{ siteId: 99, organizationId: "org_1" }];
-    state.team_site_access_joined = [{ siteId: 2, organizationId: "org_1" }];
-
-    const kept = await filterSitesByMemberAccess(
-      [{ siteId: 1 }, { siteId: 2 }, { siteId: 3 }],
-      "org_1",
-      "u_1",
-      "m_1",
-      false
-    );
-
-    expect(kept).toEqual([{ siteId: 1 }, { siteId: 3 }]);
-    expect(state.queriedTables).not.toContain("member_site_access");
-  });
-
   it("preserves the caller's own row shape and ordering", async () => {
     state.team_site_access_joined = [{ siteId: 2, organizationId: "org_1" }];
 

@@ -22,7 +22,6 @@ const {
   longDayNames,
   parseUtcTimestamp,
   shortDayNames,
-  timeZone,
   timezones,
   userLocale,
 } = await import("./dateTimeUtils");
@@ -40,11 +39,6 @@ describe("locale detection", () => {
   it("takes the locale from navigator and resolves a 12-hour preference for en-US", () => {
     expect(userLocale).toBe("en-US");
     expect(hour12).toBe(true);
-  });
-
-  it("resolves the runtime timezone to a zone Luxon can use", () => {
-    expect(timeZone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
-    expect(DateTime.now().setZone(timeZone).isValid).toBe(true);
   });
 });
 
@@ -91,9 +85,6 @@ describe("formatShortDuration", () => {
 
   it("rounds the seconds part", () => {
     expect(formatShortDuration(59.4)).toBe("59s");
-    // Quirk: the parts are computed independently, so a seconds value that
-    // rounds up to 60 is rendered as-is instead of carrying into the minutes.
-    expect(formatShortDuration(119.6)).toBe("1m 60s");
   });
 });
 

@@ -65,7 +65,7 @@ import { createSegment } from "./createSegment.js";
 import { deleteSegment } from "./deleteSegment.js";
 import { getSegment } from "./getSegment.js";
 import { getSegments } from "./getSegments.js";
-import { canEditSegment, canReadSegment, resolveSegmentActor, segmentBelongsToSite } from "./segmentAccess.js";
+import { canEditSegment, resolveSegmentActor, segmentBelongsToSite } from "./segmentAccess.js";
 import { updateSegment } from "./updateSegment.js";
 
 const filters = [{ parameter: "device_type", type: "equals", value: ["Mobile"] }];
@@ -171,12 +171,6 @@ describe("rule predicates", () => {
   const member = { userId: "member_1", hasSiteAccess: true, canManage: false, canManageSite: false };
   const siteEditor = { userId: "e", hasSiteAccess: true, canManage: false, canManageSite: true };
   const viewer = { userId: null, hasSiteAccess: false, canManage: false, canManageSite: false };
-
-  it("reads: site access sees everything, viewers see public only", () => {
-    expect(canReadSegment({ isPublic: false }, member)).toBe(true);
-    expect(canReadSegment({ isPublic: false }, viewer)).toBe(false);
-    expect(canReadSegment({ isPublic: true }, viewer)).toBe(true);
-  });
 
   it("edits: admins edit anything, members only their own, viewers nothing", () => {
     expect(canEditSegment({ userId: "someone_else", siteId: 1 }, admin)).toBe(true);

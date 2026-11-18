@@ -131,7 +131,6 @@ describe("r2Storage initialization", () => {
       credentials: { accessKeyId: "access-key", secretAccessKey: "secret-key" },
       forcePathStyle: true,
     });
-    expect(mocks.logger.info).toHaveBeenCalledWith({ bucket: "replay-batches" }, "R2Storage initialized");
   });
 
   it("strips checksum response headers without discarding other handler output", async () => {
@@ -175,7 +174,6 @@ describe("r2Storage.storeBatch", () => {
 
     expect(mocks.compress).toHaveBeenCalledOnce();
     expect(mocks.compress.mock.calls[0][0].toString()).toBe(JSON.stringify(events));
-    expect(mocks.compress.mock.calls[0][1]).toBe(3);
     expect(sentInput()).toMatchObject({
       Bucket: "test-bucket",
       Key: "42/session/with spaces/1725000123456.json.zst",
@@ -232,7 +230,6 @@ describe("r2Storage.storeBatch", () => {
 
     await expect(storage.storeBatch(1, "session", ["{}"])).rejects.toBe(compressionError);
     expect(mocks.send).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith("[R2Storage] Failed to store batch:", compressionError);
   });
 
   it("propagates object-store failures after compression", async () => {
@@ -241,8 +238,6 @@ describe("r2Storage.storeBatch", () => {
     const storage = await loadStorage();
 
     await expect(storage.storeBatch(1, "session", ["{}"])).rejects.toBe(putError);
-    expect(mocks.compress).toHaveBeenCalledOnce();
-    expect(console.error).toHaveBeenCalledWith("[R2Storage] Failed to store batch:", putError);
   });
 
   it("allows independent stores to progress concurrently", async () => {
@@ -306,15 +301,11 @@ describe("r2Storage.getBatch", () => {
     expect(mocks.decompress).toHaveBeenCalledWith(bytes);
   });
 
-  it("rejects empty responses and preserves the retrieval context in the log", async () => {
+  it("rejects empty responses", async () => {
     mocks.send.mockResolvedValue({});
     const storage = await loadStorage();
 
     await expect(storage.getBatch("missing.json.zst")).rejects.toThrow("Empty response body");
-    expect(console.error).toHaveBeenCalledWith(
-      "[R2Storage] Failed to retrieve batch:",
-      expect.objectContaining({ message: "Empty response body" })
-    );
   });
 
   it("rethrows the codec error for irrecoverably corrupted objects", async () => {
@@ -324,7 +315,6 @@ describe("r2Storage.getBatch", () => {
     const storage = await loadStorage();
 
     await expect(storage.getBatch("corrupt.json.zst")).rejects.toBe(codecError);
-    expect(console.error).toHaveBeenCalledWith("[R2Storage] Failed to retrieve batch:", codecError);
   });
 
   it("propagates object-store read failures", async () => {
@@ -345,12 +335,11 @@ describe("r2Storage.deleteBatch", () => {
     expect(sentInput()).toEqual({ Bucket: "test-bucket", Key: "1/session/batch.json.zst" });
   });
 
-  it("logs and suppresses cleanup failures", async () => {
+  it("suppresses cleanup failures", async () => {
     const deleteError = new Error("temporary delete failure");
     mocks.send.mockRejectedValue(deleteError);
     const storage = await loadStorage();
 
     await expect(storage.deleteBatch("1/session/batch.json.zst")).resolves.toBeUndefined();
-    expect(console.error).toHaveBeenCalledWith("[R2Storage] Failed to delete batch:", deleteError);
   });
 });

@@ -5,7 +5,6 @@ vi.mock("./definitions.js", () => ({
 }));
 
 import { bucketPercentage, evaluateFeatureFlag, matchesFeatureFlagRule } from "./evaluator.js";
-import { precompileFeatureFlagRegexPattern } from "./regex.js";
 
 const baseFlag = {
   flagId: 1,
@@ -43,16 +42,36 @@ describe("feature flag evaluator", () => {
     ).toBe(true);
   });
 
-  it("matches regex rules using precompiled patterns", () => {
-    const pattern = "^/pricing(/|$)";
-    precompileFeatureFlagRegexPattern(pattern);
+  it("matches regex rules on the flag and inside condition sets, against any of their patterns", () => {
+    const ruleFlag = {
+      ...baseFlag,
+      rules: [{ field: "pathname", operator: "regex", value: ["^/docs", "^/pricing(/|$)"] }],
+    };
+    expect(evaluateFeatureFlag(ruleFlag, { anonymousId: "visitor-1", pathname: "/pricing/pro" })).toMatchObject({
+      matched: true,
+    });
+    expect(evaluateFeatureFlag(ruleFlag, { anonymousId: "visitor-1", pathname: "/blog" })).toMatchObject({
+      reason: "target_mismatch",
+    });
 
+    const conditionSetFlag = {
+      ...baseFlag,
+      conditionSets: [
+        { rules: [{ field: "referrer", operator: "regex", value: "google\\.[a-z]+$" }], rolloutPercentage: 100 },
+      ],
+    };
     expect(
-      matchesFeatureFlagRule(
-        { field: "pathname", operator: "regex", value: pattern },
-        { anonymousId: "visitor-1", pathname: "/pricing/pro" }
+      evaluateFeatureFlag(conditionSetFlag, { anonymousId: "visitor-1", referrer: "https://www.google.de" })
+    ).toMatchObject({ matched: true });
+  });
+
+  it("never matches a regex rule that is too complex to run safely", () => {
+    expect(
+      evaluateFeatureFlag(
+        { ...baseFlag, rules: [{ field: "pathname", operator: "regex", value: "^(a+)+$" }] },
+        { anonymousId: "visitor-1", pathname: "aaaa" }
       )
-    ).toBe(true);
+    ).toMatchObject({ matched: false, reason: "target_mismatch" });
   });
 
   it("returns off value when disabled or targeting fails", () => {

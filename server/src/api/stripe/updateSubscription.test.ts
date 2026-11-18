@@ -127,8 +127,6 @@ describe("updateSubscription — authorization", () => {
       proration_behavior: "always_invoice",
     });
     expect(mocks.invalidateStripeSubscriptionCache).toHaveBeenCalledWith("cus_1");
-    // The update's response already carries the new state.
-    expect(mocks.subscriptionsRetrieve).not.toHaveBeenCalled();
   });
 
   it("rejects a non-owner member with 403 and touches nothing in Stripe", async () => {

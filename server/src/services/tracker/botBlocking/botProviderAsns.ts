@@ -93,8 +93,6 @@ export const EXTRA_DATACENTER_ASNS: readonly number[] = [
 
 const EXTRA_DATACENTER_ASN_SET: ReadonlySet<number> = new Set(EXTRA_DATACENTER_ASNS);
 
-export const CURATED_BOT_PROVIDER_ASN_COUNT = CURATED_BOT_PROVIDER_ASNS.length;
-
 const CURATED_BOT_PROVIDER_ASN_MAP: ReadonlyMap<number, CuratedBotProviderAsnEntry> = new Map(
   CURATED_BOT_PROVIDER_ASNS.map(entry => [entry.asn, entry])
 );

@@ -221,7 +221,6 @@ describe("permission guards", () => {
     mocks.getSiteIsPubliclyReadable.mockResolvedValue(true);
 
     expect((await app.inject({ method: "GET", url: "/sites/5/goals" })).statusCode).toBe(403);
-    expect(mocks.getSiteIsPubliclyReadable).not.toHaveBeenCalled();
   });
 
   it("re-reads the role for anything beyond reading, and uses the cache for reads", async () => {

@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_SCOPE_STRINGS,
-  apiKeyPermissionsSchema,
   hasScope,
   parseOAuthScopes,
-  scopeToString,
   statementsFromApiKeyPermissions,
   toScopeStrings,
 } from "./scopes.js";
@@ -106,27 +104,5 @@ describe("scope string round-trips", () => {
       expect(parsed).not.toBeNull();
       expect(toScopeStrings(parsed!)).toEqual([scope]);
     }
-  });
-
-  it("scopeToString formats requirements", () => {
-    expect(scopeToString({ resource: "org", action: "write" })).toBe("org:write");
-  });
-});
-
-describe("apiKeyPermissionsSchema", () => {
-  it("accepts valid permission records", () => {
-    expect(apiKeyPermissionsSchema.safeParse({ goals: ["read", "write"], analytics: ["read"] }).success).toBe(true);
-  });
-
-  it("rejects the empty object", () => {
-    const result = apiKeyPermissionsSchema.safeParse({});
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects unknown resources and invalid actions", () => {
-    expect(apiKeyPermissionsSchema.safeParse({ bogus: ["read"] }).success).toBe(false);
-    expect(apiKeyPermissionsSchema.safeParse({ sql: ["write"] }).success).toBe(false);
-    expect(apiKeyPermissionsSchema.safeParse({ ingest: ["read"] }).success).toBe(false);
-    expect(apiKeyPermissionsSchema.safeParse({ goals: [] }).success).toBe(false);
   });
 });

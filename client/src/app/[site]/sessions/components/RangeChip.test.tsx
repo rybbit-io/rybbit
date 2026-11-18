@@ -59,6 +59,10 @@ describe("RangeChip label", () => {
     expect(trigger().textContent).toBe("Pageviews up to 5");
     cleanup();
 
+    renderChip({ max: 0 });
+    expect(trigger().textContent).toBe("Pageviews up to 0");
+    cleanup();
+
     renderChip({ min: 2, max: 5 });
     expect(trigger().textContent).toBe("Pageviews 2 to 5");
     cleanup();

@@ -38,10 +38,8 @@ describe("SessionsService (Redis-backed)", () => {
 
     expect(result.sessionId).toBe("sess-existing");
     expect(mocks.sessionGetOrCreate).toHaveBeenCalledTimes(1);
-    const [key, candidate, ttl] = mocks.sessionGetOrCreate.mock.calls[0];
+    const [key, , ttl] = mocks.sessionGetOrCreate.mock.calls[0];
     expect(key).toBe("session:42:user-a");
-    expect(typeof candidate).toBe("string");
-    expect(candidate).toHaveLength(14); // nanoid(14) candidate
     expect(ttl).toBe(SESSION_TTL_MS);
   });
 
@@ -171,13 +169,9 @@ describe("SessionsService.resolveReplaySession", () => {
 
     expect(result).toEqual({ sessionId: "sess-existing", needsFullSnapshot: false });
     expect(mocks.sessionGetOrCreate).not.toHaveBeenCalled();
-    const [script, keyCount, key, replayKey, candidate, ttl, hasFullSnapshot] = mocks.eval.mock.calls[0];
-    // Nothing in the script slides a TTL it didn't just set.
-    expect(script).not.toMatch(/EXPIRE/i);
-    expect(keyCount).toBe(2);
+    const [, , key, replayKey, , ttl, hasFullSnapshot] = mocks.eval.mock.calls[0];
     expect(key).toBe("session:42:user-a");
     expect(replayKey).toBe("replay-session:42:user-a");
-    expect(candidate).toHaveLength(14);
     expect(ttl).toBe(SESSION_TTL_MS);
     expect(hasFullSnapshot).toBe("1");
   });

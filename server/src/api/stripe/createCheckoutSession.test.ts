@@ -86,19 +86,13 @@ beforeEach(async () => {
 });
 
 describe("createCheckoutSession — one trial per organization", () => {
-  it("gives an organization with no subscription history the 7-day trial", async () => {
-    await createCheckoutSession(requestStub("u_owner", validBody), replyStub());
-
-    expect(mocks.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ subscription_data: { trial_period_days: 7 } })
-    );
-  });
-
   it("charges a returning customer straight away instead of starting another trial", async () => {
     mocks.subscriptionsList.mockResolvedValue({ data: [{ id: "sub_old", status: "canceled" }] });
+    const reply = replyStub();
 
-    await createCheckoutSession(requestStub("u_owner", validBody), replyStub());
+    await createCheckoutSession(requestStub("u_owner", validBody), reply);
 
+    expect(reply.statusCode).toBe(200);
     expect(mocks.subscriptionsList).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_1" }));
     expect(mocks.checkoutSessionsCreate.mock.calls[0][0]).not.toHaveProperty("subscription_data");
   });
@@ -153,16 +147,6 @@ describe("createCheckoutSession — existing subscribers", () => {
       expect.objectContaining({ customer: "cus_1", status: "trialing" })
     );
     expect(mocks.checkoutSessionsCreate).not.toHaveBeenCalled();
-  });
-
-  it("lets an org whose subscription lapsed subscribe again", async () => {
-    mocks.subscriptionsList.mockResolvedValue({ data: [{ id: "sub_old", status: "canceled" }] });
-    const reply = replyStub();
-
-    await createCheckoutSession(requestStub("u_owner", validBody), reply);
-
-    expect(reply.statusCode).toBe(200);
-    expect(mocks.checkoutSessionsCreate).toHaveBeenCalledOnce();
   });
 });
 

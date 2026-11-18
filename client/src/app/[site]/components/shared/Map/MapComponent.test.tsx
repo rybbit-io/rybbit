@@ -54,10 +54,10 @@ describe("MapComponent loading overlay", () => {
     expect(overlay()).toBeTruthy();
   });
 
-  it("is scoped to the map box and gone once data is in", () => {
+  it("is gone once data is in", () => {
     mocks.loading = { country: true, region: false };
-    const { container, rerender } = render(<MapComponent height="340px" />);
-    expect((container.firstChild as HTMLElement).className).toContain("relative");
+    const { rerender } = render(<MapComponent height="340px" />);
+    expect(overlay()).toBeTruthy();
     mocks.loading = { country: false, region: false };
     rerender(<MapComponent height="340px" />);
     expect(overlay()).toBeNull();

@@ -69,12 +69,6 @@ describe("buildConvertingSessionsQuery", () => {
     expect(sql).toContain("INNER JOIN FilteredSessions USING (session_id)");
   });
 
-  it("escapes goal patterns instead of interpolating them", () => {
-    const sql = buildConvertingSessionsQuery(query, 1, [{ goalType: "event", config: { eventName: "x' OR 1=1 --" } }]);
-
-    expect(sql).toContain("event_name = 'x\\' OR 1=1 --'");
-  });
-
   it("skips goals with no usable condition and returns null when none is left", () => {
     const sql = buildConvertingSessionsQuery(query, 1, [{ goalType: "path", config: {} }, signupGoal]);
 

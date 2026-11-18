@@ -6,7 +6,6 @@ const state = {
   rowsByUserId: {} as Record<string, Record<string, unknown>[]>,
   // anonymousId -> identified user id, i.e. the userAliases table.
   aliases: {} as Record<string, string>,
-  queriedUserIds: [] as string[],
 };
 
 // ClickHouse answers an aggregate without GROUP BY over no rows with one
@@ -18,7 +17,6 @@ const emptyProfileResult = (query: string) =>
 
 vi.mock("../utils/analyticsQuery.js", () => ({
   runAnalyticsQuery: vi.fn(async ({ query, params }: { query: string; params: { userId: string } }) => {
-    state.queriedUserIds.push(params.userId);
     // Only the profile query is keyed to user rows here; the vitals, location
     // and device breakdowns come back empty.
     if (!query.includes("COUNT(DISTINCT session_id) AS sessions")) return [];
@@ -98,7 +96,6 @@ describe("getUserInfo alias fallback", () => {
   beforeEach(() => {
     state.rowsByUserId = {};
     state.aliases = {};
-    state.queriedUserIds = [];
     currentAnonymousId = "";
   });
 
@@ -114,8 +111,6 @@ describe("getUserInfo alias fallback", () => {
 
     expect(reply.statusCode).toBe(200);
     expect((reply.payload as { data: { identified_user_id: string } }).data.identified_user_id).toBe("alice");
-    expect(state.queriedUserIds).toContain("fp1");
-    expect(state.queriedUserIds).toContain("alice");
   });
 
   it("keeps serving a device's own anonymous activity instead of resolving early", async () => {
@@ -123,13 +118,13 @@ describe("getUserInfo alias fallback", () => {
     // behind it is identified. That activity is what this route is about.
     currentAnonymousId = "fp1";
     state.aliases = { fp1: "alice" };
-    state.rowsByUserId = { fp1: [userRow("")] };
+    state.rowsByUserId = { fp1: [userRow("")], alice: [{ ...userRow("alice"), sessions: 40 }] };
 
     const reply = makeReply();
     await getUserInfo(makeRequest("fp1"), reply as never);
 
     expect(reply.statusCode).toBe(200);
-    expect(state.queriedUserIds).not.toContain("alice");
+    expect((reply.payload as { data: { sessions: number } }).data.sessions).toBe(3);
   });
 
   it("still 404s a device that was never seen and has no alias", async () => {

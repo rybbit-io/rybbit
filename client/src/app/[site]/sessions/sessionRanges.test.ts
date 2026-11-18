@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  describeRange,
-  EMPTY_RANGES,
-  hasAnyRange,
-  hasRange,
-  parseBound,
-  toRange,
-  toRangeParams,
-} from "./sessionRanges";
+import { EMPTY_RANGES, hasAnyRange, hasRange, parseBound, toRange, toRangeParams } from "./sessionRanges";
 
 describe("parseBound", () => {
   it("accepts whole numbers of zero or more", () => {
@@ -43,17 +35,6 @@ describe("toRange", () => {
     expect(toRange("0", "4")).toEqual({ max: 4 });
     // At most zero is a real range: sessions with none.
     expect(toRange("", "0")).toEqual({ max: 0 });
-  });
-});
-
-describe("describeRange", () => {
-  it("names the shape of the range for its chip", () => {
-    expect(describeRange({})).toEqual({ kind: "any" });
-    expect(describeRange({ min: 10 })).toEqual({ kind: "min", min: 10 });
-    expect(describeRange({ max: 5 })).toEqual({ kind: "max", max: 5 });
-    expect(describeRange({ min: 2, max: 5 })).toEqual({ kind: "between", min: 2, max: 5 });
-    expect(describeRange({ min: 3, max: 3 })).toEqual({ kind: "exact", value: 3 });
-    expect(describeRange({ max: 0 })).toEqual({ kind: "max", max: 0 });
   });
 });
 

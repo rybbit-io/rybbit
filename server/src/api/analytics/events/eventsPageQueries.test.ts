@@ -13,7 +13,6 @@ import {
   buildEventNameStatsQuery,
   buildEventTrendBucketsQuery,
   isTrendBucket,
-  TREND_BUCKETS,
 } from "./getEventNameStats.js";
 import { buildEventsOverviewQuery } from "./getEventsOverview.js";
 import {
@@ -163,7 +162,9 @@ describe("buildEventTrendBucketsQuery", () => {
 
 describe("isTrendBucket", () => {
   it("accepts the coarse buckets only", () => {
-    expect(TREND_BUCKETS.every(isTrendBucket)).toBe(true);
+    for (const bucket of ["hour", "day", "week", "month"]) {
+      expect(isTrendBucket(bucket), bucket).toBe(true);
+    }
     expect(isTrendBucket("minute")).toBe(false);
     expect(isTrendBucket("year")).toBe(false);
     expect(isTrendBucket("day; DROP TABLE events")).toBe(false);

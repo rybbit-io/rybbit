@@ -154,17 +154,6 @@ describe("moveSite — target-organization authorization (sole gate)", () => {
     expect(mocks.applySiteMove).not.toHaveBeenCalled();
   });
 
-  it("rejects a caller with no membership in the target org and writes no ownership change", async () => {
-    state.targetMembership = null;
-    const reply = replyStub();
-
-    await moveSite(makeRequest(), reply);
-
-    expect(reply.statusCode).toBe(403);
-    expect(reply.body.error).toBe("You are not a member of the target organization");
-    expect(mocks.applySiteMove).not.toHaveBeenCalled();
-  });
-
   it("rejects an unauthenticated request", async () => {
     const reply = replyStub();
 

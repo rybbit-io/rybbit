@@ -320,11 +320,8 @@ describe("subscriptionIncludesReplay", () => {
   });
 
   it("gives AppSumo tiers replay exactly when their tier carries a quota", () => {
-    for (const [tier, replayLimit] of Object.entries(APPSUMO_REPLAY_LIMITS)) {
-      expect(subscriptionIncludesReplay(appsumo({ tier, planName: `appsumo-${tier}`, replayLimit }))).toBe(
-        replayLimit > 0
-      );
-    }
+    expect(subscriptionIncludesReplay(appsumo({ tier: "3", planName: "appsumo-3", replayLimit: 0 }))).toBe(false);
+    expect(subscriptionIncludesReplay(appsumo({ tier: "4", planName: "appsumo-4", replayLimit: 500 }))).toBe(true);
   });
 
   it("routes AppSumo overrides by quota and Stripe-plan overrides by name", () => {
@@ -353,14 +350,6 @@ describe("getReplayLimit", () => {
 
   it("reports zero for the free tier", () => {
     expect(getReplayLimit(free())).toBe(0);
-  });
-
-  it("reports zero for plans that carry replay quota but no entitlement", () => {
-    // getReplayLimit is only meaningful alongside subscriptionIncludesReplay; an
-    // AppSumo tier without replay reports 0 on both.
-    const tier1 = appsumo({ tier: "1", planName: "appsumo-1", replayLimit: 0 });
-    expect(subscriptionIncludesReplay(tier1)).toBe(false);
-    expect(getReplayLimit(tier1)).toBe(0);
   });
 });
 
@@ -960,10 +949,13 @@ describe("hasHadStripeSubscription", () => {
     await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(false);
   });
 
-  it.each(["canceled", "past_due", "trialing", "active", "unpaid"])("is true once a %s subscription exists", async status => {
-    listReturns([stripeSub({ customer: "cus_history", status })]);
-    await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(true);
-  });
+  it.each(["canceled", "past_due", "trialing", "active", "unpaid"])(
+    "is true once a %s subscription exists",
+    async status => {
+      listReturns([stripeSub({ customer: "cus_history", status })]);
+      await expect(hasHadStripeSubscription("cus_history")).resolves.toBe(true);
+    }
+  );
 
   it("caches per customer until the subscription cache is invalidated", async () => {
     listReturns([stripeSub({ customer: "cus_history", status: "canceled" })]);

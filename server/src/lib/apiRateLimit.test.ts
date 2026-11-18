@@ -55,7 +55,7 @@ describe("consumeApiRateLimit", () => {
     await consumeApiRateLimit("org1", 5000);
 
     expect(apiRateLimitConsume).toHaveBeenCalledWith(
-      expect.objectContaining({ burstKey: "rl:burst:org1", dailyKey: `rl:day:org1:${Math.floor(Date.UTC(2024, 4, 1, 23) / 86_400_000)}` })
+      expect.objectContaining({ burstKey: "rl:burst:org1", dailyKey: "rl:day:org1:19844" })
     );
   });
 

@@ -1,8 +1,6 @@
 import { DateTime, Settings } from "luxon";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { projectedDecision } from "@rybbit/shared";
-
 import type { Experiment, ExperimentVariantResult } from "@/api/analytics/endpoints";
 
 import { formatRelativeTime, getExperimentVerdict, getVariantStats } from "./experimentHelpers";
@@ -20,7 +18,14 @@ const arm = (overrides: Partial<ExperimentVariantResult>): ExperimentVariantResu
 });
 
 describe("getVariantStats", () => {
-  const control = arm({ variant: "control", isControl: true, units: 100, sessions: 120, exposures: 100, conversions: 3 });
+  const control = arm({
+    variant: "control",
+    isControl: true,
+    units: 100,
+    sessions: 120,
+    exposures: 100,
+    conversions: 3,
+  });
 
   it("uses units, not sessions or exposures, as the sample size", () => {
     const variant = arm({ variant: "b", units: 100, sessions: 120, exposures: 100 });
@@ -68,21 +73,16 @@ describe("getExperimentVerdict remaining visitors", () => {
     arm({ variant: "a", units: 250, conversions: a }),
     arm({ variant: "b", units: 250, conversions: b }),
   ];
-  const remainingAt = (scale: number) => Math.ceil(750 * (scale - 1));
-
   it("waits for the first projected winner, not an earlier projected loser", () => {
-    const winScale = projectedDecision(control, { units: 250, conversions: 34 })!.scale;
-    expect(projectedDecision(control, { units: 250, conversions: 14 })!.scale).toBeLessThan(winScale);
-
+    // a (34 conversions) is projected to win after 895 more visitors; b (14) to lose after only 109.
     const verdict = getExperimentVerdict(experiment, results(34, 14));
     expect(verdict.leader).toBeUndefined();
-    expect(verdict.remainingUnits).toBe(remainingAt(winScale));
+    expect(verdict.remainingUnits).toBe(895);
   });
 
   it("waits for the last variant to lose before control can win", () => {
-    const lastLoss = projectedDecision(control, { units: 250, conversions: 16 })!.scale;
-
-    expect(getExperimentVerdict(experiment, results(16, 14)).remainingUnits).toBe(remainingAt(lastLoss));
+    // a (16) is projected to lose after 472 more visitors, b (14) after 109.
+    expect(getExperimentVerdict(experiment, results(16, 14)).remainingUnits).toBe(472);
   });
 });
 

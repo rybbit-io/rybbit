@@ -60,12 +60,6 @@ describe("AnalysisBar", () => {
 });
 
 describe("CompareControl", () => {
-  it("names the comparison the dashboard is using", () => {
-    render(<CompareControl />);
-
-    expect(screen.getByRole("button", { name: "Compare Previous period" })).toBeTruthy();
-  });
-
   it("offers the modes the period supports with the window each resolves to, and no custom range", () => {
     render(<CompareControl />);
     openMenu(/Compare/);

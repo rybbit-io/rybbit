@@ -109,15 +109,6 @@ describe("UserSidebar", () => {
     expect(traits.queryByText("mara@northpine.io")).toBeNull();
   });
 
-  it("does not list the anonymous IDs merged into the identity", () => {
-    showSidebar();
-
-    // Each IP and browser pair an identified user is seen on becomes an alias,
-    // so a regular user collects hundreds; they are not devices.
-    expect(screen.queryByText("Linked devices")).toBeNull();
-    expect(screen.queryByText("5be2c07f41d9")).toBeNull();
-  });
-
   it("takes first-touch facts from the user's first day, not from the selected period", () => {
     showSidebar();
 

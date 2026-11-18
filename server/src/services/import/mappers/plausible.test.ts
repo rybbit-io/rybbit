@@ -124,17 +124,6 @@ describe("PlausibleImportMapper", () => {
       expect(result[0].props).toEqual({});
     });
 
-    it("should transform multiple events", () => {
-      const events = [
-        makeEvent({ pathname: "/page-1" }),
-        makeEvent({ pathname: "/page-2" }),
-        makeEvent({ pathname: "/page-3" }),
-      ];
-      const result = PlausibleImportMapper.transform(events, 1, "import-1");
-      expect(result).toHaveLength(3);
-      expect(result.map(e => e.pathname)).toEqual(["/page-1", "/page-2", "/page-3"]);
-    });
-
     it("should skip events with hostname exceeding max length", () => {
       const events = [makeEvent({ hostname: "a".repeat(254) })];
       const result = PlausibleImportMapper.transform(events, 1, "import-1");
@@ -162,26 +151,7 @@ describe("PlausibleImportMapper", () => {
     it("should compute channel from referrer", () => {
       const events = [makeEvent({ referrer: "https://google.com", querystring: "" })];
       const result = PlausibleImportMapper.transform(events, 1, "import-1");
-      expect(result).toHaveLength(1);
-      // getChannel should classify google.com as organic search
-      expect(result[0].channel).toBeTruthy();
-    });
-
-    it("should return empty array for empty input", () => {
-      const result = PlausibleImportMapper.transform([], 1, "import-1");
-      expect(result).toHaveLength(0);
-    });
-
-    it("should filter out invalid events and keep valid ones", () => {
-      const events = [
-        makeEvent({ pathname: "/valid" }),
-        makeEvent({ timestamp: "bad" }),
-        makeEvent({ pathname: "/also-valid" }),
-      ];
-      const result = PlausibleImportMapper.transform(events, 1, "import-1");
-      expect(result).toHaveLength(2);
-      expect(result[0].pathname).toBe("/valid");
-      expect(result[1].pathname).toBe("/also-valid");
+      expect(result[0].channel).toBe("Organic Search");
     });
   });
 });

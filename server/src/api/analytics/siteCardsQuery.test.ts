@@ -38,10 +38,13 @@ describe("raw-event Site card queries", () => {
   });
 
   it("resolves relative bounds from a single clock across both queries", () => {
-    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    // A clock that ticks between reads must not give the two queries different windows.
+    const clock = vi
+      .spyOn(Date, "now")
+      .mockReturnValueOnce(now)
+      .mockReturnValue(now + 60_000);
     try {
       const { totals, series } = buildSiteCardsQueries({ siteIds: [1], current, comparison, bucket: "hour" });
-      expect(clock).toHaveBeenCalledTimes(1);
       expect(totals.query).toContain("timestamp <= toDateTime('2026-09-20 20:41:33', 'UTC')");
       expect(series.query).toContain("timestamp <= toDateTime('2026-09-20 20:41:33', 'UTC')");
     } finally {

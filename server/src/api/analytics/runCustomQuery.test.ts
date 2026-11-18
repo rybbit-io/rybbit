@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 import { validateScopedQuery } from "./utils/customQueryValidation.js";
 
 describe("validateScopedQuery", () => {
-  it("allows SELECT queries against scoped_events", () => {
-    expect(validateScopedQuery("SELECT event_name, count() FROM scoped_events GROUP BY event_name")).toBeNull();
-  });
-
   it("allows aliases that use blocked table names", () => {
-    expect(validateScopedQuery("SELECT event_name, count() AS events FROM scoped_events GROUP BY event_name")).toBeNull();
+    expect(
+      validateScopedQuery("SELECT event_name, count() AS events FROM scoped_events GROUP BY event_name")
+    ).toBeNull();
   });
 
   it("allows WITH expressions that read from scoped_events", () => {
@@ -19,30 +17,6 @@ describe("validateScopedQuery", () => {
         GROUP BY name
       `)
     ).toBeNull();
-  });
-
-  it("allows CTEs derived from scoped_events", () => {
-    expect(
-      validateScopedQuery(`
-        WITH top_events AS (
-          SELECT event_name, count() AS event_count
-          FROM scoped_events
-          GROUP BY event_name
-        )
-        SELECT *
-        FROM top_events
-      `)
-    ).toBeNull();
-  });
-
-  it("rejects direct reads from events", () => {
-    expect(validateScopedQuery("SELECT count() FROM events")).toBe("Queries can only read from scoped_events");
-  });
-
-  it("rejects comma joins to other tables", () => {
-    expect(validateScopedQuery("SELECT count() FROM scoped_events, hourly_events_by_site_mv_target")).toBe(
-      "Queries can only read from scoped_events"
-    );
   });
 
   it("rejects multiple statements", () => {

@@ -261,12 +261,12 @@ describe("canGoForward", () => {
     expect(canGoForward({ ...range, endTime: "13:00:00" }, ZONE, now)).toBe(false);
   });
 
-  it("week/month/year: gated by the period start (quirk: the CURRENT period can still step forward, into an entirely-future one)", () => {
-    expect(canGoForward({ mode: "week", week: "2024-03-11" }, ZONE, now)).toBe(true);
+  it("week/month/year: true for a past period, false for a future one", () => {
+    expect(canGoForward({ mode: "week", week: "2024-03-04" }, ZONE, now)).toBe(true);
     expect(canGoForward({ mode: "week", week: "2024-03-18" }, ZONE, now)).toBe(false);
-    expect(canGoForward({ mode: "month", month: "2024-03-01" }, ZONE, now)).toBe(true);
+    expect(canGoForward({ mode: "month", month: "2024-02-01" }, ZONE, now)).toBe(true);
     expect(canGoForward({ mode: "month", month: "2024-04-01" }, ZONE, now)).toBe(false);
-    expect(canGoForward({ mode: "year", year: "2024-01-01" }, ZONE, now)).toBe(true);
+    expect(canGoForward({ mode: "year", year: "2023-01-01" }, ZONE, now)).toBe(true);
     expect(canGoForward({ mode: "year", year: "2025-01-01" }, ZONE, now)).toBe(false);
   });
 

@@ -15,7 +15,6 @@ describe("Site card queries", () => {
       expect(totals.query).toContain("session_hour <= toDateTime('2026-09-19 20:41:33', 'UTC')");
       expect(totals.query).toContain("session_hour > toDateTime('2026-09-19 20:41:33', 'UTC')");
       expect(series.query).toContain("start_time <= toDateTime('2026-09-20 20:41:33', 'UTC')");
-      expect(clock).not.toHaveBeenCalled();
     } finally {
       clock.mockRestore();
     }

@@ -212,13 +212,13 @@ describe("SessionReplayIngestService size cap", () => {
 
     const result = await service.recordEvents(42, request, requestMeta);
 
-    const expectedBytes = JSON.stringify({ a: 1 }).length + JSON.stringify({ bb: "xy" }).length;
-    expect(mocks.chargeReplaySessionBudget).toHaveBeenCalledWith(42, "session-1", expectedBytes);
+    // {"a":1} is 7 bytes and {"bb":"xy"} is 11.
+    expect(mocks.chargeReplaySessionBudget).toHaveBeenCalledWith(42, "session-1", 18);
     expect(result).toEqual({ capped: false });
     expect(mocks.storeBatch).toHaveBeenCalledOnce();
     expect(
       mocks.insert.mock.calls[0][0].values.map((row: { event_size_bytes: number }) => row.event_size_bytes)
-    ).toEqual([JSON.stringify({ a: 1 }).length, JSON.stringify({ bb: "xy" }).length]);
+    ).toEqual([7, 11]);
   });
 
   it("stores nothing once the session is over its cap", async () => {

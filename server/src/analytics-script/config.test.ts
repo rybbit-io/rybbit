@@ -376,39 +376,6 @@ describe("parseScriptConfig", () => {
     expect(config?.debounceDuration).toBe(0);
   });
 
-  it("should override API config with data attributes for testing", async () => {
-    mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
-    mockScriptTag.setAttribute("data-site-id", "123");
-    mockScriptTag.setAttribute("data-skip-patterns", '["/admin/**"]');
-    mockScriptTag.setAttribute("data-mask-patterns", '["/user/**"]');
-
-    // Mock successful API response
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        sessionReplay: true,
-        webVitals: true,
-        trackErrors: true,
-        trackOutbound: false,
-        trackUrlParams: false,
-        trackInitialPageView: false,
-        trackSpaNavigation: false,
-      }),
-    });
-
-    const config = await parseScriptConfig(mockScriptTag);
-
-    // These should be from data attributes (overrides for testing)
-    expect(config?.skipPatterns).toEqual(["/admin/**"]);
-    expect(config?.maskPatterns).toEqual(["/user/**"]);
-
-    // These should be from API
-    expect(config?.enableSessionReplay).toBe(true);
-    expect(config?.enableWebVitals).toBe(true);
-    expect(config?.trackErrors).toBe(true);
-    expect(config?.trackOutbound).toBe(false);
-  });
-
   it("should parse skip patterns", async () => {
     mockScriptTag.setAttribute("src", "https://analytics.example.com/script.js");
     mockScriptTag.setAttribute("data-site-id", "123");

@@ -1,9 +1,10 @@
 import { ClickHouseError } from "@clickhouse/client";
 import { describe, expect, it } from "vitest";
-import { sanitizeClickhouseError, validateScopedQuery } from "./customQueryValidation.js";
+import { normalizeCustomQuery, sanitizeClickhouseError, validateScopedQuery } from "./customQueryValidation.js";
 
 const SCOPED_ONLY_ERROR = "Queries can only read from scoped_events";
-const QUOTED_IDENTIFIER_ERROR = "Quoted identifiers, nested /* comments, # and // comments, $$ strings, and non-ASCII characters outside string literals are not allowed in custom analytics queries";
+const QUOTED_IDENTIFIER_ERROR =
+  "Quoted identifiers, nested /* comments, # and // comments, $$ strings, and non-ASCII characters outside string literals are not allowed in custom analytics queries";
 
 describe("validateScopedQuery — table reference scoping", () => {
   it("allows reading from scoped_events", () => {
@@ -69,6 +70,23 @@ describe("validateScopedQuery — table reference scoping", () => {
     );
   });
 
+  it("checks every IN table operand, including database-qualified ones", () => {
+    expect(validateScopedQuery("SELECT count() FROM scoped_events WHERE a IN scoped_events AND b IN events")).toBe(
+      SCOPED_ONLY_ERROR
+    );
+    expect(
+      validateScopedQuery("WITH db AS (SELECT 1) SELECT count() FROM scoped_events WHERE user_id IN db . events")
+    ).toBe(SCOPED_ONLY_ERROR);
+  });
+
+  it("matches CTE names case-insensitively, with or without a space before the paren", () => {
+    expect(validateScopedQuery("with Recent AS(select user_id from scoped_events) select * from RECENT")).toBeNull();
+  });
+
+  it("does not treat a column alias as a CTE", () => {
+    expect(validateScopedQuery("SELECT 1 AS foo FROM scoped_events, foo")).toBe(SCOPED_ONLY_ERROR);
+  });
+
   it("allows IN table operands only when they reference scoped_events or a safe CTE", () => {
     expect(validateScopedQuery("SELECT count() FROM scoped_events WHERE user_id IN scoped_events")).toBeNull();
     expect(
@@ -87,16 +105,12 @@ describe("validateScopedQuery — table reference scoping", () => {
     expect(
       validateScopedQuery("SELECT k, count() FROM scoped_events ARRAY JOIN mapKeys(url_parameters) AS k GROUP BY k")
     ).toBeNull();
-    expect(
-      validateScopedQuery("SELECT k FROM scoped_events LEFT ARRAY JOIN mapKeys(url_parameters) AS k")
-    ).toBeNull();
+    expect(validateScopedQuery("SELECT k FROM scoped_events LEFT ARRAY JOIN mapKeys(url_parameters) AS k")).toBeNull();
   });
 
   it("still blocks a real JOIN to an unauthorized table after an ARRAY JOIN", () => {
     expect(
-      validateScopedQuery(
-        "SELECT k FROM scoped_events ARRAY JOIN mapKeys(url_parameters) AS k JOIN events e ON 1=1"
-      )
+      validateScopedQuery("SELECT k FROM scoped_events ARRAY JOIN mapKeys(url_parameters) AS k JOIN events e ON 1=1")
     ).toBe(SCOPED_ONLY_ERROR);
   });
 
@@ -118,16 +132,21 @@ describe("validateScopedQuery — table reference scoping", () => {
 // Lexer-mismatch bypasses: syntax ClickHouse understands but the literal
 // stripper doesn't. Each of these read another site's rows before the fix.
 describe("validateScopedQuery lexer-mismatch bypasses", () => {
-  const UNSUPPORTED = "Quoted identifiers, nested /* comments, # and // comments, $$ strings, and non-ASCII characters outside string literals are not allowed in custom analytics queries";
+  const UNSUPPORTED =
+    "Quoted identifiers, nested /* comments, # and // comments, $$ strings, and non-ASCII characters outside string literals are not allowed in custom analytics queries";
 
   it("rejects # line comments used to hide a UNION", () => {
     expect(
-      validateScopedQuery("SELECT * FROM scoped_events WHERE 1=1 # '\nUNION ALL SELECT * FROM events WHERE site_id = 2 -- '")
+      validateScopedQuery(
+        "SELECT * FROM scoped_events WHERE 1=1 # '\nUNION ALL SELECT * FROM events WHERE site_id = 2 -- '"
+      )
     ).toBe(UNSUPPORTED);
   });
 
   it("rejects #! line comments", () => {
-    expect(validateScopedQuery("SELECT * FROM scoped_events #! '\nUNION ALL SELECT * FROM events -- '")).toBe(UNSUPPORTED);
+    expect(validateScopedQuery("SELECT * FROM scoped_events #! '\nUNION ALL SELECT * FROM events -- '")).toBe(
+      UNSUPPORTED
+    );
   });
 
   it("rejects // line comments", () => {
@@ -160,10 +179,13 @@ describe("validateScopedQuery lexer-mismatch bypasses", () => {
     expect(validateScopedQuery("SELECT * FROM scoped_events WHERE pathname = \u2018x\u2019")).toBe(UNSUPPORTED);
     expect(validateScopedQuery("SELECT \u201cpathname\u201d FROM scoped_events")).toBe(UNSUPPORTED);
     expect(validateScopedQuery("SELECT pathname FROM\u180escoped_events")).toBe(UNSUPPORTED);
+    expect(validateScopedQuery("SELECT pathname FROM\u00a0scoped_events")).toBe(UNSUPPORTED);
   });
 
   it("still allows non-ASCII text inside literals and comments", () => {
-    expect(validateScopedQuery("SELECT count() FROM scoped_events WHERE pathname = '/\u00fcber' -- caf\u00e9")).toBeNull();
+    expect(
+      validateScopedQuery("SELECT count() FROM scoped_events WHERE pathname = '/\u00fcber' -- caf\u00e9")
+    ).toBeNull();
     expect(validateScopedQuery("SELECT count() /* a */ /* b */ FROM scoped_events")).toBeNull();
   });
 
@@ -185,21 +207,76 @@ describe("validateScopedQuery lexer-mismatch bypasses", () => {
   });
 
   it("still allows # and $ inside single-quoted literals", () => {
-    expect(validateScopedQuery("SELECT count() FROM scoped_events WHERE pathname LIKE '%#top%' OR pathname = '$x$'")).toBeNull();
+    expect(
+      validateScopedQuery("SELECT count() FROM scoped_events WHERE pathname LIKE '%#top%' OR pathname = '$x$'")
+    ).toBeNull();
   });
 
   it("rejects suffixed external-storage table functions", () => {
-    expect(validateScopedQuery("SELECT * FROM icebergS3('http://x'), scoped_events")).toMatch(/icebergS3\(\) is not allowed/);
-    expect(validateScopedQuery("SELECT * FROM deltaLakeLocal('/tmp'), scoped_events")).toMatch(/deltaLakeLocal\(\) is not allowed/);
+    expect(validateScopedQuery("SELECT * FROM icebergS3('http://x'), scoped_events")).toMatch(
+      /icebergS3\(\) is not allowed/
+    );
+    expect(validateScopedQuery("SELECT * FROM deltaLakeLocal('/tmp'), scoped_events")).toMatch(
+      /deltaLakeLocal\(\) is not allowed/
+    );
   });
 
   it("rejects server-introspection and sleep functions", () => {
-    expect(validateScopedQuery("SELECT hostName() FROM scoped_events")).toBe("hostName() is not allowed in custom analytics queries");
-    expect(validateScopedQuery("SELECT currentUser() FROM scoped_events")).toBe("currentUser() is not allowed in custom analytics queries");
-    expect(validateScopedQuery("SELECT sleepEachRow(1) FROM scoped_events")).toBe("sleepEachRow() is not allowed in custom analytics queries");
+    expect(validateScopedQuery("SELECT hostName() FROM scoped_events")).toBe(
+      "hostName() is not allowed in custom analytics queries"
+    );
+    expect(validateScopedQuery("SELECT currentUser() FROM scoped_events")).toBe(
+      "currentUser() is not allowed in custom analytics queries"
+    );
+    expect(validateScopedQuery("SELECT sleepEachRow(1) FROM scoped_events")).toBe(
+      "sleepEachRow() is not allowed in custom analytics queries"
+    );
     expect(validateScopedQuery("SELECT * FROM mergeTreeProjection('a','events','p'), scoped_events")).toBe(
       "mergeTreeProjection() is not allowed in custom analytics queries"
     );
+  });
+});
+
+// The validator blanks literals and comments before it looks for tables. Each
+// case here would let a table through, or wrongly reject a query, if it
+// disagreed with ClickHouse about where a literal or comment ends.
+describe("validateScopedQuery — literals and comments", () => {
+  it("does not end a literal at an escaped quote", () => {
+    expect(validateScopedQuery("SELECT 'it''s FROM events' AS a FROM scoped_events")).toBeNull();
+    expect(validateScopedQuery("SELECT 'a\\'b FROM events' AS a FROM scoped_events")).toBeNull();
+  });
+
+  it("ignores table names inside comments, and reads on after a line comment ends", () => {
+    expect(validateScopedQuery("SELECT count() /* FROM events */ FROM scoped_events -- , events")).toBeNull();
+    expect(validateScopedQuery("SELECT count() FROM scoped_events -- note\n, events")).toBe(SCOPED_ONLY_ERROR);
+  });
+
+  it("does not open a comment at comment markers inside a literal", () => {
+    expect(validateScopedQuery("SELECT '/*' AS a FROM scoped_events, events -- */")).toBe(SCOPED_ONLY_ERROR);
+    expect(validateScopedQuery("SELECT '--' AS a FROM scoped_events, events")).toBe(SCOPED_ONLY_ERROR);
+  });
+
+  it("allows quote characters inside comments and escaped literals", () => {
+    expect(validateScopedQuery('SELECT count() FROM scoped_events -- "x" `y`')).toBeNull();
+    expect(validateScopedQuery('SELECT count() /* a " b */ FROM scoped_events')).toBeNull();
+    expect(validateScopedQuery("SELECT 'it''s a \" test' AS a FROM scoped_events")).toBeNull();
+  });
+
+  it("rejects a block comment opened inside another, but allows sequential and empty ones", () => {
+    expect(validateScopedQuery("SELECT count() /* a //* b */ FROM scoped_events")).toBe(QUOTED_IDENTIFIER_ERROR);
+    expect(validateScopedQuery("SELECT count() /* a */ /**/ FROM scoped_events")).toBeNull();
+    expect(validateScopedQuery("SELECT 2 /* a */* 2 FROM scoped_events")).toBeNull();
+  });
+
+  it("accepts trailing semicolons", () => {
+    expect(validateScopedQuery("  SELECT count() FROM scoped_events ;;  ")).toBeNull();
+  });
+});
+
+describe("normalizeCustomQuery", () => {
+  it("trims whitespace and trailing semicolons, leaving interior ones", () => {
+    expect(normalizeCustomQuery("  SELECT 1 ;;  ")).toBe("SELECT 1");
+    expect(normalizeCustomQuery("SELECT 1; SELECT 2")).toBe("SELECT 1; SELECT 2");
   });
 });
 
@@ -275,7 +352,9 @@ describe("sanitizeClickhouseError", () => {
 
   it("maps privilege errors to a generic message", () => {
     expect(
-      sanitizeClickhouseError(new Error("Code: 497. DB::Exception: rybbit_query: Not enough privileges. (ACCESS_DENIED)"))
+      sanitizeClickhouseError(
+        new Error("Code: 497. DB::Exception: rybbit_query: Not enough privileges. (ACCESS_DENIED)")
+      )
     ).toBe("Query references data outside scoped_events");
   });
 
@@ -286,14 +365,18 @@ describe("sanitizeClickhouseError", () => {
   it("collapses non-user-facing error classes to the code only", () => {
     expect(
       sanitizeClickhouseError(
-        new Error("Code: 1. DB::Exception: user rybbit_query failed reading /var/lib/clickhouse/store/x.bin on host ch-1")
+        new Error(
+          "Code: 1. DB::Exception: user rybbit_query failed reading /var/lib/clickhouse/store/x.bin on host ch-1"
+        )
       )
     ).toBe("Query failed (ClickHouse error 1)");
   });
 
   it("strips the (from ip) suffix on user-facing errors", () => {
-    expect(sanitizeClickhouseError(new Error("Code: 62. DB::Exception: Syntax error: failed at position 5 (from 10.0.0.1:1234)"))).toBe(
-      "Code: 62. DB::Exception: Syntax error: failed at position 5"
-    );
+    expect(
+      sanitizeClickhouseError(
+        new Error("Code: 62. DB::Exception: Syntax error: failed at position 5 (from 10.0.0.1:1234)")
+      )
+    ).toBe("Code: 62. DB::Exception: Syntax error: failed at position 5");
   });
 });

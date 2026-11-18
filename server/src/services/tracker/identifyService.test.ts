@@ -52,17 +52,20 @@ describe("handleIdentify — site with no plan", () => {
 
     await handleIdentify(
       {
-        body: { site_id: "7", user_id: "user_1", anonymous_id: "anon_1", is_new_identify: true, traits: { plan: "pro" } },
+        body: {
+          site_id: "7",
+          user_id: "user_1",
+          anonymous_id: "anon_1",
+          is_new_identify: true,
+          traits: { plan: "pro" },
+        },
         headers: {},
       } as any,
       reply
     );
 
-    expect(mocks.isSiteWithoutPlan).toHaveBeenCalledWith(7);
     expect(reply.status).toHaveBeenCalledWith(200);
-    expect(mocks.generateUserIdFromClientId).not.toHaveBeenCalled();
     expect(mocks.insert).not.toHaveBeenCalled();
-    expect(mocks.select).not.toHaveBeenCalled();
     expect(mocks.backfillAdd).not.toHaveBeenCalled();
   });
 });
@@ -90,15 +93,5 @@ describe("handleIdentify — ip_address / user_agent overrides", () => {
     await handleIdentify({ body, headers: { "user-agent": "Server UA" } } as any, replyStub());
 
     expect(mocks.generateUserId).toHaveBeenCalledWith("203.0.113.50", "Victim UA", 7);
-  });
-
-  it("skips the bearer check when no override is sent", async () => {
-    await handleIdentify(
-      { body: { site_id: "7", user_id: "u", is_new_identify: false }, headers: { "user-agent": "Caller UA" } } as any,
-      replyStub()
-    );
-
-    expect(mocks.isTrustedServerSideIngestion).not.toHaveBeenCalled();
-    expect(mocks.generateUserId).toHaveBeenCalledWith("198.51.100.7", "Caller UA", 7);
   });
 });

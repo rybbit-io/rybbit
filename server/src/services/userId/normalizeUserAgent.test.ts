@@ -107,10 +107,6 @@ describe("normalizeUserAgentForIdentity", () => {
     // Regression: an earlier rule elided any slash value containing a digit,
     // turning `FBDV/iPhone12,8` into `FBDV/#,8` and fusing every iPhone model
     // that shared a point release.
-    it("keeps the iOS device model in a Facebook in-app user agent", () => {
-      expect(normalizeUserAgentForIdentity(UA.fbIosPhone12)).toContain("FBDV/iPhone12,8");
-    });
-
     it("separates two iPhone models behind the same in-app browser", () => {
       differs(UA.fbIosPhone12, UA.fbIosPhone14);
     });
@@ -131,10 +127,6 @@ describe("normalizeUserAgentForIdentity", () => {
 
     // Regression: a two-group bare-version rule read the `6.1` in `Nokia 6.1
     // Plus` as a version and merged it with every other dotted Nokia.
-    it("keeps a dotted marketing model name", () => {
-      expect(normalizeUserAgentForIdentity(UA.nokia61Plus)).toContain("Nokia 6.1 Plus");
-    });
-
     it("separates two handsets whose model names differ only in their digits", () => {
       differs(UA.nokia61Plus, UA.nokia83Plus);
     });

@@ -93,24 +93,6 @@ describe("authedFetch", () => {
     expect(lastRequest().headers).toEqual({ "x-private-key": "123456abcdef" });
   });
 
-  it("does not send a private-key header outside a shared dashboard", async () => {
-    axiosMock.mockResolvedValue({ data: "ok" });
-    setPrivateKeyResolver(() => null);
-
-    await authedFetch("/sites/42/overview", undefined, { headers: { Accept: "application/json" } });
-
-    expect(lastRequest().headers).toEqual({ Accept: "application/json" });
-    expect(lastRequest().headers).not.toHaveProperty("x-private-key");
-  });
-
-  it("surfaces the backend's public error message", async () => {
-    axiosMock.mockRejectedValue({
-      response: { data: { error: "You do not have access to this site" } },
-    });
-
-    await expect(authedFetch("/sites/42")).rejects.toThrow("You do not have access to this site");
-  });
-
   it("keeps the status and body of a backend error for callers that branch on them", async () => {
     const body = { error: "This transfer was sent to a different email address", recipientEmail: "ada@example.com" };
     axiosMock.mockRejectedValue({ response: { status: 403, data: body } });

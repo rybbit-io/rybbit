@@ -10,7 +10,7 @@ describe("slugFromName", () => {
   it("keeps the name's letters and digits and adds a random suffix", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.123456789);
 
-    expect(slugFromName("Acme Inc.")).toBe(`acme-inc-${(0.123456789).toString(36).slice(2, 6)}`);
+    expect(slugFromName("Acme Inc.")).toBe("acme-inc-4fzz");
   });
 
   it("gives the same name a different slug each time, so common names don't collide", () => {

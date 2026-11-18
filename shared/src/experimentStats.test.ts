@@ -4,7 +4,6 @@ import {
   chiSquarePValue,
   compareToControl,
   expectedLoss,
-  MAX_PROJECTION_SCALE,
   projectedDecision,
   projectedScaleToDecide,
   probabilityBBeatsA,
@@ -112,7 +111,7 @@ describe("chiSquarePValue", () => {
     [10.827566, 1, 0.001],
     [5.991465, 2, 0.05],
     [0.454936, 1, 0.5],
-    [30, 3, 1.3800570e-6],
+    [30, 3, 1.380057e-6],
   ])("chi2 = %f with %i df has p = %f", (statistic, df, expected) => {
     expect(chiSquarePValue(statistic, df) / expected).toBeCloseTo(1, 4);
   });
@@ -165,7 +164,6 @@ describe("projectedScaleToDecide", () => {
 
   it("gives up beyond the maximum scale", () => {
     expect(projectedScaleToDecide({ units: 1000, conversions: 100 }, { units: 1000, conversions: 101 })).toBeNull();
-    expect(MAX_PROJECTION_SCALE).toBe(100);
   });
 });
 

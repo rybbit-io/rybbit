@@ -71,7 +71,9 @@ describe("getPaginationStatements", () => {
 });
 
 describe("runAnalyticsQuery", () => {
-  it("executes the spec and coerces numeric strings", async () => {
+  // Analytics queries used to run with no settings at all, so a runaway all-time
+  // query could hold a ClickHouse slot indefinitely; hence max_execution_time.
+  it("executes the spec with an execution-time cap and coerces numeric strings", async () => {
     mockQuery.mockResolvedValueOnce(resultSet([{ value: "Chrome", count: "42" }]));
 
     const rows = await runAnalyticsQuery<{ value: string; count: number }>({
@@ -86,16 +88,6 @@ describe("runAnalyticsQuery", () => {
       clickhouse_settings: { max_execution_time: 60 },
     });
     expect(rows).toEqual([{ value: "Chrome", count: 42 }]);
-  });
-
-  // Analytics queries used to run with no settings at all, so a runaway all-time
-  // query could hold a ClickHouse slot indefinitely.
-  it("caps execution time", async () => {
-    mockQuery.mockResolvedValueOnce(resultSet([]));
-
-    await runAnalyticsQuery({ query: "SELECT 1" });
-
-    expect(mockQuery.mock.calls[0][0].clickhouse_settings?.max_execution_time).toBe(60);
   });
 
   it("wraps failures in AnalyticsQueryError carrying the SQL", async () => {

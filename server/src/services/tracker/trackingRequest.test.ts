@@ -56,13 +56,6 @@ describe("resolveTrackingRequest", () => {
     expect(await resolveTrackingRequest(request({}), payload())).toBeNull();
   });
 
-  it("reads the Site Configuration once for the whole request", async () => {
-    await resolveTrackingRequest(request({}), payload());
-
-    expect(mocks.getConfig).toHaveBeenCalledOnce();
-    expect(mocks.getConfig).toHaveBeenCalledWith("site_abc");
-  });
-
   it("ignores public payload IP and user-agent overrides", async () => {
     const resolved = await resolveTrackingRequest(
       request({

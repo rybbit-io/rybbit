@@ -99,7 +99,7 @@ export function interpolateSegment(rects: readonly SegmentRect[], position: numb
 }
 
 // Next enabled index from `from` in `step` direction, wrapping; -1 if none.
-export function seekEnabled(options: readonly { disabled?: boolean }[], from: number, step: 1 | -1): number {
+function seekEnabled(options: readonly { disabled?: boolean }[], from: number, step: 1 | -1): number {
   const count = options.length;
   for (let k = 1; k <= count; k++) {
     const i = (((from + step * k) % count) + count) % count;

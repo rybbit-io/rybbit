@@ -6,7 +6,7 @@ import type { WebVitalMetric } from "@rybbit/shared";
  * percentiles it shows with the same numbers
  * (client/src/app/[site]/performance/utils/performanceUtils.ts).
  */
-export const WEB_VITAL_LIMITS: Record<WebVitalMetric, { good: number; poor: number }> = {
+const WEB_VITAL_LIMITS: Record<WebVitalMetric, { good: number; poor: number }> = {
   lcp: { good: 2500, poor: 4000 },
   cls: { good: 0.1, poor: 0.25 },
   inp: { good: 200, poor: 500 },
@@ -14,7 +14,7 @@ export const WEB_VITAL_LIMITS: Record<WebVitalMetric, { good: number; poor: numb
   ttfb: { good: 800, poor: 1800 },
 };
 
-export const WEB_VITAL_METRICS = Object.keys(WEB_VITAL_LIMITS) as WebVitalMetric[];
+const WEB_VITAL_METRICS = Object.keys(WEB_VITAL_LIMITS) as WebVitalMetric[];
 
 export const WEB_VITAL_RATING_COLUMNS = WEB_VITAL_METRICS.flatMap(metric => [
   `${metric}_count`,

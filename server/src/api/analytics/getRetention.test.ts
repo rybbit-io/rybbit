@@ -9,10 +9,8 @@ import {
   buildRetentionQuery,
   buildRetentionQueryParams,
   getRetention,
-  MAX_COHORTS,
   processRetentionData,
   resolveRetentionWindow,
-  RETENTION_LOOKBACK_DAYS,
 } from "./getRetention.js";
 
 // Wednesday Sep 30, 2026, 11:00 in New York.
@@ -80,7 +78,7 @@ describe("resolveRetentionWindow", () => {
       NOW
     );
 
-    expect(window.periods).toHaveLength(MAX_COHORTS.day);
+    expect(window.periods).toHaveLength(92);
     expect(window.periods[window.periods.length - 1]).toBe("2026-09-30");
     expect(window.truncated).toBe(true);
     expect(window.firstPeriodPartial).toBe(false);
@@ -89,7 +87,7 @@ describe("resolveRetentionWindow", () => {
   it("reads the dashboard's empty date range as all time, capped", () => {
     const window = resolveRetentionWindow({ start_date: "", end_date: "", time_zone: "UTC" }, "week", NOW);
 
-    expect(window.periods).toHaveLength(MAX_COHORTS.week);
+    expect(window.periods).toHaveLength(53);
     expect(window.periods[window.periods.length - 1]).toBe("2026-09-28");
     expect(window.truncated).toBe(true);
   });
@@ -145,7 +143,6 @@ describe("buildRetentionQuery", () => {
     expect(sql).toContain("intDiv(dateDiff('day', cohort_period, activity_period), 7) AS period_difference");
     expect(sql).toContain("LIMIT {rowLimit:UInt32}");
     expect(sql).not.toContain("FilteredSessions");
-    expect(RETENTION_LOOKBACK_DAYS).toBe(90);
   });
 
   it("selects cohorts by their first session when filters are set", () => {
@@ -176,7 +173,8 @@ describe("buildRetentionQuery", () => {
       siteId: 7,
       timeZone: NY,
       windowStart: "2026-08-03 04:00:00",
-      rowLimit: (MAX_COHORTS.week * (MAX_COHORTS.week + 1)) / 2,
+      // One row per cell of a 53-cohort triangle.
+      rowLimit: 1431,
     });
   });
 });
@@ -267,7 +265,7 @@ describe("getRetention", () => {
     expect(query).toHaveBeenCalledTimes(1);
     expect(query.mock.calls[0][0].query_params).toMatchObject({ siteId: 1, timeZone: "UTC" });
     const body = res.body as { data: { cohorts: Record<string, unknown>; lookbackDays: number } };
-    expect(body.data.lookbackDays).toBe(RETENTION_LOOKBACK_DAYS);
+    expect(body.data.lookbackDays).toBe(90);
     expect(Object.values(body.data.cohorts)[0]).toMatchObject({ size: 5 });
   });
 });

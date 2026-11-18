@@ -35,13 +35,9 @@ describe("formatMetric", () => {
 
 describe("getRatingSplit", () => {
   it("derives the loads that need improvement and the share of good ones", () => {
-    expect(getRatingSplit({ lcp_count: 3327, lcp_good: 1367, lcp_poor: 880 }, "lcp")).toEqual({
-      count: 3327,
-      good: 1367,
-      needs_improvement: 1080,
-      poor: 880,
-      goodShare: (1367 / 3327) * 100,
-    });
+    const split = getRatingSplit({ lcp_count: 3327, lcp_good: 1367, lcp_poor: 880 }, "lcp");
+    expect(split).toMatchObject({ count: 3327, good: 1367, needs_improvement: 1080, poor: 880 });
+    expect(split?.goodShare).toBeCloseTo(41.09, 2);
   });
 
   it("reads each metric's own columns", () => {
