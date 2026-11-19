@@ -89,7 +89,97 @@ export const noSite2 = (name?: string | null): LifecycleEmail => ({
 });
 
 // ---------------------------------------------------------------------------
-// Stage 2: site created, no data
+// Stage 2a: site created, but the organization has no plan, so it collects nothing
+// ---------------------------------------------------------------------------
+
+export interface NoPlanSite {
+  domain: string;
+  siteId: number;
+}
+
+/** The site's dashboard shows the prompt that starts checkout; several sites share the home page. */
+const startPlanButton = (sitesIn: NoPlanSite[], trialOnOffer: boolean): LetterBlock => ({
+  type: "button",
+  label: trialOnOffer ? "Start free trial" : "Choose a plan",
+  href: sitesIn.length === 1 ? `${appUrl()}/${sitesIn[0].siteId}` : appUrl(),
+});
+
+const notTrackingRows = (sitesIn: NoPlanSite[]): LetterBlock[] =>
+  sitesIn.length === 1
+    ? []
+    : [
+        {
+          type: "rows",
+          rows: sitesIn.slice(0, MAX_LISTED_SITES).map(s => ({ label: s.domain, value: "Not tracking yet" })),
+        },
+        ...overflow(sitesIn.length),
+      ];
+
+/**
+ * `trialOnOffer`: the organization has never had a subscription, so checkout starts with the
+ * 7-day trial. One that has is offered plans instead, as in the app.
+ */
+export const noPlan1 = (sitesIn: NoPlanSite[], trialOnOffer: boolean, name?: string | null): LifecycleEmail => {
+  const single = sitesIn.length === 1;
+  const domains = sitesIn.map(s => s.domain);
+  const added = single
+    ? `You added ${domains[0]} to Rybbit, but it`
+    : `You added ${sitesIn.length} sites to Rybbit, but they`;
+  return {
+    subject: `${subjectDomains(domains)} ${single ? "isn't" : "aren't"} tracking yet`,
+    preview: trialOnOffer ? "Start your 7-day free trial to turn it on." : "Choose a plan to turn it on.",
+    greeting: greeting(name),
+    blocks: [
+      {
+        type: "p",
+        text: `${added} won't collect any data until you ${trialOnOffer ? "start your free trial" : "choose a plan"}.`,
+      },
+      ...notTrackingRows(sitesIn),
+      ...(trialOnOffer
+        ? ([
+            {
+              type: "p",
+              text: "The trial is 7 days. It needs a card, but you won't be charged until it ends, and you can cancel before then.",
+            },
+          ] as LetterBlock[])
+        : []),
+      startPlanButton(sitesIn, trialOnOffer),
+      {
+        type: "p",
+        text: `After that it's one script tag on ${single ? "your site" : "each site"} and you'll see your visitors. If you have a question about pricing or anything else, just reply.`,
+      },
+    ],
+  };
+};
+
+export const noPlan2 = (sitesIn: NoPlanSite[], trialOnOffer: boolean, name?: string | null): LifecycleEmail => {
+  const single = sitesIn.length === 1;
+  const domains = sitesIn.map(s => s.domain);
+  const still = single
+    ? `${domains[0]} still isn't collecting data`
+    : `${sitesIn.length} of your sites still aren't collecting data`;
+  return {
+    subject: `Still want to track ${subjectDomains(domains)}?`,
+    preview: "Just reply and I'll help. This is my last email about it.",
+    greeting: greeting(name),
+    blocks: [
+      {
+        type: "p",
+        text: `${still}, because ${trialOnOffer ? "the free trial hasn't been started" : "there's no plan yet"}. Did something get in the way?`,
+      },
+      ...notTrackingRows(sitesIn),
+      {
+        type: "p",
+        text: "If it was the card, the pricing or anything else, just reply and I'll help. And if Rybbit isn't for you, I'd like to know why.",
+      },
+      startPlanButton(sitesIn, trialOnOffer),
+      { type: "p", text: "This is the last email I'll send about it." },
+    ],
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Stage 2b: site created and able to collect, no data
 // ---------------------------------------------------------------------------
 
 export interface SnippetSite {
