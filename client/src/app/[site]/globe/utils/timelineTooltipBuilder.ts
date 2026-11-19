@@ -9,6 +9,7 @@ import { formatShortDuration, hour12, userLocale } from "../../../../lib/dateTim
 import { frogAvatarSVG } from "../../../../lib/frogAvatar";
 import type { GetSessionsResponse } from "../../../../api/analytics/endpoints";
 import { extractDomain, getDisplayName } from "../../../../components/Channel";
+import { escapeHtml } from "./escapeHtml";
 import {
   renderCountryFlag,
   renderDeviceIcon,
@@ -18,7 +19,8 @@ import {
 } from "../3d/hooks/timelineLayer/timelineMarkerHelpers";
 
 /**
- * Build the HTML content for a session tooltip
+ * Build the HTML content for a session tooltip. The result is set as HTML, so
+ * every session field is escaped: a referrer is visitor-supplied text.
  */
 export function buildTooltipHTML(session: GetSessionsResponse[number], lng: number, lat: number): string {
   const avatarSVG = frogAvatarSVG(session.user_id, 36);
@@ -67,39 +69,39 @@ export function buildTooltipHTML(session: GetSessionsResponse[number], lng: numb
           ${avatarSVG}
         </div>
         <div class="flex-1 min-w-0">
-          <h3 class="text-sm font-semibold text-white truncate">${name}</h3>
+          <h3 class="text-sm font-semibold text-white truncate">${escapeHtml(name)}</h3>
           <div class="flex items-center gap-1 text-xs text-neutral-300 mt-0.5">
             ${flagSVG}
-            <span>${session.city || "Unknown"}, ${session.country || "Unknown"}</span>
+            <span>${escapeHtml(session.city || "Unknown")}, ${escapeHtml(session.country || "Unknown")}</span>
           </div>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-1.5 whitespace-nowrap">
-        ${browserIconPath ? `<img src="${browserIconPath}" alt="${session.browser}" title="${session.browser}" class="w-4 h-4" />` : ""}
-        ${osIconPath ? `<img src="${osIconPath}" alt="${session.operating_system}" title="${session.operating_system}" class="w-4 h-4" />` : ""}
-        <span class="flex items-center" title="${session.device_type}">${deviceIconSVG}</span>
+        ${browserIconPath ? `<img src="${browserIconPath}" alt="${escapeHtml(session.browser)}" title="${escapeHtml(session.browser)}" class="w-4 h-4" />` : ""}
+        ${osIconPath ? `<img src="${osIconPath}" alt="${escapeHtml(session.operating_system)}" title="${escapeHtml(session.operating_system)}" class="w-4 h-4" />` : ""}
+        <span class="flex items-center" title="${escapeHtml(session.device_type)}">${deviceIconSVG}</span>
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 text-xs">
           ${pageviewIconSVG}
-          <span>${session.pageviews || 0}</span>
+          <span>${escapeHtml(session.pageviews || 0)}</span>
         </span>
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 text-xs">
           ${eventIconSVG}
-          <span>${session.events || 0}</span>
+          <span>${escapeHtml(session.events || 0)}</span>
         </span>
       </div>
       <div class="flex items-center gap-1.5">
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 text-xs">
           ${referrerIconSVG}
-          <span>${referrerText}</span>
+          <span>${escapeHtml(referrerText)}</span>
         </span>
       </div>
       <div class="flex items-center justify-between gap-2 text-xs text-neutral-400 pt-1.5 border-t border-neutral-700">
-        <span>${startTime}</span>
-        <span class="text-neutral-200">${durationDisplay}</span>
+        <span>${escapeHtml(startTime)}</span>
+        <span class="text-neutral-200">${escapeHtml(durationDisplay)}</span>
       </div>
       <button
         class="view-session-btn w-full px-2 py-1 bg-accent-600 hover:bg-accent-700 text-white text-xs font-medium rounded transition-colors"
-        data-session-id="${session.session_id}"
+        data-session-id="${escapeHtml(session.session_id)}"
         tabindex="-1"
       >
         View Details

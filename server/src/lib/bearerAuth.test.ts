@@ -71,7 +71,7 @@ describe("resolveBearerIdentity", () => {
         }),
       })
     );
-    expect(identity).toEqual({ status: "valid", userId: "u2", statements: { analytics: ["read"] } });
+    expect(identity).toEqual({ status: "valid", userId: "u2", statements: { analytics: ["read"] }, oauth: true });
   });
 
   it("sends a JWT access token straight to the OAuth lookup, skipping the API-key check", async () => {

@@ -259,6 +259,11 @@ declare module "fastify" {
     bearerAuth?: boolean;
     /** Scope statements of that credential; null = unrestricted. */
     bearerStatements?: ScopeStatements | null;
+    /**
+     * False when that credential is one the session-only surfaces refuse: a
+     * scoped key, an organization-owned key, or any OAuth token.
+     */
+    bearerSessionEquivalent?: boolean;
     /** The role a permission guard admitted the caller with, on the site or organization it checked. */
     accessRole?: OrgRole;
   }

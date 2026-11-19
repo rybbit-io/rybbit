@@ -23,6 +23,20 @@ export const AUTOCAPTURE_PATTERN_PROPS: Record<AutocaptureTargetType, readonly s
   copy: ["text"],
 };
 
+/**
+ * Quotes a scalar as a SQL literal. SqlString.escape only does that for
+ * scalars: handed an object it emits `key` = 'value' pairs and handed an array
+ * a bare list, neither of which is a literal. Step and goal definitions come
+ * from request bodies and jsonb columns, so a wrong type must fail here rather
+ * than change the shape of the query.
+ */
+export function escapeLiteral(value: string | number | boolean): string {
+  if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+    throw new TypeError("SQL literal must be a string, number or boolean");
+  }
+  return SqlString.escape(value);
+}
+
 type LegacyPropertyConfig = {
   eventPropertyKey?: string;
   eventPropertyValue?: string | number | boolean;
@@ -40,28 +54,28 @@ export function resolvePropertyFilters(config: LegacyPropertyConfig): PropertyFi
 }
 
 function propsFilterCondition(filter: PropertyFilter): string {
-  const key = SqlString.escape(filter.key);
+  const key = escapeLiteral(filter.key);
   if (typeof filter.value === "number") {
-    return `toFloat64OrNull(JSONExtractString(toString(props), ${key})) = ${SqlString.escape(filter.value)}`;
+    return `toFloat64OrNull(JSONExtractString(toString(props), ${key})) = ${escapeLiteral(filter.value)}`;
   }
   const value = typeof filter.value === "boolean" ? (filter.value ? "true" : "false") : filter.value;
-  return `JSONExtractString(toString(props), ${key}) = ${SqlString.escape(value)}`;
+  return `JSONExtractString(toString(props), ${key}) = ${escapeLiteral(value)}`;
 }
 
 export function buildPageCondition(pathPattern: string, filters: PropertyFilter[]): string {
   const regex = patternToRegex(pathPattern);
-  let condition = `type = 'pageview' AND match(pathname, ${SqlString.escape(regex)})`;
+  let condition = `type = 'pageview' AND match(pathname, ${escapeLiteral(regex)})`;
 
   // Page targets match property filters against URL parameters
   for (const filter of filters) {
-    condition += ` AND url_parameters[${SqlString.escape(filter.key)}] = ${SqlString.escape(String(filter.value))}`;
+    condition += ` AND url_parameters[${escapeLiteral(filter.key)}] = ${escapeLiteral(String(filter.value))}`;
   }
 
   return condition;
 }
 
 export function buildEventCondition(eventName: string, filters: PropertyFilter[]): string {
-  let condition = `type = 'custom_event' AND event_name = ${SqlString.escape(eventName)}`;
+  let condition = `type = 'custom_event' AND event_name = ${escapeLiteral(eventName)}`;
 
   for (const filter of filters) {
     condition += ` AND ${propsFilterCondition(filter)}`;
@@ -90,13 +104,13 @@ export function buildAutocaptureCondition(
   pattern: string | undefined,
   filters: PropertyFilter[]
 ): string {
-  let condition = `type = ${SqlString.escape(type)}`;
+  let condition = `type = ${escapeLiteral(type)}`;
 
   const trimmedPattern = pattern?.trim();
   if (trimmedPattern) {
-    const regex = SqlString.escape(textPatternToRegex(trimmedPattern));
+    const regex = escapeLiteral(textPatternToRegex(trimmedPattern));
     const patternMatches = AUTOCAPTURE_PATTERN_PROPS[type].map(
-      prop => `match(JSONExtractString(toString(props), ${SqlString.escape(prop)}), ${regex})`
+      prop => `match(JSONExtractString(toString(props), ${escapeLiteral(prop)}), ${regex})`
     );
     condition += ` AND (${patternMatches.join(" OR ")})`;
   }

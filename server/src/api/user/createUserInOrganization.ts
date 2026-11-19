@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { db } from "../../db/postgres/postgres.js";
 import { member } from "../../db/postgres/schema.js";
 import { auth } from "../../lib/auth.js";
-import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission } from "@rybbit/shared";
+import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission, roleHoldsSessionOnlyPermission } from "@rybbit/shared";
 import { getOrgMembership } from "../../lib/access.js";
 import { getMemberLimitError, getPlanMemberLimit, memberLimitError } from "../../lib/memberLimits.js";
 import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
@@ -76,6 +76,15 @@ export async function createUserInOrganization(request: FastifyRequest<CreateUse
     // org admin's own is a privilege-escalation path.
     if (!isAdmin && !canAssignRole(callerMembership?.role, role)) {
       return reply.status(403).send({ error: "You cannot assign a role above your own" });
+    }
+
+    // A scoped key or an OAuth token is refused the session-only surfaces (API
+    // keys, billing, the DPA). Letting it make someone an admin or owner would
+    // hand it those surfaces anyway, through that account's own sign-in.
+    if (request.bearerAuth && !request.bearerSessionEquivalent && roleHoldsSessionOnlyPermission(role)) {
+      return reply
+        .status(403)
+        .send({ error: "This credential cannot assign the admin or owner role. Sign in to the dashboard to do that." });
     }
 
     if (password.length < 8) {

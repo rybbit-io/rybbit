@@ -372,6 +372,8 @@ export interface BearerAuthResult {
    * enforce these; this function only carries them.
    */
   statements: ScopeStatements | null;
+  /** The credential is an OAuth access token, not an API key. */
+  oauth?: true;
 }
 
 /**
@@ -421,7 +423,12 @@ export async function checkApiKey(
   }
   if (identity.status === "valid" && identity.userId) {
     const membership = await resolveBearerUserRole(identity.userId, options);
-    return { ...membership, rateLimit: identity.rateLimit, statements: identity.statements };
+    return {
+      ...membership,
+      rateLimit: identity.rateLimit,
+      statements: identity.statements,
+      ...(identity.oauth ? { oauth: true as const } : {}),
+    };
   }
   return { valid: false, role: null, statements: null };
 }

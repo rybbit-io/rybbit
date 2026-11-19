@@ -8,6 +8,7 @@ import {
   PERMISSIONS,
   permissionsForRole,
   roleHasPermission,
+  roleHoldsSessionOnlyPermission,
 } from "@rybbit/shared";
 import { describe, expect, it } from "vitest";
 import { SCOPE_MATRIX } from "./scopes.js";
@@ -91,5 +92,10 @@ describe("role helpers", () => {
     expect(canAssignRole("editor", "viewer")).toBe(false);
     expect(canAssignRole("member", "member")).toBe(false);
     expect(canAssignRole("owner", "superuser")).toBe(false);
+  });
+
+  it("marks admin and owner as the roles carrying session-only permissions", () => {
+    expect(ORG_ROLES.filter(roleHoldsSessionOnlyPermission)).toEqual(["owner", "admin"]);
+    expect(roleHoldsSessionOnlyPermission("superuser")).toBe(false);
   });
 });

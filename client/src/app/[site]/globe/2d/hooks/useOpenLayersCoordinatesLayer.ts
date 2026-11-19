@@ -11,6 +11,7 @@ import { Circle, Fill, Stroke, Style } from "ol/style";
 import { fromLonLat } from "ol/proj";
 import { useGetSessionLocations } from "../../../../../api/analytics/hooks/useGetSessionLocations";
 import { addFilter, removeFilter, useStore } from "../../../../../lib/store";
+import { escapeHtml } from "../../utils/escapeHtml";
 import { renderCountryFlag } from "../../utils/renderCountryFlag";
 
 const getSizeMultiplier = (total: number) => {
@@ -200,10 +201,10 @@ export function useOpenLayersCoordinatesLayer({ mapInstanceRef, mapViewRef, mapV
           <div class="bg-neutral-850 border border-neutral-750 rounded-lg p-2 shadow-lg">
             <div class="flex items-center gap-2 mb-1">
               ${flagSVG}
-              <span class="text-sm font-medium text-white">${city}</span>
+              <span class="text-sm font-medium text-white">${escapeHtml(city)}</span>
             </div>
             <div class="text-sm">
-              <span class="font-bold text-accent-400">${count.toLocaleString()}</span>
+              <span class="font-bold text-accent-400">${escapeHtml(count.toLocaleString())}</span>
               <span class="text-neutral-300"> sessions</span>
             </div>
           </div>

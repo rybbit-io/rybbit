@@ -167,6 +167,23 @@ describe("permission guards", () => {
     expect((await app.inject({ method: "POST", url: "/user/settings", headers: bearer })).statusCode).toBe(200);
   });
 
+  // An OAuth grant with no custom scopes parses as unrestricted. It still
+  // belongs to a third-party client, so it never reaches these surfaces.
+  it("deny-scoped routes reject every OAuth token, even an unrestricted one", async () => {
+    mocks.checkApiKey.mockResolvedValue({ ...bearerResult(null, "owner"), oauth: true });
+
+    const response = await app.inject({ method: "POST", url: "/user/settings", headers: bearer });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error).toBe("Insufficient scope");
+  });
+
+  it("an unrestricted OAuth token keeps the scoped surfaces", async () => {
+    mocks.checkApiKey.mockResolvedValue({ ...bearerResult(null), oauth: true });
+
+    expect((await app.inject({ method: "GET", url: "/sites/5/goals", headers: bearer })).statusCode).toBe(200);
+  });
+
   it("org guard enforces org scopes", async () => {
     mocks.checkApiKey.mockResolvedValue(bearerResult({ analytics: ["read"] }));
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
+import { escapeLiteral } from "../utils/eventConditions.js";
+import { buildFunnelStepCondition, FunnelStep, parseFunnelSteps } from "./funnelSteps.js";
 
 describe("buildFunnelStepCondition — page steps", () => {
   it("builds a pageview condition from a literal path", () => {
@@ -95,5 +96,53 @@ describe("buildFunnelStepCondition — hostname", () => {
     expect(buildFunnelStepCondition({ type: "page", value: "/x", hostname: "a'; DROP TABLE events;--" })).toBe(
       "type = 'pageview' AND match(pathname, '^/x$') AND hostname = 'a\\'; DROP TABLE events;--'"
     );
+  });
+});
+
+describe("parseFunnelSteps", () => {
+  const page = { type: "page", value: "/a" };
+
+  it("accepts well-formed steps", () => {
+    const steps = [page, { type: "event", value: "signup", propertyFilters: [{ key: "plan", value: 3 }] }];
+    expect(parseFunnelSteps(steps)).toEqual(steps);
+  });
+
+  // sqlstring renders an object as `key` = 'value' and an array as a bare list,
+  // so a non-string field is not a literal any more: it is query structure.
+  it.each([
+    ["an object hostname", { ...page, hostname: { pathname: "x" } }],
+    ["an array value", { type: "event", value: ["a", "b"] }],
+    ["an object step name", { ...page, name: { a: 1 } }],
+    ["an object property key", { ...page, propertyFilters: [{ key: { a: 1 }, value: "x" }] }],
+    ["an object property value", { ...page, propertyFilters: [{ key: "k", value: { a: 1 } }] }],
+    ["an object legacy property value", { ...page, eventPropertyKey: "k", eventPropertyValue: ["x"] }],
+  ])("rejects %s", (_label, step) => {
+    expect(parseFunnelSteps([page, step])).toBeNull();
+  });
+
+  it("rejects fewer than two steps, more than the cap, and non-arrays", () => {
+    expect(parseFunnelSteps([page])).toBeNull();
+    expect(parseFunnelSteps([page, page, page], 2)).toBeNull();
+    expect(parseFunnelSteps({ length: 2 })).toBeNull();
+    expect(parseFunnelSteps(undefined)).toBeNull();
+  });
+});
+
+describe("escapeLiteral", () => {
+  it("quotes scalars", () => {
+    expect(escapeLiteral("it's")).toBe("'it\\'s'");
+    expect(escapeLiteral(3)).toBe("3");
+    expect(escapeLiteral(true)).toBe("true");
+  });
+
+  it("refuses anything sqlstring would not render as a literal", () => {
+    expect(() => escapeLiteral({ pathname: "x" } as never)).toThrow(TypeError);
+    expect(() => escapeLiteral(["a"] as never)).toThrow(TypeError);
+    expect(() => escapeLiteral(null as never)).toThrow(TypeError);
+  });
+
+  it("keeps a malformed step out of the query even if it skips validation", () => {
+    const step = { type: "page", value: "/a", hostname: { pathname: "x" } } as unknown as FunnelStep;
+    expect(() => buildFunnelStepCondition(step)).toThrow(TypeError);
   });
 });
