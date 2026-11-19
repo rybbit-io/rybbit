@@ -294,6 +294,7 @@ describe("ingestEvent", () => {
     expect(mocks.checkBotBlocking).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: expect.objectContaining({ siteId: 42 }),
+        isCountryOnlyIp: expect.any(Function),
       })
     );
   });

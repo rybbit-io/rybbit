@@ -909,5 +909,66 @@ describe("checkBotBlocking", () => {
 
       expect(result).toBeNull();
     });
+
+    describe("country-only proxy slice", () => {
+      const cox = { asn: 22773, organization: "Cox Communications Inc." };
+
+      beforeEach(() => {
+        setLowEngagementAsnsForTests([], Number.POSITIVE_INFINITY, [22773]);
+        vi.mocked(lookupAsn).mockReturnValue(cox);
+      });
+
+      it("records a listed network's country-only address without enforcing", async () => {
+        const isCountryOnlyIp = vi.fn(() => true);
+
+        const result = await checkBotBlocking({
+          headers: browserHeaders,
+          blockBots: true,
+          payload: cleanPayload,
+          isCountryOnlyIp,
+        });
+
+        expect(isCountryOnlyIp).toHaveBeenCalledWith(cleanPayload.ipAddress);
+        expect(result).toMatchObject({
+          isBot: false,
+          enforced: false,
+          detections: [],
+          shadowRules: ["asn_country_only_slice"],
+          eventProperties: { botAsn: 22773, anomalyReasons: "shadow:asn_country_only_slice" },
+        });
+      });
+
+      it("leaves the same network's located subscribers alone", async () => {
+        const result = await checkBotBlocking({
+          headers: browserHeaders,
+          blockBots: true,
+          payload: cleanPayload,
+          isCountryOnlyIp: () => false,
+        });
+
+        expect(result).toBeNull();
+      });
+
+      it("does not geolocate a hit on a network that is not listed", async () => {
+        vi.mocked(lookupAsn).mockReturnValue({ asn: 7922, organization: "Comcast Cable Communications, LLC" });
+        const isCountryOnlyIp = vi.fn(() => true);
+
+        const result = await checkBotBlocking({
+          headers: browserHeaders,
+          blockBots: true,
+          payload: cleanPayload,
+          isCountryOnlyIp,
+        });
+
+        expect(result).toBeNull();
+        expect(isCountryOnlyIp).not.toHaveBeenCalled();
+      });
+
+      it("says nothing without a geolocation lookup", async () => {
+        const result = await checkBotBlocking({ headers: browserHeaders, blockBots: true, payload: cleanPayload });
+
+        expect(result).toBeNull();
+      });
+    });
   });
 });

@@ -37,6 +37,22 @@ function extractLocationData(response: City | null): LocationResponse {
   };
 }
 
+/**
+ * Whether an IP geolocates to a country and nothing finer: no city and no
+ * region. Matches the stored columns (`country != '' AND city = '' AND
+ * region = ''`), so a rule learned from ClickHouse reads the same slice at
+ * ingest. False when the IP is not found at all — unknown is not country-only.
+ */
+export function isCountryOnlyLocation(ip: string): boolean {
+  if (!reader || !ip) return false;
+  try {
+    const location = extractLocationData((reader as ExtendedReader).city(ip));
+    return Boolean(location?.countryIso) && !location?.city && !location?.region;
+  } catch {
+    return false;
+  }
+}
+
 export async function getLocation(ips: string[]): Promise<Record<string, LocationResponse>> {
   const results: Record<string, LocationResponse> = {};
   for (const ip of new Set(ips)) {
