@@ -7,7 +7,13 @@ import { GetSessionsResponse } from "../sessions/getSessions.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { SESSION_CHANNEL_AGG, SESSION_REFERRER_AGG } from "../utils/sessionAttribution.js";
 import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
-import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
+import {
+  buildFunnelStepCondition,
+  FunnelStep,
+  INVALID_FUNNEL_STEPS_ERROR,
+  MAX_FUNNEL_STEPS,
+  parseFunnelSteps,
+} from "./funnelSteps.js";
 
 type Funnel = {
   steps: FunnelStep[];
@@ -197,15 +203,15 @@ export const buildFunnelStepSessionsQuery = (
 export const getFunnelStepSessions = analyticsRoute<GetFunnelStepSessionsRequest>(
   "funnel step sessions",
   async (req: FastifyRequest<GetFunnelStepSessionsRequest>, res: FastifyReply) => {
-    const { steps } = req.body;
     const { stepNumber: stepNumberStr, siteId } = req.params;
     const { mode, page, limit } = req.query;
 
     const stepNumber = parseInt(stepNumberStr, 10);
 
-    // Validate request
-    if (!steps || steps.length < 2) {
-      return res.status(400).send({ error: "At least 2 steps are required for a funnel" });
+    // The steps become SQL, so the body is checked field by field, not just counted.
+    const steps = parseFunnelSteps(req.body?.steps, MAX_FUNNEL_STEPS);
+    if (!steps) {
+      return res.status(400).send({ error: INVALID_FUNNEL_STEPS_ERROR });
     }
 
     if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > steps.length) {

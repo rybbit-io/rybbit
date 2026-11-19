@@ -180,9 +180,27 @@ const pluginList = [
         // to win back sites an admin had since taken away.)
         try {
           await applyInvitationSiteAccess(accepted.id, newMember.id);
-          invalidateSitesAccessCache(acceptingUser.id);
         } catch (error) {
-          authLogger.error({ err: error }, "Error applying invitation Site restrictions");
+          authLogger.error({ err: error, memberId: newMember.id }, "Error applying invitation Site restrictions");
+          // better-auth has already created the membership, unrestricted. If
+          // the restriction could not be read or written, lock the member out
+          // of every site rather than leave them with the whole organization:
+          // an admin can widen access again, but cannot take back what was
+          // seen. Skipped only when the accepted invitation itself says it
+          // carried no restriction.
+          const restricted = (accepted as { hasRestrictedSiteAccess?: boolean | null }).hasRestrictedSiteAccess;
+          if (restricted !== false) {
+            try {
+              await db.update(member).set({ hasRestrictedSiteAccess: true }).where(eq(member.id, newMember.id));
+            } catch (lockError) {
+              authLogger.error(
+                { err: lockError, memberId: newMember.id, organizationId: accepted.organizationId },
+                "Could not restrict a member whose invitation restrictions failed to apply; they have unrestricted access"
+              );
+            }
+          }
+        } finally {
+          invalidateSitesAccessCache(acceptingUser.id);
         }
       },
       afterRemoveMember: async ({ member: removedMember, user: removedUser, organization: org }) => {

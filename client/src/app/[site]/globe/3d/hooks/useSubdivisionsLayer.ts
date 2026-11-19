@@ -5,6 +5,7 @@ import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useSubdivisions } from "../../../../../lib/geo";
 import { addFilter } from "../../../../../lib/store";
 import { createColorScale } from "../../utils/colorScale";
+import { escapeHtml } from "../../utils/escapeHtml";
 import { renderCountryFlag } from "../../utils/renderCountryFlag";
 
 interface UseSubdivisionsLayerProps {
@@ -112,7 +113,7 @@ export function useSubdivisionsLayer({ map, mapLoaded, mapView }: UseSubdivision
             <div class="bg-neutral-850 border border-neutral-700 rounded-lg p-2">
               <div class="flex items-center gap-2 mb-1">
                 ${flagSVG}
-                <span class="text-sm font-medium text-white">${name}</span>
+                <span class="text-sm font-medium text-white">${escapeHtml(name)}</span>
               </div>
               <div class="text-sm">
                 <span class="font-bold text-accent-400">${count.toLocaleString()}</span>

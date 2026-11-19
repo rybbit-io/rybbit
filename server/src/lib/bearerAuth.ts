@@ -65,6 +65,12 @@ export interface BearerIdentity {
   /** null = unrestricted (legacy key / full OAuth grant); enforced by callers. */
   statements: ScopeStatements | null;
   /**
+   * Set when the credential is an OAuth access token rather than an API key.
+   * A token belongs to a third-party client someone clicked "Allow" for, so it
+   * never reaches the session-only surfaces, however broad its grant.
+   */
+  oauth?: true;
+  /**
    * The rate-limit outcome for this request, carried so callers can report the
    * remaining budget in response headers. Present on rate_limited identities
    * too — that is where the retry-after comes from.
@@ -156,6 +162,7 @@ export async function resolveBearerIdentity(token: string, deps: BearerResolverD
         status: "valid",
         userId: oauth.userId as string,
         statements: parseOAuthScopes(typeof oauth.scopes === "string" ? oauth.scopes : null),
+        oauth: true,
       },
       deps
     );

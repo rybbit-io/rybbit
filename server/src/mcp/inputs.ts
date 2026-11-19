@@ -187,7 +187,7 @@ export const organizationIdInput = z.string().min(1).describe("Organization ID f
 export const memberRoleInput = z
   .enum(["owner", "admin", "editor", "member", "viewer"])
   .describe(
-    "Role in the organization, highest first: owner, admin, editor (configures sites), member (builds reports), viewer (read only). Nobody can grant a role above their own."
+    "Role in the organization, highest first: owner, admin, editor (configures sites), member (builds reports), viewer (read only). Nobody can grant a role above their own, and only an unrestricted personal API key can grant admin or owner."
   );
 
 export const propertyFilterInput = z.object({

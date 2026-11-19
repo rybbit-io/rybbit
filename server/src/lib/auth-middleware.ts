@@ -54,17 +54,25 @@ export function assertRouteAccessDeclared(route: RouteOptions): void {
  * of each guard, which sessions never reach).
  * - a ScopeRequirement: the bearer credential must grant it (null statements =
  *   legacy/unrestricted credentials always pass; write implies read).
- * - "deny-scoped": scoped credentials are rejected outright; unrestricted
- *   credentials and sessions pass. For surfaces with no taxonomy resource
- *   (account settings, billing). Organization-owned keys are also rejected
- *   here — these surfaces are inherently user-centric.
+ * - "deny-scoped": scoped credentials are rejected outright; sessions and
+ *   unrestricted personal API keys pass. For surfaces with no taxonomy
+ *   resource (account settings, billing, key minting). Organization-owned keys
+ *   are also rejected here — these surfaces are inherently user-centric — and
+ *   so is every OAuth token: an OAuth grant with no custom scopes parses as
+ *   unrestricted, and a third-party client must not be able to turn one
+ *   consent click into a permanent key or a billing change.
  * - undefined: route is scope-exempt; any valid bearer credential passes.
  */
 export type RouteScope = ScopeRequirement | "deny-scoped";
 
+/** Whether a bearer credential may act on the session-only ("deny-scoped") surfaces. */
+export const isSessionEquivalentBearer = (
+  result: Pick<BearerAuthResult, "statements" | "organizationId" | "oauth">
+): boolean => result.statements === null && !result.organizationId && !result.oauth;
+
 const bearerScopeOk = (result: BearerAuthResult, scope?: RouteScope): boolean => {
   if (!scope) return true;
-  if (scope === "deny-scoped") return result.statements === null && !result.organizationId;
+  if (scope === "deny-scoped") return isSessionEquivalentBearer(result);
   return hasScope(result.statements, scope);
 };
 
@@ -150,6 +158,7 @@ const attachApiKeyUser = (request: FastifyRequest, reply: FastifyReply, apiKeyRe
   // route itself does not require, without re-verifying the credential.
   request.bearerAuth = true;
   request.bearerStatements = apiKeyResult.statements;
+  request.bearerSessionEquivalent = isSessionEquivalentBearer(apiKeyResult);
   if (apiKeyResult.userId) {
     request.user = { id: apiKeyResult.userId };
   } else if (apiKeyResult.organizationId) {

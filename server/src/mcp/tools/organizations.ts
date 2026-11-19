@@ -51,7 +51,7 @@ export function registerOrganizationTools(server: McpServer, api: RybbitApiClien
     {
       title: "Add organization member",
       description:
-        "Add an existing Rybbit user to the organization by email. The user must already have a Rybbit account. Requires an org admin/owner key; nobody can grant a role above their own (only an owner key can grant owner).",
+        "Add an existing Rybbit user to the organization by email. The user must already have a Rybbit account. Requires an org admin/owner key; nobody can grant a role above their own, and admin and owner can only be granted by an unrestricted personal API key (not a scoped key, an organization key or an OAuth connection).",
       inputSchema: {
         organization_id: organizationIdInput,
         email: z.string().email().describe("Email of an existing Rybbit user"),

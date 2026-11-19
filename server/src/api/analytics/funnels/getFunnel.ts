@@ -1,10 +1,16 @@
 import { FilterParams } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
-import SqlString from "sqlstring";
 import { getTimeStatement } from "../utils/timeWindow.js";
 import { AnalyticsQueryError, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
-import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
+import { escapeLiteral } from "../utils/eventConditions.js";
+import {
+  buildFunnelStepCondition,
+  FunnelStep,
+  INVALID_FUNNEL_STEPS_ERROR,
+  MAX_FUNNEL_STEPS,
+  parseFunnelSteps,
+} from "./funnelSteps.js";
 
 type Funnel = {
   steps: FunnelStep[];
@@ -84,7 +90,7 @@ export const buildFunnelQuery = (query: FilterParams<{}>, siteId: number, steps:
           (step, index) => `
           SELECT
             ${index + 1} as step_number,
-            ${SqlString.escape(step.name || step.value)} as step_name,
+            ${escapeLiteral(step.name || step.value)} as step_name,
             count(DISTINCT session_id) as sessions
           FROM Step${index + 1}
         `
@@ -123,12 +129,12 @@ export async function getFunnel(
   }>,
   reply: FastifyReply
 ) {
-  const { steps } = request.body;
   const { siteId } = request.params;
 
-  // Validate request
-  if (!steps || steps.length < 2) {
-    return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
+  // The steps become SQL, so the body is checked field by field, not just counted.
+  const steps = parseFunnelSteps(request.body?.steps, MAX_FUNNEL_STEPS);
+  if (!steps) {
+    return reply.status(400).send({ error: INVALID_FUNNEL_STEPS_ERROR });
   }
 
   try {

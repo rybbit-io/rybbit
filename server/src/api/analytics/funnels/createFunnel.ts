@@ -4,7 +4,7 @@ import { db } from "../../../db/postgres/postgres.js";
 import { funnels as funnelsTable } from "../../../db/postgres/schema.js";
 import { getUserHasAccessToSite } from "../../../lib/auth-utils.js";
 import { isAutocaptureTargetType } from "../utils/eventConditions.js";
-import { FunnelStep } from "./funnelSteps.js";
+import { FunnelStep, INVALID_FUNNEL_STEPS_ERROR, MAX_FUNNEL_STEPS, parseFunnelSteps } from "./funnelSteps.js";
 
 type Funnel = {
   steps: FunnelStep[];
@@ -21,13 +21,14 @@ export async function createFunnel(
   }>,
   reply: FastifyReply
 ) {
-  const { steps, name, reportId } = request.body;
+  const { name, reportId } = request.body;
   const { siteId } = request.params;
   const userId = request.user?.id;
 
-  // Validate request
-  if (!steps || steps.length < 2) {
-    return reply.status(400).send({ error: "At least 2 steps are required for a funnel" });
+  // Saved steps are read back into SQL, so only well-formed ones are stored.
+  const steps = parseFunnelSteps(request.body?.steps, MAX_FUNNEL_STEPS);
+  if (!steps) {
+    return reply.status(400).send({ error: INVALID_FUNNEL_STEPS_ERROR });
   }
 
   // Reject unrecognized step types instead of silently matching them as custom events

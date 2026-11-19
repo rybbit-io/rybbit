@@ -1,13 +1,12 @@
 import { FilterParams } from "@rybbit/shared";
 import { eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { z } from "zod";
 import { db } from "../../../db/postgres/postgres.js";
 import { funnels as funnelsTable } from "../../../db/postgres/schema.js";
 import { analyticsRoute, runAnalyticsQuery } from "../utils/analyticsQuery.js";
 import { buildFilteredSessionsCTE } from "../utils/sessionFilters.js";
 import { getTimeStatement } from "../utils/timeWindow.js";
-import { buildFunnelStepCondition, FunnelStep } from "./funnelSteps.js";
+import { buildFunnelStepCondition, FunnelStep, parseFunnelSteps } from "./funnelSteps.js";
 
 /**
  * How many saved funnels one summary covers. The query is one scan whatever the
@@ -42,27 +41,12 @@ export interface FunnelSummariesResponse {
   truncated: boolean;
 }
 
-// Saved steps come out of a jsonb column, so they are checked before they are
-// turned into SQL. Unknown step types are kept: the condition builder matches
-// them as custom events, as it does for the analyze endpoint.
-const propertyValueSchema = z.union([z.string(), z.number(), z.boolean()]);
-const savedStepSchema = z.object({
-  value: z.string(),
-  type: z.string(),
-  name: z.string().optional(),
-  hostname: z.string().optional(),
-  eventPropertyKey: z.string().optional(),
-  eventPropertyValue: propertyValueSchema.optional(),
-  propertyFilters: z.array(z.object({ key: z.string(), value: propertyValueSchema })).optional(),
-});
-const savedStepsSchema = z.array(savedStepSchema).min(2);
-
 /** The saved funnels a summary can be computed for: at least two well-formed steps. */
 export function parseSavedFunnels(records: { reportId: number; data: unknown }[]): SummaryFunnel[] {
   const funnels: SummaryFunnel[] = [];
   for (const record of records) {
-    const steps = savedStepsSchema.safeParse((record.data as { steps?: unknown } | null)?.steps);
-    if (steps.success) funnels.push({ id: record.reportId, steps: steps.data as FunnelStep[] });
+    const steps = parseFunnelSteps((record.data as { steps?: unknown } | null)?.steps);
+    if (steps) funnels.push({ id: record.reportId, steps });
   }
   return funnels;
 }

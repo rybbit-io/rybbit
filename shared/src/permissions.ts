@@ -163,6 +163,18 @@ export function canAssignRole(actorRole: string | null | undefined, targetRole: 
   return roleHasPermission(actorRole, "members:manage") && ROLE_RANK[actorRole] >= ROLE_RANK[targetRole];
 }
 
+/**
+ * Whether the role carries a permission that scoped and third-party
+ * credentials never get ("deny-scoped": minting API keys, billing, signing the
+ * DPA). Granting such a role hands those powers to the grantee's own sign-in,
+ * so a credential that is refused them itself must not be able to grant it.
+ */
+export function roleHoldsSessionOnlyPermission(role: string | null | undefined): boolean {
+  return ALL_PERMISSIONS.some(
+    permission => PERMISSIONS[permission].scope === "deny-scoped" && roleHasPermission(role, permission)
+  );
+}
+
 /** The roles someone holding `actorRole` may give to others, highest first. */
 export function assignableRoles(actorRole: string | null | undefined): OrgRole[] {
   return ORG_ROLES.filter(role => canAssignRole(actorRole, role));
