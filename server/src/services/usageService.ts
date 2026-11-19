@@ -53,6 +53,9 @@ class UsageService {
   // doesn't include replays, or its monthly replay quota is exhausted. Empty until the
   // usage cron runs (and always empty when self-hosted), so enforcement fails open.
   private sitesWithoutReplay = new Set<number>();
+  // Whether a usage check has finished in this process. Until one has, the sets above are
+  // empty because nothing has been evaluated yet, not because no site is blocked.
+  private siteBlocksLoaded = false;
   // Replay count per organization from the last cron run, so an on-demand refresh can apply
   // the replay quota without its own ClickHouse query.
   private orgReplayCounts = new Map<string, number>();
@@ -158,6 +161,14 @@ class UsageService {
    */
   public isSiteOverLimit(siteId: number): boolean {
     return this.sitesOverLimit.has(siteId);
+  }
+
+  /**
+   * Whether the blocked-site sets reflect a finished usage check. Callers that tell people why
+   * a site has no data (the lifecycle emails) wait for this rather than read an empty set.
+   */
+  public hasSiteBlocks(): boolean {
+    return this.siteBlocksLoaded;
   }
 
   public getSitesWithoutPlan(): Set<number> {
@@ -550,6 +561,7 @@ class UsageService {
         }
       }
 
+      this.siteBlocksLoaded = true;
       this.logger.info(
         `Completed monthly event usage check. ${this.sitesOverLimit.size} sites are over their limit, ` +
           `${this.sitesWithoutPlan.size} sites have no plan, ` +
