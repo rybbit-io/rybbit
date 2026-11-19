@@ -1,3 +1,4 @@
+import { isCountryOnlyLocation } from "../../db/geolocation/geolocation.js";
 import { createServiceLogger } from "../../lib/logger/logger.js";
 import { sessionsService } from "../sessions/sessionsService.js";
 import { decideSiteExclusion, type SiteExclusionDecision } from "../sites/siteExclusionDecision.js";
@@ -85,6 +86,7 @@ export async function ingestEvent(trackingRequest: TrackingRequest): Promise<Ing
     capturesHumanInteractions:
       site.trackOutbound || site.trackButtonClicks || site.trackCopy || site.trackFormInteractions,
     lookupAsn: trackingRequest.lookupAsn,
+    isCountryOnlyIp: isCountryOnlyLocation,
     payload: {
       siteId: site.siteId,
       userAgent: trackingRequest.userAgent,

@@ -13,7 +13,7 @@ import { lookupAsn, type AsnInfo, type AsnLookup } from "../../../db/geolocation
 import { logger } from "../../../lib/logger/logger.js";
 import type { AnomalyCounters } from "./anomalyScorer.js";
 import { observeTrackingAnomaly } from "./anomalyScorer.js";
-import { isLowEngagementAsn } from "./asnEngagement.js";
+import { isCountryOnlyProxySlice, isLowEngagementAsn } from "./asnEngagement.js";
 import type { BotDetectionMethod } from "./botDetectionStats.js";
 import { recordBotBlockingRequest, recordBotDetections, recordShadowObservation } from "./botDetectionStats.js";
 import { classifyBotAsn } from "./botProviderAsns.js";
@@ -66,6 +66,12 @@ interface BotBlockingInput {
   payload: BotBlockingPayload;
   /** Request-scoped ASN resolver, shared with the rest of the ingestion path. */
   lookupAsn?: AsnLookup;
+  /**
+   * Whether an IP geolocates only to a country (no city or region). Read only
+   * for a network on the country-only proxy list. Without one, that rule says
+   * nothing.
+   */
+  isCountryOnlyIp?: (ip: string) => boolean;
 }
 
 interface AnomalyReason {
@@ -219,11 +225,7 @@ function buildBotEventProperties(
   };
 }
 
-function getClientSignalResult(
-  payload: BotBlockingPayload,
-  userAgent: string,
-  hasReportableScreen: boolean
-) {
+function getClientSignalResult(payload: BotBlockingPayload, userAgent: string, hasReportableScreen: boolean) {
   const hasClientScore = typeof payload.clientBotScore === "number" && Number.isFinite(payload.clientBotScore);
   const hasClientMask = typeof payload.clientBotSignalMask === "number" && Number.isFinite(payload.clientBotSignalMask);
   const rawMask = hasClientMask ? payload.clientBotSignalMask! : 0;
@@ -331,6 +333,7 @@ export async function checkBotBlocking({
   capturesHumanInteractions = false,
   payload,
   lookupAsn: asnLookup = lookupAsn,
+  isCountryOnlyIp,
 }: BotBlockingInput): Promise<BotDetectionResult | BotShadowObservation | null> {
   const userAgent = payload.userAgent || (headers["user-agent"] as string) || "";
   const clientSignalResult = getClientSignalResult(payload, userAgent, !isMobileSite && !trustedServerSideIngestion);
@@ -520,6 +523,10 @@ export async function checkBotBlocking({
   const shadowRules = anomaly.shadowReasons.map(reason => reason.rule);
   if (isLowEngagementAsn(asnInfo?.asn)) {
     shadowRules.push("asn_low_engagement");
+  }
+  const ipForGeo = payload.ipAddress;
+  if (isCountryOnlyIp && ipForGeo && isCountryOnlyProxySlice(asnInfo?.asn, () => isCountryOnlyIp(ipForGeo))) {
+    shadowRules.push("asn_country_only_slice");
   }
 
   if (detections.length === 0) {
