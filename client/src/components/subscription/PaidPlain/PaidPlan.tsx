@@ -10,6 +10,7 @@ import { BACKEND_URL } from "@/lib/const";
 import { getPlanType, getStripePrices } from "@/lib/stripe";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 import { InvoicesSection } from "../components/InvoicesSection";
+import { cardUpdatedReturnUrl, PaymentFailedNotice } from "../PaymentFailedNotice";
 import { PlanDialog } from "../components/PlanDialog";
 import { PlanAllowances, PlanSection } from "../components/PlanSection";
 import { UsageHistorySection } from "../components/UsageHistorySection";
@@ -48,7 +49,11 @@ export function PaidPlan() {
         },
         credentials: "include",
         body: JSON.stringify({
-          returnUrl: window.location.href,
+          // A card saved while a charge is being retried is charged as soon as they are back.
+          returnUrl:
+            activeSubscription?.pastDue && flowType === "payment_method_update"
+              ? cardUpdatedReturnUrl(organizationId)
+              : window.location.href,
           organizationId,
           flowType,
         }),
@@ -83,6 +88,9 @@ export function PaidPlan() {
   }
 
   const isTrial = !!activeSubscription.isTrial;
+  // Stripe is retrying a failed renewal. The plan is still on, but it can't be changed until the
+  // charge goes through, and the renewal date Stripe reports is for a period nobody has paid for.
+  const isPastDue = !!activeSubscription.pastDue;
   const trialDaysRemaining = activeSubscription.trialDaysRemaining || 0;
   const isAnnualPlan = activeSubscription.interval === "year";
 
@@ -107,7 +115,7 @@ export function PaidPlan() {
 
   // What happens at the end of the current period, trial status folded in.
   const getStatusLine = () => {
-    if (!periodEnd) return null;
+    if (!periodEnd || isPastDue) return null;
     if (activeSubscription.cancelAtPeriodEnd) {
       return t("Cancels on {date}.", { date: periodEnd });
     }
@@ -139,7 +147,7 @@ export function PaidPlan() {
         limit: (3000).toLocaleString(locale),
       }
     );
-    if (!periodEnd) return after;
+    if (!periodEnd || isPastDue) return after;
     if (activeSubscription.cancelAtPeriodEnd) {
       return `${t("{plan} is already set to cancel on {date}.", { plan: planName, date: periodEnd })} ${after}`;
     }
@@ -152,6 +160,7 @@ export function PaidPlan() {
   return (
     <>
       {actionError && <Alert variant="destructive">{actionError}</Alert>}
+      <PaymentFailedNotice organizationId={organizationId} />
       <PlanDialog
         open={showPlanDialog}
         onOpenChange={setShowPlanDialog}
@@ -178,9 +187,11 @@ export function PaidPlan() {
         status={getStatusLine()}
         details={<PlanAllowances subscription={activeSubscription} />}
         action={
-          <Button variant="success" onClick={handleChangePlan}>
-            {t("Change plan")}
-          </Button>
+          !isPastDue && (
+            <Button variant="success" onClick={handleChangePlan}>
+              {t("Change plan")}
+            </Button>
+          )
         }
       />
 
@@ -188,9 +199,11 @@ export function PaidPlan() {
         subscription={activeSubscription}
         planName={planType}
         overLimitAction={
-          <Button variant="success" size="sm" onClick={handleChangePlan}>
-            {t("Upgrade plan")}
-          </Button>
+          !isPastDue && (
+            <Button variant="success" size="sm" onClick={handleChangePlan}>
+              {t("Upgrade plan")}
+            </Button>
+          )
         }
       />
 
@@ -227,7 +240,9 @@ export function PaidPlan() {
           action={
             <Button
               variant="ghost"
-              onClick={handleCancelSubscription}
+              // The cancellation dialog offers plan changes, which wait for the payment; the
+              // plain portal lets them cancel a past-due subscription.
+              onClick={isPastDue ? () => createPortalSession() : handleCancelSubscription}
               disabled={isProcessing}
               className={DANGER_BUTTON}
             >

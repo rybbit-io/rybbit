@@ -92,6 +92,7 @@ import {
   invalidateStripeSubscriptionCache,
   lapsedTrialGrace,
   OverrideSubscriptionInfo,
+  PAST_DUE_GRACE_DAYS,
   pastDuePayment,
   StripeSubscriptionInfo,
   stripeSubscriptionInfoFromSnapshot,
@@ -1244,5 +1245,158 @@ describe("post-trial grace period", () => {
   it("stops keeping sites on once the grace period is over", () => {
     const past = { status: "free", trialGrace: { endsAt: new Date(Date.now() - 1000) } };
     expect(siteRequiresPlan(past, "2026-09-29 12:00:00")).toBe(true);
+  });
+});
+
+describe("a paid plan while Stripe retries a failed renewal", () => {
+  const DAY = 24 * HOUR;
+  const nowSeconds = () => Math.floor(Date.now() / 1000);
+  const plan = () => planByName("standard100k");
+
+  /** A subscription whose renewal failed `daysAgo` days ago, which is when its period rolled over. */
+  const pastDueSub = (customer: string, daysAgo = 3, overrides: Parameters<typeof stripeSub>[0] = {}) =>
+    stripeSub({
+      customer,
+      status: "past_due",
+      priceId: plan().priceId,
+      periodStart: nowSeconds() - daysAgo * DAY,
+      periodEnd: nowSeconds() + (30 - daysAgo) * DAY,
+      ...overrides,
+    });
+
+  /** What Stripe lists for the subscription: the amounts it was paid, and when its open invoices were issued. */
+  function invoices({ paid = [2_900], openDaysAgo = [] as number[] } = {}) {
+    mocks.listInvoices.mockImplementation(async ({ status }: { status: string }) => ({
+      data:
+        status === "paid"
+          ? paid.map(amount_paid => ({ amount_paid }))
+          : openDaysAgo.map(days => ({ created: nowSeconds() - days * DAY })),
+    }));
+  }
+
+  it("keeps the plan on, marked past due, with its sites collecting", async () => {
+    const customer = nextCustomer();
+    const sub = pastDueSub(customer);
+    listReturns([sub]);
+    invoices({ openDaysAgo: [3] });
+
+    const best = await getBestSubscription("org_1", customer);
+
+    expect(best).toMatchObject({
+      source: "stripe",
+      status: "active",
+      planName: plan().name,
+      eventLimit: plan().limits.events,
+      pastDue: { subscriptionId: sub.id, planName: plan().name },
+    });
+    expect(siteRequiresPlan(best, "2026-09-29 12:00:00")).toBe(false);
+  });
+
+  it("outranks an AppSumo license, as the plan did before the charge failed", async () => {
+    const customer = nextCustomer();
+    listReturns([pastDueSub(customer)]);
+    invoices({ openDaysAgo: [3] });
+    state.appsumoLicenses = [{ tier: "7", status: "active" }];
+
+    await expect(getBestSubscription("org_1", customer)).resolves.toMatchObject({ source: "stripe" });
+  });
+
+  it("leaves a trial whose first charge failed on the free tier, in its grace period", async () => {
+    const customer = nextCustomer();
+    const trialEnd = nowSeconds() - 2 * DAY;
+    listReturns([pastDueSub(customer, 2, { trialEnd })]);
+    invoices({ paid: [0] });
+
+    const best = (await getBestSubscription("org_1", customer)) as FreeSubscriptionInfo;
+
+    expect(best).toMatchObject({ source: "free", status: "free" });
+    expect(best.trialGrace?.retryingPayment).toBe(true);
+    expect(best.pastDue).toBeDefined();
+  });
+
+  it(`drops to the free tier ${PAST_DUE_GRACE_DAYS} days after the unpaid invoice, however often the period rolls over`, async () => {
+    const stillIn = nextCustomer();
+    listReturns([pastDueSub(stillIn)]);
+    invoices({ openDaysAgo: [PAST_DUE_GRACE_DAYS - 1] });
+    await expect(getBestSubscription("org_1", stillIn)).resolves.toMatchObject({ source: "stripe" });
+
+    // The period started again three days ago; the oldest unpaid invoice is what counts.
+    const lapsed = nextCustomer();
+    listReturns([pastDueSub(lapsed, 3)]);
+    invoices({ openDaysAgo: [3, PAST_DUE_GRACE_DAYS + 1] });
+    const best = (await getBestSubscription("org_1", lapsed)) as FreeSubscriptionInfo;
+
+    expect(best).toMatchObject({ source: "free", eventLimit: DEFAULT_EVENT_LIMIT });
+    expect(best.pastDue).toBeDefined();
+    expect(siteRequiresPlan(best, "2026-09-29 12:00:00")).toBe(true);
+  });
+
+  it("counts from the start of the period when Stripe lists no open invoice", async () => {
+    const recent = nextCustomer();
+    listReturns([pastDueSub(recent, PAST_DUE_GRACE_DAYS - 1)]);
+    invoices();
+    await expect(getBestSubscription("org_1", recent)).resolves.toMatchObject({ source: "stripe" });
+
+    const old = nextCustomer();
+    listReturns([pastDueSub(old, PAST_DUE_GRACE_DAYS + 1)]);
+    await expect(getBestSubscription("org_1", old)).resolves.toMatchObject({ source: "free" });
+  });
+
+  it("doesn't cover invoiced subscriptions or prices that aren't ours", async () => {
+    invoices({ openDaysAgo: [3] });
+
+    const invoiced = nextCustomer();
+    listReturns([{ ...pastDueSub(invoiced), collection_method: "send_invoice" } as Stripe.Subscription]);
+    await expect(getBestSubscription("org_1", invoiced)).resolves.toMatchObject({ source: "free" });
+
+    const unknownPrice = nextCustomer();
+    listReturns([pastDueSub(unknownPrice, 3, { priceId: "price_not_ours" })]);
+    await expect(getBestSubscription("org_1", unknownPrice)).resolves.toMatchObject({ source: "free" });
+  });
+
+  it("goes back to an ordinary active plan once the charge goes through", async () => {
+    const customer = nextCustomer();
+    listReturns([pastDueSub(customer)]);
+    invoices({ openDaysAgo: [3] });
+    await expect(getBestSubscription("org_1", customer)).resolves.toHaveProperty("pastDue");
+
+    listReturns([pastDueSub(customer, 3, { status: "active" })]);
+    invalidateStripeSubscriptionCache(customer);
+
+    await expect(getBestSubscription("org_1", customer)).resolves.not.toHaveProperty("pastDue");
+  });
+
+  it("fails like a Stripe outage when the invoices can't be read and the caller opts in", async () => {
+    const customer = nextCustomer();
+    listReturns([pastDueSub(customer)]);
+    mocks.listInvoices.mockRejectedValue(new Error("stripe is down"));
+
+    await expect(getBestSubscription("org_1", customer, { throwOnLookupError: true })).rejects.toThrow(
+      "stripe is down"
+    );
+    await expect(getBestSubscription("org_1", customer)).resolves.toMatchObject({ source: "free" });
+  });
+
+  it("applies in the bulk path from the snapshot's subscription, without listing", async () => {
+    invoices({ openDaysAgo: [3] });
+    const sub = pastDueSub(nextCustomer());
+
+    await expect(getBestSubscriptionFromStripeSub("org_1", null, {}, sub)).resolves.toMatchObject({
+      source: "stripe",
+      status: "active",
+      pastDue: { subscriptionId: sub.id },
+    });
+    // Without the raw subscription the bulk path can't know about it.
+    await expect(getBestSubscriptionFromStripeSub("org_1", null)).resolves.toMatchObject({ source: "free" });
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
+
+  it("never applies to self-hosted instances", async () => {
+    mocks.isCloud = false;
+    const customer = nextCustomer();
+    listReturns([pastDueSub(customer)]);
+
+    await expect(getBestSubscription("org_1", customer)).resolves.toMatchObject({ source: "free" });
+    expect(mocks.listInvoices).not.toHaveBeenCalled();
   });
 });

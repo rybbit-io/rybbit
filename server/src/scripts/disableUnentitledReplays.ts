@@ -82,7 +82,13 @@ for (let i = 0; i < orgIds.length; i += CONCURRENCY) {
     chunk.map(async orgId => {
       const org = orgById.get(orgId);
       const stripeSub = stripeSubscriptionInfoFromSnapshot(stripeSnapshot, org?.stripeCustomerId ?? null);
-      const subscription = await getBestSubscriptionFromStripeSub(orgId, stripeSub);
+      // The raw subscription keeps a paid plan entitled while Stripe retries a failed renewal.
+      const subscription = await getBestSubscriptionFromStripeSub(
+        orgId,
+        stripeSub,
+        {},
+        org?.stripeCustomerId ? stripeSnapshot.get(org.stripeCustomerId) : null
+      );
 
       // A Stripe price ID missing from const.ts resolves to "Unknown Plan" — we can't
       // tell whether it's pro, so park it for manual review instead of disabling.

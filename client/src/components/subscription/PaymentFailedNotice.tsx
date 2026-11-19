@@ -15,6 +15,13 @@ import { cn } from "@/lib/utils";
 // organization whose card they just changed.
 const CARD_UPDATED_PARAM = "card_updated";
 
+/** Where the portal's card form should return to, so the new card is charged on arrival. */
+export function cardUpdatedReturnUrl(organizationId: string): string {
+  const returnUrl = new URL("/settings/billing", window.location.origin);
+  returnUrl.searchParams.set(CARD_UPDATED_PARAM, organizationId);
+  return returnUrl.toString();
+}
+
 /**
  * Shown while Stripe is retrying a failed charge on the organization's plan. Owners get a
  * button to the billing portal's card form; everyone else is told who can fix it.
@@ -30,11 +37,9 @@ export function PaymentFailedNotice({ organizationId, className }: { organizatio
   const updateCard = async () => {
     setIsOpening(true);
     try {
-      const returnUrl = new URL("/settings/billing", window.location.origin);
-      returnUrl.searchParams.set(CARD_UPDATED_PARAM, organizationId);
       const { portalUrl } = await authedFetch<{ portalUrl: string }>("/stripe/create-portal-session", undefined, {
         method: "POST",
-        data: { organizationId, returnUrl: returnUrl.toString(), flowType: "payment_method_update" },
+        data: { organizationId, returnUrl: cardUpdatedReturnUrl(organizationId), flowType: "payment_method_update" },
       });
       window.location.href = portalUrl;
     } catch {
