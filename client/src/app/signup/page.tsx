@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import React, { Suspense, useState } from "react";
 import { addSite } from "../../api/admin/endpoints";
+import { askReferralSourceLater } from "../../components/ReferralSourcePrompt";
 import { RybbitLogo, RybbitTextLogo } from "../../components/RybbitLogo";
 
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
@@ -56,9 +57,7 @@ function SignupPageContent() {
   const [selectedPlan, setSelectedPlan] = useState<"standard" | "pro">("pro");
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
 
-  // Setup: Organization + website
-  const [orgName, setOrgName] = useState("");
-  const [referralSource, setReferralSource] = useState("");
+  // Setup: the website's domain, which also names the organization
   const [domain, setDomain] = useState("");
 
   // Step 1: Account creation submission
@@ -127,13 +126,16 @@ function SignupPageContent() {
         return;
       }
 
+      const normalizedDomain = normalizeDomain(domain);
+
       // Create organization, unless an earlier attempt already did and then failed
-      // to add the site: creating it again would fail.
+      // to add the site: creating it again would fail. It takes the domain as its name,
+      // which the owner can change in the organization's settings.
       let orgId = organizationId;
       if (!orgId) {
         const { data, error } = await authClient.organization.create({
-          name: orgName,
-          slug: slugFromName(orgName),
+          name: normalizedDomain,
+          slug: slugFromName(normalizedDomain),
         });
 
         if (error) {
@@ -149,15 +151,10 @@ function SignupPageContent() {
 
         await authClient.organization.setActive({ organizationId: orgId });
 
-        if (IS_CLOUD && referralSource && userStore.getState().user?.id) {
-          window.rybbit?.identify(userStore.getState().user?.id || "", {
-            source: referralSource,
-          });
-        }
+        if (IS_CLOUD) askReferralSourceLater();
       }
 
       // Add website
-      const normalizedDomain = normalizeDomain(domain);
       const response = await addSite(normalizedDomain, normalizedDomain, orgId);
 
       if (IS_CLOUD) {
@@ -261,10 +258,6 @@ function SignupPageContent() {
           <SetupStep
             domain={domain}
             setDomain={setDomain}
-            orgName={orgName}
-            handleOrgNameChange={setOrgName}
-            referralSource={referralSource}
-            setReferralSource={setReferralSource}
             isLoading={isLoading}
             onSubmit={handleSetupSubmit}
           />

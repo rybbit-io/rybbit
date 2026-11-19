@@ -40,7 +40,7 @@ const faqSchema = {
       name: "Is Rybbit GDPR and CCPA compliant?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. We salt user IDs daily to ensure users are not fingerprinted. You will not need to display a cookie consent banner to your users.",
+        text: "Yes, Rybbit is fully compliant with GDPR, CCPA, and other privacy regulations. We don't use cookies or collect any personal data that could identify your users. You can also turn on daily salting of visitor IDs, so a visitor can't be linked from one day to the next. You will not need to display a cookie consent banner to your users.",
       },
     },
     {

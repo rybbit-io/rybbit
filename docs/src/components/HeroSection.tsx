@@ -152,8 +152,10 @@ export function HeroSection({ title, subtitle, showEUFlag = true, showGitHubStar
                 mobile — a scaled viewport would land between the demo's
                 responsive breakpoints. The two values must stay reciprocal. */}
             <div className="h-[500px] min-w-0 max-w-full overflow-hidden md:h-[600px] lg:h-[650px]">
+              {/* A week, not the default "today": early in the visitor's day that is a near-empty
+                  dashboard with every change deep in the red. */}
               <iframe
-                src="https://demo.rybbit.com/81/main"
+                src="https://demo.rybbit.com/81/main?wellKnown=last-7-days"
                 className="block h-full w-full border-none md:h-[117.6%] md:w-[117.6%] md:origin-top-left md:scale-[0.85]"
                 title="Rybbit Analytics Demo"
               />

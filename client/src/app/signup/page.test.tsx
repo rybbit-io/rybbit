@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   subscription: { isLoading: false } as Subscription,
   subscriptionOrganizationId: undefined as string | undefined,
   fetch: vi.fn(),
+  createOrganization: vi.fn(),
+  addSite: vi.fn(),
 }));
 
 vi.mock("next-intl", () => ({ useExtracted: () => (message: string) => message }));
@@ -19,7 +21,7 @@ vi.mock("@/lib/auth", () => ({
   authClient: {
     useSession: () => mocks.session,
     getSession: () => new Promise(() => {}),
-    organization: { create: vi.fn(), setActive: vi.fn() },
+    organization: { create: mocks.createOrganization, setActive: vi.fn() },
   },
 }));
 vi.mock("@/lib/configs", () => ({ useConfigs: () => ({ configs: {}, isLoading: false }) }));
@@ -34,7 +36,15 @@ vi.mock("@/components/RybbitLogo", () => ({ RybbitLogo: () => null, RybbitTextLo
 vi.mock("@/components/subscription/components/CheckoutModal", () => ({ CheckoutModal: () => null }));
 // Radix's slider measures itself with ResizeObserver, which jsdom lacks.
 vi.mock("@/components/ui/slider", () => ({ Slider: () => null }));
-vi.mock("./components/SetupStep", () => ({ SetupStep: () => <div data-testid="setup-step" /> }));
+vi.mock("@/api/admin/endpoints", () => ({ addSite: mocks.addSite }));
+vi.mock("./components/SetupStep", () => ({
+  SetupStep: ({ setDomain, onSubmit }: { setDomain: (domain: string) => void; onSubmit: () => void }) => (
+    <div data-testid="setup-step">
+      <button onClick={() => setDomain("acme.com")}>type domain</button>
+      <button onClick={onSubmit}>submit setup</button>
+    </div>
+  ),
+}));
 
 import SignupPage from "./page";
 
@@ -54,6 +64,9 @@ beforeEach(() => {
   mocks.subscription = { isLoading: false };
   mocks.fetch.mockReset().mockResolvedValue({ ok: true, json: async () => ({ clientSecret: "secret" }) });
   vi.stubGlobal("fetch", mocks.fetch);
+  mocks.createOrganization.mockReset().mockResolvedValue({ data: { id: "org-new" }, error: null });
+  mocks.addSite.mockReset().mockResolvedValue({ siteId: 7 });
+  window.localStorage.clear();
 });
 afterEach(() => {
   cleanup();
@@ -99,5 +112,28 @@ describe("signup plan step after a reload", () => {
 
     fireEvent.click(checkoutButton());
     expect(screen.getByTestId("setup-step")).toBeTruthy();
+  });
+});
+
+describe("signup setup step", () => {
+  it("names the organization after the domain and leaves the referral question for the dashboard", async () => {
+    mocks.session = { data: { session: { activeOrganizationId: null } }, isPending: false };
+    render(
+      <NuqsTestingAdapter searchParams="?step=2">
+        <SignupPage />
+      </NuqsTestingAdapter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "type domain" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "submit setup" })));
+
+    expect(mocks.createOrganization).toHaveBeenCalledWith({
+      name: "acme.com",
+      slug: expect.stringMatching(/^acme-com-[a-z0-9]+$/),
+    });
+    expect(mocks.addSite).toHaveBeenCalledWith("acme.com", "acme.com", "org-new");
+    expect(window.localStorage.getItem("rybbit-ask-referral-source")).toBe("1");
+    // On to the plan step.
+    expect(checkoutButton()).toBeTruthy();
   });
 });
