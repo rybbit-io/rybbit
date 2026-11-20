@@ -4,6 +4,7 @@ export {
   claimSite,
   createUnclaimedSite,
   deleteSite,
+  deleteSiteIcon,
   moveSite,
   updateSiteConfig,
   fetchSite,
@@ -11,6 +12,7 @@ export {
   fetchSiteHasData,
   fetchSiteIsPublic,
   fetchSiteUsage,
+  uploadSiteIcon,
 } from "./sites";
 export type { SiteResponse, GetSitesFromOrgResponse, SiteUsageResponse, UnclaimedSiteResponse } from "./sites";
 

@@ -14,6 +14,7 @@ import { BreakdownControl } from "../../../../components/site/BreakdownControl";
 import { Button } from "../../../../components/ui/button";
 import { canGoBack, canGoForward, goBack, goForward, useStore } from "../../../../lib/store";
 import { USER_DETAIL_PAGE_FILTERS } from "../../../../lib/filterGroups";
+import { useSiteFilters } from "../../../../hooks/useSiteFilters";
 import { Filters } from "../../components/SubHeader/Filters/Filters";
 import { NewFilterButton } from "../../components/SubHeader/Filters/NewFilterButton";
 import {
@@ -136,7 +137,7 @@ export default function UserPage() {
         <div className="flex items-center gap-2">
           <MobileSidebar />
           <div className="hidden md:block">
-            <NewFilterButton availableFilters={USER_DETAIL_PAGE_FILTERS} />
+            <NewFilterButton availableFilters={useSiteFilters(USER_DETAIL_PAGE_FILTERS)} />
           </div>
           <div className="ml-auto flex items-center gap-2 shrink-0">
             <DateSelector time={time} setTime={setTime} />
@@ -163,11 +164,11 @@ export default function UserPage() {
           </div>
         </div>
         <div className="md:hidden mt-2">
-          <NewFilterButton availableFilters={USER_DETAIL_PAGE_FILTERS} />
+          <NewFilterButton availableFilters={useSiteFilters(USER_DETAIL_PAGE_FILTERS)} />
         </div>
         {/* The chip row takes its gap only when it has chips. */}
         <div className="[&>div:not(:empty)]:mt-2">
-          <Filters availableFilters={USER_DETAIL_PAGE_FILTERS} />
+          <Filters availableFilters={useSiteFilters(USER_DETAIL_PAGE_FILTERS)} />
         </div>
       </div>
 

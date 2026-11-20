@@ -11,6 +11,7 @@ import { BreakdownControl, BreakdownOption } from "../../../components/site/Brea
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../components/ui/tooltip";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { USER_PAGE_FILTERS } from "../../../lib/filterGroups";
+import { useSiteFilters } from "../../../hooks/useSiteFilters";
 import { useStore } from "../../../lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import { NO_QUICK_FILTERS, QuickFilters, QuickFilterState } from "./components/QuickFilters";
@@ -46,7 +47,7 @@ export default function UsersPage() {
   return (
     <DisabledOverlay message={t("Users")} featurePath="users">
       <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
-        <SubHeader availableFilters={USER_PAGE_FILTERS} />
+        <SubHeader availableFilters={useSiteFilters(USER_PAGE_FILTERS)} />
         <UsersStatBand comparisonEnabled={comparisonEnabled} />
         <AnalysisBar
           // With no traits on the site there is nothing to break the users down by.

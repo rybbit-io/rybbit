@@ -109,6 +109,8 @@ export function buildAggregatedSessionsCTE(
           argMax(operating_system_version, timestamp) AS operating_system_version,
           argMax(screen_width, timestamp) AS screen_width,
           argMax(screen_height, timestamp) AS screen_height,
+          argMax(device_model, timestamp) AS device_model,
+          argMax(app_version, timestamp) AS app_version,
           ${SESSION_REFERRER_AGG} AS referrer,
           ${SESSION_CHANNEL_AGG} AS channel,
           argMin(hostname, timestamp) AS hostname,

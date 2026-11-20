@@ -94,3 +94,27 @@ export const SESSION_REPLAY_PAGE_FILTERS: FilterParameter[] = [
   "channel",
   "user_id",
 ];
+
+// Mobile sites have no URL, referrer or campaign to speak of, and they carry two
+// dimensions a website never has. Pages pick a list above and narrow it here.
+const WEB_ONLY_FILTERS: FilterParameter[] = [
+  "hostname",
+  "querystring",
+  "channel",
+  "referrer",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "tag",
+  "entry_page",
+  "exit_page",
+];
+
+const APP_ONLY_FILTERS: FilterParameter[] = ["device_model", "app_version"];
+
+export function filtersForSite(filters: FilterParameter[], isApp: boolean): FilterParameter[] {
+  if (!isApp) return filters;
+  return [...APP_ONLY_FILTERS, ...filters.filter(filter => !WEB_ONLY_FILTERS.includes(filter))];
+}

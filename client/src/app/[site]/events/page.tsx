@@ -3,6 +3,7 @@
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { EVENT_FILTERS } from "@/lib/filterGroups";
+import { useSiteFilters } from "@/hooks/useSiteFilters";
 import { useGetEventNames } from "../../../api/analytics/hooks/events/useGetEventNames";
 import { useGetEventNameStats } from "../../../api/analytics/hooks/events/useGetEventNameStats";
 import { useGetSilentEvents } from "../../../api/analytics/hooks/events/useGetSilentEvents";
@@ -44,7 +45,7 @@ export default function EventsPage() {
   return (
     <DisabledOverlay message={t("Events")} featurePath="events">
       <div className="mx-auto max-w-[1400px] space-y-3 p-2 md:p-4">
-        <SubHeader availableFilters={EVENT_FILTERS} />
+        <SubHeader availableFilters={useSiteFilters(EVENT_FILTERS)} />
         <EventsStatBand newEventNames={countNewEventNames(stats.data, previousNames)} />
         <AnalysisBar
           breakdown={

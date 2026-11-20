@@ -31,6 +31,8 @@ export type GetSessionsResponse = {
   operating_system_version: string;
   screen_width: number;
   screen_height: number;
+  device_model: string;
+  app_version: string;
   referrer: string;
   channel: string;
   hostname: string;

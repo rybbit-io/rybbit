@@ -22,6 +22,8 @@ export type TotalTrackingPayload = TrackingPayload & {
   ttfb?: number;
   tag?: string;
   feature_flags?: Record<string, string>;
+  app_version?: string;
+  device_model?: string;
   visitor_id?: string;
 };
 

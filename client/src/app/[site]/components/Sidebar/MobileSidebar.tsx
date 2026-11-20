@@ -40,7 +40,14 @@ function MobileSidebarContent() {
           <Sidebar />
         </SheetContent>
       </Sheet>
-      {site && <Favicon domain={site.domain} className="w-6 h-6" />}
+      {site && (
+        <Favicon
+          domain={site.domain}
+          className="w-6 h-6"
+          siteType={(site.type ?? "web") === "web" ? "web" : "mobile"}
+          siteId={site.siteId}
+        />
+      )}
     </div>
   );
 }

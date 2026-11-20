@@ -71,6 +71,8 @@ const filterTypeValues: FilterType[] = [
 ];
 
 const filterParameterValues: FilterParameter[] = [
+  "app_version",
+  "device_model",
   "browser",
   "operating_system",
   "language",

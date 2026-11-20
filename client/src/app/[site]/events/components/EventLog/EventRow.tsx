@@ -1,6 +1,7 @@
 "use client";
 
 import { IdCard } from "lucide-react";
+import { useGetSite } from "../../../../../api/admin/hooks/useSites";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
@@ -61,6 +62,8 @@ interface EventRowProps {
 
 export function EventRow({ event, site, privateKey, typeLabel, onClick, arrivedAt }: EventRowProps) {
   const t = useExtracted();
+  const { data: siteMetadata } = useGetSite();
+  const isApp = siteMetadata?.type === "mobile";
   const rowRef = useRef<HTMLDivElement>(null);
   useArrivalHighlight(rowRef, arrivedAt);
   const { locale, hour12, formatRelative } = useDateTimeFormat();
@@ -181,16 +184,18 @@ export function EventRow({ event, site, privateKey, typeLabel, onClick, arrivedA
             </TooltipContent>
           </Tooltip>
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <Browser browser={event.browser || "Unknown"} />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{event.browser || t("Unknown browser")}</p>
-          </TooltipContent>
-        </Tooltip>
+        {!isApp && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Browser browser={event.browser || "Unknown"} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{event.browser || t("Unknown browser")}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <div>
