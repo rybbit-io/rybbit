@@ -12,7 +12,7 @@ interface DemoFrameProps {
 }
 
 /**
- * Shared readout frame for the landing feature demos: the hero's dotted
+ * Shared readout frame for the landing feature demos: the hero's flat
  * instrument mat holding a framed panel with a slim mono header. Sits as the
  * last child of a Card (which is a column flexbox) and stretches to meet the
  * card's bottom seam via negative margin, so every demo in the grid runs
@@ -22,7 +22,7 @@ export function DemoFrame({ label, right, children, className, frameClassName }:
   return (
     <div
       className={cn(
-        "-mx-1 -mb-5 mt-6 flex-1 rounded-t-md border border-b-0 border-neutral-200 bg-neutral-100 p-1.5 pb-0 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:14px_14px] dark:border-neutral-800 dark:bg-neutral-900 dark:[background-image:radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] md:-mb-8",
+        "-mx-1 -mb-5 mt-6 flex-1 rounded-t-md border border-b-0 border-neutral-200 bg-neutral-100 p-1.5 pb-0 dark:border-neutral-800 dark:bg-neutral-900 md:-mb-8",
         className
       )}
     >

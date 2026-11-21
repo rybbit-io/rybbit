@@ -9,7 +9,6 @@ import { UserSessions } from "@/components/Cards/UserSessions";
 import { WebVitals } from "@/components/Cards/WebVitals";
 import { GridCrosses } from "@/components/GridCrosses";
 import { ConsoleGreeting } from "@/components/deco/ConsoleGreeting";
-import { SectionKicker } from "@/components/deco/SectionKicker";
 import { TrackingSnippet } from "@/components/deco/TrackingSnippet";
 import { HeroSection } from "@/components/HeroSection";
 import { IntegrationsGrid } from "@/components/Integration";
@@ -100,7 +99,6 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
   const capabilityIndex = [
     {
       title: t("Understand"),
-      dotClassName: "bg-emerald-600 dark:bg-emerald-400",
       links: [
         { label: t("Realtime data"), href: "/features/web-analytics" },
         { label: t("Web vitals"), href: "/features/web-vitals" },
@@ -111,7 +109,6 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     },
     {
       title: t("Investigate"),
-      dotClassName: "bg-blue-600 dark:bg-blue-400",
       links: [
         { label: t("Session replay"), href: "/features/session-replay" },
         { label: t("User journeys"), href: "/features/user-journeys" },
@@ -122,7 +119,6 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     },
     {
       title: t("Measure"),
-      dotClassName: "bg-amber-600 dark:bg-amber-400",
       links: [
         { label: t("Funnels"), href: "/features/funnels" },
         { label: t("Goals"), href: "/features/goals" },
@@ -133,7 +129,6 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
     },
     {
       title: t("Stay private"),
-      dotClassName: "bg-violet-600 dark:bg-violet-400",
       links: [
         { label: t("No cookies"), href: "/privacy" },
         { label: t("GDPR & CCPA"), href: "/dpa" },
@@ -197,23 +192,16 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="product-title">
           <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <GridCrosses />
-            <div className="grid border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
-              <div className="relative border-b border-neutral-200 bg-plate-accent px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10">
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
-                />
-                <div className="relative">
-                  <SectionKicker>{t("One connected workspace")}</SectionKicker>
-                  <h2
-                    id="product-title"
-                    className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
-                  >
-                    {t("Go from signal to explanation without changing tools.")}
-                  </h2>
-                </div>
+            <div className="grid grid-cols-1 border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
+              <div className="border-neutral-200 px-5 pt-14 dark:border-neutral-800 sm:px-8 md:pt-20 lg:col-span-7 lg:border-r lg:px-10 lg:pb-16">
+                <h2
+                  id="product-title"
+                  className="max-w-2xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
+                >
+                  {t("Go from signal to explanation without changing tools.")}
+                </h2>
               </div>
-              <div className="flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
+              <div className="flex items-end px-5 pb-14 pt-5 lg:pt-8 sm:px-8 lg:col-span-5 lg:px-10 lg:pb-16">
                 <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
                   {t(
                     "Capture every interaction automatically, watch the sessions behind it, then measure what converts and how fast it feels."
@@ -267,23 +255,16 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
             >
               {capabilityIndex.map(group => (
                 <div key={group.title} className="bg-white px-5 py-6 dark:bg-neutral-950 sm:px-8 lg:px-6 xl:px-8">
-                  <h3 className="flex items-center gap-2.5 text-sm font-semibold tracking-tight">
-                    <span aria-hidden="true" className={`size-2 rounded-[1px] ${group.dotClassName}`} />
-                    {group.title}
-                  </h3>
+                  <h3 className="text-sm font-semibold tracking-tight">{group.title}</h3>
                   <ul className="-mx-1.5 mt-3">
                     {group.links.map(link => (
                       <li key={link.href}>
                         <Link
                           href={link.href}
                           {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                          className="group/link flex items-center justify-between gap-2 rounded-sm px-1.5 py-1.5 text-sm text-neutral-600 transition-colors duration-200 hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+                          className="flex rounded-sm px-1.5 py-1.5 text-sm text-neutral-600 transition-colors duration-200 hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
                         >
                           {link.label}
-                          <ArrowRight
-                            className="size-3.5 shrink-0 text-neutral-400 transition-transform duration-200 group-hover/link:translate-x-0.5 motion-reduce:transition-none dark:text-neutral-600"
-                            aria-hidden="true"
-                          />
                         </Link>
                       </li>
                     ))}
@@ -361,7 +342,7 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
             </div>
 
             <div className="min-w-0 lg:col-span-8">
-              <div className="relative flex h-full items-center bg-neutral-100 p-5 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:14px_14px] dark:bg-neutral-900 dark:[background-image:radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] sm:p-8 lg:p-12">
+              <div className="relative flex h-full items-center bg-neutral-100 p-5 dark:bg-neutral-900 sm:p-8 lg:p-12">
                 <div className="w-full min-w-0">
                   <AgentConsole />
                 </div>
@@ -396,27 +377,13 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
         <section className="border-b border-neutral-200 dark:border-neutral-800" aria-labelledby="testimonials-title">
           <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
             <GridCrosses />
-            <div className="grid border-b border-neutral-200 dark:border-neutral-800 md:grid-cols-3">
-              <div className="relative border-b border-neutral-200 bg-plate-accent px-5 py-14 dark:border-neutral-800 sm:px-8 md:col-span-2 md:border-b-0 md:border-r md:py-20 lg:px-10">
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
-                />
-                <div className="relative">
-                  <SectionKicker>{t("From the community")}</SectionKicker>
-                  <h2
-                    id="testimonials-title"
-                    className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
-                  >
-                    {t("Real posts from people who switched.")}
-                  </h2>
-                </div>
-              </div>
-              <div className="flex flex-col justify-between px-5 py-10 sm:px-8 md:py-20 lg:px-10">
-                <p className="max-w-md text-base leading-7 text-neutral-600 dark:text-neutral-400 text-pretty">
-                  {t("What teams say after replacing heavier analytics products with Rybbit.")}
-                </p>
-              </div>
+            <div className="border-b border-neutral-200 px-5 pb-12 pt-14 dark:border-neutral-800 sm:px-8 md:pb-16 md:pt-20 lg:px-10">
+              <h2
+                id="testimonials-title"
+                className="max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.035em] md:text-5xl text-balance"
+              >
+                {t("Real posts from people who switched.")}
+              </h2>
             </div>
 
             <div className="border-b border-neutral-200 dark:border-neutral-800">
@@ -453,9 +420,6 @@ export function LandingPageTemplate({ title, subtitle, showEUFlag = true }: Land
                 >
                   {t("FAQ")}
                 </h2>
-                <p className="mt-6 max-w-sm text-base leading-7 text-neutral-600 dark:text-neutral-400">
-                  {t("The questions people ask before adding Rybbit to their site.")}
-                </p>
               </div>
             </div>
             <div className="px-5 py-8 sm:px-8 md:py-12 lg:col-span-8 lg:px-10">

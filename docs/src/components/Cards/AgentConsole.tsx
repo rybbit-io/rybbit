@@ -165,16 +165,8 @@ export function AgentConsole() {
           "Example conversation: an AI assistant connected to Rybbit over MCP pulls live analytics, investigates errors and funnels, and creates goals on request."
         )}
       </p>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
-      />
-
       <div aria-hidden="true" className="relative flex items-center gap-1.5 border-b border-white/10 px-4 py-2.5 sm:px-5">
-        <span className="size-2 rounded-full bg-[#ff5f57]" />
-        <span className="size-2 rounded-full bg-[#febc2e]" />
-        <span className="size-2 rounded-full bg-[#28c840]" />
-        <span className="ml-2 font-mono text-xs text-neutral-400">claude code</span>
+        <span className="font-mono text-xs text-neutral-400">claude code</span>
         <span className="ml-auto flex items-center gap-1.5 font-mono text-xs text-neutral-500">
           <span className="size-1.5 rounded-full bg-emerald-400" />
           rybbit mcp · connected

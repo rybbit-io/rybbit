@@ -1,4 +1,4 @@
-import { Eye, Laptop, MousePointerClick, Send, Users, Zap } from "lucide-react";
+import { Eye, Laptop, MousePointerClick, Send, Zap } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Avatar } from "../Avatar";
 import { Browser } from "../Browser";
@@ -56,7 +56,6 @@ export function UserSessions() {
     <Card
       title={t("User Sessions")}
       description={t("Track complete user journeys through your site with detailed session timelines.")}
-      icon={Users}
     >
       <DemoFrame label="sessions" right={<span className="font-mono">14:22 – 14:36 · 14m</span>}>
         <div className="p-4">

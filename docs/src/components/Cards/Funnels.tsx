@@ -1,4 +1,4 @@
-import { ArrowDown, Eye, Filter, Zap } from "lucide-react";
+import { ArrowDown, Eye, Zap } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Card } from "./Card";
 import { DemoFrame } from "./DemoFrame";
@@ -47,7 +47,6 @@ export function Funnels() {
     <Card
       title={t("Conversion Funnels")}
       description={t("Define the steps that matter, then see exactly where visitors drop off on the way to converting.")}
-      icon={Filter}
     >
       <DemoFrame label="funnels · onboarding" right={<span className="font-mono">30d</span>}>
         <div className="p-4">

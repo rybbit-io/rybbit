@@ -3,7 +3,6 @@
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { GridCrosses } from "@/components/GridCrosses";
 import { HeroDataLine } from "@/components/HeroDataLine";
-import { SectionKicker } from "@/components/deco/SectionKicker";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { useExtracted } from "next-intl";
@@ -210,57 +209,42 @@ export function PricingSection({
     featuresClassName: "min-[700px]:columns-2 min-[700px]:gap-x-10 min-[1100px]:columns-1 [&>div]:break-inside-avoid",
   };
 
-  const headlineClasses = "mt-5 max-w-2xl font-semibold tracking-[-0.035em] text-balance";
+  const headlineClasses = "max-w-2xl font-semibold tracking-[-0.035em] text-balance";
 
   return (
     <section className="relative z-10 border-b border-neutral-200 dark:border-neutral-800">
       <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
         <GridCrosses />
 
-        {/* Header row — on the landing page a signal plate like the other major
-            sections; in standalone page-top mode the plotted-dataline signature
-            takes the plate's place. */}
+        {/* Header row — in standalone page-top mode the plotted-dataline
+            signature sits behind the heading. */}
         <div className="relative grid grid-cols-1 border-b border-neutral-200 dark:border-neutral-800 lg:grid-cols-12">
           {standalone && (
             <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-40 sm:block lg:h-48">
               <HeroDataLine id="pricing" className="h-40 lg:h-48" />
             </div>
           )}
-          <div
-            className={cn(
-              "relative border-b border-neutral-200 px-5 py-14 dark:border-neutral-800 sm:px-8 md:py-20 lg:col-span-7 lg:border-b-0 lg:border-r lg:px-10",
-              !standalone && "bg-plate-accent"
+          <div className="relative border-neutral-200 px-5 pt-14 dark:border-neutral-800 sm:px-8 md:pt-20 lg:col-span-7 lg:border-r lg:px-10 lg:pb-16">
+            {standalone ? (
+              <h1 className={cn(headlineClasses, "text-5xl leading-[0.98] md:text-6xl")}>
+                {t("Set your traffic. See your price.")}
+              </h1>
+            ) : (
+              <h2 className={cn(headlineClasses, "text-4xl leading-[1.04] md:text-5xl")}>
+                {t("Set your traffic. See your price.")}
+              </h2>
             )}
-          >
-            {!standalone && (
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
-              />
-            )}
-            <div className="relative">
-              <SectionKicker>{t("Pricing")}</SectionKicker>
-              {standalone ? (
-                <h1 className={cn(headlineClasses, "text-5xl leading-[0.98] md:text-6xl")}>
-                  {t("Set your traffic. See your price.")}
-                </h1>
-              ) : (
-                <h2 className={cn(headlineClasses, "text-4xl leading-[1.04] md:text-5xl")}>
-                  {t("Set your traffic. See your price.")}
-                </h2>
-              )}
-            </div>
           </div>
-          <div className="relative flex items-end px-5 py-10 sm:px-8 md:py-20 lg:col-span-5 lg:px-10">
+          <div className="relative flex items-end px-5 pb-14 pt-5 lg:pt-8 sm:px-8 lg:col-span-5 lg:px-10 lg:pb-16">
             <p className="max-w-md text-lg leading-8 text-neutral-600 dark:text-neutral-400 text-pretty">
               {t("Start your 7-day free trial. No credit card charges until the trial ends.")}
             </p>
           </div>
         </div>
 
-        {/* Quote instrument — a full-bleed row on the same dot-grid mat as the
+        {/* Quote instrument — a full-bleed row on the same flat mat as the
             hero demo frame and the agent console. */}
-        <div className="relative border-b border-neutral-200 bg-neutral-100 p-4 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:14px_14px] dark:border-neutral-800 dark:bg-neutral-900 dark:[background-image:radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] sm:p-8 lg:p-10">
+        <div className="relative border-b border-neutral-200 bg-neutral-100 p-4 dark:border-neutral-800 dark:bg-neutral-900 sm:p-8 lg:p-10">
           <div className="rounded-md border border-neutral-300 bg-white px-5 py-6 dark:border-neutral-700 dark:bg-neutral-950 sm:px-6">
             <div className="mb-7 flex items-end justify-between gap-5">
               <div>
