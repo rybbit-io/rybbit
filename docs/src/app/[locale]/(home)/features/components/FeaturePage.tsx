@@ -1,5 +1,6 @@
 import { CTASection } from "@/components/CTASection";
 import { InteriorPageHero } from "@/components/InteriorPageHero";
+import { toDemoEmbedUrl } from "@/lib/const";
 import {
   Accordion,
   AccordionContent,
@@ -108,7 +109,7 @@ export function FeaturePage({
                 </div>
               </div>
               <iframe
-                src={demoUrl}
+                src={toDemoEmbedUrl(demoUrl)}
                 width="1300"
                 height="750"
                 className="block h-[440px] w-full md:h-[620px] lg:h-[750px]"

@@ -4,6 +4,7 @@ import { DomainStartForm } from "@/components/DomainStartForm";
 import { HeroDataLine } from "@/components/HeroDataLine";
 import { WatchfulFrog } from "@/components/deco/WatchfulFrog";
 import { TrackedButton } from "@/components/TrackedButton";
+import { toDemoEmbedUrl } from "@/lib/const";
 import { ExternalLink } from "lucide-react";
 import { useExtracted } from "next-intl";
 
@@ -155,7 +156,7 @@ export function HeroSection({ title, subtitle, showEUFlag = true, showGitHubStar
               {/* A week, not the default "today": early in the visitor's day that is a near-empty
                   dashboard with every change deep in the red. */}
               <iframe
-                src="https://demo.rybbit.com/81/main?wellKnown=last-7-days"
+                src={toDemoEmbedUrl("https://demo.rybbit.com/81/main?wellKnown=last-7-days")}
                 className="block h-full w-full border-none md:h-[117.6%] md:w-[117.6%] md:origin-top-left md:scale-[0.85]"
                 title="Rybbit Analytics Demo"
               />
