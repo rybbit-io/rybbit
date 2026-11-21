@@ -79,11 +79,22 @@ function EndLabelsLayer({ series, innerHeight }: LineCustomSvgLayerProps<Series>
       {placed.map(({ line, last, labelY }) => (
         <g key={line.id}>
           {line.data.length === 1 && (
-            <circle cx={last.position.x} cy={last.position.y} r={4} fill={line.color} className="stroke-white dark:stroke-neutral-900" strokeWidth={2} />
+            <circle
+              cx={last.position.x}
+              cy={last.position.y}
+              r={4}
+              fill={line.color}
+              className="stroke-white dark:stroke-neutral-900"
+              strokeWidth={2}
+            />
           )}
           <g transform={`translate(${last.position.x + 8}, ${labelY})`}>
             <rect x={0} y={-1} width={6} height={2} rx={1} fill={line.color} />
-            <text x={10} dominantBaseline="central" className="fill-neutral-600 font-mono text-[11px] dark:fill-neutral-300">
+            <text
+              x={10}
+              dominantBaseline="central"
+              className="fill-neutral-600 font-mono text-[11px] dark:fill-neutral-300"
+            >
               {line.id}
             </text>
           </g>
@@ -133,30 +144,9 @@ export function ExperimentConversionChart({
 
   return (
     <div className="grid gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
-          {t("Cumulative conversion rate")}
-        </span>
-        <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-500 dark:text-neutral-400">
-          {series.map(line => (
-            <span key={line.id} className="inline-flex items-center gap-1.5 font-mono">
-              <svg width="14" height="4" aria-hidden="true">
-                <line
-                  x1="1"
-                  y1="2"
-                  x2="13"
-                  y2="2"
-                  stroke={line.color}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeDasharray={line.isControl ? "3 3" : undefined}
-                />
-              </svg>
-              {line.id}
-            </span>
-          ))}
-        </div>
-      </div>
+      <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
+        {t("Cumulative conversion rate")}
+      </span>
       <div className="h-44">
         <ResponsiveLine<Series>
           data={series}
@@ -171,7 +161,12 @@ export function ExperimentConversionChart({
             tickValues: days.filter((_, index) => index % tickEvery === 0),
             format: value => DateTime.fromJSDate(value as Date).toFormat("MMM d"),
           }}
-          axisLeft={{ tickSize: 0, tickPadding: 8, tickValues: 4, format: value => `${Number(value).toFixed(yDecimals)}%` }}
+          axisLeft={{
+            tickSize: 0,
+            tickPadding: 8,
+            tickValues: 4,
+            format: value => `${Number(value).toFixed(yDecimals)}%`,
+          }}
           gridYValues={4}
           enableGridX={false}
           pointSize={0}

@@ -1,13 +1,19 @@
 "use client";
 
 import type { VariantStats } from "@rybbit/shared";
-import { AlertTriangle, CheckCircle2, Info, Rocket, Target, TrendingUp, Trophy } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 
-import type { Experiment, ExperimentVariantResult, ExperimentWindow, ExperimentWindowMode } from "@/api/analytics/endpoints";
+import type {
+  Experiment,
+  ExperimentVariantResult,
+  ExperimentWindow,
+  ExperimentWindowMode,
+} from "@/api/analytics/endpoints";
 import { useExperimentResults, useExperimentTimeseries } from "@/api/analytics/hooks/experiments/useExperiments";
+import { Badge } from "@/components/ui/badge";
 import { useTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
@@ -19,7 +25,7 @@ import {
   MIN_CONVERSIONS,
   MIN_UNITS_PER_VARIANT,
 } from "../lib/experimentHelpers";
-import { ExperimentConversionChart, hasTrend } from "./ExperimentConversionChart";
+import { ExperimentConversionChart, getVariantColor, hasTrend } from "./ExperimentConversionChart";
 
 const formatSignedPercent = (value: number) => `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
 
@@ -29,7 +35,7 @@ function LiftIntervalBar({ interval, lift, domain }: { interval: [number, number
   const right = toPercent(interval[1]);
 
   return (
-    <div className="relative h-3 flex-1">
+    <div className="relative h-3 w-40 shrink-0">
       <div className="absolute inset-x-0 top-1/2 h-px bg-neutral-200 dark:bg-neutral-800" />
       <div className="absolute inset-y-0 left-1/2 w-px bg-neutral-300 dark:bg-neutral-700" />
       <div
@@ -60,10 +66,15 @@ function formatWindowInstant(value: string, timeZone: string) {
 function WindowSwitch({
   mode,
   window,
+  totals,
+  showSwitch,
   onChange,
 }: {
   mode: ExperimentWindowMode;
   window: ExperimentWindow | undefined;
+  totals: string;
+  /** Only a started experiment has a run to switch to. */
+  showSwitch: boolean;
   onChange: (mode: ExperimentWindowMode) => void;
 }) {
   const t = useExtracted();
@@ -81,157 +92,112 @@ function WindowSwitch({
       : null;
 
   return (
-    <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+      {totals && <span className="tabular-nums">{totals}</span>}
       {description && <span className="tabular-nums">{description}</span>}
-      <div role="radiogroup" className="inline-flex rounded-md border border-neutral-150 p-0.5 dark:border-neutral-800">
-        {options.map(option => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={mode === option.value}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              "rounded px-2 py-0.5 transition-colors",
-              mode === option.value
-                ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-50"
-                : "hover:text-neutral-700 dark:hover:text-neutral-200"
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      {showSwitch && (
+        <div
+          role="radiogroup"
+          className="inline-flex rounded-md border border-neutral-150 p-0.5 dark:border-neutral-800"
+        >
+          {options.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={mode === option.value}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                "rounded px-2 py-0.5 transition-colors",
+                mode === option.value
+                  ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-50"
+                  : "hover:text-neutral-700 dark:hover:text-neutral-200"
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function VariantTag({ tone, children }: { tone: VariantTone; children: ReactNode }) {
-  const icon =
-    tone === "winner" ? (
-      <Trophy className="h-3 w-3" />
-    ) : tone === "leading" ? (
-      <TrendingUp className="h-3 w-3" />
-    ) : tone === "rolledOut" ? (
-      <Rocket className="h-3 w-3" />
-    ) : null;
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium",
-        tone === "winner" && "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-        tone === "leading" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-        (tone === "control" || tone === "rolledOut") &&
-          "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
-      )}
-    >
-      {icon}
-      {children}
-    </span>
-  );
-}
+const NUMERIC_CELL = "px-3 py-2.5 text-right tabular-nums";
+const HEADER_CELL = "h-8 whitespace-nowrap px-3 font-medium";
 
 function VariantResultRow({
   result,
   tone,
-  widthPercent,
   stats,
   liftDomain,
   controlRate,
-  showLift,
+  showStats,
+  color,
 }: {
   result: ExperimentVariantResult;
   tone: VariantTone;
-  widthPercent: number;
   stats: VariantStats | null;
   liftDomain: number;
   controlRate: number;
-  showLift: boolean;
+  /** The lift, chance and risk columns exist only once there is enough data to compare. */
+  showStats: boolean;
+  /** The variant's line in the chart below, when there is one. */
+  color: string | null;
 }) {
   const t = useExtracted();
-  const emphasized = tone === "winner" || tone === "leading";
+  // Color means the interval has cleared zero, not just that the point estimate has a sign.
+  const liftTone = !stats
+    ? "text-neutral-500 dark:text-neutral-400"
+    : stats.liftInterval[0] > 0
+      ? "text-emerald-600 dark:text-emerald-400"
+      : stats.liftInterval[1] < 0
+        ? "text-red-600 dark:text-red-400"
+        : "text-neutral-900 dark:text-neutral-100";
 
   return (
-    <div
-      className={cn(
-        "rounded-md border p-3 transition-colors",
-        emphasized
-          ? "border-emerald-500/30 bg-emerald-500/[0.04] dark:border-emerald-500/25 dark:bg-emerald-500/[0.07]"
-          : "border-neutral-100 bg-neutral-50/60 dark:border-neutral-850 dark:bg-neutral-950/40"
+    <tr className="border-b border-neutral-100 last:border-0 dark:border-neutral-850">
+      <td className="py-2.5 pl-0 pr-3">
+        <div className="flex items-center gap-2">
+          {color && <span className="h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden />}
+          <span className="truncate font-mono text-neutral-900 dark:text-neutral-50">{result.variant}</span>
+          {result.isControl && <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("Control")}</span>}
+          {tone === "winner" && <Badge variant="success">{t("Winner")}</Badge>}
+          {tone === "leading" && <Badge variant="success">{t("Winning")}</Badge>}
+          {tone === "rolledOut" && <Badge variant="secondary">{t("Rolled out")}</Badge>}
+        </div>
+      </td>
+      <td className={NUMERIC_CELL}>{formatCompactNumber(result.units)}</td>
+      <td className={NUMERIC_CELL}>{formatCompactNumber(result.conversions)}</td>
+      <td className={cn(NUMERIC_CELL, "font-medium text-neutral-900 dark:text-neutral-50")}>
+        {formatPercent(result.conversionRate)}
+      </td>
+      {showStats && (
+        <>
+          <td className="px-3 py-2.5">
+            {result.isControl ? (
+              <span className="text-neutral-500 dark:text-neutral-400">{t("Baseline")}</span>
+            ) : stats ? (
+              <div className="flex items-center gap-3">
+                <span className={cn("w-16 shrink-0 text-right font-medium tabular-nums", liftTone)}>
+                  {result.lift === null ? "-" : `${result.lift >= 0 ? "+" : ""}${formatPercent(result.lift)}`}
+                </span>
+                <LiftIntervalBar interval={stats.liftInterval} lift={stats.lift} domain={liftDomain} />
+                <span className="whitespace-nowrap text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+                  {formatSignedPercent(stats.liftInterval[0])} … {formatSignedPercent(stats.liftInterval[1])}
+                </span>
+              </div>
+            ) : (
+              <span className="text-neutral-400 dark:text-neutral-500">-</span>
+            )}
+          </td>
+          <td className={NUMERIC_CELL}>{stats ? `${formatBoundedPercent(stats.chanceToBeatControl, 1)}%` : ""}</td>
+          <td className={cn(NUMERIC_CELL, "pr-0")}>
+            {stats ? `${formatBoundedPercent(controlRate > 0 ? stats.riskVariant / controlRate : 0, 2)}%` : ""}
+          </td>
+        </>
       )}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="truncate font-mono text-sm text-neutral-900 dark:text-neutral-50">{result.variant}</span>
-            {result.isControl && <VariantTag tone="control">{t("Control")}</VariantTag>}
-            {tone === "winner" && <VariantTag tone="winner">{t("Winner")}</VariantTag>}
-            {tone === "leading" && <VariantTag tone="leading">{t("Winning")}</VariantTag>}
-            {tone === "rolledOut" && <VariantTag tone="rolledOut">{t("Rolled out")}</VariantTag>}
-          </div>
-          <div className="mt-1 text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
-            {t("{visitors} visitors · {conversions} conv.", {
-              visitors: formatCompactNumber(result.units),
-              conversions: formatCompactNumber(result.conversions),
-            })}
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-lg font-semibold tabular-nums leading-none text-neutral-900 dark:text-neutral-50">
-            {formatPercent(result.conversionRate)}
-          </div>
-          {result.isControl ? (
-            <div className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">{t("Baseline")}</div>
-          ) : !showLift ? null : (
-            <div
-              className={cn(
-                "mt-1 text-xs font-medium tabular-nums",
-                result.lift === null
-                  ? "text-neutral-400 dark:text-neutral-500"
-                  : result.lift >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-red-600 dark:text-red-400"
-              )}
-            >
-              {result.lift === null ? "—" : `${result.lift >= 0 ? "+" : ""}${formatPercent(result.lift)}`}
-            </div>
-          )}
-          {stats && (
-            <div className="mt-0.5 text-[11px] tabular-nums text-neutral-400 dark:text-neutral-500">
-              {t("{chance}% chance to beat control", { chance: formatBoundedPercent(stats.chanceToBeatControl, 1) })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-neutral-150 dark:bg-neutral-800">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            result.isControl
-              ? "bg-neutral-400 dark:bg-neutral-600"
-              : emphasized
-                ? "bg-accent-500"
-                : "bg-accent-500/45"
-          )}
-          style={{ width: `${widthPercent}%` }}
-        />
-      </div>
-
-      {stats && (
-        <div className="mt-2.5 flex items-center gap-3 text-[11px] tabular-nums text-neutral-500 dark:text-neutral-400">
-          <span className="w-8 shrink-0">{t("Lift")}</span>
-          <LiftIntervalBar interval={stats.liftInterval} lift={stats.lift} domain={liftDomain} />
-          <span className="w-32 shrink-0 whitespace-nowrap text-right">
-            {formatSignedPercent(stats.liftInterval[0])} … {formatSignedPercent(stats.liftInterval[1])}
-          </span>
-          <span className="w-20 shrink-0 text-right">
-            {t("Risk {risk}", { risk: `${formatBoundedPercent(controlRate > 0 ? stats.riskVariant / controlRate : 0, 2)}%` })}
-          </span>
-        </div>
-      )}
-    </div>
+    </tr>
   );
 }
 
@@ -240,43 +206,25 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
   const [windowMode, setWindowMode] = useState<ExperimentWindowMode>("experiment");
   const effectiveMode: ExperimentWindowMode = experiment.startedAt ? windowMode : "range";
   const { data, isLoading } = useExperimentResults(experiment.experimentId, !!experiment.primaryGoalId, effectiveMode);
-  const { data: timeseries } = useExperimentTimeseries(experiment.experimentId, !!experiment.primaryGoalId, effectiveMode);
+  const { data: timeseries } = useExperimentTimeseries(
+    experiment.experimentId,
+    !!experiment.primaryGoalId,
+    effectiveMode
+  );
   const fallbackVariants = getVariantKeys(experiment);
 
   if (!experiment.primaryGoalId) {
     return (
-      <div className="flex items-center gap-3 rounded-md border border-dashed border-neutral-200 px-4 py-3.5 dark:border-neutral-800">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-500 dark:bg-neutral-850 dark:text-neutral-400">
-          <Target className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          <div className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{t("No goal connected")}</div>
-          <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {t("Add a primary goal to measure conversions for each variant.")}
-          </div>
+      <div className="grid gap-0.5">
+        <div className="text-sm font-medium text-neutral-900 dark:text-neutral-50">{t("No goal connected")}</div>
+        <div className="text-sm text-neutral-500 dark:text-neutral-400">
+          {t("Add a primary goal to measure conversions for each variant.")}
         </div>
       </div>
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="grid gap-2">
-        {[0, 1].map(index => (
-          <div
-            key={index}
-            className="rounded-md border border-neutral-100 bg-neutral-50/60 p-3 dark:border-neutral-850 dark:bg-neutral-950/40"
-          >
-            <div className="flex items-center justify-between">
-              <div className="h-4 w-24 rounded bg-neutral-100 dark:bg-neutral-850" />
-              <div className="h-5 w-12 rounded bg-neutral-100 dark:bg-neutral-850" />
-            </div>
-            <div className="mt-3 h-2 rounded-full bg-neutral-100 dark:bg-neutral-850" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (isLoading) return <ResultsSkeleton />;
 
   const results =
     data?.variants ||
@@ -304,7 +252,6 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
     const total = values.reduce((sum, value) => sum + value, 0) || 1;
     return values.map(value => `${((value / total) * 100).toFixed(1)}%`).join(" / ");
   };
-  const maxRate = Math.max(...results.map(result => result.conversionRate), 0);
   const totalUnits = data?.totalUnits ?? results.reduce((sum, result) => sum + result.units, 0);
   const totalConversions = data?.totalConversions ?? results.reduce((sum, result) => sum + result.conversions, 0);
   const measurement = data?.measurement ?? "exposure";
@@ -319,12 +266,11 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
     return "variant";
   };
 
-  const verdict: { tone: "win" | "neutral"; icon: ReactNode; label: string; detail?: string } = rolledOut
+  const verdict: { tone: "win" | "neutral"; label: string; detail?: string } = rolledOut
     ? confirmedWinner
-      ? { tone: "win", icon: <Trophy className="h-3.5 w-3.5" />, label: t("Winner: {variant}", { variant: rolledOut }) }
+      ? { tone: "win", label: t("Winner: {variant}", { variant: rolledOut }) }
       : {
           tone: "neutral",
-          icon: <Rocket className="h-3.5 w-3.5" />,
           label: t("Rolled out: {variant}", { variant: rolledOut }),
           detail: leader
             ? t("{variant} was ahead when the experiment ended.", { variant: leader.variant })
@@ -335,17 +281,18 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
     : !enoughData
       ? {
           tone: "neutral",
-          icon: null,
           label: t("Not enough data yet"),
-          detail: t("Results appear once every variant has {visitors} visitors and there are {conversions} conversions.", {
-            visitors: String(MIN_UNITS_PER_VARIANT),
-            conversions: String(MIN_CONVERSIONS),
-          }),
+          detail: t(
+            "Results appear once every variant has {visitors} visitors and there are {conversions} conversions.",
+            {
+              visitors: String(MIN_UNITS_PER_VARIANT),
+              conversions: String(MIN_CONVERSIONS),
+            }
+          ),
         }
       : leader
         ? {
             tone: "win",
-            icon: <CheckCircle2 className="h-3.5 w-3.5" />,
             label: t("{variant} wins", { variant: leader.variant }),
             detail:
               experiment.status === "completed"
@@ -355,10 +302,9 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
                   : t("Ready to call. Complete the experiment to roll it out."),
           }
         : experiment.status === "completed"
-          ? { tone: "neutral", icon: null, label: t("No clear winner") }
+          ? { tone: "neutral", label: t("No clear winner") }
           : {
               tone: "neutral",
-              icon: null,
               label: t("Gathering data"),
               detail:
                 remainingUnits !== null
@@ -368,13 +314,32 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
                   : t("No clear difference between the variants yet."),
             };
 
+  const showChart = enoughData && !!timeseries && hasTrend(timeseries);
+  const variantKeys = results.map(result => result.variant);
+
   return (
-    <div className="grid gap-2.5">
-      {experiment.startedAt && (
-        <div className="flex justify-end">
-          <WindowSwitch mode={windowMode} window={data?.window} onChange={setWindowMode} />
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+        <div className="grid gap-0.5">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+            {verdict.tone === "win" && (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            )}
+            {verdict.label}
+          </div>
+          {verdict.detail && <p className="text-sm text-neutral-500 dark:text-neutral-400">{verdict.detail}</p>}
         </div>
-      )}
+        <WindowSwitch
+          mode={windowMode}
+          window={data?.window}
+          showSwitch={!!experiment.startedAt}
+          totals={t("{visitors} visitors · {conversions} conversions", {
+            visitors: formatCompactNumber(totalUnits),
+            conversions: formatCompactNumber(totalConversions),
+          })}
+          onChange={setWindowMode}
+        />
+      </div>
 
       {srm?.mismatch && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
@@ -393,69 +358,93 @@ export function ExperimentResultsPanel({ experiment }: { experiment: Experiment 
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
-            verdict.tone === "win"
-              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-              : "bg-neutral-100 text-neutral-600 dark:bg-neutral-850 dark:text-neutral-300"
-          )}
+      <div className="overflow-x-auto">
+        {/* With no comparison columns there is nothing to fill the width, so the table stays compact. */}
+        <table
+          className={cn("text-left text-sm text-neutral-700 dark:text-neutral-200", enoughData ? "w-full" : "min-w-96")}
         >
-          {verdict.icon}
-          {verdict.label}
-        </span>
-        <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
-          {t("{visitors} visitors · {conversions} conversions", {
-            visitors: formatCompactNumber(totalUnits),
-            conversions: formatCompactNumber(totalConversions),
-          })}
-        </span>
+          <thead>
+            <tr className="border-b border-neutral-100 text-xs text-neutral-500 dark:border-neutral-850 dark:text-neutral-400">
+              <th scope="col" className={cn(HEADER_CELL, "min-w-44 pl-0")}>
+                {t("Variant")}
+              </th>
+              <th scope="col" className={cn(HEADER_CELL, "text-right")}>
+                {t("Visitors")}
+              </th>
+              <th scope="col" className={cn(HEADER_CELL, "text-right")}>
+                {t("Conversions")}
+              </th>
+              <th scope="col" className={cn(HEADER_CELL, "text-right")}>
+                {t("Rate")}
+              </th>
+              {enoughData && (
+                <>
+                  <th scope="col" className={HEADER_CELL}>
+                    {t("Lift")}
+                  </th>
+                  <th scope="col" className={cn(HEADER_CELL, "text-right")}>
+                    {t("Chance to beat control")}
+                  </th>
+                  <th scope="col" className={cn(HEADER_CELL, "pr-0 text-right")}>
+                    {t("Risk")}
+                  </th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {results.map(result => (
+              <VariantResultRow
+                key={result.variant}
+                result={result}
+                tone={toneFor(result)}
+                stats={statsByVariant.get(result.variant) ?? null}
+                liftDomain={liftDomain}
+                controlRate={controlRate}
+                showStats={enoughData}
+                color={showChart ? getVariantColor(result.variant, variantKeys, control?.variant) : null}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
-      {verdict.detail && <p className="-mt-1 text-xs text-neutral-500 dark:text-neutral-400">{verdict.detail}</p>}
 
-      <div className="grid gap-2">
-        {results.map(result => {
-          const tone = toneFor(result);
-          const widthPercent =
-            result.conversionRate <= 0 || maxRate <= 0 ? 0 : Math.max(3, (result.conversionRate / maxRate) * 100);
-
-          return (
-            <VariantResultRow
-              key={result.variant}
-              result={result}
-              tone={tone}
-              widthPercent={widthPercent}
-              stats={statsByVariant.get(result.variant) ?? null}
-              liftDomain={liftDomain}
-              controlRate={controlRate}
-              showLift={enoughData}
-            />
-          );
-        })}
-      </div>
-
-      {enoughData && timeseries && hasTrend(timeseries) && (
-        <div className="rounded-md border border-neutral-100 p-3 dark:border-neutral-850">
-          <ExperimentConversionChart
-            data={timeseries}
-            variants={results.map(result => result.variant)}
-            controlVariant={control?.variant}
-          />
+      {showChart && (
+        <div className="border-t border-neutral-100 pt-3 dark:border-neutral-850">
+          <ExperimentConversionChart data={timeseries} variants={variantKeys} controlVariant={control?.variant} />
         </div>
       )}
 
       {measurement === "assignment" && (
-        <div className="flex items-start gap-2 rounded-md border border-neutral-100 bg-neutral-50/60 px-3 py-2 text-xs text-neutral-500 dark:border-neutral-850 dark:bg-neutral-950/40 dark:text-neutral-400">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <p className="flex items-start gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <span>
             {t(
               'Showing assigned visitors. Call rybbit.flag("{flagKey}") where the variant renders to measure visitors actually exposed to it.',
               { flagKey: experiment.featureFlag.key }
             )}
           </span>
-        </div>
+        </p>
       )}
+    </div>
+  );
+}
+
+export function ResultsSkeleton() {
+  return (
+    <div className="grid gap-3">
+      <div className="h-5 w-40 rounded bg-neutral-100 dark:bg-neutral-850" />
+      <div className="grid">
+        {[0, 1, 2].map(index => (
+          <div
+            key={index}
+            className="flex h-10 items-center justify-between border-b border-neutral-100 last:border-0 dark:border-neutral-850"
+          >
+            <div className="h-4 w-28 rounded bg-neutral-100 dark:bg-neutral-850" />
+            <div className="h-4 w-1/2 rounded bg-neutral-100 dark:bg-neutral-850" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

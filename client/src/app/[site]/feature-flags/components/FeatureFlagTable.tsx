@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeleteFeatureFlag, useUpdateFeatureFlag } from "@/api/analytics/hooks/featureFlags/useFeatureFlags";
-import type { FeatureFlag } from "@/api/analytics/endpoints";
+import type { FeatureFlag, FeatureFlagConditionSet } from "@/api/analytics/endpoints";
 import { CopyButton } from "@/components/interior/copy-button";
 import {
   AlertDialog,
@@ -13,7 +13,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -39,32 +38,31 @@ import {
 import { Edit2, MoreHorizontal, Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
 import { formatFlagValue, getConditionSetPayload } from "../lib/form";
 import { useFlagTypeLabel, useRuntimeLabel } from "../lib/labels";
 import { FeatureFlagDialog } from "./FeatureFlagDialog";
+import { SplitBar } from "./formParts";
 
 const columnHelper = createColumnHelper<FeatureFlag>();
-const TIME_COLUMN_IDS = new Set(["createdAt", "updatedAt"]);
-const isTimeColumn = (columnId: string) => TIME_COLUMN_IDS.has(columnId);
-
 const totalSessions = (flag: FeatureFlag) => flag.stats.reduce((sum, stat) => sum + stat.sessions, 0);
 const totalRules = (flag: FeatureFlag) =>
   flag.conditionSets.reduce((sum, conditionSet) => sum + conditionSet.rules.length, 0);
 
+// Sort key only. The cell shows every condition, since the first one alone can say 100% while the
+// catch-all below it serves 25%.
 const computeRollout = (flag: FeatureFlag) => {
-  if (flag.flagType === "remote_config") return null;
-  const firstConditionSet = flag.conditionSets[0];
-  if (flag.flagType === "multivariate") {
-    const variants = firstConditionSet?.variants || flag.variants;
-    return Math.min(
-      100,
-      variants.reduce((sum, variant) => sum + variant.rolloutPercentage, 0)
-    );
-  }
-  return firstConditionSet?.rolloutPercentage ?? flag.rolloutPercentage;
+  if (flag.flagType !== "boolean") return -1;
+  if (flag.conditionSets.length === 0) return flag.rolloutPercentage;
+  return Math.max(...flag.conditionSets.map(conditionSet => conditionSet.rolloutPercentage ?? flag.rolloutPercentage));
 };
+
+// Cells that truncate report no width of their own, so the table would squeeze them to nothing.
+const COLUMN_MIN_WIDTHS: Record<string, string> = { sessions: "9rem", updatedAt: "8rem" };
+const MAX_CONDITIONS_SHOWN = 3;
+const MAX_STATS_SHOWN = 3;
+const EMPTY_CELL = <span className="text-neutral-400 dark:text-neutral-500">-</span>;
 
 const SortHeader = ({ column, children }: any) => {
   const isSorted = column.getIsSorted();
@@ -80,92 +78,91 @@ const SortHeader = ({ column, children }: any) => {
 };
 
 function FlagStats({ flag }: { flag: FeatureFlag }) {
-  const topStats = flag.stats.slice(0, 2);
-  if (topStats.length === 0) return <span className="text-neutral-400">-</span>;
+  const topStats = flag.stats.slice(0, MAX_STATS_SHOWN);
+  if (topStats.length === 0) return EMPTY_CELL;
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="grid w-fit grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-xs">
       {topStats.map(stat => (
-        <div key={`${stat.flag_value}-${stat.sessions}`} className="flex items-center gap-2 text-xs">
-          <span className="max-w-24 truncate font-mono text-neutral-700 dark:text-neutral-200">
+        <Fragment key={stat.flag_value}>
+          <span className="max-w-28 truncate font-mono text-neutral-600 dark:text-neutral-300">
             {stat.flag_value || "(empty)"}
           </span>
-          <span className="text-neutral-500 dark:text-neutral-400">{stat.sessions.toLocaleString()} sessions</span>
-        </div>
+          <span className="text-right tabular-nums text-neutral-900 dark:text-neutral-100">
+            {stat.sessions.toLocaleString()}
+          </span>
+        </Fragment>
       ))}
     </div>
   );
 }
 
-function FlagValueSummary({ flag }: { flag: FeatureFlag }) {
-  const t = useExtracted();
-  const getFlagTypeLabel = useFlagTypeLabel();
-  const firstConditionSet = flag.conditionSets[0];
-  const variants = firstConditionSet?.variants || flag.variants;
+/** What one condition serves: a share of visitors, a split across variants, or a payload. */
+function ConditionServes({ flag, conditionSet }: { flag: FeatureFlag; conditionSet?: FeatureFlagConditionSet }) {
+  if (flag.flagType === "remote_config") {
+    const payload = formatFlagValue(getConditionSetPayload(flag, conditionSet));
+    return payload ? (
+      <span className="block max-w-56 truncate font-mono text-xs text-neutral-600 dark:text-neutral-300">
+        {payload}
+      </span>
+    ) : (
+      EMPTY_CELL
+    );
+  }
 
   if (flag.flagType === "multivariate") {
+    const variants = conditionSet?.variants?.length ? conditionSet.variants : flag.variants;
+    if (variants.length === 0) return EMPTY_CELL;
+    const split = variants.map(variant => `${variant.key} ${variant.rolloutPercentage}%`).join(" · ");
     return (
-      <div className="flex max-w-56 flex-col gap-1">
-        <Badge variant="outline" className="w-fit">
-          {getFlagTypeLabel(flag.flagType)}
-        </Badge>
-        <div className="flex flex-wrap gap-1">
-          {variants.slice(0, 3).map(variant => (
-            <span
-              key={variant.key}
-              className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs dark:bg-neutral-800"
-            >
-              {variant.key} {variant.rolloutPercentage}%
-            </span>
-          ))}
-          {variants.length > 3 && (
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">+{variants.length - 3}</span>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (flag.flagType === "remote_config") {
-    return (
-      <div className="flex max-w-48 flex-col gap-1">
-        <Badge variant="outline" className="w-fit">
-          {getFlagTypeLabel(flag.flagType)}
-        </Badge>
-        <span className="truncate font-mono text-xs text-neutral-500 dark:text-neutral-400">
-          {formatFlagValue(getConditionSetPayload(flag, firstConditionSet)) || t("Payload")}
+      <div className="grid w-56 gap-1">
+        <SplitBar
+          segments={variants.map(variant => ({
+            key: variant.key,
+            label: variant.key,
+            percent: variant.rolloutPercentage,
+          }))}
+        />
+        <span className="truncate font-mono text-xs text-neutral-600 dark:text-neutral-300" title={split}>
+          {split}
         </span>
       </div>
     );
   }
 
+  const rollout = conditionSet?.rolloutPercentage ?? flag.rolloutPercentage;
   return (
-    <div className="flex max-w-48 flex-col gap-1">
-      <Badge variant="outline" className="w-fit">
-        {getFlagTypeLabel(flag.flagType)}
-      </Badge>
-      {(firstConditionSet?.payload !== undefined || (flag.payload !== undefined && flag.payload !== null)) && (
-        <span className="truncate font-mono text-xs text-neutral-500 dark:text-neutral-400">
-          {formatFlagValue(getConditionSetPayload(flag, firstConditionSet))}
-        </span>
-      )}
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-150 dark:bg-neutral-800">
+        <div className="h-full rounded-full bg-neutral-700 dark:bg-neutral-200" style={{ width: `${rollout}%` }} />
+      </div>
+      <span className="tabular-nums">{rollout}%</span>
     </div>
   );
 }
 
-function FlagRolloutSummary({ flag }: { flag: FeatureFlag }) {
-  const rollout = computeRollout(flag);
-  if (rollout === null) return <span className="text-neutral-400">-</span>;
+function FlagRollout({ flag }: { flag: FeatureFlag }) {
+  const t = useExtracted();
+  const conditionSets = flag.conditionSets;
 
+  if (conditionSets.length <= 1) return <ConditionServes flag={flag} conditionSet={conditionSets[0]} />;
+
+  const shown = conditionSets.slice(0, MAX_CONDITIONS_SHOWN);
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-2 w-20 rounded-full bg-neutral-100 dark:bg-neutral-800">
-        <div
-          className={cn("h-2 rounded-full bg-accent-500", rollout === 0 && "bg-transparent")}
-          style={{ width: `${rollout}%` }}
-        />
-      </div>
-      <span className="text-sm tabular-nums">{rollout}%</span>
+    <div className="grid w-fit grid-cols-[auto_auto] items-center gap-x-3 gap-y-1.5">
+      {shown.map((conditionSet, index) => (
+        <Fragment key={index}>
+          <span className="max-w-28 truncate text-xs text-neutral-500 dark:text-neutral-400">
+            {conditionSet.name || t("Condition {number}", { number: String(index + 1) })}
+          </span>
+          <ConditionServes flag={flag} conditionSet={conditionSet} />
+        </Fragment>
+      ))}
+      {conditionSets.length > shown.length && (
+        <span className="col-span-2 text-xs text-neutral-500 dark:text-neutral-400">
+          {t("+{count} more", { count: String(conditionSets.length - shown.length) })}
+        </span>
+      )}
     </div>
   );
 }
@@ -253,18 +250,23 @@ function FlagKeyCell({ row }: CellContext<FeatureFlag, string>) {
   const flag = row.original;
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="font-mono text-sm font-medium">{flag.key}</span>
-      <Badge variant="secondary">v{flag.version}</Badge>
-      {/* Shown on row hover or focus where hover exists; always shown on touch screens. */}
-      <CopyButton
-        iconOnly
-        size="xs"
-        tooltip
-        value={flag.key}
-        label={t("Copy flag key")}
-        className="-ml-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[status=copied]:opacity-100 data-[status=error]:opacity-100"
-      />
+    <div className="grid max-w-80 gap-0.5">
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-sm font-medium">{flag.key}</span>
+        <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">v{flag.version}</span>
+        {/* Shown on row hover or focus where hover exists; always shown on touch screens. */}
+        <CopyButton
+          iconOnly
+          size="xs"
+          tooltip
+          value={flag.key}
+          label={t("Copy flag key")}
+          className="-ml-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[status=copied]:opacity-100 data-[status=error]:opacity-100"
+        />
+      </div>
+      {flag.description && (
+        <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{flag.description}</span>
+      )}
     </div>
   );
 }
@@ -281,6 +283,7 @@ function RowActionsCell({ row }: CellContext<FeatureFlag, unknown>) {
 export function FeatureFlagTable({ flags, canWrite }: { flags: FeatureFlag[]; canWrite: boolean }) {
   const t = useExtracted();
   const getRuntimeLabel = useRuntimeLabel();
+  const getFlagTypeLabel = useFlagTypeLabel();
   const updateMutation = useUpdateFeatureFlag();
   const { formatRelative, formatDateTime } = useDateTimeFormat();
   const [sorting, setSorting] = useState<SortingState>([{ id: "updatedAt", desc: true }]);
@@ -294,7 +297,7 @@ export function FeatureFlagTable({ flags, canWrite }: { flags: FeatureFlag[]; ca
   const renderTimeCell = (value: string) => {
     const date = parseTimestamp(value);
     if (!date.isValid) {
-      return <span className="text-neutral-400">-</span>;
+      return EMPTY_CELL;
     }
     const formatted = formatDateTime(date, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
     const relative = formatRelative(date);
@@ -321,53 +324,55 @@ export function FeatureFlagTable({ flags, canWrite }: { flags: FeatureFlag[]; ca
       header: ({ column }) => <SortHeader column={column}>{t("Status")}</SortHeader>,
       cell: info => {
         const flag = info.row.original;
-        return (
-          <div className="flex items-center gap-2">
-            {canWrite && (
-              <Switch
-                checked={flag.enabled}
-                disabled={updateMutation.isPending}
-                onCheckedChange={enabled => updateMutation.mutate({ flagId: flag.flagId, payload: { enabled } })}
-              />
-            )}
-            <Badge variant={flag.enabled ? "success" : "secondary"}>{flag.enabled ? t("On") : t("Off")}</Badge>
-            <Badge variant="outline">{getRuntimeLabel(flag.runtime)}</Badge>
-          </div>
+        // The switch is its own label; without flags:write the state is spelled out instead.
+        return canWrite ? (
+          <Switch
+            checked={flag.enabled}
+            disabled={updateMutation.isPending}
+            aria-label={t("Enabled")}
+            onCheckedChange={enabled => updateMutation.mutate({ flagId: flag.flagId, payload: { enabled } })}
+          />
+        ) : (
+          <span className={cn(!flag.enabled && "text-neutral-500 dark:text-neutral-400")}>
+            {flag.enabled ? t("On") : t("Off")}
+          </span>
         );
       },
       sortingFn: (a, b) => Number(b.original.enabled) - Number(a.original.enabled),
     }),
-    columnHelper.display({
-      id: "value",
-      header: () => <span>{t("Value")}</span>,
-      cell: info => <FlagValueSummary flag={info.row.original} />,
+    columnHelper.accessor("flagType", {
+      id: "type",
+      header: ({ column }) => <SortHeader column={column}>{t("Type")}</SortHeader>,
+      cell: info => <span className="whitespace-nowrap">{getFlagTypeLabel(info.getValue())}</span>,
     }),
-    columnHelper.accessor(row => computeRollout(row) ?? -1, {
+    columnHelper.accessor("runtime", {
+      id: "runtime",
+      header: ({ column }) => <SortHeader column={column}>{t("Runtime")}</SortHeader>,
+      cell: info => <span className="text-neutral-600 dark:text-neutral-300">{getRuntimeLabel(info.getValue())}</span>,
+    }),
+    columnHelper.accessor(row => computeRollout(row), {
       id: "rollout",
       header: ({ column }) => <SortHeader column={column}>{t("Rollout")}</SortHeader>,
-      cell: info => <FlagRolloutSummary flag={info.row.original} />,
+      cell: info => <FlagRollout flag={info.row.original} />,
     }),
     columnHelper.accessor(row => totalRules(row), {
       id: "rules",
-      header: ({ column }) => <SortHeader column={column}>{t("Rules")}</SortHeader>,
+      header: ({ column }) => <SortHeader column={column}>{t("Targeting")}</SortHeader>,
       cell: info => {
-        const flag = info.row.original;
-        return (
-          <span className="tabular-nums">
-            {flag.conditionSets.length.toLocaleString()} / {totalRules(flag).toLocaleString()}
+        const rules = info.getValue();
+        return rules === 0 ? (
+          <span className="text-neutral-600 dark:text-neutral-300">{t("Everyone")}</span>
+        ) : (
+          <span className="whitespace-nowrap">
+            {t("{count, plural, one {# rule} other {# rules}}", { count: rules })}
           </span>
         );
       },
     }),
     columnHelper.accessor(row => totalSessions(row), {
-      id: "traffic",
-      header: ({ column }) => <SortHeader column={column}>{t("Traffic")}</SortHeader>,
+      id: "sessions",
+      header: ({ column }) => <SortHeader column={column}>{t("Sessions")}</SortHeader>,
       cell: info => <FlagStats flag={info.row.original} />,
-    }),
-    columnHelper.accessor("createdAt", {
-      id: "createdAt",
-      header: ({ column }) => <SortHeader column={column}>{t("Created")}</SortHeader>,
-      cell: info => renderTimeCell(info.getValue()),
     }),
     columnHelper.accessor("updatedAt", {
       id: "updatedAt",
@@ -396,7 +401,7 @@ export function FeatureFlagTable({ flags, canWrite }: { flags: FeatureFlag[]; ca
   });
 
   return (
-    <div className="rounded-lg border border-neutral-100 bg-white dark:border-neutral-850 dark:bg-neutral-900">
+    <div className="overflow-hidden rounded-lg border border-neutral-100 bg-white dark:border-neutral-850 dark:bg-neutral-900">
       <div className="relative overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-neutral-50 [&_tr]:border-b-0 dark:bg-neutral-850">
@@ -407,12 +412,10 @@ export function FeatureFlagTable({ flags, canWrite }: { flags: FeatureFlag[]; ca
                     key={header.id}
                     scope="col"
                     className={cn(
-                      "h-8 whitespace-nowrap px-3 text-left align-middle text-xs font-medium text-neutral-500 first:rounded-l-lg last:rounded-r-lg dark:text-neutral-400",
+                      "h-8 whitespace-nowrap px-3 text-left align-middle text-xs font-medium text-neutral-500 dark:text-neutral-400",
                       header.id === "actions" && "w-12 text-right"
                     )}
-                    style={{
-                      minWidth: isTimeColumn(header.id) ? "8rem" : undefined,
-                    }}
+                    style={{ minWidth: COLUMN_MIN_WIDTHS[header.id] }}
                   >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
@@ -431,10 +434,13 @@ export function FeatureFlagTable({ flags, canWrite }: { flags: FeatureFlag[]; ca
               table.getRowModel().rows.map(row => (
                 <tr
                   key={row.id}
-                  className="group border-b border-neutral-100 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-850"
+                  className="group border-b border-neutral-100 last:border-0 hover:bg-neutral-50 dark:border-neutral-850 dark:hover:bg-neutral-850/60"
                 >
                   {row.getVisibleCells().map(cell => (
-                    <td key={cell.id} className={cn("relative p-3", cell.column.id === "actions" && "text-right")}>
+                    <td
+                      key={cell.id}
+                      className={cn("relative px-3 py-2.5", cell.column.id === "actions" && "text-right")}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
