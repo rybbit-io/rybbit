@@ -110,6 +110,9 @@ HOST_CLIENT_PORT="127.0.0.1:3002:3002"
 | `CLUSTER_WORKERS` | `4` | Number of backend worker processes. `0` runs a single process. |
 | `DASHBOARD_CACHE_TTL_SECONDS` | `30` | How long dashboard query results are cached in Redis, in seconds. The maximum is 30; `0` disables the cache. Not in 2.9.2; applies to `edge` images and the next release. |
 | `CLICKHOUSE_QUERY_PASSWORD` | `CLICKHOUSE_PASSWORD` | Password for the read-only `rybbit_query` ClickHouse user the backend creates for custom SQL queries, such as the MCP `run_query` tool. |
+| `POSTGRES_SSL` | `false` | Set to `true` to connect to Postgres over SSL, for example a managed database. Applies to the app, auth, and migrations. |
+| `POSTGRES_SSL_REJECT_UNAUTHORIZED` | `true` | With SSL on, set to `false` to accept a server certificate that can't be verified, such as a self-signed one. |
+| `POSTGRES_SSL_CA` | unset | With SSL on, a PEM CA certificate to verify the server against. Put it on one line, with a literal `\n` for each line break. |
 | `DISABLE_TELEMETRY` | unset | Set to `true` to turn off [anonymous usage telemetry](/docs/managing-your-installation#anonymous-usage-telemetry). |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | unset | An [OpenRouter](https://openrouter.ai) key and model for generating custom SQL queries from plain-language questions. |
 | `LITE_DASHBOARD` | unset | For very high-traffic installs. Set to `true` and the backend keeps hourly rollup tables and serves the site list from them. The rollups only see new events: on an install that already has data, run `docker compose run --rm --no-deps backend node dist/scripts/backfillLiteDashboardMVs.js --cutoff "<YYYY-MM-DD HH:MM:SS>"` once, with the cutoff at the moment you enabled it. |

@@ -25,8 +25,6 @@ export default defineConfig({
               : undefined,
           }
         : false,
-    onnotice: () => {},
-    max: 20,
   },
   verbose: true,
   schemaFilter: ["public"],
