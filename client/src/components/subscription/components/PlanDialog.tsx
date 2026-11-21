@@ -182,7 +182,7 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Choose Your Plan</DialogTitle>
+            <DialogTitle>{t("Choose your plan")}</DialogTitle>
           </DialogHeader>
 
           {/* Monthly/Annual toggle, on its own row so it stays clear of the
