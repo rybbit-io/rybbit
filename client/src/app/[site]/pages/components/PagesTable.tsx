@@ -476,8 +476,7 @@ function HeaderCell({
       title={title}
       aria-sort={sorted ? (order === "asc" ? "ascending" : "descending") : undefined}
       className={cn(
-        // The header is a flat band inside the card, not the rounded pill of a free-standing table.
-        "whitespace-nowrap px-3 last:rounded-r-none",
+        "whitespace-nowrap px-3",
         align === "right" && "text-right",
         COLUMN_WIDTH[column],
         COLUMN_VISIBILITY[column]
@@ -604,10 +603,7 @@ export function PagesTable({
           <table className="w-full min-w-[340px] table-fixed caption-bottom text-sm">
             <TableHeader>
               <tr>
-                <TableHead
-                  scope="col"
-                  className={cn("whitespace-nowrap pr-3 first:rounded-l-none", group === "section" ? "pl-9" : "pl-3")}
-                >
+                <TableHead scope="col" className={cn("whitespace-nowrap pr-3", group === "section" ? "pl-9" : "pl-3")}>
                   {group === "section" ? t("Page / section") : t("Page")}
                 </TableHead>
                 <HeaderCell column="views" label={t("Views")} align="left" onSort={onSort} />

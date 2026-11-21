@@ -117,7 +117,7 @@ export function EventNamesTable({
       <Table className="table-fixed">
         <TableHeader>
           <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-            <TableHead className="rounded-none pl-3 first:rounded-none" aria-sort={ariaSort("name")}>
+            <TableHead className="pl-3" aria-sort={ariaSort("name")}>
               {header("name", t("Event"))}
             </TableHead>
             <TableHead className="w-[120px] @min-[480px]:w-[196px]" aria-sort={ariaSort("count")}>
@@ -139,9 +139,7 @@ export function EventNamesTable({
               {header("lastSeen", t("Last seen"))}
             </TableHead>
             <TableHead className={cn("w-[232px]", COLUMN.usedIn)}>{t("Used in")}</TableHead>
-            <TableHead className={cn("w-[84px] rounded-none pr-3 text-right last:rounded-none", COLUMN.people)}>
-              {t("People")}
-            </TableHead>
+            <TableHead className={cn("w-[84px] pr-3 text-right", COLUMN.people)}>{t("People")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

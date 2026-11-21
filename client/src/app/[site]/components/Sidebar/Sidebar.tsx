@@ -244,12 +244,15 @@ function SidebarContent() {
             <SiteSettings
               siteId={site?.siteId ?? 0}
               trigger={
-                <div className="px-3 py-2 rounded-lg transition-colors w-full text-neutral-700 hover:text-neutral-900 hover:bg-neutral-150 dark:text-neutral-200 dark:hover:text-white dark:hover:bg-neutral-800/50 cursor-pointer">
-                  <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-2 rounded-lg transition-colors w-full text-left text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:text-white dark:hover:bg-neutral-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300"
+                >
+                  <span className="flex items-center gap-2">
                     <Settings className="h-4 w-4" />
                     <span className="text-sm">{t("Site Settings")}</span>
-                  </div>
-                </div>
+                  </span>
+                </button>
               }
             />
           </>

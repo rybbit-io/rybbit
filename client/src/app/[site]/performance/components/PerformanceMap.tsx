@@ -14,6 +14,7 @@ import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import { Style, Fill, Stroke } from "ol/style";
+import { ChartTooltip } from "../../../../components/charts/ChartTooltip";
 import { useCountries } from "../../../../lib/geo";
 import { addFilter } from "../../../../lib/store";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
@@ -343,42 +344,46 @@ export function PerformanceMap({ height }: { height: string }) {
       />
       {tooltipContent && (
         <div
-          className="fixed z-50 bg-white dark:bg-neutral-1000 text-neutral-900 dark:text-white rounded-md p-3 shadow-lg text-sm pointer-events-none max-w-xs border border-neutral-300 dark:border-transparent"
+          className="fixed z-50 pointer-events-none"
           style={{
             left: tooltipPosition.x,
             top: tooltipPosition.y - 10,
             transform: "translate(-50%, -100%)",
           }}
         >
-          <div className="font-sm flex items-center gap-1 mb-2">
-            {tooltipContent.code && <CountryFlag country={tooltipContent.code} />}
-            <span className="font-medium">{tooltipContent.name}</span>
-          </div>
+          <ChartTooltip className="max-w-xs p-3">
+            <div className="flex items-center gap-1 mb-2">
+              {tooltipContent.code && <CountryFlag country={tooltipContent.code} />}
+              <span className="font-medium">{tooltipContent.name}</span>
+            </div>
 
-          {tooltipContent.eventCount > 0 ? (
-            <>
-              <div className="mb-2">
-                <span className="text-neutral-600 dark:text-neutral-300">{tooltipContent.metricName}: </span>
-                {tooltipContent.metricValue !== null ? (
-                  <span className="font-bold text-accent-400">
-                    {formatMetricValue(selectedPerformanceMetric, tooltipContent.metricValue)}
-                    {getMetricUnit(selectedPerformanceMetric, tooltipContent.metricValue)}
-                  </span>
-                ) : (
-                  <span className="text-neutral-400">{t("No data")}</span>
-                )}
-              </div>
-
-              <div className="text-xs">
-                <div className="text-neutral-600 dark:text-neutral-300">
-                  <span className="font-bold text-accent-400">{tooltipContent.eventCount.toLocaleString()}</span>{" "}
-                  {t("performance events")}
+            {tooltipContent.eventCount > 0 ? (
+              <>
+                <div className="mb-2">
+                  <span className="text-neutral-600 dark:text-neutral-300">{tooltipContent.metricName}: </span>
+                  {tooltipContent.metricValue !== null ? (
+                    <span className="font-semibold">
+                      {formatMetricValue(selectedPerformanceMetric, tooltipContent.metricValue)}
+                      {getMetricUnit(selectedPerformanceMetric, tooltipContent.metricValue)}
+                    </span>
+                  ) : (
+                    <span className="text-neutral-400">{t("No data")}</span>
+                  )}
                 </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-neutral-500 dark:text-neutral-400 text-xs">{t("No performance data available")}</div>
-          )}
+
+                <div className="text-xs">
+                  <div className="text-neutral-600 dark:text-neutral-300">
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                      {tooltipContent.eventCount.toLocaleString()}
+                    </span>{" "}
+                    {t("performance events")}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-neutral-500 dark:text-neutral-400 text-xs">{t("No performance data available")}</div>
+            )}
+          </ChartTooltip>
         </div>
       )}
     </div>

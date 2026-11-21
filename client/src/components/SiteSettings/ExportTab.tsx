@@ -9,7 +9,7 @@ import { eventExportUrl, EventExportFormat, EventExportParams } from "@/api/anal
 import { useGetEventExportCount } from "@/api/analytics/hooks/useGetEventExportCount";
 import { CodeSnippet } from "@/components/CodeSnippet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BACKEND_URL } from "@/lib/const";
 import { useTimezone } from "@/lib/store";
@@ -124,22 +124,22 @@ export function ExportTab({ siteId }: { siteId: number }) {
         </SettingRow>
         {range === "custom" && (
           <SettingRow label={t("From")} description={t("Both dates are included.")}>
-            <Input
-              type="date"
+            <DatePicker
+              modal
               aria-label={t("From")}
-              className="w-[150px]"
+              className="w-40"
               value={custom.startDate}
               max={iso(today(timeZone))}
-              onChange={event => setCustom({ ...custom, startDate: event.target.value })}
+              onChange={startDate => setCustom({ ...custom, startDate })}
             />
             <span className="text-sm text-muted-foreground">{t("to")}</span>
-            <Input
-              type="date"
+            <DatePicker
+              modal
               aria-label={t("To")}
-              className="w-[150px]"
+              className="w-40"
               value={custom.endDate}
               max={iso(today(timeZone))}
-              onChange={event => setCustom({ ...custom, endDate: event.target.value })}
+              onChange={endDate => setCustom({ ...custom, endDate })}
             />
           </SettingRow>
         )}

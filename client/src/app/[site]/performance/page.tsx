@@ -28,11 +28,17 @@ function AnnotationsToggle() {
   return (
     <Button
       type="button"
-      variant="ghost"
+      variant="outline"
       size="sm"
       aria-pressed={showAnnotations}
       onClick={() => setShowAnnotations(!showAnnotations)}
-      className={cn("gap-1.5 font-normal", showAnnotations && "bg-neutral-100 dark:bg-neutral-800")}
+      // The pressed fill the users page's quick filters use: a filled, bordered
+      // step that hover does not change, so on never reads as a hover.
+      className={cn(
+        "gap-1.5 font-normal",
+        showAnnotations &&
+          "border-neutral-300 bg-neutral-100 text-neutral-900 hover:border-neutral-300 hover:bg-neutral-100 dark:border-neutral-500 dark:bg-neutral-800 dark:text-neutral-50 dark:hover:border-neutral-500 dark:hover:bg-neutral-800"
+      )}
     >
       <Flag />
       {t("Annotations")}

@@ -123,12 +123,12 @@ export function MapComponent({ height, mapView: controlledMapView }: MapComponen
         >
           <ChartTooltip>
             <div className="p-2">
-              <div className="font-sm flex items-center gap-1">
+              <div className="flex items-center gap-1">
                 {tooltipContent.code && <CountryFlag country={tooltipContent.code.slice(0, 2)} />}
                 {tooltipContent.name}
               </div>
               <div>
-                <span className="font-bold text-accent-400">{tooltipContent.count.toLocaleString()}</span>{" "}
+                <span className="font-semibold">{tooltipContent.count.toLocaleString()}</span>{" "}
                 <span className="text-neutral-500 dark:text-neutral-300">
                   ({tooltipContent.percentage.toFixed(1)}%) sessions
                 </span>

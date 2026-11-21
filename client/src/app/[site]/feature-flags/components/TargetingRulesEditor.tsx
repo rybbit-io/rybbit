@@ -76,7 +76,7 @@ export function TargetingRulesEditor({
                     value={rule.field}
                     onValueChange={value => updateRule(rule.id, { field: value as RuleField })}
                   >
-                    <SelectTrigger aria-label={t("Field")} className="h-8 text-xs">
+                    <SelectTrigger size="sm" aria-label={t("Field")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -94,7 +94,8 @@ export function TargetingRulesEditor({
                       value={rule.key}
                       placeholder={t("key")}
                       onChange={event => updateRule(rule.id, { key: event.target.value })}
-                      className="h-8 font-mono text-xs"
+                      inputSize="sm"
+                      className="font-mono"
                     />
                   )}
 
@@ -102,7 +103,7 @@ export function TargetingRulesEditor({
                     value={rule.operator}
                     onValueChange={value => updateRule(rule.id, { operator: value as RuleOperator })}
                   >
-                    <SelectTrigger aria-label={t("Operator")} className="h-8 text-xs">
+                    <SelectTrigger size="sm" aria-label={t("Operator")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -119,12 +120,13 @@ export function TargetingRulesEditor({
                     value={rule.value}
                     placeholder={t("value")}
                     onChange={event => updateRule(rule.id, { value: event.target.value })}
-                    className="h-8 font-mono text-xs"
+                    inputSize="sm"
+                    className="font-mono"
                   />
 
                   <Button
                     type="button"
-                    size="smIcon"
+                    size="iconSm"
                     variant="ghost"
                     aria-label={t("Remove")}
                     onClick={() => removeRule(rule.id)}

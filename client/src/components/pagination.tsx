@@ -70,7 +70,7 @@ function NavCell({
       disabled={disabled}
       aria-label={label}
       className={cn(
-        "flex h-8 w-8 items-center justify-center text-neutral-600 transition-colors",
+        "flex h-full w-8 items-center justify-center text-neutral-600 transition-colors",
         "hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500",
         "disabled:pointer-events-none disabled:text-neutral-300 dark:disabled:text-neutral-700",
@@ -189,8 +189,10 @@ export function Pagination<TData>({
           </div>
         )}
 
-        {/* Segmented control: one flat pill with hairline seams between cells. */}
-        <div className="inline-flex items-center divide-x divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900/50">
+        {/* Segmented control: one flat pill with hairline seams between cells. 32px
+            overall (border included) with the same border and fill as the page-size
+            trigger beside it. */}
+        <div className="inline-flex h-8 items-stretch divide-x divide-neutral-150 overflow-hidden rounded-lg border border-neutral-150 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900/70">
           {withFirstLast && (
             <NavCell onClick={goToFirst} disabled={!canPrev || isLoading} label={t("First page")}>
               <ChevronsLeft />
@@ -200,7 +202,7 @@ export function Pagination<TData>({
             <ChevronLeft />
           </NavCell>
 
-          <div className="flex h-8 min-w-[3.5rem] select-none items-center justify-center px-3 text-sm tabular-nums">
+          <div className="flex h-full min-w-[3.5rem] select-none items-center justify-center px-3 text-sm tabular-nums">
             {isLoading ? (
               <span className="text-neutral-400 dark:text-neutral-500">…</span>
             ) : resolvedPageCount != null ? (

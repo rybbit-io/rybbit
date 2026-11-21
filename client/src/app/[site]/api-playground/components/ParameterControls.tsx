@@ -1,6 +1,7 @@
 "use client";
 
 import { authedFetch } from "@/api/utils";
+import { DatePicker, TimeInput } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Play } from "lucide-react";
@@ -221,7 +222,7 @@ export function ParameterControls() {
                   value={pathParams[param] || ""}
                   onChange={e => setPathParam(param, e.target.value)}
                   placeholder={meta?.placeholder || `Enter ${param}`}
-                  className="h-8 text-xs"
+                  inputSize="sm"
                   type={meta?.type === "number" ? "number" : "text"}
                 />
               </div>
@@ -238,38 +239,53 @@ export function ParameterControls() {
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("Start Date")}</label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="h-8 text-xs"
-              />
+              <label
+                htmlFor="playground-start-date"
+                className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+              >
+                {t("Start Date")}
+              </label>
+              <DatePicker id="playground-start-date" size="sm" value={startDate} onChange={setStartDate} />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("End Date")}</label>
-              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-8 text-xs" />
+              <label
+                htmlFor="playground-end-date"
+                className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+              >
+                {t("End Date")}
+              </label>
+              <DatePicker id="playground-end-date" size="sm" value={endDate} onChange={setEndDate} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("Start Time")}</label>
-              <Input
-                type="time"
+              <label
+                htmlFor="playground-start-time"
+                className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+              >
+                {t("Start Time")}
+              </label>
+              <TimeInput
+                id="playground-start-time"
+                inputSize="sm"
                 step={1}
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                className="h-8 text-xs"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t("End Time")}</label>
-              <Input
-                type="time"
+              <label
+                htmlFor="playground-end-time"
+                className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+              >
+                {t("End Time")}
+              </label>
+              <TimeInput
+                id="playground-end-time"
+                inputSize="sm"
                 step={1}
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
-                className="h-8 text-xs"
               />
             </div>
           </div>
@@ -298,7 +314,7 @@ export function ParameterControls() {
                     value={endpointParams[param] || ""}
                     onChange={e => setEndpointParam(param, e.target.value)}
                     placeholder={`Enter ${param}`}
-                    className="h-8 text-xs"
+                    inputSize="sm"
                   />
                 </div>
               );
@@ -312,7 +328,7 @@ export function ParameterControls() {
                     {isRequired && <span className="text-red-500 ml-1">*</span>}
                   </label>
                   <Select value={endpointParams[param] || ""} onValueChange={value => setEndpointParam(param, value)}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger size="sm">
                       <SelectValue placeholder={`Select ${meta.label}`} />
                     </SelectTrigger>
                     <SelectContent>
@@ -338,7 +354,7 @@ export function ParameterControls() {
                   value={endpointParams[param] || ""}
                   onChange={e => setEndpointParam(param, e.target.value)}
                   placeholder={meta.placeholder || `Enter ${meta.label}`}
-                  className="h-8 text-xs"
+                  inputSize="sm"
                 />
               </div>
             );

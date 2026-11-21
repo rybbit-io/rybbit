@@ -173,7 +173,7 @@ export function IdentifyUserDialog({ anonymousId, open, onOpenChange }: Identify
 
                   return (
                     <div key={row.id} className="space-y-1">
-                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2rem] items-center gap-2">
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.25rem] items-center gap-2">
                         <Input
                           ref={element => {
                             traitKeyRefs.current[row.id] = element;
@@ -196,7 +196,7 @@ export function IdentifyUserDialog({ anonymousId, open, onOpenChange }: Identify
                         <Button
                           type="button"
                           variant="ghost"
-                          size="smIcon"
+                          size="icon"
                           onClick={() => removeTrait(row.id)}
                           aria-label={t("Remove trait")}
                         >
@@ -220,8 +220,14 @@ export function IdentifyUserDialog({ anonymousId, open, onOpenChange }: Identify
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t("Cancel")}
             </Button>
-            <Button type="submit" variant="success" disabled={identifyUser.isPending || !userId.trim()}>
-              {identifyUser.isPending ? t("Identifying...") : t("Identify")}
+            <Button
+              type="submit"
+              variant="success"
+              disabled={!userId.trim()}
+              loading={identifyUser.isPending}
+              loadingLabel={t("Identifying...")}
+            >
+              {t("Identify")}
             </Button>
           </DialogFooter>
         </form>

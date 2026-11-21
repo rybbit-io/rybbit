@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -283,11 +284,14 @@ export function EditOrganizationMemberDialog({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="ban-expiry">{t("Expires")}</Label>
-                    <Input
+                    <DateTimePicker
                       id="ban-expiry"
-                      type="datetime-local"
+                      modal
+                      clearable
+                      placeholder={t("Never")}
+                      min={DateTime.now().toISODate() ?? undefined}
                       value={banExpires}
-                      onChange={event => setBanExpires(event.target.value)}
+                      onChange={setBanExpires}
                     />
                     <p className="text-xs text-muted-foreground">{t("Leave blank for a permanent ban.")}</p>
                   </div>

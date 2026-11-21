@@ -37,6 +37,18 @@ vi.mock("@/components/ui/select", () => ({
     <option value={value}>{children}</option>
   ),
 }));
+// The calendar popover is covered by ui/date-picker's own test; a native input drives the same props.
+vi.mock("@/components/ui/date-picker", () => ({
+  DatePicker: ({
+    value,
+    onChange,
+    "aria-label": ariaLabel,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    "aria-label"?: string;
+  }) => <input aria-label={ariaLabel} value={value} onChange={event => onChange(event.target.value)} />,
+}));
 
 import { ExportTab } from "./ExportTab";
 

@@ -30,7 +30,7 @@ export function UserActions({ userId, data }: UserActionsProps) {
     <div className="flex items-center gap-1">
       {canWriteUsers && !isIdentified && (
         <Button size="sm" onClick={() => setIdentifyOpen(true)}>
-          <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+          <UserPlus />
           {t("Identify User")}
         </Button>
       )}
@@ -40,12 +40,12 @@ export function UserActions({ userId, data }: UserActionsProps) {
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="smIcon"
+                size="iconSm"
                 aria-label={t("Delete User")}
                 className="text-neutral-500 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
                 onClick={() => setDeleteOpen(true)}
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t("Delete User")}</TooltipContent>

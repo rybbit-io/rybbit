@@ -157,12 +157,14 @@ export default function Home() {
 
   const hasSites = shouldShowSites && sites?.sites && sites.sites.length > 0;
 
-  const teamSelector = (
+  // 36px in the mobile filter row beside the full-size search input, 32px beside the date controls on desktop.
+  const renderTeamSelector = (size: "default" | "sm") => (
     <TeamSelector
       teams={teams}
       value={selectedTeamFilter}
       onValueChange={setSelectedTeamFilter}
       canCreateTeam={hasOrganizations && can("teams:manage")}
+      size={size}
     />
   );
 
@@ -203,7 +205,7 @@ export default function Home() {
           className="pl-9"
         />
       </div>
-      {!isDesktop && teamSelector}
+      {!isDesktop && renderTeamSelector("default")}
       {allTags.length > 0 && (
         <div className="w-[200px]">
           <MultiSelect
@@ -318,7 +320,7 @@ export default function Home() {
       <NavigationSidebar />
       <StandardPage showSidebar={false}>
         <div className="flex justify-between items-center my-4">
-          <div>{teamSelector}</div>
+          <div>{renderTeamSelector("sm")}</div>
           {dateControls}
         </div>
         {content}

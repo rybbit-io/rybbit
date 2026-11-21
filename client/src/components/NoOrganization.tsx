@@ -27,7 +27,7 @@ export function NoOrganization({
         <CardTitle className="mb-2 text-xl">{t("No Organization")}</CardTitle>
         <CardDescription className="mb-6">{message || t("You need to create or be added to an organization before you can add a website.")}</CardDescription>
         <Button onClick={() => setCreateOrgDialogOpen(true)} className="max-w-xs">
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="h-4 w-4" />
           {t("Create an Organization")}
         </Button>
       </Card>

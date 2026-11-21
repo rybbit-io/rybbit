@@ -3,9 +3,10 @@
 import { useState, useMemo } from "react";
 import { useAdminOrganizations } from "@/api/admin/hooks/useAdminOrganizations";
 import { CopyButton } from "@/components/interior/copy-button";
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
-import { cn, formatter } from "@/lib/utils";
+import { formatter } from "@/lib/utils";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
 import { ErrorAlert } from "../shared/ErrorAlert";
@@ -114,24 +115,13 @@ export function Organizations() {
           }
           actions={
             chartTab === "usage" ? (
-              <div className="flex items-center gap-0.5 rounded-lg bg-neutral-100 p-0.5 dark:bg-neutral-800">
-                {TIME_PERIODS.map(period => (
-                  <button
-                    key={period}
-                    type="button"
-                    onClick={() => setTimePeriod(period)}
-                    className={cn(
-                      "h-6 rounded-md px-2 text-xs font-medium transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500",
-                      timePeriod === period
-                        ? "bg-white text-neutral-950 shadow-sm dark:bg-neutral-950 dark:text-neutral-50"
-                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-                    )}
-                  >
-                    {period === "all" ? t("All") : period}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl<TimePeriod>
+                aria-label={t("Date range")}
+                size="sm"
+                options={TIME_PERIODS.map(period => ({ value: period, label: period === "all" ? t("All") : period }))}
+                value={timePeriod}
+                onValueChange={setTimePeriod}
+              />
             ) : undefined
           }
         >

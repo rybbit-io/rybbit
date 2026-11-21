@@ -62,10 +62,10 @@ export function EventTypeFilter({
               count > 0 ? (
                 <span
                   className={cn(
-                    "ml-1 px-1.5 py-0.5 rounded-full text-[10px] leading-none",
+                    "ml-1 px-1.5 py-0.5 rounded-full text-xs leading-none tabular-nums",
                     isSelected
-                      ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
-                      : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-500"
+                      ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200"
+                      : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
                   )}
                 >
                   {count}

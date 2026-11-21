@@ -16,6 +16,7 @@ import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
 import { SessionEvent } from "@/api/analytics/endpoints";
 import { useGetSessionDetailsInfinite } from "@/api/analytics/hooks/useGetUserSessions";
+import { ToggleChip } from "@/components/ToggleChip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -327,24 +328,18 @@ export function SessionTimeline({ sessionId, expectedEvents }: SessionTimelinePr
         {presentTypes.map(config => {
           const on = !hiddenTypes.has(config.value);
           return (
-            <button
+            <ToggleChip
               key={config.value}
-              type="button"
-              aria-pressed={on}
+              isSelected={on}
               onClick={() => toggleType(config.value)}
-              className={cn(
-                "flex items-center gap-1.5 whitespace-nowrap rounded px-2 py-1 text-xs font-medium transition-colors",
-                on
-                  ? "bg-neutral-150 text-neutral-900 dark:bg-neutral-800 dark:text-white"
-                  : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-              )}
-            >
-              <TypeIcon type={config.value} className={cn("h-3 w-3", !on && "opacity-40")} />
-              {typeLabels[config.value]}
-              <span className="tabular-nums text-neutral-500 dark:text-neutral-400">
-                {typeCounts.get(config.value)}
-              </span>
-            </button>
+              indicator={<TypeIcon type={config.value} className="h-3 w-3" />}
+              label={typeLabels[config.value]}
+              rightAdornment={
+                <span className="tabular-nums text-neutral-500 dark:text-neutral-400">
+                  {typeCounts.get(config.value)}
+                </span>
+              }
+            />
           );
         })}
         <span className="ml-auto text-xs tabular-nums text-neutral-500 dark:text-neutral-400">

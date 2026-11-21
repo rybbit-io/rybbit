@@ -159,7 +159,7 @@ export function AiOperatorTable() {
                 {table.getRowModel().rows.map(row => (
                   <tr
                     key={row.id}
-                    className="border-b border-neutral-100 dark:border-neutral-850 last:border-b-0 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                    className="border-b border-neutral-100 dark:border-neutral-850 last:border-b-0 hover:bg-neutral-50 dark:hover:bg-neutral-850"
                   >
                     {row.getVisibleCells().map((cell, index) => (
                       <td

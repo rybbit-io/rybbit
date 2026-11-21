@@ -180,6 +180,18 @@ This system is **flat by default**. There is no resting shadow vocabulary; depth
 - **Destructive / Warning:** Red / yellow fills, used only for genuinely destructive or cautionary actions.
 - **Outline / Ghost / Link:** Transparent surfaces with muted neutral text; hover fills with the faintest neutral step. For secondary and tertiary actions.
 - **Focus:** `focus-visible:ring-1` in `--neutral-950` (light) / `--neutral-300` (dark). Always keep a visible focus ring.
+- **Icon buttons:** `icon` (36px) beside default controls, `iconSm` (32px) beside sm controls in a toolbar, `smIcon` (28px) only for dense in-row actions (table rows, card headers).
+
+### Control heights
+Two tiers, shared by every control so a row of mixed controls lines up:
+- **Default, 36px (`h-9`):** Button default/icon, Input, SelectTrigger, SegmentedControl `md`, Tabs. Forms and dialogs.
+- **Compact, 32px (`h-8`):** Button `sm`/`iconSm`, Input `inputSize="sm"`, SelectTrigger `size="sm"`, SegmentedControl `sm`. Toolbars and filter bars.
+Never hard-code `h-7`/`h-8`/`h-[36px]` on a control to make it match a neighbour; pick the tier. In toolbars, a select that sits beside outline buttons takes `SelectTrigger variant="outline"`.
+
+### Toggles and pickers
+- **Single choice** (2-5 options): `SegmentedControl` (`components/interior/segmented-control.tsx`). Its label stacks above it like any form field, or it carries an `aria-label`. Don't hand-roll `aria-pressed` button rows.
+- **Switching panels:** `Tabs` (pill) or basic underline tabs. **Multi-select filters:** `ToggleChip`.
+- **Dates:** `DatePicker` / `DateTimePicker` (`components/ui/date-picker.tsx`, Calendar in a Popover). Never ship the browser's native date or time popup.
 
 ### Cards / Containers
 - **Corner Style:** `rounded-lg` (4.8px).
@@ -194,9 +206,10 @@ This system is **flat by default**. There is no resting shadow vocabulary; depth
 - **Focus:** `focus-visible:ring-1` neutral; no border color change beyond the ring.
 - **Error:** `aria-[invalid=true]` flips the border to red-500 (dark: red-400).
 - **Search variant:** Leading 16px search icon in `--neutral-400`, `pl-9`.
+- **Textarea:** Same border, radius, focus and error treatment as Input; no shadow.
 
 ### Badges / Chips
-- **Shape:** `rounded-md` (2.8px), `px-1.5 py-0.5`, 12px `font-medium`.
+- **Shape:** `rounded-md` (2.8px), `px-1.5 py-0.5`, 12px `font-medium`. Badges are labels: no hover state unless the badge is actually clickable.
 - **Semantic variants:** success/destructive/warning/info render as a 20% tint of the hue with the 600 (light) / 400 (dark) text shade and a transparent border. Neutral default/secondary/outline/ghost use the grayscale ramp.
 
 ### Data Visualization (signature)

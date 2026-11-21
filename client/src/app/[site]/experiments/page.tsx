@@ -1,6 +1,7 @@
 "use client";
 
 import { useExperiments } from "@/api/analytics/hooks/experiments/useExperiments";
+import { ErrorState } from "@/components/ErrorState";
 import { NothingFound } from "@/components/NothingFound";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,7 @@ export default function ExperimentsPage() {
   const t = useExtracted();
   useSetPageTitle("Experiments");
   const { site } = useStore();
-  const { data: experiments, isLoading } = useExperiments();
+  const { data: experiments, isError, refetch } = useExperiments();
   const canWrite = useCanOnSite("experiments:write");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -57,8 +58,12 @@ export default function ExperimentsPage() {
         )}
       </div>
 
-      {isLoading || !site ? (
-        <ExperimentSkeleton />
+      {!site || !experiments ? (
+        isError ? (
+          <ErrorState title={t("Failed to load data")} message="" refetch={() => void refetch()} />
+        ) : (
+          <ExperimentSkeleton />
+        )
       ) : filteredExperiments.length > 0 ? (
         <div className="grid gap-3">
           {filteredExperiments.map(experiment => (
@@ -70,7 +75,7 @@ export default function ExperimentsPage() {
             />
           ))}
         </div>
-      ) : experiments?.length ? (
+      ) : experiments.length ? (
         <NothingFound
           icon={<FlaskConical className="h-10 w-10" />}
           title={t("No experiments found")}

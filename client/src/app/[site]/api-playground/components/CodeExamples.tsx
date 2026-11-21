@@ -1,8 +1,9 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { memo, useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
 import { CodeSnippet } from "@/components/CodeSnippet";
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { codeGenerators, languageOrder, CodeGenConfig } from "../utils/codeGenerators";
 
 interface CodeExamplesProps {
@@ -10,6 +11,7 @@ interface CodeExamplesProps {
 }
 
 export const CodeExamples = memo(function CodeExamples({ config }: CodeExamplesProps) {
+  const t = useExtracted();
   const [selectedLang, setSelectedLang] = useState("cURL");
 
   // Memoize the code generation
@@ -19,22 +21,16 @@ export const CodeExamples = memo(function CodeExamples({ config }: CodeExamplesP
 
   return (
     <div className="space-y-2">
-      {/* Language tabs */}
-      <div className="flex flex-wrap gap-1">
-        {languageOrder.map(lang => (
-          <button
-            key={lang}
-            onClick={() => setSelectedLang(lang)}
-            className={cn(
-              "px-2 py-1 text-xs rounded transition-colors",
-              selectedLang === lang
-                ? "bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100"
-                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-            )}
-          >
-            {lang}
-          </button>
-        ))}
+      {/* Language picker. Nine languages outgrow a narrow column, so the row
+          scrolls sideways rather than clipping. */}
+      <div className="overflow-x-auto">
+        <SegmentedControl
+          aria-label={t("Language")}
+          size="sm"
+          options={languageOrder.map(lang => ({ value: lang, label: lang }))}
+          value={selectedLang}
+          onValueChange={setSelectedLang}
+        />
       </div>
 
       {/* Code display */}

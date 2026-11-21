@@ -43,20 +43,13 @@ export function SetupStep({ domain, setDomain, isLoading, onSubmit }: SetupStepP
             onChange={e => setDomain(e.target.value.toLowerCase())}
             required
             autoFocus
-            className="h-10 transition-all bg-neutral-100 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700"
           />
           <p className="text-xs text-muted-foreground">{t("Enter the domain of the website you want to track")}</p>
         </div>
 
-        <Button
-          type="submit"
-          className="w-full transition-all duration-300 h-11 bg-emerald-600 hover:bg-emerald-500 text-white"
-          loading={isLoading}
-          disabled={!canSubmit}
-          variant="success"
-        >
+        <Button type="submit" className="w-full" loading={isLoading} disabled={!canSubmit} variant="success">
           {IS_CLOUD ? t("Start free trial") : t("Continue")}
-          <ArrowRight className="ml-2 h-4 w-4" />
+          <ArrowRight className="h-4 w-4" />
         </Button>
       </form>
     </div>

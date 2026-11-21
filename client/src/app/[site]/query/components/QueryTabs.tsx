@@ -24,8 +24,10 @@ export function QueryTabs({
   onCloseTab,
   onAddTab,
 }: QueryTabsProps) {
+  // Document tabs (open many, close any), so not a fixed tab primitive, but in
+  // ui/tabs' palette: neutral track, flat active tab, no resting shadow.
   return (
-    <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-neutral-150 bg-neutral-50 p-1 dark:border-neutral-850 dark:bg-neutral-950">
+    <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
       {tabs.map((tab, index) => {
         const isActive = tab.id === activeTabId;
         const tabIsBusy = runningTabIds.has(tab.id) || generatingTabIds.has(tab.id);
@@ -36,10 +38,10 @@ export function QueryTabs({
             type="button"
             onClick={() => onSelectTab(tab.id)}
             className={cn(
-              "group flex h-8 min-w-[120px] items-center justify-between gap-2 rounded-md border px-2 text-left text-xs transition-colors",
+              "group flex h-8 min-w-[120px] items-center justify-between gap-2 rounded-md px-2 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300",
               isActive
-                ? "border-neutral-200 bg-white text-neutral-900 shadow-sm dark:border-neutral-750 dark:bg-neutral-900 dark:text-neutral-100"
-                : "border-transparent text-neutral-600 hover:bg-white/70 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900/70 dark:hover:text-neutral-100"
+                ? "bg-white text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50"
+                : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
             )}
           >
             <span className="flex min-w-0 items-center gap-1.5">
@@ -55,7 +57,7 @@ export function QueryTabs({
                   event.stopPropagation();
                   onCloseTab(tab.id);
                 }}
-                className="rounded p-0.5 text-neutral-400 opacity-70 hover:bg-neutral-100 hover:text-neutral-700 group-hover:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="rounded p-0.5 text-neutral-400 opacity-70 hover:bg-neutral-200 hover:text-neutral-700 group-hover:opacity-100 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
                 aria-label="Close query tab"
               >
                 <X className="h-3 w-3" />
@@ -64,7 +66,15 @@ export function QueryTabs({
           </button>
         );
       })}
-      <Button type="button" size="smIcon" variant="ghost" onClick={onAddTab} className="shrink-0" aria-label="New query">
+      <Button
+        type="button"
+        size="smIcon"
+        variant="ghost"
+        onClick={onAddTab}
+        // ghost's hover fill is the track's own tone; lift it one step.
+        className="shrink-0 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+        aria-label="New query"
+      >
         <Plus className="h-4 w-4" />
       </Button>
     </div>

@@ -14,9 +14,11 @@ interface TeamSelectorProps {
   value: string;
   onValueChange: (value: string) => void;
   canCreateTeam?: boolean;
+  /** "sm" (32px) sits beside the date controls; "default" (36px) beside full-size inputs. */
+  size?: "default" | "sm";
 }
 
-export function TeamSelector({ teams, value, onValueChange, canCreateTeam = false }: TeamSelectorProps) {
+export function TeamSelector({ teams, value, onValueChange, canCreateTeam = false, size = "sm" }: TeamSelectorProps) {
   const t = useExtracted();
   const [open, setOpen] = useState(false);
 
@@ -31,9 +33,15 @@ export function TeamSelector({ teams, value, onValueChange, canCreateTeam = fals
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="flex gap-2 items-center border border-neutral-200 dark:border-neutral-800 rounded-lg py-1.5 px-3 justify-start cursor-pointer hover:bg-neutral-150 dark:hover:bg-neutral-800/50 transition-colors h-[36px] w-[200px]">
+        <button
+          type="button"
+          className={cn(
+            "flex gap-2 items-center border border-neutral-200 dark:border-neutral-800 rounded-lg justify-start cursor-pointer hover:bg-neutral-150 dark:hover:bg-neutral-800/50 transition-colors w-[200px]",
+            size === "sm" ? "h-8 px-2.5 text-xs" : "h-9 px-3 text-sm"
+          )}
+        >
           <Users className="w-4 h-4 text-neutral-600 dark:text-neutral-400 shrink-0" />
-          <div className="text-neutral-900 dark:text-white truncate text-sm flex-1 text-left">
+          <div className="text-neutral-900 dark:text-white truncate flex-1 text-left">
             {displayLabel}
           </div>
           <ChevronDown className="w-4 h-4 text-neutral-600 dark:text-neutral-400 shrink-0" />

@@ -5,7 +5,6 @@ import type { FeatureFlag, FeatureFlagConditionSet } from "@/api/analytics/endpo
 import { CopyButton } from "@/components/interior/copy-button";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -225,16 +224,16 @@ function RowActions({ flag }: { flag: FeatureFlag }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteMutation.isPending}>{t("Cancel")}</AlertDialogCancel>
-            <AlertDialogAction
+            {/* A plain Button, not AlertDialogAction, so the dialog stays open until the request settles
+                (handleDelete closes it on success). `loading` keeps its width while pending. */}
+            <Button
               variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={event => {
-                event.preventDefault();
-                void handleDelete();
-              }}
+              loading={deleteMutation.isPending}
+              loadingLabel={t("Deleting...")}
+              onClick={() => void handleDelete()}
             >
-              {deleteMutation.isPending ? t("Deleting...") : t("Delete flag")}
-            </AlertDialogAction>
+              {t("Delete flag")}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

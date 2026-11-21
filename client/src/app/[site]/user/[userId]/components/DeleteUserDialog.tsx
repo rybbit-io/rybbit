@@ -2,12 +2,10 @@
 
 import { useExtracted } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { toast } from "@/components/ui/sonner";
 
 import { useDeleteUser } from "@/api/analytics/hooks/useDeleteUser";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -15,6 +13,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/sonner";
 
 interface DeleteUserDialogProps {
   userId: string;
@@ -51,17 +51,17 @@ export function DeleteUserDialog({ userId, open, onOpenChange }: DeleteUserDialo
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
-          <AlertDialogAction
+          <AlertDialogCancel disabled={deleteUser.isPending}>{t("Cancel")}</AlertDialogCancel>
+          {/* A plain Button, not AlertDialogAction, so the dialog stays open until the request settles
+              (handleDelete closes it on success). `loading` keeps its width while pending. */}
+          <Button
             variant="destructive"
-            onClick={e => {
-              e.preventDefault();
-              handleDelete();
-            }}
-            disabled={deleteUser.isPending}
+            loading={deleteUser.isPending}
+            loadingLabel={t("Deleting...")}
+            onClick={() => void handleDelete()}
           >
-            {deleteUser.isPending ? t("Deleting...") : t("Delete")}
-          </AlertDialogAction>
+            {t("Delete")}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

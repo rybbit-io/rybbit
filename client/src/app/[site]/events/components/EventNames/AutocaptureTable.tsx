@@ -48,11 +48,9 @@ export function AutocaptureTable({ rows, maxCount, total, valueLabel, links = fa
       <Table className="table-fixed">
         <TableHeader>
           <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-            <TableHead className="rounded-none pl-4 first:rounded-none">{valueLabel}</TableHead>
+            <TableHead className="pl-4">{valueLabel}</TableHead>
             <TableHead className="w-[120px] @min-[480px]:w-[220px]">{t("Events")}</TableHead>
-            <TableHead className="hidden w-[128px] rounded-none pr-4 last:rounded-none @min-[640px]:table-cell">
-              {t("Last seen")}
-            </TableHead>
+            <TableHead className="hidden w-[128px] pr-4 @min-[640px]:table-cell">{t("Last seen")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

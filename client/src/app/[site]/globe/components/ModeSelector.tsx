@@ -19,12 +19,18 @@ export default function MapViewSelector() {
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto w-full">
-      <button
-        className="text-xs font-medium rounded-lg bg-neutral-900/70 text-neutral-200 backdrop-blur-sm p-1.5 border border-neutral-800/50 hover:bg-neutral-800 hover:text-white transition-all"
-        onClick={() => setMapMode(mapMode === "2D" ? "3D" : "2D")}
-      >
-        {mapMode === "2D" ? "2D" : "3D"}
-      </button>
+      <SegmentedControl<"2D" | "3D">
+        aria-label={t("Map mode")}
+        size="sm"
+        variant="overlay"
+        className="shrink-0"
+        options={[
+          { value: "2D", label: "2D" },
+          { value: "3D", label: "3D" },
+        ]}
+        value={mapMode}
+        onValueChange={setMapMode}
+      />
       <SegmentedControl<MapView>
         aria-label={t("Map view")}
         size="sm"

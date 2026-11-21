@@ -1,7 +1,6 @@
 "use client";
 
 import { DateTime } from "luxon";
-import Link from "next/link";
 import { useMemo } from "react";
 
 import { useGetBotTimeSeries } from "../../../../api/analytics/hooks/bots/useGetBotTimeSeries";
@@ -10,11 +9,8 @@ import { ChartTooltip } from "../../../../components/charts/ChartTooltip";
 import { TimeSeriesChart } from "../../../../components/charts/TimeSeriesChart";
 import type { TimeSeriesChartPoint } from "../../../../components/charts/TimeSeriesChart";
 import { getChartTimeBounds } from "../../../../components/charts/timeSeriesChartUtils";
-import { RybbitTextLogo } from "../../../../components/RybbitLogo";
 import { Card, CardContent, CardLoader } from "../../../../components/ui/card";
 import { Skeleton } from "../../../../components/ui/skeleton";
-import { useWhiteLabel } from "../../../../hooks/useIsWhiteLabel";
-import { authClient } from "../../../../lib/auth";
 import { formatChartDateTime } from "../../../../lib/dateTimeUtils";
 import { getTimezone, useStore } from "../../../../lib/store";
 
@@ -23,10 +19,8 @@ type BotPoint = TimeSeriesChartPoint & {
 };
 
 export function BotChart() {
-  const session = authClient.useSession();
   const { site, bucket, time } = useStore();
   const timezone = getTimezone();
-  const { isWhiteLabel } = useWhiteLabel();
 
   const { data: timeSeriesData, isLoading, isFetching } = useGetBotTimeSeries({ site });
 
@@ -71,13 +65,6 @@ export function BotChart() {
       )}
       <CardContent className="p-2 md:p-4 py-3 w-full">
         <div className="flex items-center justify-between px-2 md:px-0">
-          <div className="flex items-center space-x-4">
-            {!isWhiteLabel && (
-              <Link href={session.data ? "/" : "https://rybbit.com"} className="opacity-75">
-                <RybbitTextLogo width={80} />
-              </Link>
-            )}
-          </div>
           <span className="text-sm text-neutral-700 dark:text-neutral-200">Bot requests</span>
           <BucketSelection />
         </div>

@@ -13,6 +13,7 @@ import type {
   ExperimentWindowMode,
 } from "@/api/analytics/endpoints";
 import { useExperimentResults, useExperimentTimeseries } from "@/api/analytics/hooks/experiments/useExperiments";
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { Badge } from "@/components/ui/badge";
 import { useTimezone } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -96,28 +97,13 @@ function WindowSwitch({
       {totals && <span className="tabular-nums">{totals}</span>}
       {description && <span className="tabular-nums">{description}</span>}
       {showSwitch && (
-        <div
-          role="radiogroup"
-          className="inline-flex rounded-md border border-neutral-150 p-0.5 dark:border-neutral-800"
-        >
-          {options.map(option => (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={mode === option.value}
-              onClick={() => onChange(option.value)}
-              className={cn(
-                "rounded px-2 py-0.5 transition-colors",
-                mode === option.value
-                  ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-50"
-                  : "hover:text-neutral-700 dark:hover:text-neutral-200"
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl<ExperimentWindowMode>
+          aria-label={t("Time Window")}
+          size="sm"
+          options={options}
+          value={mode}
+          onValueChange={onChange}
+        />
       )}
     </div>
   );

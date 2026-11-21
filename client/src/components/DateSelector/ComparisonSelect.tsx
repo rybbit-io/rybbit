@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { availableComparisonModes, resolveComparison } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -119,23 +119,21 @@ export function ComparisonSelect({
 
               {mode === "custom" && selected && (
                 <div className="flex gap-1.5 px-2 pb-2 pt-1">
-                  <Input
-                    type="date"
-                    inputSize="sm"
+                  <DatePicker
+                    size="sm"
                     aria-label={t("Comparison start date")}
                     value={customFields.startDate}
                     max={maxDate}
-                    onChange={event => editCustom("startDate", event.target.value)}
-                    className="min-w-0 flex-1"
+                    onChange={value => editCustom("startDate", value)}
+                    className="flex-1"
                   />
-                  <Input
-                    type="date"
-                    inputSize="sm"
+                  <DatePicker
+                    size="sm"
                     aria-label={t("Comparison end date")}
                     value={customFields.endDate}
                     max={maxDate}
-                    onChange={event => editCustom("endDate", event.target.value)}
-                    className="min-w-0 flex-1"
+                    onChange={value => editCustom("endDate", value)}
+                    className="flex-1"
                   />
                 </div>
               )}

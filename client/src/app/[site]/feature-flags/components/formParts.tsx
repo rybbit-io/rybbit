@@ -1,10 +1,12 @@
 "use client";
 
 import { CodeSnippet } from "@/components/CodeSnippet";
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
+import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -140,29 +142,19 @@ const LANGUAGES = [
 ] as const;
 
 export function CodeTabs({ jsCode, tsCode }: { jsCode: string; tsCode: string }) {
+  const t = useExtracted();
   const [language, setLanguage] = useState<"js" | "ts">("js");
 
   return (
     <div className="grid gap-2">
-      <div role="tablist" className="flex gap-1">
-        {LANGUAGES.map(option => (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={language === option.value}
-            onClick={() => setLanguage(option.value)}
-            className={cn(
-              "rounded-md px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300",
-              language === option.value
-                ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-850 dark:text-neutral-50"
-                : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl<"js" | "ts">
+        aria-label={t("Language")}
+        size="sm"
+        className="justify-self-start"
+        options={[...LANGUAGES]}
+        value={language}
+        onValueChange={setLanguage}
+      />
       <CodeSnippet code={language === "js" ? jsCode : tsCode} language="javascript" />
     </div>
   );

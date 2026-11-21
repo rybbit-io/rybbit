@@ -176,9 +176,9 @@ export function BucketSelection({ size = "sm" }: { size?: "default" | "sm" }) {
 
   return (
     <Select value={bucket} onValueChange={setBucket}>
-      <SelectTrigger className="w-[90px]" size={size}>
-        <div className="flex items-center gap-1">
-          <TimerReset className={size === "sm" ? "w-3 h-3" : "w-4 h-4"} />
+      <SelectTrigger className="w-[90px] font-medium" size={size} variant="outline">
+        <div className="flex items-center gap-1.5">
+          <TimerReset className="size-4 shrink-0" />
           <SelectValue />
         </div>
       </SelectTrigger>

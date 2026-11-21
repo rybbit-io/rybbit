@@ -15,6 +15,20 @@ vi.mock("next-intl", () => ({
           .replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? `{${key}}`))
       : message,
 }));
+// The comparison window's calendar popover is covered by ui/date-picker's own
+// test; a native input drives the same props. The bound rows stay real.
+vi.mock("@/components/ui/date-picker", async importOriginal => ({
+  ...(await importOriginal<typeof import("@/components/ui/date-picker")>()),
+  DatePicker: ({
+    value,
+    onChange,
+    "aria-label": ariaLabel,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    "aria-label"?: string;
+  }) => <input aria-label={ariaLabel} value={value} onChange={event => onChange(event.target.value)} />,
+}));
 
 const ZONE = "America/New_York";
 

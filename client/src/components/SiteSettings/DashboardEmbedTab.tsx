@@ -11,6 +11,7 @@ import {
   useRevokePrivateLinkKey,
 } from "@/api/admin/hooks/usePrivateLink";
 import { CodeSnippet } from "@/components/CodeSnippet";
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -179,17 +180,13 @@ export function DashboardEmbedTab({ siteMetadata, disabled = false }: DashboardE
           </SettingRow>
 
           <SettingRow label={t("Theme")}>
-            {themes.map(theme => (
-              <Button
-                key={theme.value}
-                type="button"
-                size="sm"
-                variant={dashboardTheme === theme.value ? "success" : "outline"}
-                onClick={() => setDashboardTheme(theme.value)}
-              >
-                {theme.label}
-              </Button>
-            ))}
+            <SegmentedControl
+              aria-label={t("Theme")}
+              size="sm"
+              options={themes}
+              value={dashboardTheme}
+              onValueChange={setDashboardTheme}
+            />
           </SettingRow>
 
           <SettingRow
