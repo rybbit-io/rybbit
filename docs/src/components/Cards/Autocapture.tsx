@@ -6,7 +6,6 @@ import {
   Eye,
   MousePointerClick,
   Send,
-  SquareDashedMousePointer,
   TextCursorInput,
   TriangleAlert,
   Zap,
@@ -125,7 +124,6 @@ export function Autocapture() {
       description={t(
         "Clicks, form submits, copied text, outbound links, and errors. All captured automatically, with zero instrumentation."
       )}
-      icon={SquareDashedMousePointer}
     >
       <DemoFrame label="events · autocapture" right={<><LiveDot />{t("Live")}</>}>
         <div className="relative overflow-hidden px-3" style={{ height: ROW_HEIGHT * VISIBLE_ROWS }}>

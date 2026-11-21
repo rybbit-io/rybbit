@@ -17,7 +17,7 @@ export interface PricingCardProps {
   buttonHref: string;
   buttonVariant?: "default" | "primary";
   features: FeatureItem[];
-  /** Marks the plan as the signal plate: emerald edge, plate tint, graph texture, badge. */
+  /** Marks the recommended plan: emerald edge plus a badge. */
   recommended?: boolean;
   /**
    * Standalone bordered card (mobile carousel). Omit when the card is a cell
@@ -60,7 +60,7 @@ export function PricingCard({
     <div
       className={cn(
         "relative h-full overflow-hidden",
-        recommended ? "bg-plate-accent" : "bg-white dark:bg-neutral-950",
+        "bg-white dark:bg-neutral-950",
         framed
           ? cn(
               "rounded-lg border",
@@ -72,12 +72,6 @@ export function PricingCard({
         className
       )}
     >
-      {recommended && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
-        />
-      )}
       <div className="relative p-6">
         <div className="mb-5">
           <div className="mb-2 flex items-center gap-2">
@@ -114,7 +108,7 @@ export function PricingCard({
             return (
               <div key={index} className="flex items-center gap-3">
                 {included ? (
-                  <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <Check className="size-4 shrink-0 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />
                 ) : (
                   <X className="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
                 )}

@@ -1,4 +1,3 @@
-import { Split } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Card } from "./Card";
 import { DemoFrame } from "./DemoFrame";
@@ -54,7 +53,6 @@ export function Journeys() {
     <Card
       title={t("User Journeys")}
       description={t("Follow the paths visitors actually take between pages, and see which routes end in a conversion.")}
-      icon={Split}
     >
       <DemoFrame label="journeys · entry → 2 steps">
         <div className="overflow-x-auto">

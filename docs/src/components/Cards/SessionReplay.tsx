@@ -1,6 +1,6 @@
 "use client";
 
-import { Film, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useEffect, useState } from "react";
 import { Browser } from "../Browser";
@@ -58,7 +58,6 @@ export function SessionReplay() {
     <Card
       title={t("Session Replay")}
       description={t("Watch real user sessions to understand their behavior and identify pain points.")}
-      icon={Film}
     >
       <DemoFrame
         label="replay · visitor 4f2a91"

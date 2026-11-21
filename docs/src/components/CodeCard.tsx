@@ -24,11 +24,8 @@ export function CodeCard({ label, tokens, className }: CodeCardProps) {
         className
       )}
     >
-      <div className="flex items-center gap-1.5 border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
-        <span aria-hidden="true" className="size-2 rounded-full bg-[#ff5f57]" />
-        <span aria-hidden="true" className="size-2 rounded-full bg-[#febc2e]" />
-        <span aria-hidden="true" className="size-2 rounded-full bg-[#28c840]" />
-        <span className="ml-2 font-mono text-xs text-neutral-500 dark:text-neutral-400">{label}</span>
+      <div className="border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
+        <span className="font-mono text-xs text-neutral-500 dark:text-neutral-400">{label}</span>
       </div>
       <pre className="overflow-x-auto p-3 text-xs leading-6">
         <code className="text-neutral-500 dark:text-neutral-400">

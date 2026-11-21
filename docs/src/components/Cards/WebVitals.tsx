@@ -1,4 +1,3 @@
-import { Gauge } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Card } from "./Card";
 import { DemoFrame } from "./DemoFrame";
@@ -31,7 +30,6 @@ export function WebVitals() {
     <Card
       title={t("Web Vitals")}
       description={t("Core Web Vitals from real visits. See where your pages feel slow by route, country, and device.")}
-      icon={Gauge}
     >
       <DemoFrame label="web-vitals" right={<span className="font-mono">p75 · 30d</span>}>
         <div className="space-y-4 p-4">
