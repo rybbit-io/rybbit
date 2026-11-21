@@ -60,14 +60,16 @@ function SortHeader({
   return (
     <button
       type="button"
+      // Capped at the cell: an overflowing header spills right and no longer lines up with its column.
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap hover:text-neutral-900 dark:hover:text-neutral-100",
+        "inline-flex max-w-full items-center gap-1 whitespace-nowrap hover:text-neutral-900 dark:hover:text-neutral-100",
         alignRight && "flex-row-reverse",
         direction && "text-neutral-900 dark:text-neutral-100"
       )}
+      title={label}
       onClick={onSort}
     >
-      {label}
+      <span className="truncate">{label}</span>
       <Icon
         className={cn(
           "h-3 w-3 shrink-0",
