@@ -1,60 +1,93 @@
 import {
-  Link,
-  Search,
-  ExternalLink,
-  Users,
-  Mail,
-  HelpCircle,
-  MousePointerClick,
-  DollarSign,
-  Monitor,
-  Video,
-  Handshake,
-  FileText,
-  ShoppingCart,
+  Bell,
+  Bot,
+  Briefcase,
   Calendar,
+  CornerDownRight,
+  DollarSign,
+  ExternalLink,
+  FileQuestion,
+  FileText,
+  Handshake,
   Headphones,
+  HelpCircle,
+  Link,
+  Mail,
+  Megaphone,
+  MessageSquare,
+  Monitor,
+  Network,
+  Newspaper,
+  Search,
+  ShoppingCart,
+  Users,
+  Video,
 } from "lucide-react";
-import { Badge } from "./ui/badge";
+import { cn } from "../lib/utils";
 import { Favicon } from "./Favicon";
+import { Badge } from "./ui/badge";
 
-export const getChannelIcon = (channel: string) => {
+export function getChannelIconComponent(channel: string) {
   switch (channel) {
     case "Direct":
-      return <Link className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return Link;
+    case "Internal":
+      return CornerDownRight;
     case "Organic Search":
-      return <Search className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
-    case "Referral":
-      return <ExternalLink className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
-    case "Organic Social":
-      return <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
-    case "Email":
-      return <Mail className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
-    case "Unknown":
-      return <HelpCircle className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
     case "Paid Search":
-      return <Search className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
-    case "Paid Unknown":
-      return <DollarSign className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return Search;
+    case "Referral":
+      return ExternalLink;
+    case "Organic Social":
     case "Paid Social":
-      return <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return Users;
+    case "Email":
+      return Mail;
+    case "Unknown":
+      return HelpCircle;
+    case "Paid Unknown":
+      return DollarSign;
     case "Display":
-      return <Monitor className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return Monitor;
     case "Organic Video":
-      return <Video className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+    case "Paid Video":
+      return Video;
     case "Affiliate":
-      return <Handshake className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return Handshake;
     case "Content":
-      return <FileText className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return FileText;
     case "Organic Shopping":
-      return <ShoppingCart className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+    case "Paid Shopping":
+      return ShoppingCart;
     case "Event":
-      return <Calendar className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+      return Calendar;
     case "Audio":
-      return <Headphones className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />;
+    case "Paid Audio":
+      return Headphones;
+    case "Influencer":
+    case "Paid Influencer":
+      return Megaphone;
+    case "Push":
+      return Bell;
+    case "SMS":
+      return MessageSquare;
+    case "News":
+      return Newspaper;
+    case "Productivity":
+      return Briefcase;
+    case "Cross-Network":
+      return Network;
+    case "AI":
+    case "Paid AI":
+      return Bot;
     default:
-      return null;
+      return FileQuestion;
   }
+}
+
+export const ChannelIcon = ({ channel, className }: { channel: string; className?: string }) => {
+  const Icon = getChannelIconComponent(channel);
+  return <Icon className={cn("w-4 h-4", className)} />;
 };
 
 export const getDisplayName = (hostname: string): string => {
@@ -104,8 +137,41 @@ export const getDisplayName = (hostname: string): string => {
     "pinterest.com": "Pinterest",
     "www.pinterest.com": "Pinterest",
     "chatgpt.com": "ChatGPT",
+    "chat.openai.com": "ChatGPT",
+    "claude.ai": "Claude",
+    "gemini.google.com": "Gemini",
+    "copilot.microsoft.com": "Copilot",
+    "copilot.cloud.microsoft": "Copilot",
+    "m365.cloud.microsoft": "Copilot",
+    "edgeservices.bing.com": "Copilot",
+    "aistudio.google.com": "Google AI Studio",
+    "notebooklm.google.com": "NotebookLM",
+    "duck.ai": "Duck.ai",
+    "kimi.com": "Kimi",
+    "doubao.com": "Doubao",
+    "manus.im": "Manus",
+    "threads.com": "Threads",
+    "www.threads.com": "Threads",
+    "threads.net": "Threads",
+    "www.threads.net": "Threads",
+    "bsky.app": "Bluesky",
+    "outlook.live.com": "Outlook",
+    "chat.deepseek.com": "DeepSeek",
+    "deepseek.com": "DeepSeek",
+    "chat.mistral.ai": "Mistral",
+    "mistral.ai": "Mistral",
+    "meta.ai": "Meta AI",
+    "poe.com": "Poe",
+    "grok.com": "Grok",
+    "pi.ai": "Pi",
+    "character.ai": "Character.AI",
     "perplexity.ai": "Perplexity",
     "www.perplexity.ai": "Perplexity",
+    "phind.com": "Phind",
+    "andi.com": "Andi",
+    "you.com": "You.com",
+    "cursor.com": "Cursor",
+    "jasper.ai": "Jasper",
     "news.ycombinator.com": "Hacker News",
     "stripe.com": "Stripe",
     "checkout.stripe.com": "Stripe",
@@ -133,13 +199,24 @@ export const extractDomain = (url: string): string | null => {
   }
 };
 
-export function Channel({ channel, referrer }: { channel: string; referrer: string }) {
+export function Channel({
+  channel,
+  referrer,
+  onClick,
+}: {
+  channel: string;
+  referrer: string;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
   const domain = extractDomain(referrer);
 
   if (domain) {
     const displayName = getDisplayName(domain);
     return (
-      <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+      <Badge
+        className={`flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 ${onClick ? "cursor-pointer hover:opacity-70" : ""}`}
+        onClick={onClick}
+      >
         <Favicon domain={domain} className="w-4 h-4" />
         <span>{displayName}</span>
       </Badge>
@@ -147,8 +224,11 @@ export function Channel({ channel, referrer }: { channel: string; referrer: stri
   }
 
   return (
-    <Badge className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-      {getChannelIcon(channel)}
+    <Badge
+      className={`flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 ${onClick ? "cursor-pointer hover:opacity-70" : ""}`}
+      onClick={onClick}
+    >
+      <ChannelIcon channel={channel} />
       <span>{channel}</span>
     </Badge>
   );

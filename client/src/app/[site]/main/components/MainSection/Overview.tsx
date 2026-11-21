@@ -1,17 +1,31 @@
 "use client";
 
+import { ValueFlash, type ValueFlashProps } from "@/components/interior/value-flash";
+import { Delta } from "@/components/site/Delta";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { percentDelta } from "@/lib/delta";
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
+import { DateTime } from "luxon";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
-import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
-import { StatType, useStore } from "../../../../../lib/store";
+import { useGetOverview } from "../../../../../api/analytics/hooks/useGetOverview";
+import { useGetOverviewBucketed } from "../../../../../api/analytics/hooks/useGetOverviewBucketed";
+import { StatType, useComparisonEnabled, useStore, useTimezone } from "../../../../../lib/store";
 import { SparklinesChart } from "./SparklinesChart";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const ChangePercentage = ({
+const COMPACT = { notation: "compact" } as const;
+const STANDARD = { notation: "standard" } as const;
+// The tile's text as NumberFlow renders it (same default locale), so a change that rounding hides
+// ("12K" → "12K") doesn't flash.
+const compactNumber = new Intl.NumberFormat(undefined, COMPACT);
+
+type FlashInputs = Pick<ValueFlashProps, "resetKey" | "ready" | "fetching" | "empty">;
+
+export const ChangePercentage = ({
   current,
   previous,
   reverseColor,
@@ -20,30 +34,14 @@ const ChangePercentage = ({
   previous: number;
   reverseColor?: boolean;
 }) => {
-  const change = ((current - previous) / previous) * 100;
+  const comparisonEnabled = useComparisonEnabled();
 
-  if (previous === 0) {
-    if (current === 0) {
-      return <div className="text-sm">0%</div>;
-    }
-    return <div className="text-sm">+999%</div>;
-  }
+  // Nothing to compare against: a delta here would be a percentage of a period
+  // the user has explicitly stopped asking for.
+  if (!comparisonEnabled) return null;
 
-  if (change === 0) {
-    return <div className="text-sm">0%</div>;
-  }
-
-  return (
-    <div
-      className={cn(
-        "text-xs flex items-center gap-1",
-        (reverseColor ? -change : change) > 0 ? "text-green-400" : "text-red-400"
-      )}
-    >
-      {change > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-      {Math.abs(change).toFixed(1)}%
-    </div>
-  );
+  // An empty comparison period draws "—" rather than an invented percentage.
+  return <Delta value={percentDelta(current, previous)} upIsGood={!reverseColor} />;
 };
 
 const Stat = ({
@@ -56,19 +54,24 @@ const Stat = ({
   decimals,
   postfix,
   reverseColor,
+  flash,
 }: {
   title: string;
   id: StatType;
   value: number;
-  previous: number;
+  // Undefined when there is no comparison to draw: turned off, or the previous period failed to load.
+  previous: number | undefined;
   valueFormatter?: (value: number) => string;
   isLoading: boolean;
   decimals?: number;
   postfix?: string;
   reverseColor?: boolean;
+  flash: FlashInputs;
 }) => {
   const { selectedStat, setSelectedStat, site, bucket, time } = useStore();
+  const timeZone = useTimezone();
   const [isHovering, setIsHovering] = useState(false);
+  const displayValue = decimals ? Number(value.toFixed(decimals)) : value;
 
   // Consolidated bucketed data for sparklines - automatically handles both modes
   const { data } = useGetOverviewBucketed({
@@ -78,13 +81,14 @@ const Stat = ({
 
   // Filter and format sparklines data
   const sparklinesData =
-    data?.data
+    data
       ?.filter(d => {
         // For past-minutes mode, ensure we only show data within the specified time range
         if (time.mode === "past-minutes") {
-          const timestamp = new Date(d.time);
-          const now = new Date();
-          const startTime = new Date(now.getTime() - time.pastMinutesStart * 60 * 1000);
+          // Bucket times are in the dashboard's timezone; the browser's would shift the window.
+          const timestamp = DateTime.fromSQL(d.time, { zone: timeZone });
+          const now = DateTime.now();
+          const startTime = now.minus({ minutes: time.pastMinutesStart });
           return timestamp >= startTime && timestamp <= now;
         }
         return true;
@@ -97,7 +101,7 @@ const Stat = ({
   return (
     <div
       className={cn(
-        "flex flex-col cursor-pointer border-r border-neutral-100 dark:border-neutral-800 last:border-r-0 text-nowrap",
+        "flex flex-col cursor-pointer bg-white dark:bg-neutral-900 text-nowrap",
         selectedStat === id && "bg-neutral-0 dark:bg-neutral-850"
       )}
       onClick={() => setSelectedStat(id)}
@@ -105,7 +109,7 @@ const Stat = ({
       onMouseLeave={() => setIsHovering(false)}
     >
       <div className="flex flex-col px-3 py-2">
-        <div className="text-sm font-medium text-muted-foreground">{title}</div>
+        <div className="text-xs font-medium text-muted-foreground">{title}</div>
         <div className="text-2xl font-medium flex gap-2 items-center justify-between">
           {isLoading ? (
             <>
@@ -115,32 +119,26 @@ const Stat = ({
           ) : (
             <>
               {valueFormatter ? (
-                valueFormatter(value)
+                <ValueFlash value={value} format={valueFormatter} invert={reverseColor} {...flash}>
+                  {valueFormatter(value)}
+                </ValueFlash>
               ) : (
-                <span>
-                  {
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <NumberFlow
-                          respectMotionPreference={false}
-                          value={decimals ? Number(value.toFixed(decimals)) : value}
-                          format={{ notation: "compact" }}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <NumberFlow
-                          respectMotionPreference={false}
-                          value={decimals ? Number(value.toFixed(decimals)) : value}
-                          format={{ notation: "standard" }}
-                        />
-                        {postfix && <span>{postfix}</span>}
-                      </TooltipContent>
-                    </Tooltip>
-                  }
+                <ValueFlash value={displayValue} format={compactNumber.format} invert={reverseColor} {...flash}>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <NumberFlow value={displayValue} format={COMPACT} />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <NumberFlow value={displayValue} format={STANDARD} />
+                      {postfix && <span>{postfix}</span>}
+                    </TooltipContent>
+                  </Tooltip>
                   {postfix && <span>{postfix}</span>}
-                </span>
+                </ValueFlash>
               )}
-              <ChangePercentage current={value} previous={previous} reverseColor={reverseColor} />
+              {previous !== undefined && (
+                <ChangePercentage current={value} previous={previous} reverseColor={reverseColor} />
+              )}
             </>
           )}
         </div>
@@ -153,14 +151,18 @@ const Stat = ({
 };
 
 export function Overview() {
-  const { site } = useStore();
+  const { site, time, filters, bucket } = useStore();
+  const timeZone = useTimezone();
+  const t = useExtracted();
 
   // Current period - automatically handles both regular time-based and past-minutes queries
   const {
     data: overviewData,
     isFetching: isOverviewFetching,
     isLoading: isOverviewLoading,
+    isPlaceholderData: isOverviewPlaceholder,
     error: overviewError,
+    refetch: refetchOverview,
   } = useGetOverview({
     site,
   });
@@ -171,63 +173,110 @@ export function Overview() {
     periodTime: "previous",
   });
 
+  // A failed load is not zero traffic: say so rather than render a row of zeros.
+  if (overviewError && !overviewData) {
+    return (
+      <OverviewError
+        message={overviewError.message || t("An error occurred while fetching data")}
+        onRetry={() => void refetchOverview()}
+      />
+    );
+  }
+
   const isLoading = isOverviewLoading || isOverviewLoadingPrevious;
 
-  const currentUsers = overviewData?.data?.users ?? 0;
-  const previousUsers = overviewDataPrevious?.data?.users ?? 0;
+  // Tiles flash only when a background refetch of the same question moves a number: never on first
+  // paint, never on a site/range/filter/bucket change, never while the previous range's numbers stand in.
+  const flash: FlashInputs = {
+    resetKey: JSON.stringify([site, time, filters, bucket, timeZone]),
+    ready: overviewData !== undefined && !isOverviewPlaceholder,
+    fetching: isOverviewFetching,
+    // No sessions means every tile reads 0 for want of data. The first data after that (a new site's
+    // first pageview, which refetches this same query) is a first paint, not a rise.
+    empty: !overviewData?.sessions,
+  };
 
-  const currentSessions = overviewData?.data?.sessions ?? 0;
-  const previousSessions = overviewDataPrevious?.data?.sessions ?? 0;
-
-  const currentPageviews = overviewData?.data?.pageviews ?? 0;
-  const previousPageviews = overviewDataPrevious?.data?.pageviews ?? 0;
-
-  const currentPagesPerSession = overviewData?.data?.pages_per_session ?? 0;
-  const previousPagesPerSession = overviewDataPrevious?.data?.pages_per_session ?? 0;
-
-  const currentBounceRate = overviewData?.data?.bounce_rate ?? 0;
-  const previousBounceRate = overviewDataPrevious?.data?.bounce_rate ?? 0;
-
-  const currentSessionDuration = overviewData?.data?.session_duration ?? 0;
-  const previousSessionDuration = overviewDataPrevious?.data?.session_duration ?? 0;
+  const currentUsers = overviewData?.users ?? 0;
+  const currentSessions = overviewData?.sessions ?? 0;
+  const currentPageviews = overviewData?.pageviews ?? 0;
+  const currentPagesPerSession = overviewData?.pages_per_session ?? 0;
+  const currentBounceRate = overviewData?.bounce_rate ?? 0;
+  const currentSessionDuration = overviewData?.session_duration ?? 0;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0 items-center">
-      <Stat title="Unique Users" id="users" value={currentUsers} previous={previousUsers} isLoading={isLoading} />
-      <Stat title="Sessions" id="sessions" value={currentSessions} previous={previousSessions} isLoading={isLoading} />
+    // Hairline seams are the 1px gap showing the grid's tint between opaque tiles, so they stay right
+    // however the row wraps (a per-tile border-r leaves a stray edge at each wrap).
+    <div className="grid grid-cols-2 gap-px bg-neutral-100 md:grid-cols-3 lg:grid-cols-6 dark:bg-neutral-800">
       <Stat
-        title="Pageviews"
+        title={t("Unique Users")}
+        id="users"
+        value={currentUsers}
+        previous={overviewDataPrevious?.users}
+        isLoading={isLoading}
+        flash={flash}
+      />
+      <Stat
+        title={t("Sessions")}
+        id="sessions"
+        value={currentSessions}
+        previous={overviewDataPrevious?.sessions}
+        isLoading={isLoading}
+        flash={flash}
+      />
+      <Stat
+        title={t("Pageviews")}
         id="pageviews"
         value={currentPageviews}
-        previous={previousPageviews}
+        previous={overviewDataPrevious?.pageviews}
         isLoading={isLoading}
+        flash={flash}
       />
       <Stat
-        title="Pages per Session"
+        title={t("Pages per Session")}
         id="pages_per_session"
         value={currentPagesPerSession}
-        previous={previousPagesPerSession}
+        previous={overviewDataPrevious?.pages_per_session}
         decimals={1}
         isLoading={isLoading}
+        flash={flash}
       />
       <Stat
-        title="Bounce Rate"
+        title={t("Bounce Rate")}
         id="bounce_rate"
         value={currentBounceRate}
-        previous={previousBounceRate}
+        previous={overviewDataPrevious?.bounce_rate}
         isLoading={isLoading}
         postfix="%"
         decimals={1}
         reverseColor={true}
+        flash={flash}
       />
       <Stat
-        title="Session Duration"
+        title={t("Session Duration")}
         id="session_duration"
         value={currentSessionDuration}
-        previous={previousSessionDuration}
+        previous={overviewDataPrevious?.session_duration}
         isLoading={isLoading}
         valueFormatter={formatSecondsAsMinutesAndSeconds}
+        flash={flash}
       />
+    </div>
+  );
+}
+
+// Takes the stat row's place when the current period fails to load; as tall as one row of tiles.
+function OverviewError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const t = useExtracted();
+
+  return (
+    <div className="flex min-h-[88px] flex-wrap items-center justify-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
+      <AlertCircle className="size-4 shrink-0 text-amber-400" aria-hidden="true" />
+      <span className="font-medium text-neutral-900 dark:text-neutral-100">{t("Failed to load stats")}</span>
+      <span className="text-neutral-500 dark:text-neutral-400">{message}</span>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        <RefreshCcw />
+        {t("Try Again")}
+      </Button>
     </div>
   );
 }

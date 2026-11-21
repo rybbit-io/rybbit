@@ -1,14 +1,14 @@
 export default {
+  "best-google-analytics-alternatives":
+    "The 9 Best Google Analytics Alternatives in 2026 (Free & Paid)",
+  "best-web-analytics-tools":
+    "The 10 Best Web Analytics Tools in 2026, Compared by Use Case",
   "5k-stars":
     "How my open source SaaS got 5,000 Github stars in 9 days with zero marketing effort",
   "website-traffic-drop":
    "Why did my website traffic drop?",
-  "churn-rate-vs-retention-rate":
-    "Churn Rate vs Retention Rate - What's the Difference and Why It Matters",
   "ecommerce-analytics":
     "Rybbit Analytics for E-commerce Websites",
-  "onyx-ai-knowledge-platform":
-    "How We Use Onyx to Power Knowledge Management at Rybbit",
   "marketing-attribution-tools":
     "Best Marketing Attribution Tools & Software for 2025",
   "what-is-web-analytics":
@@ -16,4 +16,5 @@ export default {
   "multivariate-testing":
     "What is Multivariate Testing? Examples and How to Run Tests with Rybbit",
   "bounce-rate": "How to Calculate Bounce Rate with Rybbit Analytics",
+  "geographic-segmentation": "How Marketers Use Geographic Segmentation to Optimize Campaigns",
 };

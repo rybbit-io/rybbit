@@ -1,0 +1,67 @@
+---
+title: Framer
+description: Add Rybbit analytics to your Framer site
+category: builders
+icon: SiFramer
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Framer has a **Custom Code** section in the site settings that injects HTML into the `<head>` of every published page.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Framer
+
+1. Open your Framer project and go to **Site Settings → General**.
+2. Scroll to **Custom Code**.
+3. Paste the snippet into the **Start of `<head>` tag** field (End of `<head>` works too).
+4. Click **Save**, then **Publish**. Custom code only reaches the live site on publish.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Use a **Code Override** to send events from any element in the canvas.
+
+1. Select the element, open **Overrides** in the properties panel, and click **+ File** to create an override file such as `RybbitOverrides.tsx`.
+2. Add an override that wraps the element's click handler:
+
+```tsx
+// RybbitOverrides.tsx
+import type { ComponentType } from "react";
+
+export function withRybbitClick(Component: ComponentType): ComponentType {
+  return (props) => {
+    const handleClick = () => {
+      window.rybbit?.event("cta_click", { label: props.text ?? "cta" });
+      props.onClick?.();
+    };
+    return <Component {...props} onClick={handleClick} />;
+  };
+}
+```
+
+3. Back in the properties panel, pick the file and apply `withRybbitClick` to the element.
+
+The same `window.rybbit.event()` call works inside a **Code Component**.
+
+## Troubleshooting
+
+- **Navigation between pages is not tracked**: Framer sites navigate client-side and the script detects those URL changes. If a view changes without the URL changing, call `window.rybbit.pageview()` from an override when it appears.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

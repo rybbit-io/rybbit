@@ -1,11 +1,10 @@
 "use client";
 
-import { trackAdEvent } from "@/lib/trackAdEvent";
-import Link from "next/link";
+import { AppLink } from "./AppLink";
 
 interface TrackedButtonProps {
   href: string;
-  eventName: "signup" | "demo" | "login" | "github";
+  eventName: string;
   eventProps: Record<string, string | number | boolean>;
   className: string;
   children: React.ReactNode;
@@ -15,17 +14,15 @@ interface TrackedButtonProps {
 
 export function TrackedButton({ href, eventName, eventProps, className, children, target, rel }: TrackedButtonProps) {
   return (
-    <Link
+    <AppLink
       href={href}
-      className="w-full sm:w-auto"
+      className={className}
       data-rybbit-event={eventName}
       data-rybbit-prop-location={eventProps.location}
       target={target}
       rel={rel}
     >
-      <button onClick={() => trackAdEvent(eventName, eventProps)} className={className}>
-        {children}
-      </button>
-    </Link>
+      {children}
+    </AppLink>
   );
 }

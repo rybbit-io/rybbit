@@ -1,7 +1,12 @@
-export function useIsProduction() {
+export function useAppEnv() {
   const hostname = typeof window !== "undefined" ? window.location.hostname : "";
-  const isProduction = hostname === "demo.rybbit.com" || hostname === "app.rybbit.io";
-  const isAppProduction = hostname === "app.rybbit.io";
 
-  return { isProduction, isAppProduction };
+  if (hostname === "demo.rybbit.com") {
+    return "demo";
+  }
+  if (hostname === "app.rybbit.io") {
+    return "prod";
+  }
+
+  return null;
 }

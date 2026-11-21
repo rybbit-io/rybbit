@@ -1,0 +1,367 @@
+---
+title: Astro Proxy Setup
+description: Configure Astro middleware to proxy Rybbit tracking requests
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Astro's middleware feature makes it simple to proxy Rybbit tracking. This guide shows how to set up server-side request proxying in your Astro application.
+
+<Callout type="warn">
+**Two settings make or break a first-party proxy:**
+
+1. Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**, so the visitor IP your proxy forwards in `X-Forwarded-For` is trusted directly.
+2. Forward **all** of the browser's request headers, not a hand-picked few. Rybbit's bot detection expects the headers every real browser sends (`Accept`, `Accept-Language`, `Accept-Encoding`, `Sec-Fetch-*`). Proxies that forward only `User-Agent` get their events accepted with `200 OK` but classified as bot traffic. Use `X-Forwarded-For` for the visitor IP; `X-Real-IP` does not survive Rybbit Cloud's edge.
+</Callout>
+
+## Overview
+
+Astro middleware allows you to intercept and modify requests before they're handled, so it can act as a transparent analytics proxy.
+
+**What you'll achieve:**
+- Proxy Rybbit endpoints through your Astro site
+- Forward necessary headers for accurate tracking
+- Simple configuration in `astro.config.mjs`
+- Support all Rybbit features
+
+## Prerequisites
+
+- Astro 5 or later, with a server adapter (examples below use `@astrojs/node`)
+- Your Rybbit instance URL:
+  - **Cloud hosted**: `https://app.rybbit.io`
+  - **Self-hosted**: Your instance URL
+- Your Rybbit site ID
+
+<Callout type="warn">
+This guide requires on-demand (server) rendering with an adapter. Static sites cannot proxy requests server-side. For static sites on platforms like Vercel or Netlify, use their platform-specific proxy configurations.
+</Callout>
+
+## Implementation
+
+<Steps>
+
+### Enable Server Rendering in Astro
+
+Update `astro.config.mjs` to render on demand:
+
+```javascript
+// astro.config.mjs
+import { defineConfig } from 'astro/config';
+import node from '@astrojs/node';
+
+export default defineConfig({
+  output: 'server',
+  adapter: node({
+    mode: 'standalone',
+  }),
+});
+```
+
+Astro 5 removed `output: 'hybrid'`. Use `output: 'server'` so the middleware runs on every request, including `/analytics/*` paths that have no page of their own.
+
+Install the Node adapter if not already installed:
+
+```bash
+npm install @astrojs/node
+```
+
+### Configure Environment Variables
+
+Create or update `.env`:
+
+```bash
+# .env
+RYBBIT_HOST=https://app.rybbit.io
+# For self-hosted: RYBBIT_HOST=https://analytics.yourcompany.com
+```
+
+### Create Middleware
+
+Create `src/middleware.ts` (or `.js` for JavaScript):
+
+```typescript
+// src/middleware.ts
+import { defineMiddleware } from 'astro:middleware';
+
+const RYBBIT_HOST = import.meta.env.RYBBIT_HOST || 'https://app.rybbit.io';
+
+// Proxies every /analytics/* route (script.js, replay.js, track, identify,
+// site/tracking-config/:siteId, site/:siteId/feature-flags/evaluate,
+// session-replay/record/:siteId) to Rybbit's /api/*.
+export const onRequest = defineMiddleware(async (context, next) => {
+  const url = new URL(context.request.url);
+
+  if (url.pathname.startsWith('/analytics/')) {
+    // clientAddress is the visitor IP as your adapter reports it
+    return proxyToRybbit(context.request, url, context.clientAddress);
+  }
+
+  return next();
+});
+
+async function proxyToRybbit(request: Request, url: URL, clientIp: string): Promise<Response> {
+  try {
+    // Map paths: /analytics/* → /api/*, keeping the query string
+    const rybbitUrl = `${RYBBIT_HOST}${url.pathname.replace('/analytics/', '/api/')}${url.search}`;
+
+    // Forward the browser's headers and set the visitor IP
+    const proxyHeaders = new Headers(request.headers);
+    proxyHeaders.delete('host');
+    proxyHeaders.set('X-Forwarded-For', clientIp);
+
+    const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
+    const response = await fetch(rybbitUrl, {
+      method: request.method,
+      headers: proxyHeaders,
+      body: hasBody ? await request.text() : undefined,
+    });
+
+    // fetch() already decoded the body, so drop the upstream encoding headers
+    const headers = new Headers(response.headers);
+    headers.delete('content-encoding');
+    headers.delete('content-length');
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  } catch (error) {
+    console.error('Rybbit proxy error:', error);
+    return new Response('Analytics proxy error', { status: 500 });
+  }
+}
+```
+
+For JavaScript projects, use the same code in `src/middleware.js` without the type annotations.
+
+<Callout type="warn">
+Don't fall back to a fixed address such as `127.0.0.1` when you can't find the visitor IP. With **First-Party Proxy** enabled, Rybbit trusts the `X-Forwarded-For` you send, so a constant fallback makes every visitor share one IP: one location and visitors merged together. `context.clientAddress` comes from your adapter; if your Astro server sits behind another reverse proxy, configure the adapter or that proxy so `clientAddress` is the visitor's address, not the proxy's.
+</Callout>
+
+If the feature flag route isn't proxied, `rybbit.flag()` silently returns your fallback; the `/analytics/` prefix match above already covers it. Web vitals collection is bundled into `script.js`; `replay.js` is only loaded when session replay is enabled for the site.
+
+### Update Your Layout
+
+Add the tracking script to your layout:
+
+```astro
+---
+// src/layouts/Layout.astro
+const { title } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+
+    <!-- Rybbit Analytics -->
+    <script is:inline src="/analytics/script.js?siteId=YOUR_SITE_ID" defer></script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+```
+
+`is:inline` stops Astro from bundling the tag, so it stays a plain external script. Older snippets that pass the ID as `data-site-id` still work.
+
+Keep the proxied file named `script.js`. The script cuts its own URL at `/script.js` to find where to send events, so a renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
+
+### Start Development Server
+
+```bash
+npm run dev
+```
+
+### Verify the Setup
+
+1. **Open your site** in a browser with Developer Tools
+2. **Check Network tab**: Requests should go to `/analytics/*`
+3. **Verify in Rybbit dashboard**: Data should appear
+
+</Steps>
+
+## How It Works
+
+Astro middleware intercepts requests before they're processed:
+
+1. Request to `/analytics/script.js` enters middleware
+2. Middleware proxies to `https://app.rybbit.io/api/script.js`
+3. The visitor IP from `context.clientAddress` is sent in `X-Forwarded-For`
+4. Response is returned to browser
+
+## Advanced Configuration
+
+### Caching with Astro
+
+Add caching for scripts:
+
+```typescript
+// src/middleware.ts
+const cache = new Map<string, { response: Response; timestamp: number }>();
+const CACHE_TTL = 3600000; // 1 hour in milliseconds
+
+async function proxyToRybbit(request: Request, url: URL, clientIp: string): Promise<Response> {
+  const pathname = url.pathname;
+  // Cache GET requests for scripts
+  if (request.method === 'GET' && pathname.endsWith('.js')) {
+    const cached = cache.get(pathname);
+
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.response.clone();
+    }
+  }
+
+  // ... proxy logic
+
+  // Cache the response
+  if (request.method === 'GET' && pathname.endsWith('.js')) {
+    cache.set(pathname, {
+      response: response.clone(),
+      timestamp: Date.now(),
+    });
+  }
+
+  return response;
+}
+```
+
+### Conditional Proxying
+
+Only proxy in production:
+
+```typescript
+export const onRequest = defineMiddleware(async (context, next) => {
+  const url = new URL(context.request.url);
+
+  // Only proxy in production
+  if (import.meta.env.PROD && url.pathname.startsWith('/analytics/')) {
+    return proxyToRybbit(context.request, url, context.clientAddress);
+  }
+
+  return next();
+});
+```
+
+### Error Logging
+
+Add detailed error logging:
+
+```typescript
+async function proxyToRybbit(request: Request, url: URL, clientIp: string): Promise<Response> {
+  try {
+    // ... proxy logic
+  } catch (error) {
+    const errorDetails = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      pathname: url.pathname,
+      method: request.method,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.error('Rybbit proxy error:', errorDetails);
+
+    // Return error response
+    return new Response(JSON.stringify({ error: 'Analytics proxy error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+```
+
+## Troubleshooting
+
+### Middleware not running
+
+**Problem**: Requests bypass middleware.
+
+**Solution**:
+1. Ensure `output: 'server'` and an adapter are set in `astro.config.mjs`
+2. Verify middleware file is in `src/middleware.ts` (not in subdirectory)
+3. Check adapter is installed: `npm install @astrojs/node`
+
+### Static build issues
+
+**Problem**: Build fails or proxy doesn't work in production.
+
+**Solution**:
+Middleware requires server-side rendering. Ensure:
+```javascript
+// astro.config.mjs
+export default defineConfig({
+  output: 'server', // Required for middleware
+  adapter: node({
+    mode: 'standalone',
+  }),
+});
+```
+
+### Environment variables not loading
+
+**Problem**: `RYBBIT_HOST` is undefined.
+
+**Solution**:
+1. Check `.env` file is in project root
+2. Use `import.meta.env.RYBBIT_HOST` (not `process.env`)
+3. For production, set environment variables in your hosting platform
+
+## Deployment
+
+### Vercel
+
+Deploy with Vercel adapter:
+
+```bash
+npm install @astrojs/vercel
+```
+
+```javascript
+// astro.config.mjs
+import { defineConfig } from 'astro/config';
+import vercel from '@astrojs/vercel';
+
+export default defineConfig({
+  output: 'server',
+  adapter: vercel(),
+});
+```
+
+### Netlify
+
+Deploy with Netlify adapter:
+
+```bash
+npm install @astrojs/netlify
+```
+
+```javascript
+// astro.config.mjs
+import { defineConfig } from 'astro/config';
+import netlify from '@astrojs/netlify';
+
+export default defineConfig({
+  output: 'server',
+  adapter: netlify(),
+});
+```
+
+### Node.js Server
+
+For self-hosting:
+
+```bash
+npm run build
+node ./dist/server/entry.mjs
+```
+
+## Related Resources
+
+- [Astro Integration Guide](/docs/guides/astro) - General Astro integration
+- [Tracking Script Documentation](/docs/script) - Script configuration
+- [Astro Middleware](https://docs.astro.build/en/guides/middleware/) - Official Astro docs

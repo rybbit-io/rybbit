@@ -1,0 +1,87 @@
+---
+title: Ember
+description: Add Rybbit analytics to your Ember app
+category: frameworks
+icon: SiEmberdotjs
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+An Ember app has one HTML shell that every route renders into. Apps created with the current Vite-based `ember new` blueprint keep it at `index.html` in the project root; classic ember-cli apps keep it at `app/index.html`. Paste the snippet into the `<head>` of that file.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Ember
+
+Open `index.html` (or `app/index.html` in a classic ember-cli app) and paste the snippet inside `<head>`, after the `{{content-for "head"}}` placeholder:
+
+```handlebars title="index.html"
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>MyApp</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    {{content-for "head"}}
+
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+
+    <link integrity="" rel="stylesheet" href="/@embroider/virtual/vendor.css">
+    <link integrity="" rel="stylesheet" href="/@embroider/virtual/app.css">
+
+    {{content-for "head-footer"}}
+  </head>
+  <body>
+    {{content-for "body"}}
+    ...
+    {{content-for "body-footer"}}
+  </body>
+</html>
+```
+
+Keep the `{{content-for}}` placeholders in place; the build fills them in. Route transitions made by Ember's router (the default `history` location type) are tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from a component action. Guard the call so a blocked or still-loading script does not throw.
+
+```js title="app/components/signup-button.gjs"
+import Component from "@glimmer/component";
+import { on } from "@ember/modifier";
+
+export default class SignupButton extends Component {
+  trackSignup = () => {
+    if (window.rybbit) {
+      window.rybbit.event("signup_click", { location: "hero" });
+    }
+  };
+
+  <template>
+    <button type="button" {{on "click" this.trackSignup}}>Sign up</button>
+  </template>
+}
+```
+
+## Troubleshooting
+
+- **`index.html` is also used by the test runner**: `tests/index.html` is a separate file. Do not add the snippet there, or test runs send pageviews to your dashboard.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

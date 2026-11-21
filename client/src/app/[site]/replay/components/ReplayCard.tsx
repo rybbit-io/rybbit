@@ -1,19 +1,21 @@
+import { getTimezone } from "@/lib/store";
 import { Clock, MousePointerClick, Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
-import Link from "next/link";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
+import { useDateTimeFormat } from "../../../../hooks/useDateTimeFormat";
+import { useCanOnSite } from "../../../../hooks/usePermissions";
+import { useDeleteSessionReplay } from "../../../../api/analytics/hooks/sessionReplay/useDeleteSessionReplay";
+import { Avatar } from "../../../../components/Avatar";
+import { IdentifiedBadge } from "../../../../components/IdentifiedBadge";
 import {
   BrowserTooltipIcon,
   CountryFlagTooltipIcon,
   DeviceTypeTooltipIcon,
   OperatingSystemTooltipIcon,
 } from "../../../../components/TooltipIcons/TooltipIcons";
-import { Badge } from "../../../../components/ui/badge";
-import { Skeleton } from "../../../../components/ui/skeleton";
-import { Button } from "../../../../components/ui/button";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -22,13 +24,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../../components/ui/alert-dialog";
-import { cn, formatter } from "../../../../lib/utils";
-import { useReplayStore } from "./replayStore";
-import { useDeleteSessionReplay } from "../../../../api/analytics/sessionReplay/useDeleteSessionReplay";
+import { Button } from "../../../../components/ui/button";
+import { Skeleton } from "../../../../components/ui/skeleton";
+import { cn, formatter, getUserDisplayName } from "../../../../lib/utils";
+import { useShallow } from "zustand/react/shallow";
+import { useReplayStore } from "@/components/replay/replayStore";
 
 interface SessionReplayListItem {
   session_id: string;
   user_id: string;
+  identified_user_id: string;
+  traits: Record<string, unknown> | null;
   start_time: string;
   end_time?: string;
   duration_ms?: number;
@@ -46,30 +52,37 @@ interface SessionReplayListItem {
   screen_height: number;
 }
 
-export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
-  const { sessionId, setSessionId, resetPlayerState } = useReplayStore();
+function formatDuration(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
+function cleanUrl(url: string) {
+  return url.replace(/^https?:\/\//, "").replace(/^www\./, "") || "/";
+}
+
+export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem; onSelect?: () => void }) {
+  const t = useExtracted();
+  const { formatRelative } = useDateTimeFormat();
+  const { sessionId, setSessionId } = useReplayStore(
+    useShallow(s => ({
+      sessionId: s.sessionId,
+      setSessionId: s.setSessionId,
+    }))
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const deleteSessionReplay = useDeleteSessionReplay();
-  const startTime = DateTime.fromSQL(replay.start_time, {
-    zone: "utc",
-  }).toLocal();
+  const canDelete = useCanOnSite("replay:delete");
+  const startTime = DateTime.fromSQL(replay.start_time, { zone: "utc" }).setZone(getTimezone());
   const duration = replay.duration_ms ? Math.ceil(replay.duration_ms / 1000) : null;
-
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
+  const isSelected = sessionId === replay.session_id;
 
   const handleDelete = async () => {
     try {
+      // If this was the selected replay, ReplayList moves the selection once the
+      // refetched list no longer contains it, and the player re-initialises then.
       await deleteSessionReplay.mutateAsync({ sessionId: replay.session_id });
-
-      // If the deleted replay was selected, reset the player
-      if (sessionId === replay.session_id) {
-        resetPlayerState();
-      }
-
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Failed to delete session replay:", error);
@@ -78,71 +91,97 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
       className={cn(
-        "bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/80 transition-colors cursor-pointer w-[200px] group relative",
-        // "bg-neutral-900 border border-neutral-800 rounded-lg p-3 hover:bg-neutral-800/50 transition-colors cursor-pointer",
-        sessionId === replay.session_id && "bg-neutral-100 dark:bg-neutral-800/80"
+        "relative w-full px-3 py-2.5 border-b border-neutral-100 dark:border-neutral-800 cursor-pointer transition-colors group outline-none",
+        "hover:bg-neutral-50 dark:hover:bg-neutral-800/50",
+        "focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-600",
+        isSelected && "bg-neutral-100 dark:bg-neutral-800/70"
       )}
       onClick={() => {
         setSessionId(replay.session_id);
+        onSelect?.();
+      }}
+      onKeyDown={e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setSessionId(replay.session_id);
+          onSelect?.();
+        }
       }}
     >
-      <div className="flex items-center gap-2 mb-1">
-        {/* <div className="text-xs text-neutral-500">
-          {replay.user_id.slice(0, 12)}...
-        </div> */}
-        <div className="text-xs text-neutral-600 dark:text-neutral-400">{startTime.toRelative()}</div>
-        {duration && (
-          <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400 text-xs">
-            <Clock className="w-3 h-3" />
-            {formatDuration(duration)}
-          </div>
-        )}
+      {/* Current-selection indicator: a single emerald dot (the action/current accent) */}
+      {isSelected && (
+        <span className="absolute left-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-accent-500" />
+      )}
 
-        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-400"
-              onClick={e => {
-                e.stopPropagation();
-                setIsDialogOpen(true);
-              }}
-            >
-              <Trash2 className="w-3 h-3" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent onClick={e => e.stopPropagation()}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Session Replay</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete this session replay? This action cannot be undone and will permanently
-                remove the replay data.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={e => e.stopPropagation()}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
+      {/* User + delete */}
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Avatar
+          size={18}
+          id={replay.user_id}
+          lastActiveTime={replay.end_time ? DateTime.fromSQL(replay.end_time, { zone: "utc" }) : undefined}
+        />
+        <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate min-w-0">
+          {getUserDisplayName(replay)}
+        </span>
+        {replay.identified_user_id && <IdentifiedBadge traits={replay.traits} userId={replay.identified_user_id} />}
+
+        {canDelete && (
+          <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t("Delete Session Replay")}
+                className="ml-auto -mr-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-6 w-6 p-0 text-neutral-500 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
                 onClick={e => {
                   e.stopPropagation();
-                  handleDelete();
+                  setIsDialogOpen(true);
                 }}
-                disabled={deleteSessionReplay.isPending}
               >
-                {deleteSessionReplay.isPending ? "Deleting..." : "Delete"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent onClick={e => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("Delete Session Replay")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t(
+                    "Are you sure you want to delete this session replay? This action cannot be undone and will permanently remove the replay data."
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={e => e.stopPropagation()}>{t("Cancel")}</AlertDialogCancel>
+                {/* A plain Button, not AlertDialogAction, so the dialog stays open until the request settles
+                    (handleDelete closes it on success). `loading` keeps its width while pending. */}
+                <Button
+                  variant="destructive"
+                  loading={deleteSessionReplay.isPending}
+                  loadingLabel={t("Deleting...")}
+                  onClick={e => {
+                    e.stopPropagation();
+                    void handleDelete();
+                  }}
+                >
+                  {t("Delete")}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
-      <div className="text-xs text-neutral-900 dark:text-neutral-200 truncate mb-2">
-        {replay.page_url.replace("https://", "").replace("http://", "").replace("www.", "")}
+      {/* Page path */}
+      <div className="text-xs text-neutral-900 dark:text-neutral-200 truncate mb-2" title={replay.page_url}>
+        {cleanUrl(replay.page_url)}
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+      {/* Meta row: environment icons + timing */}
+      <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
         <CountryFlagTooltipIcon country={replay.country} city={replay.city} region={replay.region} />
         <BrowserTooltipIcon browser={replay.browser} browser_version={replay.browser_version} />
         <OperatingSystemTooltipIcon
@@ -154,41 +193,45 @@ export function ReplayCard({ replay }: { replay: SessionReplayListItem }) {
           screen_width={replay.screen_width}
           screen_height={replay.screen_height}
         />
-
-        <Badge
-          variant="outline"
-          className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
-        >
-          <MousePointerClick className="w-4 h-4 text-amber-500" />
-          <span>{formatter(replay.event_count)}</span>
-        </Badge>
+        <div className="ml-auto flex items-center gap-2 text-[11px] tabular-nums">
+          <span
+            className="flex items-center gap-1"
+            title={t("{count} events", { count: formatter(replay.event_count) })}
+          >
+            <MousePointerClick className="w-3 h-3" />
+            {formatter(replay.event_count)}
+          </span>
+          {duration !== null && (
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatDuration(duration)}
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Timestamp */}
+      <div className="mt-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">{formatRelative(startTime)}</div>
     </div>
   );
 }
 
 export function ReplayCardSkeleton() {
   return (
-    <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/80 transition-colors">
-      {/* Time and duration row */}
-      <div className="flex items-center gap-2 mb-1">
-        <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-3 w-12" />
+    <div className="px-3 py-2.5 border-b border-neutral-100 dark:border-neutral-800">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Skeleton className="h-[18px] w-[18px] rounded-full" />
+        <Skeleton className="h-3 w-24" />
       </div>
-
-      {/* URL row */}
-      <div className="mb-2">
-        <Skeleton className="h-3 w-40" />
-      </div>
-
-      {/* Icons and event count row */}
+      <Skeleton className="h-3 w-40 mb-2" />
       <div className="flex items-center gap-2">
         <Skeleton className="h-4 w-4 rounded" />
         <Skeleton className="h-4 w-4 rounded" />
         <Skeleton className="h-4 w-4 rounded" />
         <Skeleton className="h-4 w-4 rounded" />
-        <Skeleton className="h-6 w-12 rounded" />
+        <Skeleton className="h-3 w-12 ml-auto" />
       </div>
+      <Skeleton className="h-2.5 w-16 mt-2" />
     </div>
   );
 }

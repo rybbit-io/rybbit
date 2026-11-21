@@ -1,17 +1,20 @@
 "use client";
 
-import { useGetPerformanceByDimension } from "@/api/analytics/performance/useGetPerformanceByDimension";
+import { useExtracted } from "next-intl";
+import { useGetPerformanceByDimension } from "@/api/analytics/hooks/performance/useGetPerformanceByDimension";
 import { useMeasure } from "@uidotdev/usehooks";
 import { Feature } from "geojson";
 import "ol/ol.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Map from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import View from "ol/View";
 import { fromLonLat } from "ol/proj";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import { Style, Fill, Stroke } from "ol/style";
+import { ChartTooltip } from "../../../../components/charts/ChartTooltip";
 import { useCountries } from "../../../../lib/geo";
 import { addFilter } from "../../../../lib/store";
 import { CountryFlag } from "../../components/shared/icons/CountryFlag";
@@ -39,6 +42,7 @@ interface TooltipPosition {
 }
 
 export function PerformanceMap({ height }: { height: string }) {
+  const t = useExtracted();
   const params = useParams();
   const site = params.site as string;
   const { selectedPercentile, selectedPerformanceMetric } = usePerformanceStore();
@@ -149,13 +153,13 @@ export function PerformanceMap({ height }: { height: string }) {
     mapInstanceRef.current = map;
 
     // Handle pointer move for hover effects
-    map.on("pointermove", (evt) => {
+    const handlePointerMove = (evt: any) => {
       if (evt.dragging) {
         return;
       }
 
       const pixel = map.getEventPixel(evt.originalEvent);
-      const feature = map.forEachFeatureAtPixel(pixel, (feature) => feature);
+      const feature = map.forEachFeatureAtPixel(pixel, feature => feature);
 
       if (feature) {
         const countryCode = feature.get("ISO_A2");
@@ -196,12 +200,13 @@ export function PerformanceMap({ height }: { height: string }) {
         setHoveredId(null);
         setTooltipContent(null);
       }
-    });
+    };
+    const pointerMoveKey = map.on("pointermove", handlePointerMove);
 
     // Handle click for filtering
-    map.on("click", (evt) => {
+    const handleClick = (evt: any) => {
       const pixel = map.getEventPixel(evt.originalEvent);
-      const feature = map.forEachFeatureAtPixel(pixel, (feature) => feature);
+      const feature = map.forEachFeatureAtPixel(pixel, feature => feature);
 
       if (feature) {
         const countryCode = feature.get("ISO_A2");
@@ -213,9 +218,11 @@ export function PerformanceMap({ height }: { height: string }) {
           type: "equals",
         });
       }
-    });
+    };
+    const clickKey = map.on("click", handleClick);
 
     return () => {
+      dispose([pointerMoveKey, clickKey]);
       map.setTarget(undefined);
     };
   }, []);
@@ -250,7 +257,7 @@ export function PerformanceMap({ height }: { height: string }) {
     // Create new vector layer with inline style function
     const vectorLayer = new VectorLayer({
       source: vectorSource,
-      style: (feature) => {
+      style: feature => {
         const countryCode = feature.get("ISO_A2");
 
         const foundData = processedPerformanceDataRef.current?.find((item: any) => item.country === countryCode);
@@ -294,7 +301,14 @@ export function PerformanceMap({ height }: { height: string }) {
 
     vectorLayerRef.current = vectorLayer;
     mapInstanceRef.current.addLayer(vectorLayer);
-  }, [countriesGeoData, dataVersion, selectedPercentile, selectedPerformanceMetric, colorScale, processedPerformanceData]);
+  }, [
+    countriesGeoData,
+    dataVersion,
+    selectedPercentile,
+    selectedPerformanceMetric,
+    colorScale,
+    processedPerformanceData,
+  ]);
 
   // Update styles when hoveredId changes (without recreating the layer)
   useEffect(() => {
@@ -314,7 +328,7 @@ export function PerformanceMap({ height }: { height: string }) {
         <div className="absolute inset-0 bg-neutral-100/30 dark:bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-            <span className="text-sm text-neutral-600 dark:text-neutral-300">Loading performance data...</span>
+            <span className="text-sm text-neutral-600 dark:text-neutral-300">{t("Loading performance data...")}</span>
           </div>
         </div>
       )}
@@ -330,42 +344,46 @@ export function PerformanceMap({ height }: { height: string }) {
       />
       {tooltipContent && (
         <div
-          className="fixed z-50 bg-white dark:bg-neutral-1000 text-neutral-900 dark:text-white rounded-md p-3 shadow-lg text-sm pointer-events-none max-w-xs border border-neutral-300 dark:border-transparent"
+          className="fixed z-50 pointer-events-none"
           style={{
             left: tooltipPosition.x,
             top: tooltipPosition.y - 10,
             transform: "translate(-50%, -100%)",
           }}
         >
-          <div className="font-sm flex items-center gap-1 mb-2">
-            {tooltipContent.code && <CountryFlag country={tooltipContent.code} />}
-            <span className="font-medium">{tooltipContent.name}</span>
-          </div>
+          <ChartTooltip className="max-w-xs p-3">
+            <div className="flex items-center gap-1 mb-2">
+              {tooltipContent.code && <CountryFlag country={tooltipContent.code} />}
+              <span className="font-medium">{tooltipContent.name}</span>
+            </div>
 
-          {tooltipContent.eventCount > 0 ? (
-            <>
-              <div className="mb-2">
-                <span className="text-neutral-600 dark:text-neutral-300">{tooltipContent.metricName}: </span>
-                {tooltipContent.metricValue !== null ? (
-                  <span className="font-bold text-accent-400">
-                    {formatMetricValue(selectedPerformanceMetric, tooltipContent.metricValue)}
-                    {getMetricUnit(selectedPerformanceMetric, tooltipContent.metricValue)}
-                  </span>
-                ) : (
-                  <span className="text-neutral-400">No data</span>
-                )}
-              </div>
-
-              <div className="text-xs">
-                <div className="text-neutral-600 dark:text-neutral-300">
-                  <span className="font-bold text-accent-400">{tooltipContent.eventCount.toLocaleString()}</span>{" "}
-                  performance events
+            {tooltipContent.eventCount > 0 ? (
+              <>
+                <div className="mb-2">
+                  <span className="text-neutral-600 dark:text-neutral-300">{tooltipContent.metricName}: </span>
+                  {tooltipContent.metricValue !== null ? (
+                    <span className="font-semibold">
+                      {formatMetricValue(selectedPerformanceMetric, tooltipContent.metricValue)}
+                      {getMetricUnit(selectedPerformanceMetric, tooltipContent.metricValue)}
+                    </span>
+                  ) : (
+                    <span className="text-neutral-400">{t("No data")}</span>
+                  )}
                 </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-neutral-500 dark:text-neutral-400 text-xs">No performance data available</div>
-          )}
+
+                <div className="text-xs">
+                  <div className="text-neutral-600 dark:text-neutral-300">
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                      {tooltipContent.eventCount.toLocaleString()}
+                    </span>{" "}
+                    {t("performance events")}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-neutral-500 dark:text-neutral-400 text-xs">{t("No performance data available")}</div>
+            )}
+          </ChartTooltip>
         </div>
       )}
     </div>

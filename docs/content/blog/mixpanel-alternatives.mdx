@@ -1,0 +1,234 @@
+---
+title: "9 Best Mixpanel Alternatives in 2026, by Reason for Switching"
+description: "Mixpanel alternatives matched to why you're leaving: cost, complexity, self-hosting, privacy. 9 tools compared on verified prices, free tiers and licenses."
+keyword: "mixpanel alternatives"
+date: 2026-09-27
+tags: ["product analytics", "comparisons", "open source"]
+author: Rybbit Team
+---
+
+Most teams shopping for Mixpanel alternatives are leaving for one of five reasons: the bill grows faster than the product, the setup is more than a small team can maintain, they need open source or self-hosting, they want analytics that doesn't depend on a consent banner, or they pay for Mixpanel plus a separate web analytics tool. Each reason points to a different replacement, so this guide starts with the reasons, then compares nine tools on price, free allowance, license and the Mixpanel reports you keep.
+
+Disclosure: we build [Rybbit](https://rybbit.com), one of the nine. Every claim about the other tools comes from that vendor's own pricing or documentation pages, linked inline and checked in September 2026. Where a vendor doesn't publish a number, we say so.
+
+## Quick comparison
+
+| Tool | Best for | Free allowance | Paid plans from | Open source / self-host |
+| --- | --- | --- | --- | --- |
+| [Rybbit](#1-rybbit) | Web and product analytics in one cookieless tool | None (7-day trial) | $19/mo for 100k events | Yes, AGPL-3.0 |
+| [PostHog](#2-posthog) | Mixpanel's breadth plus flags, experiments, replay | 1M events, 5K recordings/mo | $0.00005/event after 1M | MIT core; self-host unsupported |
+| [Amplitude](#3-amplitude) | Closest like-for-like replacement | 2M events/mo | Plus "starts at $0"; rate not published | No |
+| [Heap](#4-heap) | Autocapture, events defined later | 10k sessions/mo | Estimate after install | No |
+| [OpenPanel](#5-openpanel) | Cheapest published entry price | 30-day trial | $2.50/mo for 5K events | Yes, AGPL-3.0 |
+| [Countly](#6-countly) | Mobile apps on private or own servers | Lite edition, self-hosted | Flex from $175/mo | Lite: AGPL-3.0 with branding terms |
+| [TelemetryDeck](#7-telemetrydeck) | Privacy-first app analytics | 50K events/mo | €9/mo | SDKs only |
+| [Matomo](#8-matomo) | Self-hosted web analytics with funnels | On-Premise edition | Cloud €29/mo for 50k hits | Yes, GPL v3 |
+| [Google Analytics 4](#9-google-analytics-4) | Free funnels and cohorts for marketing sites | Free | Analytics 360 via sales | No |
+| Mixpanel, for reference | | 1M events/mo | Growth: 1M free, then $0.00028/event on the base plan | No |
+
+## Why teams look for Mixpanel alternatives
+
+Mixpanel is a capable product analytics tool with a real free plan: 1M events a month, unlimited seats and 10K session replays, per its [pricing page](https://mixpanel.com/pricing/); our [Mixpanel pricing breakdown](/blog/mixpanel-pricing) lists every tier. The reason you're leaving decides the replacement.
+
+### The bill grows faster than the product
+
+On the Growth plan the first 1M events a month are free; after that, the base plan's overage rate is $0.00028 per event, or $280 per extra million, according to Mixpanel's [pricing docs](https://docs.mixpanel.com/docs/pricing). Larger prepaid plans get a lower rate that only Mixpanel's calculator shows. Group Analytics adds 40% and Data Pipelines 20% on overage, and the MTU-based Enterprise plan starts at $20,000 a year. The Free plan never bills overages; past 1M monthly events it blocks your reports until you upgrade or the month rolls over.
+
+Published prices at two volumes (tools count events differently, so treat this as a rough guide):
+
+| Monthly events | 1M | 10M |
+| --- | --- | --- |
+| Mixpanel Growth | $0 | $2,520 at the base plan's overage rate; less on a larger prepaid plan (not published) |
+| Amplitude Plus | $0 (first 2M free) | Not published |
+| PostHog | $0 | About $324 |
+| OpenPanel | $90 | $350 |
+| Rybbit Standard / Pro | $69 / $139 | $249 / $499 |
+| Heap | Priced by sessions, not published | Not published |
+
+Best fits: [PostHog](#2-posthog) keeps the breadth for less, [OpenPanel](#5-openpanel) and [Rybbit](#1-rybbit) have flat published tiers, and the [open-source options](#open-source-mixpanel-alternatives) cost only the server.
+
+### It's more tool than a small team needs
+
+Mixpanel works best with a [tracking plan](https://docs.mixpanel.com/docs/tracking-best-practices/tracking-plan), which its docs call "a centralized document that should serve as the source of truth on your Mixpanel implementation". That pays off for a product team with an analyst. For a three-person startup it's a lot of planning before the first useful chart, and the free plan caps saved reports at 5 per user.
+
+Best fits: [Heap](#4-heap) captures interactions first and lets you define events later; in [Rybbit](#1-rybbit), traffic, [sessions](/features/sessions), page [funnels](/features/funnels), [journeys](/features/user-journeys) and [retention](/features/retention) work from the script alone; [TelemetryDeck](#7-telemetrydeck) ships pre-made dashboards for apps.
+
+### You need open source or self-hosting
+
+Mixpanel keeps your data on its own servers: in the US on Google Cloud by default, or in the EU if you choose EU residency when you create a project, and it [can't move an existing project](https://docs.mixpanel.com/docs/privacy/eu-residency) that landed in the wrong region. If data must stay on infrastructure you control, or you want to read and change the code, skip to the [open-source Mixpanel alternatives](#open-source-mixpanel-alternatives).
+
+### Privacy and consent
+
+Mixpanel's JavaScript SDK keeps each user's distinct ID and super properties in a first-party cookie that lasts 365 days by default, or in localStorage if you configure it ([SDK docs](https://docs.mixpanel.com/docs/tracking-methods/sdks/javascript)). In the EU that generally needs consent: France's CNIL applies the consent rule to audience-measurement trackers outside a narrow exemption and says "[most large audience measurement offerings do not fall within the scope of the exemption](https://www.cnil.fr/en/sheet-ndeg16-use-analytics-your-websites-and-applications), regardless of their configuration." Visitors who decline the banner never reach your reports. This is a summary, not legal advice.
+
+Best fits: [Rybbit](#1-rybbit) (cookieless by default, EU-hosted cloud), [OpenPanel](#5-openpanel) (cookieless, EU-hosted), [TelemetryDeck](#7-telemetrydeck) (anonymizes on the device), or PostHog's opt-in cookieless mode.
+
+### You want web analytics and product analytics in one tool
+
+Mixpanel has closed some gaps: its free plan includes 10K session replays a month, up to 10 active feature flags and a small experiments allowance, so check your plan if those were the reason. What many teams still pay for alongside it is a web analytics tool for traffic sources, campaigns, SEO and page speed.
+
+Best fits: [Rybbit](#1-rybbit), [PostHog](#2-posthog) and [Matomo](#8-matomo).
+
+## The 9 best Mixpanel alternatives
+
+### 1. Rybbit
+
+**Best for:** [web analytics](/features/web-analytics) and Mixpanel's core reports in one cookieless tool, or a Mixpanel open-source alternative that runs on a small server.
+
+[Rybbit](https://rybbit.com) covers the marketing site and the product in one dashboard. Pageviews, sources, campaigns and sessions come from the script, and [custom events](/features/custom-events) with properties are one function call. Standard includes [funnels](/features/funnels) from pages or events, [user journeys](/features/user-journeys), cohort [retention](/features/retention), [goals](/features/goals), [Web Vitals](/features/web-vitals) and [error tracking](/features/error-tracking). [User profiles](/features/user-profiles) come from `identify()`, which links a visitor's earlier anonymous activity to their account and stores traits like plan or company ([docs](/docs/identify-users)). [Session replay](/features/session-replay) is on Pro.
+
+Tracking is cookieless by default, so Rybbit's own tracking needs no consent banner (identifying logged-in users is opt-in and needs its own lawful basis), and the cloud is hosted in the EU. An [MCP server](/features/mcp) with 44 tools lets Claude, Codex and other MCP clients query your data, including read-only SQL, and create goals and funnels.
+
+- **Pricing (as of September 2026):** Standard from $19/month for 100k events, with 5 websites, 3 team members and 3-year retention; Pro from $39/month adds session replay (10,000 replays a month on the 100k-event tier), unlimited websites and members, and 5-year retention. 7-day trial, card collected at signup. Source: [rybbit.com/pricing](/pricing)
+- **Open source / self-host:** AGPL-3.0, free to [self-host](/docs/self-hosting), replay included
+- **Gaps vs Mixpanel:** no feature flags or experiments; no Mixpanel importer ([imports](/docs/data-import) cover Plausible, Umami and Simple Analytics), so you run both tools side by side for a while; retention groups users by first visit rather than an event you choose, with no behavioral cohorts or group analytics; for apps there is a [React Native SDK](/docs/sdks/react-native) that tracks screens, events, errors and users in an App Analytics dashboard mode, but no native iOS or Android SDK and no replay in apps
+
+Pick PostHog or Amplitude instead if you need flags and experiments in your analytics tool, build a native iOS or Android app, or run on behavioral cohorts.
+
+### 2. PostHog
+
+**Best for:** product teams that want Mixpanel's breadth plus flags, experiments, replay and surveys, with a large free allowance.
+
+[PostHog](https://posthog.com) is the widest platform here: product and web analytics, session replay, feature flags, experiments, surveys, error tracking and a data warehouse, each on its own meter. The free allowance resets monthly to 1M analytics events, 5K recordings, 1M flag requests, 100K exceptions and 1,500 survey responses, no card required ([pricing](https://posthog.com/pricing)). Events past 1M cost $0.00005 each up to 2M, falling in steps to $0.000009 above 250M ([product analytics pricing](https://posthog.com/product-analytics/pricing)), so 10M a month comes to about $324. Retention is 1 year on free and 7 years on paid. A [managed migration](https://posthog.com/docs/migrate/mixpanel) exports your Mixpanel data, converts it to PostHog's schema and imports it, and the [web analytics](https://posthog.com/web-analytics) dashboard adds referrers, UTMs and Core Web Vitals.
+
+- **Pricing:** free within the allowances, then usage-based with volume tiers
+- **Open source / self-host:** MIT core; self-hosting is "officially unsupported" ([details](#open-source-mixpanel-alternatives))
+- **Drawbacks:** several meters on one bill; cookieless tracking is an [opt-in mode](https://posthog.com/tutorials/cookieless-tracking) that needs a project setting, and in its strictest form you shouldn't call `identify()`
+
+See [Rybbit vs PostHog](/compare/posthog).
+
+### 3. Amplitude
+
+**Best for:** the closest like-for-like replacement, with a bigger free allowance.
+
+[Amplitude](https://amplitude.com) covers the same ground as Mixpanel (event analytics, session replay, feature flags, experiments), so switching is mostly remapping events and rebuilding reports. Its [pricing page](https://amplitude.com/pricing) lists a bigger free plan than Mixpanel's or PostHog's: 2M events a month "forever", 10K session replays, unlimited flags and seats, and 1 year of retention, with no card. Plus "starts at $0" with 2M free events, scales to 70M, and adds 2-year retention and one active experiment, but the rate past the free events isn't published. Growth and Enterprise are custom-priced, with unlimited retention. The [Migrations panel](https://amplitude.com/docs/migration/migrate-from-mixpanel) imports Mixpanel events through a guided UI; user profiles go through the Batch Event Upload API instead.
+
+- **Pricing:** Free (2M events/month); Plus from $0 at an unpublished rate; Growth and Enterprise by quote
+- **Open source / self-host:** no
+- **Drawbacks:** no public price past 2M events; active experiments capped at 1 on Plus and 2 on higher plans unless you buy an add-on
+
+If you're comparing Amplitude against other tools too, see our [Amplitude alternatives](/blog/amplitude-alternatives) roundup.
+
+### 4. Heap
+
+**Best for:** teams whose Mixpanel data has gaps because events were never instrumented.
+
+[Heap](https://www.heap.io), now part of Contentsquare, inverts the tracking plan: its [autocapture](https://www.heap.io/platform/autocapture) collects "every click, swipe, tap, pageview, and fill" from install, and you name events later with the history already there. The free plan covers 10k monthly sessions, 6 months of history and one project, including funnels, journeys and retention ([pricing](https://www.heap.io/pricing)). Growth adds 12 months of history, unlimited users and CSV exports, priced by an estimate once you install the snippet. Pro and Premier use custom session pricing, with replay and heatmaps as add-ons.
+
+- **Pricing:** Free (10k sessions/month); no published prices above it
+- **Open source / self-host:** no
+- **Drawbacks:** no public prices; billed by sessions; replay only as an add-on on the top two tiers
+
+### 5. OpenPanel
+
+**Best for:** small teams that want Mixpanel-style event analytics at the lowest published price, or an AGPL tool to self-host.
+
+[OpenPanel](https://openpanel.dev) bills itself as an open-source alternative to Mixpanel, with the most granular [pricing](https://openpanel.dev/pricing) here: $2.50 a month for 5K events, $20 for 100K, $90 for 1M, $350 for 10M and $900 for 50M, all with unlimited sites, users, dashboards and profiles, and a 30-day trial without a card. Self-hosting is free with unlimited events. The [README](https://github.com/Openpanel-dev/openpanel) lists funnels, cohorts, user profiles, session replay and A/B test breakdowns, and the [SDKs](https://openpanel.dev/docs/sdks) cover web frameworks, React Native, Swift, Kotlin and several server languages. Tracking is cookieless (IP and user agent hashed daily) and the cloud is EU-hosted, per the [homepage](https://openpanel.dev/).
+
+- **Pricing:** from $2.50/month for 5K events
+- **Open source / self-host:** AGPL-3.0, free to self-host
+- **Drawbacks:** Mixpanel data comes over by replaying your export through the server-side SDK ([guide](https://openpanel.dev/guides/migrate-from-mixpanel)), not a one-click import; the self-hosting docs give no hardware requirements
+
+### 6. Countly
+
+**Best for:** mobile-heavy products that need analytics on a dedicated instance or their own servers.
+
+[Countly](https://countly.com) maintains SDKs for iOS, Android, React Native, Flutter and web ([GitHub](https://github.com/Countly)) and sells three editions ([pricing](https://countly.com/pricing)). [Flex](https://countly.com/getflex) is a dedicated cloud instance ("No shared compute") from $175 a month, priced by monthly active users and data points, with funnels, retention, flows, user profiles and crash reporting; push, A/B testing and journeys are an add-on, and the 14-day trial requires a card. Enterprise is self-hosted and custom-priced. The free Countly Lite isn't a Mixpanel replacement by itself: Countly's [blog](https://countly.com/blog/the-product-led-story-of-open-source-saas-and-enterprise) says user profiles, cohorts, funnels, formulas and drill rely on a database the Community edition lacks.
+
+- **Pricing:** Flex from $175/month; Enterprise by quote; Lite free
+- **Open source / self-host:** Lite is AGPL-3.0 with branding terms ([below](#open-source-mixpanel-alternatives)); Enterprise runs on your servers
+- **Drawbacks:** the highest published entry price among the hosted tools here; the free edition lacks funnels and profiles
+
+### 7. TelemetryDeck
+
+**Best for:** app developers who want product analytics without personal data.
+
+[TelemetryDeck](https://telemetrydeck.com) is built for apps, with SDKs for Swift (iOS, macOS, visionOS), Kotlin, React Native, Flutter and JavaScript. Its [homepage](https://telemetrydeck.com/) says it anonymizes on the device, uses no cookies and needs no consent banner; funnels, retention and pre-made dashboards are included. New accounts get 50,000 free events a month (accounts from before 1 July 2026 keep 100,000, per its [pricing update](https://telemetrydeck.com/blog/pricing-update-2026/)), and paid plans start at €9 a month according to its [Mixpanel comparison](https://telemetrydeck.com/comparison/mixpanel-alternative/).
+
+- **Pricing:** 50K events/month free; paid from €9/month
+- **Open source / self-host:** SDKs under a modified MIT license ([FAQ](https://telemetrydeck.com/faq/)); the service is hosted
+- **Drawbacks:** it avoids identifying users, so it isn't built for looking up what one customer did; the full price list sits in a calculator inside its dashboard
+
+### 8. Matomo
+
+**Best for:** organizations that want self-hosted web analytics with funnels and can pay for plugins.
+
+[Matomo](https://matomo.org) is web analytics first, with premium features that reach many of Mixpanel's reports. [Matomo Cloud](https://matomo.org/pricing/) starts at €29 a month for 50,000 hits on the Business plan, which includes funnels, users flow, heatmaps, session recording and form analytics; data is stored in Frankfurt. The self-hosted Community edition is free with unlimited users and hits, but there those features are paid: the Team bundle (from €230 a month, 4 users, 5M hits) covers funnels, users flow and recordings, cohorts need the Business bundle (from €1,209 a month), and A/B testing the Enterprise bundle (from €2,834 a month). One line of code turns cookies off, which Matomo's [FAQ](https://matomo.org/faq/general/faq_157/) says can reduce returning-visitor accuracy.
+
+- **Pricing:** Cloud from €29/month; On-Premise free, plugins extra
+- **Open source / self-host:** GPL v3 or later
+- **Drawbacks:** self-hosted product-analytics features cost extra, and cohorts sit in the €1,209/month bundle
+
+See [Rybbit vs Matomo](/compare/matomo).
+
+### 9. Google Analytics 4
+
+**Best for:** marketing-led teams that want free funnels and cohorts and already use Google's ad stack.
+
+Google provides GA4 ["free of charge"](https://marketingplatform.google.com/about/analytics/), and Explorations cover a fair share of Mixpanel's reports: funnel, path and cohort exploration, segment overlap, user explorer and user lifetime ([Google's list](https://support.google.com/analytics/answer/7579450)). The limits appear on product questions: standard properties keep exploration data for at most [14 months](https://support.google.com/analytics/answer/7667196), queries over 10 million events [get sampled](https://support.google.com/analytics/answer/13331292), and the two-year `_ga` [cookies](https://support.google.com/analytics/answer/11397207) mean a consent banner for most European traffic. Raw events can go to BigQuery, with a 1-million-event daily export cap on standard properties, uncapped streaming, and BigQuery [charges](https://support.google.com/analytics/answer/9823238) for storage and queries.
+
+- **Pricing:** free; [Analytics 360](https://marketingplatform.google.com/about/analytics-360/) is sold through "Talk to Sales"
+- **Open source / self-host:** no
+- **Drawbacks:** 14-month exploration window; sampling; cookie consent; built for marketing attribution more than product analysis
+
+See [Rybbit vs Google Analytics](/compare/google-analytics) and our roundup of the [best web analytics tools](/blog/best-web-analytics-tools).
+
+## Open-source Mixpanel alternatives
+
+If you want to run or read the server code yourself, these six publish it. What separates them is the license, the self-hosting effort, and which Mixpanel reports survive the move.
+
+| Tool | License | Self-hosting | Mixpanel-style reports you keep |
+| --- | --- | --- | --- |
+| PostHog | MIT, except the `ee/` directory | Docker Compose "hobby" install; 4 vCPU, 16 GB RAM, 30 GB+ disk | Free-plan features: funnels, retention, profiles, replay, flags, experiments |
+| OpenPanel | AGPL-3.0 | `./setup` script on a VPS, tested on Ubuntu 24.04 | Funnels, retention, cohorts, profiles, replay |
+| Rybbit | AGPL-3.0 | `./setup.sh` and Docker Compose on a VPS with 2 GB+ RAM | Funnels, journeys, retention, profiles, replay |
+| Matomo | GPL v3 or later | PHP 8.1+, MySQL 8.0+ or MariaDB 10.6+; 2 CPU and 2 GB RAM under 100k pageviews/month, 4 CPU and 8 GB up to 1M | Funnels, flows, cohorts, recordings, A/B tests as paid plugins |
+| Countly Lite | AGPL-3.0 plus branding terms | One-line script on Ubuntu, CentOS or RHEL, or Docker | Events, sessions, crash reports, push, remote config; no funnels or profiles |
+| Umami | MIT | Node.js 18.18+ and PostgreSQL 12.14+, or Docker | Funnels, retention, journeys, goals, distinct IDs, replays |
+
+**PostHog** is the closest feature match, and code outside its `ee/` directory is [MIT-licensed](https://github.com/PostHog/posthog/blob/master/LICENSE). But its [self-hosting page](https://posthog.com/docs/self-host) calls self-hosted deployments "officially unsupported", states that "All paid-plan features are Cloud-only", and steers you to Cloud if you expect more than 300k events, 1k recordings or 300k flag API calls.
+
+**OpenPanel** and **Rybbit** are AGPL-3.0: free to run and modify for any purpose, including commercially, provided that if you offer a modified version to users over a network, you make its source available to them. OpenPanel's [self-hosting docs](https://openpanel.dev/docs/self-hosting/self-hosting) ask for a VPS and a setup script. Rybbit's [setup](/docs/self-hosting) runs ClickHouse, Postgres, Redis and Caddy in Docker Compose on a 2 GB VPS, with session replay included.
+
+**Matomo** is the most mature option, with published [server requirements](https://matomo.org/faq/on-premise/matomo-requirements/) for every traffic level; the GPL covers the core, and the product-analytics features are the paid plugins in the table.
+
+**Countly Lite** needs a careful read: the [license](https://github.com/Countly/countly-server/blob/master/LICENSE.md) adds a Section 7 term that forbids removing Countly's logos and branding, and the [README](https://github.com/Countly/countly-server/blob/master/README.md) calls Lite "free to use under an open-source, non-commercial license". Check Countly's licensing FAQ before building a commercial product on it.
+
+**Umami** is [MIT-licensed](https://github.com/umami-software/umami) and needs only Node.js and PostgreSQL. Its [reports](https://docs.umami.is/docs) include funnels, retention, journeys, goals and attribution, and [session replays](https://docs.umami.is/docs/replays) arrived in v3.1.0, kept for 30 days. See [Rybbit vs Umami](/compare/umami).
+
+## Switching from Mixpanel
+
+Mixpanel lets you take your data: the Raw Event Export API returns events as JSONL, and the Engage API and the Users tab export profiles ([export methods](https://docs.mixpanel.com/docs/export-methods)).
+
+PostHog's managed migration does the export, conversion and import for you. Amplitude's Migrations panel brings in events, and profiles need a separate upload. OpenPanel has you replay the export through its server-side SDK. Rybbit has no Mixpanel importer, so run both tools in parallel until Rybbit has enough history, and keep the Mixpanel export as an archive.
+
+Whichever you pick, run it beside Mixpanel for a few weeks, compare daily event and user counts, and rebuild only the reports your team actually opens.
+
+## Which Mixpanel alternative should you pick
+
+- **The bill is the problem and you want the same breadth:** PostHog (about $324 at 10M events) or OpenPanel ($350).
+- **The closest like-for-like switch, with a bigger free plan:** Amplitude.
+- **Your team never kept a tracking plan:** Heap.
+- **Web and product analytics in one cookieless tool, or self-hosting on a 2 GB server:** Rybbit.
+- **A native app:** TelemetryDeck for privacy-first analytics, Countly for private hosting, or PostHog and Amplitude.
+- **Data must stay on your servers:** the [open-source options](#open-source-mixpanel-alternatives).
+- **No budget, mostly marketing traffic:** Google Analytics 4.
+
+Staying on Mixpanel is reasonable if you rely on Group Analytics, experiments or a mature tracking plan and the bill works. Startups under five years old with up to $8M in funding can get their first year free on Mixpanel's Startup Plan ([pricing](https://mixpanel.com/pricing/)).
+
+## FAQ
+
+**What is the best open-source Mixpanel alternative?**
+PostHog has the most features, but self-hosting it is officially unsupported. OpenPanel and Rybbit, both AGPL-3.0, install on one VPS with a setup script. Matomo is the most mature, but self-hosted it sells funnels and cohorts as plugins.
+
+**Who are Mixpanel's main competitors?**
+The most direct alternatives to Mixpanel are Amplitude and Heap in hosted product analytics and PostHog in open-source product analytics. Google Analytics 4 competes for teams that mostly need marketing analytics.
+
+**Is there a free Mixpanel alternative?**
+Yes. Amplitude includes 2M events a month at no cost, PostHog 1M events and 5K recordings, Heap 10k sessions and TelemetryDeck 50K events, and GA4 is free. The open-source tools cost only the server when you self-host.
+
+**Which Mixpanel alternatives have affordable pricing?**
+OpenPanel starts at $2.50 a month for 5K events and charges $90 at 1M. Rybbit Standard is $19 a month for 100k events and $69 at 1M. TelemetryDeck starts at €9 and Matomo Cloud at €29, and PostHog is free until 1M events.
+
+**Can I import my Mixpanel data into another tool?**
+Into PostHog, Amplitude or OpenPanel, yes. Rybbit has no Mixpanel importer; it imports from Plausible, Umami and Simple Analytics.

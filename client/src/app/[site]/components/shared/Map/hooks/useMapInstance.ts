@@ -1,5 +1,6 @@
 import { FilterParameter } from "@rybbit/shared";
 import Map from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import View from "ol/View";
 import { fromLonLat } from "ol/proj";
 import { useEffect, useRef } from "react";
@@ -30,11 +31,21 @@ export function useMapInstance({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const mapViewRef = useRef<"countries" | "subdivisions">(mapView);
+  const countryDataRef = useRef<ProcessedData[] | null>(countryData);
+  const subdivisionDataRef = useRef<ProcessedData[] | null>(subdivisionData);
 
-  // Update mapView ref when it changes
+  // Update refs when values change
   useEffect(() => {
     mapViewRef.current = mapView;
   }, [mapView]);
+
+  useEffect(() => {
+    countryDataRef.current = countryData;
+  }, [countryData]);
+
+  useEffect(() => {
+    subdivisionDataRef.current = subdivisionData;
+  }, [subdivisionData]);
 
   // Initialize map
   useEffect(() => {
@@ -52,17 +63,18 @@ export function useMapInstance({
     mapInstanceRef.current = map;
 
     // Handle zoom changes
-    map.getView().on("change:resolution", () => {
+    const handleResolutionChange = () => {
       const currentZoom = map.getView().getZoom() || 1;
       const newMapView = currentZoom >= 5 ? "subdivisions" : "countries";
       if (newMapView !== mapViewRef.current) {
         setInternalMapView(newMapView);
         setTooltipContent(null);
       }
-    });
+    };
+    const resolutionChangeKey = map.getView().on("change:resolution", handleResolutionChange);
 
     // Handle pointer move for hover effects
-    map.on("pointermove", evt => {
+    const handlePointerMove = (evt: any) => {
       if (evt.dragging) {
         return;
       }
@@ -77,7 +89,7 @@ export function useMapInstance({
 
         setHoveredId(code);
 
-        const dataToUse = isCountryView ? countryData : subdivisionData;
+        const dataToUse = isCountryView ? countryDataRef.current : subdivisionDataRef.current;
         const foundData = dataToUse?.find(({ value }) => value === code);
         const count = foundData?.count || 0;
         const percentage = foundData?.percentage || 0;
@@ -102,10 +114,11 @@ export function useMapInstance({
         setHoveredId(null);
         setTooltipContent(null);
       }
-    });
+    };
+    const pointerMoveKey = map.on("pointermove", handlePointerMove);
 
     // Handle click for filtering
-    map.on("click", evt => {
+    const handleClick = (evt: any) => {
       const pixel = map.getEventPixel(evt.originalEvent);
       const feature = map.forEachFeatureAtPixel(pixel, feature => feature);
 
@@ -121,9 +134,11 @@ export function useMapInstance({
           type: "equals",
         });
       }
-    });
+    };
+    const clickKey = map.on("click", handleClick);
 
     return () => {
+      dispose([resolutionChangeKey, pointerMoveKey, clickKey]);
       map.setTarget(undefined);
     };
   }, []);

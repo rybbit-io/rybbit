@@ -1,0 +1,244 @@
+---
+title: MCP
+description: Let an AI assistant explore and manage your Rybbit analytics through the hosted Model Context Protocol server
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { SiClaude } from "@icons-pack/react-simple-icons";
+
+Rybbit includes a hosted [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) endpoint. It gives an AI assistant read and write access to your analytics: exploring traffic and behavior data, and managing sites, goals, funnels, organization members, teams, and user profiles, all through the same API the dashboard uses, with the same access checks, roles, and rate limits.
+
+Your MCP client connects to Rybbit over HTTPS and sends your API key with each protocol request. Rybbit verifies the key before processing any message, and every tool call is authorized against the key user's role and site access.
+
+## Connect a client
+
+If your client supports the MCP authorization flow (Claude Code, Codex, Claude Desktop, and opencode all do), you can [connect with OAuth](#or-connect-with-oauth) and skip API keys entirely. The steps below describe the API-key path, which works in every client and supports scoped credentials.
+
+### 1. Create an API key
+
+1. Open **Settings → Account** in Rybbit.
+2. Create a key in the **Personal API Keys** section.
+3. Copy it immediately. Rybbit only shows a new key once.
+
+A personal key acts as you. If the connection should belong to the organization and keep working when people leave, an admin or owner can instead create an **organization API key** under **Settings → Organization**. It reaches every site in that organization with admin authority. See [API keys](/docs/api/getting-started#generating-api-keys) for both kinds.
+
+A key created without permissions can do everything its user can do. To hand an agent a narrower credential, create the key with scoped permissions (`POST /api/user/api-keys` with a `permissions` object, e.g. `{"analytics": ["read"], "goals": ["read", "write"]}`): the MCP tool list and every API call are then limited to those `resource:action` scopes. `write` implies `read` on the same resource, and scopes never elevate: org admin/owner requirements still apply. Deleting the key revokes the connection.
+
+### 2. Add the endpoint
+
+Use this Streamable HTTP URL for Rybbit Cloud:
+
+```text
+https://app.rybbit.io/api/mcp
+```
+
+For a self-hosted installation, replace the host with your configured `BASE_URL`:
+
+```text
+https://analytics.example.com/api/mcp
+```
+
+Configure your client to send this header on every request:
+
+```text
+Authorization: Bearer <RYBBIT_API_KEY>
+```
+
+MCP clients use different configuration formats. A typical remote-server configuration has this shape:
+
+```json
+{
+  "mcpServers": {
+    "rybbit": {
+      "url": "https://app.rybbit.io/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <RYBBIT_API_KEY>"
+      }
+    }
+  }
+}
+```
+
+Use your client's secret or environment-variable support when available instead of saving the key in a file. Query-string API keys are not accepted by the MCP endpoint. Per-client walkthroughs (Claude Code, Codex, Claude Desktop, Cursor, VS Code, opencode) are in [Client guides](#client-guides) below.
+
+### Or connect with OAuth
+
+Clients that support the MCP authorization flow can skip API keys entirely: add the endpoint URL with no headers, and the client discovers Rybbit's authorization server through the standard well-known metadata (`/.well-known/oauth-protected-resource`), registers itself, and opens a browser window for you to log in and approve access. The resulting access token acts with your user's role, exactly like an API key would.
+
+OAuth grants support the same `resource:action` scopes as API keys (advertised in `scopes_supported`). A grant that requests only the standard OIDC scopes is unrestricted; a grant that requests custom scopes like `analytics:read` is limited to them. The requesting client controls which scopes it asks for. Consent is currently approve-or-deny as a whole.
+
+### 3. Start with context
+
+Ask the assistant to call `list_sites`, or prompt it with something like:
+
+> List my Rybbit sites, summarize last month's traffic for the docs site, and create a goal for signups.
+
+`list_sites` returns the numeric `site_id` and `organization_id` required by the other tools, plus the key's role in each organization. It does not return API keys or member email addresses.
+
+## Client guides
+
+Coding agents can use the endpoint to pull analytics into your development workflow (checking whether an error you just fixed still occurs in production, or looking up which pages matter before a refactor) and chat clients like Claude Desktop turn it into a conversational analytics interface. Follow the guide for your client:
+
+<Cards>
+  <Card
+    icon={<SiClaude />}
+    title="Claude Code"
+    description="One command with OAuth or an API key, plus a no-secrets team setup"
+    href="/docs/mcp/claude-code"
+  />
+  <Card
+    title="Codex"
+    description="codex mcp add, then OAuth login or a key from the environment"
+    href="/docs/mcp/codex"
+  />
+  <Card
+    icon={<SiClaude />}
+    title="Claude Desktop"
+    description="Add a custom connector on claude.ai, desktop, and mobile"
+    href="/docs/mcp/claude-desktop"
+  />
+  <Card
+    title="Cursor"
+    description="mcp.json with an API key header"
+    href="/docs/mcp/cursor"
+  />
+  <Card
+    title="VS Code"
+    description="Copilot agent mode, with the key kept out of the config file"
+    href="/docs/mcp/vscode"
+  />
+  <Card
+    title="opencode"
+    description="Remote server config with OAuth login or env-based headers"
+    href="/docs/mcp/opencode"
+  />
+</Cards>
+
+Any other MCP client that supports Streamable HTTP works with the generic configuration from [step 2](#2-add-the-endpoint).
+
+## Available tools
+
+### Analytics (read)
+
+| Tool                      | Returns                                                                                 |
+| ------------------------- | --------------------------------------------------------------------------------------- |
+| `get_overview`            | Sessions, pageviews, users, pages per session, bounce rate, and session duration        |
+| `get_overview_timeseries` | The overview KPIs bucketed over time                                                    |
+| `get_breakdown`           | Sessions broken down by one dimension (pages, referrers, countries, devices, UTM, ...)  |
+| `get_live_stats`          | Visitors active on the site right now                                                   |
+| `get_event_names`         | Custom event names tracked on the site with counts                                      |
+| `get_errors`              | JavaScript errors grouped by name/message with occurrence counts                        |
+| `get_web_vitals`          | Core Web Vitals percentiles (LCP, CLS, INP, FCP, TTFB)                                  |
+| `get_retention`           | User retention cohort table                                                             |
+| `get_journeys`            | Most common page-to-page navigation paths                                               |
+| `get_annotations`         | Notes pinned to dates on the traffic chart (launches, deploys, campaigns, outages)      |
+| `list_segments`           | Saved segments: named, reusable filter sets for a site or the whole organization        |
+| `apply_segment`           | Overview KPIs for visitors matching a saved segment, with its filters for reuse         |
+
+### Search Console (read)
+
+| Tool                        | Returns                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `get_search_console_status` | Whether Google Search Console is connected for the site, and which property                      |
+| `get_search_console_data`   | Clicks, impressions, CTR, and average position grouped by query, page, country, device, or date  |
+
+Search Console tools read the Google Search Console property connected to the site under **Site settings > Integrations** (Rybbit Cloud); no Google Cloud project or separate MCP server is needed. `get_search_console_data` groups by up to three dimensions (`query`, `page`, `country`, `device`, `date`), accepts ANDed filters such as `{"dimension": "page", "operator": "contains", "expression": "/pricing"}`, and returns 100 rows by default (up to 25,000, paged with `start_row`). Google's numbers lag about two days; pass `data_state: "all"` to include fresh, still-changing data. For how this compares with self-run Search Console servers, and prompts that work well, see the [Google Search Console MCP guide](/blog/google-search-console-mcp).
+
+### Sites
+
+| Tool                 | Does                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `list_sites`         | List organizations and sites the key can access (call this first)                       |
+| `get_site`           | One site's full configuration                                                           |
+| `create_site`        | Add a new site to an organization *(admin)*                                             |
+| `update_site_config` | Change site settings: name, domain, tracking features, exclusions, tags *(editor)*      |
+| `delete_site`        | Permanently delete a site and its data *(admin, destructive)*                           |
+
+### Goals & funnels
+
+| Tool             | Does                                                                  |
+| ---------------- | ---------------------------------------------------------------------- |
+| `get_goals`      | Conversion goals with conversion stats                                |
+| `create_goal`    | Create a path, event, or autocapture goal                             |
+| `update_goal`    | Replace a goal's definition                                           |
+| `delete_goal`    | Permanently delete a goal *(destructive)*                             |
+| `get_funnels`    | Saved funnel definitions                                              |
+| `analyze_funnel` | Compute an ad-hoc funnel without saving it                            |
+| `save_funnel`    | Save a funnel, or update one by passing `funnel_id`                   |
+| `delete_funnel`  | Permanently delete a saved funnel *(destructive)*                     |
+
+### People
+
+| Tool                 | Does                                                                             |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `get_users`          | Person inventory with per-user aggregates and traits (sortable, searchable)      |
+| `get_user`           | One person's profile: traits, linked devices, vitals, locations                  |
+| `identify_user`      | Link an anonymous device to your user ID and merge traits                        |
+| `update_user_traits` | Replace a person's traits wholesale                                              |
+| `delete_user`        | GDPR erasure of one person's analytics data *(editor, destructive)*              |
+
+### Organization & teams
+
+| Tool                        | Does                                                              |
+| --------------------------- | ------------------------------------------------------------------ |
+| `list_members`              | Organization members with roles, site access, and teams          |
+| `add_member`                | Add an existing Rybbit user to the organization *(admin)*        |
+| `update_member_site_access` | Restrict a member to specific sites *(admin)*                    |
+| `list_teams`                | Teams with members and site access                               |
+| `create_team`               | Create a team *(admin)*                                          |
+| `update_team`               | Rename a team or replace its members/sites *(admin)*             |
+| `delete_team`               | Permanently delete a team *(admin, destructive)*                 |
+
+### Raw data & SQL
+
+| Tool               | Does                                                                          |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `get_sessions`     | Recent visitor sessions with full attribution                                 |
+| `get_session`      | One session's detail plus its event timeline                                  |
+| `get_events`       | Raw recent events, newest first                                               |
+| `get_query_schema` | The ClickHouse schema and rules for `run_query`                               |
+| `run_query`        | Read-only ClickHouse SQL against the site-scoped `scoped_events` table        |
+
+Analytics tools accept optional time inputs (`start_date`/`end_date` with an IANA `time_zone`, or `past_minutes`) and the same filters as the dashboard. Omitting time inputs queries all time; an unrecognized `time_zone` is rejected before the call is made. `get_sessions`, `get_events`, and `get_users` accept an optional `fields` list to return only the named row columns, which keeps large result sets small.
+
+## Permissions and roles
+
+The MCP surface mirrors the REST API's permission model:
+
+- **Read tools** work for any role with access to the site, including viewers.
+- **Write tools** need the member role or above on the site (goals, funnels, `identify_user`, `update_user_traits`, `save_funnel`).
+- **Tools marked *(editor)*** need the editor role or above on the site.
+- **Tools marked *(admin)*** require the API key's user to hold the **admin or owner** role in the organization. `add_member` can't grant a role above the key's own, so only an owner's key can grant `owner`.
+
+A key acts with its user's role on each site, including [site-specific roles](/docs/organization-settings#member-roles) from site restrictions and teams, and it reaches exactly the sites that user can see. The REST layer enforces all of this: an underprivileged key gets a 403 `"Insufficient role"` naming the role required.
+
+To give an assistant a read-only or read-mostly view, create a **scoped** API key (see step 1): grant only the `resource:action` scopes it needs, e.g. `{"analytics": ["read"], "sessions": ["read"]}` for a reporting agent. The MCP tool list is filtered to those scopes, and any out-of-scope call returns `403 { "error": "Insufficient scope", "required": "goals:write" }`. Alternatively, connect with a viewer's key: it hides nothing but refuses every write.
+
+OAuth clients request scopes through the standard grant. Rybbit advertises the same `resource:action` scopes in its discovery metadata; a grant carrying no custom scopes (or only the standard OIDC scopes) is treated as full access, for backward compatibility.
+
+## Destructive tools
+
+`delete_goal`, `delete_funnel`, `delete_site`, `delete_team`, and `delete_user` permanently destroy data and are marked with the MCP `destructiveHint` annotation, so well-behaved clients ask for confirmation before invoking them. `delete_site` and `delete_user` (the GDPR-erasure path) also remove recorded events and replays, with erasure completing asynchronously.
+
+## Data and security boundary
+
+- The API key is verified before any MCP message is processed, and each tool call re-runs the corresponding REST route's own access checks, role requirements, and rate limits.
+- The surface returns whatever the REST API returns for your role, including session-level records and, where a site has IP tracking enabled, visitor IP addresses. Connect only AI clients you trust with that data, and use a separate, revocable API key per integration.
+- Text originating in tracked traffic (page titles, paths, referrers, event names, traits) is stripped of control and bidi-override characters. AI clients should still treat these values as untrusted data, never as instructions.
+- `run_query` is restricted to a read-only, site-scoped table with row and execution-time caps.
+- The server does not contain an AI model or send analytics to an AI provider. Data only leaves Rybbit in response to the MCP client you configure.
+- The endpoint is stateless. Each HTTP request is independently authenticated.
+
+## Troubleshooting
+
+- **401 Unauthorized:** The client did not send a Bearer credential, or the key/token is invalid, expired, or revoked. OAuth-capable clients re-authenticate automatically via the `WWW-Authenticate` challenge.
+- **OAuth login loop or "table does not exist" (self-hosted):** The backend container applies database migrations each time it starts. Check `docker compose logs backend` for a failed migration, fix the cause, and recreate the backend with `docker compose up -d backend`. `docker compose restart` keeps the old environment, so it doesn't pick up changes to `.env`.
+- **OAuth discovery fails (self-hosted):** Your reverse proxy must send `/.well-known/oauth-*` and `/.well-known/openid-configuration*` to the backend, as the built-in Caddy config does. See [Configure your reverse proxy](/docs/self-hosting-guides/self-hosting-manual#configure-your-reverse-proxy).
+- **403 in tool results:** The key's user lacks access to that site or organization, or holds too low a role for the tool (`"Insufficient role"` names the role required). Check the `role` field in `list_sites`.
+- **403 "Insufficient scope":** The credential was created without the `resource:action` scope this tool needs (the `required` field names it). Use a key or OAuth grant that includes it.
+- **429 Too Many Requests:** The API key exceeded its plan's rate limit.
+- **404 "GSC not connected" from Search Console tools:** Connect Google Search Console for that site under Site settings > Integrations, then retry.
+- **503 Service Unavailable:** Rybbit could not verify the key. Retry the request; do not replace a known-valid key based on this response.
+- **405 Method Not Allowed on GET:** This is expected. The stateless endpoint accepts MCP messages over `POST`.
+- **Site access error:** Call `list_sites` again. Membership or site permissions may have changed.

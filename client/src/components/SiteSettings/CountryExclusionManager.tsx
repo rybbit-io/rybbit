@@ -1,14 +1,15 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useExtracted } from "next-intl";
 import React, { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
-import { useGetExcludedCountries, useUpdateExcludedCountries } from "@/api/admin/excludedCountries";
-import { CountrySelector } from "./CountrySelector";
+import { useGetExcludedCountries, useUpdateExcludedCountries } from "@/api/admin/hooks/useExcludedCountries";
+import { CountrySelector, getCountryName } from "./CountrySelector";
 
 interface CountryExclusionManagerProps {
   siteId: number;
@@ -16,6 +17,7 @@ interface CountryExclusionManagerProps {
 }
 
 export function CountryExclusionManager({ siteId, disabled = false }: CountryExclusionManagerProps) {
+  const t = useExtracted();
   const { data: excludedCountriesData, isLoading } = useGetExcludedCountries(siteId);
   const updateExcludedCountriesMutation = useUpdateExcludedCountries();
 
@@ -63,35 +65,31 @@ export function CountryExclusionManager({ siteId, disabled = false }: CountryExc
   };
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading country exclusions...</div>;
+    return <div className="text-sm text-muted-foreground">{t("Loading country exclusions...")}</div>;
   }
 
   return (
     <div className="space-y-4">
-      <div>
-        <Label className="text-sm font-medium text-foreground block">Country Exclusions</Label>
-        <p className="text-xs text-muted-foreground mt-1">
-          Exclude traffic from specific countries. Events from these countries will not be tracked in your analytics.
-        </p>
-      </div>
-
       <CountrySelector onSelect={addCountry} selectedCountries={countryList} disabled={disabled} />
 
       {countryList.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Excluded Countries ({countryList.length})</Label>
-          <div className="flex flex-wrap gap-2">
+          <Label className="text-xs font-medium text-muted-foreground">
+            {t("Excluded Countries ({count})", { count: String(countryList.length) })}
+          </Label>
+          <div className="flex flex-wrap gap-1.5">
             {countryList.map(countryCode => (
               <div
                 key={countryCode}
-                className="flex items-center space-x-1 px-3 py-1 bg-secondary text-secondary-foreground rounded-md text-sm"
+                className="flex items-center gap-1 rounded-md border border-neutral-150 bg-neutral-50 py-1 pl-2.5 pr-1 text-sm text-foreground dark:border-neutral-800 dark:bg-neutral-900"
               >
-                <span>{countryCode}</span>
+                <span>{getCountryName(countryCode)}</span>
                 <button
                   type="button"
                   onClick={() => removeCountry(countryCode)}
                   disabled={disabled}
-                  className="ml-1 hover:text-destructive disabled:opacity-50"
+                  aria-label={`${t("Remove")} ${getCountryName(countryCode)}`}
+                  className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-red-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 disabled:opacity-50 dark:hover:text-red-400 dark:focus-visible:ring-neutral-300"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -103,12 +101,8 @@ export function CountryExclusionManager({ siteId, disabled = false }: CountryExc
 
       {hasUnsavedChanges && (
         <div className="flex items-center space-x-2 pt-2">
-          <Button
-            onClick={handleSave}
-            disabled={disabled || updateExcludedCountriesMutation.isPending}
-            size="sm"
-          >
-            {updateExcludedCountriesMutation.isPending ? "Saving..." : "Save Changes"}
+          <Button onClick={handleSave} disabled={disabled || updateExcludedCountriesMutation.isPending} size="sm">
+            {updateExcludedCountriesMutation.isPending ? t("Saving...") : t("Save Changes")}
           </Button>
           <Button
             variant="outline"
@@ -116,7 +110,7 @@ export function CountryExclusionManager({ siteId, disabled = false }: CountryExc
             disabled={disabled || updateExcludedCountriesMutation.isPending}
             size="sm"
           >
-            Reset
+            {t("Reset")}
           </Button>
         </div>
       )}

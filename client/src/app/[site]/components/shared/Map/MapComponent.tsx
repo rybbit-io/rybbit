@@ -1,10 +1,12 @@
 "use client";
 
 import { useMeasure } from "@uidotdev/usehooks";
+import { useExtracted } from "next-intl";
 import "ol/ol.css";
 import { useEffect, useState } from "react";
-import { useMetric } from "../../../../../api/analytics/useGetMetric";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useCountries, useSubdivisions } from "../../../../../lib/geo";
+import { ChartTooltip } from "../../../../../components/charts/ChartTooltip";
 import { CountryFlag } from "../icons/CountryFlag";
 import { useMapInstance } from "./hooks/useMapInstance";
 import { useMapLayers } from "./hooks/useMapLayers";
@@ -12,6 +14,7 @@ import { useMapStyles } from "./hooks/useMapStyles";
 import type { MapComponentProps, TooltipContent, TooltipPosition } from "./types";
 
 export function MapComponent({ height, mapView: controlledMapView }: MapComponentProps) {
+  const t = useExtracted();
   const {
     data: countryData,
     isLoading: isCountryLoading,
@@ -79,22 +82,26 @@ export function MapComponent({ height, mapView: controlledMapView }: MapComponen
     hoveredId,
   });
 
+  // useMapLayers draws a view only once that view's data has arrived, so cover the map while it
+  // loads. The country view doesn't wait on the much larger region query.
+  const isViewLoading = mapView === "countries" ? isCountryLoading : isSubdivisionLoading;
+
   return (
     <div
+      className="relative"
       style={{
         height: height,
       }}
       ref={ref}
     >
-      {isCountryLoading ||
-        (isSubdivisionLoading && (
-          <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <div className="h-8 w-8 rounded-full border-2 border-accent-400 border-t-transparent animate-spin"></div>
-              <span className="text-sm text-neutral-300">Loading map data...</span>
-            </div>
+      {isViewLoading && (
+        <div className="absolute inset-0 bg-white/60 dark:bg-neutral-900/30 backdrop-blur-sm z-10 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-8 w-8 rounded-full border-2 border-neutral-500 border-t-transparent animate-spin"></div>
+            <span className="text-sm text-neutral-600 dark:text-neutral-300">{t("Loading map data…")}</span>
           </div>
-        ))}
+        </div>
+      )}
       <div
         ref={mapRef}
         style={{
@@ -107,21 +114,27 @@ export function MapComponent({ height, mapView: controlledMapView }: MapComponen
       />
       {tooltipContent && (
         <div
-          className="fixed z-50 bg-neutral-1000 text-white rounded-md p-2 shadow-lg text-sm pointer-events-none"
+          className="fixed z-50 pointer-events-none"
           style={{
             left: tooltipPosition.x,
             top: tooltipPosition.y - 10,
             transform: "translate(-50%, -100%)",
           }}
         >
-          <div className="font-sm flex items-center gap-1">
-            {tooltipContent.code && <CountryFlag country={tooltipContent.code.slice(0, 2)} />}
-            {tooltipContent.name}
-          </div>
-          <div>
-            <span className="font-bold text-accent-400">{tooltipContent.count.toLocaleString()}</span>{" "}
-            <span className="text-neutral-300">({tooltipContent.percentage.toFixed(1)}%) sessions</span>
-          </div>
+          <ChartTooltip>
+            <div className="p-2">
+              <div className="flex items-center gap-1">
+                {tooltipContent.code && <CountryFlag country={tooltipContent.code.slice(0, 2)} />}
+                {tooltipContent.name}
+              </div>
+              <div>
+                <span className="font-semibold">{tooltipContent.count.toLocaleString()}</span>{" "}
+                <span className="text-neutral-500 dark:text-neutral-300">
+                  ({tooltipContent.percentage.toFixed(1)}%) sessions
+                </span>
+              </div>
+            </div>
+          </ChartTooltip>
         </div>
       )}
     </div>

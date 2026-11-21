@@ -1,61 +1,62 @@
 import { useQuery } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useEffect, useMemo } from "react";
-import { GetSessionsResponse } from "../../../../../../api/analytics/useGetUserSessions";
-import { APIResponse } from "../../../../../../api/types";
-import { authedFetch, getQueryParams } from "../../../../../../api/utils";
-import { getFilteredFilters, useStore } from "../../../../../../lib/store";
+import { buildAnalyticsRequest, fetchAnalytics } from "../../../../../../api/analytics/analyticsRequest";
+import { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
+import { useAnalyticsContext } from "../../../../../../api/analytics/useAnalyticsQuery";
+import { getFilteredFilters } from "../../../../../../lib/store";
 import { SESSION_PAGE_FILTERS } from "../../../../../../lib/filterGroups";
+import { useShallow } from "zustand/react/shallow";
 import { useTimelineStore } from "../../../timelineStore";
 import { calculateWindowSize } from "../../../timelineUtils";
 import { MAX_PAGES, PAGE_SIZE } from "./timelineLayerConstants";
 
 export function useTimelineSessions() {
-  const { time, site } = useStore();
-  const { manualWindowSize, setTimeRange, setWindowSize, setAllSessions, setLoading, setError } = useTimelineStore();
-
+  const { manualWindowSize, setTimeRange, setWindowSize, setAllSessions, clearSessions, setLoading, setError } =
+    useTimelineStore(
+      useShallow(s => ({
+        manualWindowSize: s.manualWindowSize,
+        setTimeRange: s.setTimeRange,
+        setWindowSize: s.setWindowSize,
+        setAllSessions: s.setAllSessions,
+        clearSessions: s.clearSessions,
+        setLoading: s.setLoading,
+        setError: s.setError,
+      }))
+    );
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
+  const { site, context } = useAnalyticsContext({
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+  });
+  const timezone = context.timeZone;
+  const request = buildAnalyticsRequest({ path: "sessions", params: { limit: PAGE_SIZE } }, context);
 
   // Fetch all sessions with pagination (up to 5 pages, 50k sessions total)
-  const { data, isLoading, isError } = useQuery<APIResponse<GetSessionsResponse> & { hasMoreData?: boolean }>({
-    queryKey: ["timeline-sessions", time, site, filteredFilters],
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["timeline-sessions", site, request.path, request.params],
     queryFn: async () => {
-      const allSessions = [];
+      const allSessions: GetSessionsResponse = [];
       let reachedMaxPages = false;
 
       for (let page = 1; page <= MAX_PAGES; page++) {
-        const requestParams = {
-          ...getQueryParams(time),
-          filters: filteredFilters,
-          page,
-          limit: PAGE_SIZE,
-        };
+        const sessions = await fetchAnalytics<GetSessionsResponse>(site, {
+          ...request,
+          params: { ...request.params, page },
+        });
 
-        const response = await authedFetch<APIResponse<GetSessionsResponse>>(`/sessions/${site}`, requestParams);
+        if (!sessions?.length) break;
+        allSessions.push(...sessions);
 
-        if (response?.data) {
-          allSessions.push(...response.data);
-
-          // If we got fewer results than the limit, we've reached the end
-          if (response.data.length < PAGE_SIZE) {
-            break;
-          }
-
-          // If we're on the last page and got a full page, there might be more
-          if (page === MAX_PAGES && response.data.length === PAGE_SIZE) {
-            reachedMaxPages = true;
-          }
-        } else {
-          break;
-        }
+        // A short page is the last one; a full page on the last allowed page
+        // means there is more data than the timeline will load.
+        if (sessions.length < PAGE_SIZE) break;
+        if (page === MAX_PAGES) reachedMaxPages = true;
       }
 
-      // Return in the same format as the original API response
-      return {
-        data: allSessions,
-        hasMoreData: reachedMaxPages,
-      } as APIResponse<GetSessionsResponse> & { hasMoreData: boolean };
+      return { data: allSessions, hasMoreData: reachedMaxPages };
     },
+    enabled: !!site,
     staleTime: Infinity,
   });
 
@@ -73,12 +74,16 @@ export function useTimelineSessions() {
     setError(isError);
   }, [isError, setError]);
 
-  // Update store with allSessions
+  // Mirror this scope's result into the store. The store outlives the query key, so anything but a
+  // non-empty result for the current site/range/filters (still loading, failed, or successfully empty)
+  // clears it; otherwise the previous scope's sessions and markers would stay on the globe.
   useEffect(() => {
     if (allSessions.length > 0) {
       setAllSessions(allSessions, data?.hasMoreData || false);
+    } else {
+      clearSessions();
     }
-  }, [allSessions, data?.hasMoreData, setAllSessions]);
+  }, [allSessions, data?.hasMoreData, setAllSessions, clearSessions]);
 
   // Calculate time range from fetched sessions and initialize timeline
   useEffect(() => {
@@ -89,8 +94,8 @@ export function useTimelineSessions() {
     let latest: DateTime | null = null;
 
     allSessions.forEach(session => {
-      const start = DateTime.fromSQL(session.session_start, { zone: "utc" }).toLocal();
-      const end = DateTime.fromSQL(session.session_end, { zone: "utc" }).toLocal();
+      const start = DateTime.fromSQL(session.session_start, { zone: "utc" }).setZone(timezone);
+      const end = DateTime.fromSQL(session.session_end, { zone: "utc" }).setZone(timezone);
 
       if (!earliest || start < earliest) {
         earliest = start;
@@ -108,5 +113,5 @@ export function useTimelineSessions() {
       }
       setTimeRange(earliest, latest);
     }
-  }, [allSessions, setTimeRange, setWindowSize, manualWindowSize, time]);
+  }, [allSessions, setTimeRange, setWindowSize, manualWindowSize, timezone]);
 }

@@ -1,14 +1,16 @@
 import { FilterParameter } from "@rybbit/shared";
 import Map from "ol/Map";
+import { unByKey as dispose } from "ol/Observable";
 import GeoJSON from "ol/format/GeoJSON";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style } from "ol/style";
 import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
-import { useMetric } from "../../../../../api/analytics/useGetMetric";
+import { useMetric } from "../../../../../api/analytics/hooks/useGetMetric";
 import { useSubdivisions } from "../../../../../lib/geo";
 import { addFilter } from "../../../../../lib/store";
 import { createColorScale } from "../../utils/colorScale";
+import { escapeHtml } from "../../utils/escapeHtml";
 import { renderCountryFlag } from "../../utils/renderCountryFlag";
 
 interface UseOpenLayersSubdivisionsLayerProps {
@@ -157,13 +159,12 @@ export function useOpenLayersSubdivisionsLayer({
       }
     };
 
-    mapInstanceRef.current.on("pointermove", handlePointerMove);
-    mapInstanceRef.current.on("click", handleClick);
+    const pointerMoveKey = mapInstanceRef.current.on("pointermove", handlePointerMove);
+    const clickKey = mapInstanceRef.current.on("click", handleClick);
 
     return () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.un("pointermove", handlePointerMove);
-        mapInstanceRef.current.un("click", handleClick);
+        dispose([pointerMoveKey, clickKey]);
 
         // Remove layer on cleanup
         if (vectorLayerRef.current) {
@@ -202,9 +203,6 @@ export function useOpenLayersSubdivisionsLayer({
     if (!tooltip) {
       tooltip = document.createElement("div");
       tooltip.id = "ol-subdivisions-tooltip";
-      tooltip.style.position = "fixed";
-      tooltip.style.pointerEvents = "none";
-      tooltip.style.zIndex = "9999";
       document.body.appendChild(tooltip);
     }
 
@@ -216,7 +214,7 @@ export function useOpenLayersSubdivisionsLayer({
       <div class="bg-neutral-850 border border-neutral-700 rounded-lg p-2 shadow-lg">
         <div class="flex items-center gap-2 mb-1">
           ${flagSVG}
-          <span class="text-sm font-medium text-white">${tooltipData.name}</span>
+          <span class="text-sm font-medium text-white">${escapeHtml(tooltipData.name)}</span>
         </div>
         <div class="text-sm">
           <span class="font-bold text-accent-400">${tooltipData.count.toLocaleString()}</span>
@@ -225,9 +223,9 @@ export function useOpenLayersSubdivisionsLayer({
       </div>
     `;
 
-    tooltip.style.left = `${tooltipData.x}px`;
-    tooltip.style.top = `${tooltipData.y - 10}px`;
-    tooltip.style.transform = "translate(-50%, -100%)";
+    tooltip.style.cssText = `position: fixed; pointer-events: none; z-index: 9999; left: ${tooltipData.x}px; top: ${
+      tooltipData.y - 10
+    }px; transform: translate(-50%, -100%);`;
 
     return () => {
       const existingTooltip = document.getElementById("ol-subdivisions-tooltip");

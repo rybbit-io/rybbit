@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { IS_CLOUD, DISABLE_TELEMETRY, SECRET } from "../lib/const.js";
-import { processResults } from "../api/analytics/utils.js";
+import { processResults } from "../api/analytics/utils/utils.js";
 import { createServiceLogger } from "../lib/logger/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,7 +55,7 @@ class TelemetryService {
 
   // Get table row counts from ClickHouse
   private async getTableCounts() {
-    const tables = ["events", "session_replay_events", "session_replay_metadata"];
+    const tables = ["events", "session_replay_events", "session_replay_metadata_v2"];
 
     const counts: Record<string, number> = {};
 

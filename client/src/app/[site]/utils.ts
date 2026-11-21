@@ -1,17 +1,28 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useCurrentSite } from "../../api/admin/sites";
+import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
+import { useCurrentSite } from "../../api/admin/hooks/useSites";
 
-export const useEmbedablePage = () => {
-  const searchParams = useSearchParams();
-  const embed = searchParams.get("embed");
+export type EmbedTheme = "light" | "dark" | "system";
+
+const parseAsEmbedTheme = parseAsStringEnum<EmbedTheme>(["light", "dark", "system"]);
+
+export const useEmbedPageOptions = () => {
+  const [embed] = useQueryState("embed", parseAsBoolean);
+  const [hideSidebar] = useQueryState("hideSidebar", parseAsBoolean);
+  const [theme] = useQueryState("theme", parseAsEmbedTheme);
 
   const { subscription } = useCurrentSite();
 
-  if (embed === "true" && subscription?.planName !== "free") {
-    return true;
-  }
+  const isEmbedPage = !!embed && subscription?.planName !== "free";
 
-  return false;
+  return {
+    embed: isEmbedPage,
+    hideSidebar: isEmbedPage && !!hideSidebar,
+    theme: isEmbedPage ? (theme ?? "system") : null,
+  };
+};
+
+export const useEmbedablePage = () => {
+  return useEmbedPageOptions().embed;
 };

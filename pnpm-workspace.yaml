@@ -1,0 +1,29 @@
+packages:
+  - client
+  - server
+  - shared
+
+# Preserve the existing npm installs' explicit peer dependencies.
+autoInstallPeers: false
+
+# These were previously npm overrides in the client and server manifests.
+overrides:
+  "@types/react": 19.2.7
+  kysely: 0.28.17
+  # framer-motion depends on motion-dom/motion-utils with caret ranges, so the
+  # lockfile can pair it with a newer motion-dom whose render loop it doesn't
+  # understand (12.11 + 12.23 animated values without repainting). Keep the trio
+  # matched, and bump all three together (docs/ uses the same versions).
+  motion-dom: 12.40.0
+  motion-utils: 12.39.0
+
+# Native modules and build tools used by the apps.
+allowBuilds:
+  "@mongodb-js/zstd": true
+  "@parcel/watcher": true
+  "@swc/core": true
+  esbuild: true
+  fsevents: true
+  puppeteer: true
+  sharp: true
+  unrs-resolver: true

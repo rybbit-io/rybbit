@@ -1,5 +1,6 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { authClient } from "../../../lib/auth";
 import { userStore } from "../../../lib/userStore";
@@ -11,11 +12,11 @@ import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
 
 interface SignupProps {
-  inviterEmail?: string | null;
-  organization?: string | null;
+  callbackURL: string;
 }
 
-export function Signup({ inviterEmail, organization }: SignupProps) {
+export function Signup({ callbackURL }: SignupProps) {
+  const t = useExtracted();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -30,7 +31,7 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
     try {
       // Validate Turnstile token if in cloud mode
       if (IS_CLOUD && !turnstileToken) {
-        setError("Please complete the captcha verification");
+        setError(t("Please complete the captcha verification"));
         setIsLoading(false);
         return;
       }
@@ -59,7 +60,7 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
       }
 
       if (error) {
-        setError(error.message || "An error occurred during signup");
+        setError(error.message || t("An error occurred during signup"));
       }
     } catch (error) {
       setError(String(error));
@@ -71,10 +72,13 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
   return (
     <form onSubmit={handleSignup}>
       <div className="flex flex-col gap-4">
+        <SocialButtons onError={setError} callbackURL={callbackURL} mode="signup" />
+
         <AuthInput
           id="email"
-          label="Email"
+          label={t("Email")}
           type="email"
+          autoComplete="email"
           placeholder="email@example.com"
           required
           value={email}
@@ -83,13 +87,22 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
 
         <AuthInput
           id="password"
-          label="Password"
+          label={t("Password")}
           type="password"
+          autoComplete="new-password"
           placeholder="••••••••"
           required
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
+
+        <AuthButton
+          isLoading={isLoading}
+          loadingText={t("Creating account...")}
+          disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
+        >
+          {t("Sign Up to Accept Invitation")}
+        </AuthButton>
 
         {IS_CLOUD && (
           <Turnstile
@@ -99,16 +112,6 @@ export function Signup({ inviterEmail, organization }: SignupProps) {
             className="flex justify-center"
           />
         )}
-
-        <AuthButton
-          isLoading={isLoading}
-          loadingText="Creating account..."
-          disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
-        >
-          Sign Up to Accept Invitation
-        </AuthButton>
-
-        <SocialButtons onError={setError} />
 
         <AuthError error={error} />
       </div>

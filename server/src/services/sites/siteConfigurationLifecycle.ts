@@ -1,0 +1,598 @@
+import { randomBytes } from "node:crypto";
+import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
+import { getSubscriptionInner } from "../../api/stripe/getSubscription.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
+import { db } from "../../db/postgres/postgres.js";
+import { importStatus, sites } from "../../db/postgres/schema.js";
+import { IS_CLOUD } from "../../lib/const.js";
+import { validateIPPattern } from "../../lib/ipUtils.js";
+import { detectPlatform } from "../lifecycleEmails/platformDetect.js";
+import { usageService } from "../usageService.js";
+import { siteConfig, type SiteConfigData } from "../../lib/siteConfig.js";
+
+import { claimExpiryIso } from "./claimExpiry.js";
+import { withOrganizationSiteLock } from "./withOrganizationSiteLock.js";
+
+type SiteRow = typeof sites.$inferSelect;
+type SiteInsert = typeof sites.$inferInsert;
+type SiteType = "web" | "mobile";
+
+export type CreateSiteInput = {
+  organizationId: string;
+  createdBy?: string;
+  domain: string;
+  name: string;
+  type?: SiteType | null;
+  public?: boolean;
+  saltUserIds?: boolean;
+  blockBots?: boolean;
+  excludedIPs?: string[];
+  excludedCountries?: string[];
+  sessionReplay?: boolean;
+  webVitals?: boolean;
+  trackErrors?: boolean;
+  trackOutbound?: boolean;
+  trackUrlParams?: boolean;
+  trackUrlFragments?: boolean;
+  trackInitialPageView?: boolean;
+  trackSpaNavigation?: boolean;
+  trackIp?: boolean;
+  trackButtonClicks?: boolean;
+  trackCopy?: boolean;
+  trackFormInteractions?: boolean;
+  tags?: string[];
+};
+
+export type UpdateSiteConfigurationInput = {
+  name?: string;
+  type?: SiteType | null;
+  public?: boolean;
+  embedEnabled?: boolean;
+  saltUserIds?: boolean;
+  blockBots?: boolean;
+  firstPartyProxy?: boolean;
+  domain?: string;
+  excludedIPs?: string[];
+  excludedCountries?: string[];
+  excludedPaths?: string[];
+  excludedHostnames?: string[];
+  excludedUserAgents?: string[];
+  excludedASNs?: string[];
+  excludedQueryParams?: string[];
+  tags?: string[];
+  sessionReplay?: boolean;
+  webVitals?: boolean;
+  trackErrors?: boolean;
+  trackOutbound?: boolean;
+  trackUrlParams?: boolean;
+  trackUrlFragments?: boolean;
+  trackInitialPageView?: boolean;
+  trackSpaNavigation?: boolean;
+  trackIp?: boolean;
+  trackButtonClicks?: boolean;
+  trackCopy?: boolean;
+  trackFormInteractions?: boolean;
+};
+
+export type SiteLifecycleErrorCode =
+  | "invalid_site_id"
+  | "invalid_web_domain"
+  | "invalid_mobile_identifier"
+  | "mobile_feature_not_supported"
+  | "organization_not_found"
+  | "replay_not_entitled"
+  | "standard_features_not_entitled"
+  | "site_limit_reached"
+  | "site_not_found"
+  | "invalid_ip_patterns"
+  | "empty_update"
+  | "domain_conflict"
+  | "site_already_claimed"
+  | "invalid_claim_key"
+  | "site_expired";
+
+export class SiteLifecycleError extends Error {
+  constructor(
+    readonly code: SiteLifecycleErrorCode,
+    readonly statusCode: 400 | 403 | 404 | 409 | 410,
+    message: string,
+    readonly details?: unknown
+  ) {
+    super(message);
+    this.name = "SiteLifecycleError";
+  }
+}
+
+const DOMAIN_PATTERN = /^(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+\p{L}{2,}$/u;
+const APP_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/;
+const STANDARD_FEATURES = [
+  "webVitals",
+  "trackErrors",
+  "trackButtonClicks",
+  "trackCopy",
+  "trackFormInteractions",
+] as const;
+const DIRECT_UPDATE_FIELDS = [
+  "name",
+  "public",
+  "embedEnabled",
+  "saltUserIds",
+  "blockBots",
+  "firstPartyProxy",
+  "excludedIPs",
+  "excludedCountries",
+  "excludedPaths",
+  "excludedHostnames",
+  "excludedUserAgents",
+  "excludedASNs",
+  "excludedQueryParams",
+  "tags",
+  "sessionReplay",
+  "webVitals",
+  "trackErrors",
+  "trackOutbound",
+  "trackUrlParams",
+  "trackUrlFragments",
+  "trackInitialPageView",
+  "trackSpaNavigation",
+  "trackIp",
+  "trackButtonClicks",
+  "trackCopy",
+  "trackFormInteractions",
+] as const satisfies ReadonlyArray<keyof UpdateSiteConfigurationInput>;
+
+/**
+ * How long a site created from the landing-page domain input survives without
+ * an owner. The cleanup cron deletes unclaimed sites past this age.
+ */
+export const UNCLAIMED_SITE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export type ClaimSiteInput = {
+  siteId: number;
+  privateLinkKey: string;
+  organizationId: string;
+  userId: string;
+};
+
+function normalizeSiteType(type: SiteType | null | undefined): SiteType {
+  return type === "mobile" ? "mobile" : "web";
+}
+
+function normalizeDomain(domain: string): string {
+  return domain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+}
+
+function validateSiteIdentity(type: SiteType, domain: string): void {
+  if (type === "web" && !DOMAIN_PATTERN.test(domain)) {
+    throw new SiteLifecycleError(
+      "invalid_web_domain",
+      400,
+      "Invalid domain format. Must be a valid domain like example.com or sub.example.com"
+    );
+  }
+
+  if (type === "mobile" && !APP_IDENTIFIER_PATTERN.test(domain)) {
+    throw new SiteLifecycleError(
+      "invalid_mobile_identifier",
+      400,
+      "Invalid app identifier. Use a bundle/package identifier like com.example.app"
+    );
+  }
+}
+
+function validateMobileFeatures(type: SiteType, input: Pick<CreateSiteInput, "sessionReplay" | "webVitals">): void {
+  if (type === "mobile" && (input.sessionReplay || input.webVitals)) {
+    throw new SiteLifecycleError(
+      "mobile_feature_not_supported",
+      400,
+      "Session replay and Web Vitals are only available for web sites"
+    );
+  }
+}
+
+function assertStandardFeaturesEntitled(
+  subscription: { status: string } | null,
+  requestedFeatures: ReadonlyArray<(typeof STANDARD_FEATURES)[number]>
+): void {
+  const hasActiveSubscription = subscription?.status === "active" || subscription?.status === "trialing";
+  if (requestedFeatures.length > 0 && !hasActiveSubscription) {
+    throw new SiteLifecycleError(
+      "standard_features_not_entitled",
+      403,
+      `The following features require an active subscription: ${requestedFeatures.join(", ")}`
+    );
+  }
+}
+
+function validateSiteId(siteId: number): void {
+  if (!Number.isInteger(siteId) || siteId <= 0) {
+    throw new SiteLifecycleError("invalid_site_id", 400, "Invalid site ID: must be a positive integer");
+  }
+}
+
+function isUniqueConstraintViolation(error: unknown): boolean {
+  return (
+    (typeof error === "object" && error !== null && "code" in error && error.code === "23505") ||
+    String(error).includes("duplicate key value violates unique constraint")
+  );
+}
+
+class SiteConfigurationLifecycle {
+  private async findSite(siteId: number): Promise<SiteRow> {
+    validateSiteId(siteId);
+
+    const site = await db.query.sites.findFirst({
+      where: eq(sites.siteId, siteId),
+    });
+
+    if (!site) {
+      throw new SiteLifecycleError("site_not_found", 404, "Site not found");
+    }
+
+    return site;
+  }
+
+  async create(input: CreateSiteInput): Promise<SiteRow> {
+    const siteType = normalizeSiteType(input.type);
+    const domain = normalizeDomain(input.domain);
+
+    validateSiteIdentity(siteType, domain);
+    validateMobileFeatures(siteType, input);
+
+    const createdSite = await withOrganizationSiteLock(input.organizationId, async tx => {
+      if (IS_CLOUD) {
+        const subscription = await getSubscriptionInner(input.organizationId);
+
+        if (!subscription) {
+          throw new SiteLifecycleError("organization_not_found", 404, "Organization not found");
+        }
+
+        if (input.sessionReplay && !subscription.includesReplay) {
+          throw new SiteLifecycleError("replay_not_entitled", 403, "Session replay requires a Pro subscription");
+        }
+
+        assertStandardFeaturesEntitled(
+          subscription,
+          STANDARD_FEATURES.filter(feature => input[feature])
+        );
+
+        const siteLimit = subscription.siteLimit ?? null;
+        if (siteLimit !== null) {
+          const existingSites = await tx
+            .select({ siteId: sites.siteId })
+            .from(sites)
+            .where(eq(sites.organizationId, input.organizationId));
+
+          if (existingSites.length >= siteLimit) {
+            throw new SiteLifecycleError(
+              "site_limit_reached",
+              403,
+              `You have reached the limit of ${siteLimit} website${siteLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`
+            );
+          }
+        }
+      }
+
+      try {
+        const [createdSite] = await tx
+          .insert(sites)
+          .values({
+            id: randomBytes(6).toString("hex"),
+            type: siteType === "web" ? null : siteType,
+            domain,
+            name: input.name,
+            createdBy: input.createdBy,
+            organizationId: input.organizationId,
+            public: input.public ?? false,
+            saltUserIds: input.saltUserIds ?? false,
+            blockBots: input.blockBots ?? true,
+            ...(input.excludedIPs !== undefined && { excludedIPs: input.excludedIPs }),
+            ...(input.excludedCountries !== undefined && { excludedCountries: input.excludedCountries }),
+            ...(input.sessionReplay !== undefined && { sessionReplay: input.sessionReplay }),
+            ...(input.webVitals !== undefined && { webVitals: input.webVitals }),
+            ...(input.trackErrors !== undefined && { trackErrors: input.trackErrors }),
+            ...(input.trackOutbound !== undefined && { trackOutbound: input.trackOutbound }),
+            ...(input.trackUrlParams !== undefined && { trackUrlParams: input.trackUrlParams }),
+            ...(input.trackUrlFragments !== undefined && { trackUrlFragments: input.trackUrlFragments }),
+            ...(input.trackInitialPageView !== undefined && { trackInitialPageView: input.trackInitialPageView }),
+            ...(input.trackSpaNavigation !== undefined && { trackSpaNavigation: input.trackSpaNavigation }),
+            ...(input.trackIp !== undefined && { trackIp: input.trackIp }),
+            ...(input.trackButtonClicks !== undefined && { trackButtonClicks: input.trackButtonClicks }),
+            ...(input.trackCopy !== undefined && { trackCopy: input.trackCopy }),
+            ...(input.trackFormInteractions !== undefined && { trackFormInteractions: input.trackFormInteractions }),
+            ...(input.tags !== undefined && { tags: input.tags }),
+          })
+          .returning();
+
+        if (!createdSite) {
+          throw new Error("Site insert returned no row");
+        }
+
+        return createdSite;
+      } catch (error) {
+        if (isUniqueConstraintViolation(error)) {
+          throw new SiteLifecycleError("domain_conflict", 409, "Domain already in use");
+        }
+        throw error;
+      }
+    });
+    if (siteType === "web") this.detectSitePlatform(createdSite);
+    // A site added to an organization with no plan must stop collecting now, not at the next
+    // usage check.
+    usageService.requestOrganizationRefresh(createdSite.organizationId);
+    return createdSite;
+  }
+
+  /**
+   * A site with no organization, created from the landing page before the
+   * visitor has an account. It is reachable only through its private link key
+   * and is deleted by the cleanup cron unless claimed within UNCLAIMED_SITE_TTL_MS.
+   */
+  async createUnclaimed(input: { domain: string }): Promise<SiteRow> {
+    const domain = normalizeDomain(input.domain.trim().toLowerCase())
+      .replace(/^www\./, "")
+      .split(/[/?#]/)[0];
+
+    validateSiteIdentity("web", domain);
+
+    const [createdSite] = await db
+      .insert(sites)
+      .values({
+        id: randomBytes(6).toString("hex"),
+        type: null,
+        domain,
+        name: domain,
+        createdBy: null,
+        organizationId: null,
+        privateLinkKey: randomBytes(6).toString("hex"),
+        claimExpiresAt: new Date(Date.now() + UNCLAIMED_SITE_TTL_MS).toISOString(),
+      })
+      .returning();
+
+    if (!createdSite) {
+      throw new Error("Site insert returned no row");
+    }
+
+    return createdSite;
+  }
+
+  /**
+   * Re-parent an unclaimed site into an organization. The private link key is
+   * the proof of possession (it is the only way anyone could have reached the
+   * dashboard), and it is cleared on claim so the anonymous URL stops working.
+   */
+  async claim(input: ClaimSiteInput): Promise<SiteRow> {
+    validateSiteId(input.siteId);
+    const claimedSite = await withOrganizationSiteLock(input.organizationId, async tx => {
+      const site = await tx.query.sites.findFirst({ where: eq(sites.siteId, input.siteId) });
+      if (!site) {
+        throw new SiteLifecycleError("site_not_found", 404, "Site not found");
+      }
+
+      if (site.organizationId !== null || !site.claimExpiresAt) {
+        throw new SiteLifecycleError("site_already_claimed", 409, "This site has already been claimed");
+      }
+
+      if (!site.privateLinkKey || site.privateLinkKey !== input.privateLinkKey) {
+        throw new SiteLifecycleError("invalid_claim_key", 403, "Invalid claim link for this site");
+      }
+
+      if (new Date(claimExpiryIso(site.claimExpiresAt)!).getTime() <= Date.now()) {
+        throw new SiteLifecycleError("site_expired", 410, "This site expired before it was claimed");
+      }
+
+      if (IS_CLOUD) {
+        const subscription = await getSubscriptionInner(input.organizationId);
+
+        if (!subscription) {
+          throw new SiteLifecycleError("organization_not_found", 404, "Organization not found");
+        }
+
+        const siteLimit = subscription.siteLimit ?? null;
+        if (siteLimit !== null) {
+          const existingSites = await tx
+            .select({ siteId: sites.siteId })
+            .from(sites)
+            .where(eq(sites.organizationId, input.organizationId));
+
+          if (existingSites.length >= siteLimit) {
+            throw new SiteLifecycleError(
+              "site_limit_reached",
+              403,
+              `You have reached the limit of ${siteLimit} website${siteLimit === 1 ? "" : "s"} for your plan. Please upgrade to add more.`
+            );
+          }
+        }
+      }
+
+      const [claimedSite] = await tx
+        .update(sites)
+        .set({
+          organizationId: input.organizationId,
+          createdBy: input.userId,
+          claimExpiresAt: null,
+          privateLinkKey: null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(
+          and(
+            eq(sites.siteId, input.siteId),
+            isNull(sites.organizationId),
+            eq(sites.privateLinkKey, input.privateLinkKey),
+            gt(sites.claimExpiresAt, sql`(clock_timestamp() AT TIME ZONE 'UTC')`)
+          )
+        )
+        .returning();
+
+      if (!claimedSite) {
+        throw new SiteLifecycleError("site_already_claimed", 409, "This site is no longer available to claim");
+      }
+
+      return claimedSite;
+    });
+
+    siteConfig.invalidate(claimedSite);
+    this.detectSitePlatform(claimedSite);
+    usageService.requestOrganizationRefresh(claimedSite.organizationId);
+    return claimedSite;
+  }
+
+  private detectSitePlatform(site: SiteRow): void {
+    // Inspect only after authenticated ownership has committed. Public
+    // creation must never fetch a caller-supplied domain.
+    void detectPlatform(site.domain)
+      .then(platform =>
+        platform
+          ? db.update(sites).set({ detectedPlatform: platform.key }).where(eq(sites.siteId, site.siteId))
+          : undefined
+      )
+      .catch(() => {});
+  }
+
+  async update(siteId: number, input: UpdateSiteConfigurationInput): Promise<SiteConfigData> {
+    const site = await this.findSite(siteId);
+    const nextSiteType = normalizeSiteType(input.type === undefined ? site.type : input.type);
+    const domain = normalizeDomain(input.domain ?? site.domain);
+
+    if (input.domain !== undefined || input.type !== undefined) {
+      validateSiteIdentity(nextSiteType, domain);
+    }
+    validateMobileFeatures(nextSiteType, input);
+
+    // Same entitlements as creation. Standard features are checked only when this update turns
+    // one on, so turning them off, or saving other settings on a site that already has them
+    // (from before they needed a plan), keeps working.
+    const enabledStandardFeatures = STANDARD_FEATURES.filter(feature => input[feature] === true && !site[feature]);
+    if (IS_CLOUD && (input.sessionReplay === true || enabledStandardFeatures.length > 0)) {
+      const subscription = site.organizationId ? await getSubscriptionInner(site.organizationId) : null;
+      if (input.sessionReplay === true && !subscription?.includesReplay) {
+        throw new SiteLifecycleError("replay_not_entitled", 403, "Session replay requires a Pro plan");
+      }
+      assertStandardFeaturesEntitled(subscription, enabledStandardFeatures);
+    }
+
+    if (input.excludedIPs) {
+      const validationErrors = input.excludedIPs.flatMap(ip => {
+        const validation = validateIPPattern(ip);
+        return validation.valid ? [] : [`${ip}: ${validation.error}`];
+      });
+
+      if (validationErrors.length > 0) {
+        throw new SiteLifecycleError("invalid_ip_patterns", 400, "Invalid IP patterns", validationErrors);
+      }
+    }
+
+    const updateData: Partial<SiteInsert> = {};
+    for (const field of DIRECT_UPDATE_FIELDS) {
+      const value = input[field];
+      if (value !== undefined) {
+        Object.assign(updateData, { [field]: value });
+      }
+    }
+
+    if (input.type !== undefined) {
+      updateData.type = nextSiteType === "web" ? null : nextSiteType;
+    }
+    if (input.domain !== undefined) {
+      updateData.domain = domain;
+    }
+    if (nextSiteType === "mobile") {
+      updateData.sessionReplay = false;
+      updateData.webVitals = false;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new SiteLifecycleError("empty_update", 400, "No fields to update");
+    }
+
+    updateData.updatedAt = new Date().toISOString();
+
+    try {
+      await db.update(sites).set(updateData).where(eq(sites.siteId, siteId));
+    } catch (error) {
+      if (isUniqueConstraintViolation(error)) {
+        throw new SiteLifecycleError("domain_conflict", 409, "Domain already in use");
+      }
+      throw error;
+    }
+
+    siteConfig.invalidate(site);
+    const updatedConfig = await siteConfig.getConfig(siteId);
+    if (!updatedConfig) {
+      throw new Error(`Updated Site ${siteId} could not be reloaded`);
+    }
+
+    return updatedConfig;
+  }
+
+  async updatePrivateLink(
+    siteId: number,
+    action: "generate_private_link_key" | "revoke_private_link_key"
+  ): Promise<string | null> {
+    const site = await this.findSite(siteId);
+    const privateLinkKey = action === "generate_private_link_key" ? randomBytes(6).toString("hex") : null;
+
+    await db.update(sites).set({ privateLinkKey }).where(eq(sites.siteId, siteId));
+    siteConfig.invalidate(site);
+
+    return privateLinkKey;
+  }
+
+  async deleteExpired(siteId: number, before: string): Promise<boolean> {
+    return db.transaction(async tx => {
+      const [site] = await tx
+        .select()
+        .from(sites)
+        .where(and(eq(sites.siteId, siteId), isNull(sites.organizationId), lt(sites.claimExpiresAt, before)))
+        .for("update");
+      if (!site) return false;
+
+      await tx.delete(importStatus).where(eq(importStatus.siteId, siteId));
+      await tx.delete(sites).where(eq(sites.siteId, siteId));
+      await this.deleteReplayData(siteId);
+      siteConfig.invalidate(site);
+      return true;
+    });
+  }
+
+  private async deleteReplayData(siteId: number): Promise<void> {
+    // A lightweight DELETE is a mutation, and mutations on a table run one at a
+    // time. The replay tables also take the identity backfill's UPDATE
+    // mutations, so a DELETE that waits for completion (the default,
+    // lightweight_deletes_sync=2) can sit behind them for an hour. In prod
+    // that ran past the client's 300s timeout, so the Postgres delete rolled
+    // back and the site couldn't be deleted. With 0 the server returns once
+    // the mutation is queued. ClickHouse keeps queued mutations across
+    // restarts, so the replay rows are still removed later.
+    const settings = { lightweight_deletes_sync: "0" };
+    await Promise.all([
+      clickhouse.command({
+        query: "DELETE FROM session_replay_events WHERE site_id = {id:UInt32}",
+        query_params: { id: siteId },
+        clickhouse_settings: settings,
+      }),
+      clickhouse.command({
+        query: "DELETE FROM session_replay_metadata_v2 WHERE site_id = {id:UInt32}",
+        query_params: { id: siteId },
+        clickhouse_settings: settings,
+      }),
+    ]);
+  }
+
+  async delete(siteId: number): Promise<void> {
+    const site = await this.findSite(siteId);
+    // Delete the Postgres rows first so a constraint failure can't leave the
+    // Site in place with its replays already wiped. import_status is the one
+    // table whose foreign key to sites doesn't cascade. Replay cleanup is
+    // queued inside the transaction, so a failure to queue it rolls the Site
+    // back.
+    await db.transaction(async tx => {
+      await tx.delete(importStatus).where(eq(importStatus.siteId, siteId));
+      await tx.delete(sites).where(eq(sites.siteId, siteId));
+      await this.deleteReplayData(siteId);
+    });
+    siteConfig.invalidate(site);
+  }
+}
+
+export const siteConfigurationLifecycle = new SiteConfigurationLifecycle();

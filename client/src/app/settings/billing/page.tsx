@@ -1,0 +1,167 @@
+"use client";
+
+import { useExtracted } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { ErrorState } from "@/components/ErrorState";
+import { NoOrganization } from "@/components/NoOrganization";
+import { AppSumoPlan } from "@/components/subscription/AppSumoPlan";
+import { CustomPlan } from "@/components/subscription/CustomPlan";
+import { ExpiredTrialPlan } from "@/components/subscription/ExpiredTrialPlan";
+import { FreePlan } from "@/components/subscription/FreePlan";
+import { OverridePlan } from "@/components/subscription/OverridePlan";
+import { useChargeUpdatedCard } from "@/components/subscription/PaymentFailedNotice";
+import { PaidPlan } from "@/components/subscription/PaidPlain/PaidPlan";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCanInOrg } from "@/hooks/usePermissions";
+import { useSetPageTitle } from "@/hooks/useSetPageTitle";
+import { authClient } from "@/lib/auth";
+import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
+import { LedgerRow, LedgerRows, LedgerSection } from "../components/Ledger";
+
+function BillingSkeleton() {
+  const t = useExtracted();
+  return (
+    <>
+      <LedgerSection title={t("Plan")}>
+        <LedgerRows>
+          <LedgerRow label={t("Current plan")}>
+            <div className="space-y-2 md:pt-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+      <LedgerSection title={t("Usage this month")}>
+        <LedgerRows>
+          <LedgerRow label={t("Events")}>
+            <div className="space-y-3 md:pt-2">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-1.5 w-full" />
+            </div>
+          </LedgerRow>
+          <LedgerRow label={t("Sites")}>
+            <Skeleton className="h-4 w-24 md:mt-2" />
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+    </>
+  );
+}
+
+export default function OrganizationBillingPage() {
+  useSetPageTitle("Organization Billing");
+  const t = useExtracted();
+  const {
+    data: activeSubscription,
+    isLoading: isLoadingSubscription,
+    isError: isSubscriptionError,
+    refetch: refetchSubscription,
+  } = useStripeSubscription();
+
+  const { data: activeOrg, isPending } = authClient.useActiveOrganization();
+  const { data: session } = authClient.useSession();
+  const router = useRouter();
+  const orgParamHandled = useRef(false);
+  const [requestedOrgId, setRequestedOrgId] = useState<string | null>(null);
+
+  // Emails link to ?organization=<id> so an owner of several organizations lands on the one the
+  // email is about, not whichever is active. better-auth refuses organizations the user isn't in;
+  // the page then stays on the active one.
+  useEffect(() => {
+    if (isPending || orgParamHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const organizationId = params.get("organization");
+    if (!organizationId) return;
+    orgParamHandled.current = true;
+    params.delete("organization");
+    router.replace(params.size ? `${window.location.pathname}?${params}` : window.location.pathname);
+    if (organizationId === activeOrg?.id) return;
+    setRequestedOrgId(organizationId);
+    authClient.organization.setActive({ organizationId }).then(
+      ({ error }) => error && setRequestedOrgId(null),
+      () => setRequestedOrgId(null)
+    );
+  }, [isPending, activeOrg?.id, router]);
+
+  // setActive resolves before the active organization is refetched, so wait for the switch to
+  // land rather than show the previous organization's billing in the meantime.
+  const isSwitchingOrg = requestedOrgId !== null && activeOrg?.id !== requestedOrgId;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("session_id") && session?.user?.email) {
+      window.rewardful?.("convert", { email: session.user.email });
+    }
+  }, [session?.user?.email]);
+
+  useChargeUpdatedCard();
+
+  const canManageBilling = useCanInOrg("billing:manage", activeOrg?.id);
+
+  const isLoading = isLoadingSubscription || isPending || isSwitchingOrg;
+
+  if (isLoading) {
+    return <BillingSkeleton />;
+  }
+
+  if (!activeOrg && !isPending) {
+    return <NoOrganization message={t("You need to select an organization to manage your subscription.")} />;
+  }
+
+  if (!canManageBilling) {
+    return (
+      <LedgerSection title={t("Plan")}>
+        <LedgerRows>
+          <LedgerRow label={t("Not an owner")}>
+            <p className="text-sm text-neutral-700 md:pt-2 dark:text-neutral-300">
+              {t("Only the owner of the organization can manage the subscription.")}
+            </p>
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+    );
+  }
+
+  // A failed fetch leaves no subscription either; without this a paying owner would be told their trial expired.
+  if (isSubscriptionError && !activeSubscription) {
+    return (
+      <LedgerSection title={t("Plan")}>
+        <LedgerRows>
+          <LedgerRow label={t("Current plan")}>
+            <ErrorState title={t("Couldn't load your subscription")} message="" refetch={refetchSubscription} />
+          </LedgerRow>
+        </LedgerRows>
+      </LedgerSection>
+    );
+  }
+
+  if (!activeSubscription) {
+    return <ExpiredTrialPlan />;
+  }
+
+  // Check if trial expired
+  if (activeSubscription.status === "expired") {
+    return <ExpiredTrialPlan message={activeSubscription.message} />;
+  }
+
+  // Check if user is on free plan
+  if (activeSubscription.status === "free") {
+    return <FreePlan />;
+  }
+
+  if (activeSubscription.planName === "custom") {
+    return <CustomPlan />;
+  }
+
+  if (activeSubscription.planName.startsWith("appsumo")) {
+    return <AppSumoPlan />;
+  }
+
+  if (activeSubscription.isOverride) {
+    return <OverridePlan />;
+  }
+
+  return <PaidPlan />;
+}

@@ -4,12 +4,25 @@ export type DateMode = {
   wellKnown?: "today" | "yesterday";
 };
 
-export type DateRangeMode = {
+export type DateOnlyRangeMode = {
   mode: "range";
   startDate: string;
   endDate: string;
+  startTime?: never;
+  endTime?: never;
   wellKnown?: "last-3-days" | "last-7-days" | "last-14-days" | "last-30-days" | "last-60-days";
 };
+
+export type DateTimeRangeMode = {
+  mode: "range";
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  wellKnown?: never;
+};
+
+export type DateRangeMode = DateOnlyRangeMode | DateTimeRangeMode;
 
 export type WeekMode = {
   mode: "week";
@@ -42,3 +55,18 @@ export type PastMinutesMode = {
 };
 
 export type Time = DateMode | DateRangeMode | WeekMode | MonthMode | YearMode | AllTimeMode | PastMinutesMode;
+
+/**
+ * What the dashboard's comparison line is drawn against. Everything but
+ * `custom` is derived from the selected period; `none` turns the comparison
+ * off entirely.
+ */
+export type ComparisonMode = "previous" | "weekday" | "year" | "custom" | "none";
+
+export type Comparison = {
+  mode: ComparisonMode;
+  /** Only read when `mode` is `"custom"`. */
+  customTime?: Time;
+};
+
+export const DEFAULT_COMPARISON: Comparison = { mode: "previous" };

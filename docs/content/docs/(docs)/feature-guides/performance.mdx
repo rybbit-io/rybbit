@@ -1,0 +1,64 @@
+---
+title: Performance
+description: Track Core Web Vitals and site speed
+---
+
+![Performance Dashboard](/blog/rybbit_performance_dashboard.webp)
+
+The Performance tab tracks Core Web Vitals from real user data. It is available on Rybbit Cloud, on the Standard plan or higher, for websites (not mobile apps).
+
+## Enabling Performance Tracking
+
+Turn on **Web Vitals** in the **Tracking** tab of your [site settings](/docs/site-settings), or click **Enable** on the Performance page if you can configure the site. Web Vitals events count toward your monthly event usage.
+
+## Web Vitals
+
+### Largest Contentful Paint (LCP)
+How long the main content takes to load.
+- **Good**: Under 2.5 seconds
+- **Needs Improvement**: 2.5-4 seconds
+- **Poor**: Over 4 seconds
+
+### Cumulative Layout Shift (CLS)
+How much content jumps around while loading.
+- **Good**: Under 0.1
+- **Needs Improvement**: 0.1-0.25
+- **Poor**: Over 0.25
+
+### Interaction to Next Paint (INP)
+How quickly your site responds to user interactions.
+- **Good**: Under 200ms
+- **Needs Improvement**: 200-500ms
+- **Poor**: Over 500ms
+
+### First Contentful Paint (FCP)
+How long until the first content appears.
+- **Good**: Under 1.8 seconds
+- **Needs Improvement**: 1.8-3 seconds
+- **Poor**: Over 3 seconds
+
+### Time to First Byte (TTFB)
+How long until the server responds.
+- **Good**: Under 800ms
+- **Needs Improvement**: 800-1800ms
+- **Poor**: Over 1800ms
+
+## Percentiles
+
+Choose which percentile the metric cards show (p50, p75, p90, p99). p75 is the default and is what Core Web Vitals assessments use. On the chart, toggle each percentile on or off to compare them.
+
+## Annotations
+
+Click **Annotations** to show your [annotations](/docs/annotations) on the performance chart, so you can line up a change in speed with a deploy or launch.
+
+## Comparison
+
+Each metric shows the change from the previous period, with green indicating improvement and red indicating degradation.
+
+## Breakdowns
+
+- **Pages** - Find your slowest pages
+- **Countries**, **Regions**, and **Map** - See geographic performance differences
+- **Devices** - Compare mobile vs desktop performance
+- **Browsers** - Identify browser-specific issues
+- **Operating systems** - Compare performance across operating systems

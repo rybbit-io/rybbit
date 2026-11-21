@@ -1,0 +1,106 @@
+---
+title: Tauri
+description: Add Rybbit analytics to your Tauri app
+category: apps
+icon: SiTauri
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Tauri v2 bundles your frontend into the app and serves it to the system webview. Install the `@rybbit/js` SDK in the frontend (or put the snippet in its `index.html`), then allow `https://app.rybbit.io` in the `app.security.csp` block of `src-tauri/tauri.conf.json`.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Tauri
+
+<Callout type="info">
+Tauri's security guide advises against loading remote scripts such as CDN-hosted files. The SDK keeps all executable code inside the bundle, so it is the recommended method.
+</Callout>
+
+<Tabs items={["@rybbit/js SDK", "Script tag"]}>
+<Tab>
+1. Install the package in your frontend project:
+
+```bash
+npm install @rybbit/js
+```
+
+2. Initialise it once in the frontend entry file (`src/main.ts` or equivalent):
+
+```ts title="src/main.ts"
+import rybbit from "@rybbit/js";
+
+await rybbit.init({
+  analyticsHost: "https://app.rybbit.io/api",
+  siteId: "YOUR_SITE_ID",
+});
+```
+
+3. Allow the analytics host in `connect-src`. Keep `ipc:` and `http://ipc.localhost`, which Tauri needs for frontend-to-Rust calls:
+
+```json title="src-tauri/tauri.conf.json"
+{
+  "app": {
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "connect-src": ["ipc:", "http://ipc.localhost", "https://app.rybbit.io"]
+      }
+    }
+  }
+}
+```
+</Tab>
+
+<Tab>
+1. Paste the snippet into the `<head>` of your frontend's `index.html`:
+
+```html title="index.html"
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+2. Allow the host in both `script-src` and `connect-src`:
+
+```json title="src-tauri/tauri.conf.json"
+{
+  "app": {
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": ["'self'", "https://app.rybbit.io"],
+        "connect-src": ["ipc:", "http://ipc.localhost", "https://app.rybbit.io"]
+      }
+    }
+  }
+}
+```
+</Tab>
+</Tabs>
+
+If `app.security.csp` is unset, Tauri applies no CSP and neither change is needed. Route changes inside the app are tracked automatically: the tracker wraps `history.pushState` and `history.replaceState` and listens for `popstate` and `hashchange`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Works in `tauri dev` but not in the built app on macOS, Linux or iOS**: in development the frontend is served from your dev server (`http://localhost:1420` by default), which is a normal http origin. Production builds serve it from `http://tauri.localhost` on Windows and Android but from the custom scheme `tauri://localhost` on macOS, Linux and iOS. Rybbit's tracking endpoints answer CORS preflights for `http://` and `https://` origins only, so requests from `tauri://localhost` are blocked by the webview. On Windows and Android, `app.windows[].useHttpsScheme: true` switches the origin to `https://tauri.localhost`; both forms work.
+- **CSP violation in the webview console**: the message names the blocked directive. Add `https://app.rybbit.io` there; the SDK only needs `connect-src`, the script tag also needs `script-src`.
+- **Object vs string CSP**: `app.security.csp` accepts either a single policy string or the object form shown above. Do not mix the two.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

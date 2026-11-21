@@ -1,0 +1,18 @@
+{
+  "title": "Proxy Guide",
+  "pages": [
+    "index",
+    "get-started",
+    "---Frameworks---",
+    "next-js",
+    "nginx",
+    "caddy",
+    "vercel",
+    "express",
+    "laravel",
+    "astro",
+    "cloudflare-workers",
+    "---Help---",
+    "troubleshooting"
+  ]
+}

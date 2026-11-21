@@ -1,0 +1,72 @@
+---
+title: Replit
+description: Add Rybbit analytics to your Replit app
+category: ai-builders
+icon: SiReplit
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Replit has no publishing setting for custom head code, so the snippet goes into the app's HTML entry file: ask Agent to add it, or open the file in the workspace and paste it yourself. The change reaches the live URL only after you republish.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Replit
+
+<Tabs items={["Ask Agent", "Edit the code"]}>
+<Tab>
+Paste this into the Agent chat, with your snippet in place of the placeholder:
+
+```text
+Add this script tag to the <head> of the app's HTML entry file so it loads on every page. Keep all existing head tags.
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+Review the change before you approve it: the tag belongs in the HTML document, not in a React component or server file.
+</Tab>
+
+<Tab>
+Open the file that owns the `<head>` from the **Files** pane of the workspace:
+
+- Agent-built web apps are typically a Vite + React client with an Express server, and the HTML entry is `client/index.html`. Some projects keep it at `index.html` in the project root.
+- Next.js projects use `app/layout.tsx` with `next/script`, as in the [Next.js guide](/docs/guides/react/next-js).
+- Plain HTML projects (Static deployments): add the tag to every page, or to the shared template if you have one.
+
+Paste the snippet before `</head>`:
+
+```html title="client/index.html"
+<head>
+  <meta charset="UTF-8" />
+  <title>My app</title>
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+```
+</Tab>
+</Tabs>
+
+Then click **Publish** in the upper right (or **Republish** for an app that is already live) so a new release goes out at the same URL. In-app route changes are tracked as pageviews automatically.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Live app has no script**: changes in the Project Editor do not replace the live release on their own. Test in Preview, then click **Republish**.
+- **Agent rewrote the file**: a later request can regenerate `client/index.html`. Tell Agent to keep the Rybbit script when you ask for layout changes, and re-check the page source after large refactors.
+- **Numbers differ from Replit's deployment analytics**: Replit counts requests at the server; Rybbit counts browser pageviews after ad blockers and bot filtering, so the two rarely match exactly.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

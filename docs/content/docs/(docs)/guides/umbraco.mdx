@@ -1,0 +1,68 @@
+---
+title: Umbraco
+description: Add Rybbit analytics to your Umbraco site
+category: cms
+icon: SiUmbraco
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Umbraco renders pages with Razor templates stored as `.cshtml` files in the `Views` folder and edited in the backoffice under **Settings > Templates**. A fresh install has no templates until you create one, so the snippet goes into the master (layout) template that your page templates set as their `Layout`.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Umbraco
+
+1. In the backoffice, open the **Settings** section and expand **Templates**.
+2. Open the master template that the other templates use as their layout (named `Master` in Umbraco's own tutorial). If you have none yet, click **...** next to **Templates**, choose **Create**, and move the shared `<html>`, `<head>` and `<body>` markup into it.
+3. Add the tag before `</head>` and click **Save**:
+
+```razor title="Views/Master.cshtml"
+@using Umbraco.Cms.Web.Common.PublishedModels;
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>@Model.Name</title>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+<body>
+    @RenderBody()
+</body>
+</html>
+```
+
+4. Check that each page template points at it, for example `Layout = "Master.cshtml";`. Templates with `Layout = null;` render their own `<head>` and need the tag added directly.
+
+Saving in the backoffice writes the same file to `Views/Master.cshtml` in the project, so you can also edit it in your IDE and commit it.
+
+To keep the site ID out of the template, put it in `appsettings.json` and read it with `@Configuration["Rybbit:SiteId"]` after injecting `IConfiguration`.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Change not visible**: Razor views are compiled on first request; if you edited the file outside the backoffice on a published site, restart the app or redeploy. Also clear any output cache or CDN in front of the site.
+- **Preview counts as visits**: the backoffice **Preview** button renders your template with unpublished content, so editors' previews are tracked like any other visit. Wrap the tag in `@if (!UmbracoContext.InPreviewMode) { ... }` to leave them out.
+- **Backoffice is not tracked**: `/umbraco` is a separate app that does not use your templates, so editing time never appears in Rybbit.
+- **Several master templates**: a multi-site install with one layout per site needs the tag in each, or in a partial view rendered from every layout with `@await Html.PartialAsync("Rybbit")`.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

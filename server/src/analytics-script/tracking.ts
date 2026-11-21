@@ -1,14 +1,54 @@
-import { BasePayload, ScriptConfig, TrackingPayload, WebVitalsData, SessionReplayBatch } from "./types.js";
-import { findMatchingPattern } from "./utils.js";
+import {
+  BasePayload,
+  FeatureFlagAssignment,
+  ScriptConfig,
+  TrackingPayload,
+  WebVitalsData,
+  SessionReplayBatch,
+  SessionReplayBatchResult,
+  ButtonClickProperties,
+  CopyProperties,
+  FormSubmitProperties,
+  InputChangeProperties,
+} from "./types.js";
+import { findMatchingPattern, truncateText } from "./utils.js";
 import { SessionReplayRecorder } from "./sessionReplay.js";
+import { getBotScore, getBotSignalMask } from "./botSignals.js";
+import { getTrackedPathname } from "./url.js";
+
+const FEATURE_FLAG_REQUEST_TIMEOUT_MS = 2000;
+
+// The server's limits (services/tracker/trackingPayload.ts). A value past one
+// used to fail validation, dropping the whole event. The path and query string
+// are sent whole: the server matches Site Exclusions against them before it
+// cuts them for storage, and a cut here could drop the parameter one names.
+const MAX_REFERRER_LENGTH = 2048;
+const MAX_PAGE_TITLE_LENGTH = 512;
+const MAX_PROPERTIES_LENGTH = 2048;
+const MAX_OUTBOUND_TEXT_LENGTH = 500;
+
+// Browsers cap the bodies of a page's in-flight keepalive requests at 64 KiB in
+// total, and the tracker's own events need some of it while the page unloads.
+const REPLAY_KEEPALIVE_BUDGET_BYTES = 48 * 1024;
+
+// Answers to a replay batch that mean the server stored none of it: a timeout,
+// a rate limit, or a backend it couldn't reach. A 500 can come after the
+// batch's events were written (its metadata insert failed), and sending it
+// again would store them twice; any other 4xx would only be refused again.
+const RETRYABLE_REPLAY_STATUSES = [408, 429, 502, 503, 504];
 
 export class Tracker {
   private config: ScriptConfig;
   private customUserId: string | null = null;
   private sessionReplayRecorder?: SessionReplayRecorder;
-
+  private errorDedupeCache: Map<string, number> = new Map();
+  private errorDedupeLastCleanup = 0;
+  private exposedFeatureFlags = new Set<string>();
+  private lastPageviewUrl: string;
+  private replayKeepaliveBytesInFlight = 0;
   constructor(config: ScriptConfig) {
     this.config = config;
+    this.lastPageviewUrl = this.getPageviewUrl();
     this.loadUserId();
 
     if (config.enableSessionReplay) {
@@ -16,9 +56,88 @@ export class Tracker {
     }
   }
 
+  private serializeFeatureFlagValue(value: unknown): string {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+    try {
+      return JSON.stringify(value);
+    } catch (e) {
+      return "";
+    }
+  }
+
+  private isUnassignedVariant(assignment: FeatureFlagAssignment): boolean {
+    return assignment.flagType === "multivariate" && typeof assignment.value !== "string";
+  }
+
+  private getFeatureFlagEventPayload(): Record<string, string> {
+    const payload: Record<string, string> = {};
+
+    for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+      if (this.isUnassignedVariant(assignment)) continue;
+      payload[key] = this.serializeFeatureFlagValue(assignment.value);
+    }
+
+    return payload;
+  }
+
+  private getCurrentUrlContext() {
+    const url = new URL(window.location.href);
+    const pathname = getTrackedPathname(url, this.config.trackUrlFragments);
+
+    return {
+      hostname: url.hostname,
+      pathname,
+      querystring: url.search,
+      query: Object.fromEntries(url.searchParams.entries()),
+      referrer: document.referrer,
+      language: navigator.language,
+      screenWidth: screen.width,
+      screenHeight: screen.height,
+    };
+  }
+
+  private async refreshFeatureFlags(): Promise<void> {
+    if (!this.config.featureFlagsEnabled) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(`${this.config.analyticsHost}/site/${this.config.siteId}/feature-flags/evaluate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          anonymousId: this.config.visitorId,
+          identifiedUserId: this.customUserId || undefined,
+          ...this.getCurrentUrlContext(),
+        }),
+        mode: "cors",
+        credentials: "omit",
+        keepalive: true,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) return;
+      const data = await response.json();
+      this.config.featureFlags = data?.flags && typeof data.flags === "object" ? data.flags : {};
+      if (data?.featureFlagsEnabled === false) {
+        this.config.featureFlagsEnabled = false;
+      }
+    } catch (e) {
+      // Feature flag refresh is best-effort and should never affect analytics collection.
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
   private loadUserId(): void {
     try {
-      const storedUserId = localStorage.getItem("rybbit-user-id");
+      const storedUserId = localStorage.getItem(`${this.config.namespace}-user-id`);
       if (storedUserId) {
         this.customUserId = storedUserId;
       }
@@ -38,31 +157,58 @@ export class Tracker {
     }
   }
 
-  private async sendSessionReplayBatch(batch: SessionReplayBatch): Promise<void> {
+  /**
+   * Resolves once the server has dealt with the batch (stored or deliberately
+   * skipped it); rejects when it is worth sending again, which the recorder does.
+   * Every batch that fits what is left of the keepalive budget is sent with
+   * keepalive, so a navigation can't cancel it: a batch already on its way
+   * when the page hides is out of the buffer that pagehide flushes.
+   */
+  private async sendSessionReplayBatch(batch: SessionReplayBatch): Promise<SessionReplayBatchResult | void> {
+    const body = JSON.stringify(batch);
+    const keepaliveRoom = REPLAY_KEEPALIVE_BUDGET_BYTES - this.replayKeepaliveBytesInFlight;
+    // UTF-8 never takes fewer bytes than UTF-16 units, so a long body is ruled
+    // out without encoding it.
+    const keepaliveBytes = body.length <= keepaliveRoom ? new Blob([body]).size : Infinity;
+    const useKeepalive = keepaliveBytes <= keepaliveRoom;
+    if (useKeepalive) this.replayKeepaliveBytesInFlight += keepaliveBytes;
+
+    let response: Response;
     try {
-      await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+      response = await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(batch),
+        body,
         mode: "cors",
-        keepalive: false, // Disable keepalive for large session replay requests
+        keepalive: useKeepalive,
       });
     } catch (error) {
       console.error("Failed to send session replay batch:", error);
       throw error;
+    } finally {
+      if (useKeepalive) this.replayKeepaliveBytesInFlight -= keepaliveBytes;
+    }
+
+    if (!response.ok) {
+      if (RETRYABLE_REPLAY_STATUSES.includes(response.status)) {
+        throw new Error(`Session replay batch failed with status ${response.status}`);
+      }
+      return;
+    }
+
+    // Some skip responses are plain text; only a JSON body can carry a stop signal.
+    try {
+      return (await response.json()) as SessionReplayBatchResult;
+    } catch {
+      return;
     }
   }
 
   createBasePayload(): BasePayload | null {
     const url = new URL(window.location.href);
-    let pathname = url.pathname;
-
-    // Handle hash-based SPA routing
-    if (url.hash && url.hash.startsWith("#/")) {
-      pathname = url.hash.substring(1);
-    }
+    let pathname = getTrackedPathname(url, this.config.trackUrlFragments);
 
     // Check skip patterns
     if (findMatchingPattern(pathname, this.config.skipPatterns)) {
@@ -83,12 +229,27 @@ export class Tracker {
       screenWidth: screen.width,
       screenHeight: screen.height,
       language: navigator.language,
-      page_title: document.title,
-      referrer: document.referrer,
+      page_title: truncateText(document.title, MAX_PAGE_TITLE_LENGTH),
+      referrer: truncateText(document.referrer, MAX_REFERRER_LENGTH),
+      _bs: getBotScore(),
+      _bsm: getBotSignalMask(),
     };
 
     if (this.customUserId) {
       payload.user_id = this.customUserId;
+    }
+
+    if (this.config.tag) {
+      payload.tag = this.config.tag;
+    }
+
+    const featureFlagPayload = this.getFeatureFlagEventPayload();
+    if (Object.keys(featureFlagPayload).length > 0) {
+      payload.feature_flags = featureFlagPayload;
+    }
+
+    if (this.config.featureFlagsEnabled) {
+      payload.visitor_id = this.config.visitorId;
     }
 
     return payload;
@@ -121,29 +282,106 @@ export class Tracker {
       return; // Skip tracking
     }
 
+    const typesWithProperties = [
+      "custom_event",
+      "outbound",
+      "error",
+      "button_click",
+      "copy",
+      "form_submit",
+      "input_change",
+    ];
     const payload: TrackingPayload = {
       ...basePayload,
       type: eventType,
       event_name: eventName,
-      properties:
-        eventType === "custom_event" || eventType === "outbound" || eventType === "error"
-          ? JSON.stringify(properties)
-          : undefined,
+      properties: typesWithProperties.includes(eventType) ? JSON.stringify(properties) : undefined,
     };
 
     this.sendTrackingData(payload);
   }
 
   trackPageview(): void {
+    this.lastPageviewUrl = this.getPageviewUrl();
     this.track("pageview");
+  }
+
+  trackPageviewIfUrlChanged(): void {
+    if (this.getPageviewUrl() !== this.lastPageviewUrl) {
+      this.trackPageview();
+    }
+  }
+
+  private getPageviewUrl(): string {
+    const url = new URL(window.location.href);
+    return JSON.stringify([
+      url.hostname,
+      getTrackedPathname(url, this.config.trackUrlFragments),
+      this.config.trackQuerystring ? url.search : "",
+    ]);
   }
 
   trackEvent(name: string, properties: Record<string, any> = {}): void {
     this.track("custom_event", name, properties);
   }
 
+  getFeatureFlag<T = unknown>(key: string, fallback?: T): T {
+    const assignment = this.config.featureFlags?.[key];
+
+    if (!assignment || this.isUnassignedVariant(assignment)) {
+      return fallback as T;
+    }
+
+    const exposureKey = `${key}:${assignment.version}:${this.serializeFeatureFlagValue(assignment.value)}`;
+    if (!this.exposedFeatureFlags.has(exposureKey)) {
+      this.exposedFeatureFlags.add(exposureKey);
+      this.trackEvent("feature_flag_exposure", {
+        key,
+        value: this.serializeFeatureFlagValue(assignment.value),
+        version: assignment.version,
+        reason: assignment.reason,
+      });
+    }
+
+    return assignment.value as T;
+  }
+
+  getFeatureFlags(): Record<string, unknown> {
+    return Object.fromEntries(
+      Object.entries(this.config.featureFlags || {})
+        .filter(([, assignment]) => !this.isUnassignedVariant(assignment))
+        .map(([key, assignment]) => [key, assignment.value])
+    );
+  }
+
+  getFeatureFlagPayload<T = unknown>(key: string, fallback?: T): T {
+    const assignment = this.config.featureFlags?.[key];
+
+    if (!assignment || assignment.payload === undefined) {
+      return fallback as T;
+    }
+
+    return assignment.payload as T;
+  }
+
+  getFeatureFlagPayloads(): Record<string, unknown> {
+    return Object.fromEntries(
+      Object.entries(this.config.featureFlags || {})
+        .filter(([, assignment]) => assignment.payload !== undefined)
+        .map(([key, assignment]) => [key, assignment.payload])
+    );
+  }
+
   trackOutbound(url: string, text: string = "", target: string = "_self"): void {
-    this.track("outbound", "", { url, text, target });
+    // A link wrapping a whole card carries all of its text, and the serialized
+    // properties must fit the server's limit. Text goes first; a URL still too
+    // long is cut by the overflow, which stays a parseable URL.
+    const properties = { url, text: truncateText(text, MAX_OUTBOUND_TEXT_LENGTH), target };
+    const overflow = JSON.stringify(properties).length - MAX_PROPERTIES_LENGTH;
+    if (overflow > 0) {
+      properties.url = truncateText(url, Math.max(0, url.length - overflow));
+    }
+    this.track("outbound", "", properties);
   }
 
   trackWebVitals(vitals: WebVitalsData): void {
@@ -163,6 +401,15 @@ export class Tracker {
   }
 
   trackError(error: Error, additionalInfo: Record<string, any> = {}): void {
+    // Ignore known noisy browser warnings that aren't actionable app errors.
+    const message = error?.message || "";
+    if (
+      message.includes("ResizeObserver loop completed with undelivered notifications") ||
+      message.includes("ResizeObserver loop limit exceeded")
+    ) {
+      return;
+    }
+
     // Industry-standard filtering: Only track errors from the same origin to avoid noise from third-party scripts
     const currentOrigin = window.location.origin;
     const filename = additionalInfo.filename || "";
@@ -191,6 +438,34 @@ export class Tracker {
 
     // If neither filename nor stack can determine origin, track the error
     // This covers cases like NetworkError where the source is unclear but could be first-party
+
+    // Dedupe identical errors within a short window to prevent spam.
+    const dedupeKeyParts = [
+      error.name || "Error",
+      message,
+      additionalInfo.filename || "",
+      additionalInfo.lineno ?? "",
+      additionalInfo.colno ?? "",
+    ];
+    const dedupeKey = dedupeKeyParts.join("|");
+    const now = Date.now();
+    const dedupeWindowMs = 60_000;
+    const lastSeen = this.errorDedupeCache.get(dedupeKey);
+    if (lastSeen && now - lastSeen < dedupeWindowMs) {
+      return;
+    }
+    this.errorDedupeCache.set(dedupeKey, now);
+
+    // Periodically prune old keys to avoid unbounded growth.
+    const pruneAfterMs = 10 * 60_000;
+    if (now - this.errorDedupeLastCleanup > dedupeWindowMs) {
+      for (const [key, ts] of this.errorDedupeCache.entries()) {
+        if (now - ts > pruneAfterMs) {
+          this.errorDedupeCache.delete(key);
+        }
+      }
+      this.errorDedupeLastCleanup = now;
+    }
 
     const errorProperties: Record<string, any> = {
       message: error.message?.substring(0, 500) || "Unknown error", // Truncate to 500 chars
@@ -228,7 +503,23 @@ export class Tracker {
     this.track("error", error.name || "Error", errorProperties);
   }
 
-  identify(userId: string): void {
+  trackButtonClick(properties: ButtonClickProperties): void {
+    this.track("button_click", "", properties);
+  }
+
+  trackCopy(properties: CopyProperties): void {
+    this.track("copy", "", properties);
+  }
+
+  trackFormSubmit(properties: FormSubmitProperties): void {
+    this.track("form_submit", "", properties);
+  }
+
+  trackInputChange(properties: InputChangeProperties): void {
+    this.track("input_change", "", properties);
+  }
+
+  identify(userId: string, traits?: Record<string, unknown>): void {
     if (typeof userId !== "string" || userId.trim() === "") {
       console.error("User ID must be a non-empty string");
       return;
@@ -236,10 +527,13 @@ export class Tracker {
 
     this.customUserId = userId.trim();
     try {
-      localStorage.setItem("rybbit-user-id", this.customUserId);
+      localStorage.setItem(`${this.config.namespace}-user-id`, this.customUserId);
     } catch (e) {
       console.warn("Could not persist user ID to localStorage");
     }
+
+    // Send identify event to server (creates alias and stores traits)
+    void this.sendIdentifyEvent(this.customUserId, traits, true).then(() => this.refreshFeatureFlags());
 
     // Update session replay recorder with new user ID
     if (this.sessionReplayRecorder) {
@@ -247,13 +541,59 @@ export class Tracker {
     }
   }
 
+  setTraits(traits: Record<string, unknown>): void {
+    if (!traits || typeof traits !== "object") {
+      console.error("Traits must be an object");
+      return;
+    }
+
+    const userId = this.customUserId;
+    if (!userId) {
+      console.warn("Cannot set traits without identifying user first. Call identify() first.");
+      return;
+    }
+
+    void this.sendIdentifyEvent(userId, traits, false).then(() => this.refreshFeatureFlags());
+  }
+
+  private async sendIdentifyEvent(
+    userId: string,
+    traits?: Record<string, unknown>,
+    isNewIdentify: boolean = true
+  ): Promise<void> {
+    try {
+      await fetch(`${this.config.analyticsHost}/identify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          site_id: this.config.siteId,
+          user_id: userId,
+          traits: traits,
+          is_new_identify: isNewIdentify,
+        }),
+        mode: "cors",
+        keepalive: true,
+      });
+    } catch (error) {
+      console.error("Failed to send identify event:", error);
+    }
+  }
+
   clearUserId(): void {
     this.customUserId = null;
     try {
-      localStorage.removeItem("rybbit-user-id");
+      localStorage.removeItem(`${this.config.namespace}-user-id`);
     } catch (e) {
       // localStorage not available
     }
+
+    if (this.sessionReplayRecorder) {
+      this.sessionReplayRecorder.updateUserId("");
+    }
+
+    void this.refreshFeatureFlags();
   }
 
   getUserId(): string | null {
@@ -281,6 +621,8 @@ export class Tracker {
 
   // Handle page changes for SPA
   onPageChange(): void {
+    void this.refreshFeatureFlags();
+
     if (this.sessionReplayRecorder) {
       this.sessionReplayRecorder.onPageChange();
     }

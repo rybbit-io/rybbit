@@ -1,0 +1,240 @@
+import { Filter, FilterParameter, FilterType } from "@rybbit/shared";
+import { DateTime } from "luxon";
+import { create } from "zustand";
+import { EndpointConfig } from "../utils/endpointConfig";
+
+interface PlaygroundFilter {
+  parameter: FilterParameter;
+  operator: FilterType;
+  value: string;
+}
+
+interface PlaygroundState {
+  // Selected endpoint
+  selectedEndpoint: EndpointConfig | null;
+  setSelectedEndpoint: (endpoint: EndpointConfig | null) => void;
+
+  // Common parameters (independent from store.ts)
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  timeZone: string;
+  setStartDate: (date: string) => void;
+  setEndDate: (date: string) => void;
+  setStartTime: (time: string) => void;
+  setEndTime: (time: string) => void;
+  setTimeZone: (tz: string) => void;
+
+  // Filters
+  filters: PlaygroundFilter[];
+  addFilter: () => void;
+  updateFilter: (index: number, filter: PlaygroundFilter) => void;
+  removeFilter: (index: number) => void;
+  clearFilters: () => void;
+
+  // Convert playground filters to API format
+  getApiFilters: () => Filter[];
+
+  // Endpoint-specific params (dynamic)
+  endpointParams: Record<string, string>;
+  setEndpointParam: (key: string, value: string) => void;
+  clearEndpointParams: () => void;
+
+  // Path params (e.g., sessionId, goalId)
+  pathParams: Record<string, string>;
+  setPathParam: (key: string, value: string) => void;
+  clearPathParams: () => void;
+
+  // Request body for POST/PUT
+  requestBody: string;
+  setRequestBody: (body: string) => void;
+
+  // Response state
+  response: any;
+  responseError: string | null;
+  isLoading: boolean;
+  responseTime: number | null;
+  setResponse: (response: any, time: number) => void;
+  setResponseError: (error: string) => void;
+  setIsLoading: (loading: boolean) => void;
+  clearResponse: () => void;
+
+  // Reset all state
+  reset: () => void;
+}
+
+// Get browser timezone or default to UTC
+const getDefaultTimezone = () => {
+  if (typeof window !== "undefined") {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }
+  return "UTC";
+};
+
+// Get today's date in YYYY-MM-DD format
+const getToday = () => DateTime.now().toISODate() ?? "";
+
+export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
+  // Selected endpoint
+  selectedEndpoint: null,
+  setSelectedEndpoint: endpoint =>
+    set({
+      selectedEndpoint: endpoint,
+      endpointParams: {},
+      pathParams: {},
+      requestBody: endpoint?.requestBodyExample ? JSON.stringify(endpoint.requestBodyExample, null, 2) : "",
+      response: null,
+      responseError: null,
+      responseTime: null,
+    }),
+
+  // Common parameters
+  startDate: getToday(),
+  endDate: getToday(),
+  startTime: "",
+  endTime: "",
+  timeZone: getDefaultTimezone(),
+  setStartDate: date => set({ startDate: date }),
+  setEndDate: date => set({ endDate: date }),
+  setStartTime: time => set({ startTime: time }),
+  setEndTime: time => set({ endTime: time }),
+  setTimeZone: tz => set({ timeZone: tz }),
+
+  // Filters
+  filters: [],
+  addFilter: () =>
+    set(state => ({
+      filters: [...state.filters, { parameter: "country", operator: "equals", value: "" }],
+    })),
+  updateFilter: (index, filter) =>
+    set(state => ({
+      filters: state.filters.map((f, i) => (i === index ? filter : f)),
+    })),
+  removeFilter: index =>
+    set(state => ({
+      filters: state.filters.filter((_, i) => i !== index),
+    })),
+  clearFilters: () => set({ filters: [] }),
+
+  getApiFilters: () => {
+    const { filters } = get();
+    return filters
+      .filter(f => f.operator === "is_null" || f.operator === "is_not_null" || f.value.trim() !== "")
+      .map(f => ({
+        parameter: f.parameter,
+        type: f.operator,
+        value: f.operator === "is_null" || f.operator === "is_not_null" ? [] : ([f.value] as (string | number)[]),
+      }));
+  },
+
+  // Endpoint params
+  endpointParams: {},
+  setEndpointParam: (key, value) =>
+    set(state => ({
+      endpointParams: { ...state.endpointParams, [key]: value },
+    })),
+  clearEndpointParams: () => set({ endpointParams: {} }),
+
+  // Path params
+  pathParams: {},
+  setPathParam: (key, value) =>
+    set(state => ({
+      pathParams: { ...state.pathParams, [key]: value },
+    })),
+  clearPathParams: () => set({ pathParams: {} }),
+
+  // Request body
+  requestBody: "",
+  setRequestBody: body => set({ requestBody: body }),
+
+  // Response
+  response: null,
+  responseError: null,
+  isLoading: false,
+  responseTime: null,
+  setResponse: (response, time) =>
+    set({
+      response,
+      responseTime: time,
+      responseError: null,
+      isLoading: false,
+    }),
+  setResponseError: error =>
+    set({
+      responseError: error,
+      response: null,
+      isLoading: false,
+    }),
+  setIsLoading: loading => set({ isLoading: loading }),
+  clearResponse: () => set({ response: null, responseError: null, responseTime: null }),
+
+  // Reset
+  reset: () =>
+    set({
+      selectedEndpoint: null,
+      startDate: getToday(),
+      endDate: getToday(),
+      startTime: "",
+      endTime: "",
+      timeZone: getDefaultTimezone(),
+      filters: [],
+      endpointParams: {},
+      pathParams: {},
+      requestBody: "",
+      response: null,
+      responseError: null,
+      isLoading: false,
+      responseTime: null,
+    }),
+}));
+
+// Filter parameter options (hardcoded, no dynamic fetching)
+export const filterParameters = [
+  { value: "pathname", label: "Path" },
+  { value: "page_title", label: "Page Title" },
+  { value: "querystring", label: "Query" },
+  { value: "hostname", label: "Hostname" },
+  { value: "user_id", label: "User ID" },
+  { value: "event_name", label: "Event Name" },
+  { value: "referrer", label: "Referrer" },
+  { value: "channel", label: "Channel" },
+  { value: "entry_page", label: "Entry Page" },
+  { value: "exit_page", label: "Exit Page" },
+  { value: "country", label: "Country" },
+  { value: "region", label: "Region" },
+  { value: "city", label: "City" },
+  { value: "device_type", label: "Device Type" },
+  { value: "operating_system", label: "Operating System" },
+  { value: "operating_system_version", label: "Operating System Version" },
+  { value: "browser", label: "Browser" },
+  { value: "browser_version", label: "Browser Version" },
+  { value: "language", label: "Language" },
+  { value: "dimensions", label: "Screen Dimensions" },
+  { value: "utm_source", label: "UTM Source" },
+  { value: "utm_medium", label: "UTM Medium" },
+  { value: "utm_campaign", label: "UTM Campaign" },
+  { value: "utm_term", label: "UTM Term" },
+  { value: "utm_content", label: "UTM Content" },
+  { value: "tag", label: "Tag" },
+  { value: "lat", label: "Lat" },
+  { value: "lon", label: "Lon" },
+  { value: "timezone", label: "Timezone" },
+] satisfies { value: FilterParameter; label: string }[];
+
+export const filterOperators = [
+  { value: "equals", label: "Equals" },
+  { value: "not_equals", label: "Not Equals" },
+  { value: "contains", label: "Contains" },
+  { value: "not_contains", label: "Not Contains" },
+  { value: "starts_with", label: "Starts With" },
+  { value: "ends_with", label: "Ends With" },
+  { value: "regex", label: "Regex" },
+  { value: "not_regex", label: "Not Regex" },
+  { value: "is_null", label: "Is Null" },
+  { value: "is_not_null", label: "Is Not Null" },
+  { value: "greater_than", label: "Greater Than" },
+  { value: "less_than", label: "Less Than" },
+  { value: "greater_than_or_equal", label: "Greater Than or Equal" },
+  { value: "less_than_or_equal", label: "Less Than or Equal" },
+] satisfies { value: FilterType; label: string }[];

@@ -1,0 +1,71 @@
+---
+title: Starlight
+description: Add Rybbit analytics to your Starlight docs
+category: docs
+icon: SiAstro
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Starlight, the documentation theme for Astro, has a `head` option in its integration config that adds tags to every page. The snippet goes there, in `astro.config.mjs`, so no component overrides are needed.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Starlight
+
+Open `astro.config.mjs` at the root of your project and add a `script` entry to the `head` array of the `starlight()` integration:
+
+```javascript title="astro.config.mjs"
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      title: "My Docs",
+      head: [
+        {
+          tag: "script",
+          attrs: {
+            src: "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID",
+            defer: true,
+          },
+        },
+      ],
+    }),
+  ],
+});
+```
+
+Each `head` entry becomes an HTML element with the given attributes; `defer: true` renders as a boolean attribute. Rebuild with `npm run build` and deploy the `dist/` directory.
+
+<Callout type="info">
+Entries in `head` are written to the page as-is and skip Astro's script bundling, which is what you want for a remote tracker. Only override the `Head` component if you need to import a local asset.
+</Callout>
+
+Starlight serves each page as a full document, so every navigation is a normal pageview and no route-change handling is needed.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Local previews are tracked**: `head` applies to `astro dev` as well as `astro build`. Read the site ID from an environment variable that only your deploy sets (`process.env.RYBBIT_SITE_ID`) and push the entry only when it is present, or keep a separate site in Rybbit for development.
+- **Tag missing after editing the config**: the dev server restarts itself when `astro.config.mjs` changes, but a deployed site needs a fresh build.
+- **Head component override**: if your project already overrides Starlight's `Head` component, make sure it still renders the default head (the override docs show how), otherwise config `head` entries are dropped with it.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

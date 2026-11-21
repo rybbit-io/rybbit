@@ -1,0 +1,51 @@
+---
+title: Events
+description: Track custom events on your website
+---
+
+The Events tab shows custom events tracked on your website.
+
+## Setting Up Events
+
+See the [Track Events guide](/docs/track-events) for implementation details.
+
+## Events Page
+
+On Rybbit Cloud the Events page needs a Standard plan or higher.
+
+### Stat band
+
+The top of the page shows:
+- **Events** - Custom events in the selected period
+- **Users with an event** - People who sent at least one event, and their share of all users
+- **Events per session** - Average events per session
+- **Event names** - Distinct event names, and how many are new compared with the comparison period
+- **Autocaptured** - Clicks, links, forms, copies, and inputs captured by [autocapture](/docs/autocapture)
+
+### Chart
+
+The chart groups events by **Event type** or **Event name**. When grouped by name, choose how many of the top events to plot. Click a series in the legend to show or hide it. Pageviews are hidden by default.
+
+### Event names table
+
+Every custom event name in the period, with these columns:
+- **Event** - The event name. Expand a row to see its properties and their values.
+- **Events** - Total times it fired
+- **Users** - Distinct users who sent it
+- **Per user** - Events per user
+- **Trend** - A sparkline of the event over the period
+- **Change** - Change against the comparison period, when a comparison is on
+- **Last seen** - When it last fired
+- **Used in** - The goals and saved funnels built on this event. If nothing uses it yet, **Create goal** turns it into a goal in one step.
+
+Click the filter icon on a row to filter the dashboard to that event. Use **Search event names** to find one.
+
+### Event log
+
+The **Event log** lists individual events, newest first. Click any row to open its details, including properties, page, user, and device. **Live** is on by default: the log shows the latest events, updates every 2 seconds, and ignores the date range you picked (filters still apply). Scroll down to pause it. Turn **Live** off to see only events from the selected period.
+
+## Filtering
+
+- Filter the dashboard to an event from the Event names table
+- Use the filter panel to combine event filters with other dimensions
+- Change the time range to analyze event trends

@@ -1,0 +1,45 @@
+---
+title: Bots
+description: See which bots and AI systems hit your site and how Rybbit caught them
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The **Bots** page shows the traffic that [bot detection](/docs/bot-detection) kept out of your analytics. Open it from **Bots** under **Traffic** in the site sidebar.
+
+<Callout>
+  The Bots page is available on Rybbit Cloud only. Bot requests are only recorded while **Block Bot Traffic** is on in [site settings](/docs/site-settings). **Visits sent back** and **Visits back** come from your regular traffic, so they show either way.
+</Callout>
+
+These counts only cover bots that run JavaScript. Crawlers that fetch your HTML and run nothing, which includes most training crawlers, never reach Rybbit unless your server reports them through the [tracking API](/docs/bot-detection#reporting-crawlers-that-never-run-javascript).
+
+The page has two views. Switch between them with the control at the top. Filters and the date selector apply to both.
+
+## AI & agents
+
+The default view answers which AI systems read your site, what they read, and whether they send people back.
+
+- **AI requests**: every request from a named AI system.
+- **AI agents**: an assistant opened a page because a person asked it to (ChatGPT-User, Claude-User, Perplexity-User, and similar).
+- **AI crawlers**: background crawling to train a model or build an answer-engine index.
+- **Visits sent back**: people who arrived on your site from an AI product in this period.
+
+Below the totals:
+
+- A chart of agents and crawlers over time.
+- An operators table with **Agent**, **Answer engine**, **Training**, **Total reads**, **Visits back**, and **Reads per visit** for each operator (OpenAI, Anthropic, and so on).
+- **AI bots**: tabs for **Bots**, **Purpose**, and **Operators**.
+- **Pages read by AI**, with an **Agents only** tab for the pages assistants opened on someone's behalf.
+
+## All bots
+
+This view covers every blocked request, AI or not.
+
+- **Bot requests blocked** and **Bot share of total events**.
+- One card per detection layer: **UA pattern**, **Header heuristics**, **Client signals**, **Bot ASN**, and **Rate anomaly**. Click a layer to narrow the chart and breakdowns to requests that layer caught. Click it again to clear it.
+- A chart of bot requests over time.
+- Breakdowns by referrer, page, device, and location, plus a metadata card with tabs for **Bots**, **Operators**, **Purpose**, **ASN Orgs**, **Categories**, and **UA Patterns**.
+
+A request can match more than one layer. Bots that only matched a broad pattern have no published name and show as **Unnamed**. See [Bot identity](/docs/bot-detection#bot-identity) for what operators and purposes mean.
+
+Blocked bot requests don't count toward your monthly event usage.

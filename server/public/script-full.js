@@ -6,6 +6,14 @@
 
   // utils.ts
   function patternToRegex(pattern) {
+    const REGEX_PREFIX = "re:";
+    if (pattern.startsWith(REGEX_PREFIX)) {
+      const rawRegex = pattern.slice(REGEX_PREFIX.length);
+      if (!rawRegex) {
+        throw new Error("Empty regex pattern");
+      }
+      return new RegExp(rawRegex);
+    }
     const DOUBLE_WILDCARD_TOKEN = "__DOUBLE_ASTERISK_TOKEN__";
     const SINGLE_WILDCARD_TOKEN = "__SINGLE_ASTERISK_TOKEN__";
     let tokenized = pattern.replace(/\*\*/g, DOUBLE_WILDCARD_TOKEN).replace(/\*/g, SINGLE_WILDCARD_TOKEN);
@@ -47,6 +55,11 @@
       return false;
     }
   }
+  function truncateText(value, maxLength) {
+    if (value.length <= maxLength) return value;
+    const lastCode = value.charCodeAt(maxLength - 1);
+    return value.slice(0, lastCode >= 55296 && lastCode <= 56319 ? maxLength - 1 : maxLength);
+  }
   function parseJsonSafely(value, fallback) {
     if (!value) return fallback;
     try {
@@ -58,7 +71,95 @@
     }
   }
 
+  // url.ts
+  function getTrackedPathname(url, trackUrlFragments = false) {
+    if (url.hash.startsWith("#/")) {
+      return url.hash.substring(1);
+    }
+    if (url.hash.startsWith("#!/")) {
+      return url.hash.substring(2);
+    }
+    return url.pathname + (trackUrlFragments ? url.hash : "");
+  }
+
   // config.ts
+  var FEATURE_FLAG_REQUEST_TIMEOUT_MS = 2e3;
+  function createVisitorId() {
+    try {
+      if (crypto?.randomUUID) {
+        return crypto.randomUUID();
+      }
+    } catch (e2) {
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+  var MAX_VISITOR_ID_LENGTH = 64;
+  function getOrCreateVisitorId(namespace) {
+    const key = `${namespace}-visitor-id`;
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored && stored.length <= MAX_VISITOR_ID_LENGTH) return stored;
+      const visitorId = createVisitorId();
+      localStorage.setItem(key, visitorId);
+      return visitorId;
+    } catch (e2) {
+      return createVisitorId();
+    }
+  }
+  function getIdentifiedUserId(namespace) {
+    try {
+      return localStorage.getItem(`${namespace}-user-id`) || void 0;
+    } catch (e2) {
+      return void 0;
+    }
+  }
+  async function fetchFeatureFlags(analyticsHost, siteId, namespace, visitorId, trackUrlFragments) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS);
+    try {
+      const url = new URL(window.location.href);
+      const response = await fetch(`${analyticsHost}/site/${siteId}/feature-flags/evaluate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "omit",
+        signal: controller.signal,
+        body: JSON.stringify({
+          anonymousId: visitorId,
+          identifiedUserId: getIdentifiedUserId(namespace),
+          hostname: url.hostname,
+          pathname: getTrackedPathname(url, trackUrlFragments),
+          querystring: url.search,
+          query: Object.fromEntries(url.searchParams.entries()),
+          referrer: document.referrer,
+          language: navigator.language,
+          screenWidth: screen.width,
+          screenHeight: screen.height
+        })
+      });
+      if (!response.ok) {
+        return { enabled: true, flags: {} };
+      }
+      const data = await response.json();
+      return {
+        enabled: data?.featureFlagsEnabled !== false,
+        flags: data?.flags && typeof data.flags === "object" ? data.flags : {}
+      };
+    } catch (e2) {
+      return { enabled: true, flags: {} };
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+  function getSiteIdFromSrc(src) {
+    try {
+      const url = new URL(src, window.location.href);
+      return url.searchParams.get("siteId") || url.searchParams.get("site-id") || url.searchParams.get("site_id");
+    } catch (e2) {
+      return null;
+    }
+  }
   async function parseScriptConfig(scriptTag) {
     const src = scriptTag.getAttribute("src");
     if (!src) {
@@ -70,20 +171,45 @@
       console.error("Please provide a valid analytics host");
       return null;
     }
-    const siteId = scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
+    const siteId = getSiteIdFromSrc(src) || scriptTag.getAttribute("data-site-id") || scriptTag.getAttribute("site-id");
     if (!siteId) {
-      console.error("Please provide a valid site ID using the data-site-id attribute");
+      console.error("Please provide a valid site ID using the ?siteId= query parameter or the data-site-id attribute");
       return null;
     }
+    const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+    const visitorId = createVisitorId();
     const skipPatterns = parseJsonSafely(scriptTag.getAttribute("data-skip-patterns"), []);
     const maskPatterns = parseJsonSafely(scriptTag.getAttribute("data-mask-patterns"), []);
-    const sessionReplayMaskTextSelectors = parseJsonSafely(scriptTag.getAttribute("data-replay-mask-text-selectors"), []);
+    const sessionReplayMaskTextSelectors = parseJsonSafely(
+      scriptTag.getAttribute("data-replay-mask-text-selectors"),
+      []
+    );
     const debounceDuration = scriptTag.getAttribute("data-debounce") ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce"))) : 500;
     const sessionReplayBatchSize = scriptTag.getAttribute("data-replay-batch-size") ? Math.max(1, parseInt(scriptTag.getAttribute("data-replay-batch-size"))) : 250;
     const sessionReplayBatchInterval = scriptTag.getAttribute("data-replay-batch-interval") ? Math.max(1e3, parseInt(scriptTag.getAttribute("data-replay-batch-interval"))) : 5e3;
+    const sessionReplayBlockClass = scriptTag.getAttribute("data-replay-block-class") || void 0;
+    const sessionReplayBlockSelector = scriptTag.getAttribute("data-replay-block-selector") || void 0;
+    const sessionReplayIgnoreClass = scriptTag.getAttribute("data-replay-ignore-class") || void 0;
+    const sessionReplayIgnoreSelector = scriptTag.getAttribute("data-replay-ignore-selector") || void 0;
+    const sessionReplayMaskTextClass = scriptTag.getAttribute("data-replay-mask-text-class") || void 0;
+    const maskAllInputsAttr = scriptTag.getAttribute("data-replay-mask-all-inputs");
+    const sessionReplayMaskAllInputs = maskAllInputsAttr !== null ? maskAllInputsAttr !== "false" : void 0;
+    const maskInputOptionsAttr = scriptTag.getAttribute("data-replay-mask-input-options");
+    const sessionReplayMaskInputOptions = maskInputOptionsAttr ? parseJsonSafely(maskInputOptionsAttr, { password: true, email: true }) : void 0;
+    const collectFontsAttr = scriptTag.getAttribute("data-replay-collect-fonts");
+    const sessionReplayCollectFonts = collectFontsAttr !== null ? collectFontsAttr !== "false" : void 0;
+    const samplingAttr = scriptTag.getAttribute("data-replay-sampling");
+    const sessionReplaySampling = samplingAttr ? parseJsonSafely(samplingAttr, {}) : void 0;
+    const slimDOMAttr = scriptTag.getAttribute("data-replay-slim-dom-options");
+    const sessionReplaySlimDOMOptions = slimDOMAttr ? parseJsonSafely(slimDOMAttr, {}) : void 0;
+    const sampleRateAttr = scriptTag.getAttribute("data-replay-sample-rate");
+    const sessionReplaySampleRate = sampleRateAttr ? Math.min(100, Math.max(0, parseInt(sampleRateAttr, 10))) : void 0;
+    const tag = scriptTag.getAttribute("data-tag") || "";
     const defaultConfig = {
+      namespace,
       analyticsHost,
       siteId,
+      visitorId,
       debounceDuration,
       sessionReplayBatchSize,
       sessionReplayBatchInterval,
@@ -94,13 +220,33 @@
       autoTrackPageview: true,
       autoTrackSpa: true,
       trackQuerystring: true,
+      trackUrlFragments: false,
       trackOutbound: true,
       enableWebVitals: false,
       trackErrors: false,
-      enableSessionReplay: false
+      enableSessionReplay: false,
+      trackButtonClicks: false,
+      trackCopy: false,
+      trackFormInteractions: false,
+      tag,
+      featureFlagsEnabled: false,
+      featureFlags: {},
+      // rrweb session replay options (undefined means use rrweb defaults)
+      sessionReplayBlockClass,
+      sessionReplayBlockSelector,
+      sessionReplayIgnoreClass,
+      sessionReplayIgnoreSelector,
+      sessionReplayMaskTextClass,
+      sessionReplayMaskAllInputs,
+      sessionReplayMaskInputOptions,
+      sessionReplayCollectFonts,
+      sessionReplaySampling,
+      sessionReplaySlimDOMOptions,
+      sessionReplaySampleRate
     };
+    let resolvedConfig = defaultConfig;
     try {
-      const configUrl = `${analyticsHost}/site/${siteId}/tracking-config`;
+      const configUrl = `${analyticsHost}/site/tracking-config/${siteId}`;
       const response = await fetch(configUrl, {
         method: "GET",
         // Include credentials if needed for authentication
@@ -108,38 +254,285 @@
       });
       if (response.ok) {
         const apiConfig = await response.json();
-        return {
+        resolvedConfig = {
           ...defaultConfig,
           // Map API field names to script config field names
           autoTrackPageview: apiConfig.trackInitialPageView ?? defaultConfig.autoTrackPageview,
           autoTrackSpa: apiConfig.trackSpaNavigation ?? defaultConfig.autoTrackSpa,
           trackQuerystring: apiConfig.trackUrlParams ?? defaultConfig.trackQuerystring,
+          trackUrlFragments: apiConfig.trackUrlFragments ?? defaultConfig.trackUrlFragments,
           trackOutbound: apiConfig.trackOutbound ?? defaultConfig.trackOutbound,
           enableWebVitals: apiConfig.webVitals ?? defaultConfig.enableWebVitals,
           trackErrors: apiConfig.trackErrors ?? defaultConfig.trackErrors,
-          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay
+          enableSessionReplay: apiConfig.sessionReplay ?? defaultConfig.enableSessionReplay,
+          trackButtonClicks: apiConfig.trackButtonClicks ?? defaultConfig.trackButtonClicks,
+          trackCopy: apiConfig.trackCopy ?? defaultConfig.trackCopy,
+          trackFormInteractions: apiConfig.trackFormInteractions ?? defaultConfig.trackFormInteractions,
+          featureFlagsEnabled: apiConfig.featureFlagsEnabled === true
         };
       } else {
         console.warn("Failed to fetch tracking config from API, using defaults");
-        return defaultConfig;
       }
     } catch (error) {
       console.warn("Error fetching tracking config:", error);
-      return defaultConfig;
     }
+    if (resolvedConfig.featureFlagsEnabled) {
+      resolvedConfig.visitorId = getOrCreateVisitorId(namespace);
+      const result = await fetchFeatureFlags(
+        analyticsHost,
+        siteId,
+        namespace,
+        resolvedConfig.visitorId,
+        resolvedConfig.trackUrlFragments
+      );
+      resolvedConfig.featureFlagsEnabled = result.enabled;
+      resolvedConfig.featureFlags = result.flags;
+    }
+    return resolvedConfig;
+  }
+
+  // ../../../shared/src/botSignalContract.ts
+  var CLIENT_BOT_SIGNAL_MASKS = {
+    automationApi: 1 << 0,
+    zeroOuterDimensions: 1 << 1,
+    missingChrome: 1 << 2,
+    swiftShader: 1 << 3,
+    emptyPlugins: 1 << 4,
+    defaultViewport800x600: 1 << 5,
+    defaultViewport1024x768: 1 << 6,
+    impossibleDimensions: 1 << 7,
+    outerDimensionsWeird: 1 << 8,
+    pluginApiAbsence: 1 << 9,
+    defaultViewport1280x1200: 1 << 10,
+    squareScreen: 1 << 11,
+    missingScreenDimensions: 1 << 12
+  };
+  var CLIENT_BOT_SIGNAL_NAMES = Object.keys(CLIENT_BOT_SIGNAL_MASKS);
+  var CLIENT_BOT_SIGNAL_WEIGHTS = {
+    automationApi: 3,
+    zeroOuterDimensions: 2,
+    missingChrome: 1,
+    swiftShader: 1,
+    emptyPlugins: 1,
+    defaultViewport800x600: 3,
+    defaultViewport1024x768: 3,
+    impossibleDimensions: 3,
+    outerDimensionsWeird: 2,
+    pluginApiAbsence: 0,
+    defaultViewport1280x1200: 3,
+    squareScreen: 3,
+    missingScreenDimensions: 1
+  };
+  var ALL_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_NAMES.reduce(
+    (mask, name) => mask | CLIENT_BOT_SIGNAL_MASKS[name],
+    0
+  );
+  var STRONG_CLIENT_BOT_SIGNAL_BITS = CLIENT_BOT_SIGNAL_MASKS.automationApi | CLIENT_BOT_SIGNAL_MASKS.impossibleDimensions | CLIENT_BOT_SIGNAL_MASKS.defaultViewport800x600 | CLIENT_BOT_SIGNAL_MASKS.defaultViewport1024x768 | CLIENT_BOT_SIGNAL_MASKS.defaultViewport1280x1200 | CLIENT_BOT_SIGNAL_MASKS.squareScreen;
+  var MAX_CLIENT_BOT_SCORE = 10;
+  var MIN_PLAUSIBLE_SCREEN_DIMENSION = 200;
+  var MAX_PLAUSIBLE_SCREEN_DIMENSION = 8192;
+  var IMPLAUSIBLE_DESKTOP_VIEWPORTS = [
+    { width: 800, height: 600, signal: "defaultViewport800x600" },
+    { width: 1024, height: 768, signal: "defaultViewport1024x768" },
+    { width: 1280, height: 1200, signal: "defaultViewport1280x1200" }
+  ];
+  function isPlausibleScreenDimensions(width, height) {
+    return Number.isFinite(width) && Number.isFinite(height) && width >= MIN_PLAUSIBLE_SCREEN_DIMENSION && height >= MIN_PLAUSIBLE_SCREEN_DIMENSION && width <= MAX_PLAUSIBLE_SCREEN_DIMENSION && height <= MAX_PLAUSIBLE_SCREEN_DIMENSION;
+  }
+  function isDesktopUserAgent(userAgent) {
+    return /Windows NT|Macintosh|X11|Linux x86_64/.test(userAgent) && !/Mobile|Android|iPhone|iPad/.test(userAgent);
+  }
+  function getScreenDimensionSignals(width, height, userAgent) {
+    if (!isPlausibleScreenDimensions(width, height)) {
+      return ["impossibleDimensions"];
+    }
+    const signals = [];
+    if (width === height) {
+      signals.push("squareScreen");
+    }
+    if (isDesktopUserAgent(userAgent)) {
+      for (const viewport of IMPLAUSIBLE_DESKTOP_VIEWPORTS) {
+        if (width === viewport.width && height === viewport.height) {
+          signals.push(viewport.signal);
+        }
+      }
+    }
+    return signals;
+  }
+
+  // botSignals.ts
+  var cachedBotSignals = null;
+  function getBotScore() {
+    return getBotSignals().score;
+  }
+  function getBotSignalMask() {
+    return getBotSignals().mask;
+  }
+  function isPrerendering() {
+    return document.prerendering === true;
+  }
+  function getBotSignals() {
+    if (isPrerendering()) {
+      return calculateBotSignals();
+    }
+    cachedBotSignals ?? (cachedBotSignals = calculateBotSignals());
+    return cachedBotSignals;
+  }
+  function calculateBotSignals() {
+    let score = 0;
+    let mask = 0;
+    function addSignal(name) {
+      const signalMask = CLIENT_BOT_SIGNAL_MASKS[name];
+      if ((mask & signalMask) !== 0) {
+        return;
+      }
+      mask |= signalMask;
+      score += CLIENT_BOT_SIGNAL_WEIGHTS[name];
+    }
+    try {
+      const userAgent = navigator.userAgent;
+      const isChromeLike = /Chrome\//.test(userAgent) && !/\bwv\b|; wv\)/.test(userAgent);
+      const screenWidth = Number(window.screen?.width);
+      const screenHeight = Number(window.screen?.height);
+      const outerWidth = Number(window.outerWidth);
+      const outerHeight = Number(window.outerHeight);
+      const innerWidth = Number(window.innerWidth);
+      const innerHeight = Number(window.innerHeight);
+      const automationGlobalNames = [
+        "__webdriver_evaluate",
+        "__selenium_evaluate",
+        "__webdriver_script_function",
+        "__webdriver_script_func",
+        "__webdriver_script_fn",
+        "__fxdriver_evaluate",
+        "__driver_unwrapped",
+        "__webdriver_unwrapped",
+        "__driver_evaluate",
+        "__selenium_unwrapped",
+        "__fxdriver_unwrapped",
+        "_phantom",
+        "callPhantom",
+        "__nightmare",
+        "domAutomation",
+        "domAutomationController"
+      ];
+      const hasAutomationGlobal = automationGlobalNames.some((name) => name in window || name in document);
+      if (navigator.webdriver === true || hasAutomationGlobal) {
+        addSignal("automationApi");
+      }
+      if ((outerHeight === 0 || outerWidth === 0) && !isPrerendering()) {
+        addSignal("zeroOuterDimensions");
+      }
+      for (const signal of getScreenDimensionSignals(screenWidth, screenHeight, userAgent)) {
+        addSignal(signal);
+      }
+      if (Number.isFinite(outerWidth) && Number.isFinite(outerHeight) && Number.isFinite(innerWidth) && Number.isFinite(innerHeight) && outerWidth > 0 && outerHeight > 0 && innerWidth > 0 && innerHeight > 0 && (outerWidth + 8 < innerWidth || outerHeight + 8 < innerHeight)) {
+        addSignal("outerDimensionsWeird");
+      }
+      let hasPluginOrApiAbsence = false;
+      if (!window.chrome && isChromeLike) {
+        addSignal("missingChrome");
+        hasPluginOrApiAbsence = true;
+      }
+      try {
+        const canvas = document.createElement("canvas");
+        const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        if (gl) {
+          try {
+            const rendererParts = [];
+            const rendererRaw = gl.getParameter(gl.RENDERER);
+            if (typeof rendererRaw === "string") {
+              rendererParts.push(rendererRaw);
+            }
+            try {
+              const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+              if (debugInfo) {
+                const unmaskedRaw = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                if (typeof unmaskedRaw === "string") {
+                  rendererParts.push(unmaskedRaw);
+                }
+              }
+            } catch {
+            }
+            if (rendererParts.join(" ").toLowerCase().includes("swiftshader")) {
+              addSignal("swiftShader");
+            }
+          } finally {
+            releaseWebGlContext(canvas, gl);
+          }
+        }
+      } catch {
+      }
+      if ((!navigator.plugins || navigator.plugins.length === 0) && isChromeLike) {
+        addSignal("emptyPlugins");
+        hasPluginOrApiAbsence = true;
+      }
+      if (hasPluginOrApiAbsence) {
+        addSignal("pluginApiAbsence");
+      }
+    } catch (e2) {
+    }
+    return {
+      score: Math.min(score, MAX_CLIENT_BOT_SCORE),
+      mask
+    };
+  }
+  function releaseWebGlContext(canvas, gl) {
+    try {
+      const loseContextExt = gl.getExtension("WEBGL_lose_context");
+      loseContextExt?.loseContext?.();
+    } catch {
+    }
+    canvas.width = 0;
+    canvas.height = 0;
   }
 
   // sessionReplay.ts
+  var SAMPLE_STORAGE_KEY = "rybbit-replay-sampled";
+  var FULL_SNAPSHOT_REQUEST_INTERVAL_MS = 1e4;
+  function shouldSampleSession(sampleRate) {
+    if (sampleRate >= 100) return true;
+    if (sampleRate <= 0) return false;
+    try {
+      const existingDecision = sessionStorage.getItem(SAMPLE_STORAGE_KEY);
+      if (existingDecision !== null) {
+        return existingDecision === "1";
+      }
+      const sampled = Math.random() * 100 < sampleRate;
+      sessionStorage.setItem(SAMPLE_STORAGE_KEY, sampled ? "1" : "0");
+      return sampled;
+    } catch {
+      return Math.random() * 100 < sampleRate;
+    }
+  }
   var SessionReplayRecorder = class {
     constructor(config, userId, sendBatch) {
       this.isRecording = false;
+      // Set once the server reports the session is over its size cap; recording
+      // stays off for the rest of this page.
+      this.capped = false;
       this.eventBuffer = [];
+      // Batches whose send failed, each kept as it was built so a retry after
+      // identify(), clearUserId() or a navigation still carries the identity and
+      // page it was recorded under.
+      this.failedBatches = [];
+      this.lastFullSnapshotRequestAt = -Infinity;
       this.config = config;
       this.userId = userId;
       this.sendBatch = sendBatch;
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          void this.flushEvents();
+        }
+      });
+      window.addEventListener("pagehide", () => void this.flushEvents());
     }
     async initialize() {
       if (!this.config.enableSessionReplay) {
+        return;
+      }
+      const sampleRate = this.config.sessionReplaySampleRate;
+      if (sampleRate !== void 0 && !shouldSampleSession(sampleRate)) {
         return;
       }
       if (!window.rrweb) {
@@ -162,10 +555,45 @@
       });
     }
     startRecording() {
-      if (this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
+      if (this.capped || this.isRecording || !window.rrweb || !this.config.enableSessionReplay) {
         return;
       }
       try {
+        const defaultSampling = {
+          // Aggressive sampling to reduce data volume
+          mousemove: false,
+          // Don't record mouse moves at all
+          mouseInteraction: {
+            MouseUp: false,
+            MouseDown: false,
+            Click: true,
+            // Only record clicks
+            ContextMenu: false,
+            DblClick: true,
+            Focus: true,
+            Blur: true,
+            TouchStart: false,
+            TouchEnd: false
+          },
+          scroll: 500,
+          // Sample scroll events every 500ms
+          input: "last",
+          // Only record the final input value
+          media: 800
+          // Sample media interactions less frequently
+        };
+        const defaultSlimDOMOptions = {
+          script: false,
+          comment: true,
+          headFavicon: true,
+          headWhitespace: true,
+          headMetaDescKeywords: true,
+          headMetaSocial: true,
+          headMetaRobots: true,
+          headMetaHttpEquiv: true,
+          headMetaAuthorship: true,
+          headMetaVerification: true
+        };
         const recordingOptions = {
           emit: (event) => {
             this.addEvent({
@@ -175,54 +603,22 @@
             });
           },
           recordCanvas: false,
-          // Disable canvas recording to reduce data
-          collectFonts: true,
-          // Disable font collection to reduce data
+          // Always disabled to save disk space
           checkoutEveryNms: 6e4,
-          // Checkout every 60 seconds (was 30)
+          // Checkout every 60 seconds
           checkoutEveryNth: 500,
-          // Checkout every 500 events (was 200)
-          maskAllInputs: true,
-          // Mask all input values for privacy
-          maskInputOptions: {
-            password: true,
-            email: true
-          },
-          slimDOMOptions: {
-            script: false,
-            comment: true,
-            headFavicon: true,
-            headWhitespace: true,
-            headMetaDescKeywords: true,
-            headMetaSocial: true,
-            headMetaRobots: true,
-            headMetaHttpEquiv: true,
-            headMetaAuthorship: true,
-            headMetaVerification: true
-          },
-          sampling: {
-            // Aggressive sampling to reduce data volume
-            mousemove: false,
-            // Don't record mouse moves at all
-            mouseInteraction: {
-              MouseUp: false,
-              MouseDown: false,
-              Click: true,
-              // Only record clicks
-              ContextMenu: false,
-              DblClick: true,
-              Focus: true,
-              Blur: true,
-              TouchStart: false,
-              TouchEnd: false
-            },
-            scroll: 500,
-            // Sample scroll events every 500ms (was 150)
-            input: "last",
-            // Only record the final input value
-            media: 800
-            // Sample media interactions less frequently
-          }
+          // Checkout every 500 events
+          // Use config values with fallbacks to defaults
+          blockClass: this.config.sessionReplayBlockClass ?? "rr-block",
+          blockSelector: this.config.sessionReplayBlockSelector ?? null,
+          ignoreClass: this.config.sessionReplayIgnoreClass ?? "rr-ignore",
+          ignoreSelector: this.config.sessionReplayIgnoreSelector ?? null,
+          maskTextClass: this.config.sessionReplayMaskTextClass ?? "rr-mask",
+          maskAllInputs: this.config.sessionReplayMaskAllInputs ?? true,
+          maskInputOptions: this.config.sessionReplayMaskInputOptions ?? { password: true, email: true },
+          collectFonts: this.config.sessionReplayCollectFonts ?? true,
+          sampling: this.config.sessionReplaySampling ?? defaultSampling,
+          slimDOMOptions: this.config.sessionReplaySlimDOMOptions ?? defaultSlimDOMOptions
         };
         if (this.config.sessionReplayMaskTextSelectors && this.config.sessionReplayMaskTextSelectors.length > 0) {
           recordingOptions.maskTextSelector = this.config.sessionReplayMaskTextSelectors.join(", ");
@@ -242,7 +638,11 @@
       }
       this.isRecording = false;
       this.clearBatchTimer();
-      if (this.eventBuffer.length > 0) {
+      if (this.deferredSnapshotTimer !== void 0) {
+        clearTimeout(this.deferredSnapshotTimer);
+        this.deferredSnapshotTimer = void 0;
+      }
+      if (this.eventBuffer.length > 0 || this.failedBatches.length > 0) {
         this.flushEvents();
       }
     }
@@ -258,7 +658,7 @@
     setupBatchTimer() {
       this.clearBatchTimer();
       this.batchTimer = window.setInterval(() => {
-        if (this.eventBuffer.length > 0) {
+        if (this.eventBuffer.length > 0 || this.failedBatches.length > 0) {
           this.flushEvents();
         }
       }, this.config.sessionReplayBatchInterval);
@@ -269,30 +669,98 @@
         this.batchTimer = void 0;
       }
     }
+    // Sends the buffered events, and retries the batches that failed before.
     async flushEvents() {
-      if (this.eventBuffer.length === 0) {
+      const batches = this.failedBatches;
+      this.failedBatches = [];
+      if (this.eventBuffer.length > 0) {
+        batches.push({
+          userId: this.userId,
+          events: this.eventBuffer,
+          metadata: {
+            pageUrl: window.location.href,
+            viewportWidth: screen.width,
+            viewportHeight: screen.height,
+            language: navigator.language
+          },
+          _bsm: getBotSignalMask()
+        });
+        this.eventBuffer = [];
+      }
+      await Promise.all(batches.map((batch) => this.sendOrRequeue(batch)));
+    }
+    async sendOrRequeue(batch) {
+      try {
+        const result = await this.sendBatch(batch);
+        if (result?.stopRecording) {
+          this.stopForSizeCap();
+        } else if (result?.takeFullSnapshot) {
+          this.takeFullSnapshot();
+        } else if (this.deferredSnapshotTimer !== void 0 && batch.events.some((event) => event.type === 2)) {
+          clearTimeout(this.deferredSnapshotTimer);
+          this.deferredSnapshotTimer = void 0;
+        }
+      } catch (error) {
+        if (!this.capped) {
+          this.requeue(batch);
+        }
+      }
+    }
+    // A failure from the same identity and page as the last queued one joins it,
+    // so an outage retries one batch per flush rather than one per failed send.
+    requeue(batch) {
+      const last = this.failedBatches[this.failedBatches.length - 1];
+      if (last && last.userId === batch.userId && JSON.stringify(last.metadata) === JSON.stringify(batch.metadata)) {
+        last.events = last.events.concat(batch.events);
         return;
       }
-      const events = [...this.eventBuffer];
-      this.eventBuffer = [];
-      const batch = {
-        userId: this.userId,
-        events,
-        metadata: {
-          pageUrl: window.location.href,
-          viewportWidth: screen.width,
-          viewportHeight: screen.height,
-          language: navigator.language
-        }
-      };
-      try {
-        await this.sendBatch(batch);
-      } catch (error) {
-        this.eventBuffer.unshift(...events);
+      this.failedBatches.push(batch);
+    }
+    // The server keeps the replay in its previous session until a batch opens
+    // the visitor's new one with a full snapshot, without which a replay can't
+    // be played. Events recorded before the snapshot go first, to the old one.
+    takeFullSnapshot() {
+      if (!this.isRecording) {
+        return;
       }
+      const wait = this.lastFullSnapshotRequestAt + FULL_SNAPSHOT_REQUEST_INTERVAL_MS - Date.now();
+      if (wait > 0) {
+        if (this.deferredSnapshotTimer === void 0) {
+          this.deferredSnapshotTimer = window.setTimeout(() => {
+            this.deferredSnapshotTimer = void 0;
+            this.takeFullSnapshot();
+          }, wait);
+        }
+        return;
+      }
+      this.lastFullSnapshotRequestAt = Date.now();
+      void this.flushEvents();
+      try {
+        window.rrweb?.record.takeFullSnapshot?.(true);
+      } catch {
+      }
+      void this.flushEvents();
+    }
+    // Unlike stopRecording, drops what's buffered: the server refuses it anyway.
+    stopForSizeCap() {
+      this.capped = true;
+      if (this.stopRecordingFn) {
+        this.stopRecordingFn();
+        this.stopRecordingFn = void 0;
+      }
+      this.isRecording = false;
+      this.clearBatchTimer();
+      this.eventBuffer = [];
+      this.failedBatches = [];
     }
     // Update user ID when it changes
     updateUserId(userId) {
+      if (userId === this.userId) {
+        return;
+      }
+      if (this.eventBuffer.length > 0) {
+        void this.flushEvents();
+      }
       this.userId = userId;
     }
     // Handle page navigation for SPAs
@@ -308,18 +776,96 @@
   };
 
   // tracking.ts
+  var FEATURE_FLAG_REQUEST_TIMEOUT_MS2 = 2e3;
+  var MAX_REFERRER_LENGTH = 2048;
+  var MAX_PAGE_TITLE_LENGTH = 512;
+  var MAX_PROPERTIES_LENGTH = 2048;
+  var MAX_OUTBOUND_TEXT_LENGTH = 500;
+  var REPLAY_KEEPALIVE_BUDGET_BYTES = 48 * 1024;
+  var RETRYABLE_REPLAY_STATUSES = [408, 429, 502, 503, 504];
   var Tracker = class {
     constructor(config) {
       this.customUserId = null;
+      this.errorDedupeCache = /* @__PURE__ */ new Map();
+      this.errorDedupeLastCleanup = 0;
+      this.exposedFeatureFlags = /* @__PURE__ */ new Set();
+      this.replayKeepaliveBytesInFlight = 0;
       this.config = config;
+      this.lastPageviewUrl = this.getPageviewUrl();
       this.loadUserId();
       if (config.enableSessionReplay) {
         this.initializeSessionReplay();
       }
     }
+    serializeFeatureFlagValue(value) {
+      if (value === null || value === void 0) return "";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      try {
+        return JSON.stringify(value);
+      } catch (e2) {
+        return "";
+      }
+    }
+    isUnassignedVariant(assignment) {
+      return assignment.flagType === "multivariate" && typeof assignment.value !== "string";
+    }
+    getFeatureFlagEventPayload() {
+      const payload = {};
+      for (const [key, assignment] of Object.entries(this.config.featureFlags || {})) {
+        if (this.isUnassignedVariant(assignment)) continue;
+        payload[key] = this.serializeFeatureFlagValue(assignment.value);
+      }
+      return payload;
+    }
+    getCurrentUrlContext() {
+      const url = new URL(window.location.href);
+      const pathname = getTrackedPathname(url, this.config.trackUrlFragments);
+      return {
+        hostname: url.hostname,
+        pathname,
+        querystring: url.search,
+        query: Object.fromEntries(url.searchParams.entries()),
+        referrer: document.referrer,
+        language: navigator.language,
+        screenWidth: screen.width,
+        screenHeight: screen.height
+      };
+    }
+    async refreshFeatureFlags() {
+      if (!this.config.featureFlagsEnabled) return;
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), FEATURE_FLAG_REQUEST_TIMEOUT_MS2);
+      try {
+        const response = await fetch(`${this.config.analyticsHost}/site/${this.config.siteId}/feature-flags/evaluate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            anonymousId: this.config.visitorId,
+            identifiedUserId: this.customUserId || void 0,
+            ...this.getCurrentUrlContext()
+          }),
+          mode: "cors",
+          credentials: "omit",
+          keepalive: true,
+          signal: controller.signal
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        this.config.featureFlags = data?.flags && typeof data.flags === "object" ? data.flags : {};
+        if (data?.featureFlagsEnabled === false) {
+          this.config.featureFlagsEnabled = false;
+        }
+      } catch (e2) {
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    }
     loadUserId() {
       try {
-        const storedUserId = localStorage.getItem("rybbit-user-id");
+        const storedUserId = localStorage.getItem(`${this.config.namespace}-user-id`);
         if (storedUserId) {
           this.customUserId = storedUserId;
         }
@@ -338,29 +884,51 @@
         console.error("Failed to initialize session replay:", error);
       }
     }
+    /**
+     * Resolves once the server has dealt with the batch (stored or deliberately
+     * skipped it); rejects when it is worth sending again, which the recorder does.
+     * Every batch that fits what is left of the keepalive budget is sent with
+     * keepalive, so a navigation can't cancel it: a batch already on its way
+     * when the page hides is out of the buffer that pagehide flushes.
+     */
     async sendSessionReplayBatch(batch) {
+      const body = JSON.stringify(batch);
+      const keepaliveRoom = REPLAY_KEEPALIVE_BUDGET_BYTES - this.replayKeepaliveBytesInFlight;
+      const keepaliveBytes = body.length <= keepaliveRoom ? new Blob([body]).size : Infinity;
+      const useKeepalive = keepaliveBytes <= keepaliveRoom;
+      if (useKeepalive) this.replayKeepaliveBytesInFlight += keepaliveBytes;
+      let response;
       try {
-        await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
+        response = await fetch(`${this.config.analyticsHost}/session-replay/record/${this.config.siteId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(batch),
+          body,
           mode: "cors",
-          keepalive: false
-          // Disable keepalive for large session replay requests
+          keepalive: useKeepalive
         });
       } catch (error) {
         console.error("Failed to send session replay batch:", error);
         throw error;
+      } finally {
+        if (useKeepalive) this.replayKeepaliveBytesInFlight -= keepaliveBytes;
+      }
+      if (!response.ok) {
+        if (RETRYABLE_REPLAY_STATUSES.includes(response.status)) {
+          throw new Error(`Session replay batch failed with status ${response.status}`);
+        }
+        return;
+      }
+      try {
+        return await response.json();
+      } catch {
+        return;
       }
     }
     createBasePayload() {
       const url = new URL(window.location.href);
-      let pathname = url.pathname;
-      if (url.hash && url.hash.startsWith("#/")) {
-        pathname = url.hash.substring(1);
-      }
+      let pathname = getTrackedPathname(url, this.config.trackUrlFragments);
       if (findMatchingPattern(pathname, this.config.skipPatterns)) {
         return null;
       }
@@ -376,11 +944,23 @@
         screenWidth: screen.width,
         screenHeight: screen.height,
         language: navigator.language,
-        page_title: document.title,
-        referrer: document.referrer
+        page_title: truncateText(document.title, MAX_PAGE_TITLE_LENGTH),
+        referrer: truncateText(document.referrer, MAX_REFERRER_LENGTH),
+        _bs: getBotScore(),
+        _bsm: getBotSignalMask()
       };
       if (this.customUserId) {
         payload.user_id = this.customUserId;
+      }
+      if (this.config.tag) {
+        payload.tag = this.config.tag;
+      }
+      const featureFlagPayload = this.getFeatureFlagEventPayload();
+      if (Object.keys(featureFlagPayload).length > 0) {
+        payload.feature_flags = featureFlagPayload;
+      }
+      if (this.config.featureFlagsEnabled) {
+        payload.visitor_id = this.config.visitorId;
       }
       return payload;
     }
@@ -408,22 +988,84 @@
       if (!basePayload) {
         return;
       }
+      const typesWithProperties = [
+        "custom_event",
+        "outbound",
+        "error",
+        "button_click",
+        "copy",
+        "form_submit",
+        "input_change"
+      ];
       const payload = {
         ...basePayload,
         type: eventType,
         event_name: eventName,
-        properties: eventType === "custom_event" || eventType === "outbound" || eventType === "error" ? JSON.stringify(properties) : void 0
+        properties: typesWithProperties.includes(eventType) ? JSON.stringify(properties) : void 0
       };
       this.sendTrackingData(payload);
     }
     trackPageview() {
+      this.lastPageviewUrl = this.getPageviewUrl();
       this.track("pageview");
+    }
+    trackPageviewIfUrlChanged() {
+      if (this.getPageviewUrl() !== this.lastPageviewUrl) {
+        this.trackPageview();
+      }
+    }
+    getPageviewUrl() {
+      const url = new URL(window.location.href);
+      return JSON.stringify([
+        url.hostname,
+        getTrackedPathname(url, this.config.trackUrlFragments),
+        this.config.trackQuerystring ? url.search : ""
+      ]);
     }
     trackEvent(name, properties = {}) {
       this.track("custom_event", name, properties);
     }
+    getFeatureFlag(key, fallback) {
+      const assignment = this.config.featureFlags?.[key];
+      if (!assignment || this.isUnassignedVariant(assignment)) {
+        return fallback;
+      }
+      const exposureKey = `${key}:${assignment.version}:${this.serializeFeatureFlagValue(assignment.value)}`;
+      if (!this.exposedFeatureFlags.has(exposureKey)) {
+        this.exposedFeatureFlags.add(exposureKey);
+        this.trackEvent("feature_flag_exposure", {
+          key,
+          value: this.serializeFeatureFlagValue(assignment.value),
+          version: assignment.version,
+          reason: assignment.reason
+        });
+      }
+      return assignment.value;
+    }
+    getFeatureFlags() {
+      return Object.fromEntries(
+        Object.entries(this.config.featureFlags || {}).filter(([, assignment]) => !this.isUnassignedVariant(assignment)).map(([key, assignment]) => [key, assignment.value])
+      );
+    }
+    getFeatureFlagPayload(key, fallback) {
+      const assignment = this.config.featureFlags?.[key];
+      if (!assignment || assignment.payload === void 0) {
+        return fallback;
+      }
+      return assignment.payload;
+    }
+    getFeatureFlagPayloads() {
+      return Object.fromEntries(
+        Object.entries(this.config.featureFlags || {}).filter(([, assignment]) => assignment.payload !== void 0).map(([key, assignment]) => [key, assignment.payload])
+      );
+    }
     trackOutbound(url, text = "", target = "_self") {
-      this.track("outbound", "", { url, text, target });
+      const properties = { url, text: truncateText(text, MAX_OUTBOUND_TEXT_LENGTH), target };
+      const overflow = JSON.stringify(properties).length - MAX_PROPERTIES_LENGTH;
+      if (overflow > 0) {
+        properties.url = truncateText(url, Math.max(0, url.length - overflow));
+      }
+      this.track("outbound", "", properties);
     }
     trackWebVitals(vitals) {
       const basePayload = this.createBasePayload();
@@ -439,6 +1081,10 @@
       this.sendTrackingData(payload);
     }
     trackError(error, additionalInfo = {}) {
+      const message = error?.message || "";
+      if (message.includes("ResizeObserver loop completed with undelivered notifications") || message.includes("ResizeObserver loop limit exceeded")) {
+        return;
+      }
       const currentOrigin = window.location.origin;
       const filename = additionalInfo.filename || "";
       const errorStack = error.stack || "";
@@ -454,6 +1100,30 @@
         if (!errorStack.includes(currentOrigin)) {
           return;
         }
+      }
+      const dedupeKeyParts = [
+        error.name || "Error",
+        message,
+        additionalInfo.filename || "",
+        additionalInfo.lineno ?? "",
+        additionalInfo.colno ?? ""
+      ];
+      const dedupeKey = dedupeKeyParts.join("|");
+      const now = Date.now();
+      const dedupeWindowMs = 6e4;
+      const lastSeen = this.errorDedupeCache.get(dedupeKey);
+      if (lastSeen && now - lastSeen < dedupeWindowMs) {
+        return;
+      }
+      this.errorDedupeCache.set(dedupeKey, now);
+      const pruneAfterMs = 10 * 6e4;
+      if (now - this.errorDedupeLastCleanup > dedupeWindowMs) {
+        for (const [key, ts] of this.errorDedupeCache.entries()) {
+          if (now - ts > pruneAfterMs) {
+            this.errorDedupeCache.delete(key);
+          }
+        }
+        this.errorDedupeLastCleanup = now;
       }
       const errorProperties = {
         message: error.message?.substring(0, 500) || "Unknown error",
@@ -483,27 +1153,76 @@
       }
       this.track("error", error.name || "Error", errorProperties);
     }
-    identify(userId) {
+    trackButtonClick(properties) {
+      this.track("button_click", "", properties);
+    }
+    trackCopy(properties) {
+      this.track("copy", "", properties);
+    }
+    trackFormSubmit(properties) {
+      this.track("form_submit", "", properties);
+    }
+    trackInputChange(properties) {
+      this.track("input_change", "", properties);
+    }
+    identify(userId, traits) {
       if (typeof userId !== "string" || userId.trim() === "") {
         console.error("User ID must be a non-empty string");
         return;
       }
       this.customUserId = userId.trim();
       try {
-        localStorage.setItem("rybbit-user-id", this.customUserId);
+        localStorage.setItem(`${this.config.namespace}-user-id`, this.customUserId);
       } catch (e2) {
         console.warn("Could not persist user ID to localStorage");
       }
+      void this.sendIdentifyEvent(this.customUserId, traits, true).then(() => this.refreshFeatureFlags());
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.updateUserId(this.customUserId);
+      }
+    }
+    setTraits(traits) {
+      if (!traits || typeof traits !== "object") {
+        console.error("Traits must be an object");
+        return;
+      }
+      const userId = this.customUserId;
+      if (!userId) {
+        console.warn("Cannot set traits without identifying user first. Call identify() first.");
+        return;
+      }
+      void this.sendIdentifyEvent(userId, traits, false).then(() => this.refreshFeatureFlags());
+    }
+    async sendIdentifyEvent(userId, traits, isNewIdentify = true) {
+      try {
+        await fetch(`${this.config.analyticsHost}/identify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            site_id: this.config.siteId,
+            user_id: userId,
+            traits,
+            is_new_identify: isNewIdentify
+          }),
+          mode: "cors",
+          keepalive: true
+        });
+      } catch (error) {
+        console.error("Failed to send identify event:", error);
       }
     }
     clearUserId() {
       this.customUserId = null;
       try {
-        localStorage.removeItem("rybbit-user-id");
+        localStorage.removeItem(`${this.config.namespace}-user-id`);
       } catch (e2) {
       }
+      if (this.sessionReplayRecorder) {
+        this.sessionReplayRecorder.updateUserId("");
+      }
+      void this.refreshFeatureFlags();
     }
     getUserId() {
       return this.customUserId;
@@ -526,6 +1245,7 @@
     }
     // Handle page changes for SPA
     onPageChange() {
+      void this.refreshFeatureFlags();
       if (this.sessionReplayRecorder) {
         this.sessionReplayRecorder.onPageChange();
       }
@@ -538,34 +1258,34 @@
     }
   };
 
-  // ../../node_modules/web-vitals/dist/web-vitals.js
+  // ../../../node_modules/.pnpm/web-vitals@5.1.0/node_modules/web-vitals/dist/web-vitals.js
   var e = -1;
   var t = (t2) => {
-    addEventListener("pageshow", (n2) => {
+    addEventListener("pageshow", ((n2) => {
       n2.persisted && (e = n2.timeStamp, t2(n2));
-    }, true);
+    }), true);
   };
   var n = (e2, t2, n2, i2) => {
-    let o2, s2;
+    let s2, o2;
     return (r2) => {
-      t2.value >= 0 && (r2 || i2) && (s2 = t2.value - (o2 ?? 0), (s2 || void 0 === o2) && (o2 = t2.value, t2.delta = s2, t2.rating = ((e3, t3) => e3 > t3[1] ? "poor" : e3 > t3[0] ? "needs-improvement" : "good")(t2.value, n2), e2(t2)));
+      t2.value >= 0 && (r2 || i2) && (o2 = t2.value - (s2 ?? 0), (o2 || void 0 === s2) && (s2 = t2.value, t2.delta = o2, t2.rating = ((e3, t3) => e3 > t3[1] ? "poor" : e3 > t3[0] ? "needs-improvement" : "good")(t2.value, n2), e2(t2)));
     };
   };
   var i = (e2) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => e2()));
+    requestAnimationFrame((() => requestAnimationFrame((() => e2()))));
   };
-  var o = () => {
+  var s = () => {
     const e2 = performance.getEntriesByType("navigation")[0];
     if (e2 && e2.responseStart > 0 && e2.responseStart < performance.now()) return e2;
   };
-  var s = () => {
-    const e2 = o();
+  var o = () => {
+    const e2 = s();
     return e2?.activationStart ?? 0;
   };
   var r = (t2, n2 = -1) => {
-    const i2 = o();
+    const i2 = s();
     let r2 = "navigate";
-    e >= 0 ? r2 = "back-forward-cache" : i2 && (document.prerendering || s() > 0 ? r2 = "prerender" : document.wasDiscarded ? r2 = "restore" : i2.type && (r2 = i2.type.replace(/_/g, "-")));
+    e >= 0 ? r2 = "back-forward-cache" : i2 && (document.prerendering || o() > 0 ? r2 = "prerender" : document.wasDiscarded ? r2 = "restore" : i2.type && (r2 = i2.type.replace(/_/g, "-")));
     return { name: t2, value: n2, rating: "good", delta: 0, entries: [], id: `v5-${Date.now()}-${Math.floor(8999999999999 * Math.random()) + 1e12}`, navigationType: r2 };
   };
   var c = /* @__PURE__ */ new WeakMap();
@@ -587,11 +1307,11 @@
   var h = (e2, t2, n2 = {}) => {
     try {
       if (PerformanceObserver.supportedEntryTypes.includes(e2)) {
-        const i2 = new PerformanceObserver((e3) => {
-          Promise.resolve().then(() => {
+        const i2 = new PerformanceObserver(((e3) => {
+          Promise.resolve().then((() => {
             t2(e3.getEntries());
-          });
-        });
+          }));
+        }));
         return i2.observe({ type: e2, buffered: true, ...n2 }), i2;
       }
     } catch {
@@ -604,127 +1324,130 @@
     };
   };
   var u = -1;
-  var l = () => "hidden" !== document.visibilityState || document.prerendering ? 1 / 0 : 0;
-  var m = (e2) => {
-    "hidden" === document.visibilityState && u > -1 && (u = "visibilitychange" === e2.type ? e2.timeStamp : 0, v());
-  };
-  var g = () => {
-    addEventListener("visibilitychange", m, true), addEventListener("prerenderingchange", m, true);
+  var l = /* @__PURE__ */ new Set();
+  var m = () => "hidden" !== document.visibilityState || document.prerendering ? 1 / 0 : 0;
+  var p = (e2) => {
+    if ("hidden" === document.visibilityState) {
+      if ("visibilitychange" === e2.type) for (const e3 of l) e3();
+      isFinite(u) || (u = "visibilitychange" === e2.type ? e2.timeStamp : 0, removeEventListener("prerenderingchange", p, true));
+    }
   };
   var v = () => {
-    removeEventListener("visibilitychange", m, true), removeEventListener("prerenderingchange", m, true);
-  };
-  var p = () => {
     if (u < 0) {
-      const e2 = s(), n2 = document.prerendering ? void 0 : globalThis.performance.getEntriesByType("visibility-state").filter((t2) => "hidden" === t2.name && t2.startTime > e2)[0]?.startTime;
-      u = n2 ?? l(), g(), t(() => {
-        setTimeout(() => {
-          u = l(), g();
-        });
-      });
+      const e2 = o(), n2 = document.prerendering ? void 0 : globalThis.performance.getEntriesByType("visibility-state").filter(((t2) => "hidden" === t2.name && t2.startTime > e2))[0]?.startTime;
+      u = n2 ?? m(), addEventListener("visibilitychange", p, true), addEventListener("prerenderingchange", p, true), t((() => {
+        setTimeout((() => {
+          u = m();
+        }));
+      }));
     }
     return { get firstHiddenTime() {
       return u;
+    }, onHidden(e2) {
+      l.add(e2);
     } };
   };
-  var y = (e2) => {
-    document.prerendering ? addEventListener("prerenderingchange", () => e2(), true) : e2();
+  var g = (e2) => {
+    document.prerendering ? addEventListener("prerenderingchange", (() => e2()), true) : e2();
   };
-  var b = [1800, 3e3];
-  var P = (e2, o2 = {}) => {
-    y(() => {
-      const c2 = p();
+  var y = [1800, 3e3];
+  var E = (e2, s2 = {}) => {
+    g((() => {
+      const c2 = v();
       let a2, d2 = r("FCP");
-      const f2 = h("paint", (e3) => {
-        for (const t2 of e3) "first-contentful-paint" === t2.name && (f2.disconnect(), t2.startTime < c2.firstHiddenTime && (d2.value = Math.max(t2.startTime - s(), 0), d2.entries.push(t2), a2(true)));
-      });
-      f2 && (a2 = n(e2, d2, b, o2.reportAllChanges), t((t2) => {
-        d2 = r("FCP"), a2 = n(e2, d2, b, o2.reportAllChanges), i(() => {
-          d2.value = performance.now() - t2.timeStamp, a2(true);
-        });
+      const f2 = h("paint", ((e3) => {
+        for (const t2 of e3) "first-contentful-paint" === t2.name && (f2.disconnect(), t2.startTime < c2.firstHiddenTime && (d2.value = Math.max(t2.startTime - o(), 0), d2.entries.push(t2), a2(true)));
       }));
-    });
-  };
-  var T = [0.1, 0.25];
-  var E = (e2, o2 = {}) => {
-    P(f(() => {
-      let s2, c2 = r("CLS", 0);
-      const f2 = a(o2, d), u2 = (e3) => {
-        for (const t2 of e3) f2.h(t2);
-        f2.i > c2.value && (c2.value = f2.i, c2.entries = f2.o, s2());
-      }, l2 = h("layout-shift", u2);
-      l2 && (s2 = n(e2, c2, T, o2.reportAllChanges), document.addEventListener("visibilitychange", () => {
-        "hidden" === document.visibilityState && (u2(l2.takeRecords()), s2(true));
-      }), t(() => {
-        f2.i = 0, c2 = r("CLS", 0), s2 = n(e2, c2, T, o2.reportAllChanges), i(() => s2());
-      }), setTimeout(s2));
+      f2 && (a2 = n(e2, d2, y, s2.reportAllChanges), t(((t2) => {
+        d2 = r("FCP"), a2 = n(e2, d2, y, s2.reportAllChanges), i((() => {
+          d2.value = performance.now() - t2.timeStamp, a2(true);
+        }));
+      })));
     }));
   };
+  var b = [0.1, 0.25];
+  var L = (e2, s2 = {}) => {
+    const o2 = v();
+    E(f((() => {
+      let c2, f2 = r("CLS", 0);
+      const u2 = a(s2, d), l2 = (e3) => {
+        for (const t2 of e3) u2.h(t2);
+        u2.i > f2.value && (f2.value = u2.i, f2.entries = u2.o, c2());
+      }, m2 = h("layout-shift", l2);
+      m2 && (c2 = n(e2, f2, b, s2.reportAllChanges), o2.onHidden((() => {
+        l2(m2.takeRecords()), c2(true);
+      })), t((() => {
+        u2.i = 0, f2 = r("CLS", 0), c2 = n(e2, f2, b, s2.reportAllChanges), i((() => c2()));
+      })), setTimeout(c2));
+    })));
+  };
+  var P = 0;
+  var T = 1 / 0;
   var _ = 0;
-  var L = 1 / 0;
-  var M = 0;
-  var C = (e2) => {
-    for (const t2 of e2) t2.interactionId && (L = Math.min(L, t2.interactionId), M = Math.max(M, t2.interactionId), _ = M ? (M - L) / 7 + 1 : 0);
+  var M = (e2) => {
+    for (const t2 of e2) t2.interactionId && (T = Math.min(T, t2.interactionId), _ = Math.max(_, t2.interactionId), P = _ ? (_ - T) / 7 + 1 : 0);
   };
-  var I;
-  var w = () => I ? _ : performance.interactionCount ?? 0;
-  var F = () => {
-    "interactionCount" in performance || I || (I = h("event", C, { type: "event", buffered: true, durationThreshold: 0 }));
+  var w;
+  var C = () => w ? P : performance.interactionCount ?? 0;
+  var I = () => {
+    "interactionCount" in performance || w || (w = h("event", M, { type: "event", buffered: true, durationThreshold: 0 }));
   };
-  var k = 0;
-  var A = class {
+  var F = 0;
+  var k = class {
     constructor() {
       __publicField(this, "u", []);
       __publicField(this, "l", /* @__PURE__ */ new Map());
       __publicField(this, "m");
-      __publicField(this, "v");
+      __publicField(this, "p");
     }
-    p() {
-      k = w(), this.u.length = 0, this.l.clear();
+    v() {
+      F = C(), this.u.length = 0, this.l.clear();
     }
-    P() {
-      const e2 = Math.min(this.u.length - 1, Math.floor((w() - k) / 50));
+    L() {
+      const e2 = Math.min(this.u.length - 1, Math.floor((C() - F) / 50));
       return this.u[e2];
     }
     h(e2) {
       if (this.m?.(e2), !e2.interactionId && "first-input" !== e2.entryType) return;
       const t2 = this.u.at(-1);
       let n2 = this.l.get(e2.interactionId);
-      if (n2 || this.u.length < 10 || e2.duration > t2.T) {
-        if (n2 ? e2.duration > n2.T ? (n2.entries = [e2], n2.T = e2.duration) : e2.duration === n2.T && e2.startTime === n2.entries[0].startTime && n2.entries.push(e2) : (n2 = { id: e2.interactionId, entries: [e2], T: e2.duration }, this.l.set(n2.id, n2), this.u.push(n2)), this.u.sort((e3, t3) => t3.T - e3.T), this.u.length > 10) {
+      if (n2 || this.u.length < 10 || e2.duration > t2.P) {
+        if (n2 ? e2.duration > n2.P ? (n2.entries = [e2], n2.P = e2.duration) : e2.duration === n2.P && e2.startTime === n2.entries[0].startTime && n2.entries.push(e2) : (n2 = { id: e2.interactionId, entries: [e2], P: e2.duration }, this.l.set(n2.id, n2), this.u.push(n2)), this.u.sort(((e3, t3) => t3.P - e3.P)), this.u.length > 10) {
           const e3 = this.u.splice(10);
           for (const t3 of e3) this.l.delete(t3.id);
         }
-        this.v?.(n2);
+        this.p?.(n2);
       }
     }
   };
-  var B = (e2) => {
+  var A = (e2) => {
     const t2 = globalThis.requestIdleCallback || setTimeout;
-    "hidden" === document.visibilityState ? e2() : (e2 = f(e2), document.addEventListener("visibilitychange", e2, { once: true }), t2(() => {
-      e2(), document.removeEventListener("visibilitychange", e2);
+    "hidden" === document.visibilityState ? e2() : (e2 = f(e2), addEventListener("visibilitychange", e2, { once: true, capture: true }), t2((() => {
+      e2(), removeEventListener("visibilitychange", e2, { capture: true });
+    })));
+  };
+  var B = [200, 500];
+  var S = (e2, i2 = {}) => {
+    if (!globalThis.PerformanceEventTiming || !("interactionId" in PerformanceEventTiming.prototype)) return;
+    const s2 = v();
+    g((() => {
+      I();
+      let o2, c2 = r("INP");
+      const d2 = a(i2, k), f2 = (e3) => {
+        A((() => {
+          for (const t3 of e3) d2.h(t3);
+          const t2 = d2.L();
+          t2 && t2.P !== c2.value && (c2.value = t2.P, c2.entries = t2.entries, o2());
+        }));
+      }, u2 = h("event", f2, { durationThreshold: i2.durationThreshold ?? 40 });
+      o2 = n(e2, c2, B, i2.reportAllChanges), u2 && (u2.observe({ type: "first-input", buffered: true }), s2.onHidden((() => {
+        f2(u2.takeRecords()), o2(true);
+      })), t((() => {
+        d2.v(), c2 = r("INP"), o2 = n(e2, c2, B, i2.reportAllChanges);
+      })));
     }));
   };
-  var N = [200, 500];
-  var S = (e2, i2 = {}) => {
-    globalThis.PerformanceEventTiming && "interactionId" in PerformanceEventTiming.prototype && y(() => {
-      F();
-      let o2, s2 = r("INP");
-      const c2 = a(i2, A), d2 = (e3) => {
-        B(() => {
-          for (const t3 of e3) c2.h(t3);
-          const t2 = c2.P();
-          t2 && t2.T !== s2.value && (s2.value = t2.T, s2.entries = t2.entries, o2());
-        });
-      }, f2 = h("event", d2, { durationThreshold: i2.durationThreshold ?? 40 });
-      o2 = n(e2, s2, N, i2.reportAllChanges), f2 && (f2.observe({ type: "first-input", buffered: true }), document.addEventListener("visibilitychange", () => {
-        "hidden" === document.visibilityState && (d2(f2.takeRecords()), o2(true));
-      }), t(() => {
-        c2.p(), s2 = r("INP"), o2 = n(e2, s2, N, i2.reportAllChanges);
-      }));
-    });
-  };
-  var q = class {
+  var N = class {
     constructor() {
       __publicField(this, "m");
     }
@@ -732,44 +1455,47 @@
       this.m?.(e2);
     }
   };
-  var x = [2500, 4e3];
-  var O = (e2, o2 = {}) => {
-    y(() => {
-      const c2 = p();
+  var q = [2500, 4e3];
+  var x = (e2, s2 = {}) => {
+    g((() => {
+      const c2 = v();
       let d2, u2 = r("LCP");
-      const l2 = a(o2, q), m2 = (e3) => {
-        o2.reportAllChanges || (e3 = e3.slice(-1));
-        for (const t2 of e3) l2.h(t2), t2.startTime < c2.firstHiddenTime && (u2.value = Math.max(t2.startTime - s(), 0), u2.entries = [t2], d2());
-      }, g2 = h("largest-contentful-paint", m2);
-      if (g2) {
-        d2 = n(e2, u2, x, o2.reportAllChanges);
-        const s2 = f(() => {
-          m2(g2.takeRecords()), g2.disconnect(), d2(true);
-        });
-        for (const e3 of ["keydown", "click", "visibilitychange"]) addEventListener(e3, () => B(s2), { capture: true, once: true });
-        t((t2) => {
-          u2 = r("LCP"), d2 = n(e2, u2, x, o2.reportAllChanges), i(() => {
+      const l2 = a(s2, N), m2 = (e3) => {
+        s2.reportAllChanges || (e3 = e3.slice(-1));
+        for (const t2 of e3) l2.h(t2), t2.startTime < c2.firstHiddenTime && (u2.value = Math.max(t2.startTime - o(), 0), u2.entries = [t2], d2());
+      }, p2 = h("largest-contentful-paint", m2);
+      if (p2) {
+        d2 = n(e2, u2, q, s2.reportAllChanges);
+        const o2 = f((() => {
+          m2(p2.takeRecords()), p2.disconnect(), d2(true);
+        })), c3 = (e3) => {
+          e3.isTrusted && (A(o2), removeEventListener(e3.type, c3, { capture: true }));
+        };
+        for (const e3 of ["keydown", "click", "visibilitychange"]) addEventListener(e3, c3, { capture: true });
+        t(((t2) => {
+          u2 = r("LCP"), d2 = n(e2, u2, q, s2.reportAllChanges), i((() => {
             u2.value = performance.now() - t2.timeStamp, d2(true);
-          });
-        });
+          }));
+        }));
       }
-    });
+    }));
   };
-  var $ = [800, 1800];
-  var D = (e2) => {
-    document.prerendering ? y(() => D(e2)) : "complete" !== document.readyState ? addEventListener("load", () => D(e2), true) : setTimeout(e2);
+  var H = [800, 1800];
+  var O = (e2) => {
+    document.prerendering ? g((() => O(e2))) : "complete" !== document.readyState ? addEventListener("load", (() => O(e2)), true) : setTimeout(e2);
   };
-  var H = (e2, i2 = {}) => {
-    let c2 = r("TTFB"), a2 = n(e2, c2, $, i2.reportAllChanges);
-    D(() => {
-      const d2 = o();
-      d2 && (c2.value = Math.max(d2.responseStart - s(), 0), c2.entries = [d2], a2(true), t(() => {
-        c2 = r("TTFB", 0), a2 = n(e2, c2, $, i2.reportAllChanges), a2(true);
-      }));
-    });
+  var $ = (e2, i2 = {}) => {
+    let c2 = r("TTFB"), a2 = n(e2, c2, H, i2.reportAllChanges);
+    O((() => {
+      const d2 = s();
+      d2 && (c2.value = Math.max(d2.responseStart - o(), 0), c2.entries = [d2], a2(true), t((() => {
+        c2 = r("TTFB", 0), a2 = n(e2, c2, H, i2.reportAllChanges), a2(true);
+      })));
+    }));
   };
 
   // webVitals.ts
+  var SEND_DELAY_MS = 2e4;
   var WebVitalsCollector = class {
     constructor(onReady) {
       this.data = {
@@ -786,21 +1512,18 @@
     }
     initialize() {
       try {
-        O(this.collectMetric.bind(this));
+        x(this.collectMetric.bind(this), { reportAllChanges: true });
+        L(this.collectMetric.bind(this), { reportAllChanges: true });
+        S(this.collectMetric.bind(this), { reportAllChanges: true });
         E(this.collectMetric.bind(this));
-        S(this.collectMetric.bind(this));
-        P(this.collectMetric.bind(this));
-        H(this.collectMetric.bind(this));
-        this.timeout = setTimeout(() => {
-          if (!this.sent) {
-            this.sendData();
-          }
-        }, 2e4);
-        window.addEventListener("beforeunload", () => {
-          if (!this.sent) {
+        $(this.collectMetric.bind(this));
+        this.timeout = setTimeout(() => this.sendData(), SEND_DELAY_MS);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") {
             this.sendData();
           }
         });
+        window.addEventListener("pagehide", () => this.sendData());
       } catch (e2) {
         console.warn("Error initializing web vitals tracking:", e2);
       }
@@ -809,10 +1532,6 @@
       if (this.sent) return;
       const metricName = metric.name.toLowerCase();
       this.data[metricName] = metric.value;
-      const allCollected = Object.values(this.data).every((value) => value !== null);
-      if (allCollected) {
-        this.sendData();
-      }
     }
     sendData() {
       if (this.sent) return;
@@ -830,15 +1549,214 @@
     }
   };
 
+  // clickTracking.ts
+  var CLICK_THROTTLE_MS = 1e3;
+  var ClickTrackingManager = class {
+    constructor(tracker, config) {
+      this.lastClickAt = /* @__PURE__ */ new WeakMap();
+      this.tracker = tracker;
+      this.config = config;
+    }
+    initialize() {
+      document.addEventListener("click", this.handleClick.bind(this), true);
+    }
+    handleClick(event) {
+      const target = event.target;
+      if (this.config.trackButtonClicks && this.isButton(target)) {
+        this.trackButtonClick(target);
+      }
+    }
+    isButton(element) {
+      if (element.tagName === "BUTTON") return true;
+      if (element.getAttribute("role") === "button") return true;
+      if (element.tagName === "INPUT") {
+        const type = element.type?.toLowerCase();
+        if (type === "submit" || type === "button") return true;
+      }
+      let parent = element.parentElement;
+      let depth = 0;
+      while (parent && depth < 3) {
+        if (parent.tagName === "BUTTON") return true;
+        if (parent.getAttribute("role") === "button") return true;
+        parent = parent.parentElement;
+        depth++;
+      }
+      return false;
+    }
+    trackButtonClick(element) {
+      const buttonElement = this.findButton(element);
+      if (!buttonElement) return;
+      if (buttonElement.hasAttribute("data-rybbit-event")) return;
+      const now = Date.now();
+      const lastAt = this.lastClickAt.get(buttonElement);
+      if (lastAt !== void 0 && now - lastAt < CLICK_THROTTLE_MS) return;
+      this.lastClickAt.set(buttonElement, now);
+      const properties = {
+        text: this.getElementText(buttonElement),
+        ...this.extractDataAttributes(buttonElement)
+      };
+      this.tracker.trackButtonClick(properties);
+    }
+    extractDataAttributes(element) {
+      const attrs = {};
+      for (const attr of element.attributes) {
+        if (attr.name.startsWith("data-rybbit-prop-")) {
+          const key = attr.name.replace("data-rybbit-prop-", "");
+          attrs[key] = attr.value;
+        }
+      }
+      return attrs;
+    }
+    findButton(element) {
+      if (element.tagName === "BUTTON") return element;
+      if (element.getAttribute("role") === "button") return element;
+      if (element.tagName === "INPUT") {
+        const type = element.type?.toLowerCase();
+        if (type === "submit" || type === "button") return element;
+      }
+      let parent = element.parentElement;
+      let depth = 0;
+      while (parent && depth < 3) {
+        if (parent.tagName === "BUTTON") return parent;
+        if (parent.getAttribute("role") === "button") return parent;
+        parent = parent.parentElement;
+        depth++;
+      }
+      return null;
+    }
+    getElementText(element) {
+      const text = element.textContent?.trim().substring(0, 100);
+      if (text) return text;
+      const ariaLabel = element.getAttribute("aria-label")?.trim().substring(0, 100);
+      if (ariaLabel) return ariaLabel;
+      if (element.tagName === "INPUT") {
+        const value = element.value?.trim().substring(0, 100);
+        if (value) return value;
+      }
+      const title = element.getAttribute("title")?.trim().substring(0, 100);
+      if (title) return title;
+      return void 0;
+    }
+    cleanup() {
+      document.removeEventListener("click", this.handleClick.bind(this), true);
+    }
+  };
+
+  // copyTracking.ts
+  var CopyTrackingManager = class {
+    constructor(tracker) {
+      this.tracker = tracker;
+    }
+    initialize() {
+      document.addEventListener("copy", this.handleCopy.bind(this));
+    }
+    handleCopy() {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      const text = selection.toString();
+      const textLength = text.length;
+      if (textLength === 0) return;
+      const anchorNode = selection.anchorNode;
+      const sourceElement = anchorNode instanceof HTMLElement ? anchorNode : anchorNode?.parentElement;
+      if (!sourceElement) return;
+      const properties = {
+        text: text.substring(0, 500),
+        ...textLength > 500 && { textLength },
+        sourceElement: sourceElement.tagName.toLowerCase()
+      };
+      this.tracker.trackCopy(properties);
+    }
+    cleanup() {
+      document.removeEventListener("copy", this.handleCopy.bind(this));
+    }
+  };
+
+  // formTracking.ts
+  function getFormProperty(form, key) {
+    return Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, key)?.get?.call(form);
+  }
+  var FormTrackingManager = class {
+    constructor(tracker, config) {
+      this.tracker = tracker;
+      this.config = config;
+      this.boundHandleSubmit = this.handleSubmit.bind(this);
+      this.boundHandleChange = this.handleChange.bind(this);
+    }
+    initialize() {
+      document.addEventListener("submit", this.boundHandleSubmit, true);
+      document.addEventListener("change", this.boundHandleChange, true);
+    }
+    cleanup() {
+      document.removeEventListener("submit", this.boundHandleSubmit, true);
+      document.removeEventListener("change", this.boundHandleChange, true);
+    }
+    handleSubmit(event) {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement)) return;
+      const properties = {
+        formId: form.getAttribute("id") || "",
+        formName: form.getAttribute("name") || "",
+        formAction: getFormProperty(form, "action") || "",
+        method: (getFormProperty(form, "method") || "get").toUpperCase(),
+        fieldCount: getFormProperty(form, "elements")?.length ?? 0,
+        ariaLabel: form.getAttribute("aria-label") || void 0,
+        ...this.extractDataAttributes(form)
+      };
+      this.tracker.trackFormSubmit(properties);
+    }
+    handleChange(event) {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const tagName = target.tagName.toUpperCase();
+      if (!["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
+      if (target.disabled) return;
+      if (target.readOnly) return;
+      if (tagName === "INPUT") {
+        const inputType = target.type?.toLowerCase();
+        if (inputType === "hidden" || inputType === "password") return;
+      }
+      const inputName = target.name || target.id || target.getAttribute("aria-label") || target.placeholder || "";
+      const properties = {
+        element: tagName.toLowerCase(),
+        inputType: tagName === "INPUT" ? target.type?.toLowerCase() : void 0,
+        inputName,
+        formId: target.form?.getAttribute("id") || void 0,
+        formName: target.form?.getAttribute("name") || void 0,
+        ...this.extractDataAttributes(target)
+      };
+      this.tracker.trackInputChange(properties);
+    }
+    extractDataAttributes(element) {
+      const attrs = {};
+      for (const attr of element.attributes) {
+        if (attr.name.startsWith("data-rybbit-prop-")) {
+          const key = attr.name.replace("data-rybbit-prop-", "");
+          attrs[key] = attr.value;
+        }
+      }
+      return attrs;
+    }
+  };
+
   // index.ts
+  function hasOptedOut(optOutKey) {
+    if (window.__RYBBIT_OPTOUT__) return true;
+    try {
+      return localStorage.getItem(optOutKey) !== null;
+    } catch {
+      return false;
+    }
+  }
   (async function() {
-    const scriptTag = document.currentScript;
+    const scriptTag = document.currentScript || document.querySelector('script[src*="/script.js"]');
     if (!scriptTag) {
       console.error("Could not find current script tag");
       return;
     }
-    if (window.__RYBBIT_OPTOUT__ || localStorage.getItem("disable-rybbit") !== null) {
-      window.rybbit = {
+    const namespace = scriptTag.getAttribute("data-namespace") || "rybbit";
+    const optOutKey = `disable-${namespace}`;
+    if (hasOptedOut(optOutKey)) {
+      window[namespace] = {
         pageview: () => {
         },
         event: () => {
@@ -849,9 +1767,17 @@
         },
         identify: () => {
         },
+        setTraits: () => {
+        },
         clearUserId: () => {
         },
         getUserId: () => null,
+        flag: (_key, fallback) => fallback,
+        flagPayload: (_key, fallback) => fallback,
+        flags: () => ({}),
+        flagPayloads: () => ({}),
+        onReady: () => {
+        },
         startSessionReplay: () => {
         },
         stopSessionReplay: () => {
@@ -860,6 +1786,28 @@
       };
       return;
     }
+    const earlyQueue = [];
+    const queueMethod = (method) => (...args) => {
+      earlyQueue.push([method, args]);
+    };
+    window[namespace] = {
+      pageview: queueMethod("pageview"),
+      event: queueMethod("event"),
+      error: queueMethod("error"),
+      trackOutbound: queueMethod("trackOutbound"),
+      identify: queueMethod("identify"),
+      setTraits: queueMethod("setTraits"),
+      clearUserId: queueMethod("clearUserId"),
+      getUserId: () => null,
+      flag: (_key, fallback) => fallback,
+      flagPayload: (_key, fallback) => fallback,
+      flags: () => ({}),
+      flagPayloads: () => ({}),
+      onReady: queueMethod("onReady"),
+      startSessionReplay: queueMethod("startSessionReplay"),
+      stopSessionReplay: queueMethod("stopSessionReplay"),
+      isSessionReplayActive: () => false
+    };
     const config = await parseScriptConfig(scriptTag);
     if (!config) {
       return;
@@ -870,6 +1818,21 @@
         tracker.trackWebVitals(vitals);
       });
       webVitalsCollector.initialize();
+    }
+    let clickManager = null;
+    let copyManager = null;
+    let formManager = null;
+    if (config.trackButtonClicks) {
+      clickManager = new ClickTrackingManager(tracker, config);
+      clickManager.initialize();
+    }
+    if (config.trackCopy) {
+      copyManager = new CopyTrackingManager(tracker);
+      copyManager.initialize();
+    }
+    if (config.trackFormInteractions) {
+      formManager = new FormTrackingManager(tracker, config);
+      formManager.initialize();
     }
     if (config.trackErrors) {
       window.addEventListener("error", (event) => {
@@ -886,7 +1849,7 @@
         });
       });
     }
-    const trackPageview = () => tracker.trackPageview();
+    const trackPageview = () => tracker.trackPageviewIfUrlChanged();
     const debouncedTrackPageview = config.debounceDuration > 0 ? debounce(trackPageview, config.debounceDuration) : trackPageview;
     function setupEventListeners() {
       document.addEventListener("click", function(e2) {
@@ -938,21 +1901,32 @@
         });
       }
     }
-    window.rybbit = {
+    window[config.namespace] = {
       pageview: () => tracker.trackPageview(),
       event: (name, properties = {}) => tracker.trackEvent(name, properties),
       error: (error, properties = {}) => tracker.trackError(error, properties),
       trackOutbound: (url, text = "", target = "_self") => tracker.trackOutbound(url, text, target),
-      identify: (userId) => tracker.identify(userId),
+      identify: (userId, traits) => tracker.identify(userId, traits),
+      setTraits: (traits) => tracker.setTraits(traits),
       clearUserId: () => tracker.clearUserId(),
       getUserId: () => tracker.getUserId(),
+      flag: (key, fallback) => tracker.getFeatureFlag(key, fallback),
+      flagPayload: (key, fallback) => tracker.getFeatureFlagPayload(key, fallback),
+      flags: () => tracker.getFeatureFlags(),
+      flagPayloads: () => tracker.getFeatureFlagPayloads(),
+      onReady: (callback) => callback(window[config.namespace]),
       startSessionReplay: () => tracker.startSessionReplay(),
       stopSessionReplay: () => tracker.stopSessionReplay(),
       isSessionReplayActive: () => tracker.isSessionReplayActive()
     };
+    const api = window[config.namespace];
+    for (const [method, args] of earlyQueue) {
+      api[method](...args);
+    }
     setupEventListeners();
     window.addEventListener("beforeunload", () => {
-      tracker.cleanup();
+      clickManager?.cleanup();
+      copyManager?.cleanup();
     });
     if (config.autoTrackPageview) {
       tracker.trackPageview();

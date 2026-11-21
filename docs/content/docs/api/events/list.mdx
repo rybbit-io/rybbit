@@ -1,0 +1,395 @@
+---
+title: Get Events
+description: Returns a paginated list of events (pageviews, custom events, and outbound clicks).
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/events
+```
+
+Returns a paginated list of events (pageviews, custom events, and outbound clicks).
+
+Web vitals rows are left out. Events come back newest first. Page with cursors:
+
+- **Scroll back:** make the first request with no cursor, then pass `cursor.oldestCursor` as `before_cursor` until `cursor.hasMore` is `false`.
+- **Poll for new events:** pass `cursor.newestCursor` (or any row's `event_cursor`) as `since_cursor`, then pass each response's `cursor.nextCursor` on the next poll. Each poll reads the oldest 500 events after the cursor; if `cursor.hasMore` is `true`, poll again straight away. Each poll re-reads the last 5 seconds, because events can be written slightly out of order, so drop rows whose `event_cursor` you already have. The first poll after a page load gets no such overlap from `cursor.newestCursor` itself, so start it 5 seconds earlier: subtract 5000 from the cursor's millisecond part and use sixteen zeros after the underscore (see [Build a Live Visitor Feed](/docs/api/live-feed)).
+
+`since_timestamp` and `before_timestamp` are older whole-second bounds kept for compatibility. Events in the boundary second are skipped, so prefer the cursors.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following:
+
+<TypeTable
+  type={{
+    page_size: {
+      description: 'Number of results per page. Ignored when since_cursor or since_timestamp is set.',
+      type: 'number',
+      default: 50,
+    },
+    before_cursor: {
+      description: 'Return events older than this cursor. Pass cursor.oldestCursor from the previous page, or a row\'s event_cursor.',
+      type: 'string',
+    },
+    since_cursor: {
+      description: 'Poll for events newer than this cursor. Returns up to 500 events per poll, read oldest first, and a cursor with nextCursor and hasMore. Takes precedence over every other cursor parameter.',
+      type: 'string',
+    },
+    since_timestamp: {
+      description: 'Legacy. Return events after this second (UTC, "YYYY-MM-DD HH:MM:SS"). Returns only the newest 500 and no cursor; events in the boundary second are skipped.',
+      type: 'string',
+    },
+    before_timestamp: {
+      description: 'Legacy. Return events before this second (UTC, "YYYY-MM-DD HH:MM:SS"). Events in the boundary second are skipped.',
+      type: 'string',
+    },
+  }}
+/>
+
+A malformed `before_cursor` or `since_cursor` returns `400`.
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of event objects, newest first',
+      type: 'Event[]',
+    },
+    cursor: {
+      description: 'Pagination cursor. Omitted when since_timestamp is used. With since_cursor it is { nextCursor, hasMore }; otherwise it is the scroll-back shape.',
+      type: '{ hasMore: boolean, oldestTimestamp: string | null, oldestCursor: string | null, newestCursor: string | null } | { nextCursor: string, hasMore: boolean }',
+    },
+  }}
+/>
+
+#### Event Object
+
+<TypeTable
+  type={{
+    timestamp: {
+      description: 'Event timestamp',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    event_cursor: {
+      description: 'The row\'s position in the log, usable as before_cursor or since_cursor',
+      type: 'string',
+      typeDescription: '"<epoch milliseconds>_<16 hex digits>"',
+    },
+    type: {
+      description: 'Event type',
+      type: 'string',
+      typeDescription: '"pageview" | "custom_event" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change" | "error"',
+    },
+    event_name: {
+      description: 'Custom event name',
+      type: 'string',
+    },
+    properties: {
+      description: 'Event properties as JSON string',
+      type: 'string',
+    },
+    session_id: {
+      description: 'Session identifier',
+      type: 'string',
+    },
+    user_id: {
+      description: 'User identifier',
+      type: 'string',
+    },
+    identified_user_id: {
+      description: 'Identified user ID (if user has been identified)',
+      type: 'string',
+    },
+    traits: {
+      description: 'Traits of the identified user, or null when the event has no identified user or no stored profile',
+      type: 'object | null',
+    },
+    pathname: {
+      description: 'Page path',
+      type: 'string',
+    },
+    querystring: {
+      description: 'URL query string',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname',
+      type: 'string',
+    },
+    page_title: {
+      description: 'Page title',
+      type: 'string',
+    },
+    referrer: {
+      description: 'Referrer URL',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
+    language: {
+      description: 'Browser language',
+      type: 'string',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    region: {
+      description: 'Region/state',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    lat: {
+      description: 'Latitude',
+      type: 'number',
+    },
+    lon: {
+      description: 'Longitude',
+      type: 'number',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
+    },
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/1/events',
+    params={
+        'page_size': 50,
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/events?page_size=50&start_date=2024-01-01&end_date=2024-01-31");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "timestamp": "2024-01-31 14:22:00",
+      "type": "custom_event",
+      "event_name": "signup",
+      "properties": "{\"plan\":\"pro\",\"source\":\"homepage\"}",
+      "session_id": "abc123def456",
+      "user_id": "user_abc123",
+      "identified_user_id": "",
+      "pathname": "/signup",
+      "querystring": "",
+      "hostname": "example.com",
+      "page_title": "Sign Up",
+      "referrer": "https://google.com",
+      "browser": "Chrome",
+      "browser_version": "120.0",
+      "operating_system": "macOS",
+      "operating_system_version": "14.0",
+      "language": "en-US",
+      "country": "US",
+      "region": "California",
+      "city": "San Francisco",
+      "lat": 37.7749,
+      "lon": -122.4194,
+      "screen_width": 1920,
+      "screen_height": 1080,
+      "device_type": "desktop",
+      "event_cursor": "1706710920412_9F3C2A61B07E4D18",
+      "traits": null
+    },
+    {
+      "timestamp": "2024-01-31 14:21:00",
+      "type": "pageview",
+      "event_name": "",
+      "properties": "{}",
+      "session_id": "abc123def456",
+      "user_id": "user_abc123",
+      "identified_user_id": "",
+      "pathname": "/pricing",
+      "querystring": "",
+      "hostname": "example.com",
+      "page_title": "Pricing",
+      "referrer": "https://example.com/",
+      "browser": "Chrome",
+      "browser_version": "120.0",
+      "operating_system": "macOS",
+      "operating_system_version": "14.0",
+      "language": "en-US",
+      "country": "US",
+      "region": "California",
+      "city": "San Francisco",
+      "lat": 37.7749,
+      "lon": -122.4194,
+      "screen_width": 1920,
+      "screen_height": 1080,
+      "device_type": "desktop",
+      "event_cursor": "1706710860118_04B7E9D25C3A1F60",
+      "traits": null
+    }
+  ],
+  "cursor": {
+    "hasMore": true,
+    "oldestTimestamp": "2024-01-31 14:21:00",
+    "oldestCursor": "1706710860118_04B7E9D25C3A1F60",
+    "newestCursor": "1706710920412_9F3C2A61B07E4D18"
+  }
+}
+```
+
+</div>
+</div>

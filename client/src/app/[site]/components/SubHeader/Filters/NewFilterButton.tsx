@@ -1,99 +1,123 @@
 "use client";
-import { Filter, FilterParameter } from "@rybbit/shared";
-import { ListFilterPlus, Plus } from "lucide-react";
-import { useState } from "react";
+
+import { Filter, FilterParameter, Segment } from "@rybbit/shared";
+import { ListFilterPlus } from "lucide-react";
+import { useExtracted } from "next-intl";
+import { useRef, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/basic-tabs";
 import { Button } from "../../../../../components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../../../../../components/ui/dropdown-menu";
-import { useStore } from "../../../../../lib/store";
-import { sleep } from "../../../../../lib/utils";
-import { FilterComponent } from "../../shared/Filters/FilterComponent";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
+import { useCanOnSite } from "../../../../../hooks/usePermissions";
+import { addFilter, useStore } from "../../../../../lib/store";
+import { FilterPicker } from "./FilterPicker";
+import { SegmentDialog } from "./SegmentDialog";
+import { SegmentsTab } from "./SegmentsTab";
 
+type Tab = "filters" | "segments";
+type DialogState = { segment?: Segment; initialFilters?: Filter[] } | null;
+
+/**
+ * The Filter button. Its popover has two tabs: the filter picker that was
+ * always here, and the saved segments for this site. Segments live entirely
+ * inside this popover so the toolbar gains nothing.
+ */
 export function NewFilterButton({ availableFilters }: { availableFilters?: FilterParameter[] }) {
-  const { filters, setFilters } = useStore();
-
-  const [localFilters, setLocalFilters] = useState<Filter[]>(filters);
-
-  const updateLocalFilters = (filter: Filter | null, index: number) => {
-    if (filter === null) {
-      const newFilters = [...localFilters];
-      newFilters.splice(index, 1);
-      setLocalFilters(newFilters);
-      return;
-    }
-    const newFilters = [...localFilters];
-    newFilters[index] = filter;
-    setLocalFilters(newFilters);
-  };
-
-  const addLocalFilter = () => {
-    setLocalFilters([
-      ...localFilters,
-      {
-        parameter: availableFilters?.[0] || "pathname",
-        type: "equals",
-        value: [],
-      },
-    ]);
-  };
+  const t = useExtracted();
+  const { site, privateKey, filters } = useStore();
+  const canWriteSegments = useCanOnSite("segments:write", site);
 
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("filters");
+  const [parameter, setParameter] = useState<FilterParameter | null>(null);
+  const pendingRef = useRef<() => Filter | null>(() => null);
+  const [dialog, setDialog] = useState<DialogState>(null);
 
-  const onClose = async () => {
+  // Public viewers get no permissions from the server; the private-link view
+  // is read-only by design even for members.
+  const canWrite = !privateKey && canWriteSegments;
+
+  const resetPicker = () => {
+    pendingRef.current = () => null;
+    setParameter(null);
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      const pending = pendingRef.current();
+      if (pending) addFilter(pending);
+      resetPicker();
+    }
+    setOpen(isOpen);
+  };
+
+  // Closing from an action that already did its work must not commit a
+  // half-built filter left behind on the Filters tab.
+  const closePopover = () => {
+    resetPicker();
     setOpen(false);
-    await sleep(100);
+  };
+
+  const selectTab = (next: Tab) => {
+    if (next !== tab) resetPicker();
+    setTab(next);
+  };
+
+  const openDialog = (state: NonNullable<DialogState>) => {
+    closePopover();
+    setDialog(state);
   };
 
   return (
-    <DropdownMenu
-      onOpenChange={isOpen => {
-        setLocalFilters(filters);
-        if (!isOpen) {
-          onClose();
-        }
-      }}
-      open={open}
-    >
-      <DropdownMenuTrigger
-        size={"sm"}
-        onClick={() => {
-          if (localFilters.length === 0) {
-            addLocalFilter();
-          }
-          setOpen(true);
-        }}
-      >
-        <ListFilterPlus className="w-4 h-4" />
-        Filter
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="flex flex-col p-0 max-w-[95vw]">
-        <div className="flex flex-col gap-2 p-3">
-          {localFilters.map((filter, index) => (
-            <FilterComponent
-              key={index}
-              filter={filter}
-              index={index}
-              updateFilter={updateLocalFilters}
-              availableFilters={availableFilters}
-            />
-          ))}
-        </div>
-        <div className="flex justify-between border-t border-neutral-200 dark:border-neutral-750 p-3">
-          <Button variant={"ghost"} onClick={() => addLocalFilter()} size={"sm"} className="gap-1">
-            <Plus className="w-3 h-3" />
-            Add Filter
+    <>
+      <Popover open={open} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1.5">
+            <ListFilterPlus className="w-4 h-4" />
+            {t("Filter")}
           </Button>
-          <Button
-            variant={"outline"}
-            size={"sm"}
-            onClick={() => {
-              setFilters(localFilters);
-              setOpen(false);
-            }}
-          >
-            Save Filters
-          </Button>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-0" align="start">
+          <Tabs value={tab} onValueChange={value => selectTab(value as Tab)}>
+            {/* Full-width underline tabs; -mb-px lays the underline over the list's hairline. */}
+            <TabsList className="flex h-auto w-full space-x-0 border-b border-neutral-200 dark:border-neutral-700">
+              <TabsTrigger value="filters" className="-mb-px flex-1 py-2 text-xs">
+                {t("Filters")}
+              </TabsTrigger>
+              <TabsTrigger value="segments" className="-mb-px flex-1 py-2 text-xs">
+                {t("Segments")}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="filters" className="mt-0">
+              <FilterPicker
+                availableFilters={availableFilters}
+                onCommit={addFilter}
+                onClose={closePopover}
+                pendingRef={pendingRef}
+                parameter={parameter}
+                setParameter={setParameter}
+              />
+            </TabsContent>
+            <TabsContent value="segments" className="mt-0">
+              <SegmentsTab
+                siteId={site}
+                canWrite={canWrite}
+                onNew={() => openDialog({})}
+                onSaveCurrent={() => openDialog({ initialFilters: filters })}
+                onEdit={segment => openDialog({ segment })}
+                onApplied={closePopover}
+              />
+            </TabsContent>
+          </Tabs>
+        </PopoverContent>
+      </Popover>
+      <SegmentDialog
+        open={dialog !== null}
+        onOpenChange={isOpen => !isOpen && setDialog(null)}
+        siteId={site}
+        segment={dialog?.segment}
+        initialFilters={dialog?.initialFilters}
+        availableFilters={availableFilters}
+      />
+    </>
   );
 }

@@ -1,0 +1,75 @@
+---
+title: Webflow
+description: Add Rybbit analytics to your Webflow site
+category: builders
+icon: SiWebflow
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Webflow accepts custom `<head>` code either site-wide in **Site settings → Custom code** or per page in the page settings. Either way the code only reaches the live site when you publish.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Webflow
+
+<Tabs items={["Site-wide", "Single page"]}>
+<Tab value="Site-wide">
+1. Open your project and go to **Site settings → Custom code**.
+2. Paste the snippet into **Head code**.
+3. Click **Save**, then **Publish** the site.
+</Tab>
+<Tab value="Single page">
+Use this when you only want to track specific pages.
+
+1. In the Designer, open the page's **Settings** (cog icon next to the page name).
+2. Scroll to **Custom code** and paste the snippet into **Inside `<head>` tag**.
+3. Click **Save**, then **Publish** the site.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Give the element an **ID** in the Designer (**Settings** panel → **General** → **ID**), then attach a listener in **Site settings → Custom code → Footer code** or in an **Embed** element on that page:
+
+```html
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var button = document.getElementById("my-special-button");
+    if (!button) return;
+    button.addEventListener("click", function () {
+      window.rybbit?.event("button_click", {
+        button_id: "my-special-button",
+        page_path: window.location.pathname,
+      });
+    });
+  });
+</script>
+```
+
+The same pattern works for a Form Block's `submit` event. Webflow handles form submission itself, so this fires on the submit attempt, not on confirmed success.
+
+## Troubleshooting
+
+- **Changes not showing on the live site**: custom code is staged until you **Publish**. Check the published site, not the Designer preview.
+- **Interactions that show or hide sections** without changing the URL produce a single pageview. Track those states as custom events, or call `window.rybbit.pageview()` from your own script when they appear.
+- **Scripts that read the DOM** belong in **Footer code**, not **Head code**, so the elements exist when they run.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

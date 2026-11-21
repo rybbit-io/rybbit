@@ -1,0 +1,66 @@
+---
+title: ClickFunnels
+description: Add Rybbit analytics to your ClickFunnels funnels
+category: landing
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+ClickFunnels 2.0 has a **Header Code** field at three levels: **Site Settings** for the whole workspace, **Funnel settings** for every page in one funnel, and the page editor for a single page. Add the snippet at the widest level you want tracked and leave the narrower ones empty so it is not loaded twice.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to ClickFunnels
+
+<Tabs items={["Whole site", "One funnel", "One page"]}>
+<Tab>
+1. In your workspace, open the **Site & Blog** app in the left menu and click **Site Settings**.
+2. Paste the snippet into **Header Code**.
+3. Save.
+
+This applies to every page in the workspace: funnel pages, store pages, courses, blog posts and site pages.
+</Tab>
+
+<Tab>
+1. Open **Funnels** and click the **Settings** gear next to the funnel (or the **Settings** button in the top-right of the funnel workflow editor).
+2. Paste the snippet into **Head Code**.
+3. Click **Update Funnel**.
+
+The code loads on every page of that funnel only.
+</Tab>
+
+<Tab>
+1. Open the page in the page editor.
+2. Go to **Settings > Tracking Code** and paste the snippet into **Header Code**.
+3. Click **Save**.
+
+The code loads on this page only.
+</Tab>
+</Tabs>
+
+Save, then open the live page URL to test: header code does not run inside the page editor.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Duplicate pageviews**: the snippet is present at more than one level (site and funnel, or funnel and page). Keep a single copy.
+- **Snippet not in the page source**: check which level you pasted it at. Site Settings covers the workspace, funnel settings cover that funnel's pages only, and the page editor covers one page.
+- **jQuery**: ClickFunnels pages already include jQuery, so do not load it again in the same header code block; a second copy can break page scripts.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

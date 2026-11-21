@@ -1,87 +1,112 @@
-import { cn } from "@/lib/utils";
-import { Marquee } from "@/components/magicui/marquee";
-import { SectionBadge } from "@/components/SectionBadge";
-import Image from "next/image";
 import Link from "next/link";
+import {
+  SiAngular,
+  SiAstro,
+  SiBigcommerce,
+  SiCarrd,
+  SiContentful,
+  SiDocusaurus,
+  SiDrupal,
+  SiFramer,
+  SiGatsby,
+  SiGhost,
+  SiGitbook,
+  SiGoogletagmanager,
+  SiHugo,
+  SiJekyll,
+  SiJoomla,
+  SiLaravel,
+  SiMintlify,
+  SiNextdotjs,
+  SiNuxt,
+  SiPrestashop,
+  SiReact,
+  SiRemix,
+  SiSanity,
+  SiShopify,
+  SiSquarespace,
+  SiStrapi,
+  SiSvelte,
+  SiVitepress,
+  SiVuedotjs,
+  SiWebflow,
+  SiWix,
+  SiWoocommerce,
+  SiWordpress,
+} from "@icons-pack/react-simple-icons";
+import { ComponentType, CSSProperties } from "react";
 
-// Platform logos from the public directory with their documentation paths
-const platforms = [
-  { name: "Next.js", logo: "/platforms/nextjs.svg", path: "/docs/guides/react/next-js" },
-  { name: "React", logo: "/platforms/react.svg", path: "/docs/guides/react/vite-cra" },
-  { name: "Vue", logo: "/platforms/vue.svg", path: "/docs/guides/vue/vite" },
-  { name: "Angular", logo: "/platforms/angular.svg", path: "/docs/guides/angular" },
-  { name: "Svelte", logo: "/platforms/svelte.svg", path: "/docs/guides/svelte/vite" },
-  { name: "Remix", logo: "/platforms/remix.png", path: "/docs/guides/react/remix" },
-  { name: "Gatsby", logo: "/platforms/gatsby.svg", path: "/docs/guides/react/gatsby" },
-  { name: "Nuxt", logo: "/platforms/nuxt.svg", path: "/docs/guides/vue/nuxt" },
-  { name: "WordPress", logo: "/platforms/wordpress.svg", path: "/docs/guides/wordpress" },
-  { name: "Shopify", logo: "/platforms/shopify.svg", path: "/docs/guides/shopify" },
-  { name: "Webflow", logo: "/platforms/webflow.svg", path: "/docs/guides/webflow" },
-  { name: "Laravel", logo: "/platforms/laravel.svg", path: "/docs/guides/laravel" },
-  { name: "GTM", logo: "/platforms/gtm.svg", path: "/docs/guides/google-tag-manager" },
-  { name: "Docusaurus", logo: "/platforms/docusaurus.svg", path: "/docs/guides/docusaurus" },
-  { name: "WooCommerce", logo: "/platforms/woocommerce.svg", path: "/docs/guides/woocommerce" },
-  { name: "Mintlify", logo: "/platforms/mintlify.svg", path: "/docs/guides/mintlify" },
-];
-
-// Shuffle function to randomize array order
-const shuffleArray = <T,>(array: T[]): T[] => {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
+type IconProps = {
+  className?: string;
+  size?: number;
 };
 
-const PlatformLogo = ({ name, logo, path }: { name: string; logo: string; path: string }) => {
+export interface Platform {
+  name: string;
+  icon: ComponentType<IconProps>;
+  path: string;
+  /** Brand color revealed on hover. `darkColor` overrides it for near-black brands. */
+  color: string;
+  darkColor?: string;
+}
+
+// Platform data with their documentation paths, icons, and brand colors
+export const platforms: Platform[] = [
+  { name: "Angular", icon: SiAngular, path: "/docs/guides/angular", color: "#DD0031" },
+  { name: "Astro", icon: SiAstro, path: "/docs/guides/astro", color: "#BC52EE" },
+  { name: "BigCommerce", icon: SiBigcommerce, path: "/docs/guides/bigcommerce", color: "#121118", darkColor: "#ffffff" },
+  { name: "Carrd", icon: SiCarrd, path: "/docs/guides/carrd", color: "#596CAF" },
+  { name: "Contentful", icon: SiContentful, path: "/docs/guides/contentful", color: "#2478CC" },
+  { name: "Docusaurus", icon: SiDocusaurus, path: "/docs/guides/docusaurus", color: "#3ECC5F" },
+  { name: "Drupal", icon: SiDrupal, path: "/docs/guides/drupal", color: "#0678BE" },
+  { name: "Framer", icon: SiFramer, path: "/docs/guides/framer", color: "#0055FF", darkColor: "#66aaff" },
+  { name: "Gatsby", icon: SiGatsby, path: "/docs/guides/react/gatsby", color: "#663399", darkColor: "#9d7cbf" },
+  { name: "Ghost", icon: SiGhost, path: "/docs/guides/ghost", color: "#15171A", darkColor: "#ffffff" },
+  { name: "GitBook", icon: SiGitbook, path: "/docs/guides/gitbook", color: "#3884FF" },
+  { name: "GTM", icon: SiGoogletagmanager, path: "/docs/guides/google-tag-manager", color: "#246FDB" },
+  { name: "Hugo", icon: SiHugo, path: "/docs/guides/hugo", color: "#FF4088" },
+  { name: "Jekyll", icon: SiJekyll, path: "/docs/guides/jekyll", color: "#CC0000", darkColor: "#f25c5c" },
+  { name: "Joomla", icon: SiJoomla, path: "/docs/guides/joomla", color: "#5091CD" },
+  { name: "Laravel", icon: SiLaravel, path: "/docs/guides/laravel", color: "#FF2D20" },
+  { name: "Mintlify", icon: SiMintlify, path: "/docs/guides/mintlify", color: "#0D9373", darkColor: "#18E299" },
+  { name: "Next.js", icon: SiNextdotjs, path: "/docs/guides/react/next-js", color: "#000000", darkColor: "#ffffff" },
+  { name: "Nuxt", icon: SiNuxt, path: "/docs/guides/vue/nuxt", color: "#00DC82" },
+  { name: "PrestaShop", icon: SiPrestashop, path: "/docs/guides/prestashop", color: "#DF0067" },
+  { name: "React", icon: SiReact, path: "/docs/guides/react/vite-cra", color: "#087EA4", darkColor: "#61DAFB" },
+  { name: "Remix", icon: SiRemix, path: "/docs/guides/react/remix", color: "#121212", darkColor: "#ffffff" },
+  { name: "Sanity", icon: SiSanity, path: "/docs/guides/sanity", color: "#F03E2F" },
+  { name: "Shopify", icon: SiShopify, path: "/docs/guides/shopify", color: "#7AB55C" },
+  { name: "Squarespace", icon: SiSquarespace, path: "/docs/guides/squarespace", color: "#000000", darkColor: "#ffffff" },
+  { name: "Strapi", icon: SiStrapi, path: "/docs/guides/strapi", color: "#4945FF", darkColor: "#8c88ff" },
+  { name: "Svelte", icon: SiSvelte, path: "/docs/guides/svelte/vite", color: "#FF3E00" },
+  { name: "SvelteKit", icon: SiSvelte, path: "/docs/guides/svelte/sveltekit", color: "#FF3E00" },
+  { name: "VitePress", icon: SiVitepress, path: "/docs/guides/vitepress", color: "#5C73E7" },
+  { name: "Vue", icon: SiVuedotjs, path: "/docs/guides/vue/vite", color: "#4FC08D" },
+  { name: "Webflow", icon: SiWebflow, path: "/docs/guides/webflow", color: "#146EF5" },
+  { name: "Wix", icon: SiWix, path: "/docs/guides/wix", color: "#0C6EFC" },
+  { name: "WooCommerce", icon: SiWoocommerce, path: "/docs/guides/woocommerce", color: "#96588A", darkColor: "#b57fab" },
+  { name: "WordPress", icon: SiWordpress, path: "/docs/guides/wordpress", color: "#21759B", darkColor: "#5da9cc" },
+];
+
+const PlatformLogo = ({ name, icon: Icon, path, color, darkColor }: Platform) => {
   return (
-    <Link href={path} className="block">
-      <div
-        className={cn(
-          "flex items-center justify-center h-20 w-20 mx-2 my-2",
-          "bg-neutral-100/50 dark:bg-neutral-800/50 backdrop-blur-sm rounded-lg p-4",
-          "border border-neutral-300/50 dark:border-neutral-700/50 hover:border-neutral-500 dark:hover:border-neutral-500 transition-colors duration-200",
-          "cursor-pointer hover:scale-105 transition-transform"
-        )}
-      >
-        <Image src={logo} alt={name} width={60} height={60} className="object-contain max-h-10" />
-      </div>
+    <Link
+      href={path}
+      style={{ "--brand": color, "--brand-dark": darkColor ?? color } as CSSProperties}
+      className="group flex min-h-20 items-center gap-3 bg-white px-4 text-neutral-600 transition-colors duration-200 hover:bg-neutral-50 hover:text-neutral-950 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+    >
+      <Icon className="size-5 shrink-0 transition-colors duration-200 group-hover:text-[var(--brand)] group-focus-visible:text-[var(--brand)] dark:group-hover:text-[var(--brand-dark)] dark:group-focus-visible:text-[var(--brand-dark)]" />
+      <span className="text-sm font-medium">{name}</span>
     </Link>
   );
 };
 
-export function Integrations() {
-  // Create two different shuffled arrays for the marquee rows
-  const topRowPlatforms = shuffleArray(platforms);
-  const bottomRowPlatforms = shuffleArray(platforms);
-
+export function IntegrationsGrid() {
   return (
-    <div className="py-20 w-full">
-      <div className="max-w-7xl mx-auto px-4 mb-10 text-center">
-        <SectionBadge className="mb-4">
-          Seamless Integration
-        </SectionBadge>
-        <h2 className="text-4xl font-bold mb-3">Works with all your favorite platforms</h2>
-        <p className="text-xl text-neutral-600 dark:text-neutral-300 font-light">Integrate Rybbit with any platform in minutes</p>
-      </div>
-
-      <div className="relative flex w-full flex-col items-center justify-center overflow-hidden gap-8">
-        <Marquee pauseOnHover className="[--duration:120s]" reverse>
-          {topRowPlatforms.map((platform, index) => (
-            <PlatformLogo key={`top-${index}`} {...platform} />
-          ))}
-        </Marquee>
-
-        <Marquee pauseOnHover className="[--duration:90s]">
-          {bottomRowPlatforms.map((platform, index) => (
-            <PlatformLogo key={`bottom-${index}`} {...platform} />
-          ))}
-        </Marquee>
-
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background"></div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background"></div>
-      </div>
+    <div className="grid min-h-full grid-cols-2 gap-px bg-neutral-200 dark:bg-neutral-800 sm:grid-cols-3 xl:grid-cols-4">
+      {platforms.map((platform) => (
+        <PlatformLogo key={platform.name} {...platform} />
+      ))}
     </div>
   );
 }

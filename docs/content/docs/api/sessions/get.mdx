@@ -1,0 +1,444 @@
+---
+title: Get Session
+description: Returns detailed information about a specific session including all events and pageviews.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/sessions/:sessionId
+```
+
+Returns detailed information about a specific session including all events and pageviews.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    sessionId: {
+      description: 'Session ID',
+      type: 'string',
+      required: true,
+    },
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+<TypeTable
+  type={{
+    limit: {
+      description: 'Number of events to return',
+      type: 'number',
+      default: 100,
+    },
+    offset: {
+      description: 'Number of events to skip',
+      type: 'number',
+      default: 0,
+    },
+    minutes: {
+      description: 'Only use events from the last N minutes. Applies to the session summary, the events, and the total. 0 or a non-numeric value is ignored, and the whole session is returned.',
+      type: 'number',
+      required: false,
+    },
+  }}
+/>
+
+Returns `404` when the session has no events (or none in the last `minutes`).
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Session details object',
+      type: 'SessionDetails',
+    },
+  }}
+/>
+
+#### SessionDetails Object
+
+<TypeTable
+  type={{
+    session: {
+      description: 'Session summary',
+      type: 'SessionMeta',
+    },
+    events: {
+      description: 'Events in the session, oldest first. Performance (web vitals) events are left out.',
+      type: 'Event[]',
+    },
+    pagination: {
+      description: 'Pagination info for events',
+      type: 'Pagination',
+    },
+  }}
+/>
+
+#### SessionMeta Object
+
+<TypeTable
+  type={{
+    session_id: {
+      description: 'Session identifier',
+      type: 'string',
+    },
+    user_id: {
+      description: 'Device fingerprint identifier',
+      type: 'string',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    region: {
+      description: 'Region/state',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    language: {
+      description: 'Browser language',
+      type: 'string',
+    },
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
+    },
+    referrer: {
+      description: 'First non-empty referrer in the session',
+      type: 'string',
+    },
+    channel: {
+      description: 'Traffic channel',
+      type: 'string',
+    },
+    session_start: {
+      description: 'Time of the first event',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_end: {
+      description: 'Time of the last event',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_duration: {
+      description: 'Duration in seconds',
+      type: 'number',
+    },
+    pageviews: {
+      description: 'Number of pageviews',
+      type: 'number',
+    },
+    events: {
+      description: 'Number of events of every type, including pageviews and performance events',
+      type: 'number',
+    },
+    entry_page: {
+      description: 'First page visited',
+      type: 'string',
+    },
+    exit_page: {
+      description: 'Last page visited',
+      type: 'string',
+    },
+    ip: {
+      description: 'IP address. null unless the site has IP tracking turned on.',
+      type: 'string | null',
+    },
+  }}
+/>
+
+#### Event Object
+
+<TypeTable
+  type={{
+    timestamp: {
+      description: 'Event timestamp',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS.mmm"',
+    },
+    pathname: {
+      description: 'Page path',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname',
+      type: 'string',
+    },
+    querystring: {
+      description: 'Raw query string',
+      type: 'string',
+    },
+    page_title: {
+      description: 'Page title',
+      type: 'string',
+    },
+    referrer: {
+      description: 'Referrer URL',
+      type: 'string',
+    },
+    type: {
+      description: 'Event type',
+      type: 'string',
+      typeDescription: '"pageview" | "custom_event" | "error" | "outbound" | "button_click" | "copy" | "form_submit" | "input_change"',
+    },
+    event_name: {
+      description: 'Custom event name, or the error type for errors. Often empty for other types.',
+      type: 'string',
+    },
+    props: {
+      description: 'Event properties',
+      type: 'object',
+    },
+    goals: {
+      description: "Goals this event completed, usually empty. Only the site's 50 oldest goals are matched, and API keys without the goals:read scope always get an empty list.",
+      type: '{ id: number; name: string | null }[]',
+    },
+  }}
+/>
+
+#### Pagination Object
+
+<TypeTable
+  type={{
+    total: {
+      description: 'Number of events in the session, excluding performance events',
+      type: 'number',
+    },
+    limit: {
+      description: 'The limit used',
+      type: 'number',
+    },
+    offset: {
+      description: 'The offset used',
+      type: 'number',
+    },
+    hasMore: {
+      description: 'Whether more events follow this page',
+      type: 'boolean',
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/sessions/sess_abc123?limit=50" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/sessions/sess_abc123?limit=50',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/sessions/sess_abc123',
+    params={'limit': 50},
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/sessions/sess_abc123?limit=50');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/sessions/sess_abc123?limit=50')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/sessions/sess_abc123?limit=50", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/123/sessions/sess_abc123?limit=50")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/sessions/sess_abc123?limit=50"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/sessions/sess_abc123?limit=50");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": {
+    "session": {
+      "session_id": "sess_abc123",
+      "user_id": "dev_xyz789",
+      "country": "US",
+      "region": "US-CA",
+      "city": "San Francisco",
+      "language": "en-US",
+      "device_type": "Desktop",
+      "browser": "Chrome",
+      "browser_version": "120.0",
+      "operating_system": "macOS",
+      "operating_system_version": "14.2",
+      "screen_width": 1920,
+      "screen_height": 1080,
+      "referrer": "https://google.com",
+      "channel": "Organic Search",
+      "session_start": "2024-01-31 14:00:00",
+      "session_end": "2024-01-31 14:04:05",
+      "session_duration": 245,
+      "pageviews": 5,
+      "events": 7,
+      "entry_page": "/",
+      "exit_page": "/pricing",
+      "ip": null
+    },
+    "events": [
+      {
+        "timestamp": "2024-01-31 14:00:00.000",
+        "pathname": "/",
+        "hostname": "example.com",
+        "querystring": "",
+        "page_title": "Home",
+        "referrer": "https://google.com",
+        "type": "pageview",
+        "event_name": "",
+        "props": {},
+        "goals": []
+      },
+      {
+        "timestamp": "2024-01-31 14:01:30.412",
+        "pathname": "/",
+        "hostname": "example.com",
+        "querystring": "",
+        "page_title": "Home",
+        "referrer": "",
+        "type": "custom_event",
+        "event_name": "cta_click",
+        "props": { "button": "hero" },
+        "goals": [{ "id": 12, "name": "CTA click" }]
+      }
+    ],
+    "pagination": {
+      "total": 7,
+      "limit": 50,
+      "offset": 0,
+      "hasMore": false
+    }
+  }
+}
+```
+
+</div>
+</div>

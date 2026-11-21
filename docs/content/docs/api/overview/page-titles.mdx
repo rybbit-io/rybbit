@@ -1,0 +1,227 @@
+---
+title: Get Page Titles
+description: Returns page-view metrics aggregated by HTML page title.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/page-titles
+```
+
+Returns page-view metrics aggregated by HTML page title.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) (time and filters).
+
+<TypeTable
+  type={{
+    limit: {
+      description: 'Maximum number of page titles to return',
+      type: 'number',
+      default: 10,
+    },
+    page: {
+      description: 'Page number (1-indexed). When provided, the response is paginated and includes a total count',
+      type: 'number',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    value: {
+      description: 'The page title',
+      type: 'string',
+    },
+    pathname: {
+      description: 'A representative path for the title',
+      type: 'string',
+    },
+    count: {
+      description: 'Unique sessions that viewed the title',
+      type: 'number',
+    },
+    percentage: {
+      description: 'Share of total',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+    pageviews: {
+      description: 'Total pageviews',
+      type: 'number',
+    },
+    bounce_rate: {
+      description: 'Bounce rate percentage',
+      type: 'number',
+      typeDescription: 'Range: 0-100',
+    },
+    time_on_page_seconds: {
+      description: 'Average time on page in seconds',
+      type: 'number',
+    },
+  }}
+/>
+
+When the `page` parameter is supplied, the response is paginated: `data` becomes an object `{ data: [...], totalCount: number }`.
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/page-titles?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/page-titles?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/page-titles',
+    params={
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31',
+        'time_zone': 'America/New_York',
+        'limit': 10
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/page-titles?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/page-titles?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/page-titles?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/123/page-titles?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/page-titles?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/page-titles?start_date=2024-01-01&end_date=2024-01-31&time_zone=America/New_York&limit=10");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "value": "Home | Acme",
+      "pathname": "/",
+      "count": 8200,
+      "percentage": 41.2,
+      "pageviews": 12400,
+      "bounce_rate": 38.5,
+      "time_on_page_seconds": 47.2
+    }
+  ]
+}
+```
+
+</div>
+</div>

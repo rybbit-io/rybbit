@@ -1,0 +1,77 @@
+---
+title: Astro
+description: Add Rybbit analytics to your Astro site
+category: frameworks
+icon: SiAstro
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Astro pages share a layout component that renders the `<html>` document. Add the snippet to the `<head>` of that layout and every page that uses it is tracked.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Astro
+
+Open your shared layout, usually `src/layouts/Layout.astro`, and paste the snippet inside `<head>`. Add `is:inline` so Astro leaves the tag as-is instead of bundling it:
+
+```astro title="src/layouts/Layout.astro"
+---
+const { title } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+    <script is:inline src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+```
+
+If you do not use a shared layout, add the same tag to the `<head>` of each page in `src/pages/`. A layout is easier to maintain.
+
+Astro builds a multi-page site by default, so each navigation is a full page load and a new pageview. With [view transitions](https://docs.astro.build/en/guides/view-transitions/) enabled, client-side navigation is tracked automatically when the URL changes.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from a client-side `<script>` in any `.astro` component, or from inside a framework island the same way you would in that framework.
+
+```astro title="src/components/TrackedButton.astro"
+<button id="tracked-button">Click me</button>
+
+<script>
+  document.getElementById("tracked-button")?.addEventListener("click", () => {
+    if (window.rybbit) {
+      window.rybbit.event("astro_button_click", { source: "TrackedButton.astro" });
+    }
+  });
+</script>
+```
+
+## Troubleshooting
+
+- **Pageviews missing with view transitions**: this is rare. If it happens, listen for Astro's `astro:after-swap` event in a client-side script and call `window.rybbit.pageview()`; test the default behaviour first.
+- **Proxying through your own domain**: Astro can serve the script from your domain with SSR middleware. See the [Astro proxy guide](/docs/proxy-guide/astro).
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

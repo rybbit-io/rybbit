@@ -1,0 +1,111 @@
+import { CtaDataLine } from "@/components/deco/CtaDataLine";
+import { DomainStartForm } from "@/components/DomainStartForm";
+import { WatchfulFrog } from "@/components/deco/WatchfulFrog";
+import { GridCrosses } from "@/components/GridCrosses";
+import { TrackedButton } from "@/components/TrackedButton";
+import { ArrowRight, ExternalLink } from "lucide-react";
+import { useExtracted } from "next-intl";
+
+interface CTASectionProps {
+  title?: string;
+  description?: string;
+  primaryButtonText?: string;
+  primaryButtonHref?: string;
+  secondaryButtonText?: string;
+  secondaryButtonHref?: string;
+  eventLocation?: string;
+}
+
+export function CTASection({
+  title,
+  description,
+  primaryButtonText,
+  primaryButtonHref,
+  secondaryButtonText,
+  secondaryButtonHref = "https://demo.rybbit.com/81",
+  eventLocation = "bottom_cta",
+}: CTASectionProps) {
+  const t = useExtracted();
+  const resolvedTitle = title ?? t("Switch to better analytics");
+  const resolvedDescription =
+    description ?? t("The full analytics surface on one dashboard: cookieless, open source, and live in minutes.");
+  const resolvedPrimaryButtonHref = primaryButtonHref ?? "https://app.rybbit.io/signup";
+  const resolvedPrimaryButtonText = primaryButtonText ?? t("Start free trial for $0");
+  const resolvedSecondaryButtonText = secondaryButtonText ?? t("Live demo");
+  // Pages that route the primary action somewhere else keep their button; the
+  // default signup destination becomes the domain input.
+  const useDomainInput = primaryButtonHref === undefined && primaryButtonText === undefined;
+
+  return (
+    <section className="group relative overflow-hidden border-b border-emerald-900 bg-emerald-950 text-white">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:40px_40px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]"
+      />
+      {/* <CtaDataLine className="h-36 lg:h-44" /> */}
+      <div className="relative mx-auto grid max-w-[1200px] border-x border-white/10 lg:grid-cols-12">
+        <GridCrosses className="text-white/30 dark:text-white/30" />
+        {/* The watermark frog, awake: it perks up when you hover the section,
+            and its eye follows the cursor (WatchfulFrog). */}
+        <div className="pointer-events-none absolute -bottom-12 -right-8 hidden w-64 -rotate-6 text-white opacity-[0.07] transition-[transform,opacity] duration-500 ease-out group-hover:-translate-y-2 group-hover:opacity-[0.12] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 md:block lg:w-80">
+          <WatchfulFrog />
+        </div>
+
+        <div className="relative z-10 border-b border-white/10 px-5 py-16 sm:px-8 md:py-24 lg:col-span-8 lg:border-b-0 lg:border-r lg:px-10">
+          <h2 className="max-w-3xl text-4xl font-semibold leading-[1.02] tracking-[-0.035em] md:text-6xl text-balance">
+            {resolvedTitle}
+          </h2>
+        </div>
+
+        <div className="relative z-10 flex flex-col justify-center px-5 py-12 sm:px-8 lg:col-span-4 lg:px-10">
+          <p className="max-w-md text-base leading-7 text-emerald-100/80">{resolvedDescription}</p>
+
+          <div
+            className={
+              useDomainInput
+                ? "mt-8 flex flex-col gap-3"
+                : "mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row"
+            }
+          >
+            {useDomainInput ? (
+              <DomainStartForm location={eventLocation} variant="inverted" className="sm:max-w-none xl:max-w-md" />
+            ) : (
+              <TrackedButton
+                href={resolvedPrimaryButtonHref}
+                eventName="signup"
+                eventProps={{ location: eventLocation, button_text: resolvedPrimaryButtonText }}
+                className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-medium text-emerald-950 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-950"
+              >
+                {resolvedPrimaryButtonText}
+                <ArrowRight
+                  className="size-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </TrackedButton>
+            )}
+            <TrackedButton
+              href={secondaryButtonHref}
+              eventName="demo"
+              target="_blank"
+              rel="noopener noreferrer"
+              eventProps={{ location: eventLocation, button_text: resolvedSecondaryButtonText }}
+              className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/25 px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              {resolvedSecondaryButtonText}
+              <ExternalLink
+                className="size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                aria-hidden="true"
+              />
+            </TrackedButton>
+          </div>
+
+          {/* <p className="mt-6 text-sm text-emerald-100/60">
+            {useDomainInput
+              ? t("No account needed. Claim your site later with a 7-day free trial.")
+              : t("7-day free trial. Cancel anytime.")}
+          </p> */}
+        </div>
+      </div>
+    </section>
+  );
+}

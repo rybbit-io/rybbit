@@ -1,0 +1,311 @@
+---
+title: Update API Key
+description: Update an existing API key's name, enabled state, or expiry.
+full: true
+method: POST
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+POST /api/auth/api-key/update
+```
+
+<Callout>This endpoint uses **POST**, not PUT or PATCH.</Callout>
+
+Updates mutable fields on an existing API key. The key is identified by its `keyId`.
+
+<Callout type="warn">This endpoint authenticates with your logged-in dashboard **session**, not an API key. Send your session cookie and an `Origin` header with the request. To update an organization key, pass `"configId": "org"`; without it the key is not found (`404`). Managing organization keys requires the owner or admin role.</Callout>
+
+### Request Body
+
+<TypeTable
+  type={{
+    keyId: {
+      description: 'The id of the API key to update',
+      type: 'string',
+      required: true,
+    },
+    configId: {
+      description: 'Set to "org" for an organization key. Omit for a personal key.',
+      type: 'string',
+      required: false,
+    },
+    name: {
+      description: 'A new label for the key, 1 to 32 characters',
+      type: 'string',
+      required: false,
+    },
+    enabled: {
+      description: 'Enable or disable the key',
+      type: 'boolean',
+      required: false,
+    },
+    expiresIn: {
+      description: 'New expiry in seconds from now, from 86,400 (1 day) to 31,536,000 (365 days). Pass null to make the key never expire.',
+      type: 'number | null',
+      required: false,
+    },
+  }}
+/>
+
+Scopes (`permissions`) and the legacy rate-limit fields (`rateLimitEnabled`, `rateLimitMax`, `rateLimitTimeWindow`, `remaining`, `refillAmount`, `refillInterval`) can't be changed over HTTP; sending any of them returns `400`. To change a key's scopes, create a new key and delete the old one.
+
+### Response
+
+Returns the updated API key object (without the secret key value).
+
+<TypeTable
+  type={{
+    id: {
+      description: "The key's identifier",
+      type: 'string',
+    },
+    name: {
+      description: 'The label for the key',
+      type: 'string | null',
+    },
+    start: {
+      description: 'Non-secret leading characters of the key, for display',
+      type: 'string | null',
+    },
+    prefix: {
+      description: 'The key prefix',
+      type: 'string | null',
+    },
+    referenceId: {
+      description: 'Owner of the key: your user ID for personal keys, the organization ID for organization keys',
+      type: 'string',
+    },
+    configId: {
+      description: '"default" for personal keys, "org" for organization keys',
+      type: 'string',
+    },
+    enabled: {
+      description: 'Whether the key is currently enabled',
+      type: 'boolean',
+    },
+    expiresAt: {
+      description: 'Expiration timestamp, or null if it never expires',
+      type: 'string | null',
+    },
+    createdAt: {
+      description: 'Creation timestamp',
+      type: 'string',
+    },
+    updatedAt: {
+      description: 'Last update timestamp',
+      type: 'string',
+    },
+    rateLimitEnabled: {
+      description: 'Unused legacy field. Per-key rate limiting is off; limits apply per credential owner (see Rate Limits in Getting Started)',
+      type: 'boolean',
+    },
+    rateLimitMax: {
+      description: 'Unused legacy field. It is ignored; see Rate Limits in Getting Started for the limits that actually apply',
+      type: 'number | null',
+    },
+    rateLimitTimeWindow: {
+      description: 'Unused legacy field. It is ignored; see Rate Limits in Getting Started for the limits that actually apply',
+      type: 'number | null',
+    },
+  }}
+/>
+
+**Note:** Additional fields may be present in the response object.
+
+The `rateLimit*` fields are unused: limits apply per credential owner, see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only).
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X POST "https://app.rybbit.io/api/auth/api-key/update" \
+  -H "Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN" \
+  -H "Origin: https://app.rybbit.io" \
+  -H "Content-Type: application/json" \
+  -d '{"keyId": "key_8f3a1b2c4d5e6f7g", "name": "CI pipeline (rotated)", "enabled": true}'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/auth/api-key/update',
+  {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      keyId: 'key_8f3a1b2c4d5e6f7g',
+      name: 'CI pipeline (rotated)',
+      enabled: true
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.post(
+    'https://app.rybbit.io/api/auth/api-key/update',
+    json={
+        'keyId': 'key_8f3a1b2c4d5e6f7g',
+        'name': 'CI pipeline (rotated)',
+        'enabled': True
+    },
+    headers={
+        'Cookie': '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+        'Origin': 'https://app.rybbit.io'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://app.rybbit.io/api/auth/api-key/update");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'keyId' => 'key_8f3a1b2c4d5e6f7g',
+    'name' => 'CI pipeline (rotated)',
+    'enabled' => true
+]));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Cookie: __Secure-better-auth.session_token=YOUR_SESSION_TOKEN',
+    'Origin: https://app.rybbit.io',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI("https://app.rybbit.io/api/auth/api-key/update")
+req = Net::HTTP::Post.new(uri)
+req['Cookie'] = '__Secure-better-auth.session_token=YOUR_SESSION_TOKEN'
+req['Origin'] = 'https://app.rybbit.io'
+req['Content-Type'] = 'application/json'
+req.body = {
+  keyId: 'key_8f3a1b2c4d5e6f7g',
+  name: 'CI pipeline (rotated)',
+  enabled: true
+}.to_json
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+body := bytes.NewBuffer([]byte(`{
+  "keyId": "key_8f3a1b2c4d5e6f7g",
+  "name": "CI pipeline (rotated)",
+  "enabled": true
+}`))
+req, _ := http.NewRequest("POST", "https://app.rybbit.io/api/auth/api-key/update", body)
+req.Header.Set("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+req.Header.Set("Origin", "https://app.rybbit.io")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .post("https://app.rybbit.io/api/auth/api-key/update")
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
+    .json(&serde_json::json!({
+        "keyId": "key_8f3a1b2c4d5e6f7g",
+        "name": "CI pipeline (rotated)",
+        "enabled": true
+    }))
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+String json = "{\"keyId\": \"key_8f3a1b2c4d5e6f7g\", \"name\": \"CI pipeline (rotated)\", \"enabled\": true}";
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/auth/api-key/update"))
+    .header("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN")
+    .header("Origin", "https://app.rybbit.io")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Cookie", "__Secure-better-auth.session_token=YOUR_SESSION_TOKEN");
+client.DefaultRequestHeaders.Add("Origin", "https://app.rybbit.io");
+
+var content = new StringContent(
+    "{\"keyId\": \"key_8f3a1b2c4d5e6f7g\", \"name\": \"CI pipeline (rotated)\", \"enabled\": true}",
+    Encoding.UTF8,
+    "application/json"
+);
+
+var response = await client.PostAsync("https://app.rybbit.io/api/auth/api-key/update", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "id": "key_8f3a1b2c4d5e6f7g",
+  "name": "CI pipeline (rotated)",
+  "start": "aBcDeF",
+  "prefix": null,
+  "referenceId": "user_2a9b8c7d6e5f4g3h",
+  "configId": "default",
+  "enabled": true,
+  "expiresAt": "2026-07-25T12:00:00.000Z",
+  "createdAt": "2026-06-25T12:00:00.000Z",
+  "updatedAt": "2026-06-26T12:00:00.000Z",
+  "rateLimitEnabled": false,
+  "rateLimitMax": 10,
+  "rateLimitTimeWindow": 86400000
+}
+```
+
+</div>
+</div>

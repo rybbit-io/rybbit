@@ -1,0 +1,4 @@
+{
+  "title": "Goals",
+  "pages": ["list", "time-series", "sessions", "create", "update", "delete"]
+}

@@ -35,14 +35,21 @@ describe("utils", () => {
       expect(regex.test("/api/v1/users/admin/settings/config.json")).toBe(true);
       expect(regex.test("/api/v1/posts/123/data.json")).toBe(false);
     });
+
+    it("should allow regex patterns with re: prefix", () => {
+      const regex = patternToRegex("re:^/users/\\d+$");
+      expect(regex.test("/users/123")).toBe(true);
+      expect(regex.test("/users/abc")).toBe(false);
+    });
   });
 
   describe("findMatchingPattern", () => {
-    const patterns = ["/api/*/users", "/admin/**", "*.json"];
+    const patterns = ["/api/*/users", "/admin/**", "*.json", "re:^/users/\\d+$"];
 
     it("should find matching pattern", () => {
       expect(findMatchingPattern("/api/v1/users", patterns)).toBe("/api/*/users");
       expect(findMatchingPattern("/admin/settings/general", patterns)).toBe("/admin/**");
+      expect(findMatchingPattern("/users/42", patterns)).toBe("re:^/users/\\d+$");
     });
 
     it("should return null for no match", () => {
@@ -51,7 +58,7 @@ describe("utils", () => {
 
     it("should handle invalid patterns gracefully", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const invalidPatterns = ["[invalid"];
+      const invalidPatterns = ["[invalid", "re:(unclosed"];
       expect(findMatchingPattern("/test", invalidPatterns)).toBe(null);
       consoleSpy.mockRestore();
     });

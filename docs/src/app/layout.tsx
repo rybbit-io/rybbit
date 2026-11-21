@@ -1,9 +1,10 @@
 import "@/app/global.css";
-import { RootProvider } from "fumadocs-ui/provider/next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { RybbitScript } from "@/components/RybbitScript";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -72,49 +73,24 @@ export const metadata: Metadata = {
   },
 };
 
-const isDev = process.env.NODE_ENV === "development";
-
-export default function Layout({ children }: { children: ReactNode }) {
+export default async function Layout({ children }: { children: ReactNode }) {
+  const locale = await getLocale();
   return (
-    <html lang="en" suppressHydrationWarning>
-      <Script
-        src="https://demo.rybbit.com/api/script.js"
-        data-site-id="21"
-        strategy="afterInteractive"
-        data-session-replay="true"
-        data-web-vitals="true"
-        data-track-errors="true"
-        data-track-outbound="true"
-        {...(isDev && {
-          "data-api-key": process.env.NEXT_PUBLIC_RYBBIT_API_KEY,
-        })}
-      />
-      <Script id="matomo" strategy="afterInteractive">
-        {`
-        var _paq = window._paq = window._paq || [];
-        /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
-        _paq.push(['trackPageView']);
-        _paq.push(['enableLinkTracking']);
-        (function() {
-          var u = "https://rybbit.matomo.cloud/";
-          _paq.push(['setTrackerUrl', u + 'matomo.php']);
-          _paq.push(['setSiteId', '1']);
-          var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
-          g.async = true;
-          g.src = 'https://cdn.matomo.cloud/rybbit.matomo.cloud/matomo.js';
-          s.parentNode.insertBefore(g, s);
-        })();
-      `}
-      </Script>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <Script id="rewardful-queue" strategy="beforeInteractive">
+          {`(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`}
+        </Script>
+      </head>
       <body className={`flex flex-col min-h-screen ${inter.variable} font-sans`}>
-        <RootProvider
-          theme={{
-            enabled: true,
-            enableSystem: true,
-          }}
-        >
-          {children}
-        </RootProvider>
+        {children}
+        <RybbitScript />
+        <Script
+          src="https://demo.rybbit.com/api/script.js?ns=demo"
+          data-site-id="3b023d1a7895"
+          data-namespace="rybbit_demo"
+        />
+        <Script src="https://r.wdfl.co/rw.js" data-rewardful="fc3780" strategy="afterInteractive" />
       </body>
     </html>
   );

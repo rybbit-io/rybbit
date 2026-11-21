@@ -2,9 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { member, user } from "../../db/postgres/schema.js";
-
 import { randomBytes } from "crypto";
-import { getIsUserAdmin, getUserIsInOrg } from "../../lib/auth-utils.js";
+import { canAssignRole, isOrgRole, ORG_ROLES, roleHasPermission, roleHoldsSessionOnlyPermission } from "@rybbit/shared";
+import { getOrgMembership } from "../../lib/access.js";
+import { getPlanMemberLimit, memberLimitError } from "../../lib/memberLimits.js";
+import { withOrganizationSiteLock } from "../../services/sites/withOrganizationSiteLock.js";
+import { getIsUserAdmin } from "../../lib/auth-utils.js";
 
 function generateId(len = 32) {
   const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -17,37 +20,61 @@ function generateId(len = 32) {
 }
 
 interface AddUserToOrganization {
+  Params: {
+    organizationId: string;
+  };
   Body: {
     email: string;
     role: string;
-    organizationId: string;
   };
 }
 
 export async function addUserToOrganization(request: FastifyRequest<AddUserToOrganization>, reply: FastifyReply) {
   try {
-    const { email, role, organizationId } = request.body;
+    const { organizationId } = request.params;
+    const { email, role } = request.body;
+    const userId = request.user?.id;
 
-    const [userIsInOrg, isAdmin] = await Promise.all([
-      getUserIsInOrg(request, organizationId),
-      getIsUserAdmin(request),
-    ]);
+    const isAdmin = await getIsUserAdmin(request);
 
-    if (!isAdmin && (!userIsInOrg || (userIsInOrg.role !== "admin" && userIsInOrg.role !== "owner"))) {
-      return reply.status(401).send({ error: "Unauthorized" });
+    let callerMembership = null;
+    if (!isAdmin) {
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      callerMembership = await getOrgMembership(userId, organizationId);
+      if (!roleHasPermission(callerMembership?.role, "members:manage")) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
     }
 
     // Validate input
-    if (!email || !role || !organizationId) {
+    if (!email || !role) {
       return reply.status(400).send({
-        error: "Missing required fields: email, role, and organizationId",
+        error: "Missing required fields: email and role",
       });
     }
 
-    if (role !== "admin" && role !== "member" && role !== "owner") {
+    if (!isOrgRole(role)) {
       return reply.status(400).send({
-        error: "Role must be either admin, member, or owner",
+        error: `Role must be one of: ${ORG_ROLES.join(", ")}`,
       });
+    }
+
+    // Nobody but a system admin grants a role above their own (only owners make
+    // owners). Otherwise an org admin could mint an owner — an account with
+    // higher privileges than their own — which is a privilege-escalation path.
+    if (!isAdmin && !canAssignRole(callerMembership?.role, role)) {
+      return reply.status(403).send({ error: "You cannot assign a role above your own" });
+    }
+
+    // A scoped key or an OAuth token is refused the session-only surfaces (API
+    // keys, billing, the DPA). Letting it make someone an admin or owner would
+    // hand it those surfaces anyway, through that account's own sign-in.
+    if (request.bearerAuth && !request.bearerSessionEquivalent && roleHoldsSessionOnlyPermission(role)) {
+      return reply
+        .status(403)
+        .send({ error: "This credential cannot assign the admin or owner role. Sign in to the dashboard to do that." });
     }
 
     const foundUser = await db.query.user.findFirst({
@@ -67,21 +94,33 @@ export async function addUserToOrganization(request: FastifyRequest<AddUserToOrg
       return reply.status(400).send({ error: "User is already a member of this organization" });
     }
 
-    await db.insert(member).values([
-      {
-        userId: foundUser.id,
-        organizationId: organizationId,
-        role: role,
-        id: generateId(),
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+    // Count and insert under the organization's row lock, so concurrent adds
+    // can't both take the last seat. (The plan's limit is looked up first:
+    // the locked transaction must not wait on a second connection.)
+    const memberLimit = await getPlanMemberLimit(organizationId);
+    const limitReached = await withOrganizationSiteLock(organizationId, async tx => {
+      const limitError = await memberLimitError(organizationId, memberLimit, tx);
+      if (limitError) return limitError;
+      await tx.insert(member).values([
+        {
+          userId: foundUser.id,
+          organizationId: organizationId,
+          role: role,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      return null;
+    });
+    if (limitReached) {
+      return reply.status(403).send({ error: limitReached });
+    }
 
     return reply.status(201).send({
       message: "User added to organization successfully",
     });
   } catch (error: any) {
-    console.error(String(error));
+    request.log.error({ err: error }, "Error adding user to organization");
     return reply.status(500).send({ error: String(error) });
   }
 }

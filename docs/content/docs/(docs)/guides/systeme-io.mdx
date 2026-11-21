@@ -1,0 +1,57 @@
+---
+title: systeme.io
+description: Add Rybbit analytics to your systeme.io funnels
+category: landing
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+systeme.io has an account-wide **Tracking code** setting under **Settings > Sales Funnels** that adds code to every funnel page, plus a per-page **Tracking** section with a header field in the page editor. Use the account-wide setting unless you only want to track certain pages.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to systeme.io
+
+<Tabs items={["All funnels", "One page"]}>
+<Tab>
+1. Click your **profile picture** in the top-right corner and choose **Settings**.
+2. Select **Sales Funnels** in the left menu.
+3. Paste the snippet into the **Tracking code** box and click **Save**.
+
+The code is added to every page in every funnel on the account.
+</Tab>
+
+<Tab>
+1. Open the funnel, select the page in the list on the left and click **Edit page**.
+2. Click **Settings** in the upper-left corner of the editor and scroll to the **Tracking** section.
+3. Paste the snippet into the **header** field (the one for code that belongs between `<head>` and `</head>`).
+4. Save the page.
+</Tab>
+</Tabs>
+
+Paste only the `<script>` tag. systeme.io asks that custom code never include `<head>`, `<body>` or `<html>` tags of its own.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Duplicate pageviews**: the snippet is in both the account-wide Tracking code and a page's Tracking section. Keep one.
+- **Not visible in preview**: custom code runs on the live page only. Open the published funnel URL to test.
+- **Pages outside funnels**: the Sales Funnels tracking code covers funnel pages. Blog and course pages have their own settings, so add the snippet there if you want that traffic in the same site.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

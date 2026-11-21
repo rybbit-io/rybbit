@@ -1,0 +1,12 @@
+<clickhouse>
+    <!-- Install this file outside the repository, replace all placeholders,
+         make it readable only by root and the ClickHouse group, and mount it
+         read-only into /etc/clickhouse-server/config.d/. -->
+    <named_collections>
+        <b2_backups>
+            <url overridable="false">https://s3.YOUR-B2-REGION.backblazeb2.com/YOUR-BUCKET/frogstats/clickhouse/</url>
+            <access_key_id overridable="false">REPLACE_WITH_B2_KEY_ID</access_key_id>
+            <secret_access_key overridable="false">REPLACE_WITH_B2_APPLICATION_KEY</secret_access_key>
+        </b2_backups>
+    </named_collections>
+</clickhouse>

@@ -4,7 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef } from "react";
 import "./globe.css";
 
-import { VisuallyHidden } from "radix-ui";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { SessionCard } from "../../../components/Sessions/SessionCard";
 import { Dialog, DialogContent, DialogTitle } from "../../../components/ui/dialog";
@@ -23,20 +23,32 @@ import { useCountriesLayer } from "./3d/hooks/useCountriesLayer";
 import { useLayerVisibility } from "./3d/hooks/useLayerVisibility";
 import { useMapbox } from "./3d/hooks/useMapbox";
 import { useSubdivisionsLayer } from "./3d/hooks/useSubdivisionsLayer";
+import { useShallow } from "zustand/react/shallow";
 import { useTimelineStore } from "./timelineStore";
 import { useTimelineSessions } from "./3d/hooks/timelineLayer/useTimelineSessions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import { WINDOW_SIZE_OPTIONS } from "./timelineUtils";
 
 export default function GlobePage() {
-  useSetPageTitle("Rybbit · Globe");
+  useSetPageTitle("Globe");
   const mapContainer = useRef<HTMLDivElement>(null);
-  const { windowSize, setManualWindowSize } = useTimelineStore();
+  const { windowSize, setManualWindowSize } = useTimelineStore(
+    useShallow(s => ({ windowSize: s.windowSize, setManualWindowSize: s.setManualWindowSize }))
+  );
 
   // Fetch timeline sessions and update store
   useTimelineSessions();
 
-  const { mapView, mapMode, mapStyle, setMapStyle, timelineStyle, setTimelineStyle } = useGlobeStore();
+  const { mapView, mapMode, mapStyle, setMapStyle, timelineStyle, setTimelineStyle } = useGlobeStore(
+    useShallow(s => ({
+      mapView: s.mapView,
+      mapMode: s.mapMode,
+      mapStyle: s.mapStyle,
+      setMapStyle: s.setMapStyle,
+      timelineStyle: s.timelineStyle,
+      setTimelineStyle: s.setTimelineStyle,
+    }))
+  );
 
   // Automatically switch styles based on view
   useEffect(() => {
@@ -109,7 +121,7 @@ export default function GlobePage() {
                       setManualWindowSize(newSize);
                     }}
                   >
-                    <SelectTrigger className="w-[60px] h-[30px]" size="sm">
+                    <SelectTrigger className="w-[60px] h-[30px] text-white" size="sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -137,9 +149,9 @@ export default function GlobePage() {
       </div>
 
       <Dialog open={!!selectedSession} onOpenChange={open => !open && setSelectedSession(null)}>
-        <VisuallyHidden.Root>
+        <VisuallyHidden>
           <DialogTitle>Session Details</DialogTitle>
-        </VisuallyHidden.Root>
+        </VisuallyHidden>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-transparent border-0 p-0 shadow-none [&>button]:hidden">
           {selectedSession && <SessionCard session={selectedSession} expandedByDefault />}
         </DialogContent>

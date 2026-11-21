@@ -1,0 +1,57 @@
+---
+title: Fumadocs
+description: Add Rybbit analytics to your Fumadocs docs
+category: docs
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Fumadocs is a documentation framework for Next.js, so the snippet goes in the root layout, `app/layout.tsx`, rendered with `next/script` so it is on every page including the docs routes.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Fumadocs
+
+Open `app/layout.tsx` and render the `Script` component inside `<body>`, next to the `RootProvider` that Fumadocs already puts there:
+
+```tsx title="app/layout.tsx"
+import { RootProvider } from "fumadocs-ui/provider/next";
+import Script from "next/script";
+import type { ReactNode } from "react";
+
+export default function Layout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className="flex flex-col min-h-screen">
+        <RootProvider>{children}</RootProvider>
+        <Script
+          src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+Use the root layout, not `app/docs/layout.tsx`: the docs layout only wraps pages under `/docs`, so a landing page outside it would be missed.
+
+Client-side navigation between docs pages is recorded as pageviews automatically. The [Next.js guide](/docs/guides/react/next-js) covers the `Script` component, custom events from client components and proxying through your own domain.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

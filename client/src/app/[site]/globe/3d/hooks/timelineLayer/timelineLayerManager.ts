@@ -1,7 +1,8 @@
-import mapboxgl from "mapbox-gl";
-import { isNil, round } from "lodash";
-import type { GetSessionsResponse } from "../../../../../../api/analytics/useGetUserSessions";
-import { CLUSTER_LAYER_ID, CLUSTER_COUNT_LAYER_ID, SOURCE_ID, SPREAD_RADIUS_DEGREES } from "./timelineLayerConstants";
+import isNil from "lodash/isNil";
+import round from "lodash/round";
+import type { GetSessionsResponse } from "../../../../../../api/analytics/endpoints";
+import { SPREAD_RADIUS_DEGREES } from "../../../utils/clusteringConstants";
+import { CLUSTER_COUNT_LAYER_ID, CLUSTER_LAYER_ID, SOURCE_ID } from "./timelineLayerConstants";
 
 /**
  * Simple hash function to generate pseudo-random numbers from a string

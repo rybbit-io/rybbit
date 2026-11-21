@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { redirect, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { userStore } from "../lib/userStore";
-import { useGetSiteIsPublic } from "../api/admin/sites";
+import { useGetSiteIsPublic } from "../api/admin/hooks/useSites";
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/invitation", "/reset-password", "/as/callback"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/try", "/invitation", "/reset-password", "/as/callback", "/auth/consent"];
+// Pages under these prefixes show their own sign-in form, e.g. /transfer/<id>.
+const PUBLIC_ROUTE_PREFIXES = ["/transfer/"];
 
 export function AuthenticationGuard() {
   const { user, isPending } = userStore();
@@ -33,10 +35,14 @@ export function AuthenticationGuard() {
       !isCheckingPublic &&
       !user &&
       !PUBLIC_ROUTES.includes(pathname) &&
+      !PUBLIC_ROUTE_PREFIXES.some(prefix => pathname.startsWith(prefix)) &&
       !isPublicSite &&
       !hasPrivateKey
     ) {
-      redirect("/login");
+      // A document navigation keeps this page on screen until /login has painted. redirect() from an
+      // effect unmounts <html> until then, dropping its theme class, and the URL-state sync's history
+      // writes can discard a pending router.replace().
+      window.location.replace("/login");
     }
   }, [isPending, user, pathname, isCheckingPublic, isPublicSite, hasPrivateKey]);
 

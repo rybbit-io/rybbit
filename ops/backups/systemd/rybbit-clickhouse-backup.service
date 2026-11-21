@@ -1,0 +1,15 @@
+[Unit]
+Description=Rybbit native ClickHouse backup
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+Environment=BACKUP_CONFIG=/etc/rybbit-backup.env
+ExecStart=/opt/rybbit-backups/bin/backup-clickhouse.sh
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+

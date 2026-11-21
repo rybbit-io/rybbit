@@ -1,5 +1,6 @@
 {
   "name": "@rybbit/shared",
+  "private": true,
   "version": "1.0.0",
   "description": "Shared types for Rybbit analytics",
   "main": "./dist/index.js",
@@ -10,11 +11,13 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test:run": "vitest run"
   },
   "devDependencies": {
-    "@types/node": "^20.10.6",
-    "typescript": "^5.3.3"
+    "@types/node": "^24.13.3",
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.7"
   },
   "license": "MIT"
 }

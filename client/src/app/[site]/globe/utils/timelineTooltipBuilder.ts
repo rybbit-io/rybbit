@@ -1,14 +1,16 @@
 import { DateTime } from "luxon";
 import { createElement } from "react";
+import { getTimezone } from "../../../../lib/store";
 // @ts-ignore - React 19 has built-in types
 import { renderToStaticMarkup } from "react-dom/server";
 import { Eye, MousePointerClick } from "lucide-react";
 import { generateName } from "../../../../components/Avatar";
 import { formatShortDuration, hour12, userLocale } from "../../../../lib/dateTimeUtils";
-import type { GetSessionsResponse } from "../../../../api/analytics/useGetUserSessions";
+import { frogAvatarSVG } from "../../../../lib/frogAvatar";
+import type { GetSessionsResponse } from "../../../../api/analytics/endpoints";
 import { extractDomain, getDisplayName } from "../../../../components/Channel";
+import { escapeHtml } from "./escapeHtml";
 import {
-  generateAvatarSVG,
   renderCountryFlag,
   renderDeviceIcon,
   renderChannelIcon,
@@ -17,10 +19,11 @@ import {
 } from "../3d/hooks/timelineLayer/timelineMarkerHelpers";
 
 /**
- * Build the HTML content for a session tooltip
+ * Build the HTML content for a session tooltip. The result is set as HTML, so
+ * every session field is escaped: a referrer is visitor-supplied text.
  */
 export function buildTooltipHTML(session: GetSessionsResponse[number], lng: number, lat: number): string {
-  const avatarSVG = generateAvatarSVG(session.user_id, 36);
+  const avatarSVG = frogAvatarSVG(session.user_id, 36);
   const countryCode = session.country?.length === 2 ? session.country : "";
   const flagSVG = renderCountryFlag(countryCode);
   const deviceIconSVG = renderDeviceIcon(session.device_type || "");
@@ -33,7 +36,7 @@ export function buildTooltipHTML(session: GetSessionsResponse[number], lng: numb
   // Start time formatting
   const startTime = DateTime.fromSQL(session.session_start, { zone: "utc" })
     .setLocale(userLocale)
-    .toLocal()
+    .setZone(getTimezone())
     .toFormat(hour12 ? "MMM d, h:mm a" : "dd MMM, HH:mm");
 
   // Pageview and event icons
@@ -62,43 +65,43 @@ export function buildTooltipHTML(session: GetSessionsResponse[number], lng: numb
   return `
     <div class="flex flex-col gap-3 p-3 bg-neutral-850 border border-neutral-750 rounded-lg">
       <div class="flex items-start gap-2.5">
-        <div class="flex-shrink-0 w-9 h-9 rounded-full overflow-hidden">
+        <div class="shrink-0 w-9 h-9">
           ${avatarSVG}
         </div>
         <div class="flex-1 min-w-0">
-          <h3 class="text-sm font-semibold text-white truncate">${name}</h3>
+          <h3 class="text-sm font-semibold text-white truncate">${escapeHtml(name)}</h3>
           <div class="flex items-center gap-1 text-xs text-neutral-300 mt-0.5">
             ${flagSVG}
-            <span>${session.city || "Unknown"}, ${session.country || "Unknown"}</span>
+            <span>${escapeHtml(session.city || "Unknown")}, ${escapeHtml(session.country || "Unknown")}</span>
           </div>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-1.5 whitespace-nowrap">
-        ${browserIconPath ? `<img src="${browserIconPath}" alt="${session.browser}" title="${session.browser}" class="w-4 h-4" />` : ""}
-        ${osIconPath ? `<img src="${osIconPath}" alt="${session.operating_system}" title="${session.operating_system}" class="w-4 h-4" />` : ""}
-        <span class="flex items-center" title="${session.device_type}">${deviceIconSVG}</span>
+        ${browserIconPath ? `<img src="${browserIconPath}" alt="${escapeHtml(session.browser)}" title="${escapeHtml(session.browser)}" class="w-4 h-4" />` : ""}
+        ${osIconPath ? `<img src="${osIconPath}" alt="${escapeHtml(session.operating_system)}" title="${escapeHtml(session.operating_system)}" class="w-4 h-4" />` : ""}
+        <span class="flex items-center" title="${escapeHtml(session.device_type)}">${deviceIconSVG}</span>
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 text-xs">
           ${pageviewIconSVG}
-          <span>${session.pageviews || 0}</span>
+          <span>${escapeHtml(session.pageviews || 0)}</span>
         </span>
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 text-xs">
           ${eventIconSVG}
-          <span>${session.events || 0}</span>
+          <span>${escapeHtml(session.events || 0)}</span>
         </span>
       </div>
       <div class="flex items-center gap-1.5">
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 text-xs">
           ${referrerIconSVG}
-          <span>${referrerText}</span>
+          <span>${escapeHtml(referrerText)}</span>
         </span>
       </div>
       <div class="flex items-center justify-between gap-2 text-xs text-neutral-400 pt-1.5 border-t border-neutral-700">
-        <span>${startTime}</span>
-        <span class="text-neutral-200">${durationDisplay}</span>
+        <span>${escapeHtml(startTime)}</span>
+        <span class="text-neutral-200">${escapeHtml(durationDisplay)}</span>
       </div>
       <button
         class="view-session-btn w-full px-2 py-1 bg-accent-600 hover:bg-accent-700 text-white text-xs font-medium rounded transition-colors"
-        data-session-id="${session.session_id}"
+        data-session-id="${escapeHtml(session.session_id)}"
         tabindex="-1"
       >
         View Details

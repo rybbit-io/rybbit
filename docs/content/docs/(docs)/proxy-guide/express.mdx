@@ -1,0 +1,398 @@
+---
+title: Express.js Proxy Setup
+description: Configure Express.js middleware to proxy Rybbit tracking requests
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Express.js makes it easy to proxy Rybbit tracking using middleware. This guide shows how to set up a reverse proxy using `http-proxy-middleware`.
+
+<Callout type="warn">
+**Two settings make or break a first-party proxy:**
+
+1. Enable **First-Party Proxy** in your Rybbit **Site Settings → Privacy & Security**, so the visitor IP your proxy forwards in `X-Forwarded-For` is trusted directly.
+2. Forward **all** of the browser's request headers, not a hand-picked few. Rybbit's bot detection expects the headers every real browser sends (`Accept`, `Accept-Language`, `Accept-Encoding`, `Sec-Fetch-*`). Proxies that forward only `User-Agent` get their events accepted with `200 OK` but classified as bot traffic. Use `X-Forwarded-For` for the visitor IP; `X-Real-IP` does not survive Rybbit Cloud's edge.
+</Callout>
+
+## Overview
+
+The `http-proxy-middleware` package provides a simple way to proxy requests in Express applications, so it can route analytics requests to Rybbit servers.
+
+**What you'll achieve:**
+- Proxy all Rybbit endpoints through your Express app
+- Forward necessary headers for accurate tracking
+- Optional caching for better performance
+- Support all Rybbit features
+
+## Prerequisites
+
+- Node.js and Express.js application
+- npm or yarn package manager
+- Your Rybbit instance URL:
+  - **Cloud hosted**: `https://app.rybbit.io`
+  - **Self-hosted**: Your instance URL
+- Your Rybbit site ID
+
+## Implementation
+
+<Steps>
+
+### Install http-proxy-middleware
+
+Install the proxy middleware package:
+
+```bash
+npm install http-proxy-middleware
+```
+
+Or with yarn:
+
+```bash
+yarn add http-proxy-middleware
+```
+
+### Configure Environment Variables
+
+Create or update your `.env` file:
+
+```bash
+# .env
+RYBBIT_HOST=https://app.rybbit.io
+# For self-hosted: RYBBIT_HOST=https://analytics.yourcompany.com
+```
+
+<Callout type="info">
+Install `dotenv` if not already: `npm install dotenv`
+</Callout>
+
+### Add Proxy Middleware to Express
+
+These examples use `http-proxy-middleware` v3. Version 3 removed the `onProxyReq`/`onError` options (use `on: { proxyReq, error }`) and `logLevel` (use `logger`).
+
+<Tabs items={['Full Proxy (Recommended)', 'Minimal Proxy', 'TypeScript']}>
+<Tab>
+
+Add to your Express server file (e.g., `server.js` or `app.js`):
+
+```javascript
+// server.js
+require('dotenv').config();
+const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+
+const app = express();
+const RYBBIT_HOST = process.env.RYBBIT_HOST || 'https://app.rybbit.io';
+
+// Rybbit Analytics Proxy. Register it before express.json() or any other body parser.
+// Express strips the '/analytics' mount path, so a request for /analytics/script.js
+// reaches the proxy as /script.js and goes to RYBBIT_HOST/api/script.js.
+// This covers every tracking route: script.js, replay.js, track, identify,
+// site/tracking-config/:siteId, site/:siteId/feature-flags/evaluate and
+// session-replay/record/:siteId.
+app.use('/analytics', createProxyMiddleware({
+  target: `${RYBBIT_HOST}/api`,
+  changeOrigin: true,
+  on: {
+    proxyReq: (proxyReq, req) => {
+      // Forward the visitor IP for geolocation and visitor identification
+      const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      proxyReq.setHeader('X-Forwarded-For', clientIp);
+    },
+  },
+  logger: console,
+}));
+
+// Body parsers go after the proxy
+app.use(express.json());
+
+// Your other routes
+app.get('/', (req, res) => {
+  res.send('Hello World');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+
+`http-proxy-middleware` forwards the browser's request headers as they are, which is what Rybbit's bot detection expects.
+
+</Tab>
+<Tab>
+
+Minimal setup with basic tracking:
+
+```javascript
+// server.js
+require('dotenv').config();
+const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+
+const app = express();
+const RYBBIT_HOST = process.env.RYBBIT_HOST || 'https://app.rybbit.io';
+
+// Proxy script and track endpoints only. Mounted without a path, so
+// pathFilter sees the full URL and pathRewrite can match '^/analytics'.
+app.use(createProxyMiddleware({
+  target: RYBBIT_HOST,
+  changeOrigin: true,
+  pathFilter: ['/analytics/script.js', '/analytics/track'],
+  pathRewrite: {
+    '^/analytics': '/api',
+  },
+  on: {
+    proxyReq: (proxyReq, req) => {
+      const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      proxyReq.setHeader('X-Forwarded-For', clientIp);
+    },
+  },
+}));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+
+A minimal setup proxies only `script.js` and `/track`. The script then can't fetch your site's tracking config, so it ignores every setting on the site's **Tracking** tab and runs on built-in defaults:
+
+- Pageviews, SPA navigation, query strings and outbound links are tracked.
+- Web vitals, error tracking, session replay, button clicks, copy and form tracking stay off.
+- Feature flags return their fallback.
+- `identify()` and `setTraits()` can't reach `/identify`, so traits aren't stored and earlier anonymous activity isn't linked to the user.
+
+</Tab>
+<Tab>
+
+For TypeScript projects:
+
+```typescript
+// server.ts
+import 'dotenv/config';
+import express from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+
+const app = express();
+const RYBBIT_HOST = process.env.RYBBIT_HOST || 'https://app.rybbit.io';
+
+// Before any body parser; '/analytics' is stripped, so target ends in /api
+app.use('/analytics', createProxyMiddleware<express.Request, express.Response>({
+  target: `${RYBBIT_HOST}/api`,
+  changeOrigin: true,
+  on: {
+    proxyReq: (proxyReq, req) => {
+      const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+      proxyReq.setHeader('X-Forwarded-For', clientIp);
+    },
+  },
+  logger: console,
+}));
+
+app.use(express.json());
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+
+</Tab>
+</Tabs>
+
+<Callout type="warn">
+Register the proxy **before** `express.json()`, `express.urlencoded()` or any other body parser. A body parser that runs first reads the request stream, and the proxy then forwards `/track`, `/identify` and session replay POSTs with an empty body. If a parser has to run first, import `fixRequestBody` from `http-proxy-middleware` and call `fixRequestBody(proxyReq, req)` at the end of your `proxyReq` handler so it writes the parsed body back out.
+</Callout>
+
+If the feature flag route (`/analytics/site/:siteId/feature-flags/evaluate`) isn't proxied, `rybbit.flag()` silently returns your fallback. Web vitals collection is bundled into `script.js`; `replay.js` is only loaded when session replay is enabled for the site.
+
+### Update Your Tracking Script
+
+In your HTML or template files:
+
+```html
+<script src="/analytics/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+Older snippets that pass the ID as `data-site-id` still work.
+
+Keep the proxied file named `script.js`. The script cuts its own URL at `/script.js` to find where to send events, so a renamed file (for example `/analytics/a.js`) sends every request to the wrong place.
+
+### Start Your Server
+
+```bash
+node server.js
+```
+
+Or with nodemon for development:
+
+```bash
+npm install -D nodemon
+npx nodemon server.js
+```
+
+### Verify the Setup
+
+1. **Test script endpoint**:
+   ```bash
+   curl -I http://localhost:3000/analytics/script.js
+   ```
+
+2. **Open your app** in a browser with Developer Tools
+3. **Check Network tab**: Requests should go to `/analytics/*`
+4. **Verify in Rybbit dashboard**: Data should appear
+
+</Steps>
+
+## How It Works
+
+The `http-proxy-middleware` intercepts requests matching the specified paths and forwards them to Rybbit:
+
+1. Request to `/analytics/script.js` is intercepted
+2. Express strips the `/analytics` mount path, so the proxy sees `/script.js`
+3. The proxy appends that to the target and forwards to `https://app.rybbit.io/api/script.js`
+4. The visitor IP is set in `X-Forwarded-For`
+5. Response is sent back to the browser
+
+## Advanced Configuration
+
+### Caching Responses
+
+Rybbit already sends `Cache-Control` headers on its scripts (`script.js` for 1 hour, `replay.js` for 1 day), and the proxy passes them through. If you want edge caching, put a CDN in front of your app rather than caching inside Express: the proxy streams responses, so middleware that wraps `res.send` never sees them.
+
+### Request Size Limits
+
+The proxy streams request bodies to Rybbit without parsing them, so Express body-size limits don't apply to proxied routes. Don't add `express.json()` to `/analytics` routes to raise a limit: it consumes the body and the proxy forwards an empty request.
+
+### Rate Limiting
+
+Protect your proxy with rate limiting:
+
+```javascript
+const rateLimit = require('express-rate-limit');
+
+// Install: npm install express-rate-limit
+
+const analyticsLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // Limit each IP to 100 requests per minute
+  message: 'Too many requests from this IP',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply to tracking endpoints
+app.use('/analytics/track', analyticsLimiter);
+app.use('/analytics/track', createProxyMiddleware({
+  // ... proxy config
+}));
+```
+
+### Error Handling
+
+Add error handling for proxy failures:
+
+```javascript
+app.use('/analytics', createProxyMiddleware({
+  target: `${RYBBIT_HOST}/api`,
+  changeOrigin: true,
+  on: {
+    proxyReq: (proxyReq, req) => {
+      const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      proxyReq.setHeader('X-Forwarded-For', clientIp);
+    },
+    error: (err, req, res) => {
+      console.error('Proxy error:', err);
+      res.statusCode = 502;
+      res.end('Analytics proxy error');
+    },
+  },
+}));
+```
+
+### CORS Configuration
+
+If serving API endpoints to other domains:
+
+```javascript
+const cors = require('cors');
+
+// Install: npm install cors
+
+app.use('/analytics', cors({
+  origin: ['https://yourdomain.com', 'https://www.yourdomain.com'],
+  credentials: true,
+}));
+
+app.use('/analytics', createProxyMiddleware({
+  // ... proxy config
+}));
+```
+
+## Troubleshooting
+
+### Requests timing out
+
+**Problem**: Proxy requests hang or timeout.
+
+**Solution**:
+Increase timeout limits:
+```javascript
+app.use('/analytics', createProxyMiddleware({
+  target: `${RYBBIT_HOST}/api`,
+  changeOrigin: true,
+  timeout: 30000, // 30 seconds
+  proxyTimeout: 30000,
+}));
+```
+
+### Incorrect geolocation
+
+**Problem**: All visitors show server's location.
+
+**Solution**:
+Ensure IP forwarding is configured:
+```javascript
+on: {
+  proxyReq: (proxyReq, req) => {
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    proxyReq.setHeader('X-Forwarded-For', clientIp);
+  },
+},
+```
+
+Also enable **First-Party Proxy** in your site settings so Rybbit trusts that header.
+
+### Path rewriting issues
+
+**Problem**: 404 errors on Rybbit endpoints.
+
+**Solution**:
+When you mount the proxy with `app.use('/analytics', ...)`, Express strips `/analytics` before the proxy sees the URL, so a `pathRewrite` of `'^/analytics'` never matches. Either put `/api` in the target:
+```javascript
+app.use('/analytics', createProxyMiddleware({ target: `${RYBBIT_HOST}/api`, changeOrigin: true }));
+```
+or mount without a path and use `pathFilter` with `pathRewrite: { '^/analytics': '/api' }`.
+
+Debug by logging:
+```javascript
+on: {
+  proxyReq: (proxyReq, req) => {
+    console.log('Proxying:', req.method, req.originalUrl, '→', proxyReq.path);
+  },
+},
+```
+
+### Tracking or replay requests arrive empty
+
+**Problem**: `/track` returns 400, or session replay never records.
+
+**Solution**: A body parser (`express.json()`, `body-parser`) ran before the proxy and consumed the request body. Register the proxy first, or use `fixRequestBody` (see above).
+
+## Related Resources
+
+- [Tracking Script Documentation](/docs/script) - Script configuration
+- [Generic Proxy Guide](/docs/proxy-guide/get-started) - Core concepts
+- [http-proxy-middleware docs](https://github.com/chimurai/http-proxy-middleware) - Middleware documentation

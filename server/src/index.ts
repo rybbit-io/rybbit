@@ -1,170 +1,77 @@
+import cluster from "node:cluster";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { toNodeHandler } from "better-auth/node";
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { collectTelemetry } from "./api/admin/collectTelemetry.js";
-import { getAdminOrganizations } from "./api/admin/getAdminOrganizations.js";
-import { getAdminServiceEventCount } from "./api/admin/getAdminServiceEventCount.js";
-import { getAdminSites } from "./api/admin/getAdminSites.js";
-import { getEventNames } from "./api/analytics/events/getEventNames.js";
-import { getEventProperties } from "./api/analytics/events/getEventProperties.js";
-import { getEvents } from "./api/analytics/events/getEvents.js";
-import { getOutboundLinks } from "./api/analytics/events/getOutboundLinks.js";
-import { createFunnel } from "./api/analytics/funnels/createFunnel.js";
-import { deleteFunnel } from "./api/analytics/funnels/deleteFunnel.js";
-import { getFunnel } from "./api/analytics/funnels/getFunnel.js";
-import { getFunnelStepSessions } from "./api/analytics/funnels/getFunnelStepSessions.js";
-import { getFunnels } from "./api/analytics/funnels/getFunnels.js";
-import { getErrorBucketed } from "./api/analytics/getErrorBucketed.js";
-import { getErrorEvents } from "./api/analytics/getErrorEvents.js";
-import { getErrorNames } from "./api/analytics/getErrorNames.js";
-import { getJourneys } from "./api/analytics/getJourneys.js";
-import { getSessionLocations } from "./api/analytics/getSessionLocations.js";
-import { getLiveUsercount } from "./api/analytics/getLiveUsercount.js";
-import { getOrgEventCount } from "./api/analytics/getOrgEventCount.js";
-import { getOverview } from "./api/analytics/getOverview.js";
-import { getOverviewBucketed } from "./api/analytics/getOverviewBucketed.js";
-import { getPageTitles } from "./api/analytics/getPageTitles.js";
-import { getRetention } from "./api/analytics/getRetention.js";
-import { getSession } from "./api/analytics/getSession.js";
-import { getSessions } from "./api/analytics/getSessions.js";
-import { getMetric } from "./api/analytics/getMetric.js";
-import { getUserInfo } from "./api/analytics/getUserInfo.js";
-import { getUserSessionCount } from "./api/analytics/getUserSessionCount.js";
-import { getUserSessions } from "./api/analytics/getUserSessions.js";
-import { getUsers } from "./api/analytics/getUsers.js";
-import { createGoal } from "./api/analytics/goals/createGoal.js";
-import { deleteGoal } from "./api/analytics/goals/deleteGoal.js";
-import { getGoals } from "./api/analytics/goals/getGoals.js";
-import { getGoalSessions } from "./api/analytics/goals/getGoalSessions.js";
-import { updateGoal } from "./api/analytics/goals/updateGoal.js";
-import { getPerformanceByDimension } from "./api/analytics/performance/getPerformanceByDimension.js";
-import { getPerformanceOverview } from "./api/analytics/performance/getPerformanceOverview.js";
-import { getPerformanceTimeSeries } from "./api/analytics/performance/getPerformanceTimeSeries.js";
-import { getConfig } from "./api/getConfig.js";
-import { getSessionReplayEvents } from "./api/sessionReplay/getSessionReplayEvents.js";
-import { getSessionReplays } from "./api/sessionReplay/getSessionReplays.js";
-import { recordSessionReplay } from "./api/sessionReplay/recordSessionReplay.js";
-import { deleteSessionReplay } from "./api/sessionReplay/deleteSessionReplay.js";
-import { addSite } from "./api/sites/addSite.js";
-import { updateSiteConfig } from "./api/sites/updateSiteConfig.js";
-import { deleteSite } from "./api/sites/deleteSite.js";
-import { getSite } from "./api/sites/getSite.js";
-import { getSiteExcludedIPs } from "./api/sites/getSiteExcludedIPs.js";
-import { getSiteExcludedCountries } from "./api/sites/getSiteExcludedCountries.js";
-import { getSiteHasData } from "./api/sites/getSiteHasData.js";
-import { getSiteIsPublic } from "./api/sites/getSiteIsPublic.js";
-import { getSitesFromOrg } from "./api/sites/getSitesFromOrg.js";
-import { createCheckoutSession } from "./api/stripe/createCheckoutSession.js";
-import { createPortalSession } from "./api/stripe/createPortalSession.js";
-import { getSubscription } from "./api/stripe/getSubscription.js";
-import { previewSubscriptionUpdate } from "./api/stripe/previewSubscriptionUpdate.js";
-import { updateSubscription } from "./api/stripe/updateSubscription.js";
-import { handleWebhook } from "./api/stripe/webhook.js";
-import { addUserToOrganization } from "./api/user/addUserToOrganization.js";
-import { getUserOrganizations } from "./api/user/getUserOrganizations.js";
-import { listOrganizationMembers } from "./api/user/listOrganizationMembers.js";
-import { updateAccountSettings } from "./api/user/updateAccountSettings.js";
-import { listApiKeys } from "./api/user/listApiKeys.js";
-import { createApiKey } from "./api/user/createApiKey.js";
-import { deleteApiKey } from "./api/user/deleteApiKey.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
+import { apiRateLimitRedis } from "./db/redis/redis.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
-import { getSessionFromReq, getUserHasAccessToSitePublic, mapHeaders } from "./lib/auth-utils.js";
+import { mapHeaders } from "./lib/auth-utils.js";
+import { registerApiErrorResponses } from "./lib/api-errors.js";
+import { apiRoutes } from "./api/routes.js";
+import type { OrgRole, ScopeStatements } from "@rybbit/shared";
 import { auth } from "./lib/auth.js";
+import { oauthWellKnownRoutes } from "./mcp/wellKnown.js";
+import { createCorsOptionsDelegate, createRejectUntrustedOriginHook } from "./lib/cors.js";
 import { IS_CLOUD } from "./lib/const.js";
-import { siteConfig } from "./lib/siteConfig.js";
-import { trackEvent } from "./services/tracker/trackEvent.js";
-// need to import telemetry service here to start it
+import { logger } from "./lib/logger/logger.js";
+import { registerRequestLogging } from "./lib/logger/requestLogging.js";
+import { botEventQueue, botObservationQueue } from "./services/tracker/botBlocking/botEventQueue.js";
+import { identityBackfillQueue } from "./services/tracker/identityBackfillQueue.js";
+import { pageviewQueue } from "./services/tracker/pageviewQueue.js";
+import { lifecycleEmailService } from "./services/lifecycleEmails/lifecycleEmailService.js";
 import { telemetryService } from "./services/telemetryService.js";
+import { handleIdentify } from "./services/tracker/identifyService.js";
+import { trackEvent } from "./services/tracker/trackEvent.js";
+import { startAsnEngagementRefresh } from "./services/tracker/botBlocking/asnEngagement.js";
+import { startSiteBaselineRefresh } from "./services/tracker/botBlocking/siteBaseline.js";
+import {
+  USAGE_STATE_MESSAGE,
+  USAGE_STATE_REQUEST_MESSAGE,
+  usageService,
+  type UsageStateMessage,
+} from "./services/usageService.js";
+import { unclaimedSiteCleanupService } from "./services/sites/unclaimedSiteCleanupService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
-import { extractSiteId } from "./utils.js";
-import { getTrackingConfig } from "./api/sites/getTrackingConfig.js";
-import { updateSitePrivateLinkConfig } from "./api/sites/updateSitePrivateLinkConfig.js";
-import { getSitePrivateLinkConfig } from "./api/sites/getSitePrivateLinkConfig.js";
-import { connectGSC } from "./api/gsc/connect.js";
-import { gscCallback } from "./api/gsc/callback.js";
-import { getGSCStatus } from "./api/gsc/status.js";
-import { disconnectGSC } from "./api/gsc/disconnect.js";
-import { getGSCData } from "./api/gsc/getData.js";
-import { selectGSCProperty } from "./api/gsc/selectProperty.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const hasAxiom = !!(process.env.AXIOM_DATASET && process.env.AXIOM_TOKEN);
-
 const server = Fastify({
-  logger: {
-    level: process.env.LOG_LEVEL || (process.env.NODE_ENV === "development" ? "debug" : "info"),
-    transport:
-      process.env.NODE_ENV === "production" && IS_CLOUD && hasAxiom
-        ? {
-            targets: [
-              // Send to Axiom
-              {
-                target: "@axiomhq/pino",
-                level: process.env.LOG_LEVEL || "info",
-                options: {
-                  dataset: process.env.AXIOM_DATASET,
-                  token: process.env.AXIOM_TOKEN,
-                },
-              },
-              // Pretty print to stdout for Docker logs
-              {
-                target: "pino-pretty",
-                level: process.env.LOG_LEVEL || "info",
-                options: {
-                  colorize: true,
-                  singleLine: true,
-                  translateTime: "HH:MM:ss",
-                  ignore: "pid,hostname,name",
-                  destination: 1, // stdout
-                },
-              },
-            ],
-          }
-        : process.env.NODE_ENV === "development"
-          ? {
-              target: "pino-pretty",
-              options: {
-                colorize: true,
-                singleLine: true,
-                translateTime: "HH:MM:ss",
-                ignore: "pid,hostname,name",
-              },
-            }
-          : undefined, // Production without Axiom - plain JSON to stdout
-    serializers: {
-      req(request) {
-        return {
-          method: request.method,
-          url: request.url,
-          path: request.url,
-          parameters: request.params,
-        };
-      },
-      res(reply) {
-        return {
-          statusCode: reply.statusCode,
-        };
-      },
-    },
-  },
+  disableRequestLogging: true,
+  loggerInstance: logger,
   maxParamLength: 1500,
   trustProxy: true,
   bodyLimit: 10 * 1024 * 1024, // 10MB limit for session replay data
 });
 
+registerRequestLogging(server);
+registerApiErrorResponses(server);
+
 server.register(cors, {
-  origin: (_origin, callback) => {
-    callback(null, true);
+  delegator: createCorsOptionsDelegate(),
+});
+server.addHook("onRequest", createRejectUntrustedOriginHook());
+
+// Opt-in per-route rate limiting (routes declare config.rateLimit). Runs in
+// preHandler so authenticated routes can key on the caller instead of the IP.
+// Org API keys carry no user; without their organization in the key, every
+// MCP-proxied call (all from 127.0.0.1) would share one bucket.
+server.register(rateLimit, {
+  global: false,
+  hook: "preHandler",
+  keyGenerator: (request: FastifyRequest) => {
+    if (request.user?.id) return `user:${request.user.id}`;
+    if (request.apiKeyOrganizationId) return `org:${request.apiKeyOrganizationId}`;
+    return request.ip;
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-captcha-response", "x-private-key"],
-  credentials: true,
+  // Shared store so the limit holds across cluster workers; fall open if Redis
+  // is unreachable rather than blocking the request.
+  redis: apiRateLimitRedis,
+  skipOnError: true,
 });
 
 // Serve static files
@@ -186,6 +93,17 @@ server.register(
         }
       );
 
+      // OAuth token requests (RFC 6749) are application/x-www-form-urlencoded;
+      // pass them through untouched too or Fastify 415s before the better-auth
+      // handler can read the raw stream.
+      fastify.addContentTypeParser(
+        "application/x-www-form-urlencoded",
+        /* c8 ignore next 3 */
+        (_request, _payload, done) => {
+          done(null, null);
+        }
+      );
+
       fastify.all("/api/auth/*", async (request, reply: any) => {
         reply.raw.setHeaders(mapHeaders(reply.getHeaders()));
         await authHandler(request.raw, reply.raw);
@@ -199,289 +117,87 @@ server.register(
   { auth: auth! }
 );
 
-const PUBLIC_ROUTES: string[] = [
-  "/api/health",
-  "/api/track",
-  "/track",
-  "/api/script.js",
-  "/api/script-full.js",
-  "/api/replay.js",
-  "/api/metrics.js",
-  "/api/config",
-  "/api/auth",
-  "/api/auth/callback/google",
-  "/api/auth/callback/github",
-  "/api/gsc/callback",
-  "/api/stripe/webhook",
-  "/api/as/webhook",
-  "/api/session-replay/record",
-  "/api/admin/telemetry",
-  "/api/site/:siteId/tracking-config",
-];
+// OAuth discovery documents for MCP clients (RFC 8414 + RFC 9728). Clients
+// look these up at the domain root; the underlying metadata comes from the
+// better-auth MCP plugin.
+server.register(oauthWellKnownRoutes);
 
-// Define analytics routes that can be public
-const ANALYTICS_ROUTES = [
-  "/api/live-user-count/",
-  "/api/overview/",
-  "/api/overview-bucketed/",
-  "/api/error-bucketed/",
-  "/api/metric/",
-  "/api/page-titles/",
-  "/api/retention/",
-  "/api/site-has-data/",
-  "/api/site-is-public/",
-  "/api/sessions/",
-  "/api/session/",
-  "/api/users/",
-  "/api/user/info/",
-  "/api/user/session-count/",
-  "/api/session-locations/",
-  "/api/funnels/",
-  "/api/funnel/",
-  "/api/funnel/:stepNumber/sessions/",
-  "/api/journeys/",
-  "/api/goals/",
-  "/api/goal/",
-  "/api/goals/:goalId/sessions/",
-  "/api/analytics/events/names/",
-  "/api/analytics/events/properties/",
-  "/api/events/",
-  "/api/events/outbound/",
-  "/api/get-site",
-  "/api/performance/overview/",
-  "/api/performance/time-series/",
-  "/api/performance/by-path/",
-  "/api/performance/by-dimension/",
-  "/api/error-names/",
-  "/api/error-events/",
-  "/api/error-bucketed/",
-  "/api/session-replay/",
-  "/api/gsc/data/",
-];
+// Serve analytics scripts with generic names to avoid ad-blocker detection.
+// Cache them so browsers stop revalidating on every page load — without this they
+// default to max-age=0, so each tracked page hit fires a conditional request that
+// lands on caddy and the backend. script.js gets a short TTL so tracker updates
+// still propagate quickly; the vendored libs rarely change and get a longer TTL.
+server.get("/api/script.js", async (_, reply) => reply.sendFile("script.js", { maxAge: "1h" }));
+server.get("/api/replay.js", async (_, reply) => reply.sendFile("rrweb.min.js", { maxAge: "1d" }));
+server.get("/api/metrics.js", async (_, reply) => reply.sendFile("web-vitals.iife.js", { maxAge: "1d" }));
 
-server.addHook("onRequest", async (request, reply) => {
-  const { url } = request.raw;
-
-  if (!url) return;
-
-  let processedUrl = url;
-
-  // Bypass auth for public routes (now including the prepended /api)
-  if (PUBLIC_ROUTES.some(route => processedUrl.includes(route))) {
-    return;
-  }
-
-  // Check if it's an analytics route and get site ID (now including the prepended /api)
-  if (ANALYTICS_ROUTES.some(route => processedUrl.startsWith(route))) {
-    const siteId = extractSiteId(processedUrl);
-
-    if (siteId) {
-      // Check all access methods: direct access, public site, or valid private key
-      const hasAccess = await getUserHasAccessToSitePublic(request, siteId);
-
-      if (hasAccess) {
-        // User has access via: direct access, public site, or valid private key
-        // Skip auth requirement and allow the request through
-        return;
-      }
-    }
-  }
-
-  try {
-    const session = await getSessionFromReq(request);
-
-    if (!session) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-
-    // Attach session user info to request
-    request.user = session.user;
-  } catch (err) {
-    console.error("Auth Error:", err);
-    return reply.status(500).send({ error: "Auth check failed" });
-  }
-});
-
-// Serve analytics scripts with generic names to avoid ad-blocker detection
-server.get("/api/script.js", async (_, reply) => reply.sendFile("script.js"));
-server.get("/api/replay.js", async (_, reply) => reply.sendFile("rrweb.min.js"));
-server.get("/api/metrics.js", async (_, reply) => reply.sendFile("web-vitals.iife.js"));
-
-// WEB & PRODUCT ANALYTICS
-
-// This endpoint gets called a lot so we don't want to log it
-server.get("/api/live-user-count/:site", { logLevel: "silent" }, getLiveUsercount);
-server.get("/api/overview/:site", getOverview);
-server.get("/api/overview-bucketed/:site", getOverviewBucketed);
-server.get("/api/metric/:site", getMetric);
-server.get("/api/page-titles/:site", getPageTitles);
-server.get("/api/error-names/:site", getErrorNames);
-server.get("/api/error-events/:site", getErrorEvents);
-server.get("/api/error-bucketed/:site", getErrorBucketed);
-server.get("/api/retention/:site", getRetention);
-server.get("/api/site-has-data/:site", getSiteHasData);
-server.get("/api/site-is-public/:site", getSiteIsPublic);
-server.get("/api/sessions/:site", getSessions);
-server.get("/api/session/:sessionId/:site", getSession);
-server.get("/api/events/:site", getEvents);
-server.get("/api/users/:site", getUsers);
-server.get("/api/user/:userId/sessions/:site", getUserSessions);
-server.get("/api/user/session-count/:site", getUserSessionCount);
-server.get("/api/user/info/:userId/:site", getUserInfo);
-server.get("/api/session-locations/:site", getSessionLocations);
-server.get("/api/funnels/:site", getFunnels);
-server.get("/api/journeys/:site", getJourneys);
-server.post("/api/funnel/:site", getFunnel);
-server.post("/api/funnel/:stepNumber/sessions/:site", getFunnelStepSessions);
-server.post("/api/funnel/create/:site", createFunnel);
-server.delete("/api/funnel/:funnelId", deleteFunnel);
-server.get("/api/goals/:site", getGoals);
-server.get("/api/goals/:goalId/sessions/:site", getGoalSessions);
-server.post("/api/goal/create", createGoal);
-server.delete("/api/goal/:goalId", deleteGoal);
-server.put("/api/goal/update", updateGoal);
-server.get("/api/events/names/:site", getEventNames);
-server.get("/api/events/properties/:site", getEventProperties);
-server.get("/api/events/outbound/:site", getOutboundLinks);
-server.get("/api/org-event-count/:organizationId", getOrgEventCount);
-
-// Performance Analytics
-server.get("/api/performance/overview/:site", getPerformanceOverview);
-server.get("/api/performance/time-series/:site", getPerformanceTimeSeries);
-server.get("/api/performance/by-dimension/:site", getPerformanceByDimension);
-
-// Session Replay
-server.post("/api/session-replay/record/:site", recordSessionReplay);
-server.get("/api/session-replay/list/:site", getSessionReplays);
-server.get("/api/session-replay/:sessionId/:site", getSessionReplayEvents);
-server.delete("/api/session-replay/:sessionId/:site", deleteSessionReplay);
-
-// Administrative
-server.get("/api/config", getConfig);
-server.post("/api/add-site", addSite);
-server.post("/api/update-site-config", updateSiteConfig);
-server.post("/api/delete-site/:id", deleteSite);
-server.get("/api/get-sites-from-org/:organizationId", getSitesFromOrg);
-server.get("/api/get-site/:id", getSite);
-server.get("/api/site/:siteId/private-link-config", getSitePrivateLinkConfig);
-server.post("/api/site/:siteId/private-link-config", updateSitePrivateLinkConfig);
-server.get("/api/site/:siteId/tracking-config", getTrackingConfig);
-server.get("/api/site/:siteId/excluded-ips", getSiteExcludedIPs);
-server.get("/api/site/:siteId/excluded-countries", getSiteExcludedCountries);
-server.get("/api/list-organization-members/:organizationId", listOrganizationMembers);
-server.get("/api/user/organizations", getUserOrganizations);
-server.post("/api/add-user-to-organization", addUserToOrganization);
-server.post("/api/user/account-settings", updateAccountSettings);
-server.get("/api/user/api-keys", listApiKeys);
-server.post("/api/user/api-keys", createApiKey);
-server.delete("/api/user/api-keys/:keyId", deleteApiKey);
-
-// GOOGLE SEARCH CONSOLE
-server.get("/api/gsc/connect/:site", connectGSC);
-server.get("/api/gsc/callback", gscCallback);
-server.get("/api/gsc/status/:site", getGSCStatus);
-server.delete("/api/gsc/disconnect/:site", disconnectGSC);
-server.post("/api/gsc/select-property/:site", selectGSCProperty);
-server.get("/api/gsc/data/:site", getGSCData);
-
-// UPTIME MONITORING
-// Only register uptime routes when IS_CLOUD is true (Redis is available)
-// if (IS_CLOUD) {
-//   // Dynamically import uptime modules only when needed
-//   const { getMonitors } = await import("./api/uptime/getMonitors.js");
-//   const { getMonitor } = await import("./api/uptime/getMonitor.js");
-//   const { createMonitor } = await import("./api/uptime/createMonitor.js");
-//   const { updateMonitor } = await import("./api/uptime/updateMonitor.js");
-//   const { deleteMonitor } = await import("./api/uptime/deleteMonitor.js");
-//   const { getMonitorEvents } = await import("./api/uptime/getMonitorEvents.js");
-//   const { getMonitorStats } = await import("./api/uptime/getMonitorStats.js");
-//   const { getMonitorUptimeBuckets } = await import("./api/uptime/getMonitorUptimeBuckets.js");
-//   const { getMonitorStatus } = await import("./api/uptime/getMonitorStatus.js");
-//   const { getMonitorUptime } = await import("./api/uptime/getMonitorUptime.js");
-//   const { getRegions } = await import("./api/uptime/getRegions.js");
-//   const { incidentsRoutes } = await import("./api/uptime/incidents.js");
-//   const { notificationRoutes } = await import("./api/uptime/notifications.js");
-
-//   server.get("/api/uptime/monitors", getMonitors);
-//   server.get("/api/uptime/monitors/:monitorId", getMonitor);
-//   server.post("/api/uptime/monitors", createMonitor);
-//   server.put("/api/uptime/monitors/:monitorId", updateMonitor);
-//   server.delete("/api/uptime/monitors/:monitorId", deleteMonitor);
-//   server.get("/api/uptime/monitors/:monitorId/events", getMonitorEvents);
-//   server.get("/api/uptime/monitors/:monitorId/stats", getMonitorStats);
-//   server.get("/api/uptime/monitors/:monitorId/status", getMonitorStatus);
-//   server.get("/api/uptime/monitors/:monitorId/uptime", getMonitorUptime);
-//   server.get("/api/uptime/monitors/:monitorId/buckets", getMonitorUptimeBuckets);
-//   server.get("/api/uptime/regions", getRegions);
-
-//   // Register incidents routes
-//   server.register(incidentsRoutes);
-
-//   // Register notification routes
-//   server.register(notificationRoutes);
-// }
-
-// STRIPE & ADMIN
-
-if (IS_CLOUD) {
-  // Stripe Routes
-  server.post("/api/stripe/create-checkout-session", createCheckoutSession);
-  server.post("/api/stripe/create-portal-session", createPortalSession);
-  server.post("/api/stripe/preview-subscription-update", previewSubscriptionUpdate);
-  server.post("/api/stripe/update-subscription", updateSubscription);
-  server.get("/api/stripe/subscription", getSubscription);
-  server.post("/api/stripe/webhook", { config: { rawBody: true } }, handleWebhook); // Use rawBody parser config for webhook
-
-  // Admin Routes
-  server.get("/api/admin/sites", getAdminSites);
-  server.get("/api/admin/organizations", getAdminOrganizations);
-  server.get("/api/admin/service-event-count", getAdminServiceEventCount);
-  server.post("/api/admin/telemetry", collectTelemetry);
-
-  // AppSumo Routes
-  const { activateAppSumoLicense } = await import("./api/as/activate.js");
-  const { handleAppSumoWebhook } = await import("./api/as/webhook.js");
-
-  server.post("/api/as/activate", activateAppSumoLicense);
-  server.post("/api/as/webhook", handleAppSumoWebhook);
-}
-
-server.post("/track", trackEvent);
 server.post("/api/track", trackEvent);
+server.post("/api/identify", handleIdentify);
 
-server.get("/api/health", { logLevel: "silent" }, (_, reply) => reply.send("OK"));
+// Register API routes with /api prefix
+server.register(apiRoutes, { prefix: "/api" });
+
+// How long a new worker waits for the primary's usage state before serving anyway.
+const USAGE_STATE_WAIT_MS = 10_000;
+
+/**
+ * Installs the worker's listener for usage state from the cluster primary, then asks for the
+ * current state. Resolves once it has been applied, so the worker doesn't serve over-limit or
+ * plan-less sites until the next broadcast (up to 30 minutes). Never rejects: if the primary
+ * doesn't answer in time the worker serves without blocks, as it did before the handshake.
+ */
+function receiveUsageStateFromPrimary(): Promise<void> {
+  return new Promise(resolve => {
+    const timeout = setTimeout(() => {
+      server.log.warn("No usage state from the cluster primary yet; serving until it arrives");
+      resolve();
+    }, USAGE_STATE_WAIT_MS);
+
+    process.on("message", (message: UsageStateMessage) => {
+      if (message?.type !== USAGE_STATE_MESSAGE) return;
+      usageService.applyUsageStateMessage(message);
+      server.log.debug(
+        `Received ${message.sitesOverLimit.length} sites-over-limit, ${message.sitesWithoutPlan.length} sites-without-plan and ${message.sitesWithoutReplay.length} sites-without-replay from primary`
+      );
+      clearTimeout(timeout);
+      resolve();
+    });
+
+    process.send?.({ type: USAGE_STATE_REQUEST_MESSAGE });
+  });
+}
 
 const start = async () => {
   try {
-    console.info("Starting server...");
-    await Promise.all([initializeClickhouse(), initPostgres()]);
-
-    telemetryService.startTelemetryCron();
-    if (IS_CLOUD) {
-      weeklyReportService.startWeeklyReportCron();
+    // When running as a cluster worker, the primary process already initialized the databases
+    if (!cluster.isWorker) {
+      await Promise.all([initializeClickhouse(), initPostgres()]);
     }
 
-    // Start the server first
+    // Every process runs this: the ClickHouse refresh is elected through Redis,
+    // and each worker mirrors the shared result for the site-flood rules.
+    startSiteBaselineRefresh();
+    // Same election, for the shadow-mode low-engagement network list.
+    startAsnEngagementRefresh();
+
+    // Cron jobs should only run on the primary process (or in single-process mode)
+    if (!cluster.isWorker) {
+      telemetryService.startTelemetryCron();
+      usageService.startUsageCheckCron();
+      unclaimedSiteCleanupService.startCleanupCron();
+      if (IS_CLOUD && process.env.NODE_ENV !== "development") {
+        weeklyReportService.startWeeklyReportCron();
+        lifecycleEmailService.startLifecycleCron();
+      }
+    }
+
+    // Blocked-site sets live on the cluster primary; apply them before accepting traffic.
+    if (cluster.isWorker) {
+      await receiveUsageStateFromPrimary();
+    }
+
     await server.listen({ port: 3001, host: "0.0.0.0" });
-    server.log.info("Server is listening on http://0.0.0.0:3001");
-
-    // Test Axiom logging
-    if (hasAxiom) {
-      server.log.info({ axiom: true, dataset: process.env.AXIOM_DATASET }, "Axiom logging is configured");
-    }
-
-    // if (process.env.NODE_ENV === "production") {
-    //   // Initialize uptime monitoring service in the background (non-blocking)
-    //   uptimeService
-    //     .initialize()
-    //     .then(() => {
-    //       server.log.info("Uptime monitoring service initialized successfully");
-    //     })
-    //     .catch((error) => {
-    //       server.log.error("Failed to initialize uptime service:", error);
-    //       // Continue running without uptime monitoring
-    //     });
-    // }
+    server.log.info(`Server is listening on http://0.0.0.0:3001 (PID: ${process.pid})`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);
@@ -509,13 +225,16 @@ const shutdown = async (signal: string) => {
   }, 10000); // 10 second timeout
 
   try {
+    unclaimedSiteCleanupService.stopCleanupCron();
     // Stop accepting new connections
     await server.close();
     server.log.info("Server closed");
 
-    // Shutdown uptime service
-    // await uptimeService.shutdown();
-    // server.log.info("Uptime service shut down");
+    // Flush events still buffered for the next batch insert, then the
+    // identity backfills, which are held for several minutes to keep mutation
+    // submissions rare; without this, a deploy drops whatever is still pending.
+    await Promise.all([pageviewQueue.drain(), botEventQueue.drain(), botObservationQueue.drain()]);
+    await identityBackfillQueue.drainCompletely();
 
     // Clear the timeout since we're done
     clearTimeout(forceExitTimeout);
@@ -534,5 +253,18 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 declare module "fastify" {
   interface FastifyRequest {
     user?: any; // Or define a more specific user type
+    /** Set by the auth guards when the bearer credential is an org-owned API key. */
+    apiKeyOrganizationId?: string;
+    /** True when the request was authenticated with a bearer credential (API key or OAuth token). */
+    bearerAuth?: boolean;
+    /** Scope statements of that credential; null = unrestricted. */
+    bearerStatements?: ScopeStatements | null;
+    /**
+     * False when that credential is one the session-only surfaces refuse: a
+     * scoped key, an organization-owned key, or any OAuth token.
+     */
+    bearerSessionEquivalent?: boolean;
+    /** The role a permission guard admitted the caller with, on the site or organization it checked. */
+    accessRole?: OrgRole;
   }
 }

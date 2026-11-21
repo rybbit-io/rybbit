@@ -65,14 +65,16 @@ export function MultiSelect({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn("w-full justify-between min-h-10 h-auto", selected.length > 0 && "px-3 py-2", className)}
+          className={cn("w-full justify-between min-h-9 h-auto py-1.5", selected.length > 0 && "px-3", className)}
         >
           <div className="flex gap-1 flex-wrap">
             {selected.length > 0 ? (
               selected.map(option => (
                 <Badge key={option.value} variant="secondary" className={cn("mr-1", badgeClassName)}>
                   {option.label}
-                  <button
+                  <span
+                    role="button"
+                    tabIndex={0}
                     className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     onKeyDown={e => {
                       if (e.key === "Enter") {
@@ -92,7 +94,7 @@ export function MultiSelect({
                     }}
                   >
                     <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                  </button>
+                  </span>
                 </Badge>
               ))
             ) : (

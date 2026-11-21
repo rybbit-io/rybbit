@@ -1,19 +1,21 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useGetSite } from "../../../../api/admin/sites";
+import { useGetSite } from "../../../../api/admin/hooks/useSites";
 import { Sidebar } from "./Sidebar";
 import { Button } from "../../../../components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../../../../components/ui/sheet";
 
 import { Menu } from "lucide-react";
-import { VisuallyHidden } from "radix-ui";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Favicon } from "../../../../components/Favicon";
 import { AppSidebar } from "../../../../components/AppSidebar";
 import { useEmbedablePage } from "../../utils";
 import { Suspense } from "react";
 
 function MobileSidebarContent() {
+  const t = useExtracted();
   const pathname = usePathname();
   const { data: site } = useGetSite(Number(pathname.split("/")[1]));
 
@@ -28,11 +30,11 @@ function MobileSidebarContent() {
             <Menu />
           </Button>
         </SheetTrigger>
-        <VisuallyHidden.Root>
+        <VisuallyHidden>
           <SheetHeader>
-            <SheetTitle>Rybbit Sidebar</SheetTitle>
+            <SheetTitle>{t("Rybbit Sidebar")}</SheetTitle>
           </SheetHeader>
-        </VisuallyHidden.Root>
+        </VisuallyHidden>
         <SheetContent side="left" className="p-0 w-[240px] flex gap-0" showClose={false}>
           <AppSidebar />
           <Sidebar />

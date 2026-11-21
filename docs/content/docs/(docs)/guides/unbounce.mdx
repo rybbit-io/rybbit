@@ -1,0 +1,85 @@
+---
+title: Unbounce
+description: Add Rybbit analytics to your Unbounce landing pages
+category: landing
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Unbounce's **Script Manager** applies a script to every page on a domain, including pages you publish later, so that is where the snippet goes. If you only want to track a single Classic Builder page, the page-level **Javascripts** dialog works too.
+
+<Callout type="warn">
+Custom scripts and pixels are not available on the Starter plan; you need Build or higher. Script Manager also requires a connected custom domain: it does not apply to pages on the `unbouncepages.com` test domain.
+</Callout>
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Unbounce
+
+<Tabs items={["Script Manager", "Classic Builder page"]}>
+<Tab>
+1. In the left menu, click **Settings**, then **Script Manager**.
+2. Click **Add a Script**, choose **Custom Script**, give it a name and click **Add Script Details**.
+3. Set **Placement** to **Head** and **Included on** to **All** (main pages and confirmation dialogs).
+4. Paste the snippet into the editor.
+5. Tick the domain(s) the script should apply to on the right, then click **Save Changes**.
+
+The script is added to every page on those domains and to new pages published there later. If a page does not pick it up, republish that page.
+</Tab>
+
+<Tab>
+1. Open the page in the Classic Builder and click **Javascripts** in the bottom-left corner.
+2. Give the script a name and set **Placement** to **Head**.
+3. Paste the snippet and click **Done**.
+4. **Save**, then **Publish** (or **Republish**) the page. Custom scripts do not run in the builder or in Preview, only on the published page.
+
+Smart Builder pages have no page-level script dialog; use Script Manager for those.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+#### Form submission
+
+Unbounce exposes `window.ub.hooks`, an unofficial hook that runs after a lead is recorded. Add this as a second Script Manager script (or page script) with placement **Before Body End Tag** to send a `lead` event with the page name and variant:
+
+```html
+<script>
+window.ub.hooks.afterFormSubmit.push(function () {
+  if (window.rybbit) {
+    window.rybbit.event("lead", {
+      page: window.ub.page.name,
+      variant: window.ub.page.variantId
+    });
+  }
+});
+</script>
+```
+
+`window.ub.page.name`, `window.ub.page.variantId` and `window.ub.page.id` are available on every Unbounce page, so you can compare A/B variants in Rybbit without any other setup.
+
+## Troubleshooting
+
+- **Script runs twice**: a script that is both in Script Manager and on an individual page loads twice. Remove the page-level copy and keep the Script Manager one.
+- **Nothing on `unbouncepages.com`**: Script Manager only applies to custom domains. Add the snippet at page level to test on the Unbounce test domain.
+- **Script Manager missing**: the account is on the Starter plan, which does not include custom scripts.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

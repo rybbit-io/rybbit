@@ -1,6 +1,6 @@
-import { UAParser } from "ua-parser-js";
 import { getLocation } from "../../db/geolocation/geolocation.js";
 import { getChannel } from "../tracker/getChannel.js";
+import { parseUserAgent } from "../tracker/utils.js";
 import { getDeviceType } from "../../utils.js";
 
 export interface TrackingData {
@@ -34,10 +34,11 @@ export async function parseTrackingData(
   screenWidth: number,
   screenHeight: number
 ): Promise<TrackingData> {
-  // Parse user agent
-  const ua = UAParser(userAgent);
+  // Parse user agent through the tracker's shared cache: replay batches from
+  // one visitor repeat the same string, and the parse is regex-heavy
+  const ua = parseUserAgent(userAgent);
 
-  const geoData = await getLocation([ipAddress], true);
+  const geoData = await getLocation([ipAddress]);
 
   const countryCode = geoData?.[ipAddress]?.countryIso || "";
   const regionCode = geoData?.[ipAddress]?.region || "";

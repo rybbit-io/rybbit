@@ -1,0 +1,78 @@
+---
+title: TYPO3
+description: Add Rybbit analytics to your TYPO3 site
+category: cms
+icon: SiTypo3
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+TYPO3 sitepackages build the page `<head>` from TypoScript rather than an HTML template, so the snippet is added as a `page.includeJS` entry in your sitepackage's `setup.typoscript`.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to TYPO3
+
+1. Open your main TypoScript setup file, usually `<sitepackage>/Configuration/TypoScript/setup.typoscript`. It is the file that already contains `page = PAGE`. The same TypoScript can also live in a TypoScript record in the backend.
+2. Add the script to the `page` object:
+
+   ```
+   page = PAGE
+   page {
+     includeJS {
+       rybbit = https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID
+       rybbit.defer = 1
+     }
+   }
+   ```
+
+   Because the Site ID is part of the URL, no `data-*` attribute is needed, so this works on every supported TYPO3 version. Per-include attributes on `includeJS` only exist in TYPO3 12.1+.
+
+3. To track production only, wrap the include in an `applicationContext` condition:
+
+   ```
+   [applicationContext == "Production"]
+   page.includeJS.rybbit = https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID
+   page.includeJS.rybbit.defer = 1
+   [END]
+   ```
+
+4. Optionally keep the Site ID and instance URL in `constants.typoscript` (or a TypoScript record) so the setup file can be committed without site-specific values:
+
+   ```
+   # constants.typoscript
+   rybbit {
+     host = https://app.rybbit.io
+     siteId = YOUR_SITE_ID
+   }
+
+   # setup.typoscript
+   page.includeJS.rybbit = {$rybbit.host}/api/script.js?siteId={$rybbit.siteId}
+   page.includeJS.rybbit.defer = 1
+   ```
+
+5. Deploy the sitepackage, or set `applicationContext` accordingly, and flush the TYPO3 caches.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Script not in the page source**: TYPO3 caches rendered pages. Flush caches from the backend toolbar or with `vendor/bin/typo3 cache:flush` after changing TypoScript.
+- **Wrong TypoScript file**: if several files define `page`, check the resulting `page.includeJS` in the TypoScript object browser in the backend to see which definition wins.
+- **Condition never matches**: the `applicationContext` is set through the `TYPO3_CONTEXT` environment variable. If it is unset, TYPO3 runs as `Production` and the script loads everywhere.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

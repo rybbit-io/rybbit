@@ -1,11 +1,6 @@
 import mapboxgl from "mapbox-gl";
-import {
-  SOURCE_ID,
-  CLUSTER_LAYER_ID,
-  CLUSTER_COUNT_LAYER_ID,
-  UNCLUSTERED_LAYER_ID,
-  MIN_CLUSTER_SIZE,
-} from "./timelineLayerConstants";
+import { SOURCE_ID, CLUSTER_LAYER_ID, CLUSTER_COUNT_LAYER_ID, UNCLUSTERED_LAYER_ID } from "./timelineLayerConstants";
+import { MIN_CLUSTER_SIZE } from "../../../utils/clusteringConstants";
 
 /**
  * Create and configure the popup for session tooltips
@@ -81,12 +76,19 @@ export function disableClusterTransitions(mapInstance: mapboxgl.Map): void {
  * Setup cursor change on cluster hover
  */
 export function setupClusterHoverHandlers(mapInstance: mapboxgl.Map, layerId: string): () => void {
+  const setCursor = (cursor: string) => {
+    const canvas = mapInstance.getCanvas() as HTMLCanvasElement | undefined;
+    if (canvas) {
+      canvas.style.cursor = cursor;
+    }
+  };
+
   const handleClusterMouseEnter = () => {
-    mapInstance.getCanvas().style.cursor = "pointer";
+    setCursor("pointer");
   };
 
   const handleClusterMouseLeave = () => {
-    mapInstance.getCanvas().style.cursor = "";
+    setCursor("");
   };
 
   mapInstance.on("mouseenter", layerId, handleClusterMouseEnter);

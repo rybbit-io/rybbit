@@ -1,64 +1,43 @@
 "use client";
 
-import { CreditCard, Users } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { CreateOrganizationDialog } from "../../../components/CreateOrganizationDialog";
-import { OrganizationSelector } from "../../../components/OrganizationSelector";
 import { Button } from "../../../components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs";
-import { IS_CLOUD } from "../../../lib/const";
+import { OrgPermissionGate } from "../components/OrgPermissionGate";
+import { SettingsPage, SettingsPageHeader } from "../components/Ledger";
+import { useActiveOrgName } from "../../../hooks/useActiveOrgName";
 
 export default function OrganizationLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
-
-  // Determine active tab from pathname
-  const activeTab = pathname.includes("/subscription") ? "subscription" : "organization";
-
-  const handleTabChange = (value: string) => {
-    if (value === "organization") {
-      router.push("/settings/organization/members");
-    } else if (value === "subscription") {
-      router.push("/settings/organization/subscription");
-    }
-  };
+  const t = useExtracted();
+  const orgName = useActiveOrgName();
 
   return (
-    <>
-      <div className="space-y-5">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Organization Settings</h1>
-          <p className="text-neutral-500 dark:text-neutral-400">Manage your organization settings and members</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <OrganizationSelector />
+    <SettingsPage>
+      <SettingsPageHeader
+        title={t("Organization")}
+        description={orgName ? t("Settings and people for {name}.", { name: orgName }) : undefined}
+        actions={
           <CreateOrganizationDialog
             open={createOrgDialogOpen}
             onOpenChange={setCreateOrgDialogOpen}
-            trigger={<Button>New Organization</Button>}
+            trigger={
+              <Button variant="outline" size="sm">
+                <Plus />
+                {t("New organization")}
+              </Button>
+            }
           />
-        </div>
-
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList>
-            <TabsTrigger value="organization" className="flex items-center gap-2">
-              <Users size={16} />
-              Organization
-            </TabsTrigger>
-            {IS_CLOUD && (
-              <TabsTrigger value="subscription" className="flex items-center gap-2">
-                <CreditCard size={16} />
-                Subscription
-              </TabsTrigger>
-            )}
-          </TabsList>
-        </Tabs>
-
-        <div className="mt-6">{children}</div>
-      </div>
-    </>
+        }
+      />
+      <OrgPermissionGate
+        permission="members:manage"
+        deniedMessage={t("You don't have permission to view organization settings.")}
+      >
+        {children}
+      </OrgPermissionGate>
+    </SettingsPage>
   );
 }

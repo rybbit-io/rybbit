@@ -1,0 +1,4 @@
+{
+  "title": "Session Replay",
+  "pages": ["list", "events", "delete"]
+}

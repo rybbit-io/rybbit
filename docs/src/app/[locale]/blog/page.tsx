@@ -1,0 +1,178 @@
+import { ArrowRight } from "lucide-react";
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { GridCrosses } from "@/components/GridCrosses";
+import { InteriorPageHero } from "@/components/InteriorPageHero";
+import { isGeneratedImage, postImageUrl, readingTimeMinutes, sortedPosts, type BlogPost } from "@/lib/blog";
+
+export const metadata: Metadata = {
+  title: "Blog — Web Analytics, Privacy & Open Source",
+  description:
+    "Tutorials and insights from the Rybbit team on web analytics, Google Analytics alternatives, privacy-first tracking, and building in the open.",
+  alternates: {
+    canonical: "https://rybbit.com/blog",
+  },
+  openGraph: {
+    title: "Rybbit Blog",
+    description:
+      "Tutorials and insights on web analytics, Google Analytics alternatives, privacy-first tracking, and building in the open.",
+    type: "website",
+    url: "https://rybbit.com/blog",
+  },
+};
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function PostThumbnail({ post, priority = false, sizes }: { post: BlogPost; priority?: boolean; sizes: string }) {
+  const image = postImageUrl(post);
+  return (
+    <Image
+      src={image}
+      alt=""
+      width={1200}
+      height={630}
+      priority={priority}
+      unoptimized={isGeneratedImage(image)}
+      sizes={sizes}
+      className="aspect-[1200/630] w-full rounded-md border border-neutral-200 object-cover dark:border-neutral-800"
+    />
+  );
+}
+
+export default function BlogPage() {
+  const posts = sortedPosts();
+  const [latest, ...rest] = posts;
+
+  return (
+    <div className="overflow-x-clip">
+      <InteriorPageHero
+        title="Blog"
+        description="Updates, tutorials, and insights from the Rybbit team — on analytics, privacy, and building in the open."
+        eventLocation="blog_hero"
+        primaryAction={null}
+        secondaryAction={null}
+        note={null}
+      />
+
+      <section className="border-b border-neutral-200 dark:border-neutral-800" aria-label="Blog posts">
+        <div className="relative mx-auto max-w-[1200px] border-x border-neutral-200 dark:border-neutral-800">
+          <GridCrosses />
+
+          {posts.length === 0 ? (
+            <p className="px-5 py-16 text-neutral-600 dark:text-neutral-400 sm:px-8 lg:px-10">
+              No blog posts yet. Check back soon!
+            </p>
+          ) : (
+            <ol>
+              {latest && (
+                <li className="border-b border-neutral-200 dark:border-neutral-800">
+                  <Link
+                    href={`/blog/${latest.slugs.join("/")}`}
+                    className="group relative block bg-plate-accent px-5 py-12 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 sm:px-8 md:py-16 lg:px-10"
+                  >
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 bg-graph-accent [mask-image:linear-gradient(to_bottom,black,transparent_92%),linear-gradient(to_left,transparent,black_40px)] [mask-composite:intersect]"
+                    />
+                    <article className="relative grid gap-6 lg:grid-cols-12 lg:gap-8">
+                      <div className="flex flex-col justify-between gap-4 text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-2">
+                        <p className="flex items-center gap-2.5 font-semibold tracking-tight text-emerald-700 dark:text-emerald-400">
+                          <span aria-hidden="true" className="size-2 rounded-[1px] bg-emerald-600 dark:bg-emerald-400" />
+                          Latest post
+                        </p>
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 lg:flex-col lg:gap-1.5">
+                          {latest.data.date && (
+                            <time dateTime={new Date(latest.data.date).toISOString()} className="tabular-nums">
+                              {formatDate(new Date(latest.data.date))}
+                            </time>
+                          )}
+                          <span>{readingTimeMinutes(latest)} min read</span>
+                        </div>
+                      </div>
+                      <div className="lg:col-span-6">
+                        <h2 className="max-w-3xl text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-neutral-950 text-balance dark:text-neutral-50 md:text-4xl">
+                          {latest.data.title}
+                        </h2>
+                        {latest.data.description && (
+                          <p className="mt-4 max-w-2xl text-base leading-7 text-neutral-600 text-pretty dark:text-neutral-400">
+                            {latest.data.description}
+                          </p>
+                        )}
+                        <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                          Read the post
+                          <ArrowRight
+                            className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </div>
+                      <div className="lg:col-span-4">
+                        <PostThumbnail post={latest} priority sizes="(max-width: 1024px) 100vw, 380px" />
+                      </div>
+                    </article>
+                  </Link>
+                </li>
+              )}
+
+              {rest.map(post => {
+                const date = post.data.date ? new Date(post.data.date) : null;
+
+                return (
+                  <li
+                    key={post.slugs.join("/")}
+                    className="border-b border-neutral-200 last:border-b-0 dark:border-neutral-800"
+                  >
+                    <Link
+                      href={`/blog/${post.slugs.join("/")}`}
+                      className="group block px-5 py-8 transition-colors duration-200 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:hover:bg-neutral-900/40 sm:px-8 lg:px-10"
+                    >
+                      <article className="grid gap-4 lg:grid-cols-12 lg:gap-8">
+                        <div className="text-sm text-neutral-500 dark:text-neutral-400 lg:col-span-2">
+                          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 lg:flex-col lg:gap-1.5">
+                            {date && (
+                              <time dateTime={date.toISOString()} className="tabular-nums">
+                                {formatDate(date)}
+                              </time>
+                            )}
+                            <span>{readingTimeMinutes(post)} min read</span>
+                          </div>
+                        </div>
+                        <div className="lg:col-span-7">
+                          <h2 className="text-lg font-semibold tracking-tight text-neutral-950 text-balance dark:text-neutral-50">
+                            {post.data.title}
+                          </h2>
+                          {post.data.description && (
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600 text-pretty dark:text-neutral-400">
+                              {post.data.description}
+                            </p>
+                          )}
+                          <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                            Read the post
+                            <ArrowRight
+                              className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                              aria-hidden="true"
+                            />
+                          </span>
+                        </div>
+                        <div className="lg:col-span-3">
+                          <PostThumbnail post={post} sizes="(max-width: 1024px) 100vw, 280px" />
+                        </div>
+                      </article>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}

@@ -1,0 +1,96 @@
+---
+title: v0
+description: Add Rybbit analytics to your v0 app
+category: ai-builders
+icon: SiV0
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+v0 generates Next.js apps, so there is no single `index.html` and no project setting for head code. The snippet goes into the root layout, `app/layout.tsx`, through a `next/script` tag that renders on every page. Ask v0 to add it or edit the file in the Code tab, then publish.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to v0
+
+<Tabs items={["Ask v0", "Edit app/layout.tsx"]}>
+<Tab>
+Paste this into the chat, with your site ID in place of the placeholder:
+
+```text
+Add the Rybbit analytics script to the root layout (app/layout.tsx) using next/script with strategy="afterInteractive", so it loads on every page:
+https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID
+```
+
+Check the diff: the `<Script>` belongs in `app/layout.tsx`, not in a page or component.
+</Tab>
+
+<Tab>
+Select the **Code** tab in the preview toolbar, open `app/layout.tsx` and add the `Script` component inside `<body>`. The `defer` attribute from the snippet is not needed; the strategy handles timing.
+
+```tsx title="app/layout.tsx"
+import Script from "next/script";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script
+          src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+Press **Cmd+S** / **Ctrl+S** to save.
+</Tab>
+</Tabs>
+
+Click **Publish** in the top right of the chat, then **Publish to Production**. Navigation through `<Link>` and `router.push()` is tracked as pageviews automatically.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from a client component. Guard the call, because v0 components can render on the server and the script loads after hydration.
+
+```tsx title="components/signup-button.tsx"
+"use client";
+
+export function SignupButton() {
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.rybbit) {
+      window.rybbit.event("signup_click", { location: "hero" });
+    }
+  };
+
+  return <button onClick={handleClick}>Sign up</button>;
+}
+```
+
+## Troubleshooting
+
+- **Production has no script**: the preview updates on save, but the live site only changes after **Publish to Production**. Projects connected to GitHub go through a pull request that v0 merges before the production deployment runs.
+- **v0 rewrote the layout**: a later prompt can regenerate `app/layout.tsx`. Add "keep the Rybbit Script tag in app/layout.tsx" to the project's custom instructions, and re-check the page source after large changes.
+- **Pages Router**: if your project has `pages/` instead of `app/`, put the `Script` in `pages/_app.tsx` as shown in the [Next.js guide](/docs/guides/react/next-js).
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

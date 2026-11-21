@@ -1,0 +1,4 @@
+{
+  "title": "Imports",
+  "pages": ["list", "create", "events", "delete"]
+}

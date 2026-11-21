@@ -1,4 +1,9 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import {
   createColumnHelper,
@@ -10,8 +15,10 @@ import {
 } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import { ChevronDown, ChevronUp, Loader2, Search } from "lucide-react";
+import { useExtracted } from "next-intl";
 import { ReactNode, useMemo, useState } from "react";
-import { GSCData, GSCDimension, useGSCData } from "../../../../../api/gsc/useGSCData";
+import { useGetGSCData } from "../../../../../api/gsc/hooks/useGetGSCData";
+import { GSCData, GSCDimension } from "../../../../../api/gsc/endpoints";
 import { cn } from "../../../../../lib/utils";
 
 interface SearchConsoleDialogProps {
@@ -25,7 +32,8 @@ interface SearchConsoleDialogProps {
 const columnHelper = createColumnHelper<GSCData>();
 
 export function SearchConsoleDialog({ title, dimension, renderName, expanded, close }: SearchConsoleDialogProps) {
-  const { data, isLoading } = useGSCData(dimension);
+  const { data, isLoading } = useGetGSCData(dimension);
+  const t = useExtracted();
 
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 200);
@@ -51,25 +59,25 @@ export function SearchConsoleDialog({ title, dimension, renderName, expanded, cl
         ),
       }),
       columnHelper.accessor("clicks", {
-        header: "Clicks",
+        header: t("Clicks"),
         cell: info => (
           <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toLocaleString()}</div>
         ),
       }),
       columnHelper.accessor("impressions", {
-        header: "Impressions",
+        header: t("Impressions"),
         cell: info => (
           <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toLocaleString()}</div>
         ),
       }),
       columnHelper.accessor("ctr", {
-        header: "CTR",
+        header: t("CTR"),
         cell: info => (
           <div className="flex flex-row gap-1 items-center sm:justify-end">{(info.getValue() * 100).toFixed(1)}%</div>
         ),
       }),
       columnHelper.accessor("position", {
-        header: "Position",
+        header: t("Position"),
         cell: info => (
           <div className="flex flex-row gap-1 items-center sm:justify-end">{info.getValue().toFixed(1)}</div>
         ),
@@ -77,7 +85,7 @@ export function SearchConsoleDialog({ title, dimension, renderName, expanded, cl
     ];
 
     return cols;
-  }, [title, dimension, renderName]);
+  }, [title, dimension, renderName, t]);
 
   // Set up table instance
   const table = useReactTable({
@@ -95,27 +103,27 @@ export function SearchConsoleDialog({ title, dimension, renderName, expanded, cl
 
   if (isLoading || !data) {
     return (
-      <Dialog open={expanded} onOpenChange={close}>
-        <DialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4">
+      <ResponsiveDialog open={expanded} onOpenChange={close}>
+        <ResponsiveDialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4 space-y-2">
           <div className="flex justify-center items-center h-40">
             <Loader2 className="h-8 w-8 animate-spin text-neutral-600 dark:text-neutral-400" />
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     );
   }
 
   return (
-    <Dialog open={expanded} onOpenChange={close}>
-      <DialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog open={expanded} onOpenChange={close}>
+      <ResponsiveDialogContent className="max-w-[1000px] w-[calc(100vw-2rem)] p-2 sm:p-4 space-y-2">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-600 dark:text-neutral-400" />
           <Input
             type="text"
-            placeholder={`Filter ${data.length} items...`}
+            placeholder={t("Filter {count} items...", { count: String(data.length) })}
             className="pl-9 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-xs"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
@@ -175,11 +183,11 @@ export function SearchConsoleDialog({ title, dimension, renderName, expanded, cl
             </table>
 
             {filteredData.length === 0 && (
-              <div className="py-8 text-center text-neutral-500 dark:text-neutral-500 text-xs">No results found</div>
+              <div className="py-8 text-center text-neutral-500 dark:text-neutral-500 text-xs">{t("No results found")}</div>
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

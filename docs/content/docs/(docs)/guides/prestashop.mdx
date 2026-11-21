@@ -1,0 +1,93 @@
+---
+title: PrestaShop
+description: Add Rybbit analytics to your PrestaShop store
+category: ecommerce
+icon: SiPrestashop
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+PrestaShop's back office has no built-in setting for custom `<head>` code, so the snippet goes in either through a header-injection module from the Addons marketplace or directly into your theme's `head.tpl`. Either way, clear the cache afterwards.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to PrestaShop
+
+<Tabs items={["Custom code module", "Theme files"]}>
+<Tab>
+1. In the back office, go to **Modules > Module Manager** (or **Module Catalog**) and install a module that injects custom HTML into the page header, for example a "Custom HTML" or "Header code" module from the [PrestaShop Addons marketplace](https://addons.prestashop.com/).
+2. Open the module's configuration, paste the snippet into its head / header code field, and save.
+3. Go to **Advanced Parameters > Performance** and click **Clear cache**.
+</Tab>
+
+<Tab>
+<Callout type="warn">
+Edit a child theme. Changes to the parent theme are lost on theme updates.
+</Callout>
+
+1. Over FTP/SFTP or a file manager, open `/themes/your-theme-name/templates/_partials/head.tpl`.
+2. Paste the snippet at the end of the file, before the closing `</head>` tag, and save.
+3. Go to **Advanced Parameters > Performance** and click **Clear cache**.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+#### Purchase
+
+Add this to your theme's `order-confirmation.tpl`, or output it from a module hooked to the order confirmation page. PrestaShop renders templates with Smarty, so the `$order` variables are filled in with the order data:
+
+```html
+{if isset($order)}
+<script>
+(function () {
+  function waitForRybbit(callback, timeout) {
+    var start = Date.now();
+    (function check() {
+      if (window.rybbit && typeof window.rybbit.event === 'function') {
+        callback();
+      } else if (Date.now() - start < timeout) {
+        setTimeout(check, 100);
+      }
+    })();
+  }
+
+  waitForRybbit(function () {
+    window.rybbit.event('purchase', {
+      transaction_id: '{$order.details.reference}',
+      value: {$order.totals.total.amount},
+      currency: '{$order.totals.total.currency}'
+    });
+  }, 5000);
+})();
+</script>
+{/if}
+```
+
+`waitForRybbit` polls until the tracking script from `head.tpl` has defined `window.rybbit`, so the event is not lost when the confirmation script runs first.
+
+## Troubleshooting
+
+- **Script not on the page**: clear the cache under **Advanced Parameters > Performance**, and temporarily disable any JavaScript optimisation or combine/minify module.
+- **Theme updates overwrite the snippet**: keep template edits in a child theme; parent-theme changes are lost on update.
+- **Purchase event missing**: the `$order` Smarty variables differ between PrestaShop versions. Compare them with your version's `order-confirmation.tpl` and place a test order to confirm the event arrives.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

@@ -1,0 +1,65 @@
+---
+title: Zola
+description: Add Rybbit analytics to your Zola site
+category: static
+icon: SiZola
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Zola pages extend a base Tera template, normally `templates/base.html`, so the snippet goes in that file's `<head>`. Keep the site ID in the `[extra]` section of `config.toml`, which every template can read as `config.extra`.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Zola
+
+1. Add your site ID under `[extra]` in `config.toml`. `rybbit_instance_url` is only needed if you self-host:
+
+   ```toml title="config.toml"
+   [extra]
+   rybbit_site_id = "YOUR_SITE_ID"
+   rybbit_instance_url = "https://app.rybbit.io"
+   ```
+
+2. Open `templates/base.html` and add the tag inside `<head>`. The `config.mode` check keeps the script out of `zola serve`, so local development is not tracked:
+
+   ```html title="templates/base.html"
+   <head>
+     ...
+     {% if config.mode == "build" %}
+       <script src="{{ config.extra.rybbit_instance_url }}/api/script.js?siteId={{ config.extra.rybbit_site_id }}" defer></script>
+     {% endif %}
+   </head>
+   ```
+
+   If a theme owns `base.html`, copy it from `themes/<theme>/templates/base.html` into your own `templates/` directory first. A template in your site with the same name overrides the theme's copy, so the theme can be updated without losing the change.
+
+3. Build and deploy the generated `public/` directory:
+
+   ```bash
+   zola build
+   ```
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Snippet missing from the page source**: `zola serve` sets `config.mode` to `serve`, so the guard removes the tag. Check the output of `zola build` instead.
+- **`config.mode` is not defined**: older Zola releases do not expose it. Upgrade, or drop the `if` block and accept local pageviews.
+- **Pages without the tag**: templates that do not `{% extends "base.html" %}` (a custom `404.html`, or a section template that builds its own `<head>`) need the tag added separately.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

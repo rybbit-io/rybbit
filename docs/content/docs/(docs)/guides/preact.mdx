@@ -1,0 +1,69 @@
+---
+title: Preact
+description: Add Rybbit analytics to your Preact app
+category: frameworks
+icon: SiPreact
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+A Preact app scaffolded with `npm init preact` (or Vite's `preact` template) has a single `index.html` at the project root. Paste the snippet into its `<head>` and it loads on every route.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Preact
+
+Open `index.html` at the root of the project and paste the snippet inside `<head>`:
+
+```html title="index.html"
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + Preact</title>
+    <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/index.jsx"></script>
+  </body>
+</html>
+```
+
+Placing it before `</body>` also works; `<head>` lets it start loading sooner. Route changes made by `preact-iso`, `preact-router` or a similar router are tracked automatically as pageviews.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any component. Guard the call so a blocked or still-loading script does not throw.
+
+```jsx title="src/components/SignupButton.jsx"
+export function SignupButton() {
+  const handleClick = () => {
+    if (window.rybbit) {
+      window.rybbit.event("signup_click", { location: "hero" });
+    }
+  };
+
+  return <button onClick={handleClick}>Sign up</button>;
+}
+```
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

@@ -1,54 +1,42 @@
 "use client";
 
+import { useExtracted } from "next-intl";
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/basic-tabs";
-import { Card, CardContent } from "../../../../components/ui/card";
-import { PerformanceTable } from "./PerformanceTable";
+import { Card } from "../../../../components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
+import { PerformanceDimension } from "../utils/usePerformanceRows";
 import { PerformanceMap } from "./PerformanceMap";
+import { PerformanceTable } from "./PerformanceTable";
 
-type Tab = "pathname" | "country" | "map" | "device_type" | "browser" | "operating_system";
+type Tab = PerformanceDimension | "map";
 
 export function PerformanceByDimensions() {
+  const t = useExtracted();
   const [tab, setTab] = useState<Tab>("pathname");
 
   return (
     <Card>
-      <CardContent className="mt-2">
-        <Tabs defaultValue="pathname" value={tab} onValueChange={value => setTab(value as Tab)}>
+      <div className="overflow-x-auto p-4 pb-3">
+        <Tabs value={tab} onValueChange={value => setTab(value as Tab)}>
           <TabsList>
-            <TabsTrigger value="pathname">Pages</TabsTrigger>
-            <TabsTrigger value="country">Countries</TabsTrigger>
-            <TabsTrigger value="map">Map</TabsTrigger>
-            <TabsTrigger value="device_type">Devices</TabsTrigger>
-            <TabsTrigger value="browser">Browsers</TabsTrigger>
-            <TabsTrigger value="operating_system">Operating Systems</TabsTrigger>
+            <TabsTrigger value="pathname">{t("Pages")}</TabsTrigger>
+            <TabsTrigger value="country">{t("Countries")}</TabsTrigger>
+            <TabsTrigger value="region">{t("Regions")}</TabsTrigger>
+            <TabsTrigger value="map">{t("Map")}</TabsTrigger>
+            <TabsTrigger value="device_type">{t("Devices")}</TabsTrigger>
+            <TabsTrigger value="browser">{t("Browsers")}</TabsTrigger>
+            <TabsTrigger value="operating_system">{t("Operating systems")}</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="pathname">
-            <PerformanceTable dimension="pathname" title="Performance by Page" />
-          </TabsContent>
-
-          <TabsContent value="country">
-            <PerformanceTable dimension="country" title="Performance by Country" />
-          </TabsContent>
-
-          <TabsContent value="map">
-            <PerformanceMap height="600px" />
-          </TabsContent>
-
-          <TabsContent value="device_type">
-            <PerformanceTable dimension="device_type" title="Performance by Device Type" />
-          </TabsContent>
-
-          <TabsContent value="browser">
-            <PerformanceTable dimension="browser" title="Performance by Browser" />
-          </TabsContent>
-
-          <TabsContent value="operating_system">
-            <PerformanceTable dimension="operating_system" title="Performance by Operating System" />
-          </TabsContent>
         </Tabs>
-      </CardContent>
+      </div>
+      {tab === "map" ? (
+        <div className="px-4 pb-4">
+          <PerformanceMap height="600px" />
+        </div>
+      ) : (
+        // Keyed so each dimension starts on its first page with its own sort.
+        <PerformanceTable key={tab} dimension={tab} />
+      )}
     </Card>
   );
 }

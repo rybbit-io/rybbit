@@ -1,0 +1,21 @@
+<clickhouse>
+    <!-- This user can connect only from inside the ClickHouse container. -->
+    <users>
+        <backup>
+            <!-- Replace with SHA-256(password), generated for example with:
+                 printf '%s' "$PASSWORD" | sha256sum -->
+            <password_sha256_hex>REPLACE_WITH_SHA256_PASSWORD</password_sha256_hex>
+            <networks>
+                <ip>127.0.0.1</ip>
+                <ip>::1</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <grants>
+                <query>GRANT BACKUP ON analytics.*</query>
+                <query>GRANT NAMED COLLECTION ON b2_backups</query>
+                <query>GRANT S3 ON *.*</query>
+            </grants>
+        </backup>
+    </users>
+</clickhouse>

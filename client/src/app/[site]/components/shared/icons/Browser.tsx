@@ -1,15 +1,17 @@
-import { m } from "framer-motion";
 import { Compass } from "lucide-react";
 import Image from "next/image";
-import { cn } from "../../../../../lib/utils";
 
-const BROWSER_TO_LOGO: Record<string, string> = {
+export const BROWSER_TO_LOGO: Record<string, string> = {
   Chrome: "Chrome.svg",
   "Mobile Chrome": "Chrome.svg",
   "Chrome WebView": "Chrome.svg",
+  "Chrome Mobile": "Chrome.svg",
+  "Chrome Mobile iOS": "Chrome.svg",
   "Chrome Headless": "Chromium.svg",
+  "Headless Chrome": "Chromium.svg",
   Chromium: "Chromium.svg",
   GSA: "Chromium.svg",
+  "Google Search App": "Chromium.svg",
   Firefox: "Firefox.svg",
   "Firefox Focus": "Firefox.svg",
   "Mobile Firefox": "Firefox.svg",
@@ -17,16 +19,21 @@ const BROWSER_TO_LOGO: Record<string, string> = {
   Safari: "Safari.svg",
   "Mobile Safari": "Safari.svg",
   Edge: "Edge.svg",
+  "Edge WebView": "Edge.svg",
+  "Edge WebView2": "Edge.svg",
+  "Microsoft Edge": "Edge.svg",
   Opera: "Opera.svg",
   "Opera Touch": "Opera.svg",
   "Opera GX": "OperaGX.svg",
   "Samsung Internet": "SamsungInternet.svg",
   Yandex: "Yandex.svg",
   QQBrowser: "QQ.webp",
+  "QQ Browser": "QQ.webp",
   Whale: "Whale.svg",
   Baidu: "Baidu.svg",
   WebKit: "WebKit.svg",
   DuckDuckGo: "DuckDuckGo.svg",
+  "DuckDuckGo Privacy Browser": "DuckDuckGo.svg",
   Facebook: "Facebook.svg",
   "Sogou Explorer": "Sogou.png",
   "Avast Secure Browser": "Avast.png",
@@ -51,6 +58,7 @@ const BROWSER_TO_LOGO: Record<string, string> = {
   "Coc Coc": "CocCoc.svg",
   "Huawei Browser": "Huawei.svg",
   IE: "IE.svg",
+  IEMobile: "IE.svg",
   Quark: "Quark.svg",
   "MIUI Browser": "Miui.png",
   Brave: "Brave.svg",
@@ -63,6 +71,7 @@ const BROWSER_TO_LOGO: Record<string, string> = {
   Snapchat: "Snapchat.svg",
   TikTok: "TikTok.svg",
   Twitter: "Twitter.svg",
+  Vivaldi: "Vivaldi.svg",
   Waterfox: "Waterfox.svg",
 };
 
@@ -70,7 +79,13 @@ export function Browser({ browser, size = 16 }: { browser: string; size?: number
   return (
     <>
       {BROWSER_TO_LOGO[browser] ? (
-        <Image src={`/browsers/${BROWSER_TO_LOGO[browser]}`} alt={browser || "Other"} width={size} height={size} />
+        <Image
+          src={`/browsers/${BROWSER_TO_LOGO[browser]}`}
+          alt={browser || "Other"}
+          width={size}
+          height={size}
+          style={{ width: size, height: size, objectFit: "contain" }}
+        />
       ) : (
         <Compass width={size} height={size} />
       )}

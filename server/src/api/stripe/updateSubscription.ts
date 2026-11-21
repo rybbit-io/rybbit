@@ -1,9 +1,12 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { stripe } from "../../lib/stripe.js";
 import { db } from "../../db/postgres/postgres.js";
-import { organization, member } from "../../db/postgres/schema.js";
-import { eq, and } from "drizzle-orm";
+import { organization } from "../../db/postgres/schema.js";
+import { eq } from "drizzle-orm";
+import { getOrgMembership } from "../../lib/access.js";
 import Stripe from "stripe";
+import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
 
 interface UpdateSubscriptionBody {
   organizationId: string;
@@ -29,15 +32,9 @@ export async function updateSubscription(
 
   try {
     // 1. Verify user has permission to manage billing for this organization
-    const memberResult = await db
-      .select({
-        role: member.role,
-      })
-      .from(member)
-      .where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
-      .limit(1);
+    const membership = await getOrgMembership(userId, organizationId);
 
-    if (!memberResult.length || memberResult[0].role !== "owner") {
+    if (!roleHasPermission(membership?.role, "billing:manage")) {
       return reply.status(403).send({
         error: "Only organization owners can manage billing",
       });
@@ -58,29 +55,33 @@ export async function updateSubscription(
       return reply.status(404).send({ error: "Organization or Stripe customer ID not found" });
     }
 
-    // 3. Get the active subscription
-    const subscriptions = await (stripe as Stripe).subscriptions.list({
-      customer: org.stripeCustomerId,
-      status: "active",
-      limit: 1,
-    });
+    // 3. Get the active or trialing subscription
+    const [activeSubscriptions, trialingSubscriptions] = await Promise.all([
+      (stripe as Stripe).subscriptions.list({ customer: org.stripeCustomerId, status: "active", limit: 1 }),
+      (stripe as Stripe).subscriptions.list({ customer: org.stripeCustomerId, status: "trialing", limit: 1 }),
+    ]);
 
-    if (subscriptions.data.length === 0) {
+    const subscription = activeSubscriptions.data[0] ?? trialingSubscriptions.data[0];
+
+    if (!subscription) {
       return reply.status(404).send({ error: "No active subscription found" });
     }
-
-    const subscription = subscriptions.data[0];
     const subscriptionItem = subscription.items.data[0];
 
-    // 4. Validate the new price exists
+    // 4. Validate the new price exists. Only Stripe's missing-resource error means the
+    // price ID is invalid; anything else (outage, rate limit, network) falls through to
+    // the 500 path below without mutating the subscription.
     try {
       await (stripe as Stripe).prices.retrieve(newPriceId);
     } catch (error) {
-      return reply.status(400).send({ error: "Invalid price ID" });
+      if (error instanceof Stripe.errors.StripeInvalidRequestError && error.code === "resource_missing") {
+        return reply.status(400).send({ error: "Invalid price ID" });
+      }
+      throw error;
     }
 
     // 5. Update the subscription with the new price
-    // Using always_invoice to charge immediately for the proration
+    const isTrialing = subscription.status === "trialing";
     const updatedSubscription = await (stripe as Stripe).subscriptions.update(subscription.id, {
       items: [
         {
@@ -88,24 +89,29 @@ export async function updateSubscription(
           price: newPriceId,
         },
       ],
-      proration_behavior: "always_invoice", // Immediately invoice the proration amount
+      // For trialing subscriptions, swap the plan without charging — preserve the trial
+      proration_behavior: isTrialing ? "none" : "always_invoice",
+      ...(isTrialing && subscription.trial_end && { trial_end: subscription.trial_end }),
     });
 
-    // Get the updated subscription details
-    const updatedSubscriptionDetails = await (stripe as Stripe).subscriptions.retrieve(updatedSubscription.id);
-    const updatedItem = updatedSubscriptionDetails.items.data[0];
+    // The plan changed, so drop the cached subscription for this customer (also clears the
+    // account-wide snapshot used by the admin endpoints and usage cron).
+    invalidateStripeSubscriptionCache(org.stripeCustomerId);
+
+    // The update returns the subscription as it now stands, items included.
+    const updatedItem = updatedSubscription.items.data[0];
 
     // 6. Return success response
     return reply.send({
       success: true,
       subscription: {
-        id: updatedSubscriptionDetails.id,
-        status: updatedSubscriptionDetails.status,
+        id: updatedSubscription.id,
+        status: updatedSubscription.status,
         currentPeriodEnd: new Date(updatedItem.current_period_end * 1000).toISOString(),
       },
     });
   } catch (error: any) {
-    console.error("Subscription Update Error:", error);
+    request.log.error({ err: error }, "Subscription Update Error");
     return reply.status(500).send({
       error: "Failed to update subscription",
       details: error.message,

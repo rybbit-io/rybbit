@@ -1,0 +1,19 @@
+{
+  "name": "rybbit",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @rybbit/shared build && pnpm -r --parallel --stream run dev",
+    "dev:client": "pnpm --filter @rybbit/shared build && pnpm --filter client... --parallel --stream run dev",
+    "dev:server": "pnpm --filter @rybbit/shared build && pnpm --filter rybbit-backend... --parallel --stream run dev",
+    "build": "pnpm -r run build",
+    "build:client": "pnpm --filter client... run build",
+    "build:server": "pnpm --filter rybbit-backend... run build",
+    "test": "pnpm --filter @rybbit/shared build && pnpm -r --workspace-concurrency=1 --if-present run test:run --maxWorkers=4",
+    "typecheck": "pnpm --filter @rybbit/shared build && pnpm -r --if-present run typecheck",
+    "lint": "pnpm --filter client lint"
+  }
+}

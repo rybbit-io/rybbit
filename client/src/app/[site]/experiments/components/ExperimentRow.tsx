@@ -1,0 +1,242 @@
+"use client";
+
+import type { Experiment, ExperimentStatus } from "@/api/analytics/endpoints";
+import { useDeleteExperiment, useUpdateExperiment } from "@/api/analytics/hooks/experiments/useExperiments";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "@/components/ui/sonner";
+import { Flag, MoreHorizontal, Pause, Pencil, Play, Square, Target, Trash2 } from "lucide-react";
+import { useExtracted } from "next-intl";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { formatRelativeTime } from "../lib/experimentHelpers";
+import { CompleteExperimentDialog } from "./CompleteExperimentDialog";
+import { ExperimentDialog } from "./ExperimentDialog";
+import { ExperimentResultsPanel } from "./ExperimentResultsPanel";
+import { StatusBadge } from "./StatusBadge";
+
+function MetaChip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+      <span className="text-neutral-400 dark:text-neutral-500">{icon}</span>
+      <span className="truncate">{children}</span>
+    </span>
+  );
+}
+
+export function ExperimentRow({
+  experiment,
+  experiments,
+  canWrite,
+}: {
+  experiment: Experiment;
+  experiments: Experiment[];
+  /** experiments:write: start, pause, complete, edit and delete. Without it the row is read-only. */
+  canWrite: boolean;
+}) {
+  const t = useExtracted();
+  const deleteMutation = useDeleteExperiment();
+  const updateMutation = useUpdateExperiment();
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const primaryGoalName =
+    experiment.primaryGoal?.name || (experiment.primaryGoalId ? t("Untitled goal") : t("No goal"));
+
+  const startedRel = formatRelativeTime(experiment.startedAt);
+  const endedRel = formatRelativeTime(experiment.endedAt);
+  const createdRel = formatRelativeTime(experiment.createdAt);
+  const lifecycle =
+    experiment.status === "completed" && endedRel
+      ? t("Ended {time}", { time: endedRel })
+      : experiment.startedAt && startedRel
+        ? t("Started {time}", { time: startedRel })
+        : createdRel
+          ? t("Created {time}", { time: createdRel })
+          : null;
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(experiment.experimentId);
+      toast.success(t("Experiment deleted"));
+      setDeleteOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("Failed to delete experiment"));
+    }
+  };
+
+  const setStatus = async (status: ExperimentStatus) => {
+    try {
+      await updateMutation.mutateAsync({ experimentId: experiment.experimentId, payload: { status } });
+      toast.success(t("Experiment updated"));
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("Failed to update experiment"));
+      return false;
+    }
+  };
+
+  const handlePause = async () => {
+    if (await setStatus("paused")) setPauseOpen(false);
+  };
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-neutral-100 bg-white dark:border-neutral-850 dark:bg-neutral-900">
+      <div className="flex flex-col gap-3 border-b border-neutral-100 p-4 dark:border-neutral-850 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-medium text-neutral-900 dark:text-neutral-50">{experiment.name}</h3>
+            <StatusBadge status={experiment.status} />
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <MetaChip icon={<Flag className="h-3.5 w-3.5" />}>
+              <code className="font-mono text-neutral-700 dark:text-neutral-200">{experiment.featureFlag.key}</code>
+            </MetaChip>
+            <MetaChip icon={<Target className="h-3.5 w-3.5" />}>
+              <span className="text-neutral-700 dark:text-neutral-200">{primaryGoalName}</span>
+            </MetaChip>
+            {lifecycle && <span className="text-xs text-neutral-400 dark:text-neutral-500">{lifecycle}</span>}
+          </div>
+          {experiment.hypothesis && (
+            <p className="mt-2 max-w-3xl text-sm text-neutral-600 dark:text-neutral-300">{experiment.hypothesis}</p>
+          )}
+        </div>
+
+        {canWrite && (
+          <div className="flex shrink-0 items-center gap-2">
+            {experiment.status !== "running" && experiment.status !== "completed" && (
+              <Button size="sm" onClick={() => setStatus("running")} disabled={updateMutation.isPending}>
+                <Play className="h-3.5 w-3.5" />
+                {experiment.status === "paused" ? t("Resume") : t("Start")}
+              </Button>
+            )}
+            {experiment.status === "running" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setPauseOpen(true)}
+                disabled={updateMutation.isPending}
+              >
+                <Pause className="h-3.5 w-3.5" />
+                {t("Pause")}
+              </Button>
+            )}
+            {experiment.status !== "completed" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setCompleteOpen(true)}
+                disabled={updateMutation.isPending}
+              >
+                <Square className="h-3.5 w-3.5" />
+                {t("Complete")}
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="iconSm" variant="ghost" aria-label={t("Actions")}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {t("Edit")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={deleteMutation.isPending}
+                  onSelect={() => setDeleteOpen(true)}
+                  className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t("Delete")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4">
+        <ExperimentResultsPanel experiment={experiment} />
+      </div>
+
+      <ExperimentDialog experiment={experiment} experiments={experiments} open={editOpen} onOpenChange={setEditOpen} />
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={open => {
+          if (!deleteMutation.isPending) setDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Delete this experiment?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('This permanently deletes "{name}". Its feature flag and goal are not deleted.', {
+                name: experiment.name,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>{t("Cancel")}</AlertDialogCancel>
+            {/* Plain Buttons, not AlertDialogAction, so these dialogs stay open until the request settles (the
+                handlers close them on success). `loading` keeps their width while pending. */}
+            <Button
+              variant="destructive"
+              loading={deleteMutation.isPending}
+              loadingLabel={t("Deleting...")}
+              onClick={handleDelete}
+            >
+              {t("Delete")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <CompleteExperimentDialog experiment={experiment} open={completeOpen} onOpenChange={setCompleteOpen} />
+
+      <AlertDialog
+        open={pauseOpen}
+        onOpenChange={open => {
+          if (!updateMutation.isPending) setPauseOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Pause experiment?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "Pausing switches the {flagKey} flag off, so every visitor gets the fallback in your code and no new exposures are recorded. Anything else that reads this flag is switched off too. Resuming switches it back on and returns visitors to their variants.",
+                { flagKey: experiment.featureFlag.key }
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateMutation.isPending}>{t("Cancel")}</AlertDialogCancel>
+            <Button loading={updateMutation.isPending} loadingLabel={t("Pausing...")} onClick={handlePause}>
+              {t("Pause")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

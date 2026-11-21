@@ -1,0 +1,140 @@
+---
+title: JavaScript (Node.js)
+description: Server-side analytics tracking for Node.js applications
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+<Callout type="error">
+**The published `@rybbit/node` package (1.0.0) doesn't work with the current API.** It sends the API key inside the JSON body, and `/api/track` rejects unknown body fields with a `400`. The package only logs that error when `debug` is on, so events are dropped silently. Until a fixed release ships, call the HTTP API directly with the small helper below.
+</Callout>
+
+Server-side tracking from Node.js is a `POST` to [`/api/track`](/docs/api/sending-events) with a JSON body. Node 18 and later ship `fetch`, so you don't need a dependency.
+
+## What you need
+
+- **Your site ID**, from the Rybbit dashboard.
+- **An API key** with access to that site, either full-access or restricted to a set that includes `ingest:write`. See [Generating API Keys](/docs/api/getting-started#generating-api-keys). Keep it on the server.
+- **The API host**: `https://app.rybbit.io` on Rybbit Cloud, or your own instance URL.
+
+## Helper
+
+The examples are ES modules. Set `"type": "module"` in your `package.json`, or name the files `.mjs`.
+
+```javascript title="rybbit.js"
+const RYBBIT_HOST = process.env.RYBBIT_HOST ?? "https://app.rybbit.io";
+const RYBBIT_SITE_ID = process.env.RYBBIT_SITE_ID;
+const RYBBIT_API_KEY = process.env.RYBBIT_API_KEY;
+
+export async function track(event) {
+  const response = await fetch(`${RYBBIT_HOST}/api/track`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${RYBBIT_API_KEY}`,
+    },
+    body: JSON.stringify({ site_id: RYBBIT_SITE_ID, ...event }),
+  });
+
+  // Not always JSON: some 200 responses are plain text (see below).
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`Rybbit /api/track ${response.status}: ${body}`);
+  }
+  return body;
+}
+```
+
+Every event needs a `type`. The server rejects any field it doesn't recognize, so send only the fields listed in [Sending Events](/docs/api/sending-events).
+
+## Tracking pageviews
+
+```javascript
+import { track } from "./rybbit.js";
+
+app.get("/products/:id", async (req, res) => {
+  const product = await getProduct(req.params.id);
+
+  track({
+    type: "pageview",
+    hostname: req.hostname,
+    pathname: req.path,
+    page_title: `Product - ${product.name}`,
+    referrer: req.get("referer"),
+    // Any stable per-visitor ID. req.session needs session middleware such as express-session.
+    anonymous_id: req.session.id,
+    ip_address: req.ip,
+    user_agent: req.get("user-agent"),
+  }).catch(err => console.error(err));
+
+  res.render("product", { product });
+});
+```
+
+## Tracking custom events
+
+Set `type: "custom_event"` and an `event_name`. `properties` is a JSON **string** of at most 2048 characters.
+
+```javascript
+await track({
+  type: "custom_event",
+  event_name: "user_registered",
+  pathname: "/register",
+  user_id: newUser.id,
+  anonymous_id: req.session.id,
+  ip_address: req.ip,
+  user_agent: req.get("user-agent"),
+  properties: JSON.stringify({ method: "email" }),
+});
+```
+
+## Keeping visitors apart
+
+Without extra fields, Rybbit derives the visitor from the request's IP address and user agent, which are your server's. Every event would then belong to one visitor. Give each event one of these:
+
+- **`anonymous_id`**: any stable string per visitor, such as a session ID. Rybbit derives the visitor from it instead of IP and user agent. Up to 255 characters.
+- **`ip_address` and `user_agent`**: the visitor's, read from the incoming request. Rybbit uses them for the visitor ID, geolocation and device detection.
+
+Add `user_id` for signed-in users.
+
+`ip_address` and `user_agent` are used only when the request carries an `Authorization: Bearer` key that has access to the site and is full-access or holds `ingest:write`. Without such a key, including a key sent as `?api_key=`, they're ignored and the event is treated as a browser hit from your server. `ip_address` must be a valid IPv4 or IPv6 address. If your app runs behind a proxy, configure it so `req.ip` is the visitor's address (in Express, the `trust proxy` setting).
+
+<Callout type="warn">
+Bot detection still classifies the user agent. Node's default `User-Agent` (`node`) and simple product strings like `MyApp/1.0` are classified as bots, so pass the visitor's real user agent. With bot blocking on (the default), bot events are stored as bot traffic and don't appear in your analytics, yet the response is still `200`.
+</Callout>
+
+## Responses
+
+- `200` with `{"success":true}`: accepted. A detected bot also gets this response.
+- `200` with `{"success":true,"message":"..."}`: matched a site exclusion and was not stored.
+- `200` with a plain-text body: the site is over its monthly event limit or its organization has no plan; nothing was stored.
+- `400`: invalid payload, with details of the failing fields.
+- `404`: unknown site ID.
+
+On Rybbit Cloud each request with a Bearer key counts against the key owner's API rate limits (see [Rate Limits](/docs/api/getting-started#rate-limits-cloud-only)). When the limit is used up, `/api/track` doesn't return `429`. It stops honoring the key, so `ip_address` and `user_agent` are ignored as described above.
+
+## Identifying users
+
+To attach traits to a user or link a visitor's earlier anonymous events to them, `POST` to `/api/identify`. See [Identifying users](/docs/api/sending-events#identifying-users) for the fields.
+
+```javascript
+const response = await fetch(`${RYBBIT_HOST}/api/identify`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${RYBBIT_API_KEY}`,
+  },
+  body: JSON.stringify({
+    site_id: RYBBIT_SITE_ID,
+    user_id: user.id,
+    anonymous_id: req.session.id,
+    traits: { email: user.email, name: user.name },
+  }),
+});
+
+// fetch doesn't throw on 4xx/5xx, so check the status like the track helper does.
+const body = await response.text();
+if (!response.ok) {
+  throw new Error(`Rybbit /api/identify ${response.status}: ${body}`);
+}
+```

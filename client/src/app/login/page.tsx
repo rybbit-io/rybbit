@@ -5,26 +5,30 @@ import { AuthError } from "@/components/auth/AuthError";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Turnstile } from "@/components/auth/Turnstile";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { RybbitLogo } from "../../components/RybbitLogo";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { RybbitTextLogo } from "../../components/RybbitLogo";
+import { SpinningGlobe } from "../../components/SpinningGlobe";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { useConfigs } from "../../lib/configs";
 import { IS_CLOUD } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
 
-export default function Page() {
+function LoginPage() {
+  const searchParams = useSearchParams();
+  const requestedReturn = searchParams.get("returnTo") ?? "";
+  const returnTo = /^\/\d+\/[a-f0-9]{12}\?claim=1$/i.test(requestedReturn) ? requestedReturn : "/";
   const { configs, isLoading: isLoadingConfigs } = useConfigs();
-  useSetPageTitle("Rybbit · Login");
+  useSetPageTitle("Login");
+  const t = useExtracted();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [turnstileToken, setTurnstileToken] = useState<string>("");
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +38,7 @@ export default function Page() {
 
     // Validate Turnstile token if in cloud mode and production
     if (IS_CLOUD && process.env.NODE_ENV === "production" && !turnstileToken) {
-      setError("Please complete the captcha verification");
+      setError(t("Please complete the captcha verification"));
       setIsLoading(false);
       return;
     }
@@ -57,7 +61,10 @@ export default function Page() {
         userStore.setState({
           user: data.user,
         });
-        router.push("/");
+        // A document navigation, not router.push(): this page subscribed to the active organization
+        // while signed out and got a 401, and a client-side push keeps that stale result, so the
+        // home page finds no organization and shows no sites until a reload.
+        window.location.assign(returnTo);
       }
 
       if (error) {
@@ -72,84 +79,111 @@ export default function Page() {
   const turnstileEnabled = IS_CLOUD && process.env.NODE_ENV === "production";
 
   return (
-    <div className="flex flex-col justify-between items-center h-dvh w-full p-4">
-      <div></div>
-      <Card className="w-full max-w-sm p-1">
-        <CardHeader>
-          <RybbitLogo width={32} height={32} />
-          <CardTitle className="text-2xl flex justify-center">Sign in</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-4">
-              <AuthInput
-                id="email"
-                label="Email"
-                type="email"
-                placeholder="example@email.com"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-
-              <AuthInput
-                id="password"
-                label="Password"
-                type="password"
-                placeholder="••••••••"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                rightElement={
-                  <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
-                    Forgot password?
-                  </Link>
-                }
-              />
-
-              {turnstileEnabled && (
-                <Turnstile
-                  onSuccess={token => setTurnstileToken(token)}
-                  onError={() => setTurnstileToken("")}
-                  onExpire={() => setTurnstileToken("")}
-                  className="flex justify-center"
+    <div className="flex h-dvh w-full">
+      {/* Left panel - login form */}
+      <div className="w-full lg:w-[550px] flex flex-col p-6 lg:p-10">
+        {/* Logo at top left */}
+        <div className="mb-8">
+          <a href="https://rybbit.com" target="_blank" className="inline-block">
+            <RybbitTextLogo />
+          </a>
+        </div>
+        <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
+          <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">{t("Welcome back")}</h1>
+          <div className="flex flex-col gap-4">
+            <SocialButtons onError={setError} callbackURL={returnTo} />
+            <form onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-4">
+                <AuthInput
+                  id="email"
+                  label={t("Email")}
+                  type="email"
+                  autoComplete="email"
+                  placeholder="example@email.com"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                 />
-              )}
 
-              <AuthButton
-                isLoading={isLoading}
-                loadingText="Logging in..."
-                disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
-              >
-                Login
-              </AuthButton>
+                <AuthInput
+                  id="password"
+                  label={t("Password")}
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  rightElement={
+                    IS_CLOUD && (
+                      <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary">
+                        {t("Forgot password?")}
+                      </Link>
+                    )
+                  }
+                />
 
-              <SocialButtons onError={setError} />
+                {turnstileEnabled && (
+                  <Turnstile
+                    onSuccess={token => setTurnstileToken(token)}
+                    onError={() => setTurnstileToken("")}
+                    onExpire={() => setTurnstileToken("")}
+                    className="flex justify-center"
+                  />
+                )}
 
-              <AuthError error={error} title="Error Logging In" />
+                <AuthButton
+                  isLoading={isLoading}
+                  loadingText={t("Logging in...")}
+                  disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
+                >
+                  {t("Login")}
+                </AuthButton>
 
-              {(!configs?.disableSignup || !isLoadingConfigs) && (
-                <div className="text-center text-sm">
-                  Don't have an account?{" "}
-                  <Link href="/signup" className="underline">
-                    Sign up
-                  </Link>
-                </div>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-      <div className="text-xs text-muted-foreground">
-        <a
-          href="https://rybbit.com"
-          target="_blank"
-          rel="noopener"
-          title="Rybbit - Open Source Privacy-Focused Web Analytics"
-        >
-          Open source web analytics powered by Rybbit
-        </a>
+                <AuthError error={error} title={t("Error Logging In")} />
+              </div>
+            </form>
+
+            {(!configs?.disableSignup || !isLoadingConfigs) && (
+              <div className="text-center text-sm">
+                {t("Don't have an account?")}{" "}
+                <Link
+                  href="/signup"
+                  className="underline underline-offset-4 hover:text-emerald-400 transition-colors duration-300"
+                >
+                  {t("Sign up")}
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {!IS_CLOUD && (
+          <div className="text-xs text-muted-foreground mt-8">
+            <a
+              href="https://rybbit.com"
+              target="_blank"
+              rel="noopener"
+              title="Rybbit - Open Source Privacy-Focused Web Analytics"
+            >
+              {t("Open source web analytics powered by Rybbit")}
+            </a>
+          </div>
+        )}
+      </div>
+
+      {/* Right panel - globe (hidden on mobile/tablet) */}
+      <div className="hidden lg:block lg:w-[calc(100%-550px)] relative m-3 rounded-2xl overflow-hidden">
+        <SpinningGlobe />
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPage />
+    </Suspense>
   );
 }

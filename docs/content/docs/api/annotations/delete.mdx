@@ -1,0 +1,53 @@
+---
+title: Delete Annotation
+description: Permanently deletes an annotation.
+full: true
+method: DELETE
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+DELETE /api/sites/:site/annotations/:annotationId
+```
+
+Deletes an annotation. An editor or above can delete any annotation on the site, including through a per-site editor grant. Members and per-site members can delete only the annotations they created. Organization-wide annotations can only be deleted by someone with the editor role or above in the organization, even if they created the annotation. Returns `403` when you may not delete it and `404` when it does not exist on this site.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: { description: 'Site ID or site identifier', type: 'string | number', required: true },
+    annotationId: { description: 'Annotation ID', type: 'number', required: true },
+  }}
+/>
+
+</div>
+<div>
+
+### Example
+
+<Tabs items={['cURL', 'Response']}>
+<Tab value="cURL">
+
+```bash
+curl -X DELETE "https://app.rybbit.io/api/sites/123/annotations/43" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+</Tab>
+<Tab value="Response">
+
+```json
+{ "success": true }
+```
+
+</Tab>
+</Tabs>
+
+</div>
+</div>

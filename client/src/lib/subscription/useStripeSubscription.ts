@@ -1,6 +1,7 @@
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth";
-import { BACKEND_URL, IS_CLOUD } from "../const";
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { authedFetch } from "../../api/utils";
+import { IS_CLOUD } from "../const";
 
 export interface SubscriptionData {
   id: string;
@@ -16,42 +17,35 @@ export interface SubscriptionData {
   isTrial?: boolean;
   trialDaysRemaining?: number;
   message?: string; // For expired trial message
-  isPro?: boolean;
+  isOverride?: boolean;
+  // Only on "free": false once the organization has had any subscription, so it is offered
+  // plans instead of another trial (checkout skips the trial too).
+  trialEligible?: boolean;
+  // Stripe is retrying a failed charge on this subscription, so the app asks for a new card.
+  // A plan that has been paid for before stays "active" meanwhile; otherwise the status is "free".
+  pastDue?: { subscriptionId: string; planName: string | null };
+  memberLimit: number | null;
+  siteLimit: number | null;
 }
 
-export function useStripeSubscription(): UseQueryResult<SubscriptionData, Error> {
+/** The subscription of `organizationId`, or of the active organization when omitted. */
+export function useStripeSubscription(organizationId?: string): UseQueryResult<SubscriptionData | undefined, Error> {
   const { data: activeOrg } = authClient.useActiveOrganization();
+  const orgId = organizationId ?? activeOrg?.id;
 
   const fetchSubscription = async () => {
-    if (!activeOrg || !IS_CLOUD) {
+    if (!orgId || !IS_CLOUD) {
       return undefined;
     }
 
-    const response = await fetch(`${BACKEND_URL}/stripe/subscription?organizationId=${activeOrg.id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        return null;
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error: ${response.status}`);
-      }
-    }
-
-    return await response.json();
+    return authedFetch<SubscriptionData>(`/stripe/subscription?organizationId=${orgId}`);
   };
 
-  return useQuery<SubscriptionData>({
-    queryKey: ["stripe-subscription", activeOrg?.id],
+  return useQuery<SubscriptionData | undefined>({
+    queryKey: ["stripe-subscription", orgId],
     queryFn: fetchSubscription,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: false,
-    enabled: !!activeOrg,
+    enabled: !!orgId,
   });
 }

@@ -1,0 +1,132 @@
+---
+title: Shopify Hydrogen
+description: Add Rybbit analytics to your Shopify Hydrogen storefront
+category: ecommerce
+icon: SiShopify
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Hydrogen storefronts render the HTML document from `app/root.tsx`, so the snippet goes in the `<head>` of that file's `Layout` component, and the tracker's host is added to the Content Security Policy that `app/entry.server.tsx` builds. This guide is for headless Hydrogen storefronts; for an Online Store theme, see the [Shopify guide](/docs/guides/shopify).
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Shopify Hydrogen
+
+Hydrogen ships with a nonce-based CSP, so a plain `<script>` tag without the nonce is blocked. Use Hydrogen's `Script` component, which adds the nonce for you.
+
+1. Open `app/root.tsx` and add the tag inside `<head>` of the `Layout` component:
+
+```tsx title="app/root.tsx"
+import { Analytics, getShopAnalytics, Script, useNonce } from "@shopify/hydrogen";
+
+export function Layout({children}: {children?: React.ReactNode}) {
+  const nonce = useNonce();
+
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <Meta />
+        <Links />
+        <Script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer />
+      </head>
+      <body>
+        {children}
+        <ScrollRestoration nonce={nonce} />
+        <Scripts nonce={nonce} />
+      </body>
+    </html>
+  );
+}
+```
+
+2. Open `app/entry.server.tsx` and allow the tracker's host in the CSP. Values you pass for `connectSrc` are merged with Hydrogen's defaults, but `scriptSrc` has no default to merge with (it falls back to `default-src`), so list Shopify's CDN alongside Rybbit:
+
+```tsx title="app/entry.server.tsx"
+const {nonce, header, NonceProvider} = createContentSecurityPolicy({
+  shop: {
+    checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
+    storeDomain: context.env.PUBLIC_STORE_DOMAIN,
+  },
+  scriptSrc: ["'self'", "https://cdn.shopify.com", "https://app.rybbit.io"],
+  connectSrc: ["https://app.rybbit.io"],
+});
+```
+
+`connect-src` lets the tracker post events; `script-src` is needed because features such as session replay load a second script from the same host at runtime. If you self-host Rybbit, use your instance's domain.
+
+Restart the dev server. Client-side navigation between routes is tracked automatically as pageviews. Projects created before Hydrogen moved to React Router import `Meta`, `Links` and `Scripts` from `@remix-run/react`; the edit is the same.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Hydrogen's `Analytics.Provider` already publishes storefront events (`product_viewed`, `product_added_to_cart`, `cart_updated` and others), so subscribe to them once in a small component instead of instrumenting each route.
+
+```tsx title="app/components/RybbitAnalytics.tsx"
+import { useAnalytics } from "@shopify/hydrogen";
+import { useEffect } from "react";
+
+export function RybbitAnalytics() {
+  const {subscribe, register} = useAnalytics();
+  const {ready} = register("Rybbit");
+
+  useEffect(() => {
+    subscribe("product_viewed", (data) => {
+      const product = data.products[0];
+      if (!product) return;
+      window.rybbit?.event("view_item", {
+        item_id: product.sku || product.variantId,
+        item_name: product.title,
+        item_variant: product.variantTitle,
+        price: Number(product.price),
+      });
+    });
+    subscribe("product_added_to_cart", (data) => {
+      const line = data.currentLine;
+      if (!line) return;
+      window.rybbit?.event("add_to_cart", {
+        item_id: line.merchandise.sku || line.merchandise.id,
+        item_name: line.merchandise.product.title,
+        price: Number(line.cost.totalAmount.amount),
+        currency: line.cost.totalAmount.currencyCode,
+        quantity: line.quantity,
+      });
+    });
+    ready();
+  }, []);
+
+  return null;
+}
+```
+
+Render `<RybbitAnalytics />` inside `<Analytics.Provider>` in the `App` component of `app/root.tsx`. Declare `window.rybbit` with the type from [Track events](/docs/track-events#typescript-support) so TypeScript accepts the calls. Skip `page_viewed`: the tracker records route changes itself.
+
+<Callout type="info">
+Checkout does not run in Hydrogen. Track purchases with the custom web pixel from the [Shopify guide](/docs/guides/shopify#purchase), which works for Hydrogen and Online Store checkouts alike.
+</Callout>
+
+## Troubleshooting
+
+- **`Refused to load the script` in the console**: the CSP change in `entry.server.tsx` is missing or the dev server was not restarted. The nonce alone is not enough once session replay loads its second script.
+- **`POST /api/track` blocked**: `connectSrc` does not include the tracker's host. Self-hosted instances need their own domain here.
+- **Early events dropped**: on a cold load a subscription can fire before the deferred script runs. The optional chaining above skips those; wrap the calls in `window.rybbit.onReady()` if you need every one.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

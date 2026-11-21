@@ -1,0 +1,17 @@
+import { EVENT_FILTERS } from "../../../../lib/filterGroups";
+import { getFilteredFilters } from "../../../../lib/store";
+import { EventName } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
+
+export function useGetEventNames({ periodTime }: { periodTime?: "current" | "previous" } = {}) {
+  const filteredFilters = getFilteredFilters(EVENT_FILTERS);
+
+  return useAnalyticsQuery<EventName[]>({
+    key: "event-names",
+    path: "events/names",
+    periodTime,
+    // Only event-relevant filters go on the wire; when none apply, send no filters.
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+  });
+}

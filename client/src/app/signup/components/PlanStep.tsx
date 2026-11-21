@@ -1,0 +1,150 @@
+import { SegmentedControl } from "@/components/interior/segmented-control";
+import { PlanRow } from "@/components/subscription/components/PlanRow";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { ArrowRight } from "lucide-react";
+import { useExtracted } from "next-intl";
+
+import { EVENT_TIERS, formatEventTier } from "../../subscribe/components/utils";
+
+interface PlanStepProps {
+  eventLimitIndex: number;
+  setEventLimitIndex: (v: number) => void;
+  isAnnual: boolean;
+  setIsAnnual: (v: boolean) => void;
+  selectedPlan: "standard" | "pro";
+  setSelectedPlan: (v: "standard" | "pro") => void;
+  onSubscribe: () => void;
+  isLoading: boolean;
+  // False for an organization that already had a subscription: checkout charges straight away.
+  trialEligible?: boolean;
+}
+
+export function PlanStep({
+  eventLimitIndex,
+  setEventLimitIndex,
+  isAnnual,
+  setIsAnnual,
+  selectedPlan,
+  setSelectedPlan,
+  onSubscribe,
+  isLoading,
+  trialEligible = true,
+}: PlanStepProps) {
+  const t = useExtracted();
+  const eventLimit = EVENT_TIERS[eventLimitIndex];
+
+  return (
+    <div>
+      {/* Wraps: when the heading, toggle and chip don't fit on one line, the
+          toggle group drops under the heading instead of crowding it. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
+        <h2 className="text-2xl font-semibold">{t("Choose your plan")}</h2>
+        {/* Monthly/Annual toggle. The savings chip sits beside it so it never
+            covers a segment, and it keeps its place in both states so the
+            toggle never shifts under the pointer: emerald while Annual is
+            picked, neutral otherwise. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <SegmentedControl
+            aria-label={t("Billing period")}
+            options={[
+              { value: "monthly", label: t("Monthly") },
+              { value: "annual", label: t("Annual") },
+            ]}
+            value={isAnnual ? "annual" : "monthly"}
+            onValueChange={value => setIsAnnual(value === "annual")}
+          />
+          <Badge variant={isAnnual ? "success" : "secondary"} className="whitespace-nowrap">
+            {t("4 months free")}
+          </Badge>
+        </div>
+      </div>
+      <div className="space-y-6">
+        {/* Event slider */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-neutral-500 dark:text-neutral-400">
+              {t("Monthly events")}
+            </span>
+            <span className="text-sm font-medium">
+              {eventLimit === "Custom"
+                ? t("Custom")
+                : `${formatEventTier(eventLimit)} ${t("events")}`}
+            </span>
+          </div>
+          <Slider
+            value={[eventLimitIndex]}
+            onValueChange={([val]) => setEventLimitIndex(val)}
+            min={0}
+            max={EVENT_TIERS.length - 1}
+            step={1}
+          />
+          <div className="flex justify-between text-xs text-neutral-400 dark:text-neutral-500">
+            <span>{formatEventTier(EVENT_TIERS[0])}</span>
+            <span>
+              {typeof EVENT_TIERS[EVENT_TIERS.length - 1] === "string"
+                ? EVENT_TIERS[EVENT_TIERS.length - 1]
+                : formatEventTier(EVENT_TIERS[EVENT_TIERS.length - 1])}
+            </span>
+          </div>
+        </div>
+
+        {/* Plan rows */}
+        {eventLimit !== "Custom" ? (
+          <div className="space-y-2">
+            <PlanRow
+              plan="standard"
+              label={t("Standard")}
+              description={t("Up to 5 sites, 3 team members, advanced features")}
+              eventLimit={eventLimit}
+              isAnnual={isAnnual}
+              selectedPlan={selectedPlan}
+              onSelect={() => setSelectedPlan("standard")}
+            />
+            <PlanRow
+              plan="pro"
+              label={t("Pro")}
+              description={t("Unlimited sites, session replays")}
+              eventLimit={eventLimit}
+              isAnnual={isAnnual}
+              selectedPlan={selectedPlan}
+              onSelect={() => setSelectedPlan("pro")}
+            />
+          </div>
+        ) : (
+          <div className="p-4 rounded-lg border border-neutral-200 dark:border-neutral-800 text-center">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {t("For more than 20M events, contact us for a custom plan.")}
+            </p>
+            <a
+              href="mailto:hello@rybbit.com"
+              className="text-sm text-emerald-500 hover:text-emerald-400 font-medium"
+            >
+              hello@rybbit.com
+            </a>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-4">
+          {/* Subscribe button */}
+          {eventLimit !== "Custom" && (
+            <Button className="w-full" onClick={onSubscribe} disabled={isLoading} variant="success">
+              {isLoading ? t("Loading...") : trialEligible ? t("Start free trial") : t("Continue to checkout")}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+
+          {/* Footer text */}
+          {eventLimit !== "Custom" && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {trialEligible
+                ? t("Your card won't be charged until your 7-day trial has ended. You can cancel anytime.")
+                : t("You'll be charged when you subscribe. You can cancel anytime.")}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

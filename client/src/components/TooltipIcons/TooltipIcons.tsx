@@ -1,33 +1,25 @@
-import { Laptop, Smartphone } from "lucide-react";
 import { Browser } from "../../app/[site]/components/shared/icons/Browser";
 import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
+import { DeviceIcon } from "../../app/[site]/components/shared/icons/Device";
 import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
-import { getRegionName } from "../../lib/geo";
+import { useGetRegionName } from "../../lib/geo";
 import { getCountryName } from "../../lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-
-// DeviceIcon component for displaying mobile/desktop icons
-function DeviceIcon({ deviceType, size = 16 }: { deviceType: string; size?: number }) {
-  const type = deviceType.toLowerCase();
-
-  if (type.includes("mobile") || type.includes("tablet")) {
-    return <Smartphone width={size} height={size} />;
-  }
-
-  return <Laptop width={size} height={size} />;
-}
 
 export function CountryFlagTooltipIcon({
   country,
   city,
   region,
   className,
+  onClick,
 }: {
   country: string;
   city: string;
   region: string;
   className?: string;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
+  const { getRegionName } = useGetRegionName();
   const getFullLocation = <T extends { country: string; city: string; region: string }>(session: T) => {
     let location = "";
     if (session.city) {
@@ -45,7 +37,10 @@ export function CountryFlagTooltipIcon({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex items-center">
+        <div
+          className={`flex items-center ${onClick ? "cursor-pointer hover:opacity-70" : ""}`}
+          onClick={onClick}
+        >
           <CountryFlag country={country} className={className} />
         </div>
       </TooltipTrigger>
@@ -60,15 +55,20 @@ export function BrowserTooltipIcon({
   browser,
   browser_version,
   size = 16,
+  onClick,
 }: {
   browser: string;
   browser_version?: string;
   size?: number;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex-shrink-0">
+        <div
+          className={`shrink-0 ${onClick ? "cursor-pointer hover:opacity-70" : ""}`}
+          onClick={onClick}
+        >
           <Browser browser={browser || "Unknown"} size={size} />
         </div>
       </TooltipTrigger>
@@ -86,15 +86,20 @@ export function OperatingSystemTooltipIcon({
   operating_system,
   operating_system_version,
   size = 16,
+  onClick,
 }: {
   operating_system: string;
   operating_system_version?: string;
   size?: number;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex-shrink-0">
+        <div
+          className={`shrink-0 ${onClick ? "cursor-pointer hover:opacity-70" : ""}`}
+          onClick={onClick}
+        >
           <OperatingSystem os={operating_system || ""} size={size} />
         </div>
       </TooltipTrigger>
@@ -113,16 +118,21 @@ export function DeviceTypeTooltipIcon({
   screen_width,
   screen_height,
   size = 18,
+  onClick,
 }: {
   device_type: string;
   screen_width?: number;
   screen_height?: number;
   size?: number;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div>
+        <div
+          className={onClick ? "cursor-pointer hover:opacity-70" : ""}
+          onClick={onClick}
+        >
           <DeviceIcon deviceType={device_type || ""} size={size} />
         </div>
       </TooltipTrigger>

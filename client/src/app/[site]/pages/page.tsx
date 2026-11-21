@@ -1,140 +1,133 @@
 "use client";
 
-import { PageTitleItem, useGetPageTitlesPaginated } from "@/api/analytics/useGetPageTitles";
-import { Pagination } from "@/components/pagination";
+import { useDebounce } from "@uidotdev/usehooks";
+import { useExtracted } from "next-intl";
+import { useState } from "react";
+import { PagesMode, PagesSort, PagesSortOrder } from "@/api/analytics/hooks/useGetPages";
+import { SegmentedControl } from "@/components/interior/segmented-control";
+import { AnalysisBar } from "@/components/site/AnalysisBar";
+import { BreakdownControl } from "@/components/site/BreakdownControl";
+import { Input } from "@/components/ui/input";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { useStore } from "@/lib/store";
-import { useEffect, useState } from "react";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { SubHeader } from "../components/SubHeader/SubHeader";
-import { PageListItem } from "./components/PageListItem";
-import { PageListSkeleton } from "./components/PageListSkeleton";
+import { PagesStatBand } from "./components/PagesStatBand";
+import { PagesTable } from "./components/PagesTable";
 
-// Number of items per page
-const PAGE_SIZE = 10;
+type Breakdown = "section" | "none";
+
+// Each list opens on the column it is about.
+const MODE_SORT: Record<PagesMode, PagesSort> = {
+  all: "pageviews",
+  entry: "entries",
+  exit: "exits",
+};
 
 export default function Pages() {
-  const { site } = useStore();
+  const t = useExtracted();
+  const { site, time, filters } = useStore();
 
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: PAGE_SIZE,
+  const [breakdown, setBreakdown] = useState<Breakdown>("section");
+  const [mode, setMode] = useState<PagesMode>("all");
+  const [sorting, setSorting] = useState<{ sort: PagesSort; order: PagesSortOrder }>({
+    sort: "pageviews",
+    order: "desc",
   });
-  const [totalPages, setTotalPages] = useState(0);
+  const [search, setSearch] = useState("");
+  // The page number belongs to one period and filter set: a new one starts at the first page.
+  const scope = JSON.stringify([time, filters]);
+  const [paging, setPaging] = useState({ page: 1, scope });
+  const page = paging.scope === scope ? paging.page : 1;
+  const setPage = (next: number) => setPaging({ page: next, scope });
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
-  useSetPageTitle("Rybbit · Pages");
+  const debouncedSearch = useDebounce(search.trim(), 300);
+  // Typing waits for a pause; clearing the box applies at once.
+  const activeSearch = search.trim() ? debouncedSearch : "";
 
-  // Get page number (1-based) from pageIndex (0-based)
-  const pageNumber = pagination.pageIndex + 1;
-
-  const {
-    data: apiResponse,
-    isLoading: isLoadingPages,
-    isError: isErrorPages,
-    error: pagesError,
-    isPlaceholderData,
-    isFetching,
-  } = useGetPageTitlesPaginated({
-    limit: pagination.pageSize,
-    page: pageNumber,
-  });
-
-  const pagesDataArray: PageTitleItem[] | undefined = apiResponse?.data?.data;
-  const totalCount: number | undefined = apiResponse?.data?.totalCount;
-
-  const isLoading = isLoadingPages || isFetching;
-
-  // Create a minimal table object with the required pagination methods
-  const table = {
-    getState: () => ({
-      pagination: {
-        pageIndex: pagination.pageIndex,
-        pageSize: pagination.pageSize,
-      },
-    }),
-    getCanPreviousPage: () => pagination.pageIndex > 0,
-    getCanNextPage: () => {
-      if (totalCount === undefined) return true;
-      return (pagination.pageIndex + 1) * pagination.pageSize < totalCount;
-    },
-    getPageCount: () => totalPages,
-    setPageIndex: (index: number) => setPagination({ ...pagination, pageIndex: index }),
-    previousPage: () => setPagination({ ...pagination, pageIndex: pagination.pageIndex - 1 }),
-    nextPage: () => setPagination({ ...pagination, pageIndex: pagination.pageIndex + 1 }),
-  };
-
-  useEffect(() => {
-    if (!isLoadingPages && !isPlaceholderData && !isFetching) {
-      if (totalCount !== undefined) {
-        setTotalPages(Math.ceil(totalCount / pagination.pageSize));
-      } else if (pagesDataArray && pagesDataArray.length === 0 && pagination.pageIndex === 0) {
-        // Fallback if totalCount is somehow undefined but we have an empty array on page 1
-        setTotalPages(0);
-      } else if (pagesDataArray && pagesDataArray.length < pagination.pageSize) {
-        // Fallback: if less than a full page is returned, assume it's the last
-        setTotalPages(pagination.pageIndex + 1);
-      }
-    } else if (pagination.pageIndex === 0 && isLoadingPages && !pagesDataArray) {
-      // Initial load, no data yet
-      setTotalPages(0);
-    }
-  }, [
-    apiResponse,
-    totalCount,
-    pagesDataArray,
-    isLoadingPages,
-    isPlaceholderData,
-    isFetching,
-    pagination.pageIndex,
-    pagination.pageSize,
-  ]);
+  useSetPageTitle("Pages");
 
   if (!site) {
     return null;
   }
 
-  return (
-    <DisabledOverlay message="pages" featurePath="pages">
-      <div className="p-2 md:p-4 max-w-[1100px] mx-auto space-y-3">
-        <SubHeader />
+  // Any change to what is listed starts again from the first page.
+  const restart = () => setPage(1);
 
-        {isLoading ? (
-          <PageListSkeleton count={pagination.pageSize} />
-        ) : isErrorPages ? (
-          <div className="text-center p-8 text-destructive">
-            <p>Error loading pages data</p>
-            <p className="text-sm">{pagesError?.toString()}</p>
-          </div>
-        ) : pagesDataArray && pagesDataArray.length > 0 ? (
-          <>
-            {pagesDataArray.map((pageItem: PageTitleItem, index: number) => (
-              <PageListItem
-                key={`${pageItem.value}-${index}-${pagination.pageIndex}`}
-                pageData={{
-                  value: pageItem.pathname,
-                  title: pageItem.value,
-                  count: pageItem.count,
-                  percentage: pageItem.percentage,
-                  time_on_page_seconds: pageItem.time_on_page_seconds,
+  return (
+    <DisabledOverlay message={t("pages")} featurePath="pages">
+      <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
+        <SubHeader />
+        <PagesStatBand />
+        <AnalysisBar
+          // On a phone the search takes a row of its own, full width.
+          className="[&>div:last-child]:w-full sm:[&>div:last-child]:w-auto"
+          breakdown={
+            <BreakdownControl<Breakdown>
+              value={breakdown}
+              onChange={value => {
+                setBreakdown(value);
+                restart();
+              }}
+              options={[
+                { value: "section", label: t("Section") },
+                { value: "none", label: t("None") },
+              ]}
+            />
+          }
+          end={
+            <div className="w-full sm:w-64 [&>div]:w-full">
+              <Input
+                isSearch
+                type="search"
+                value={search}
+                onChange={event => {
+                  setSearch(event.target.value);
+                  restart();
                 }}
+                placeholder={t("Search title or path")}
+                aria-label={t("Search title or path")}
+                className="h-8 text-xs"
               />
-            ))}
-            {totalPages > 0 && (
-              <Pagination
-                table={table}
-                data={{ items: pagesDataArray || [], total: totalCount || 0 }}
-                pagination={pagination}
-                setPagination={setPagination}
-                isLoading={isLoading}
-                itemName="pages"
-              />
-            )}
-          </>
-        ) : !isLoadingPages && !isFetching ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <p>No pages data found for the selected period.</p>
-          </div>
-        ) : null}
+            </div>
+          }
+        >
+          <SegmentedControl<PagesMode>
+            size="sm"
+            aria-label={t("Pages to list")}
+            value={mode}
+            onValueChange={value => {
+              setMode(value);
+              setSorting({ sort: MODE_SORT[value], order: "desc" });
+              restart();
+            }}
+            options={[
+              { value: "all", label: t("All pages") },
+              { value: "entry", label: t("Entry pages") },
+              { value: "exit", label: t("Exit pages") },
+            ]}
+          />
+        </AnalysisBar>
+        <PagesTable
+          // A search lists the matching pages themselves: a rollup of a few matches would read as the section's total.
+          group={breakdown === "section" && !activeSearch ? "section" : "page"}
+          mode={mode}
+          search={activeSearch}
+          sort={sorting.sort}
+          order={sorting.order}
+          onSort={sort => {
+            setSorting(current => ({
+              sort,
+              order: current.sort === sort && current.order === "desc" ? "asc" : "desc",
+            }));
+            restart();
+          }}
+          page={page}
+          onPageChange={setPage}
+          expanded={expanded}
+          onExpandedChange={setExpanded}
+        />
       </div>
     </DisabledOverlay>
   );

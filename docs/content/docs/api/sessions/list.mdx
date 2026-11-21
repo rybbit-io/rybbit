@@ -1,0 +1,489 @@
+---
+title: Get Sessions
+description: Returns a paginated list of sessions with their analytics data.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/sessions
+```
+
+Returns a paginated list of sessions with their analytics data.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: 'Site ID or site identifier',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+Accepts all [Common Parameters](/docs/api/getting-started#common-parameters) plus the following. An invalid `view`, `sort_by`, `sort_order`, `include_goals`, or min/max value returns `400`.
+
+<TypeTable
+  type={{
+    page: {
+      description: 'Page number (1-indexed). Invalid values fall back to 1.',
+      type: 'number',
+      default: 1,
+    },
+    limit: {
+      description: 'Number of results per page, capped at 10,000. Invalid values fall back to 100.',
+      type: 'number',
+      default: 100,
+    },
+    user_id: {
+      description: 'Only sessions of this user. Matches the identified user ID, or the device ID of anonymous sessions.',
+      type: 'string',
+      required: false,
+    },
+    session_id: {
+      description: 'Only this session',
+      type: 'string',
+      required: false,
+    },
+    identified_only: {
+      description: 'Only return sessions from identified users',
+      type: 'string',
+      typeDescription: '"true" | "false"',
+      default: 'false',
+    },
+    view: {
+      description: 'Preset view. identified: identified users. replay: sessions with a replay. converted: completed at least one goal (turns on include_goals); API keys without the goals:read scope get no sessions for this view. bounced: exactly one pageview. errors: at least one error.',
+      type: 'string',
+      typeDescription: '"all" | "identified" | "replay" | "converted" | "bounced" | "errors"',
+      default: 'all',
+    },
+    sort_by: {
+      description: 'Sort column. events sorts by custom events plus autocaptured interactions. Ties fall back to session start, then session ID.',
+      type: 'string',
+      typeDescription: '"started" | "ended" | "duration" | "pageviews" | "events" | "errors"',
+      default: 'ended',
+    },
+    sort_order: {
+      description: 'Sort direction',
+      type: 'string',
+      typeDescription: '"asc" | "desc"',
+      default: 'desc',
+    },
+    include_goals: {
+      description: "Add converted_goals to each session. Only the site's 50 oldest goals are matched. API keys without the goals:read scope get an empty list.",
+      type: 'string',
+      typeDescription: '"true" | "false"',
+      default: 'false',
+    },
+    min_pageviews: {
+      description: 'Minimum pageviews (inclusive)',
+      type: 'number',
+      required: false,
+    },
+    max_pageviews: {
+      description: 'Maximum pageviews (inclusive)',
+      type: 'number',
+      required: false,
+    },
+    min_events: {
+      description: 'Minimum events (inclusive). Counts custom events plus button clicks, copies, form submits, and input changes.',
+      type: 'number',
+      required: false,
+    },
+    max_events: {
+      description: 'Maximum events (inclusive), counted like min_events',
+      type: 'number',
+      required: false,
+    },
+    min_duration: {
+      description: 'Minimum session duration in seconds (inclusive)',
+      type: 'number',
+      required: false,
+    },
+    max_duration: {
+      description: 'Maximum session duration in seconds (inclusive)',
+      type: 'number',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: 'Array of session objects',
+      type: 'Session[]',
+    },
+  }}
+/>
+
+#### Session Object
+
+Attribute fields (`country`, `browser`, and so on) come from the session's latest event. `referrer`, `channel`, and the UTM fields come from its first event that has one.
+
+<TypeTable
+  type={{
+    session_id: {
+      description: 'Unique session identifier',
+      type: 'string',
+    },
+    user_id: {
+      description: 'Device fingerprint identifier',
+      type: 'string',
+    },
+    identified_user_id: {
+      description: 'Custom user ID when identified, empty string otherwise',
+      type: 'string',
+    },
+    traits: {
+      description: 'Custom user traits, null for anonymous users or users without a profile',
+      type: 'object | null',
+    },
+    country: {
+      description: 'Country code',
+      type: 'string',
+    },
+    region: {
+      description: 'Region/state',
+      type: 'string',
+    },
+    city: {
+      description: 'City name',
+      type: 'string',
+    },
+    lat: {
+      description: 'Latitude of the visitor location',
+      type: 'number',
+    },
+    lon: {
+      description: 'Longitude of the visitor location',
+      type: 'number',
+    },
+    timezone: {
+      description: 'Timezone of the visitor location',
+      type: 'string',
+    },
+    language: {
+      description: 'Browser language',
+      type: 'string',
+    },
+    browser: {
+      description: 'Browser name',
+      type: 'string',
+    },
+    browser_version: {
+      description: 'Browser version',
+      type: 'string',
+    },
+    operating_system: {
+      description: 'Operating system',
+      type: 'string',
+    },
+    operating_system_version: {
+      description: 'Operating system version',
+      type: 'string',
+    },
+    device_type: {
+      description: 'Device type',
+      type: 'string',
+    },
+    screen_width: {
+      description: 'Screen width in pixels',
+      type: 'number',
+    },
+    screen_height: {
+      description: 'Screen height in pixels',
+      type: 'number',
+    },
+    referrer: {
+      description: 'Referrer URL',
+      type: 'string',
+    },
+    channel: {
+      description: 'Traffic channel',
+      type: 'string',
+    },
+    hostname: {
+      description: 'Hostname of the first event',
+      type: 'string',
+    },
+    entry_page: {
+      description: 'First page visited',
+      type: 'string',
+    },
+    exit_page: {
+      description: 'Last page visited',
+      type: 'string',
+    },
+    pageviews: {
+      description: 'Number of pageviews',
+      type: 'number',
+    },
+    events: {
+      description: 'Number of custom events',
+      type: 'number',
+    },
+    errors: {
+      description: 'Number of errors',
+      type: 'number',
+    },
+    outbound: {
+      description: 'Number of outbound link clicks',
+      type: 'number',
+    },
+    button_clicks: {
+      description: 'Number of autocaptured button clicks',
+      type: 'number',
+    },
+    copies: {
+      description: 'Number of autocaptured copy events',
+      type: 'number',
+    },
+    form_submits: {
+      description: 'Number of autocaptured form submits',
+      type: 'number',
+    },
+    input_changes: {
+      description: 'Number of autocaptured input changes',
+      type: 'number',
+    },
+    session_duration: {
+      description: 'Duration in seconds',
+      type: 'number',
+    },
+    session_start: {
+      description: 'Session start time',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    session_end: {
+      description: 'Session end time',
+      type: 'string',
+      typeDescription: 'UTC, "YYYY-MM-DD HH:MM:SS"',
+    },
+    utm_source: {
+      description: 'UTM source parameter',
+      type: 'string',
+    },
+    utm_medium: {
+      description: 'UTM medium parameter',
+      type: 'string',
+    },
+    utm_campaign: {
+      description: 'UTM campaign parameter',
+      type: 'string',
+    },
+    utm_term: {
+      description: 'UTM term parameter',
+      type: 'string',
+    },
+    utm_content: {
+      description: 'UTM content parameter',
+      type: 'string',
+    },
+    tag: {
+      description: 'Tag set on the tracking script, empty string if none',
+      type: 'string',
+    },
+    ip: {
+      description: 'IP address. null unless the site has IP tracking turned on.',
+      type: 'string | null',
+    },
+    has_replay: {
+      description: '1 when the session has a session replay, otherwise 0',
+      type: 'number',
+    },
+    converted_goals: {
+      description: 'Goals the session completed, most recent conversion first. Only present with include_goals=true or view=converted.',
+      type: '{ id: number; name: string | null }[]',
+      required: false,
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/1/sessions?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/1/sessions?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/1/sessions',
+    params={
+        'page': 1,
+        'limit': 20,
+        'start_date': '2024-01-01',
+        'end_date': '2024-01-31'
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/1/sessions?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/1/sessions?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/1/sessions?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/1/sessions?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/1/sessions?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/1/sessions?page=1&limit=20&start_date=2024-01-01&end_date=2024-01-31");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "session_id": "sess_abc123",
+      "user_id": "dev_xyz789",
+      "identified_user_id": "user@example.com",
+      "traits": { "plan": "pro" },
+      "country": "US",
+      "region": "US-CA",
+      "city": "San Francisco",
+      "lat": 37.7749,
+      "lon": -122.4194,
+      "timezone": "America/Los_Angeles",
+      "language": "en-US",
+      "browser": "Chrome",
+      "browser_version": "120.0",
+      "operating_system": "macOS",
+      "operating_system_version": "14.2",
+      "device_type": "Desktop",
+      "screen_width": 1920,
+      "screen_height": 1080,
+      "referrer": "https://google.com",
+      "channel": "Organic Search",
+      "hostname": "example.com",
+      "entry_page": "/",
+      "exit_page": "/pricing",
+      "pageviews": 5,
+      "events": 2,
+      "errors": 0,
+      "outbound": 1,
+      "button_clicks": 3,
+      "copies": 0,
+      "form_submits": 0,
+      "input_changes": 0,
+      "session_duration": 245,
+      "session_start": "2024-01-31 14:00:00",
+      "session_end": "2024-01-31 14:04:05",
+      "utm_source": "google",
+      "utm_medium": "cpc",
+      "utm_campaign": "brand",
+      "utm_term": "",
+      "utm_content": "",
+      "tag": "",
+      "ip": null,
+      "has_replay": 1,
+      "converted_goals": [{ "id": 12, "name": "Signup" }]
+    }
+  ]
+}
+```
+
+</div>
+</div>

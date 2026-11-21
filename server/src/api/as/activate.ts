@@ -1,19 +1,17 @@
+import { roleHasPermission } from "@rybbit/shared";
 import { eq, sql } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { asLicenses } from "../../db/postgres/schema-appsumo.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { IS_CLOUD } from "../../lib/const.js";
+import { usageService } from "../../services/usageService.js";
 
 /**
  * Check if AppSumo integration is enabled
  */
 function isAppSumoEnabled(): boolean {
-  return (
-    IS_CLOUD &&
-    !!process.env.APPSUMO_CLIENT_ID &&
-    !!process.env.APPSUMO_CLIENT_SECRET
-  );
+  return IS_CLOUD && !!process.env.APPSUMO_CLIENT_ID && !!process.env.APPSUMO_CLIENT_SECRET;
 }
 
 /**
@@ -110,7 +108,8 @@ export async function activateAppSumoLicense(
       });
     }
 
-    // Verify user is a member of the organization
+    // A license changes the organization's plan: the same owner-only
+    // permission as every other billing action.
     const member = await db.query.member.findFirst({
       where: (member, { and, eq }) =>
         and(eq(member.userId, session.user.id), eq(member.organizationId, organizationId)),
@@ -122,12 +121,18 @@ export async function activateAppSumoLicense(
       });
     }
 
+    if (!roleHasPermission(member.role, "billing:manage")) {
+      return reply.status(403).send({
+        error: "Only an organization owner can activate a license",
+      });
+    }
+
     // Step 1: Exchange authorization code for access token
     let tokenData;
     try {
       tokenData = await exchangeCodeForToken(code);
     } catch (error) {
-      console.error("Error exchanging code for token:", error);
+      request.log.error({ err: error }, "Error exchanging code for token");
       return reply.status(400).send({
         error: "Failed to exchange authorization code",
         message: error instanceof Error ? error.message : "Unknown error",
@@ -139,7 +144,7 @@ export async function activateAppSumoLicense(
     try {
       licenseData = await fetchLicenseKey(tokenData.accessToken);
     } catch (error) {
-      console.error("Error fetching license key:", error);
+      request.log.error({ err: error }, "Error fetching license key");
       return reply.status(400).send({
         error: "Failed to fetch license key",
         message: error instanceof Error ? error.message : "Unknown error",
@@ -195,6 +200,9 @@ export async function activateAppSumoLicense(
       `);
     }
 
+    // Turn on sites that were waiting for a plan without waiting for the usage check.
+    usageService.requestOrganizationRefresh(organizationId);
+
     return reply.status(200).send({
       success: true,
       license: {
@@ -204,7 +212,7 @@ export async function activateAppSumoLicense(
       },
     });
   } catch (error) {
-    console.error("Error activating AppSumo license:", error);
+    request.log.error({ err: error }, "Error activating AppSumo license");
     return reply.status(500).send({
       error: "Internal server error",
       message: error instanceof Error ? error.message : "Unknown error",

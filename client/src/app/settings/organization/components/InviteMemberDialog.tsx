@@ -1,0 +1,259 @@
+"use client";
+
+import type { OrgRole, SiteGrantRole } from "@rybbit/shared";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { UserPlus } from "lucide-react";
+import { useExtracted } from "next-intl";
+import { useMemo, useState } from "react";
+import { toast } from "@/components/ui/sonner";
+
+import { useTeams } from "@/api/admin/hooks/useTeams";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { authClient } from "@/lib/auth";
+import { IS_CLOUD } from "@/lib/const";
+import { isAdminRole, siteRolesAbove } from "@/lib/roles";
+import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
+
+import { RoleSelect, SiteRoleSelect } from "./RoleSelect";
+import { SiteAccessMultiSelect } from "./SiteAccessMultiSelect";
+
+interface InviteMemberDialogProps {
+  organizationId: string;
+  onSuccess: () => void;
+  memberCount: number;
+  /** Roles the current user may give, from the server. */
+  assignableRoles: OrgRole[];
+}
+
+export function InviteMemberDialog({
+  organizationId,
+  onSuccess,
+  memberCount,
+  assignableRoles,
+}: InviteMemberDialogProps) {
+  const { data: subscription } = useStripeSubscription();
+  const queryClient = useQueryClient();
+  const t = useExtracted();
+
+  const memberLimit = subscription?.memberLimit ?? null;
+  const isOverMemberLimit = useMemo(() => {
+    if (!IS_CLOUD) return false;
+    if (memberLimit === null) return false;
+    return memberCount >= memberLimit;
+  }, [memberLimit, memberCount]);
+
+  const { data: teamsData } = useTeams(organizationId);
+  const teams = teamsData?.teams || [];
+
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<OrgRole>("member");
+  const isRestrictable = !isAdminRole(role);
+  const [restrictSiteAccess, setRestrictSiteAccess] = useState(false);
+  const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [siteRole, setSiteRole] = useState<SiteGrantRole | null>(null);
+  // A site role only raises the invited role, so only roles above it are offered.
+  const siteRoleOptions = siteRolesAbove(role);
+  const effectiveSiteRole = siteRole && siteRoleOptions.includes(siteRole) ? siteRole : null;
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("none");
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+
+  const inviteMutation = useMutation({
+    mutationFn: async () => {
+      const hasSiteRestrictions = isRestrictable && restrictSiteAccess;
+      const result = await authClient.organization.inviteMember({
+        email,
+        // better-auth's client types only know its default roles; the server's access control defines ours.
+        role: role as "owner" | "admin" | "member",
+        organizationId,
+        ...(selectedTeamId && selectedTeamId !== "none" ? { teamId: selectedTeamId } : {}),
+        hasRestrictedSiteAccess: hasSiteRestrictions,
+        siteIds: hasSiteRestrictions ? selectedSiteIds : [],
+        siteRole: (hasSiteRestrictions && effectiveSiteRole) || undefined,
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message || t("Failed to send invitation"));
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invitations", organizationId] });
+      toast.success(t("Invitation sent to {email}", { email }));
+      setOpen(false);
+      onSuccess();
+      setEmail("");
+      setRole("member");
+      setRestrictSiteAccess(false);
+      setSelectedSiteIds([]);
+      setSiteRole(null);
+      setSelectedTeamId("none");
+      setError("");
+    },
+    onError: (err: any) => {
+      setError(err.message || t("Failed to send invitation"));
+    },
+  });
+
+  const handleInvite = () => {
+    setError("");
+
+    if (!email) {
+      setError(t("Email is required"));
+      return;
+    }
+
+    if (isRestrictable && restrictSiteAccess && selectedSiteIds.length === 0) {
+      setError(t("Please select at least one site or disable site restrictions"));
+      return;
+    }
+
+    inviteMutation.mutate();
+  };
+
+  if (isOverMemberLimit) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span>
+            <Button disabled size="sm" variant="success" title={t("Upgrade to Pro to add more members")}>
+              <UserPlus />
+              {t("Invite people")}
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {t("You have reached the limit of {limit} members. Upgrade to add more members", {
+            limit: String(memberLimit),
+          })}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="success">
+          <UserPlus />
+          {t("Invite people")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t("Invite a new member")}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="email">{t("Email")}</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="email@example.com"
+              value={email}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="role">{t("Role")}</Label>
+            <RoleSelect
+              id="role"
+              value={role}
+              roles={assignableRoles}
+              onValueChange={value => {
+                setRole(value);
+                if (isAdminRole(value)) {
+                  setRestrictSiteAccess(false);
+                  setSelectedSiteIds([]);
+                }
+              }}
+            />
+          </div>
+
+          {isRestrictable && (
+            <div className="grid gap-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="restrict-site-access"
+                  checked={restrictSiteAccess}
+                  onCheckedChange={checked => {
+                    setRestrictSiteAccess(!!checked);
+                    if (!checked) {
+                      setSelectedSiteIds([]);
+                    }
+                  }}
+                />
+                <Label htmlFor="restrict-site-access" className="cursor-pointer">
+                  {t("Restrict access to specific sites")}
+                </Label>
+              </div>
+              {restrictSiteAccess && (
+                <div className="pl-6">
+                  <SiteAccessMultiSelect selectedSiteIds={selectedSiteIds} onChange={setSelectedSiteIds} />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {t("This member will only have access to the selected sites.")}
+                  </p>
+                  {siteRoleOptions.length > 0 && (
+                    <div className="grid gap-2 mt-4">
+                      <Label htmlFor="invite-site-role">{t("Role on these sites")}</Label>
+                      <SiteRoleSelect
+                        id="invite-site-role"
+                        value={effectiveSiteRole}
+                        roles={siteRoleOptions}
+                        ownRoleLabel={t("Their organization role")}
+                        onValueChange={setSiteRole}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t("Raises their role on the selected sites only.")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {teams.length > 0 && (
+            <div className="grid gap-2">
+              <Label>{t("Team")}</Label>
+              <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("No team")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("No team")}</SelectItem>
+                  {teams.map(team => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t("Optionally add this member to a team when they accept the invitation.")}
+              </p>
+            </div>
+          )}
+
+          {error && <Alert variant="destructive">{error}</Alert>}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            {t("Cancel")}
+          </Button>
+          <Button onClick={handleInvite} disabled={inviteMutation.isPending} variant="success">
+            {inviteMutation.isPending ? t("Inviting...") : t("Invite")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

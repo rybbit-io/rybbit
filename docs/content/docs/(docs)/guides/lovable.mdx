@@ -1,0 +1,82 @@
+---
+title: Lovable
+description: Add Rybbit analytics to your Lovable app
+category: ai-builders
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Lovable has no project setting for custom head code, so the snippet goes into the app's HTML head like any other code change: ask Lovable to add it in chat, or open the **Code** tab and edit the file yourself. Either way, the live app only picks it up after you publish the change.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Lovable
+
+<Tabs items={["Ask Lovable", "Edit the code"]}>
+<Tab>
+Paste this into the chat, with your snippet in place of the placeholder:
+
+```text
+Add this script tag to the <head> of the app on every page. Do not remove any existing head tags.
+<script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+```
+
+Check the diff Lovable shows: the tag belongs in the document head, not in a React component.
+</Tab>
+
+<Tab>
+Open the **Code** tab in the project toolbar (editing needs a paid plan; on the Free plan the editor is read-only). Which file holds the head depends on when the project was created:
+
+- **Projects created from May 13, 2026** use TanStack Start. Add the script to the `head()` of the root route in `src/routes/__root.tsx`; the `<HeadContent />` component already in that file renders it into the `<head>`:
+
+```tsx title="src/routes/__root.tsx"
+export const Route = createRootRoute({
+  head: () => ({
+    scripts: [
+      { src: "https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID", defer: true },
+    ],
+  }),
+  component: RootComponent,
+});
+```
+
+- **Older React + Vite projects** have a single `index.html` at the project root. Paste the snippet before `</head>`:
+
+```html title="index.html"
+<head>
+  <meta charset="UTF-8" />
+  <title>My app</title>
+  <script src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID" defer></script>
+</head>
+```
+
+Save with **Cmd+S** / **Ctrl+S**.
+</Tab>
+</Tabs>
+
+Then click **Publish** in the top right and choose **Publish changes**. Client-side route changes inside the app are tracked as pageviews automatically.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Live app still has no script**: Lovable does not push edits to the published app automatically. A dot on the **Publish** button means unpublished changes; open it and click **Publish changes**.
+- **Free plan**: the Code tab is read-only, so use the chat prompt instead.
+- **Script disappeared after a later prompt**: Lovable can rewrite the head when it regenerates the layout or upgrades the template. Add "keep the Rybbit script tag" to the project's Knowledge so future edits preserve it, and re-check the page source after big changes.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

@@ -12,6 +12,8 @@ interface AuthInputProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
+  /** Lets password managers tell sign-in from sign-up, e.g. "current-password" or "new-password". */
+  autoComplete?: string;
   className?: string;
   rightElement?: ReactNode;
 }
@@ -24,6 +26,7 @@ export function AuthInput({
   value,
   onChange,
   required = false,
+  autoComplete,
   className = "",
   rightElement,
 }: AuthInputProps) {
@@ -40,6 +43,7 @@ export function AuthInput({
         value={value}
         onChange={onChange}
         required={required}
+        autoComplete={autoComplete}
         minLength={type === "password" ? 8 : undefined}
       />
     </div>

@@ -1,0 +1,80 @@
+---
+title: Eleventy
+description: Add Rybbit analytics to your Eleventy site
+category: static
+icon: SiEleventy
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Eleventy renders every page through a layout in `_includes/`, so the snippet goes in your base layout's `<head>`. Keep the site ID in a global data file under `_data/` so the layout stays free of hard-coded values.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Eleventy
+
+1. Create `_data/rybbit.json` (create the `_data/` directory if it does not exist). Every template can then read it as `rybbit`. Change `instanceUrl` only if you self-host:
+
+   ```json title="_data/rybbit.json"
+   {
+     "siteId": "YOUR_SITE_ID",
+     "instanceUrl": "https://app.rybbit.io"
+   }
+   ```
+
+2. Open your base layout and add the tag inside `<head>`. The `eleventy.env.runMode` check keeps the script out of `--serve` and `--watch` runs, so local development is not tracked; the `rybbit.siteId` check keeps it out of builds with no ID configured.
+
+<Tabs items={["Nunjucks", "Liquid"]}>
+<Tab value="Nunjucks">
+```html title="_includes/base.njk"
+<head>
+  ...
+  {% if eleventy.env.runMode == "build" and rybbit.siteId %}
+    <script src="{{ rybbit.instanceUrl }}/api/script.js?siteId={{ rybbit.siteId }}" defer></script>
+  {% endif %}
+</head>
+```
+</Tab>
+<Tab value="Liquid">
+```html title="_includes/base.liquid"
+<head>
+  ...
+  {% if eleventy.env.runMode == "build" and rybbit.siteId %}
+    <script src="{{ rybbit.instanceUrl }}/api/script.js?siteId={{ rybbit.siteId }}" defer></script>
+  {% endif %}
+</head>
+```
+</Tab>
+</Tabs>
+
+3. Build and deploy the generated `_site/` directory:
+
+   ```bash
+   npx @11ty/eleventy
+   ```
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Snippet missing from the page source**: `npx @11ty/eleventy --serve` sets `runMode` to `serve`, so the guard removes the tag. Check the output of a plain build instead.
+- **Eleventy 1.x**: `eleventy.env.runMode` was added in Eleventy 2.0. On older versions drop the `runMode` condition and keep only the `rybbit.siteId` check.
+- **Custom data directory**: if your config sets `dir.data`, put `rybbit.json` in that directory instead of `_data/`.
+- **Several layouts**: a page only gets the tag if its layout chain ends in the layout you edited. Pages with `layout: none` or a different base layout need the tag added there too.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

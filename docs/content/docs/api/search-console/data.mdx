@@ -1,0 +1,302 @@
+---
+title: Get Search Console Data
+description: Returns Google Search Console clicks, impressions, CTR and position, grouped by query, page, country, device or date.
+full: true
+method: GET
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+GET /api/sites/:site/gsc/data
+```
+
+Queries Google Search Console's Search Analytics for the site's connected property and returns its rows. The site must be [connected](/docs/api/search-console/status).
+
+**Permissions:** any role on the site (`viewer` and above). API keys need the `gsc:read` scope. Public sites and [private links](/docs/api/sites/get-private-link) can read it without a key.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    site: {
+      description: "Site ID or site identifier",
+      type: "string | number",
+      required: true,
+    },
+  }}
+/>
+
+### Query Parameters
+
+<TypeTable
+  type={{
+    start_date: {
+      description: "Start date",
+      type: "string",
+      typeDescription: "YYYY-MM-DD",
+      required: true,
+    },
+    end_date: {
+      description: "End date, on or after start_date",
+      type: "string",
+      typeDescription: "YYYY-MM-DD",
+      required: true,
+    },
+    dimensions: {
+      description: "Comma-separated dimensions to group by (1 to 3): query, page, country, device, date",
+      type: "string",
+      required: false,
+    },
+    dimension: {
+      description: "Legacy single dimension (query, page, country or device). Rows then use a `name` key. Ignored when dimensions is set",
+      type: "string",
+      required: false,
+    },
+    filters: {
+      description: "JSON-encoded array of up to 10 filters, ANDed: [{\"dimension\":\"country\",\"operator\":\"equals\",\"expression\":\"US\"}]. dimension is query, page, country or device; operator is equals (default), notEquals, contains, notContains, includingRegex or excludingRegex. With equals and notEquals, countries take ISO alpha-2 codes",
+      type: "string",
+      required: false,
+    },
+    search_type: {
+      description: "Search Console search type",
+      type: "string",
+      typeDescription: "\"web\" | \"image\" | \"video\" | \"news\" | \"discover\" | \"googleNews\"",
+      required: false,
+    },
+    data_state: {
+      description: "`all` includes fresh, not yet final data",
+      type: "string",
+      typeDescription: "\"final\" | \"all\"",
+      required: false,
+    },
+    row_limit: {
+      description: "Maximum rows",
+      type: "number",
+      typeDescription: "1-25000",
+      default: 1000,
+      required: false,
+    },
+    start_row: {
+      description: "Zero-based row offset, for paging",
+      type: "number",
+      required: false,
+    },
+  }}
+/>
+
+One of `dimensions` or `dimension` is required. This endpoint takes its own `filters` format, not the analytics filters.
+
+### Response
+
+<TypeTable
+  type={{
+    data: {
+      description: "Rows as returned by Search Console",
+      type: "GSCRow[]",
+    },
+  }}
+/>
+
+#### GSCRow Object
+
+<TypeTable
+  type={{
+    "[dimension]": {
+      description: "One key per requested dimension, e.g. query and page. Countries are ISO alpha-2 codes; dates are YYYY-MM-DD. With the legacy dimension parameter, the single key is \"name\"",
+      type: "string",
+    },
+    clicks: {
+      description: "Clicks",
+      type: "number",
+    },
+    impressions: {
+      description: "Impressions",
+      type: "number",
+    },
+    ctr: {
+      description: "Click-through rate as a fraction",
+      type: "number",
+      typeDescription: "Range: 0-1",
+    },
+    position: {
+      description: "Average position",
+      type: "number",
+    },
+  }}
+/>
+
+### Error Responses
+
+Errors use the standard body `{ error, code, message, resolution }`.
+
+<TypeTable
+  type={{
+    "400": {
+      description: "Missing or invalid parameters, or Search Console rejected the query",
+      type: "object",
+    },
+    "404": {
+      description: "Search Console isn't connected for this site",
+      type: "object",
+    },
+    "429": {
+      description: "Search Console quota exceeded",
+      type: "object",
+    },
+    "502": {
+      description: "Search Console denied access to the property (reconnect it) or failed",
+      type: "object",
+    },
+  }}
+/>
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X GET "https://app.rybbit.io/api/sites/123/gsc/data?start_date=2026-10-01&end_date=2026-10-28&dimensions=query,country&row_limit=100" \
+  -H "Authorization: Bearer your_api_key_here"
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/gsc/data?start_date=2026-10-01&end_date=2026-10-28&dimensions=query,country&row_limit=100',
+  {
+    headers: {
+      'Authorization': 'Bearer your_api_key_here'
+    }
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.get(
+    'https://app.rybbit.io/api/sites/123/gsc/data',
+    params={
+        'start_date': '2026-10-01',
+        'end_date': '2026-10-28',
+        'dimensions': 'query,country',
+        'row_limit': 100
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/gsc/data?start_date=2026-10-01&end_date=2026-10-28&dimensions=query,country&row_limit=100');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/gsc/data?start_date=2026-10-01&end_date=2026-10-28&dimensions=query,country&row_limit=100')
+req = Net::HTTP::Get.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+req, _ := http.NewRequest("GET", "https://app.rybbit.io/api/sites/123/gsc/data?start_date=2026-10-01&end_date=2026-10-28&dimensions=query,country&row_limit=100", nil)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .get("https://app.rybbit.io/api/sites/123/gsc/data?start_date=2026-10-01&end_date=2026-10-28&dimensions=query,country&row_limit=100")
+    .header("Authorization", "Bearer your_api_key_here")
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/gsc/data?start_date=2026-10-01&end_date=2026-10-28&dimensions=query,country&row_limit=100"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var response = await client.GetAsync("https://app.rybbit.io/api/sites/123/gsc/data?start_date=2026-10-01&end_date=2026-10-28&dimensions=query,country&row_limit=100");
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "data": [
+    {
+      "query": "acme analytics",
+      "country": "US",
+      "clicks": 412,
+      "impressions": 3820,
+      "ctr": 0.1078,
+      "position": 2.4
+    },
+    {
+      "query": "acme pricing",
+      "country": "GB",
+      "clicks": 96,
+      "impressions": 1210,
+      "ctr": 0.0793,
+      "position": 3.1
+    }
+  ]
+}
+```
+
+</div>
+</div>

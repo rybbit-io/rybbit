@@ -1,0 +1,412 @@
+---
+title: Update Site Config
+description: Updates site configuration settings. All fields are optional - only include the fields you want to update. Requires the editor role or above on the site.
+full: true
+method: PUT
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<div>
+
+```
+PUT /api/sites/:siteId/config
+```
+
+Updates site configuration settings. All fields are optional - only include the fields you want to update. Requires the editor role or above on the site (the `sites:configure` permission).
+
+Fields you omit keep their current values. The `excluded*` lists and `tags` replace the stored list as a whole, so send the full list each time.
+
+### Path Parameters
+
+<TypeTable
+  type={{
+    siteId: {
+      description: 'Site ID',
+      type: 'string | number',
+      required: true,
+    },
+  }}
+/>
+
+### Request Body
+
+<TypeTable
+  type={{
+    name: {
+      description: 'Display name',
+      type: 'string',
+      typeDescription: '1-255 characters',
+      required: false,
+    },
+    domain: {
+      description: 'Site domain, or the app identifier for a mobile site. A leading http:// or https:// and trailing slashes are removed.',
+      type: 'string',
+      typeDescription: 'Valid domain (e.g., example.com) for web sites; bundle/package ID (e.g., com.example.app) for mobile sites',
+      required: false,
+    },
+    type: {
+      description: 'Site type. Switching to mobile turns off session replay and Web Vitals.',
+      type: 'string | null',
+      typeDescription: '"web" | "mobile" (null means web)',
+      required: false,
+    },
+    public: {
+      description: 'Make analytics publicly accessible',
+      type: 'boolean',
+      required: false,
+    },
+    embedEnabled: {
+      description: 'Allow embedding the stats widget',
+      type: 'boolean',
+      required: false,
+    },
+    saltUserIds: {
+      description: 'Salt user IDs for privacy',
+      type: 'boolean',
+      required: false,
+    },
+    blockBots: {
+      description: 'Block bot traffic',
+      type: 'boolean',
+      required: false,
+    },
+    firstPartyProxy: {
+      description: 'The site sends tracking through a first-party proxy (Cloudflare Worker, CloudFront, nginx), so the visitor IP is read from forwarded headers',
+      type: 'boolean',
+      required: false,
+    },
+    excludedIPs: {
+      description: 'IP addresses, CIDR ranges, or a-b ranges to exclude',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries',
+      required: false,
+    },
+    excludedCountries: {
+      description: 'List of country codes to exclude',
+      type: 'string[]',
+      typeDescription: 'Uppercase 2-letter ISO codes (e.g., US, GB), max 250 entries',
+      required: false,
+    },
+    excludedPaths: {
+      description: 'Path patterns to exclude, case-insensitive, * matches anything (e.g., /admin/*)',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, 2048 characters each',
+      required: false,
+    },
+    excludedHostnames: {
+      description: 'Hostname patterns to exclude, case-insensitive, * matches anything (e.g., *.vercel.app)',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, 253 characters each',
+      required: false,
+    },
+    excludedUserAgents: {
+      description: 'Case-insensitive substrings; a request whose user agent contains one is excluded (e.g., HeadlessChrome)',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, 512 characters each',
+      required: false,
+    },
+    excludedASNs: {
+      description: 'Autonomous system numbers to exclude, with or without the AS prefix (e.g., AS13335 or 13335)',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, each at most 4294967295',
+      required: false,
+    },
+    excludedQueryParams: {
+      description: 'Query parameter rules: "name" excludes a request that has the parameter; "name=value" also matches the value, with * as a wildcard (e.g., utm_source=internal-*). Case-insensitive.',
+      type: 'string[]',
+      typeDescription: 'Max 100 entries, 512 characters each; must not start with =',
+      required: false,
+    },
+    tags: {
+      description: 'Labels for organizing sites',
+      type: 'string[]',
+      typeDescription: 'Max 20 tags, 50 characters each',
+      required: false,
+    },
+    sessionReplay: {
+      description: 'Enable session replay. Web sites only.',
+      type: 'boolean',
+      required: false,
+    },
+    webVitals: {
+      description: 'Enable Web Vitals tracking. Web sites only.',
+      type: 'boolean',
+      required: false,
+    },
+    trackErrors: {
+      description: 'Enable error tracking',
+      type: 'boolean',
+      required: false,
+    },
+    trackOutbound: {
+      description: 'Enable outbound link tracking',
+      type: 'boolean',
+      required: false,
+    },
+    trackUrlParams: {
+      description: 'Enable URL parameter tracking',
+      type: 'boolean',
+      required: false,
+    },
+    trackUrlFragments: {
+      description: 'Keep ordinary URL fragments such as #shipping in tracked paths. Disabled by default.',
+      type: 'boolean',
+      required: false,
+    },
+    trackInitialPageView: {
+      description: 'Send a pageview when the tracking script loads. Enabled by default.',
+      type: 'boolean',
+      required: false,
+    },
+    trackSpaNavigation: {
+      description: 'Send a pageview on single-page-app route changes. Enabled by default.',
+      type: 'boolean',
+      required: false,
+    },
+    trackIp: {
+      description: 'Store visitor IP addresses. Disabled by default.',
+      type: 'boolean',
+      required: false,
+    },
+    trackButtonClicks: {
+      description: 'Capture button clicks automatically',
+      type: 'boolean',
+      required: false,
+    },
+    trackCopy: {
+      description: 'Capture text copy events automatically',
+      type: 'boolean',
+      required: false,
+    },
+    trackFormInteractions: {
+      description: 'Capture form submissions and input changes automatically',
+      type: 'boolean',
+      required: false,
+    },
+  }}
+/>
+
+### Response
+
+<TypeTable
+  type={{
+    success: {
+      description: 'Whether the update was successful',
+      type: 'boolean',
+    },
+    message: {
+      description: 'Status message',
+      type: 'string',
+    },
+    config: {
+      description: 'The full site configuration after the update: every request field except name, plus id, siteId, privateLinkKey, and claimExpiresAt',
+      type: 'object',
+    },
+  }}
+/>
+
+### Errors
+
+| Status | When |
+|--------|------|
+| `400` | The body fails validation (`details` lists the problems), an IP pattern is invalid, the domain does not fit the site type, `sessionReplay` or `webVitals` is `true` on a mobile site, or the body has no fields |
+| `403` | Rybbit Cloud only: turning on `sessionReplay` without a plan that includes replay, or turning on `webVitals`, `trackErrors`, `trackButtonClicks`, `trackCopy`, or `trackFormInteractions` without an active or trialing subscription. Turning these off is always allowed. The other features are checked only when the update turns them on, but `sessionReplay: true` is checked every time it is sent, even if replay is already on. |
+| `404` | Malformed site ID or unknown text site identifier (a site that doesn't exist or that you can't access gets `403`) |
+
+</div>
+<div className="flex flex-col gap-4">
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP', 'Ruby', 'Go', 'Rust', 'Java', '.NET']}>
+  <Tab value="cURL">
+```bash title="Request"
+curl -X PUT "https://app.rybbit.io/api/sites/123/config" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"public": true, "blockBots": true, "excludedCountries": ["CN", "RU"]}'
+```
+  </Tab>
+  <Tab value="JavaScript">
+```javascript title="Request"
+const response = await fetch(
+  'https://app.rybbit.io/api/sites/123/config',
+  {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer your_api_key_here',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      public: true,
+      blockBots: true,
+      excludedCountries: ['CN', 'RU']
+    })
+  }
+);
+
+const data = await response.json();
+```
+  </Tab>
+  <Tab value="Python">
+```python title="Request"
+import requests
+
+response = requests.put(
+    'https://app.rybbit.io/api/sites/123/config',
+    json={
+        'public': True,
+        'blockBots': True,
+        'excludedCountries': ['CN', 'RU']
+    },
+    headers={
+        'Authorization': 'Bearer your_api_key_here'
+    }
+)
+
+data = response.json()
+```
+  </Tab>
+  <Tab value="PHP">
+```php title="Request"
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'https://app.rybbit.io/api/sites/123/config');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    'public' => true,
+    'blockBots' => true,
+    'excludedCountries' => ['CN', 'RU']
+]));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer your_api_key_here',
+    'Content-Type: application/json'
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$data = json_decode($response, true);
+```
+  </Tab>
+  <Tab value="Ruby">
+```ruby title="Request"
+require 'net/http'
+require 'json'
+
+uri = URI('https://app.rybbit.io/api/sites/123/config')
+req = Net::HTTP::Put.new(uri)
+req['Authorization'] = 'Bearer your_api_key_here'
+req['Content-Type'] = 'application/json'
+req.body = { public: true, blockBots: true, excludedCountries: ['CN', 'RU'] }.to_json
+
+res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+data = JSON.parse(res.body)
+```
+  </Tab>
+  <Tab value="Go">
+```go title="Request"
+body := bytes.NewBuffer([]byte(`{"public": true, "blockBots": true, "excludedCountries": ["CN", "RU"]}`))
+req, _ := http.NewRequest("PUT", "https://app.rybbit.io/api/sites/123/config", body)
+req.Header.Set("Authorization", "Bearer your_api_key_here")
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, _ := client.Do(req)
+defer resp.Body.Close()
+
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+```
+  </Tab>
+  <Tab value="Rust">
+```rust title="Request"
+let client = reqwest::Client::new();
+let res = client
+    .put("https://app.rybbit.io/api/sites/123/config")
+    .header("Authorization", "Bearer your_api_key_here")
+    .json(&serde_json::json!({
+        "public": true,
+        "blockBots": true,
+        "excludedCountries": ["CN", "RU"]
+    }))
+    .send()
+    .await?;
+
+let data: serde_json::Value = res.json().await?;
+```
+  </Tab>
+  <Tab value="Java">
+```java title="Request"
+HttpClient client = HttpClient.newHttpClient();
+String json = "{\"public\": true, \"blockBots\": true, \"excludedCountries\": [\"CN\", \"RU\"]}";
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://app.rybbit.io/api/sites/123/config"))
+    .header("Authorization", "Bearer your_api_key_here")
+    .header("Content-Type", "application/json")
+    .PUT(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+```
+  </Tab>
+  <Tab value=".NET">
+```csharp title="Request"
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer your_api_key_here");
+
+var content = new StringContent(
+    "{\"public\": true, \"blockBots\": true, \"excludedCountries\": [\"CN\", \"RU\"]}",
+    Encoding.UTF8,
+    "application/json"
+);
+
+var response = await client.PutAsync("https://app.rybbit.io/api/sites/123/config", content);
+var data = await response.Content.ReadAsStringAsync();
+```
+  </Tab>
+</Tabs>
+
+```json title="Response"
+{
+  "success": true,
+  "message": "Site configuration updated successfully",
+  "config": {
+    "id": "a1b2c3d4e5f6",
+    "siteId": 123,
+    "type": "web",
+    "domain": "example.com",
+    "public": true,
+    "embedEnabled": false,
+    "saltUserIds": false,
+    "blockBots": true,
+    "firstPartyProxy": false,
+    "excludedIPs": [],
+    "excludedCountries": ["CN", "RU"],
+    "excludedPaths": [],
+    "excludedHostnames": [],
+    "excludedUserAgents": [],
+    "excludedASNs": [],
+    "excludedQueryParams": [],
+    "privateLinkKey": null,
+    "claimExpiresAt": null,
+    "sessionReplay": true,
+    "webVitals": true,
+    "trackErrors": true,
+    "trackOutbound": true,
+    "trackUrlParams": false,
+    "trackUrlFragments": false,
+    "trackInitialPageView": true,
+    "trackSpaNavigation": true,
+    "trackIp": false,
+    "trackButtonClicks": false,
+    "trackCopy": false,
+    "trackFormInteractions": false,
+    "tags": []
+  }
+}
+```
+
+</div>
+</div>

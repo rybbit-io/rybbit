@@ -1,0 +1,44 @@
+import { Time } from "../../../../components/DateSelector/types";
+import { FUNNEL_PAGE_FILTERS } from "../../../../lib/filterGroups";
+import { getFilteredFilters } from "../../../../lib/store";
+import { FunnelStep, GetSessionsResponse } from "../../endpoints";
+import { useAnalyticsQuery } from "../../useAnalyticsQuery";
+
+export function useGetFunnelStepSessions({
+  steps,
+  stepNumber,
+  siteId,
+  time,
+  mode,
+  page = 1,
+  limit = 25,
+  replaysOnly = false,
+  enabled = false,
+}: {
+  steps: FunnelStep[];
+  stepNumber: number;
+  siteId: number;
+  time: Time;
+  mode: "reached" | "dropped";
+  page?: number;
+  limit?: number;
+  /** Lists only the sessions that have a replay. */
+  replaysOnly?: boolean;
+  enabled?: boolean;
+}) {
+  // Only the funnel page's filter parameters apply; an empty subset means no
+  // filters at all (not the store's full filter list).
+  const filteredFilters = getFilteredFilters(FUNNEL_PAGE_FILTERS);
+
+  return useAnalyticsQuery<GetSessionsResponse>({
+    key: ["funnel-step-sessions", stepNumber],
+    path: `funnels/${stepNumber}/sessions`,
+    site: siteId,
+    overrideTime: time,
+    useFilters: filteredFilters.length > 0,
+    customFilters: filteredFilters,
+    params: { mode, page, limit, replays_only: replaysOnly ? "true" : undefined },
+    body: () => ({ steps }),
+    enabled: !!steps && steps.length >= 2 && enabled,
+  });
+}

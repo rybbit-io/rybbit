@@ -1,0 +1,99 @@
+---
+title: Nextra
+description: Add Rybbit analytics to your Nextra docs
+category: docs
+icon: SiNextra
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Nextra is a Next.js docs framework, so the snippet goes where it goes in any Next.js app: the root layout, rendered with `next/script`. Nextra 4 uses the App Router and `app/layout.jsx`; Nextra 3 uses the Pages Router and `pages/_app.jsx`.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Nextra
+
+Use the `Script` component with `strategy="afterInteractive"` rather than a plain `<script>` tag; the `defer` attribute from the snippet is not needed.
+
+<Tabs items={["Nextra 4 (App Router)", "Nextra 3 (Pages Router)"]}>
+<Tab value="Nextra 4 (App Router)">
+Add the `Script` next to the `Layout` in `app/layout.jsx` (or `.tsx`):
+
+```jsx title="app/layout.jsx"
+import { Footer, Layout, Navbar } from "nextra-theme-docs";
+import { Head } from "nextra/components";
+import { getPageMap } from "nextra/page-map";
+import Script from "next/script";
+import "nextra-theme-docs/style.css";
+
+export default async function RootLayout({ children }) {
+  return (
+    <html lang="en" dir="ltr" suppressHydrationWarning>
+      <Head />
+      <body>
+        <Layout
+          navbar={<Navbar logo={<b>My Docs</b>} />}
+          pageMap={await getPageMap()}
+          footer={<Footer>MIT {new Date().getFullYear()} © My Docs.</Footer>}
+        >
+          {children}
+        </Layout>
+        <Script
+          src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+</Tab>
+<Tab value="Nextra 3 (Pages Router)">
+Create `pages/_app.jsx` if your project does not have one, and render the `Script` beside the page:
+
+```jsx title="pages/_app.jsx"
+import Script from "next/script";
+
+export default function App({ Component, pageProps }) {
+  return (
+    <>
+      <Component {...pageProps} />
+      <Script
+        src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+        strategy="afterInteractive"
+      />
+    </>
+  );
+}
+```
+
+Do not put the tag in the `head` option of `theme.config.jsx`: that option renders through `next/head`, and Next.js warns against loading scripts there.
+</Tab>
+</Tabs>
+
+Nextra navigates between pages client-side. Rybbit records those route changes as pageviews, so no extra code is needed.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Only the docs pages are tracked**: in Nextra 4 the tag belongs in the root `app/layout.jsx`, not in a nested `app/docs/layout.jsx`, otherwise landing pages outside `docs/` are missed.
+- **Upgrading from Nextra 3**: Nextra 4 dropped the Pages Router and `theme.config`. Move the `Script` from `pages/_app.jsx` to `app/layout.jsx` as part of the migration.
+- **Proxying through your own domain**: see the [Next.js guide](/docs/guides/react/next-js) for rewrites; every endpoint must be rewritten, not just `script.js`.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

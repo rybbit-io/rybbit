@@ -56,7 +56,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
     <th
       ref={ref}
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium text-neutral-500 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] dark:text-neutral-400 first:rounded-l-lg last:rounded-r-lg",
+        "h-8 px-2 text-left align-middle font-medium text-xs text-neutral-500 [&:has([role=checkbox])]:pr-0 *:[role=checkbox]:translate-y-[2px] dark:text-neutral-400",
         className
       )}
       {...props}
@@ -69,7 +69,7 @@ const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<
   ({ className, ...props }, ref) => (
     <td
       ref={ref}
-      className={cn("p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]", className)}
+      className={cn("p-2 align-middle [&:has([role=checkbox])]:pr-0 *:[role=checkbox]:translate-y-[2px]", className)}
       {...props}
     />
   )
@@ -84,9 +84,7 @@ const TableCaption = React.forwardRef<HTMLTableCaptionElement, React.HTMLAttribu
 TableCaption.displayName = "TableCaption";
 
 interface TableSortIndicatorProps {
-  /** The current sort direction: 'asc', 'desc', or false/undefined for unsorted */
   sortDirection?: false | "asc" | "desc";
-  /** Whether sorting is enabled for this column */
   canSort?: boolean;
   className?: string;
 }
@@ -97,9 +95,9 @@ const TableSortIndicator = ({ sortDirection, canSort = true, className }: TableS
   return (
     <div className={cn("flex flex-col", className)}>
       {sortDirection === "asc" ? (
-        <ChevronUp className="h-3 w-3 text-blue-400" />
+        <ChevronUp className="h-3 w-3 text-neutral-900 dark:text-neutral-100" />
       ) : sortDirection === "desc" ? (
-        <ChevronDown className="h-3 w-3 text-blue-400" />
+        <ChevronDown className="h-3 w-3 text-neutral-900 dark:text-neutral-100" />
       ) : (
         <ChevronsUpDown className="h-3 w-3 text-neutral-400" />
       )}

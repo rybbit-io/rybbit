@@ -1,0 +1,8 @@
+Open your live site in a new tab and click through a few pages. Within a few seconds the pageviews appear in the Rybbit dashboard.
+
+If nothing shows up:
+
+- View the page source and search for `script.js?siteId=` to confirm the snippet is on the page.
+- Open the browser Network tab and check that `script.js` returns `200` and that `POST` requests go to `/api/track`.
+- Disable ad blockers, or set up a [proxy](/docs/proxy-guide) so the script loads from your own domain.
+- See the [script troubleshooting guide](/docs/script-troubleshooting) for other common causes.

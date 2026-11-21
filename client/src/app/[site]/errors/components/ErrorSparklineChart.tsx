@@ -1,8 +1,9 @@
 "use client";
 
-import { GetErrorBucketedResponse } from "@/api/analytics/errors/useGetErrorBucketed";
+import { GetErrorBucketedResponse } from "@/api/analytics/endpoints";
 import { hour12, userLocale } from "@/lib/dateTimeUtils";
 import { useNivoTheme } from "@/lib/nivo";
+import { getTimezone } from "@/lib/store";
 import { ResponsiveBar } from "@nivo/bar";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
@@ -16,6 +17,7 @@ interface ErrorSparklineChartProps {
 
 export function ErrorSparklineChart({ data, isHovering, errorMessage, isLoading }: ErrorSparklineChartProps) {
   const nivoTheme = useNivoTheme();
+  const timezone = getTimezone();
 
   const chartData = useMemo(() => {
     if (!data || data.length === 0) {
@@ -25,18 +27,18 @@ export function ErrorSparklineChart({ data, isHovering, errorMessage, isLoading 
     return data
       .filter(e => {
         // Filter out dates from the future
-        return DateTime.fromSQL(e.time).toUTC() <= DateTime.now();
+        return DateTime.fromSQL(e.time, { zone: timezone }).toUTC() <= DateTime.now();
       })
       .map(e => ({
-        time: DateTime.fromSQL(e.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
+        time: DateTime.fromSQL(e.time, { zone: timezone }).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
         errors: e.error_count || 0,
       }));
-  }, [data]);
+  }, [data, timezone]);
 
   if (isLoading) {
     return (
       <div className="h-full w-full flex items-center justify-center animate-pulse">
-        <div className="h-[1px] w-full bg-border opacity-50"></div>
+        <div className="h-px w-full bg-border opacity-50"></div>
       </div>
     );
   }
@@ -44,7 +46,7 @@ export function ErrorSparklineChart({ data, isHovering, errorMessage, isLoading 
   if (!chartData || chartData.length === 0) {
     return (
       <div className="h-full w-full flex items-center justify-center">
-        <div className="h-[1px] w-full bg-border opacity-50"></div>
+        <div className="h-px w-full bg-border opacity-50"></div>
       </div>
     );
   }
@@ -76,7 +78,7 @@ export function ErrorSparklineChart({ data, isHovering, errorMessage, isLoading 
         value: number;
         data: { time: string; errors: number };
       }) => {
-        const currentTime = DateTime.fromFormat(data.time, "yyyy-MM-dd HH:mm:ss", { zone: "utc" }).toLocal();
+        const currentTime = DateTime.fromFormat(data.time, "yyyy-MM-dd HH:mm:ss", { zone: "utc" }).setZone(getTimezone());
         const currentY = Number(value);
 
         return (
@@ -85,7 +87,7 @@ export function ErrorSparklineChart({ data, isHovering, errorMessage, isLoading 
             style={{ zIndex: 9999, position: "relative" }}
           >
             <div className="font-semibold mb-1 text-neutral-700 dark:text-neutral-200">
-              {formatDateTime(currentTime)}
+              {formatDateTime(currentTime, timezone)}
             </div>
             <div className="flex justify-between items-center">
               <span className="font-medium text-red-400">
@@ -102,13 +104,14 @@ export function ErrorSparklineChart({ data, isHovering, errorMessage, isLoading 
   );
 }
 
-const formatDateTime = (dt: DateTime) => {
+const formatDateTime = (dt: DateTime, tz: string) => {
   const options: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "numeric",
     hour12: hour12,
+    timeZone: tz,
   };
 
   return new Intl.DateTimeFormat(userLocale, options).format(dt.toJSDate());

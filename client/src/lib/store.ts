@@ -1,267 +1,213 @@
 import { Filter, FilterParameter, TimeBucket } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { create } from "zustand";
-import { Time } from "../components/DateSelector/types";
+import { persist } from "zustand/middleware";
+import { Comparison, DEFAULT_COMPARISON, Time } from "../components/DateSelector/types";
+import { LITE_DASHBOARD } from "./const";
+import { getDashboardTimeForRange, getStoredDashboardDefaultTime } from "./defaultTimeRange";
+import {
+  canGoForward as canGoForwardFrom,
+  getBucketForTime,
+  hasRangeTimes,
+  recalculateTimeForTimezone,
+  resolveComparison,
+  shiftTimeBackward,
+  shiftTimeForward,
+} from "./time";
+
+// The lite dashboard is backed by hourly materialized views, so anything finer
+// than an hour has no underlying data. Clamp auto-selected buckets up to "hour".
+const SUB_HOUR_BUCKETS: TimeBucket[] = ["minute", "five_minutes", "ten_minutes", "fifteen_minutes"];
+const clampBucketForLite = (bucket: TimeBucket): TimeBucket =>
+  LITE_DASHBOARD && SUB_HOUR_BUCKETS.includes(bucket) ? "hour" : bucket;
+
+// Get system timezone
+const getSystemTimezone = () =>
+  typeof window !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
 export type StatType = "pageviews" | "sessions" | "users" | "pages_per_session" | "bounce_rate" | "session_duration";
+
+const getTimeState = (
+  time: Time,
+  comparison: Comparison = DEFAULT_COMPARISON
+): Pick<Store, "time" | "previousTime" | "bucket" | "comparison"> => {
+  // Resolve the zone lazily: this runs during store creation (before useStore
+  // exists), and only range-with-times values actually need the zone.
+  const zone = hasRangeTimes(time) ? getTimezone() : "UTC";
+  return {
+    time,
+    comparison,
+    previousTime: resolveComparison(time, comparison, zone),
+    bucket: clampBucketForLite(getBucketForTime(time, zone)),
+  };
+};
 
 type Store = {
   site: string;
   setSite: (site: string) => void;
   privateKey: string | null;
   setPrivateKey: (privateKey: string | null) => void;
+  setSiteContext: (site: string, privateKey: string | null) => void;
   time: Time;
-  previousTime: Time;
+  /** The window the comparison line is drawn from; null when comparison is off. */
+  previousTime: Time | null;
   setTime: (time: Time, changeBucket?: boolean) => void;
+  comparison: Comparison;
+  setComparison: (comparison: Comparison) => void;
   bucket: TimeBucket;
   setBucket: (bucket: TimeBucket) => void;
   selectedStat: StatType;
   setSelectedStat: (stat: StatType) => void;
   filters: Filter[];
   setFilters: (filters: Filter[]) => void;
+  /** The saved segment whose filters are part of `filters`; null when none is applied. */
+  segmentId: number | null;
+  setSegmentId: (segmentId: number | null) => void;
+  timezone: string;
+  setTimezone: (timezone: string) => void;
 };
 
-export const useStore = create<Store>(set => ({
-  site: "",
-  setSite: site => {
-    // Get current URL search params to check for stored state
-    let urlParams: URLSearchParams | null = null;
-    if (typeof window !== "undefined") {
-      urlParams = new URLSearchParams(globalThis.location.search);
+type PersistedStore = Pick<Store, "timezone">;
+
+const getUrlParams = () => (typeof window !== "undefined" ? new URLSearchParams(globalThis.location.search) : null);
+
+// Presets resolve in the selected timezone: "Today" is a different calendar day
+// in Los Angeles than in a Tokyo browser for part of every day.
+const getDefaultTime = (): Time => getStoredDashboardDefaultTime(getTimezone());
+
+const getDefaultTimeState = () => getTimeState(getDefaultTime());
+
+// The store is created during both server rendering and the browser's first
+// render. Keep that initial state independent of localStorage so React hydrates
+// the same markup; client-side URL/default-range initialization runs afterward.
+const getInitialTimeState = () => getTimeState(getDashboardTimeForRange("today", "UTC"));
+
+const getSiteStateForUrl = (state: Store, site: string, privateKey?: string | null): Partial<Store> => {
+  const urlParams = getUrlParams();
+  const hasTimeInUrl = urlParams?.has("timeMode") || urlParams?.has("wellKnown");
+  const hasBucketInUrl = urlParams?.has("bucket");
+  const hasStatInUrl = urlParams?.has("stat");
+  const hasFiltersInUrl = urlParams?.has("filters");
+  const hasSegmentInUrl = urlParams?.has("segment");
+  const defaultTimeState = getDefaultTimeState();
+
+  return {
+    site,
+    ...(privateKey !== undefined ? { privateKey } : {}),
+    time: hasTimeInUrl ? state.time : defaultTimeState.time,
+    previousTime: hasTimeInUrl ? state.previousTime : defaultTimeState.previousTime,
+    comparison: hasTimeInUrl ? state.comparison : defaultTimeState.comparison,
+    bucket: hasBucketInUrl ? state.bucket : defaultTimeState.bucket,
+    selectedStat: hasStatInUrl ? state.selectedStat : "users",
+    filters: hasFiltersInUrl ? state.filters : [],
+    segmentId: hasSegmentInUrl ? state.segmentId : null,
+  };
+};
+
+export const useStore = create<Store, [["zustand/persist", PersistedStore]]>(
+  persist<Store, [], [], PersistedStore>(
+    (set, get) => ({
+      site: "",
+      setSite: site => {
+        set(state => getSiteStateForUrl(state, site));
+      },
+      privateKey: null,
+      setPrivateKey: privateKey => set({ privateKey }),
+      setSiteContext: (site, privateKey) => {
+        set(state => getSiteStateForUrl(state, site, privateKey));
+      },
+      ...getInitialTimeState(),
+      setTime: (time, changeBucket = true) => {
+        const nextTimeState = getTimeState(time, get().comparison);
+
+        if (changeBucket) {
+          set(nextTimeState);
+        } else {
+          set({ time, previousTime: nextTimeState.previousTime });
+        }
+      },
+      // A comparison is stored as the choice, not as the window it resolves to,
+      // so stepping the date selector carries it along instead of stranding the
+      // dashboard on the period it was picked in.
+      setComparison: comparison => set(getTimeState(get().time, comparison)),
+      setBucket: bucket => set({ bucket }),
+      selectedStat: "users",
+      setSelectedStat: stat => set({ selectedStat: stat }),
+      filters: [],
+      setFilters: filters => set({ filters }),
+      segmentId: null,
+      setSegmentId: segmentId => set({ segmentId }),
+      timezone: "system",
+      setTimezone: newTimezone => {
+        const state = get();
+        const resolvedTz = newTimezone === "system" ? getSystemTimezone() : newTimezone;
+        const newTime = recalculateTimeForTimezone(state.time, resolvedTz);
+
+        // If time should be recalculated (has wellKnown), update via setTime
+        if (newTime) {
+          set({ timezone: newTimezone });
+          // Use setTime to properly recalculate previousTime and bucket
+          get().setTime(newTime);
+        } else {
+          set({ timezone: newTimezone });
+        }
+      },
+    }),
+    {
+      name: "rybbit-store",
+      partialize: state => ({ timezone: state.timezone }),
     }
+  )
+);
 
-    // Check if we have state stored in the URL
-    const hasTimeInUrl = urlParams?.has("timeMode");
-    const hasBucketInUrl = urlParams?.has("bucket");
-    const hasStatInUrl = urlParams?.has("stat");
+// Helper to get actual timezone value (resolves "system" to actual timezone)
+export const getTimezone = () => {
+  const { timezone } = useStore.getState();
+  return timezone === "system" ? getSystemTimezone() : timezone;
+};
 
-    // Only set defaults if not present in URL
-    set(state => ({
-      site,
-      time: hasTimeInUrl
-        ? state.time
-        : {
-            mode: "day",
-            day: DateTime.now().toISODate(),
-            wellKnown: "today",
-          },
-      previousTime: hasTimeInUrl
-        ? state.previousTime
-        : {
-            mode: "day",
-            day: DateTime.now().minus({ days: 1 }).toISODate(),
-            wellKnown: "yesterday",
-          },
-      bucket: hasBucketInUrl ? state.bucket : "hour",
-      selectedStat: hasStatInUrl ? state.selectedStat : "users",
-    }));
-  },
-  privateKey: null,
-  setPrivateKey: privateKey => set({ privateKey }),
-  time: {
-    mode: "day",
-    day: DateTime.now().toISODate(),
-    wellKnown: "today",
-  },
-  previousTime: {
-    mode: "day",
-    day: DateTime.now().minus({ days: 1 }).toISODate(),
-    wellKnown: "yesterday",
-  },
-  setTime: (time, changeBucket = true) => {
-    let bucketToUse: TimeBucket = "hour";
-    let previousTime: Time;
+// Reactive form of getTimezone: re-renders when the user switches timezone.
+export const useTimezone = () => {
+  const timezone = useStore(state => state.timezone);
+  return timezone === "system" ? getSystemTimezone() : timezone;
+};
 
-    if (time.mode === "day") {
-      bucketToUse = "hour";
-      previousTime = {
-        mode: "day",
-        day: DateTime.fromISO(time.day).minus({ days: 1 }).toISODate() ?? "",
-      };
-    } else if (time.mode === "past-minutes") {
-      const timeDiff = time.pastMinutesStart - time.pastMinutesEnd;
+// Whether a comparison window exists at all — false only when the user has
+// turned the comparison off, which is what hides every delta and dotted line.
+export const useComparisonEnabled = () => useStore(state => state.previousTime !== null);
 
-      if (timeDiff <= 120) {
-        bucketToUse = "minute";
-      }
-
-      previousTime = {
-        mode: "past-minutes",
-        pastMinutesStart: time.pastMinutesStart + timeDiff,
-        pastMinutesEnd: time.pastMinutesEnd + timeDiff,
-      };
-    } else if (time.mode === "range") {
-      const timeRangeLength = DateTime.fromISO(time.endDate).diff(DateTime.fromISO(time.startDate), "days").days + 1;
-
-      if (timeRangeLength > 180) {
-        bucketToUse = "month";
-      } else if (timeRangeLength > 31) {
-        bucketToUse = "week";
-      } else {
-        bucketToUse = "day";
-      }
-
-      previousTime = {
-        mode: "range",
-        startDate: DateTime.fromISO(time.startDate).minus({ days: timeRangeLength }).toISODate() ?? "",
-        endDate: DateTime.fromISO(time.startDate).minus({ days: 1 }).toISODate() ?? "",
-      };
-    } else if (time.mode === "week") {
-      bucketToUse = "day";
-      previousTime = {
-        mode: "week",
-        week: DateTime.fromISO(time.week).minus({ weeks: 1 }).toISODate() ?? "",
-      };
-    } else if (time.mode === "month") {
-      bucketToUse = "day";
-      previousTime = {
-        mode: "month",
-        month: DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
-      };
-    } else if (time.mode === "year") {
-      bucketToUse = "month";
-      previousTime = {
-        mode: "year",
-        year: DateTime.fromISO(time.year).minus({ years: 1 }).toISODate() ?? "",
-      };
-    } else if (time.mode === "all-time") {
-      bucketToUse = "day";
-      previousTime = {
-        mode: "all-time",
-      };
-    } else {
-      previousTime = time; // fallback case
-    }
-
-    if (changeBucket) {
-      set({ time, previousTime, bucket: bucketToUse });
-    } else {
-      set({ time, previousTime });
-    }
-  },
-  bucket: "hour",
-  setBucket: bucket => set({ bucket }),
-  selectedStat: "users",
-  setSelectedStat: stat => set({ selectedStat: stat }),
-  filters: [],
-  setFilters: filters => set({ filters }),
-}));
+// Helper to convert a DateTime to the user's selected timezone
+export const toUserTimezone = (dt: DateTime): DateTime => {
+  return dt.setZone(getTimezone());
+};
 
 export const resetStore = () => {
-  const { setSite, setTime, setBucket, setSelectedStat, setFilters } = useStore.getState();
+  const { setSite, setPrivateKey, setTime, setSelectedStat, setFilters, setSegmentId, setComparison } =
+    useStore.getState();
   setSite("");
-  setTime({ mode: "day", day: DateTime.now().toISODate(), wellKnown: "today" });
-  setBucket("hour");
+  setPrivateKey(null);
+  setComparison(DEFAULT_COMPARISON);
+  setTime(getDefaultTime());
   setSelectedStat("users");
   setFilters([]);
+  setSegmentId(null);
 };
 
 export const goBack = () => {
   const { time, setTime } = useStore.getState();
-
-  if (time.mode === "day") {
-    setTime(
-      {
-        mode: "day",
-        day: DateTime.fromISO(time.day).minus({ days: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "range") {
-    const startDate = DateTime.fromISO(time.startDate);
-    const endDate = DateTime.fromISO(time.endDate);
-
-    const daysBetweenStartAndEnd = endDate.diff(startDate, "days").days;
-
-    setTime(
-      {
-        mode: "range",
-        startDate: startDate.minus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
-        endDate: startDate.toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "week") {
-    setTime(
-      {
-        mode: "week",
-        week: DateTime.fromISO(time.week).minus({ weeks: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "month") {
-    setTime(
-      {
-        mode: "month",
-        month: DateTime.fromISO(time.month).minus({ months: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "year") {
-    setTime(
-      {
-        mode: "year",
-        year: DateTime.fromISO(time.year).minus({ years: 1 }).toISODate() ?? "",
-      },
-      false
-    );
+  const next = shiftTimeBackward(time, getTimezone());
+  if (next) {
+    setTime(next, false);
   }
 };
 
 export const goForward = () => {
   const { time, setTime } = useStore.getState();
-
-  if (time.mode === "day") {
-    setTime({
-      mode: "day",
-      day: DateTime.fromISO(time.day).plus({ days: 1 }).toISODate() ?? "",
-    });
-  } else if (time.mode === "range") {
-    const startDate = DateTime.fromISO(time.startDate);
-    const endDate = DateTime.fromISO(time.endDate);
-    const now = DateTime.now();
-
-    const daysBetweenStartAndEnd = endDate.diff(startDate, "days").days;
-    const proposedEndDate = endDate.plus({ days: daysBetweenStartAndEnd });
-
-    // Don't allow moving forward if it would put the entire range in the future
-    if (startDate.plus({ days: daysBetweenStartAndEnd }) > now) {
-      return;
-    }
-
-    setTime(
-      {
-        mode: "range",
-        startDate: startDate.plus({ days: daysBetweenStartAndEnd }).toISODate() ?? "",
-        // Cap the end date at today
-        endDate: proposedEndDate.toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "week") {
-    setTime(
-      {
-        mode: "week",
-        week: DateTime.fromISO(time.week).plus({ weeks: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "month") {
-    setTime(
-      {
-        mode: "month",
-        month: DateTime.fromISO(time.month).plus({ months: 1 }).toISODate() ?? "",
-      },
-      false
-    );
-  } else if (time.mode === "year") {
-    setTime(
-      {
-        mode: "year",
-        year: DateTime.fromISO(time.year).plus({ years: 1 }).toISODate() ?? "",
-      },
-      false
-    );
+  const next = shiftTimeForward(time, getTimezone());
+  if (next) {
+    // Historical quirk kept as-is: forward day steps recalculate the bucket,
+    // every other mode keeps the current one (matching goBack).
+    setTime(next, next.mode === "day");
   }
 };
 
@@ -288,7 +234,39 @@ export const updateFilter = (filter: Filter, index: number) => {
   setFilters(filters.map((f, i) => (i === index ? filter : f)));
 };
 
+const filterKey = (filter: Filter) => JSON.stringify([filter.parameter, filter.type, filter.value]);
+
+/**
+ * Applies a saved segment: its filters go first, ad-hoc filters that are not
+ * already part of it follow, and the filters of the segment being replaced
+ * (if any) are dropped. Every report keeps reading `filters`, so nothing
+ * else in the dashboard learns what a segment is.
+ */
+export const applySegment = (
+  segment: { segmentId: number; filters: Filter[] },
+  replacing: Filter[] = []
+) => {
+  const { filters, setFilters, setSegmentId } = useStore.getState();
+  const dropped = new Set(replacing.map(filterKey));
+  const segmentKeys = new Set(segment.filters.map(filterKey));
+  const adHoc = filters.filter(f => !dropped.has(filterKey(f)) && !segmentKeys.has(filterKey(f)));
+  setFilters([...segment.filters, ...adHoc]);
+  setSegmentId(segment.segmentId);
+};
+
+/** Removes an applied segment and the filters it contributed; ad-hoc filters stay. */
+export const clearSegment = (segmentFilters: Filter[]) => {
+  const { filters, setFilters, setSegmentId } = useStore.getState();
+  const segmentKeys = new Set(segmentFilters.map(filterKey));
+  setFilters(filters.filter(f => !segmentKeys.has(filterKey(f))));
+  setSegmentId(null);
+};
+
 export const getFilteredFilters = (parameters: FilterParameter[]) => {
   const { filters } = useStore.getState();
   return filters.filter(f => parameters.includes(f.parameter));
 };
+
+export const canGoForward = (time: Time) => canGoForwardFrom(time, getTimezone());
+
+export const canGoBack = (time: Time) => shiftTimeBackward(time, getTimezone()) !== null;

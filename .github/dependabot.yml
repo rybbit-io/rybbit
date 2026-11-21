@@ -1,11 +1,14 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
-    directory: "/client"
+    directory: "/"
     schedule:
       interval: "daily"
-
-  - package-ecosystem: "npm"
-    directory: "/server"
+  # Base images are pinned to exact Node patch releases, so let Dependabot raise
+  # them when Node ships a security release instead of relying on a floating tag.
+  - package-ecosystem: "docker"
+    directories:
+      - "/server"
+      - "/client"
     schedule:
       interval: "daily"

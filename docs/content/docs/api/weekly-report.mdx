@@ -1,0 +1,283 @@
+---
+title: Automated Weekly Report
+description: Combine the overview and metric endpoints into a scheduled digest that summarizes last week's traffic, the week-over-week change, and your top pages and traffic sources.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+This guide builds a script you can run on a schedule (a cron job, GitHub Action, or serverless function) that pulls the last seven complete days, compares them to the seven days before, and posts a digest to Slack, email, or anywhere else.
+
+**Endpoints used:**
+
+- [`GET /overview`](/docs/api/overview/overview) — headline metrics for a date range
+- [`GET /metric`](/docs/api/overview/metric) — top pages and traffic sources
+
+<Callout type="info">
+Every analytics endpoint takes the same [time parameters](/docs/api/getting-started#time-parameters). The trick behind any comparison report is calling the same endpoint twice with two adjacent date ranges of the same length.
+</Callout>
+
+`start_date` and `end_date` are both inclusive, and they are days in `time_zone`. So `start_date` 7 days ago with `end_date` today covers 8 days (7 full days plus today so far), which would inflate every change against a 7-day prior week. The scripts below end both ranges on complete days and work out the dates in the report's timezone.
+
+## The workflow
+
+<Steps>
+<Step>
+**Fetch this week's overview** for the last 7 complete days (yesterday and the six days before it).
+</Step>
+<Step>
+**Fetch last week's overview** for the 7 days before that, so you can compute the change on equal-length periods.
+</Step>
+<Step>
+**Fetch top pages and top sources** from the `metric` endpoint to add context.
+</Step>
+<Step>
+**Format and deliver** the digest.
+</Step>
+</Steps>
+
+## Full script
+
+This example posts a formatted message to a Slack incoming webhook, but the `buildReport` function returns plain data you can route anywhere.
+
+<Tabs items={['JavaScript', 'Python']}>
+<Tab value="JavaScript">
+```javascript title="weekly-report.js"
+const API = 'https://app.rybbit.io';
+const SITE = '123';
+const API_KEY = process.env.RYBBIT_API_KEY;
+const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK;
+const TZ = 'America/New_York';
+
+// Today's date in the report's timezone, as YYYY-MM-DD
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+
+// Shift a YYYY-MM-DD date by n days
+function addDays(date, n) {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+async function get(path, params) {
+  const url = new URL(`${API}/api/sites/${SITE}${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
+async function overview(start, end) {
+  const { data } = await get('/overview', {
+    start_date: start,
+    end_date: end,
+    time_zone: TZ,
+  });
+  return data;
+}
+
+async function topMetric(parameter, start, end, limit = 5) {
+  const { data } = await get('/metric', {
+    parameter,
+    start_date: start,
+    end_date: end,
+    time_zone: TZ,
+    limit,
+  });
+  return data.data; // metric nests results under data.data
+}
+
+function pctChange(current, previous) {
+  if (!previous) return null;
+  return ((current - previous) / previous) * 100;
+}
+
+async function buildReport() {
+  // Two 7-day ranges of complete days; end_date is inclusive
+  const thisWeekEnd   = addDays(today, -1);
+  const thisWeekStart = addDays(today, -7);
+  const lastWeekEnd   = addDays(today, -8);
+  const lastWeekStart = addDays(today, -14);
+
+  const [thisWeek, lastWeek, topPages, topSources] = await Promise.all([
+    overview(thisWeekStart, thisWeekEnd),
+    overview(lastWeekStart, lastWeekEnd),
+    topMetric('pathname', thisWeekStart, thisWeekEnd),
+    topMetric('referrer', thisWeekStart, thisWeekEnd),
+  ]);
+
+  return {
+    sessions: { value: thisWeek.sessions, change: pctChange(thisWeek.sessions, lastWeek.sessions) },
+    users:    { value: thisWeek.users,    change: pctChange(thisWeek.users, lastWeek.users) },
+    pageviews:{ value: thisWeek.pageviews, change: pctChange(thisWeek.pageviews, lastWeek.pageviews) },
+    bounceRate: thisWeek.bounce_rate,
+    topPages,
+    topSources,
+  };
+}
+
+function arrow(change) {
+  if (change === null) return '';
+  const sign = change >= 0 ? '▲' : '▼';
+  return ` ${sign} ${Math.abs(change).toFixed(1)}%`;
+}
+
+async function postToSlack(r) {
+  const lines = [
+    `*📊 Weekly Analytics Report*`,
+    ``,
+    `• Sessions: *${r.sessions.value.toLocaleString()}*${arrow(r.sessions.change)}`,
+    `• Unique users: *${r.users.value.toLocaleString()}*${arrow(r.users.change)}`,
+    `• Pageviews: *${r.pageviews.value.toLocaleString()}*${arrow(r.pageviews.change)}`,
+    // bounce_rate is null when there were no sessions
+    `• Bounce rate: *${r.bounceRate == null ? 'n/a' : `${r.bounceRate.toFixed(1)}%`}*`,
+    ``,
+    `*Top pages*`,
+    ...r.topPages.map((p) => `   ${p.value} — ${p.count.toLocaleString()}`),
+    ``,
+    `*Top sources*`,
+    ...r.topSources.map((s) => `   ${s.value} — ${s.count.toLocaleString()}`),
+  ];
+  await fetch(SLACK_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: lines.join('\n') }),
+  });
+}
+
+buildReport().then(postToSlack).catch(console.error);
+```
+</Tab>
+<Tab value="Python">
+```python title="weekly_report.py"
+import os
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+import requests
+
+API = "https://app.rybbit.io"
+SITE = "123"
+API_KEY = os.environ["RYBBIT_API_KEY"]
+SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK"]
+TZ = "America/New_York"
+
+session = requests.Session()
+session.headers["Authorization"] = f"Bearer {API_KEY}"
+
+
+def ymd(d: date) -> str:
+    return d.isoformat()
+
+
+def get(path: str, **params):
+    res = session.get(f"{API}/api/sites/{SITE}{path}", params=params)
+    res.raise_for_status()
+    return res.json()
+
+
+def overview(start, end):
+    return get("/overview", start_date=ymd(start), end_date=ymd(end), time_zone=TZ)["data"]
+
+
+def top_metric(parameter, start, end, limit=5):
+    # metric nests results under data.data
+    return get("/metric", parameter=parameter, start_date=ymd(start),
+               end_date=ymd(end), time_zone=TZ, limit=limit)["data"]["data"]
+
+
+def pct_change(current, previous):
+    return None if not previous else (current - previous) / previous * 100
+
+
+def build_report():
+    # Two 7-day ranges of complete days in the report's timezone; end_date is inclusive
+    today = datetime.now(ZoneInfo(TZ)).date()
+    this_end = today - timedelta(days=1)
+    this_start = today - timedelta(days=7)
+    last_end = today - timedelta(days=8)
+    last_start = today - timedelta(days=14)
+
+    this_week = overview(this_start, this_end)
+    last_week = overview(last_start, last_end)
+
+    return {
+        "sessions": (this_week["sessions"], pct_change(this_week["sessions"], last_week["sessions"])),
+        "users": (this_week["users"], pct_change(this_week["users"], last_week["users"])),
+        "pageviews": (this_week["pageviews"], pct_change(this_week["pageviews"], last_week["pageviews"])),
+        "bounce_rate": this_week["bounce_rate"],
+        "top_pages": top_metric("pathname", this_start, this_end),
+        "top_sources": top_metric("referrer", this_start, this_end),
+    }
+
+
+def arrow(change):
+    if change is None:
+        return ""
+    return f" {'▲' if change >= 0 else '▼'} {abs(change):.1f}%"
+
+
+def post_to_slack(r):
+    # bounce_rate is None when there were no sessions
+    bounce = "n/a" if r["bounce_rate"] is None else f"{r['bounce_rate']:.1f}%"
+    lines = [
+        "*📊 Weekly Analytics Report*", "",
+        f"• Sessions: *{r['sessions'][0]:,}*{arrow(r['sessions'][1])}",
+        f"• Unique users: *{r['users'][0]:,}*{arrow(r['users'][1])}",
+        f"• Pageviews: *{r['pageviews'][0]:,}*{arrow(r['pageviews'][1])}",
+        f"• Bounce rate: *{bounce}*", "",
+        "*Top pages*",
+        *[f"   {p['value']} — {p['count']:,}" for p in r["top_pages"]], "",
+        "*Top sources*",
+        *[f"   {s['value']} — {s['count']:,}" for s in r["top_sources"]],
+    ]
+    requests.post(SLACK_WEBHOOK, json={"text": "\n".join(lines)})
+
+
+post_to_slack(build_report())
+```
+</Tab>
+</Tabs>
+
+## Example output
+
+```text
+📊 Weekly Analytics Report
+
+• Sessions: 15,420 ▲ 12.3%
+• Unique users: 12,847 ▲ 9.8%
+• Pageviews: 48,933 ▼ 2.1%
+• Bounce rate: 42.8%
+
+Top pages
+   / — 8,230
+   /pricing — 3,120
+   /blog/getting-started — 1,940
+
+Top sources
+   google.com — 6,410
+   twitter.com — 1,180
+   news.ycombinator.com — 640
+```
+
+`referrer` lists only sessions that arrived with a referrer; direct visits have an empty referrer and are left out of the metric. To show direct traffic, use `topMetric('channel', ...)`, which includes a `Direct` row.
+
+## Schedule it
+
+Run the script every Monday morning with cron:
+
+```bash title="crontab -e"
+# Every Monday at 9:00 AM
+0 9 * * 1 RYBBIT_API_KEY=xxx SLACK_WEBHOOK=https://hooks.slack.com/... node /path/to/weekly-report.js
+```
+
+<Callout type="info">
+The same pattern extends to a richer report: add `topMetric('channel', ...)` for marketing channels, `topMetric('country', ...)` for geography, or call the [`time-series` endpoint](/docs/api/overview/time-series) with `bucket=day` to attach a 7-point trend line (use the same `start_date` and `end_date`).
+</Callout>
+
+## Next steps
+
+- [Compare Marketing Channel Performance](/docs/api/channel-performance) — go beyond traffic counts and rank sources by how well they convert.
+- [Events API reference](/docs/api/events/list) — page through raw events if you'd rather build reports in your own BI tool.

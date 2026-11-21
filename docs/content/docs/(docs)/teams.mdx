@@ -1,0 +1,81 @@
+---
+title: Teams
+description: Organize sites into teams to control which members can access them
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Teams let you group sites together and control which organization members can access them. This is useful for organizations managing multiple properties where different people are responsible for different sites.
+
+Open teams by clicking **Teams** in the settings sidebar or going to [app.rybbit.io/settings/teams](https://app.rybbit.io/settings/teams). Only admins and owners see the **Teams** item.
+
+![teams](/docs/teams.png)
+
+## How Teams Work
+
+A team has four things:
+
+- **A name** — identifies the team (e.g. "Marketing Sites", "Client Projects")
+- **Members** — organization members assigned to the team
+- **Sites** — the sites that belong to the team
+- **Role on the team's sites** (optional) — raises the members' role on the team's sites, e.g. to **Editor**. Left empty, each member keeps their own organization role there. It never lowers anyone's role.
+
+When a member is assigned to a team, they can access all sites within that team. Admins and owners always have access to all sites regardless of team assignments.
+
+<Callout type="info">
+  A site that belongs to a team is only visible to that team's members (plus admins and owners, and anyone explicitly granted the site). Sites in no team are visible to every unrestricted member.
+</Callout>
+
+## Creating a Team
+
+1. Go to **Settings > Teams**
+2. Click **Create team**
+3. Enter a **Team Name**
+4. Select which members should belong to the team
+5. Select which sites the team should have access to
+6. Optionally pick a role the team's members get on those sites
+7. Click **Create Team**
+
+You can also create a team directly from the team filter on the home page.
+
+## Managing Teams
+
+The **Teams** table lists each team with its **Members**, **Sites** and **Role on its sites**. Click a row to expand it and see what the team does for each member, which sites it covers, and **Add people** or **Add sites** shortcuts.
+
+### Editing a Team
+
+Click the edit (pencil) icon at the end of a team's row to update its name, members, sites, or role on its sites, then click **Save Changes**.
+
+### Deleting a Team
+
+Click the delete (trash) icon at the end of a team's row and confirm with **Delete Team**. Sites assigned to the team become unassigned and visible to all members.
+
+<Callout type="warn">
+  Deleting a team removes all member-to-site associations through that team. Members who only had access via the deleted team will lose access to those sites.
+</Callout>
+
+## Access by site
+
+Below the teams table, **Access by site** lists every site with who can open it, with what role, and why: through a team (shown by the team's name) or a **Direct** grant. When a site role is higher than the person's organization role, the original role is shown as "from" that role. Owners and admins always reach every site, so they're summarized as people with all-site access rather than listed per site.
+
+Use it to check access before and after you change a team.
+
+## Filtering by Team
+
+On the home page, use the team selector in the toolbar to filter the site list by team. The options are:
+
+- **All Teams** — show all sites
+- **No Team** — show only sites not assigned to any team
+- **Specific team** — show only sites belonging to that team
+
+## Assigning Teams During Invitation
+
+When [inviting a new member](/docs/inviting-users), you can optionally assign them to a team. When the member accepts the invitation, they will automatically be added to the selected team.
+
+## Permissions
+
+| Role | Can create, edit and delete teams | Can view team-restricted sites |
+|------|----------------------------------|-------------------------------|
+| **Owner** | Yes | All sites |
+| **Admin** | Yes | All sites |
+| **Editor, Member, Viewer** | No | Only sites in their assigned teams |

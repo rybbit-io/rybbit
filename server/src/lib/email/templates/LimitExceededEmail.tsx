@@ -1,98 +1,72 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Section,
-  Text,
-  Tailwind,
-  pixelBasedPreset,
-} from "@react-email/components";
+import { DateTime } from "luxon";
 import * as React from "react";
+import { appUrl, formatCount, formatDateTime, plural } from "../format.js";
+import { usagePercent, usagePeriod, type UsageEmailProps } from "./ApproachingLimitEmail.js";
+import { Badge, color, H1, HELP_URL, LedgerLayout, Meter, Note, P, PrimaryButton, Rows } from "./ledger.js";
 
-interface LimitExceededEmailProps {
-  organizationName: string;
-  eventCount: number;
-  eventLimit: number;
-  upgradeLink: string;
-}
+const MAX_LISTED_SITES = 5;
 
+const shortDate = (date: DateTime) => date.setZone("utc").toFormat("LLL d");
+
+/**
+ * Over the limit, ingestion stops for every site in the organization until the
+ * month resets or the plan changes (a Stripe webhook refreshes the blocks
+ * straight away). Dashboards and stored data stay readable throughout.
+ */
 export const LimitExceededEmail = ({
   organizationName,
   eventCount,
   eventLimit,
-  upgradeLink,
-}: LimitExceededEmailProps) => {
-  const currentYear = new Date().getFullYear();
+  sites,
+  now = DateTime.utc(),
+}: UsageEmailProps) => {
+  const { start, reset } = usagePeriod(now);
+  const domains = sites.map(site => site.domain);
+  const listed = domains.slice(0, MAX_LISTED_SITES).join(", ");
+  const hidden = domains.length - MAX_LISTED_SITES;
+  const which =
+    domains.length === 0 ? "its sites" : domains.length === 1 ? domains[0] : `its ${plural(domains.length, "site")}`;
 
   return (
-    <Html>
-      <Head />
-      <Preview>Your organization has exceeded its monthly event limit</Preview>
-      <Tailwind
-        config={{
-          presets: [pixelBasedPreset],
-          theme: {
-            extend: {
-              colors: {
-                brand: "#10b981",
-                lightBg: "#ffffff",
-                cardBg: "#f9fafb",
-                darkText: "#111827",
-                mutedText: "#6b7280",
-                borderColor: "#e5e7eb",
-                warningBg: "#dc2626",
-              },
-            },
-          },
-        }}
-      >
-        <Body className="bg-lightBg font-sans">
-          <Container className="mx-auto py-10 px-6 max-w-[600px]">
-            <Section className="text-center">
-              <div className="inline-block bg-warningBg/20 text-warningBg px-3 py-1.5 rounded-full text-sm font-medium mb-4">
-                Event Limit Exceeded
-              </div>
-              <Heading className="text-darkText text-3xl font-semibold mb-6">Monthly Event Limit Reached</Heading>
-            </Section>
-
-            <Section className="mb-8">
-              <Text className="text-darkText text-base leading-relaxed mb-4">
-                Your organization <span className="font-bold text-brand">{organizationName}</span> has exceeded its
-                monthly event limit.
-              </Text>
-              <Text className="text-darkText text-base leading-relaxed mb-4">
-                <strong>Current usage:</strong> {eventCount.toLocaleString()} events
-                <br />
-                <strong>Monthly limit:</strong> {eventLimit.toLocaleString()} events
-              </Text>
-              <Text className="text-darkText text-base leading-relaxed">
-                Your analytics tracking has been paused. To continue tracking events and accessing your analytics data,
-                please upgrade your plan.
-              </Text>
-            </Section>
-
-            <Section className="text-center mb-10">
-              <Button
-                href={upgradeLink}
-                className="bg-brand text-white px-8 py-3 rounded-md font-bold text-base no-underline inline-block"
-              >
-                Upgrade Your Plan
-              </Button>
-            </Section>
-
-            <Section className="text-center border-t border-borderColor pt-5">
-              <Text className="text-mutedText text-xs mb-2">
-                Need help? Contact our support team at support@rybbit.com
-              </Text>
-              <Text className="text-mutedText text-xs">© {currentYear} Rybbit Analytics</Text>
-            </Section>
-          </Container>
-        </Body>
-      </Tailwind>
-    </Html>
+    <LedgerLayout
+      preview={`You went over your ${formatCount(eventLimit)}-event limit. Upgrade to start tracking again.`}
+      footer={[
+        { label: "Help", href: HELP_URL },
+        { label: "Billing", href: `${appUrl()}/settings/billing` },
+      ]}
+    >
+      <H1>Tracking is paused for {organizationName}</H1>
+      <P>
+        {organizationName} went over its {formatCount(eventLimit)}-event monthly limit, so Rybbit has stopped tracking{" "}
+        {which}.
+      </P>
+      <div style={{ marginTop: 24 }}>
+        <Badge tone="danger">Paused</Badge>
+        <span style={{ paddingLeft: 8, fontSize: 13, lineHeight: "20px", color: color.muted }}>
+          since {now.setZone("utc").toFormat("LLL d, HH:mm 'UTC'")}
+        </span>
+      </div>
+      <Meter
+        top={16}
+        used={formatCount(eventCount)}
+        of={`${formatCount(eventLimit)} events`}
+        percent={usagePercent(eventCount, eventLimit)}
+        barColor={color.danger}
+        startLabel={shortDate(start)}
+        endLabel={`Resets ${shortDate(reset)}`}
+      />
+      <Rows
+        rows={[
+          { label: "Paused since", value: formatDateTime(now) },
+          ...(domains.length > 0
+            ? [{ label: "Sites affected", value: hidden > 0 ? `${listed} and ${hidden} more` : listed }]
+            : []),
+          { label: "Resumes", value: `${shortDate(reset)}, or as soon as you upgrade`, strong: true },
+        ]}
+      />
+      <P top={24}>Your dashboards and existing data are still available.</P>
+      <PrimaryButton label="Upgrade and resume tracking" href={`${appUrl()}/settings/billing`} />
+      <Note>Questions? Just reply.</Note>
+    </LedgerLayout>
   );
 };

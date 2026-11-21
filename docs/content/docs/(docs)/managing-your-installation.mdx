@@ -1,0 +1,125 @@
+---
+title: Managing your installation
+description: Managing your Rybbit installation
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Helpful scripts
+<Callout>
+You probably need to run `chmod +x *.sh` before running the scripts.
+</Callout>
+
+### Updating Your Installation
+
+Rybbit is updated frequently with new features and bug fixes. To update, run:
+
+```bash
+./update.sh
+```
+
+The script runs `git stash` and `git pull` to update the repository, pulls the latest Docker images, and recreates the containers.
+
+<Callout type="warn">
+`update.sh` stashes any local changes to tracked files, such as edits to `Caddyfile` or `docker-compose.yml`, and does not restore them. Your `.env` file is not affected. To get stashed edits back, run `git stash list` and `git stash pop`. Keep your customizations in `.env` and in a `docker-compose.override.yml` file, which Docker Compose loads automatically and `git stash` leaves alone.
+</Callout>
+
+### Image tags
+
+The backend and client images are published to `ghcr.io/rybbit-io/rybbit-backend` and `ghcr.io/rybbit-io/rybbit-client` with these tags:
+
+| Tag | Points to |
+| --- | --- |
+| `latest` | The most recent release (the default) |
+| `vX.Y.Z` | A specific release, e.g. `v2.9.2` |
+| `edge` | The latest commit on `master`, which may not be released yet |
+| `sha-<short commit>` | A single commit |
+
+`docker compose pull` fetches whatever `IMAGE_TAG` points to. To pin a release, set it in `.env`:
+
+```bash
+IMAGE_TAG=v2.9.2
+```
+
+Then run `./update.sh` or `docker compose pull` followed by your usual start command. Remove the line to go back to `latest`.
+
+### Restarting Your Installation
+
+**restart.sh**: Restart all services (useful when you've changed .env settings)
+  ```bash
+  ./restart.sh
+  ```
+
+## Docker Compose Commands
+
+You can also manage services directly with Docker Compose:
+
+- **Stop all services**:
+  ```bash
+  docker compose stop
+  ```
+
+- **Stop and remove containers** (preserves data):
+  ```bash
+  docker compose down
+  ```
+
+- **Start services** (if you used setup.sh with default webserver):
+  ```bash
+  docker compose --profile with-webserver up -d
+  ```
+
+- **Start services** (if you used setup.sh with --no-webserver):
+  ```bash
+  docker compose up -d
+  ```
+
+- **View logs**:
+  ```bash
+  docker compose logs -f
+  ```
+
+<Callout>
+If you are using your self-hosted Rybbit without anyone else, you can disable new user signups by setting `DISABLE_SIGNUP=true` in the `.env` file at the root of the repository.
+</Callout>
+
+## Database Access
+
+You can access the databases by running the following commands:
+
+- **Access Clickhouse**:
+  ```bash
+  docker exec -it clickhouse clickhouse-client --database analytics
+  ```
+
+- **Access Postgres**:
+  ```bash
+  docker exec -it postgres psql -U frog -d analytics
+  ```
+### Edit Session Replay Retention Policy
+
+The default session replay retention policy is 30 days. This may be too long for some users as session replays can take up a lot of space. You can edit it by running the following commands:
+
+```bash
+docker exec -it clickhouse clickhouse-client --database analytics
+ALTER TABLE session_replay_events MODIFY TTL toDateTime(timestamp) + INTERVAL 14 DAY;
+ALTER TABLE session_replay_metadata_v2 MODIFY TTL toDateTime(start_time) + INTERVAL 14 DAY;
+```
+
+The older `session_replay_metadata` table is no longer written to, so its 30-day TTL empties it on its own.
+
+## Anonymous Usage Telemetry
+
+To help us improve Rybbit, self-hosted instances automatically send anonymous usage statistics to our cloud service. This includes:
+
+- Number of rows in a few core ClickHouse tables (events and the session replay tables)
+- Total database size
+- Your Rybbit version
+- A hashed instance identifier
+
+No personal data, website content, or visitor information is ever collected.
+
+<Callout type="info">
+You can completely disable telemetry by adding `DISABLE_TELEMETRY=true` to your `.env` file and restarting your services.
+</Callout>

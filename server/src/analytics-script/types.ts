@@ -1,10 +1,13 @@
 export interface ScriptConfig {
+  namespace: string;
   analyticsHost: string;
   siteId: string;
+  visitorId: string;
   debounceDuration: number;
   autoTrackPageview: boolean;
   autoTrackSpa: boolean;
   trackQuerystring: boolean;
+  trackUrlFragments: boolean;
   trackOutbound: boolean;
   enableWebVitals: boolean;
   trackErrors: boolean;
@@ -14,6 +17,37 @@ export interface ScriptConfig {
   sessionReplayMaskTextSelectors: string[];
   skipPatterns: string[];
   maskPatterns: string[];
+  // Session replay rrweb options
+  sessionReplayBlockClass?: string;
+  sessionReplayBlockSelector?: string;
+  sessionReplayIgnoreClass?: string;
+  sessionReplayIgnoreSelector?: string;
+  sessionReplayMaskTextClass?: string;
+  sessionReplayMaskAllInputs?: boolean;
+  sessionReplayMaskInputOptions?: Record<string, boolean>;
+  sessionReplayCollectFonts?: boolean;
+  sessionReplaySampling?: Record<string, any>;
+  sessionReplaySlimDOMOptions?: Record<string, boolean> | boolean;
+  sessionReplaySampleRate?: number; // 0-100, percentage of sessions to record
+  trackButtonClicks: boolean;
+  trackCopy: boolean;
+  trackFormInteractions: boolean;
+  tag: string;
+  featureFlagsEnabled: boolean;
+  featureFlags: Record<string, FeatureFlagAssignment>;
+}
+
+export interface FeatureFlagAssignment {
+  key: string;
+  value: unknown;
+  flagType: "boolean" | "multivariate" | "remote_config";
+  payload?: unknown;
+  variant?: string;
+  conditionSet?: string;
+  version: number;
+  reason: "disabled" | "target_mismatch" | "rollout" | "variant" | "remote_config" | "fallthrough";
+  matched: boolean;
+  rolloutPercentage: number;
 }
 
 export interface BasePayload {
@@ -27,10 +61,24 @@ export interface BasePayload {
   page_title: string;
   referrer: string;
   user_id?: string;
+  tag?: string;
+  feature_flags?: Record<string, string>;
+  visitor_id?: string;
+  _bs?: number; // Client-side weighted bot detection score
+  _bsm?: number; // Client-side bot detection signal bitmask
 }
 
 export interface TrackingPayload extends BasePayload {
-  type: "pageview" | "custom_event" | "outbound" | "performance" | "error";
+  type:
+    | "pageview"
+    | "custom_event"
+    | "outbound"
+    | "performance"
+    | "error"
+    | "button_click"
+    | "copy"
+    | "form_submit"
+    | "input_change";
   event_name?: string;
   properties?: string;
   // Web vitals metrics
@@ -39,6 +87,37 @@ export interface TrackingPayload extends BasePayload {
   inp?: number | null;
   fcp?: number | null;
   ttfb?: number | null;
+  tag?: string;
+}
+
+export interface ButtonClickProperties {
+  text?: string;
+  [key: string]: string | undefined; // Additional data-rybbit-* attributes
+}
+
+export interface CopyProperties {
+  text: string;
+  textLength?: number; // Only sent if text was truncated
+  sourceElement: string;
+}
+
+export interface FormSubmitProperties {
+  formId: string;
+  formName: string;
+  formAction: string;
+  method: string;
+  fieldCount: number;
+  ariaLabel?: string;
+  [key: string]: string | number | undefined;
+}
+
+export interface InputChangeProperties {
+  element: string; // "input" | "select" | "textarea"
+  inputType?: string; // For inputs: "text", "email", "checkbox", etc.
+  inputName: string; // Name, id, aria-label, or placeholder attribute
+  formId?: string; // Parent form id if within a form
+  formName?: string; // Parent form name if within a form
+  [key: string]: string | undefined;
 }
 
 export interface WebVitalsData {
@@ -61,9 +140,15 @@ export interface RybbitAPI {
   event: (name: string, properties?: Record<string, any>) => void;
   error: (error: Error, properties?: ErrorProperties) => void;
   trackOutbound: (url: string, text?: string, target?: string) => void;
-  identify: (userId: string) => void;
+  identify: (userId: string, traits?: Record<string, unknown>) => void;
+  setTraits: (traits: Record<string, unknown>) => void;
   clearUserId: () => void;
   getUserId: () => string | null;
+  flag: <T = unknown>(key: string, fallback?: T) => T;
+  flagPayload: <T = unknown>(key: string, fallback?: T) => T;
+  flags: () => Record<string, unknown>;
+  flagPayloads: () => Record<string, unknown>;
+  onReady: (callback: (api: RybbitAPI) => void) => void;
   startSessionReplay: () => void;
   stopSessionReplay: () => void;
   isSessionReplayActive: () => boolean;
@@ -75,6 +160,14 @@ export interface SessionReplayEvent {
   timestamp: number;
 }
 
+/** What the server answers to a replay batch, as far as the recorder cares. */
+export interface SessionReplayBatchResult {
+  /** The session hit its replay size cap; stop recording for this page. */
+  stopRecording?: boolean;
+  /** The server needs a full snapshot to move the replay to a new session. */
+  takeFullSnapshot?: boolean;
+}
+
 export interface SessionReplayBatch {
   userId: string;
   events: SessionReplayEvent[];
@@ -84,4 +177,5 @@ export interface SessionReplayBatch {
     viewportHeight?: number;
     language?: string;
   };
+  _bsm?: number; // Client-side bot detection signal bitmask, as on events
 }

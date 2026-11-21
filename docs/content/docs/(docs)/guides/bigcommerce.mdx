@@ -1,0 +1,97 @@
+---
+title: BigCommerce
+description: Add Rybbit analytics to your BigCommerce store
+category: ecommerce
+icon: SiBigcommerce
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+BigCommerce's **Script Manager** adds scripts to every storefront page without theme edits, and it is also where the order-confirmation purchase event goes. Editing the theme's `head.html` works too.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to BigCommerce
+
+<Tabs items={["Script Manager", "Theme files"]}>
+<Tab>
+1. In the control panel, go to **Storefront > Script Manager** and click **Create a Script**.
+2. Fill in the settings:
+   - **Name**: Rybbit Analytics
+   - **Placement**: Head
+   - **Location**: All pages
+   - **Script category**: Analytics
+   - **Script type**: Script
+3. Paste the snippet into **Script contents** and click **Save**.
+</Tab>
+
+<Tab>
+<Callout type="warn">
+Back up your theme before editing files.
+</Callout>
+
+1. Go to **Storefront > Themes**, click **Advanced** on your current theme, then **Edit Theme Files**.
+2. Open **templates > components > common** and then `head.html`.
+3. Paste the snippet at the end of the file, before the closing `</head>` tag, and click **Save**.
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+#### Purchase
+
+Create a second script in Script Manager with **Placement: Footer**, **Location: Order Confirmation** and **Script type: Script**. BigCommerce runs Script Manager contents through Handlebars, so expressions such as `checkout.order.id` are filled in with the order data before the page is served:
+
+```html
+<script>
+(function () {
+  function waitForRybbit(callback, timeout) {
+    var start = Date.now();
+    (function check() {
+      if (window.rybbit && typeof window.rybbit.event === 'function') {
+        callback();
+      } else if (Date.now() - start < timeout) {
+        setTimeout(check, 100);
+      }
+    })();
+  }
+
+  waitForRybbit(function () {
+    {{#if checkout.order}}
+    window.rybbit.event('purchase', {
+      transaction_id: '{{checkout.order.id}}',
+      value: {{checkout.subtotal.value}},
+      currency: '{{checkout.currency.code}}'
+    });
+    {{/if}}
+  }, 5000);
+})();
+</script>
+```
+
+`waitForRybbit` polls until the tracking script from the head has defined `window.rybbit`, so the event is not lost if the confirmation page runs the footer script first.
+
+## Troubleshooting
+
+- **Script not on the page**: confirm the script is enabled in Script Manager, then purge the store cache under **Server Settings > Store-level caching > Purge cache**.
+- **Purchase event missing**: the purchase script must use the **Order Confirmation** location, and the `checkout.order`, `checkout.subtotal` and `checkout.currency` Handlebars objects depend on your BigCommerce checkout version. Place a test order to confirm the event arrives.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

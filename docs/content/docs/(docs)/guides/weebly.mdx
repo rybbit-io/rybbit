@@ -1,0 +1,45 @@
+---
+title: Weebly
+description: Add Rybbit analytics to your Weebly site
+category: builders
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Weebly (now part of Square) has site-wide **Header Code** and **Footer Code** fields under its SEO settings. Header code is printed into the `<head>` of every page, so the snippet goes there and no theme edits are needed.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Weebly
+
+1. Open your site in the Weebly editor and go to **Settings > SEO**.
+2. Paste the snippet into **Header Code** and click **Save**.
+3. Click **Publish**. Header code changes only reach the live site after you publish.
+
+If your editor has no **Settings** tab, the same header-code option is under **Website > General Settings** in the Square dashboard.
+
+Site-level header code covers every page, including blog posts. Each page also has its own **Header Code** box in its page settings; that one is for page-specific code and is not needed for the snippet.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Troubleshooting
+
+- **Snippet saved but not in the page source**: the site was not republished. Click **Publish** after every change to header code.
+- **Snippet appears twice**: it was added both site-wide and on individual pages. Keep only the site-level entry under **Settings > SEO**.
+- **Footer Code instead of Header Code**: both fields are included on every page, so the snippet works from either, but the footer loads later and misses visitors who leave early.
+
+## Next steps
+
+<include>../../../partials/guides/next-steps.mdx</include>

@@ -1,0 +1,99 @@
+---
+title: Next.js
+description: Add Rybbit analytics to your Next.js app
+category: frameworks
+icon: SiNextdotjs
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Next.js ships a [Script component](https://nextjs.org/docs/app/building-your-application/optimizing/scripts) that controls when a third-party script loads. Render it once in your root layout (App Router) or custom `App` (Pages Router) so the snippet is on every page.
+
+<Steps>
+<Step>
+### Get your tracking snippet
+
+<include>../../../../partials/guides/get-snippet.mdx</include>
+</Step>
+
+<Step>
+### Add the snippet to Next.js
+
+Use `next/script` with `strategy="afterInteractive"` instead of a plain `<script>` tag. The `defer` attribute from the snippet is not needed; the strategy handles load timing.
+
+<Tabs items={["App Router", "Pages Router"]}>
+<Tab value="App Router">
+```jsx title="app/layout.js"
+import Script from "next/script";
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script
+          src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+</Tab>
+<Tab value="Pages Router">
+```jsx title="pages/_app.js"
+import Script from "next/script";
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <>
+      <Component {...pageProps} />
+      <Script
+        src="https://app.rybbit.io/api/script.js?siteId=YOUR_SITE_ID"
+        strategy="afterInteractive"
+      />
+    </>
+  );
+}
+```
+</Tab>
+</Tabs>
+
+Client-side navigation through `<Link>` and `router.push()` is tracked automatically as pageviews; no extra code is needed.
+</Step>
+
+<Step>
+### Verify installation
+
+<include>../../../../partials/guides/verify.mdx</include>
+</Step>
+</Steps>
+
+## Track custom events
+
+Call `window.rybbit.event()` from any client component. Guard the call, because the script loads after hydration and components can also render on the server.
+
+```jsx title="components/MyButton.js"
+"use client";
+
+export default function MyButton({ title }) {
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.rybbit) {
+      window.rybbit.event("button_click", { buttonTitle: title });
+    }
+  };
+
+  return <button onClick={handleClick}>{title}</button>;
+}
+```
+
+## Troubleshooting
+
+- **Proxying through your own domain**: Next.js [rewrites](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) can serve the script and its API from your domain. Follow the [Next.js proxy guide](/docs/proxy-guide/next-js); every endpoint must be rewritten, including `site/tracking-config`, otherwise the script silently falls back to default settings and features such as web vitals and session replay stay off.
+- **Pageviews missing after client-side navigation**: this is rare; call `window.rybbit.pageview()` yourself after the route change only if the default behaviour does not work for you.
+
+## Next steps
+
+<include>../../../../partials/guides/next-steps.mdx</include>

@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
+import { useExtracted } from "next-intl";
 import { useAdminPermission } from "../../hooks/useAdminPermission";
 
 interface AdminLayoutProps {
@@ -11,19 +11,22 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { isAdmin, isCheckingAdmin } = useAdminPermission();
+  const t = useExtracted();
 
-  // If not admin, show access denied
   if (!isAdmin && !isCheckingAdmin) {
     redirect("/");
   }
 
   if (isCheckingAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-400"></div>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-transparent dark:border-neutral-600 dark:border-t-transparent" />
+          {t("Checking access...")}
+        </div>
       </div>
     );
   }
 
-  return <div>{children}</div>;
+  return <>{children}</>;
 }

@@ -1,9 +1,12 @@
 "use client";
 
-import { ErrorNameItem, useGetErrorNamesPaginated } from "@/api/analytics/errors/useGetErrorNames";
+import { useExtracted } from "next-intl";
+import { useGetErrorNamesPaginated } from "@/api/analytics/hooks/errors/useGetErrorNames";
+import { ErrorNameItem } from "@/api/analytics/endpoints";
 import { Pagination } from "@/components/pagination";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
-import { useStore } from "@/lib/store";
+import { useStore, useTimezone } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { SubHeader } from "../components/SubHeader/SubHeader";
@@ -16,15 +19,26 @@ import { NothingFound } from "../../../components/NothingFound";
 const PAGE_SIZE = 10;
 
 export default function Errors() {
-  const { site } = useStore();
+  const t = useExtracted();
+  const { site, time, filters } = useStore();
+  const timeZone = useTimezone();
 
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: PAGE_SIZE,
-  });
+  // Anything that changes which errors are listed sends the pager back to page one, and keeps it there:
+  // returning to an earlier scope starts on page one too, not on the page it was left at.
+  const scope = JSON.stringify([site, time, filters, timeZone]);
+  const [pageState, setPageState] = useState({ scope, pageIndex: 0 });
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  if (pageState.scope !== scope) {
+    setPageState({ scope, pageIndex: 0 });
+  }
+  const pagination = { pageIndex: pageState.scope === scope ? pageState.pageIndex : 0, pageSize };
+  const setPagination = (next: { pageIndex: number; pageSize: number }) => {
+    setPageState({ scope, pageIndex: next.pageIndex });
+    setPageSize(next.pageSize);
+  };
   const [totalPages, setTotalPages] = useState(0);
 
-  useSetPageTitle("Rybbit · Errors");
+  useSetPageTitle("Errors");
 
   // Get page number (1-based) from pageIndex (0-based)
   const pageNumber = pagination.pageIndex + 1;
@@ -41,10 +55,8 @@ export default function Errors() {
     page: pageNumber,
   });
 
-  const errorsDataArray: ErrorNameItem[] | undefined = apiResponse?.data?.data;
-  const totalCount: number | undefined = apiResponse?.data?.totalCount;
-
-  const isLoading = isLoadingErrors || isFetching;
+  const errorsDataArray: ErrorNameItem[] | undefined = apiResponse?.data;
+  const totalCount: number | undefined = apiResponse?.totalCount;
 
   // Create a minimal table object with the required pagination methods
   const table = {
@@ -68,7 +80,13 @@ export default function Errors() {
   useEffect(() => {
     if (!isLoadingErrors && !isPlaceholderData && !isFetching) {
       if (totalCount !== undefined) {
-        setTotalPages(Math.ceil(totalCount / pagination.pageSize));
+        const pageCount = Math.ceil(totalCount / pagination.pageSize);
+        setTotalPages(pageCount);
+        // The list can shrink under the current page (a refetch, a rolling window): step back to the last
+        // page that has rows instead of showing an empty one.
+        if (pagination.pageIndex > 0 && pagination.pageIndex >= pageCount) {
+          setPageState({ scope, pageIndex: Math.max(pageCount - 1, 0) });
+        }
       } else if (errorsDataArray && errorsDataArray.length === 0 && pagination.pageIndex === 0) {
         // Fallback if totalCount is somehow undefined but we have an empty array on page 1
         setTotalPages(0);
@@ -89,6 +107,7 @@ export default function Errors() {
     isFetching,
     pagination.pageIndex,
     pagination.pageSize,
+    scope,
   ]);
 
   if (!site) {
@@ -101,35 +120,39 @@ export default function Errors() {
         <SubHeader />
         <EnableErrorTracking />
 
-        {isLoading ? (
+        {/* Skeleton on the first load only. A new page, filter or time range keeps the previous list
+            on screen (placeholder data), dimmed until the answer arrives. */}
+        {isLoadingErrors ? (
           <ErrorListSkeleton count={pagination.pageSize} />
         ) : isErrorErrors ? (
           <div className="text-center p-8 text-destructive">
-            <p>Error loading errors data</p>
+            <p>{t("Error loading errors data")}</p>
             <p className="text-sm">{errorsError?.toString()}</p>
           </div>
         ) : errorsDataArray && errorsDataArray.length > 0 ? (
           <>
-            {errorsDataArray.map((errorItem: ErrorNameItem, index: number) => (
-              <ErrorListItem key={`${errorItem.value}-${index}-${pagination.pageIndex}`} errorData={errorItem} />
-            ))}
+            <div aria-busy={isFetching} className={cn("transition-opacity", isPlaceholderData && "opacity-60")}>
+              {errorsDataArray.map((errorItem: ErrorNameItem, index: number) => (
+                <ErrorListItem key={`${errorItem.value}-${index}-${pagination.pageIndex}`} errorData={errorItem} />
+              ))}
+            </div>
             {totalPages > 0 && (
               <Pagination
                 table={table}
                 data={{ items: errorsDataArray || [], total: totalCount || 0 }}
                 pagination={pagination}
                 setPagination={setPagination}
-                isLoading={isLoading}
-                itemName="errors"
+                isLoading={isPlaceholderData}
+                itemName={t("errors")}
               />
             )}
           </>
-        ) : !isLoadingErrors && !isFetching ? (
+        ) : (
           <NothingFound
-            title={"No error events found"}
-            description={"Errors will appear here once error tracking is enabled and errors occur on your site."}
+            title={t("No error events found")}
+            description={t("Errors will appear here once error tracking is enabled and errors occur on your site.")}
           />
-        ) : null}
+        )}
       </div>
     </DisabledOverlay>
   );
