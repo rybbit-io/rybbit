@@ -134,11 +134,15 @@ export function ShareExportButton() {
           {canShare && (
             <>
               <div className="flex flex-col p-2">
-                <span className="text-sm font-medium pb-2">{t("Share this dashboard")}</span>
                 {!isLoadingPrivateLink && !privateLink?.privateLinkKey && (
-                  <Button onClick={() => generatePrivateLinkKey(siteId)} disabled={isGeneratingPrivateLink}>
-                    {isGeneratingPrivateLink ? t("Generating...") : t("Generate Private Link")}
-                  </Button>
+                  <>
+                    <Button onClick={() => generatePrivateLinkKey(siteId)} disabled={isGeneratingPrivateLink}>
+                      {isGeneratingPrivateLink ? t("Generating...") : t("Generate Private Link")}
+                    </Button>
+                    <span className="text-xs text-neutral-600 dark:text-neutral-300 mt-2">
+                      {t("Generate a private link to share a read-only view of this dashboard with your team.")}
+                    </span>
+                  </>
                 )}
                 {privateLinkUrl && (
                   <>
@@ -164,9 +168,6 @@ export function ShareExportButton() {
                     </Button>
                   </>
                 )}
-                <span className="text-xs text-neutral-600 dark:text-neutral-300 mt-2">
-                  {t("Generate a private link to share a read-only view of this dashboard with your team.")}
-                </span>
               </div>
               <DropdownMenuSeparator />
             </>

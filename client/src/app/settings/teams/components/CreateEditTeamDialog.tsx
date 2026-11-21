@@ -149,14 +149,15 @@ export function CreateEditTeamDialog({
   const isPending = createTeam.isPending || updateTeam.isPending;
 
   const dialogContent = (
-    <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+    <DialogContent
+      className="max-w-lg max-h-[85vh] overflow-y-auto"
+      {...(isEditing && { "aria-describedby": undefined })}
+    >
       <DialogHeader>
         <DialogTitle>{isEditing ? t("Edit Team") : t("Create Team")}</DialogTitle>
-        <DialogDescription>
-          {isEditing
-            ? t("Update team name, members, and site assignments.")
-            : t("Create a new team to group sites and control member access.")}
-        </DialogDescription>
+        {!isEditing && (
+          <DialogDescription>{t("Create a new team to group sites and control member access.")}</DialogDescription>
+        )}
       </DialogHeader>
 
       <div className="grid gap-4">

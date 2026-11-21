@@ -191,7 +191,6 @@ function ValueStep({
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-0" align="end">
-            <div className="px-3 pt-3 pb-1 text-sm font-medium">{t("Operator")}</div>
             <div className="flex flex-col py-1">
               {operatorOptions.map(option => {
                 const isSelected = option.value === type;
@@ -367,7 +366,6 @@ export function FilterPicker({
 
   return (
     <Command>
-      <div className="px-3 pt-3 pb-1 text-xs text-neutral-500 dark:text-neutral-400">{t("Filter stats by")}</div>
       <CommandInput placeholder={t("Search")} />
       <CommandList>
         <CommandEmpty>{t("No results")}</CommandEmpty>

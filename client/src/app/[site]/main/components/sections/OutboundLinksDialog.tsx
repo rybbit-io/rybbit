@@ -197,9 +197,6 @@ export function OutboundLinksDialogBody({ outboundLinks }: OutboundLinksDialogBo
                 </div>
               </div>
             )}
-            {!hasMore && (
-              <div className="py-4 text-center text-neutral-500 dark:text-neutral-500 text-xs">{t("All items loaded")}</div>
-            )}
           </div>
         </div>
     </div>

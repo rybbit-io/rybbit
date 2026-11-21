@@ -12,7 +12,6 @@ import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -373,15 +372,12 @@ export function AddSite({
             </Button>
           )}
         </DialogTrigger>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AppWindow className="h-6 w-6" />
               {t("Add Site")}
             </DialogTitle>
-            <DialogDescription>
-              {t("Track analytics for a new website or React Native app in your organization")}
-            </DialogDescription>
           </DialogHeader>
 
           {/* A real form, so Enter in the domain or name field submits */}

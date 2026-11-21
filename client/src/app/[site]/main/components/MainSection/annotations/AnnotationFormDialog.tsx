@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -199,10 +198,9 @@ export function AnnotationFormDialog({
 
   return (
     <Dialog open={!!state} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{state?.mode === "edit" ? t("Edit annotation") : t("New annotation")}</DialogTitle>
-          <DialogDescription>{t("A note pinned to the chart, so this moment stays explainable later.")}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">

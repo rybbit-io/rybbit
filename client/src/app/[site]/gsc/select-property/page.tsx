@@ -73,7 +73,6 @@ function SelectGSCPropertyPageContent() {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>{t("Select Google Search Console Property")}</CardTitle>
-          <CardDescription>{t("Choose which Search Console property you want to connect to this site")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <RadioGroup value={selectedProperty} onValueChange={setSelectedProperty}>

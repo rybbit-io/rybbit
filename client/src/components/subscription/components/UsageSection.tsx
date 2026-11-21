@@ -212,10 +212,8 @@ export function UsageSection({
             </LimitNote>
           ) : null}
         </LedgerRow>
-        <LedgerRow label={t("Sites")} description={t("Websites tracked by this organization.")}>
-          {renderCount(siteCount, subscription.siteLimit, t("Sites used"))}
-        </LedgerRow>
-        <LedgerRow label={t("Members")} description={t("People in this organization.")}>
+        <LedgerRow label={t("Sites")}>{renderCount(siteCount, subscription.siteLimit, t("Sites used"))}</LedgerRow>
+        <LedgerRow label={t("Members")}>
           {renderCount(memberCount, subscription.memberLimit, t("Member seats used"))}
         </LedgerRow>
         {apiUsage && (

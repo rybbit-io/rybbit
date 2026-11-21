@@ -178,7 +178,7 @@ export function DashboardEmbedTab({ siteMetadata, disabled = false }: DashboardE
             )}
           </SettingRow>
 
-          <SettingRow label={t("Theme")} description={t("Choose how the embedded dashboard is displayed.")}>
+          <SettingRow label={t("Theme")}>
             {themes.map(theme => (
               <Button
                 key={theme.value}
