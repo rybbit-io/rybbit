@@ -61,22 +61,22 @@ function getTier(amount: number): { name: string; colorClass: string } | null {
 
 const sponsors: Sponsor[] = [
   {
-    name: "Onyx",
-    logo: "/sponsors/onyx.jpeg",
-    url: "https://onyx.app",
-    amount: 500,
-  },
-  {
     name: "23M",
     logo: "/sponsors/23m.png",
     url: "https://23m.com",
     amount: 100,
   },
   {
+    name: "Packet",
+    logo: "/sponsors/packet.png",
+    url: "https://pckt.sh",
+    amount: 50,
+  },
+  {
     name: "serverlist.dev",
     logo: "/sponsors/serverlist.png",
     url: "https://serverlist.dev",
-    amount: 50,
+    amount: 10,
   },
   {
     name: "Fastscribe",
@@ -85,9 +85,9 @@ const sponsors: Sponsor[] = [
     amount: 10,
   },
   {
-    name: "Ark",
-    logo: "/sponsors/arkhq.png",
-    url: "https://arkhq.io",
+    name: "AmpliFlow",
+    logo: "/sponsors/ampliflow.png",
+    url: "https://www.ampliflow.com",
     amount: 10,
   },
   {
@@ -100,12 +100,6 @@ const sponsors: Sponsor[] = [
     name: "MVPS.net",
     logo: "/sponsors/mvps.png",
     url: "https://www.mvps.net/",
-    amount: 10,
-  },
-  {
-    name: "Sayfone",
-    logo: "/sponsors/sayfone.svg",
-    url: "https://sayfone.com/",
     amount: 10,
   },
 ];
