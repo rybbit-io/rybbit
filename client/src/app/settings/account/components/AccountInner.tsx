@@ -245,7 +245,7 @@ export function AccountInner() {
               </div>
             </LedgerRow>
           )}
-          <LedgerRow label={t("Language")} description={t("For menus and labels.")}>
+          <LedgerRow label={t("Language")}>
             <LanguageSwitcher />
           </LedgerRow>
         </LedgerRows>
@@ -253,7 +253,7 @@ export function AccountInner() {
 
       <LedgerSection title={t("Sign-in & security")}>
         <LedgerRows>
-          <LedgerRow label={t("Password")} description={t("Used with your email to sign in.")}>
+          <LedgerRow label={t("Password")}>
             <div className="flex min-h-9 items-center justify-end">
               <ChangePassword />
             </div>

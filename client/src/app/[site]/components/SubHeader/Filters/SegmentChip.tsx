@@ -75,9 +75,6 @@ export function SegmentChip({
             )}
           </div>
           <div className="px-3 py-2">
-            <div className="text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-400 mb-1.5">
-              {t("Defined as")}
-            </div>
             <ul className="flex flex-col gap-1">
               {segment.filters.map((filter, index) => (
                 <li key={index} className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-neutral-200">

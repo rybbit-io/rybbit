@@ -221,7 +221,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
   return (
     <DisabledOverlay message="Data Import" requiredPlan="standard">
       <SettingsSections>
-        <SettingsSection title={t("Import Data")} description={t("Import data from other analytics platforms.")}>
+        <SettingsSection title={t("Import Data")}>
           {/* Active Import Warning */}
           {hasActiveImport && (
             <Alert>
@@ -313,7 +313,7 @@ export function ImportManager({ siteId, disabled }: ImportManagerProps) {
           )}
         </SettingsSection>
 
-        <SettingsSection title={t("Import History")} description={t("Track the status of your data imports")}>
+        <SettingsSection title={t("Import History")}>
           {isLoading && !data ? (
             <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />

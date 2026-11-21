@@ -169,9 +169,6 @@ export function AutocaptureEventsDialogBody({ events, valueLabel, countLabel, la
               </div>
             </div>
           )}
-          {!hasMore && (
-            <div className="py-4 text-center text-neutral-500 dark:text-neutral-500 text-xs">{t("All items loaded")}</div>
-          )}
         </div>
       </div>
     </div>

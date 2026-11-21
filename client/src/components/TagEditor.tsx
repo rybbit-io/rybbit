@@ -9,7 +9,6 @@ import { Button } from "./ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -85,10 +84,9 @@ export function TagEditor({ siteId, currentTags, allTags, onTagsUpdated, trigger
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t("Edit Tags")}</DialogTitle>
-          <DialogDescription>{t("Add tags to organize and filter your sites.")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">

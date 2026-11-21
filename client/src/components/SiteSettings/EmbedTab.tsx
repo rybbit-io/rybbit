@@ -190,7 +190,7 @@ export function EmbedTab({ siteMetadata, embedEnabled }: EmbedTabProps) {
             ))}
           </SettingRow>
 
-          <SettingRow label={t("Theme")} description={t("Match the widget to your site's theme.")}>
+          <SettingRow label={t("Theme")}>
             {themes.map(th => (
               <Button
                 key={th.value}

@@ -10,7 +10,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -132,10 +131,9 @@ export function ChangePassword() {
       <DialogTrigger asChild>
         <Button size="sm">{t("Change password")}</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t("Change Password")}</DialogTitle>
-          <DialogDescription>{t("Update your password to keep your account secure")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-4">

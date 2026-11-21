@@ -49,7 +49,6 @@ export function OperatorPopover({
     <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
-        <div className="px-3 pt-3 pb-1 text-sm font-medium">{t("Operator")}</div>
         <div className="flex flex-col py-1">
           {operatorOptions.map(option => {
             const isSelected = option.value === filter.type;

@@ -7,14 +7,7 @@ import { toast } from "@/components/ui/sonner";
 
 import { useUpdateUserTraits } from "@/api/analytics/hooks/useUpdateUserTraits";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -148,10 +141,9 @@ export function EditTraitsDialog({ userId, traits, open, onOpenChange }: EditTra
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{t("Edit Traits")}</DialogTitle>
-          <DialogDescription>{t("Add, edit, or remove attributes attached to this user.")}</DialogDescription>
         </DialogHeader>
         <Tabs value={mode} onValueChange={value => switchMode(value as EditorMode)}>
           <TabsList className="h-7 p-0.5">

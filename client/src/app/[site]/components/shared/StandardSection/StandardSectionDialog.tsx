@@ -318,9 +318,6 @@ export function StandardSectionDialogBody({
                 {t("Loading more...")}
               </div>
             )}
-            {!hasNextPage && !isFetchingNextPage && (
-              <div className="text-neutral-500 dark:text-neutral-500 text-xs">{t("All items loaded")}</div>
-            )}
           </div>
         )}
       </div>
