@@ -45,18 +45,20 @@ export const SORTABLE_COLUMNS: readonly BuiltInColumn[] = [
 ];
 
 // Sized so the default columns and two traits fit the page at its usual desktop width without scrolling.
-export const USER_COLUMN_MIN_WIDTH = 224;
+export const USER_COLUMN_MIN_WIDTH = 204;
 const TRAIT_COLUMN_WIDTH = 104;
 const COLUMN_WIDTHS: Record<BuiltInColumn, number> = {
   // Wide enough for the absolute date the cell shows on hover.
   last_seen: 128,
   first_seen: 128,
-  sessions: 76,
-  pageviews: 84,
-  events: 68,
+  // The count columns fit their header: label, sort icon and padding.
+  sessions: 86,
+  pageviews: 96,
+  events: 74,
   source: 140,
   location: 124,
-  device: 84,
+  // Three 16px icons.
+  device: 76,
 };
 
 export const columnWidth = (column: TableColumn) =>

@@ -8,6 +8,7 @@ import { TraitGroupSelector, useGetUsersInfinite, UsersNarrowing } from "@/api/a
 import { Delta } from "@/components/site/Delta";
 import { Skeleton } from "@/components/ui/skeleton";
 import { percentDelta } from "@/lib/delta";
+import { cn } from "@/lib/utils";
 import { BuiltInColumn, columnId, METRIC_COLUMNS, TableColumn } from "../columns";
 import { UserRow } from "./UserRow";
 
@@ -196,17 +197,24 @@ export function TraitGroupRows({
                   : t("{count} users", { count: stats.users.toLocaleString() })}
               </span>
               <Delta value={percentDelta(stats.users, group.previousUsers)} />
+              {/* The share's text comes before its bar: the text varies in width and the bar must not, so
+                  the bars line up from row to row. Groups without a bar keep its space for the same reason. */}
               <span className="ml-auto flex shrink-0 items-center gap-2">
-                {group.bar !== undefined && (
-                  <span className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-neutral-200 @lg:block dark:bg-neutral-800">
+                <span className="hidden whitespace-nowrap text-xs tabular-nums text-neutral-500 @md:inline dark:text-neutral-400">
+                  {group.shareLabel}
+                </span>
+                <span
+                  className={cn(
+                    "hidden h-1.5 w-16 overflow-hidden rounded-full bg-neutral-200 @lg:block dark:bg-neutral-800",
+                    group.bar === undefined && "invisible"
+                  )}
+                >
+                  {group.bar !== undefined && (
                     <span
                       className="block h-full rounded-full bg-dataviz"
                       style={{ width: `${Math.min(group.bar, 1) * 100}%` }}
                     />
-                  </span>
-                )}
-                <span className="hidden whitespace-nowrap text-xs tabular-nums text-neutral-500 @md:inline dark:text-neutral-400">
-                  {group.shareLabel}
+                  )}
                 </span>
                 {metrics.length > 0 && (
                   <span className="hidden whitespace-nowrap pl-2 text-[11px] uppercase tracking-wide text-neutral-500 @sm:inline dark:text-neutral-400">
