@@ -82,11 +82,11 @@ export function AccountStep({
           <AuthButton
             isLoading={isLoading}
             loadingText={t("Creating account...")}
-            className="mt-6 transition-all duration-300 h-11"
+            className="mt-6"
             disabled={IS_CLOUD && !turnstileToken}
           >
             {t("Continue")}
-            <ArrowRight className="ml-2 h-4 w-4" />
+            <ArrowRight className="h-4 w-4" />
           </AuthButton>
         </form>
         <div className="text-center text-sm">

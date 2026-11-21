@@ -140,7 +140,9 @@ export default function FunnelsPage() {
                 <>
                   <Input
                     placeholder={t("Filter funnels")}
-                    className="h-8 w-48"
+                    aria-label={t("Filter funnels")}
+                    inputSize="sm"
+                    className="w-48"
                     isSearch
                     value={searchQuery}
                     onChange={e => changeSearch(e.target.value)}

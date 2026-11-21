@@ -1,9 +1,10 @@
 "use client";
 
 import { useFeatureFlags } from "@/api/analytics/hooks/featureFlags/useFeatureFlags";
+import { ErrorState } from "@/components/ErrorState";
+import { NothingFound } from "@/components/NothingFound";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NothingFound } from "@/components/NothingFound";
 import { useCanOnSite } from "@/hooks/usePermissions";
 import { useSetPageTitle } from "@/hooks/useSetPageTitle";
 import { Flag, Plus } from "lucide-react";
@@ -16,7 +17,7 @@ import { FeatureFlagTable } from "./components/FeatureFlagTable";
 export default function FeatureFlagsPage() {
   const t = useExtracted();
   useSetPageTitle("Feature Flags");
-  const { data: flags, isLoading } = useFeatureFlags();
+  const { data: flags, isError, refetch } = useFeatureFlags();
   const canWrite = useCanOnSite("flags:write");
   const [search, setSearch] = useState("");
 
@@ -50,11 +51,15 @@ export default function FeatureFlagsPage() {
         )}
       </div>
 
-      {isLoading ? (
-        <FeatureFlagSkeleton />
+      {!flags ? (
+        isError ? (
+          <ErrorState title={t("Failed to load data")} message="" refetch={() => void refetch()} />
+        ) : (
+          <FeatureFlagSkeleton />
+        )
       ) : filteredFlags.length > 0 ? (
         <FeatureFlagTable flags={filteredFlags} canWrite={canWrite} />
-      ) : flags?.length ? (
+      ) : flags.length ? (
         <NothingFound icon={<Flag className="h-10 w-10" />} title={t("No feature flags found")} />
       ) : (
         <NothingFound

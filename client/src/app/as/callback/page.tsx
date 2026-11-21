@@ -326,11 +326,11 @@ export default function AppSumoSignupPage() {
                 loadingText="Creating account..."
                 onClick={handleAccountSubmit}
                 type="button"
-                className="mt-6 transition-all duration-300 h-11"
+                className="mt-6"
                 disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
               >
                 Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
               </AuthButton>
 
               <div className="text-center text-sm">
@@ -366,18 +366,17 @@ export default function AppSumoSignupPage() {
                   value={orgName}
                   onChange={e => setOrgName(e.target.value)}
                   required
-                  className="h-10 transition-all bg-neutral-100 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700"
                 />
               </div>
 
               <Button
-                className="w-full transition-all duration-300 h-11 bg-emerald-600 hover:bg-emerald-500 text-white"
+                className="w-full"
                 onClick={handleOrganizationSubmit}
                 disabled={isLoading || !orgName}
                 variant="success"
               >
                 Continue & Activate License
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -396,27 +395,21 @@ export default function AppSumoSignupPage() {
                   placeholder="example.com or sub.example.com"
                   value={domain}
                   onChange={e => setDomain(e.target.value.toLowerCase())}
-                  className="h-10 transition-all bg-neutral-100 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700"
                 />
                 <p className="text-xs text-muted-foreground">Enter the domain of the website you want to track</p>
               </div>
 
               <div className="flex flex-col gap-3">
                 <Button
-                  className="w-full transition-all duration-300 h-11 bg-emerald-600 hover:bg-emerald-500 text-white"
+                  className="w-full"
                   onClick={handleWebsiteSubmit}
                   disabled={isLoading || !domain || !isValidDomain(domain)}
                   variant="success"
                 >
                   Add Site & Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
-                <Button
-                  className="w-full transition-all duration-300 h-11"
-                  onClick={handleSkipWebsite}
-                  disabled={isLoading}
-                  variant="outline"
-                >
+                <Button className="w-full" onClick={handleSkipWebsite} disabled={isLoading} variant="outline">
                   Skip for now
                 </Button>
               </div>

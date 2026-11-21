@@ -36,7 +36,7 @@ const Stat = ({
   return (
     <div
       className={cn(
-        "flex flex-col cursor-pointer border-r border-neutral-100 dark:border-neutral-800 last:border-r-0 text-nowrap",
+        "flex flex-col cursor-pointer bg-white dark:bg-neutral-900 text-nowrap",
         selectedStat === id && "bg-neutral-0 dark:bg-neutral-850"
       )}
       onClick={() => setSelectedStat(id)}
@@ -152,7 +152,8 @@ export function MainSection({
     <>
       <Card>
         <CardContent className="p-0 w-full">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0 items-center">
+          {/* Seams are the 1px gap over the grid's tint, so they stay right however the row wraps. */}
+          <div className="grid grid-cols-2 gap-px bg-neutral-100 md:grid-cols-3 lg:grid-cols-6 dark:bg-neutral-800">
             <Stat
               title={t("Unique Users")}
               id="users"

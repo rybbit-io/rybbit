@@ -16,7 +16,6 @@ import {
 } from "../../../../components/TooltipIcons/TooltipIcons";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -157,16 +156,19 @@ export function ReplayCard({ replay, onSelect }: { replay: SessionReplayListItem
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel onClick={e => e.stopPropagation()}>{t("Cancel")}</AlertDialogCancel>
-                <AlertDialogAction
+                {/* A plain Button, not AlertDialogAction, so the dialog stays open until the request settles
+                    (handleDelete closes it on success). `loading` keeps its width while pending. */}
+                <Button
                   variant="destructive"
+                  loading={deleteSessionReplay.isPending}
+                  loadingLabel={t("Deleting...")}
                   onClick={e => {
                     e.stopPropagation();
-                    handleDelete();
+                    void handleDelete();
                   }}
-                  disabled={deleteSessionReplay.isPending}
                 >
-                  {deleteSessionReplay.isPending ? t("Deleting...") : t("Delete")}
-                </AlertDialogAction>
+                  {t("Delete")}
+                </Button>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

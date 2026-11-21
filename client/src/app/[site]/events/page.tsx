@@ -61,7 +61,7 @@ export default function EventsPage() {
         >
           {breakdown === "name" && (
             <Select value={String(eventLimit)} onValueChange={value => setEventLimit(Number(value))}>
-              <SelectTrigger className="w-[90px]" size="sm" aria-label={t("Events on the chart")}>
+              <SelectTrigger className="w-[90px]" size="sm" variant="outline" aria-label={t("Events on the chart")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent size="sm">

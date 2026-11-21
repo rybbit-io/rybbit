@@ -62,7 +62,7 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative rounded-md border border-neutral-150 shadow-xs has-focus:border-neutral-500 has-focus:ring-[3px] has-focus:ring-neutral-500/50 dark:border-neutral-700 dark:has-focus:border-neutral-400 dark:has-focus:ring-neutral-400/50",
+          "relative rounded-md border border-neutral-150 has-focus:border-neutral-500 has-focus:ring-[3px] has-focus:ring-neutral-500/50 dark:border-neutral-700 dark:has-focus:border-neutral-400 dark:has-focus:ring-neutral-400/50",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn("absolute inset-0 bg-white opacity-0 dark:bg-neutral-900", defaultClassNames.dropdown),
@@ -148,7 +148,9 @@ const dayButtonBaseClasses = cn(
   "flex aspect-square h-auto w-full min-w-[var(--cell-size)] flex-col gap-1 font-normal leading-none",
   "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px]",
   "data-[range-end=true]:rounded-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md",
-  "[&>span]:text-xs [&>span]:opacity-70"
+  "[&>span]:text-xs [&>span]:opacity-70",
+  // The ghost Button's own text colour would otherwise paint neighbouring-month days as bright as this month's.
+  "data-[outside=true]:text-neutral-400 dark:data-[outside=true]:text-neutral-500"
 );
 
 function CalendarDayButton({ className, day, modifiers, ...props }: React.ComponentProps<typeof DayButton>) {
@@ -171,6 +173,7 @@ function CalendarDayButton({ className, day, modifiers, ...props }: React.Compon
       data-range-start={modifiers.range_start}
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
+      data-outside={modifiers.outside}
       className={cn(dayButtonBaseClasses, defaultClassNames.day, className)}
       {...props}
     />

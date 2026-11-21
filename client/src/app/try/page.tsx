@@ -115,18 +115,17 @@ function TryPageContent() {
               value={domain}
               onChange={e => setDomain(e.target.value.toLowerCase())}
               required
-              className="h-11 bg-neutral-100 transition-all dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700"
             />
           </div>
 
           <Button
             type="submit"
             variant="success"
-            className="h-11 w-full bg-emerald-600 text-white transition-all duration-300 hover:bg-emerald-500"
+            className="w-full"
             disabled={isLoading || !domain || !isValidDomain(normalizeDomain(domain))}
           >
             {t("Add my site")}
-            <ArrowRight className="ml-2 h-4 w-4" />
+            <ArrowRight className="h-4 w-4" />
           </Button>
 
           <AuthError error={error} />

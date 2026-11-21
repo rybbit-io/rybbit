@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
 import { useSitePermissions } from "@/hooks/usePermissions";
@@ -177,13 +178,8 @@ function SiteSettingsInner({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[1000px] p-0 gap-0 overflow-hidden" hideClose>
         <div className="flex h-[80vh]">
-          <aside className="w-[220px] shrink-0 border-r border-neutral-200 dark:border-neutral-850 bg-neutral-50 dark:bg-neutral-900/50 p-3 flex flex-col gap-1">
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon" className="self-start mb-2 h-8 w-8">
-                <X className="h-4 w-4" />
-                <span className="sr-only">{t("Close")}</span>
-              </Button>
-            </DialogClose>
+          {/* Section rail from sm up; phones get the section Select in the header instead. */}
+          <aside className="hidden w-[220px] shrink-0 border-r border-neutral-200 dark:border-neutral-850 bg-neutral-50 dark:bg-neutral-900/50 p-3 sm:flex flex-col gap-1">
             {visibleTabs.map(tab => {
               const Icon = tab.icon;
               const isActive = tab.key === activeTab;
@@ -207,10 +203,33 @@ function SiteSettingsInner({
           </aside>
 
           <main className="flex-1 flex flex-col min-w-0">
-            <header className="px-6 pt-5 pb-3 border-b border-neutral-200 dark:border-neutral-850 flex items-center justify-between gap-4">
-              <DialogTitle className="text-lg font-semibold mb-0">{currentTab.label}</DialogTitle>
+            {/* On phones the widget toggle drops to its own row so the section picker and close button keep the first. */}
+            <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-neutral-200 px-4 py-3 dark:border-neutral-850 sm:px-6 sm:pt-5 sm:pb-3">
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="sr-only mb-0 truncate text-lg font-semibold sm:not-sr-only sm:block">
+                  {currentTab.label}
+                </DialogTitle>
+                <Select value={currentTab.key} onValueChange={value => setActiveTab(value as TabKey)}>
+                  <SelectTrigger aria-label={t("Settings")} className="sm:hidden">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {visibleTabs.map(tab => {
+                      const Icon = tab.icon;
+                      return (
+                        <SelectItem key={tab.key} value={tab.key}>
+                          <span className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400" />
+                            {tab.label}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
               {activeTab === "widget-embeds" && (
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                <label className="order-last flex basis-full cursor-pointer items-center gap-2 text-sm text-muted-foreground sm:order-none sm:basis-auto">
                   {t("Widget Enabled")}
                   <Switch
                     aria-label={t("Enable Embed Widget")}
@@ -220,8 +239,14 @@ function SiteSettingsInner({
                   />
                 </label>
               )}
+              <DialogClose asChild>
+                <Button variant="ghost" size="icon" className="-mr-2 -my-1 shrink-0">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">{t("Close")}</span>
+                </Button>
+              </DialogClose>
             </header>
-            <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
               {!canConfigure && activeTab !== "script" && activeTab !== "usage" && activeTab !== "export" && (
                 <p className="mb-4 rounded-md border border-neutral-200 px-3 py-2 text-xs text-muted-foreground dark:border-neutral-800">
                   {t("You can view these settings, but your role can't change them.")}

@@ -1,3 +1,5 @@
+import { SegmentedControl } from "@/components/interior/segmented-control";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
@@ -7,7 +9,6 @@ import { BACKEND_URL } from "@/lib/const";
 import { STRIPE_TIERS } from "@/lib/stripe";
 import { EVENT_TIERS, findPriceForTier, formatEventTier } from "@/lib/subscription/planUtils";
 import { usePreviewSubscriptionUpdate, useUpdateSubscription } from "@/lib/subscription/useSubscriptionMutations";
-import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { useMemo, useState } from "react";
@@ -181,40 +182,27 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Choose Your Plan</DialogTitle>
-              {/* Monthly/Annual toggle */}
-              <div className="relative flex bg-neutral-150 dark:bg-neutral-850 border border-neutral-250 dark:border-neutral-750 rounded-full p-0.5 text-sm">
-                <button
-                  onClick={() => setIsAnnual(false)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-full transition-colors cursor-pointer",
-                    !isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
-                  )}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setIsAnnual(true)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-full transition-colors cursor-pointer",
-                    isAnnual
-                      ? "bg-white dark:bg-white/20 text-neutral-700 dark:text-neutral-100 font-medium"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
-                  )}
-                >
-                  Annual
-                </button>
-                {isAnnual && (
-                  <span className="absolute -top-3 -right-12 text-[10px] text-white bg-emerald-500 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                    4 months free
-                  </span>
-                )}
-              </div>
-            </div>
+            <DialogTitle>{t("Choose your plan")}</DialogTitle>
           </DialogHeader>
+
+          {/* Monthly/Annual toggle, on its own row so it stays clear of the
+              close button. As on the signup plan step, the savings chip sits
+              beside it in both states (emerald while Annual is picked), so the
+              toggle never shifts under the pointer. */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+            <SegmentedControl
+              aria-label={t("Billing period")}
+              options={[
+                { value: "monthly", label: t("Monthly") },
+                { value: "annual", label: t("Annual") },
+              ]}
+              value={isAnnual ? "annual" : "monthly"}
+              onValueChange={value => setIsAnnual(value === "annual")}
+            />
+            <Badge variant={isAnnual ? "success" : "secondary"} className="whitespace-nowrap">
+              {t("4 months free")}
+            </Badge>
+          </div>
 
           <div className="space-y-6">
             {/* Event slider */}

@@ -4,11 +4,13 @@ import type { Annotation, AnnotationColor, AnnotationScope } from "@rybbit/share
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DateTime } from "luxon";
 import { useExtracted } from "next-intl";
-import { useEffect, useMemo } from "react";
+import { useEffect, useId, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useCreateAnnotation, useUpdateAnnotation } from "@/api/analytics/hooks/useAnnotations";
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { Button } from "@/components/ui/button";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +67,7 @@ export function AnnotationFormDialog({
   const { canManageAll } = useAnnotationPermissions();
   const createAnnotation = useCreateAnnotation();
   const updateAnnotation = useUpdateAnnotation();
+  const scopeLabelId = useId();
 
   const schema = useMemo(
     () =>
@@ -226,7 +229,7 @@ export function AnnotationFormDialog({
                   <FormItem>
                     <FormLabel>{isRange ? t("Starts") : t("Date and time")}</FormLabel>
                     <FormControl>
-                      <Input type="datetime-local" className="min-w-0" {...field} />
+                      <DateTimePicker modal {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -240,7 +243,7 @@ export function AnnotationFormDialog({
                     <FormItem>
                       <FormLabel>{t("Ends")}</FormLabel>
                       <FormControl>
-                        <Input type="datetime-local" className="min-w-0" {...field} />
+                        <DateTimePicker modal {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -326,25 +329,19 @@ export function AnnotationFormDialog({
                   name="scope"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("Applies to")}</FormLabel>
-                      <div className="inline-flex h-9 items-center rounded-lg border border-neutral-150 dark:border-neutral-750 p-0.5 text-xs">
-                        {(["site", "organization"] as const).map(scope => (
-                          <button
-                            key={scope}
-                            type="button"
-                            aria-pressed={field.value === scope}
-                            onClick={() => field.onChange(scope)}
-                            className={cn(
-                              "px-2.5 h-full rounded-md transition-colors",
-                              field.value === scope
-                                ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-50"
-                                : "text-muted-foreground hover:text-neutral-900 dark:hover:text-neutral-50"
-                            )}
-                          >
-                            {scope === "site" ? t("This site") : t("All sites")}
-                          </button>
-                        ))}
-                      </div>
+                      <FormLabel id={scopeLabelId}>{t("Applies to")}</FormLabel>
+                      {/* A block-level control, so it stacks under its label like the other fields. */}
+                      <SegmentedControl
+                        size="md"
+                        aria-labelledby={scopeLabelId}
+                        options={[
+                          { value: "site", label: t("This site") },
+                          { value: "organization", label: t("All sites") },
+                        ]}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        className="flex w-fit"
+                      />
                     </FormItem>
                   )}
                 />

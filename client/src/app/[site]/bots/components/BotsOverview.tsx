@@ -82,7 +82,9 @@ function StatCard({
     <div
       className={cn(
         "border-r border-b border-neutral-100 dark:border-neutral-800 last:border-r-0 p-3",
-        isClickable && "cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900",
+        isClickable && "cursor-pointer transition-colors",
+        // Hover stays a half step below the active fill so it never reads as the selected tile.
+        isClickable && !active && "hover:bg-neutral-50 dark:hover:bg-neutral-850/60",
         active && "bg-neutral-0 dark:bg-neutral-850"
       )}
       onClick={onClick}

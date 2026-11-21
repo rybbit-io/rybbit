@@ -150,7 +150,7 @@ export function ExperimentRow({
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="smIcon" variant="ghost" aria-label={t("Actions")}>
+                <Button size="iconSm" variant="ghost" aria-label={t("Actions")}>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

@@ -4,6 +4,7 @@ import { useExtracted } from "next-intl";
 import { useState } from "react";
 
 import { CodeSnippet } from "@/components/CodeSnippet";
+import { SegmentedControl } from "@/components/interior/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -104,28 +105,16 @@ export function EmbedTab({ siteMetadata, embedEnabled }: EmbedTabProps) {
         title={t("Live Visitor Widget")}
         description={t("Embed a compact live visitor widget on another site.")}
         action={
-          <div className="flex items-center rounded-lg border border-neutral-150 bg-neutral-50 p-0.5 dark:border-neutral-800 dark:bg-neutral-900">
-            {(
-              [
-                { key: "preview", label: t("Preview") },
-                { key: "code", label: t("Embed Code") },
-              ] as const
-            ).map(tab => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setWidgetOutputTab(tab.key)}
-                className={cn(
-                  "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:focus-visible:ring-neutral-300",
-                  widgetOutputTab === tab.key
-                    ? "border-neutral-150 bg-white text-neutral-950 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl<OutputTab>
+            aria-label={t("Live Visitor Widget")}
+            size="sm"
+            options={[
+              { value: "preview", label: t("Preview") },
+              { value: "code", label: t("Embed Code") },
+            ]}
+            value={widgetOutputTab}
+            onValueChange={setWidgetOutputTab}
+          />
         }
       >
         {widgetOutputTab === "preview" ? (
@@ -177,31 +166,23 @@ export function EmbedTab({ siteMetadata, embedEnabled }: EmbedTabProps) {
       >
         <SettingsSection title={t("Appearance")}>
           <SettingRow label={t("Variant")}>
-            {variants.map(v => (
-              <Button
-                key={v.value}
-                type="button"
-                size="sm"
-                variant={variant === v.value ? "success" : "outline"}
-                onClick={() => setVariant(v.value)}
-              >
-                {v.label}
-              </Button>
-            ))}
+            <SegmentedControl
+              aria-label={t("Variant")}
+              size="sm"
+              options={variants}
+              value={variant}
+              onValueChange={setVariant}
+            />
           </SettingRow>
 
           <SettingRow label={t("Theme")}>
-            {themes.map(th => (
-              <Button
-                key={th.value}
-                type="button"
-                size="sm"
-                variant={theme === th.value ? "success" : "outline"}
-                onClick={() => setTheme(th.value)}
-              >
-                {th.label}
-              </Button>
-            ))}
+            <SegmentedControl
+              aria-label={t("Theme")}
+              size="sm"
+              options={themes}
+              value={theme}
+              onValueChange={setTheme}
+            />
           </SettingRow>
 
           <SettingRow
@@ -231,17 +212,13 @@ export function EmbedTab({ siteMetadata, embedEnabled }: EmbedTabProps) {
         {variant === "card" && (
           <SettingsSection title={t("Options")}>
             <SettingRow label={t("Time Window")}>
-              {timeWindows.map(w => (
-                <Button
-                  key={w.minutes}
-                  type="button"
-                  size="sm"
-                  variant={minutes === w.minutes ? "success" : "outline"}
-                  onClick={() => setMinutes(w.minutes)}
-                >
-                  {w.label}
-                </Button>
-              ))}
+              <SegmentedControl
+                aria-label={t("Time Window")}
+                size="sm"
+                options={timeWindows.map(w => ({ value: String(w.minutes), label: w.label }))}
+                value={String(minutes)}
+                onValueChange={value => setMinutes(Number(value))}
+              />
             </SettingRow>
 
             <SettingRow

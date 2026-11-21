@@ -107,7 +107,7 @@ export function TopPaths({
               onChange={event => setSearch(event.target.value)}
               placeholder={t("Contains page, e.g. /docs/**")}
               aria-label={t("Filter paths by page")}
-              className="h-8 pl-8 text-xs"
+              inputSize="sm"
             />
           </div>
         </div>

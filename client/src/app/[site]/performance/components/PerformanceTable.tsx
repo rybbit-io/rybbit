@@ -321,9 +321,7 @@ export function PerformanceTable({ dimension }: { dimension: PerformanceDimensio
       <Table className="min-w-[1020px]">
         <TableHeader>
           <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-            <TableHead className="min-w-[200px] rounded-none pl-4 first:rounded-none">
-              {dimensionLabel[dimension]}
-            </TableHead>
+            <TableHead className="min-w-[200px] pl-4">{dimensionLabel[dimension]}</TableHead>
             {PERFORMANCE_METRICS.map(metric => (
               <SortHeader
                 key={metric}
@@ -351,7 +349,7 @@ export function PerformanceTable({ dimension }: { dimension: PerformanceDimensio
             >
               {t("Loads")}
             </SortHeader>
-            <TableHead className="w-[72px] rounded-none pr-4 last:rounded-none">
+            <TableHead className="w-[72px] pr-4">
               <span className="sr-only">{t("Open in")}</span>
             </TableHead>
           </TableRow>

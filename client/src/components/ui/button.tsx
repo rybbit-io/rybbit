@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 disabled:pointer-events-none disabled:opacity-50 aria-busy:cursor-progress [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 dark:focus-visible:ring-neutral-300",
+  "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 disabled:pointer-events-none disabled:opacity-50 aria-busy:cursor-progress [&_svg]:pointer-events-none [&_svg:not([class*=size-])]:size-4 [&_svg]:shrink-0 dark:focus-visible:ring-neutral-300",
   {
     variants: {
       variant: {
@@ -33,6 +33,9 @@ const buttonVariants = cva(
         xs: "h-6 rounded-md px-1.5 text-xs",
         lg: "h-10 rounded-lg px-8 text-sm",
         icon: "h-9 w-9 rounded-lg",
+        // Matches the sm tier (32px), for icon buttons that sit beside sm controls in a toolbar.
+        iconSm: "h-8 w-8 rounded-lg",
+        // Dense in-row actions (table rows, card headers): 28px.
         smIcon: "h-7 w-7 rounded-md",
       },
     },

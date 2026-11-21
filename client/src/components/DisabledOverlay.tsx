@@ -21,6 +21,11 @@ interface DisabledOverlayProps {
   requiredPlan?: "pro" | "standard" | "basic";
 }
 
+// Floats over blurred content, so it carries its own surface and border in both themes.
+const MESSAGE_CARD =
+  "flex flex-col gap-3 rounded-lg border border-neutral-150 bg-white p-4 dark:border-neutral-750 dark:bg-neutral-900";
+const DEMO_LINK = "flex items-center gap-1 text-sm text-neutral-900 hover:underline dark:text-neutral-100";
+
 function OwnerMessage({
   message,
   featurePath,
@@ -35,7 +40,7 @@ function OwnerMessage({
   const t = useExtracted();
   const planName = requiredPlan === "pro" ? t("Pro") : requiredPlan === "basic" ? t("Basic") : t("Standard");
   return (
-    <div className="bg-neutral-900 rounded-lg  border border-neutral-700 shadow-xl flex flex-col gap-3 p-4">
+    <div className={MESSAGE_CARD}>
       <div className="flex gap-3">
         <Crown className="h-5 w-5 text-amber-500 shrink-0" />
         <div className="flex-1 space-y-1">
@@ -43,13 +48,9 @@ function OwnerMessage({
             {t("Upgrade to {planName} to unlock {message}", { planName, message })}
           </p>
           {featurePath && (
-            <Link
-              href={`https://${DEMO_HOSTNAME}/81/${featurePath}`}
-              target="_blank"
-              className="text-sm text-neutral-100 hover:underline flex items-center gap-1"
-            >
+            <Link href={`https://${DEMO_HOSTNAME}/81/${featurePath}`} target="_blank" className={DEMO_LINK}>
               {t("See a demo of this feature")}
-              <ExternalLink className="ml-1 h-4 w-4" />
+              <ExternalLink className="h-4 w-4" />
             </Link>
           )}
         </div>
@@ -66,7 +67,7 @@ function OwnerMessage({
 function UserMessage({ message, featurePath }: { message: string; featurePath?: string }) {
   const t = useExtracted();
   return (
-    <div className="bg-neutral-900 rounded-lg  border border-neutral-700 shadow-xl flex flex-col gap-3 p-4">
+    <div className={MESSAGE_CARD}>
       <div className="flex gap-3">
         <Crown className="h-5 w-5 text-amber-500 shrink-0" />
         <div className="flex-1 space-y-1">
@@ -74,11 +75,7 @@ function UserMessage({ message, featurePath }: { message: string; featurePath?: 
             {t("Ask your organization owner to upgrade to Pro to unlock {message}", { message })}
           </p>
           {featurePath && (
-            <Link
-              href={`https://${DEMO_HOSTNAME}/81/${featurePath}`}
-              target="_blank"
-              className="text-sm text-neutral-100 hover:underline flex items-center gap-1"
-            >
+            <Link href={`https://${DEMO_HOSTNAME}/81/${featurePath}`} target="_blank" className={DEMO_LINK}>
               {t("See a demo of this feature")}
               <ExternalLink className="h-4 w-4" />
             </Link>

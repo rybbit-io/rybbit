@@ -56,7 +56,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
     <th
       ref={ref}
       className={cn(
-        "h-8 px-2 text-left align-middle font-medium text-xs text-neutral-500 [&:has([role=checkbox])]:pr-0 *:[role=checkbox]:translate-y-[2px] dark:text-neutral-400 first:rounded-l-xl last:rounded-r-xl",
+        "h-8 px-2 text-left align-middle font-medium text-xs text-neutral-500 [&:has([role=checkbox])]:pr-0 *:[role=checkbox]:translate-y-[2px] dark:text-neutral-400",
         className
       )}
       {...props}
@@ -95,9 +95,9 @@ const TableSortIndicator = ({ sortDirection, canSort = true, className }: TableS
   return (
     <div className={cn("flex flex-col", className)}>
       {sortDirection === "asc" ? (
-        <ChevronUp className="h-3 w-3 text-blue-400" />
+        <ChevronUp className="h-3 w-3 text-neutral-900 dark:text-neutral-100" />
       ) : sortDirection === "desc" ? (
-        <ChevronDown className="h-3 w-3 text-blue-400" />
+        <ChevronDown className="h-3 w-3 text-neutral-900 dark:text-neutral-100" />
       ) : (
         <ChevronsUpDown className="h-3 w-3 text-neutral-400" />
       )}

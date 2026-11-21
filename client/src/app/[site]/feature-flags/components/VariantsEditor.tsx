@@ -75,14 +75,15 @@ export function VariantsEditor({
                 value={variant.key}
                 placeholder={t("variant_key")}
                 onChange={event => updateVariant(variant.id, { key: event.target.value })}
-                className="h-8 font-mono text-xs"
+                inputSize="sm"
+                className="font-mono"
               />
               <Input
                 aria-label={t("Variant name")}
                 value={variant.name}
                 placeholder={t("Display name")}
                 onChange={event => updateVariant(variant.id, { name: event.target.value })}
-                className="h-8 text-xs"
+                inputSize="sm"
               />
               <PercentInput
                 ariaLabel={t("Rollout")}
@@ -92,7 +93,7 @@ export function VariantsEditor({
               />
               <Button
                 type="button"
-                size="smIcon"
+                size="iconSm"
                 variant="ghost"
                 aria-label={t("Payload")}
                 title={t("Payload")}
@@ -106,7 +107,7 @@ export function VariantsEditor({
               </Button>
               <Button
                 type="button"
-                size="smIcon"
+                size="iconSm"
                 variant="ghost"
                 aria-label={t("Remove")}
                 onClick={() => removeVariant(variant.id)}

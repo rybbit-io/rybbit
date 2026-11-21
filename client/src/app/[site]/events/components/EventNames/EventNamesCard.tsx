@@ -288,7 +288,6 @@ export function EventNamesCard({ rows, isLoading, isError, trendBucket, silentEv
           <Input
             isSearch
             inputSize="sm"
-            className="h-8"
             value={search}
             onChange={event => {
               setSearch(event.target.value);

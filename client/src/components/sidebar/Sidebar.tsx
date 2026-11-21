@@ -47,9 +47,10 @@ function Item({
       <div
         className={cn(
           "px-3 py-2 rounded-lg transition-colors w-full",
+          // Active is the stronger tone so hovering a link never looks more selected than the current page.
           active
-            ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white"
-            : "text-neutral-800 hover:text-neutral-950 hover:bg-neutral-150 dark:text-neutral-200 dark:hover:text-white dark:hover:bg-neutral-800/50"
+            ? "bg-neutral-150 text-neutral-900 dark:bg-neutral-800 dark:text-white"
+            : "text-neutral-800 hover:text-neutral-950 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:text-white dark:hover:bg-neutral-800/50"
         )}
       >
         <div className="flex items-center gap-2">

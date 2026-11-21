@@ -312,13 +312,14 @@ export default function DashboardDetailPage() {
       <div className="mx-auto flex max-w-[1600px] flex-col gap-3 p-2 md:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-lg" />
             <Skeleton className="h-6 w-48 rounded-md" />
           </div>
           <div className="flex items-center gap-2">
-            <Skeleton className="h-9 w-44 rounded-lg" />
-            <Skeleton className="h-9 w-28 rounded-lg" />
-            <Skeleton className="hidden h-9 w-20 rounded-lg sm:block" />
+            <Skeleton className="h-8 w-44 rounded-lg" />
+            <Skeleton className="h-8 w-16 rounded-lg" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
+            <Skeleton className="hidden h-8 w-16 rounded-lg sm:block" />
           </div>
         </div>
         {/* The real grid layout is unknown until it loads, so a fixed card
@@ -338,7 +339,7 @@ export default function DashboardDetailPage() {
     <div className="mx-auto flex max-w-[1600px] flex-col gap-3 p-2 md:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Button size="smIcon" variant="ghost" onClick={handleBack} aria-label="Back to dashboards">
+          <Button size="iconSm" variant="ghost" onClick={handleBack} aria-label="Back to dashboards">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           {editMode ? (
@@ -362,20 +363,20 @@ export default function DashboardDetailPage() {
           <div className="flex items-center">
             <Button
               variant="secondary"
-              size="icon"
+              size="iconSm"
               onClick={goBack}
               disabled={!canGoBack(time)}
-              className="h-8 w-8 rounded-r-none"
+              className="rounded-r-none"
               aria-label="Previous date range"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="secondary"
-              size="icon"
+              size="iconSm"
               onClick={goForward}
               disabled={!canGoForward(time)}
-              className="-ml-px h-8 w-8 rounded-l-none"
+              className="-ml-px rounded-l-none"
               aria-label="Next date range"
             >
               <ChevronRight className="h-4 w-4" />

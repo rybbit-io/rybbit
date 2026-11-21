@@ -12,8 +12,8 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
+import { DateInput, TimeInput } from "@/components/ui/date-picker";
 import useMediaQuery from "@/components/ui/hooks/useMediaQuery";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { timezones } from "@/lib/dateTimeUtils";
 import { getDashboardTimeForRange, type DashboardDefaultTimeRange } from "@/lib/defaultTimeRange";
@@ -403,8 +403,8 @@ function BoundRow({
       <span className="w-9 shrink-0 text-[10px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
         {label}
       </span>
-      <Input
-        type="date"
+      {/* Typeable fields without the native picker: the calendar above is the picker. */}
+      <DateInput
         inputSize="sm"
         aria-label={dateLabel}
         value={date}
@@ -412,8 +412,7 @@ function BoundRow({
         onChange={event => onDate(event.target.value)}
         className="min-w-0 flex-1"
       />
-      <Input
-        type="time"
+      <TimeInput
         inputSize="sm"
         aria-label={timeLabel}
         value={time}

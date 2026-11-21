@@ -22,7 +22,7 @@ export function CommandPaletteTrigger({ className }: { className?: string }) {
       onClick={openCommandPalette}
       aria-keyshortcuts={apple === false ? "Control+K" : "Meta+K"}
       className={cn(
-        "flex h-8 w-full items-center gap-2 rounded-lg border border-neutral-200 px-2.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-150 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800/50 dark:hover:text-white dark:focus-visible:ring-neutral-300",
+        "flex h-9 w-full items-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800/50 dark:hover:text-white dark:focus-visible:ring-neutral-300",
         className
       )}
     >

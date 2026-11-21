@@ -49,7 +49,7 @@ export function RollupTopBar({
               placeholder={t("Filter by tags...")}
               searchPlaceholder={t("Search tags...")}
               emptyText={t("No tags found.")}
-              className="border-neutral-150 dark:border-neutral-800"
+              className="min-h-8 border-neutral-150 px-2.5 py-1 text-xs dark:border-neutral-800"
             />
           </div>
         )}
@@ -60,19 +60,19 @@ export function RollupTopBar({
         <div className="flex items-center">
           <Button
             variant="secondary"
-            size="icon"
+            size="iconSm"
             onClick={goBack}
             disabled={!canGoBack(time)}
-            className="rounded-r-none h-8 w-8"
+            className="rounded-r-none"
           >
             <ChevronLeft />
           </Button>
           <Button
             variant="secondary"
-            size="icon"
+            size="iconSm"
             onClick={goForward}
             disabled={!canGoForward(time)}
-            className="rounded-l-none -ml-px h-8 w-8"
+            className="rounded-l-none -ml-px"
           >
             <ChevronRight />
           </Button>

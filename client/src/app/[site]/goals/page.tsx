@@ -209,7 +209,8 @@ export default function GoalsPage() {
               <Input
                 placeholder={t("Filter goals")}
                 aria-label={t("Filter goals")}
-                className="h-8 w-44 text-xs sm:w-52"
+                inputSize="sm"
+                className="w-44 sm:w-52"
                 isSearch
                 value={search}
                 onChange={event => {
