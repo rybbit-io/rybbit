@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, Plus, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Plus, X } from "lucide-react";
 import { useExtracted } from "next-intl";
 import { Fragment } from "react";
 import { ruleFieldOptions, ruleOperatorOptions } from "../lib/constants";
@@ -42,24 +43,18 @@ export function TargetingRulesEditor({
 
   return (
     <div className="grid gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <Filter className="h-3 w-3 text-neutral-500 dark:text-neutral-400" />
-          <Label className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            {t("Targeting rules")}
-          </Label>
-        </div>
-        <Button type="button" size="sm" variant="secondary" onClick={() => onChange([...rules, createEmptyRule()])}>
-          <Plus className="h-4 w-4" />
+      <div className="flex h-6 items-center justify-between gap-2">
+        <Label>{t("Targeting rules")}</Label>
+        <Button type="button" size="xs" variant="ghost" onClick={() => onChange([...rules, createEmptyRule()])}>
+          <Plus className="h-3.5 w-3.5" />
           {t("Add rule")}
         </Button>
       </div>
 
       {rules.length === 0 ? (
-        <div className="rounded-md border border-dashed border-neutral-200 px-3 py-4 text-center text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
-          <span className="font-mono text-neutral-400 dark:text-neutral-500">{"//"}</span>{" "}
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
           {t("Applies to everyone. Add a rule to narrow targeting.")}
-        </div>
+        </p>
       ) : (
         <div className="grid gap-1.5">
           {rules.map((rule, index) => {
@@ -68,21 +63,14 @@ export function TargetingRulesEditor({
 
             return (
               <Fragment key={rule.id}>
-                {index > 0 && (
-                  <div className="flex items-center gap-2 pl-1">
-                    <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
-                      {t("and")}
-                    </span>
-                    <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
-                  </div>
-                )}
+                {index > 0 && <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("and")}</span>}
                 <div
-                  className="grid grid-cols-1 items-center gap-1.5 lg:grid"
-                  style={{
-                    gridTemplateColumns: requiresKey
-                      ? "minmax(140px,1fr) minmax(120px,0.9fr) minmax(140px,1fr) minmax(160px,1.2fr) auto"
-                      : "minmax(140px,1fr) minmax(140px,1fr) minmax(160px,1.2fr) auto",
-                  }}
+                  className={cn(
+                    "grid grid-cols-1 items-center gap-1.5",
+                    requiresKey
+                      ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto]"
+                      : "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto]"
+                  )}
                 >
                   <Select
                     value={rule.field}
@@ -114,10 +102,7 @@ export function TargetingRulesEditor({
                     value={rule.operator}
                     onValueChange={value => updateRule(rule.id, { operator: value as RuleOperator })}
                   >
-                    <SelectTrigger
-                      aria-label={t("Operator")}
-                      className="h-8 bg-neutral-100/60 text-xs italic text-neutral-600 dark:bg-neutral-850/60 dark:text-neutral-300"
-                    >
+                    <SelectTrigger aria-label={t("Operator")} className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

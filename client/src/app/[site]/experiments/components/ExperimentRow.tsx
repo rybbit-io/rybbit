@@ -20,8 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/sonner";
-import { cn } from "@/lib/utils";
-import { Flag, MoreHorizontal, Pause, Pencil, Play, Rocket, Square, Target, Trash2 } from "lucide-react";
+import { Flag, MoreHorizontal, Pause, Pencil, Play, Square, Target, Trash2 } from "lucide-react";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -97,29 +96,13 @@ export function ExperimentRow({
     if (await setStatus("paused")) setPauseOpen(false);
   };
 
-  const isRunning = experiment.status === "running";
-
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-lg border bg-white dark:bg-neutral-900",
-        isRunning ? "border-emerald-500/20 dark:border-emerald-500/15" : "border-neutral-100 dark:border-neutral-850"
-      )}
-    >
+    <div className="overflow-hidden rounded-lg border border-neutral-100 bg-white dark:border-neutral-850 dark:bg-neutral-900">
       <div className="flex flex-col gap-3 border-b border-neutral-100 p-4 dark:border-neutral-850 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-base font-medium text-neutral-900 dark:text-neutral-50">{experiment.name}</h3>
             <StatusBadge status={experiment.status} />
-            {experiment.winningVariant && (
-              <span
-                title={t("Rolled out {variant}", { variant: experiment.winningVariant })}
-                className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
-              >
-                <Rocket className="h-3 w-3" />
-                <span className="font-mono">{experiment.winningVariant}</span>
-              </span>
-            )}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
             <MetaChip icon={<Flag className="h-3.5 w-3.5" />}>
