@@ -38,7 +38,7 @@ jobs:
           cd docs/messages
           EN_KEYS=$(python3 -c "import json; f=open('en.json'); d=json.load(f); print(len(d))")
           NEEDS_TRANSLATION=false
-          for file in zh.json ja.json de.json pl.json pt.json it.json fr.json ko.json es.json; do
+          for file in zh.json ja.json de.json pl.json cs.json pt.json it.json fr.json ko.json es.json; do
             LANG_KEYS=$(python3 -c "import json; f=open('$file'); d=json.load(f); print(len(d))")
             EMPTY=$(python3 -c "import json; f=open('$file'); d=json.load(f); print(sum(1 for v in d.values() if v == ''))")
             if [ "$EMPTY" -gt 0 ] || [ "$LANG_KEYS" -ne "$EN_KEYS" ]; then
@@ -89,7 +89,7 @@ jobs:
 
             Check the translation files in docs/messages/. The source of truth is en.json.
 
-            For each non-English translation file (zh.json, ja.json, de.json, pl.json, pt.json, it.json, fr.json, ko.json, es.json):
+            For each non-English translation file (zh.json, ja.json, de.json, pl.json, cs.json, pt.json, it.json, fr.json, ko.json, es.json):
             1. Find any keys that have empty string values (these are newly extracted, untranslated strings)
             2. Find any keys in the translation file that still have English text (were not actually translated)
             3. Translate the missing/untranslated strings into the appropriate language using en.json as reference
@@ -97,6 +97,7 @@ jobs:
             5. Also remove any keys that exist in the translation file but NOT in en.json (stale keys)
 
             Language mapping:
+            - cs.json = Czech
             - zh.json = Chinese (Simplified)
             - ja.json = Japanese
             - de.json = German
