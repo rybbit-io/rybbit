@@ -88,7 +88,7 @@
     "ol-mapbox-style": "^13.4.3",
     "papaparse": "^5.5.3",
     "react": "^19.2.4",
-    "react-day-picker": "^10.0.1",
+    "react-day-picker": "^10.0.2",
     "react-dom": "^19.2.4",
     "react-grid-layout": "^1.5.3",
     "react-hook-form": "7.56.3",
