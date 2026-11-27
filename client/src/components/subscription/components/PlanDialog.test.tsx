@@ -135,3 +135,47 @@ describe("PlanDialog", () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });
+
+describe("PlanDialog — AppSumo credit", () => {
+  function renderForAppSumoTier(tier: string) {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <PlanDialog open onOpenChange={mocks.onOpenChange} hasActiveSubscription={false} appsumoTier={tier} />
+      </QueryClientProvider>
+    );
+  }
+
+  function proRowText() {
+    return screen.getByText("Pro").closest("button")!.textContent;
+  }
+
+  it("starts on Pro at the license's events and shows the price after the credit", () => {
+    renderForAppSumoTier("2");
+
+    expect(screen.getByText("100k events")).toBeTruthy();
+    // $39 Pro 100k minus the $19 tier 2 credit
+    expect(proRowText()).toContain("$39$20/mo");
+    expect(
+      screen.getByText(
+        "Your AppSumo Tier 2 license takes $19/mo off Pro plans with 100k events or more, for as long as you stay subscribed."
+      )
+    ).toBeTruthy();
+  });
+
+  it("credits annual plans per year", () => {
+    renderForAppSumoTier("2");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Annual" }));
+
+    // ($312 - $152) / 12, shown per month
+    expect(proRowText()).toContain("$26$13/mo");
+    expect(screen.getByText(/takes \$152\/yr off Pro plans/)).toBeTruthy();
+  });
+
+  it("starts tiers without a matching plan on the next plan up", () => {
+    renderForAppSumoTier("7"); // 3M events
+
+    expect(screen.getByText("5M events")).toBeTruthy();
+    expect(proRowText()).toContain("$299$200/mo");
+  });
+});

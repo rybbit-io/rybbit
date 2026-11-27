@@ -5,6 +5,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { organization } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getOrgMembership } from "../../lib/access.js";
+import { appsumoCreditFor, discountsWithAppSumoCredit } from "../../lib/appsumoCredit.js";
 import Stripe from "stripe";
 import { invalidateStripeSubscriptionCache } from "../../lib/subscriptionUtils.js";
 
@@ -57,8 +58,18 @@ export async function updateSubscription(
 
     // 3. Get the active or trialing subscription
     const [activeSubscriptions, trialingSubscriptions] = await Promise.all([
-      (stripe as Stripe).subscriptions.list({ customer: org.stripeCustomerId, status: "active", limit: 1 }),
-      (stripe as Stripe).subscriptions.list({ customer: org.stripeCustomerId, status: "trialing", limit: 1 }),
+      (stripe as Stripe).subscriptions.list({
+        customer: org.stripeCustomerId,
+        status: "active",
+        limit: 1,
+        expand: ["data.discounts"],
+      }),
+      (stripe as Stripe).subscriptions.list({
+        customer: org.stripeCustomerId,
+        status: "trialing",
+        limit: 1,
+        expand: ["data.discounts"],
+      }),
     ]);
 
     const subscription = activeSubscriptions.data[0] ?? trialingSubscriptions.data[0];
@@ -80,7 +91,12 @@ export async function updateSubscription(
       throw error;
     }
 
-    // 5. Update the subscription with the new price
+    // 5. Update the subscription with the new price. The AppSumo credit follows the plan:
+    // re-priced for a new billing interval, dropped when leaving Pro, added when joining it.
+    const discounts = discountsWithAppSumoCredit(
+      subscription.discounts,
+      (await appsumoCreditFor(organizationId, newPriceId))?.couponId ?? null
+    );
     const isTrialing = subscription.status === "trialing";
     const updatedSubscription = await (stripe as Stripe).subscriptions.update(subscription.id, {
       items: [
@@ -92,6 +108,7 @@ export async function updateSubscription(
       // For trialing subscriptions, swap the plan without charging — preserve the trial
       proration_behavior: isTrialing ? "none" : "always_invoice",
       ...(isTrialing && subscription.trial_end && { trial_end: subscription.trial_end }),
+      ...(discounts !== undefined && { discounts }),
     });
 
     // The plan changed, so drop the cached subscription for this customer (also clears the

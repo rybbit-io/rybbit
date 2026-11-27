@@ -98,16 +98,31 @@ export function PaidPlan() {
   const planType = getPlanType(activeSubscription.planName);
   const planName = stripePlan ? `${planType} ${stripePlan.shortName}` : planType;
 
-  const priceAmount = stripePlan
-    ? new Intl.NumberFormat(locale, { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(
-        stripePlan.price
-      )
-    : null;
-  const price = priceAmount
+  const formatUsd = (amount: number) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    }).format(amount);
+  // Show what the customer pays: after a promotion code or the AppSumo credit, with the list
+  // price struck through beside it.
+  const discountedAmount = activeSubscription.discountedAmount;
+  const isDiscounted = !!stripePlan && discountedAmount !== undefined && discountedAmount / 100 < stripePlan.price;
+  const priceAmount = stripePlan ? formatUsd(isDiscounted ? discountedAmount! / 100 : stripePlan.price) : null;
+  const pricePerInterval = priceAmount
     ? stripePlan?.interval === "year"
       ? t("{price}/year", { price: priceAmount })
       : t("{price}/month", { price: priceAmount })
     : null;
+  const price =
+    pricePerInterval && isDiscounted ? (
+      <>
+        <s className="mr-1.5 text-neutral-400 dark:text-neutral-500">{formatUsd(stripePlan!.price)}</s>
+        {pricePerInterval}
+      </>
+    ) : (
+      pricePerInterval
+    );
 
   const periodEnd = activeSubscription.currentPeriodEnd
     ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(activeSubscription.currentPeriodEnd))

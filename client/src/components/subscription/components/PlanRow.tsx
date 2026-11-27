@@ -12,6 +12,8 @@ interface PlanRowProps {
   isCurrent?: boolean;
   disabled?: boolean;
   disabledReason?: string;
+  /** USD taken off each invoice of this row's billing interval (the AppSumo credit) */
+  credit?: number | null;
 }
 
 export function PlanRow({
@@ -25,16 +27,15 @@ export function PlanRow({
   isCurrent,
   disabled,
   disabledReason,
+  credit,
 }: PlanRowProps) {
   const price =
     eventLimit !== "Custom"
       ? findPriceForTier(eventLimit, isAnnual ? "year" : "month", plan)
       : null;
-  const displayPrice = price
-    ? isAnnual
-      ? Math.round(price.price / 12)
-      : price.price
-    : 0;
+  const perMonth = (amount: number) => (isAnnual ? Math.round(amount / 12) : amount);
+  const displayPrice = price ? perMonth(price.price) : 0;
+  const creditedPrice = price && credit ? perMonth(price.price - credit) : null;
 
   return (
     <button
@@ -91,7 +92,10 @@ export function PlanRow({
           </div>
         </div>
         <div className="text-right">
-          <span className="font-semibold">${displayPrice}</span>
+          {creditedPrice !== null && (
+            <span className="mr-1.5 text-sm text-neutral-400 line-through dark:text-neutral-500">${displayPrice}</span>
+          )}
+          <span className="font-semibold">${creditedPrice ?? displayPrice}</span>
           <span className="text-sm text-neutral-500 dark:text-neutral-400">
             /mo
           </span>

@@ -42,6 +42,11 @@ export interface StripeSubscriptionInfo {
   createdAt: Date;
   trialEnd?: Date;
   /**
+   * What the next renewal costs after the subscription's discounts, in cents before tax. Only
+   * set when a discount applies and the lookup expanded the discounts (the per-customer one).
+   */
+  discountedAmount?: number;
+  /**
    * Set while Stripe is retrying a failed renewal and the plan is kept on meanwhile (see
    * PAST_DUE_GRACE_DAYS). `status` reads "active" then: the plan works as usual.
    */
@@ -531,7 +536,8 @@ async function fetchStripeSubscription(stripeCustomerId: string): Promise<Stripe
     customer: stripeCustomerId,
     status: "all",
     limit: 100,
-    expand: ["data.plan.product"],
+    // Discounts so the billing page can show what the customer actually pays
+    expand: ["data.plan.product", "data.discounts"],
   });
 
   // The same pick the bulk snapshot makes, so both paths agree on the grace period.
@@ -720,6 +726,34 @@ async function resolveTrialGrace(
 }
 
 /**
+ * The price of the subscription's next renewal after its discounts, in cents before tax, or
+ * undefined when no discount applies or the discounts weren't expanded. Discounts that end
+ * before the renewal are left out.
+ */
+export function discountedAmount(subscription: Stripe.Subscription): number | undefined {
+  const item = subscription.items.data[0];
+  const unitAmount = item?.price.unit_amount;
+  if (unitAmount == null) {
+    return undefined;
+  }
+  const discounts = (subscription.discounts ?? []).filter(
+    (d): d is Stripe.Discount => typeof d !== "string" && (!d.end || d.end > item.current_period_end)
+  );
+  if (discounts.length === 0) {
+    return undefined;
+  }
+  let amount = unitAmount * (item.quantity ?? 1);
+  for (const { coupon } of discounts) {
+    if (coupon.percent_off) {
+      amount -= Math.round((amount * coupon.percent_off) / 100);
+    } else if (coupon.amount_off) {
+      amount -= coupon.amount_off;
+    }
+  }
+  return Math.max(0, amount);
+}
+
+/**
  * Builds our StripeSubscriptionInfo from a raw Stripe subscription. Pure — does not call Stripe —
  * so it is reused for both per-customer lookups and bulk account snapshots.
  */
@@ -757,6 +791,8 @@ function buildStripeSubscriptionInfo(subscription: Stripe.Subscription): StripeS
     };
   }
 
+  const discounted = discountedAmount(subscription);
+
   // Determine period start
   const currentMonthStart = DateTime.now().startOf("month");
   const subscriptionStartDate = DateTime.fromSeconds(subscriptionItem.current_period_start);
@@ -779,6 +815,7 @@ function buildStripeSubscriptionInfo(subscription: Stripe.Subscription): StripeS
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
     createdAt: new Date(subscription.created * 1000),
     ...(isTrial && subscription.trial_end ? { trialEnd: new Date(subscription.trial_end * 1000) } : {}),
+    ...(discounted !== undefined && { discountedAmount: discounted }),
   };
 }
 

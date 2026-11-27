@@ -13,6 +13,8 @@ interface PreviewData {
     priceId: string;
     amount: number;
     interval: string;
+    /** USD off each invoice of the new plan, from the organization's AppSumo license */
+    appsumoCredit?: number | null;
   };
   proration: {
     credit: number;
@@ -62,6 +64,12 @@ export function PlanChangePreviewDialog({
               <div className="text-neutral-900 dark:text-neutral-100 font-medium">
                 ${previewData.newPlan.amount / 100}/{previewData.newPlan.interval === "year" ? "yr" : "mo"}
               </div>
+              {!!previewData.newPlan.appsumoCredit && (
+                <div className="text-emerald-400">
+                  -${previewData.newPlan.appsumoCredit}/{previewData.newPlan.interval === "year" ? "yr" : "mo"} AppSumo
+                  credit
+                </div>
+              )}
             </div>
 
             {previewData.isTrialing ? (

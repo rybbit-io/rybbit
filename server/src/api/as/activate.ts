@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { asLicenses } from "../../db/postgres/schema-appsumo.js";
+import { syncAppSumoCredit } from "../../lib/appsumoCredit.js";
 import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { IS_CLOUD } from "../../lib/const.js";
 import { usageService } from "../../services/usageService.js";
@@ -202,6 +203,8 @@ export async function activateAppSumoLicense(
 
     // Turn on sites that were waiting for a plan without waiting for the usage check.
     usageService.requestOrganizationRefresh(organizationId);
+    // An organization already on Pro starts earning the license's credit. Never throws.
+    await syncAppSumoCredit(organizationId, request.log);
 
     return reply.status(200).send({
       success: true,

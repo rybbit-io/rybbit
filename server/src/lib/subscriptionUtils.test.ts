@@ -77,6 +77,7 @@ import { APPSUMO_REPLAY_LIMITS, APPSUMO_TIER_LIMITS, DEFAULT_EVENT_LIMIT, getStr
 import {
   AppSumoSubscriptionInfo,
   CustomPlanSubscriptionInfo,
+  discountedAmount,
   FreeSubscriptionInfo,
   getAllStripeSubscriptionsByCustomer,
   getAppSumoSubscription,
@@ -1398,5 +1399,45 @@ describe("a paid plan while Stripe retries a failed renewal", () => {
 
     await expect(getBestSubscription("org_1", customer)).resolves.toMatchObject({ source: "free" });
     expect(mocks.listInvoices).not.toHaveBeenCalled();
+  });
+});
+
+describe("discountedAmount", () => {
+  const RENEWAL = 1_800_000_000;
+
+  function sub(discounts: unknown[], unitAmount: number | null = 3900) {
+    return {
+      discounts,
+      items: { data: [{ price: { unit_amount: unitAmount }, quantity: 1, current_period_end: RENEWAL }] },
+    } as unknown as Stripe.Subscription;
+  }
+
+  function discount(coupon: Record<string, unknown>, end: number | null = null) {
+    return { id: "di_1", end, coupon };
+  }
+
+  it("is undefined without a discount", () => {
+    expect(discountedAmount(sub([]))).toBeUndefined();
+  });
+
+  it("is undefined when the discounts weren't expanded", () => {
+    expect(discountedAmount(sub(["di_1"]))).toBeUndefined();
+  });
+
+  it("takes an amount-off coupon off the price", () => {
+    expect(discountedAmount(sub([discount({ amount_off: 1900 })]))).toBe(2000);
+  });
+
+  it("takes a percent-off coupon off the price", () => {
+    expect(discountedAmount(sub([discount({ percent_off: 30 })]))).toBe(2730);
+  });
+
+  it("never goes below zero", () => {
+    expect(discountedAmount(sub([discount({ amount_off: 9900 })]))).toBe(0);
+  });
+
+  it("leaves out discounts that end before the renewal", () => {
+    expect(discountedAmount(sub([discount({ percent_off: 50 }, RENEWAL - 1)]))).toBeUndefined();
+    expect(discountedAmount(sub([discount({ percent_off: 50 }, RENEWAL + 1)]))).toBe(1950);
   });
 });

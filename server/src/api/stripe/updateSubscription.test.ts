@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  appsumoCreditFor: vi.fn(),
   subscriptionsList: vi.fn(),
   subscriptionsUpdate: vi.fn(),
   subscriptionsRetrieve: vi.fn(),
@@ -26,6 +27,12 @@ vi.mock("../../lib/subscriptionUtils.js", () => ({
 
 // Real Drizzle queries against PGlite so the inline membership check — the SOLE
 // authorization gate on this route — is exercised for real.
+// The AppSumo license lookup is covered in appsumoCredit.test.ts; the discount merge stays real.
+vi.mock("../../lib/appsumoCredit.js", async importOriginal => ({
+  ...(await importOriginal<typeof import("../../lib/appsumoCredit.js")>()),
+  appsumoCreditFor: mocks.appsumoCreditFor,
+}));
+
 vi.mock("../../db/postgres/postgres.js", async () => {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
@@ -69,6 +76,7 @@ function fakeSubscription(status: "active" | "trialing", overrides: Record<strin
     id: "sub_1",
     status,
     trial_end: null,
+    discounts: [],
     items: { data: [{ id: "si_1", price: { id: "price_old" }, current_period_end: 1760000000 }] },
     ...overrides,
   };
@@ -85,6 +93,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  mocks.appsumoCreditFor.mockResolvedValue(null);
   await (sql as any).exec(`TRUNCATE "organization", "member"`);
   await (sql as any).exec(`
     INSERT INTO "organization" ("id","name","slug","stripeCustomerId") VALUES
@@ -121,7 +130,12 @@ describe("updateSubscription — authorization", () => {
         currentPeriodEnd: new Date(1760000000 * 1000).toISOString(),
       },
     });
-    expect(mocks.subscriptionsList).toHaveBeenCalledWith({ customer: "cus_1", status: "active", limit: 1 });
+    expect(mocks.subscriptionsList).toHaveBeenCalledWith({
+      customer: "cus_1",
+      status: "active",
+      limit: 1,
+      expand: ["data.discounts"],
+    });
     expect(mocks.subscriptionsUpdate).toHaveBeenCalledWith("sub_1", {
       items: [{ id: "si_1", price: "price_new" }],
       proration_behavior: "always_invoice",
@@ -172,6 +186,43 @@ describe("updateSubscription — authorization", () => {
 });
 
 describe("updateSubscription — plan-change branches", () => {
+  it("adds the AppSumo credit when moving onto Pro, keeping other discounts", async () => {
+    mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
+      status === "active"
+        ? { data: [fakeSubscription("active", { discounts: [{ id: "di_promo", coupon: { id: "PROMO" } }] })] }
+        : { data: [] }
+    );
+    mocks.appsumoCreditFor.mockResolvedValue({ couponId: "appsumo-credit-t2-1900", amountUsd: 19 });
+    const reply = replyStub();
+
+    await updateSubscription(requestStub("u_owner", { organizationId: "org_1", newPriceId: "price_new" }), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(mocks.appsumoCreditFor).toHaveBeenCalledWith("org_1", "price_new");
+    expect(mocks.subscriptionsUpdate).toHaveBeenCalledWith(
+      "sub_1",
+      expect.objectContaining({ discounts: [{ discount: "di_promo" }, { coupon: "appsumo-credit-t2-1900" }] })
+    );
+  });
+
+  it("drops the AppSumo credit when leaving Pro", async () => {
+    mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
+      status === "active"
+        ? {
+            data: [
+              fakeSubscription("active", { discounts: [{ id: "di_as", coupon: { id: "appsumo-credit-t2-1900" } }] }),
+            ],
+          }
+        : { data: [] }
+    );
+    const reply = replyStub();
+
+    await updateSubscription(requestStub("u_owner", { organizationId: "org_1", newPriceId: "price_new" }), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(mocks.subscriptionsUpdate).toHaveBeenCalledWith("sub_1", expect.objectContaining({ discounts: "" }));
+  });
+
   it("preserves the trial when swapping plans on a trialing subscription", async () => {
     mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
       status === "trialing" ? { data: [fakeSubscription("trialing", { trial_end: 1765000000 })] } : { data: [] }

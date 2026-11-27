@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  appsumoCreditFor: vi.fn(),
   customersCreate: vi.fn(),
   checkoutSessionsCreate: vi.fn(),
   subscriptionsList: vi.fn(),
@@ -12,6 +13,10 @@ vi.mock("../../lib/stripe.js", () => ({
     checkout: { sessions: { create: mocks.checkoutSessionsCreate } },
     subscriptions: { list: mocks.subscriptionsList },
   },
+}));
+
+vi.mock("../../lib/appsumoCredit.js", () => ({
+  appsumoCreditFor: mocks.appsumoCreditFor,
 }));
 
 // Real Drizzle queries against PGlite so the inline membership check — the SOLE
@@ -82,7 +87,46 @@ beforeEach(async () => {
   mocks.customersCreate.mockResolvedValue({ id: "cus_new" });
   mocks.checkoutSessionsCreate.mockResolvedValue({ client_secret: "cs_secret_123" });
   mocks.subscriptionsList.mockResolvedValue({ data: [] });
+  mocks.appsumoCreditFor.mockResolvedValue(null);
   invalidateStripeSubscriptionCache("cus_1");
+});
+
+describe("createCheckoutSession — AppSumo credit", () => {
+  it("applies the AppSumo credit coupon in place of promotion codes", async () => {
+    mocks.appsumoCreditFor.mockResolvedValue({ couponId: "appsumo-credit-t2-1900", amountUsd: 19 });
+    const reply = replyStub();
+
+    await createCheckoutSession(requestStub("u_owner", validBody), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(mocks.appsumoCreditFor).toHaveBeenCalledWith("org_1", "price_pro");
+    const params = mocks.checkoutSessionsCreate.mock.calls[0][0];
+    expect(params.discounts).toEqual([{ coupon: "appsumo-credit-t2-1900" }]);
+    // Stripe rejects a session that sets both
+    expect(params).not.toHaveProperty("allow_promotion_codes");
+  });
+
+  it("allows promotion codes when there is no credit", async () => {
+    const reply = replyStub();
+
+    await createCheckoutSession(requestStub("u_owner", validBody), reply);
+
+    const params = mocks.checkoutSessionsCreate.mock.calls[0][0];
+    expect(params.allow_promotion_codes).toBe(true);
+    expect(params).not.toHaveProperty("discounts");
+  });
+
+  it("fails the checkout when the license can't be read", async () => {
+    mocks.appsumoCreditFor.mockRejectedValue(new Error("db down"));
+    const reply = replyStub();
+    const request = requestStub("u_owner", validBody);
+    request.log = { error: vi.fn() };
+
+    await createCheckoutSession(request, reply);
+
+    expect(reply.statusCode).toBe(500);
+    expect(mocks.checkoutSessionsCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe("createCheckoutSession — one trial per organization", () => {

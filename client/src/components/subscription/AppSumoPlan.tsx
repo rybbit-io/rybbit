@@ -20,11 +20,17 @@ export function AppSumoPlan() {
 
   if (!subscription) return null;
 
-  const planName = t("AppSumo Tier {tier}", { tier: subscription.planName.split("-")[1] });
+  const tier = subscription.planName.split("-")[1];
+  const planName = t("AppSumo Tier {tier}", { tier });
 
   return (
     <>
-      <PlanDialog open={showPlanDialog} onOpenChange={setShowPlanDialog} hasActiveSubscription={false} />
+      <PlanDialog
+        open={showPlanDialog}
+        onOpenChange={setShowPlanDialog}
+        hasActiveSubscription={false}
+        appsumoTier={tier}
+      />
       <PlanSection
         name={planName}
         description={t("Lifetime plan from AppSumo.")}

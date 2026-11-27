@@ -1,3 +1,4 @@
+import { APPSUMO_TIER_LIMITS, appsumoProCredit } from "@rybbit/shared";
 import { SegmentedControl } from "@/components/interior/segmented-control";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,8 @@ interface PlanDialogProps {
   onOpenChange: (open: boolean) => void;
   currentPlanName?: string;
   hasActiveSubscription?: boolean;
+  /** The organization's AppSumo tier: Pro plans covering it are shown with its credit off */
+  appsumoTier?: string;
 }
 
 function parseCurrentPlan(currentPlanName?: string) {
@@ -43,18 +46,33 @@ function parseCurrentPlan(currentPlanName?: string) {
   };
 }
 
-export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubscription }: PlanDialogProps) {
+export function PlanDialog({
+  open,
+  onOpenChange,
+  currentPlanName,
+  hasActiveSubscription,
+  appsumoTier,
+}: PlanDialogProps) {
   const t = useExtracted();
   const defaults = useMemo(() => parseCurrentPlan(currentPlanName), [currentPlanName]);
+  const appsumoEvents: number | undefined = appsumoTier
+    ? APPSUMO_TIER_LIMITS[appsumoTier as keyof typeof APPSUMO_TIER_LIMITS]
+    : undefined;
 
-  // Default to next tier up for existing subscribers
+  // Default to next tier up for existing subscribers, and to the smallest plan covering
+  // the license for AppSumo customers, which is where their credit starts
   const defaultTierIndex = hasActiveSubscription
     ? Math.min(defaults.tierIndex + 1, STRIPE_TIERS.length - 1)
-    : 0;
+    : appsumoEvents
+      ? Math.max(
+          STRIPE_TIERS.findIndex(tier => tier.events >= appsumoEvents),
+          0
+        )
+      : 0;
 
   const [eventLimitIndex, setEventLimitIndex] = useState(defaultTierIndex);
   const [isAnnual, setIsAnnual] = useState(defaults.isAnnual);
-  const [selectedPlan, setSelectedPlan] = useState<"standard" | "pro">(defaults.planType);
+  const [selectedPlan, setSelectedPlan] = useState<"standard" | "pro">(appsumoTier ? "pro" : defaults.planType);
   const [showProrationDialog, setShowProrationDialog] = useState(false);
   const [pendingPriceId, setPendingPriceId] = useState<string | null>(null);
   const [pendingPlanName, setPendingPlanName] = useState<string | null>(null);
@@ -65,6 +83,14 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
   const updateMutation = useUpdateSubscription();
 
   const eventLimit = EVENT_TIERS[eventLimitIndex];
+  const interval = isAnnual ? "year" : "month";
+  // The server applies the same credit at checkout (appsumoCreditFor)
+  const proCredit =
+    appsumoTier && typeof eventLimit === "number"
+      ? appsumoProCredit(appsumoTier, { isPro: true, interval, events: eventLimit })
+      : null;
+  const appsumoCredit =
+    appsumoTier && appsumoEvents ? appsumoProCredit(appsumoTier, { isPro: true, interval, events: appsumoEvents }) : null;
 
   const handleSelectPlan = async () => {
     if (!activeOrg) {
@@ -262,7 +288,20 @@ export function PlanDialog({ open, onOpenChange, currentPlanName, hasActiveSubsc
                     const price = findPriceForTier(eventLimit, isAnnual ? "year" : "month", "pro");
                     return price?.name === currentPlanName;
                   })()}
+                  credit={proCredit}
                 />
+                {appsumoTier && appsumoCredit && appsumoEvents && (
+                  <p className="pt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    {t(
+                      "Your AppSumo Tier {tier} license takes {credit} off Pro plans with {events} events or more, for as long as you stay subscribed.",
+                      {
+                        tier: appsumoTier,
+                        credit: isAnnual ? `$${appsumoCredit}/yr` : `$${appsumoCredit}/mo`,
+                        events: formatEventTier(appsumoEvents),
+                      }
+                    )}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="p-4 rounded-lg border border-neutral-200 dark:border-neutral-800 text-center">

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
   loggerError: vi.fn(),
+  syncCredit: vi.fn(),
 }));
 
 vi.mock("../../db/postgres/postgres.js", () => ({
@@ -15,6 +16,10 @@ vi.mock("../../db/postgres/postgres.js", () => ({
 
 vi.mock("../../lib/const.js", () => ({
   IS_CLOUD: true,
+}));
+
+vi.mock("../../lib/appsumoCredit.js", () => ({
+  syncAppSumoCreditForLicense: mocks.syncCredit,
 }));
 
 import { handleAppSumoWebhook } from "./webhook.js";
@@ -341,6 +346,8 @@ describe("handleAppSumoWebhook — upgrade", () => {
     const deactivate = executedQuery(3);
     expect(deactivate.sql).toContain("status = 'inactive'");
     expect(deactivate.params).toEqual(["lic_old"]);
+    // The Pro credit is re-priced for the new tier
+    expect(mocks.syncCredit).toHaveBeenCalledWith("lic_new", requestLogger);
 
     expect(reply.payload).toEqual({ event: "upgrade", success: true });
   });
@@ -442,6 +449,8 @@ describe("handleAppSumoWebhook — deactivate", () => {
     expect(update.sql).toContain("UPDATE appsumo.licenses");
     expect(update.sql).toContain("status = 'inactive'");
     expect(update.params).toEqual(["lic_refund"]);
+    // The refunded license stops earning its Pro credit
+    expect(mocks.syncCredit).toHaveBeenCalledWith("lic_refund", requestLogger);
   });
 
   it.each(["Upgraded by customer", "Downgraded by customer"])(
@@ -451,6 +460,7 @@ describe("handleAppSumoWebhook — deactivate", () => {
 
       // Only the audit-trail insert; the license row was not touched.
       expect(mocks.execute).toHaveBeenCalledTimes(1);
+      expect(mocks.syncCredit).not.toHaveBeenCalled();
       expect(reply.payload).toEqual({ event: "deactivate", success: true });
     }
   );

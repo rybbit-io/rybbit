@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyBaseLogger } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
+import { syncAppSumoCreditForLicense } from "../../lib/appsumoCredit.js";
 import { IS_CLOUD } from "../../lib/const.js";
 
 interface AppSumoWebhookPayload {
@@ -188,6 +189,7 @@ export async function handleAppSumoWebhook(
           "Handling webhook event"
         );
         await handleUpgradeEvent(requestLogger, license_key, tier, prev_license_key);
+        await syncAppSumoCreditForLicense(license_key, requestLogger);
         break;
 
       case "downgrade":
@@ -199,6 +201,7 @@ export async function handleAppSumoWebhook(
           "Handling webhook event"
         );
         await handleDowngradeEvent(requestLogger, license_key, tier, prev_license_key);
+        await syncAppSumoCreditForLicense(license_key, requestLogger);
         break;
 
       case "deactivate":
@@ -217,6 +220,8 @@ export async function handleAppSumoWebhook(
         );
         if (!isUpgradeOrDowngradeDeactivation) {
           await handleDeactivateEvent(requestLogger, license_key);
+          // A refunded license stops earning its credit on a Pro subscription
+          await syncAppSumoCreditForLicense(license_key, requestLogger);
         }
         break;
 
