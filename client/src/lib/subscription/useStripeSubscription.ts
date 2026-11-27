@@ -14,6 +14,9 @@ export interface SubscriptionData {
   eventLimit: number;
   interval: string;
   cancelAtPeriodEnd: boolean;
+  // Paid plans with a discount (a promotion code or the AppSumo credit): what each renewal
+  // costs after it, in cents before tax.
+  discountedAmount?: number;
   isTrial?: boolean;
   trialDaysRemaining?: number;
   message?: string; // For expired trial message

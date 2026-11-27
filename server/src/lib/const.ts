@@ -89,15 +89,7 @@ export const APPSUMO_MEMBER_LIMITS: Record<string, number | null> = {
 };
 
 // AppSumo tier limits (lifetime plans with standard features)
-export const APPSUMO_TIER_LIMITS = {
-  "1": 20_000,
-  "2": 100_000,
-  "3": 250_000,
-  "4": 500_000,
-  "5": 1_000_000,
-  "6": 2_000_000,
-  "7": 3_000_000,
-} as const;
+export { APPSUMO_TIER_LIMITS } from "@rybbit/shared";
 
 // Monthly session replay limits per AppSumo tier (0 = replays not included)
 export const APPSUMO_REPLAY_LIMITS: Record<string, number> = {

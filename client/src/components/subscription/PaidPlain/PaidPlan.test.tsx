@@ -32,8 +32,17 @@ vi.mock("../components/PlanDialog", () => ({
 }));
 vi.mock("../components/PlanSection", () => ({
   PlanAllowances: () => null,
-  PlanSection: ({ status, action }: { status: React.ReactNode; action: React.ReactNode }) => (
+  PlanSection: ({
+    price,
+    status,
+    action,
+  }: {
+    price: React.ReactNode;
+    status: React.ReactNode;
+    action: React.ReactNode;
+  }) => (
     <div>
+      <p data-testid="price">{price}</p>
       <p data-testid="status">{status}</p>
       {action}
     </div>
@@ -73,6 +82,29 @@ afterEach(() => {
 });
 
 describe("PaidPlan", () => {
+  it("shows the list price when there is no discount", () => {
+    render(<PaidPlan />);
+
+    expect(screen.getByTestId("price").textContent).toBe("$19/month");
+  });
+
+  it("shows the price after a discount with the list price struck through", () => {
+    // Pro 100k with a tier 2 AppSumo credit: $39 - $19
+    state.subscription = { ...state.subscription, planName: "pro100k", discountedAmount: 2000 };
+    render(<PaidPlan />);
+
+    const price = screen.getByTestId("price");
+    expect(price.querySelector("s")?.textContent).toBe("$39");
+    expect(price.textContent).toBe("$39$20/month");
+  });
+
+  it("shows cents when a percentage discount leaves them", () => {
+    state.subscription = { ...state.subscription, planName: "pro100k", discountedAmount: 2730 };
+    render(<PaidPlan />);
+
+    expect(screen.getByTestId("price").textContent).toBe("$39$27.30/month");
+  });
+
   it("offers a plan change and the cancellation dialog on an active plan", () => {
     render(<PaidPlan />);
 

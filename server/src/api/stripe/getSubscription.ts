@@ -180,6 +180,7 @@ export async function getSubscriptionInner(organizationId: string) {
         eventLimit: subscription.eventLimit,
         monthlyEventCount: org.monthlyEventCount || 0,
         interval: subscription.interval,
+        ...(subscription.discountedAmount !== undefined && { discountedAmount: subscription.discountedAmount }),
         isTrial: true,
         trialDaysRemaining,
         includesReplay,
@@ -197,6 +198,7 @@ export async function getSubscriptionInner(organizationId: string) {
       eventLimit: subscription.eventLimit,
       monthlyEventCount: org.monthlyEventCount || 0,
       interval: subscription.interval,
+      ...(subscription.discountedAmount !== undefined && { discountedAmount: subscription.discountedAmount }),
       // Stripe is retrying a failed renewal; the plan stays on and the app asks for a new card.
       ...(subscription.pastDue && { pastDue: subscription.pastDue }),
       includesReplay,

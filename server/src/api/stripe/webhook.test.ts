@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => {
     requestOrganizationRefresh: vi.fn(),
     onPaymentFailed: vi.fn(async (_invoice: unknown) => undefined),
     onSubscriptionCanceled: vi.fn(async (_subscription: unknown) => undefined),
+    syncAppSumoCredit: vi.fn(async () => undefined),
+    syncAppSumoCreditForSubscription: vi.fn(async () => undefined),
     select,
     selectWhere,
     selectLimit,
@@ -44,6 +46,11 @@ vi.mock("../../db/postgres/postgres.js", () => ({
 
 vi.mock("../../lib/subscriptionUtils.js", () => ({
   invalidateStripeSubscriptionCache: mocks.invalidateStripeSubscriptionCache,
+}));
+
+vi.mock("../../lib/appsumoCredit.js", () => ({
+  syncAppSumoCredit: mocks.syncAppSumoCredit,
+  syncAppSumoCreditForSubscription: mocks.syncAppSumoCreditForSubscription,
 }));
 
 vi.mock("../../services/usageService.js", () => ({
@@ -250,6 +257,8 @@ describe("handleWebhook — checkout.session.completed", () => {
     expect(mocks.select).toHaveBeenCalledTimes(1);
     expect(mocks.update).not.toHaveBeenCalled();
     expect(mocks.requestOrganizationRefresh).toHaveBeenCalledWith("org_existing");
+    // The session's AppSumo credit is rechecked against the license as it is now
+    expect(mocks.syncAppSumoCredit).toHaveBeenCalledWith("org_existing", expect.anything());
     expect(reply.payload).toEqual({ received: true });
   });
 
@@ -355,6 +364,24 @@ describe("handleWebhook — subscription lifecycle events", () => {
       expect(reply.payload).toEqual({ received: true });
     }
   );
+
+  it("reconciles the AppSumo credit on updates but not deletions", async () => {
+    mocks.selectLimit.mockResolvedValue([{ id: "org_lifecycle" }]);
+    const subscription = { id: "sub_1", customer: "cus_lifecycle" };
+
+    mocks.constructEvent.mockReturnValue(stripeEvent("customer.subscription.updated", subscription));
+    await handleWebhook(createRequest(), createReply());
+    expect(mocks.syncAppSumoCreditForSubscription).toHaveBeenCalledWith(
+      "org_lifecycle",
+      subscription,
+      expect.anything()
+    );
+
+    mocks.syncAppSumoCreditForSubscription.mockClear();
+    mocks.constructEvent.mockReturnValue(stripeEvent("customer.subscription.deleted", subscription));
+    await handleWebhook(createRequest(), createReply());
+    expect(mocks.syncAppSumoCreditForSubscription).not.toHaveBeenCalled();
+  });
 
   it("still acknowledges a lifecycle event when the org lookup fails", async () => {
     mocks.selectLimit.mockRejectedValue(new Error("db down"));

@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { db } from "../../db/postgres/postgres.js";
 import { organization, user as userSchema } from "../../db/postgres/schema.js";
 import { getOrgMembership } from "../../lib/access.js";
+import { appsumoCreditFor } from "../../lib/appsumoCredit.js";
 import { stripe } from "../../lib/stripe.js";
 import { hasHadStripeSubscription } from "../../lib/subscriptionUtils.js";
 
@@ -98,6 +99,9 @@ export async function createCheckoutSession(
     // handing a returning customer another trial.
     const trialEligible = !(await hasHadStripeSubscription(stripeCustomerId, { throwOnError: true }));
 
+    // AppSumo customers moving to Pro get their license's value off every invoice
+    const appsumoCredit = await appsumoCreditFor(organizationId, priceId);
+
     // 3. If the organization doesn't have a Stripe Customer ID, create one
     if (!stripeCustomerId) {
       const customer = await (stripe as Stripe).customers.create({
@@ -135,8 +139,8 @@ export async function createCheckoutSession(
       },
       // 7-day free trial before charging, unless this organization already had one
       ...(trialEligible && { subscription_data: { trial_period_days: 7 } }),
-      // Allow promotion codes
-      allow_promotion_codes: true,
+      // Stripe takes either a fixed discount or customer-entered promotion codes, not both
+      ...(appsumoCredit ? { discounts: [{ coupon: appsumoCredit.couponId }] } : { allow_promotion_codes: true }),
       // Enable automatic tax calculation if configured in Stripe Tax settings
       automatic_tax: { enabled: true },
       // Configure customer address collection for tax calculation

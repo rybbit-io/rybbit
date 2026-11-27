@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  appsumoCreditFor: vi.fn(),
   subscriptionsList: vi.fn(),
   pricesRetrieve: vi.fn(),
   invoicesCreatePreview: vi.fn(),
@@ -16,6 +17,12 @@ vi.mock("../../lib/stripe.js", () => ({
 
 // Real Drizzle queries against PGlite so the inline membership check — the SOLE
 // authorization gate on this route — is exercised for real.
+// The AppSumo license lookup is covered in appsumoCredit.test.ts; the discount merge stays real.
+vi.mock("../../lib/appsumoCredit.js", async importOriginal => ({
+  ...(await importOriginal<typeof import("../../lib/appsumoCredit.js")>()),
+  appsumoCreditFor: mocks.appsumoCreditFor,
+}));
+
 vi.mock("../../db/postgres/postgres.js", async () => {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
@@ -56,6 +63,7 @@ function fakeSubscription(status: "active" | "trialing") {
   return {
     id: "sub_1",
     status,
+    discounts: [],
     items: { data: [{ id: "si_1", price: { id: "price_old" }, current_period_end: PERIOD_END }] },
   };
 }
@@ -68,6 +76,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  mocks.appsumoCreditFor.mockResolvedValue(null);
   await (sql as any).exec(`TRUNCATE "organization", "member"`);
   await (sql as any).exec(`
     INSERT INTO "organization" ("id","name","slug","stripeCustomerId") VALUES
@@ -118,7 +127,7 @@ describe("previewSubscriptionUpdate — authorization", () => {
       preview: {
         isTrialing: false,
         currentPlan: { priceId: "price_old", amount: 1900, interval: "month" },
-        newPlan: { priceId: "price_new", amount: 4900, interval: "month" },
+        newPlan: { priceId: "price_new", amount: 4900, interval: "month", appsumoCredit: null },
         proration: {
           // Only lines flagged proration:true count; amounts convert cents to dollars.
           credit: 10,
@@ -172,6 +181,19 @@ describe("previewSubscriptionUpdate — authorization", () => {
 });
 
 describe("previewSubscriptionUpdate — branches", () => {
+  it("previews the invoice with the AppSumo credit the new plan would carry", async () => {
+    mocks.appsumoCreditFor.mockResolvedValue({ couponId: "appsumo-credit-t2-1900", amountUsd: 19 });
+    const reply = replyStub();
+
+    await previewSubscriptionUpdate(requestStub("u_owner", validBody), reply);
+
+    expect(reply.statusCode).toBe(200);
+    expect(mocks.invoicesCreatePreview).toHaveBeenCalledWith(
+      expect.objectContaining({ discounts: [{ coupon: "appsumo-credit-t2-1900" }] })
+    );
+    expect(reply.body.preview.newPlan.appsumoCredit).toBe(19);
+  });
+
   it("returns a zero-proration preview for trialing subscriptions without hitting the invoice API", async () => {
     mocks.subscriptionsList.mockImplementation(async ({ status }: any) =>
       status === "trialing" ? { data: [fakeSubscription("trialing")] } : { data: [] }

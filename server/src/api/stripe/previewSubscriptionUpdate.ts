@@ -5,6 +5,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { organization } from "../../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
 import { getOrgMembership } from "../../lib/access.js";
+import { appsumoCreditFor, discountsWithAppSumoCredit } from "../../lib/appsumoCredit.js";
 import Stripe from "stripe";
 
 interface PreviewSubscriptionBody {
@@ -56,8 +57,18 @@ export async function previewSubscriptionUpdate(
 
     // 3. Get the active or trialing subscription
     const [activeSubscriptions, trialingSubscriptions] = await Promise.all([
-      stripe!.subscriptions.list({ customer: org.stripeCustomerId, status: "active", limit: 1 }),
-      stripe!.subscriptions.list({ customer: org.stripeCustomerId, status: "trialing", limit: 1 }),
+      stripe!.subscriptions.list({
+        customer: org.stripeCustomerId,
+        status: "active",
+        limit: 1,
+        expand: ["data.discounts"],
+      }),
+      stripe!.subscriptions.list({
+        customer: org.stripeCustomerId,
+        status: "trialing",
+        limit: 1,
+        expand: ["data.discounts"],
+      }),
     ]);
 
     const subscription = activeSubscriptions.data[0] ?? trialingSubscriptions.data[0];
@@ -68,11 +79,14 @@ export async function previewSubscriptionUpdate(
     const currentItem = subscription.items.data[0];
     const currentPeriodEnd = currentItem.current_period_end;
 
-    // 4. Get price details for both current and new prices
-    const [currentPrice, newPrice] = await Promise.all([
+    // 4. Get price details for both current and new prices, and the AppSumo credit the
+    // new plan would carry (updateSubscription applies the same one)
+    const [currentPrice, newPrice, appsumoCredit] = await Promise.all([
       stripe!.prices.retrieve(currentItem.price.id),
       stripe!.prices.retrieve(newPriceId),
+      appsumoCreditFor(organizationId, newPriceId),
     ]);
+    const discounts = discountsWithAppSumoCredit(subscription.discounts, appsumoCredit?.couponId ?? null);
 
     const isTrialing = subscription.status === "trialing";
 
@@ -91,6 +105,7 @@ export async function previewSubscriptionUpdate(
             priceId: newPriceId,
             amount: newPrice.unit_amount || 0,
             interval: newPrice.recurring?.interval || "month",
+            appsumoCredit: appsumoCredit?.amountUsd ?? null,
           },
           proration: {
             credit: 0,
@@ -115,6 +130,8 @@ export async function previewSubscriptionUpdate(
         ],
         proration_behavior: "always_invoice",
       },
+      // Without this the preview inherits the subscription's current discounts
+      ...(discounts !== undefined && { discounts }),
     });
 
     // 7. Calculate proration details
@@ -150,6 +167,7 @@ export async function previewSubscriptionUpdate(
           priceId: newPriceId,
           amount: newPrice.unit_amount || 0,
           interval: newPrice.recurring?.interval || "month",
+          appsumoCredit: appsumoCredit?.amountUsd ?? null,
         },
         proration: {
           credit: proratedCredit / 100, // Convert from cents to dollars

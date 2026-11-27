@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
+import { syncAppSumoCredit, syncAppSumoCreditForSubscription } from "../../lib/appsumoCredit.js";
 import { stripe } from "../../lib/stripe.js";
 import { db } from "../../db/postgres/postgres.js";
 import { organization } from "../../db/postgres/schema.js";
@@ -74,6 +75,9 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
             }
             // Turn the organization's sites on now rather than at the next usage check.
             usageService.requestOrganizationRefresh(existingOrg[0]?.id ?? organizationId);
+            // The session's AppSumo credit was fixed when it opened; the license may have
+            // been refunded or changed tier since. Never throws.
+            await syncAppSumoCredit(existingOrg[0]?.id ?? organizationId, request.log);
           } catch (dbError: any) {
             request.log.error({ err: dbError, stripeCustomerId }, "Failed to link organization to Stripe customer");
             // Retriable failure: the org is still not linked to its Stripe customer.
@@ -112,6 +116,10 @@ export async function handleWebhook(request: FastifyRequest, reply: FastifyReply
           .where(eq(organization.stripeCustomerId, changedCustomerId))
           .limit(1);
         usageService.requestOrganizationRefresh(changedOrg?.id);
+        if (changedOrg && event.type === "customer.subscription.updated") {
+          // Keeps the AppSumo credit matched to the plan, including portal changes. Never throws.
+          await syncAppSumoCreditForSubscription(changedOrg.id, changedSubscription, request.log);
+        }
       } catch (dbError) {
         request.log.warn({ err: dbError, stripeCustomerId: changedCustomerId }, "Could not refresh organization usage");
       }
