@@ -25,6 +25,7 @@ import {
 } from "./bearerAuth.js";
 import { type ScopeStatements } from "./scopes.js";
 import { siteConfig } from "./siteConfig.js";
+import { timingSafeStringEqual } from "./signedToken.js";
 import { logger } from "./logger/logger.js";
 
 // The MCP gate injects fakes; the REST layer always uses better-auth.
@@ -490,10 +491,15 @@ export async function getSiteIsPubliclyReadable(req: FastifyRequest, siteId: str
   }
 
   const privateKey = req.headers["x-private-key"];
-  if (privateKey && typeof privateKey === "string" && config?.privateLinkKey === privateKey) {
+  if (
+    privateKey &&
+    typeof privateKey === "string" &&
+    config?.privateLinkKey &&
+    timingSafeStringEqual(config.privateLinkKey, privateKey)
+  ) {
     // Another worker may have revoked the key since this one cached it.
     const fresh = await siteConfig.reload(siteId);
-    return fresh?.privateLinkKey === privateKey;
+    return !!fresh?.privateLinkKey && timingSafeStringEqual(fresh.privateLinkKey, privateKey);
   }
 
   return false;

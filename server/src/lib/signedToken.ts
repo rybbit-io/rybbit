@@ -9,6 +9,18 @@ export function signPayload(payload: string): string {
   return createHmac("sha256", SECRET || "").update(payload).digest("base64url");
 }
 
+/**
+ * Constant-time equality for two strings. Both sides are encoded as UTF-16LE,
+ * which keeps every code unit distinct (UTF-8 would turn each lone surrogate
+ * into U+FFFD and accept values that `===` rejects). Lengths are compared
+ * first because timingSafeEqual throws on buffers of different length.
+ */
+export function timingSafeStringEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a, "utf16le");
+  const right = Buffer.from(b, "utf16le");
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
 export function verifySignedPayload(payload: string, signature: string): boolean {
   const expected = Buffer.from(signPayload(payload));
   const provided = Buffer.from(signature);

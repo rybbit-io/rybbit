@@ -26,4 +26,43 @@ describe("private-link revocation across workers", () => {
     mocks.reload.mockResolvedValue(undefined);
     expect(await getSiteIsPubliclyReadable(request(), 7)).toBe(false);
   });
+  it.each([
+    ["one character off", "aaaaaaaaaaab"],
+    ["same length, different first character", "baaaaaaaaaaa"],
+    ["shorter", "aaaaaaaaaaa"],
+    ["longer", "aaaaaaaaaaaa0"],
+    ["a different case", "AAAAAAAAAAAA"],
+  ])("rejects a wrong key (%s) without reloading", async (_name, key) => {
+    mocks.getConfig.mockResolvedValue({ siteId: 7, privateLinkKey: "aaaaaaaaaaaa", public: false });
+    const req = { headers: { "x-private-key": key } } as any;
+    expect(await getSiteIsPubliclyReadable(req, 7)).toBe(false);
+    expect(mocks.reload).not.toHaveBeenCalled();
+  });
+
+  it("rejects a key that only differs after the revalidating reload", async () => {
+    mocks.getConfig.mockResolvedValue({ siteId: 7, privateLinkKey: "aaaaaaaaaaaa", public: false });
+    mocks.reload.mockResolvedValue({ siteId: 7, privateLinkKey: "aaaaaaaaaaab", public: false });
+    expect(await getSiteIsPubliclyReadable(request(), 7)).toBe(false);
+  });
+
+  it.each([null, undefined, ""])("rejects every key when the site has none (%j)", async stored => {
+    mocks.getConfig.mockResolvedValue({ siteId: 7, privateLinkKey: stored, public: false });
+    expect(await getSiteIsPubliclyReadable(request(), 7)).toBe(false);
+    expect(mocks.reload).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing, empty or non-string header", async () => {
+    mocks.getConfig.mockResolvedValue({ siteId: 7, privateLinkKey: "aaaaaaaaaaaa", public: false });
+    for (const header of [undefined, "", ["aaaaaaaaaaaa"]]) {
+      const req = { headers: { "x-private-key": header } } as any;
+      expect(await getSiteIsPubliclyReadable(req, 7)).toBe(false);
+    }
+  });
+
+  it("does not equate different lone surrogates, which UTF-8 would both turn into U+FFFD", async () => {
+    mocks.getConfig.mockResolvedValue({ siteId: 7, privateLinkKey: "\ud800aaaaaaaaaaa", public: false });
+    const req = { headers: { "x-private-key": "\ud801aaaaaaaaaaa" } } as any;
+    expect(await getSiteIsPubliclyReadable(req, 7)).toBe(false);
+    expect(mocks.reload).not.toHaveBeenCalled();
+  });
 });
