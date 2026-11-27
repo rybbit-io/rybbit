@@ -116,6 +116,8 @@ export default function Home() {
     setSelectedTags([]);
     setSelectedTeamFilter("all");
     stopSelecting();
+    // A new session unmounts the sheet, so nothing it held about the old organization survives.
+    setBulkEdit(prev => ({ open: false, session: prev.session + 1 }));
   }
 
   // Filters run over the full org list, so changing them should jump back to
@@ -257,7 +259,7 @@ export default function Home() {
           />
         </div>
       )}
-      {configurableSiteCount > 1 && (
+      {(selecting || configurableSiteCount > 1) && (
         <Button
           variant="outline"
           className="hidden md:inline-flex"
@@ -282,6 +284,7 @@ export default function Home() {
         onToggleAllMatching={toggleAllMatching}
         onClear={() => setSelectedSiteIds(new Set())}
         onEdit={() => setBulkEdit(prev => ({ open: true, session: prev.session + 1 }))}
+        onDone={stopSelecting}
       />
     ) : null;
 
@@ -356,16 +359,6 @@ export default function Home() {
       {selectionBar}
       {siteCards}
       {pagination}
-      {activeOrganization && (
-        <BulkEditSheet
-          key={bulkEdit.session}
-          open={bulkEdit.open}
-          onOpenChange={open => setBulkEdit(prev => ({ ...prev, open }))}
-          organizationId={activeOrganization.id}
-          sites={selectedSites}
-          onApplied={stopSelecting}
-        />
-      )}
       <CreateOrganizationDialog
         open={createOrgDialogOpen}
         onOpenChange={setCreateOrgDialogOpen}
@@ -374,31 +367,50 @@ export default function Home() {
     </>
   );
 
+  // Kept beside the layout rather than inside it: the two layouts are different
+  // trees, and a sheet remounted by a window resize would lose an apply in progress.
+  const bulkEditSheet = activeOrganization ? (
+    <BulkEditSheet
+      key={bulkEdit.session}
+      open={bulkEdit.open}
+      onOpenChange={open => setBulkEdit(prev => ({ ...prev, open }))}
+      organizationId={activeOrganization.id}
+      sites={selectedSites}
+      onApplied={stopSelecting}
+    />
+  ) : null;
+
   if (!isDesktop) {
     return (
-      <StandardPage>
-        <div className="flex justify-between items-center my-4">
-          <div>
-            <OrganizationSelector />
+      <>
+        <StandardPage>
+          <div className="flex justify-between items-center my-4">
+            <div>
+              <OrganizationSelector />
+            </div>
+            {dateControls}
           </div>
-          {dateControls}
-        </div>
-        {content}
-      </StandardPage>
+          {content}
+        </StandardPage>
+        {bulkEditSheet}
+      </>
     );
   }
 
   return (
-    <div className="flex h-full">
-      <AppSidebar />
-      <NavigationSidebar />
-      <StandardPage showSidebar={false}>
-        <div className="flex justify-between items-center my-4">
-          <div>{renderTeamSelector("sm")}</div>
-          {dateControls}
-        </div>
-        {content}
-      </StandardPage>
-    </div>
+    <>
+      <div className="flex h-full">
+        <AppSidebar />
+        <NavigationSidebar />
+        <StandardPage showSidebar={false}>
+          <div className="flex justify-between items-center my-4">
+            <div>{renderTeamSelector("sm")}</div>
+            {dateControls}
+          </div>
+          {content}
+        </StandardPage>
+      </div>
+      {bulkEditSheet}
+    </>
   );
 }

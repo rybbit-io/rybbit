@@ -5,6 +5,7 @@ import {
   BulkSite,
   EMPTY_CHOICES,
   LIST_LIMITS,
+  restrictPatches,
   toggleSummary,
   validateListValue,
 } from "./bulkEditPlan";
@@ -129,6 +130,86 @@ describe("buildPlan: lists", () => {
       lists: { tags: { mode: "add", values: ["client"] } },
     });
     expect(plan.patches).toEqual([{ siteId: 1, name: "site-1.com", config: { trackCopy: true, tags: ["client"] } }]);
+  });
+});
+
+describe("buildPlan: entries already on a site", () => {
+  const add = (values: string[]) => ({ mode: "add" as const, values });
+  const remove = (values: string[]) => ({ mode: "remove" as const, values });
+
+  it("leaves a site's own entries as stored when adding", () => {
+    const sites = [site(1, { excludedHostnames: ["Example.com", "example.com"] })];
+    // Already there, however it is written: nothing to do.
+    expect(buildPlan(sites, { ...EMPTY_CHOICES, lists: { excludedHostnames: add(["EXAMPLE.com"]) } }).patches).toEqual(
+      []
+    );
+    const plan = buildPlan(sites, { ...EMPTY_CHOICES, lists: { excludedHostnames: add(["staging.example.com"]) } });
+    expect(plan.patches[0].config.excludedHostnames).toEqual(["Example.com", "example.com", "staging.example.com"]);
+  });
+
+  it("matches entries the way tracking does", () => {
+    const sites = [
+      site(1, {
+        excludedPaths: ["/Admin/*", "/preview"],
+        excludedQueryParams: ["Preview"],
+        excludedASNs: ["AS013335"],
+      }),
+    ];
+    const plan = buildPlan(sites, {
+      ...EMPTY_CHOICES,
+      lists: {
+        excludedPaths: remove(["/admin/*"]),
+        excludedQueryParams: remove(["preview"]),
+        excludedASNs: remove(["13335"]),
+      },
+    });
+    expect(plan.patches[0].config).toEqual({ excludedPaths: ["/preview"], excludedQueryParams: [], excludedASNs: [] });
+  });
+
+  it("keeps tags that differ only by case apart", () => {
+    const plan = buildPlan([site(1, { tags: ["Client"] })], { ...EMPTY_CHOICES, lists: { tags: add(["client"]) } });
+    expect(plan.patches[0].config.tags).toEqual(["Client", "client"]);
+  });
+
+  it("sends country codes the server will accept", () => {
+    const plan = buildPlan([site(1, { excludedCountries: ["us", "GB"] })], {
+      ...EMPTY_CHOICES,
+      lists: { excludedCountries: remove(["gb"]) },
+    });
+    expect(plan.patches[0].config.excludedCountries).toEqual(["US"]);
+  });
+
+  it("reads a stored list that isn't a list of strings as what it can use", () => {
+    const sites = [
+      site(1, { excludedIPs: "10.0.0.1" as unknown as string[] }),
+      site(2, { excludedIPs: [7, "10.0.0.2", null] as unknown as string[] }),
+    ];
+    const plan = buildPlan(sites, { ...EMPTY_CHOICES, lists: { excludedIPs: add(["10.0.0.3"]) } });
+    expect(plan.patches.map(patch => patch.config.excludedIPs)).toEqual([["10.0.0.3"], ["10.0.0.2", "10.0.0.3"]]);
+  });
+});
+
+describe("restrictPatches", () => {
+  const reviewed = [
+    { siteId: 1, name: "a", config: { public: true, tags: ["x"] } },
+    { siteId: 2, name: "b", config: { public: true } },
+  ];
+
+  it("keeps the newer values for what was reviewed", () => {
+    const fresh = [{ siteId: 1, name: "a", config: { public: true, tags: ["y", "x"] } }];
+    expect(restrictPatches(fresh, reviewed)).toEqual(fresh);
+  });
+
+  it("drops sites and settings that weren't in the review", () => {
+    const fresh = [
+      { siteId: 2, name: "b", config: { public: true, tags: ["x"] } },
+      { siteId: 3, name: "c", config: { public: true } },
+    ];
+    expect(restrictPatches(fresh, reviewed)).toEqual([{ siteId: 2, name: "b", config: { public: true } }]);
+  });
+
+  it("drops a site left with nothing reviewed to write", () => {
+    expect(restrictPatches([{ siteId: 2, name: "b", config: { tags: ["x"] } }], reviewed)).toEqual([]);
   });
 });
 

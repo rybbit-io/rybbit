@@ -99,7 +99,9 @@ export function toggleSummary(sites: BulkSite[], key: ToggleKey): { on: number; 
 }
 
 export function listValue(site: BulkSite, key: ListKey): string[] {
-  return site[key] ?? [];
+  // The column is free-form JSON, so trust nothing about its shape.
+  const stored: unknown = site[key];
+  return Array.isArray(stored) ? stored.filter((value): value is string => typeof value === "string") : [];
 }
 
 /** How many of the sites have at least one entry in this list. */
@@ -107,20 +109,22 @@ export function listSummary(sites: BulkSite[], key: ListKey): number {
   return sites.filter(site => listValue(site, key).length > 0).length;
 }
 
-// The form two entries are compared in, so "us" and "US" or "AS13335" and "13335"
-// count as the same entry.
+// The form two entries are compared in, so entries that exclude the same traffic
+// count as one: tracking matches every exclusion without regard to case, and reads
+// "AS13335", "as13335" and "13335" as the same network. Tags are compared as written.
 function canonical(key: ListKey, value: string): string {
   const trimmed = value.trim();
   switch (key) {
+    case "tags":
+      return trimmed;
     case "excludedCountries":
       return trimmed.toUpperCase();
-    case "excludedASNs":
-      return trimmed.replace(/^AS/i, "");
-    case "excludedHostnames":
-    case "excludedUserAgents":
-      return trimmed.toLowerCase();
+    case "excludedASNs": {
+      const digits = trimmed.replace(/^AS/i, "");
+      return /^\d+$/.test(digits) ? String(Number(digits)) : digits.toLowerCase();
+    }
     default:
-      return trimmed;
+      return trimmed.toLowerCase();
   }
 }
 
@@ -167,6 +171,7 @@ export function validateListValue(key: ListKey, raw: string): ListValueError | n
   }
 }
 
+// Add and Remove leave the entries a site keeps exactly as they are stored.
 function nextList(key: ListKey, current: string[], choice: ListChoice): string[] {
   const values = normalizeList(key, choice.values);
   if (choice.mode === "replace") return values;
@@ -174,8 +179,13 @@ function nextList(key: ListKey, current: string[], choice: ListChoice): string[]
     const drop = new Set(values.map(value => canonical(key, value)));
     return current.filter(value => !drop.has(canonical(key, value)));
   }
-  return normalizeList(key, [...current, ...values]);
+  const present = new Set(current.map(value => canonical(key, value)));
+  return [...current, ...values.filter(value => !present.has(canonical(key, value)))];
 }
+
+// The server only takes upper-case country codes, and older rows can hold others.
+const forServer = (key: ListKey, list: string[]) =>
+  key === "excludedCountries" ? list.map(value => value.toUpperCase()) : list;
 
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((value, i) => value === b[i]);
 
@@ -219,7 +229,7 @@ export function buildPlan(sites: BulkSite[], choices: BulkChoices): BulkPlan {
         overLimit++;
         continue;
       }
-      patch(site)[key] = next;
+      patch(site)[key] = forServer(key, next);
       changed++;
     }
     changes.push({ kind: "list", key, mode: choice.mode, changed, overLimit });
@@ -230,6 +240,21 @@ export function buildPlan(sites: BulkSite[], choices: BulkChoices): BulkPlan {
     return config ? [{ siteId: site.siteId, name: site.name, config }] : [];
   });
   return { patches, changes };
+}
+
+/**
+ * Narrows a plan built from newer site data to the writes that were reviewed: the
+ * same sites and the same settings on each. The values come from the newer plan, so
+ * a list is still merged into what the site has now, but a site or setting that
+ * only needs changing since the review is left out rather than written unseen.
+ */
+export function restrictPatches(fresh: SitePatch[], reviewed: SitePatch[]): SitePatch[] {
+  const reviewedKeys = new Map(reviewed.map(patch => [patch.siteId, new Set(Object.keys(patch.config))]));
+  return fresh.flatMap(patch => {
+    const allowed = reviewedKeys.get(patch.siteId);
+    const entries = Object.entries(patch.config).filter(([key]) => allowed?.has(key));
+    return entries.length > 0 ? [{ ...patch, config: Object.fromEntries(entries) as SiteConfigPatch }] : [];
+  });
 }
 
 export type PatchResult = { patch: SitePatch; error?: string };

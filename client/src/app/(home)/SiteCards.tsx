@@ -26,7 +26,8 @@ export function SiteCards({
     ...site,
     selection: onToggleSelected
       ? {
-          selected: selectedSiteIds?.has(site.siteId) ?? false,
+          // A site that can no longer be configured drops out of the selection.
+          selected: !!site.canEditTags && (selectedSiteIds?.has(site.siteId) ?? false),
           disabled: !site.canEditTags,
           onToggle: () => onToggleSelected(site.siteId),
         }

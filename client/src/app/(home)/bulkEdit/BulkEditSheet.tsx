@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useExtracted } from "next-intl";
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchSitesFromOrg, updateSiteConfig } from "@/api/admin/endpoints";
 import { SegmentedControl } from "@/components/interior/segmented-control";
@@ -31,6 +31,7 @@ import {
   ListValueError,
   PatchResult,
   PlanChange,
+  restrictPatches,
   SitePatch,
   ToggleChoice,
   ToggleKey,
@@ -72,6 +73,21 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [failures, setFailures] = useState<PatchResult[]>([]);
   const [updatedCount, setUpdatedCount] = useState(0);
+  // Text typed into a list but not added to it, by list.
+  const [drafts, setDrafts] = useState<Partial<Record<ListKey, string>>>({});
+
+  // An apply outlives the sheet if the organization changes under it; by then its
+  // outcome belongs to a selection that is gone.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // The sheet has no trigger of its own, so closing it hands focus back by hand.
+  const [opener] = useState(() => (typeof document === "undefined" ? null : document.activeElement));
 
   const plan = useMemo(() => buildPlan(sites, choices), [sites, choices]);
 
@@ -121,7 +137,7 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
       title: t("Exclusions"),
       rows: [
         { key: "excludedIPs", label: t("IP Exclusions"), placeholder: "e.g., 192.168.1.1 or 10.0.0.0/24" },
-        { key: "excludedCountries", label: t("Country Exclusions") },
+        { key: "excludedCountries", label: t("Country Exclusions"), placeholder: "e.g., US" },
         { key: "excludedASNs", label: t("ASN Exclusions"), placeholder: "e.g., AS13335" },
         { key: "excludedPaths", label: t("Path Exclusions"), placeholder: "e.g., /admin/* or /preview" },
         {
@@ -133,7 +149,7 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
         { key: "excludedUserAgents", label: t("User Agent Exclusions"), placeholder: "e.g., HeadlessChrome" },
       ],
     },
-    { title: t("Tags"), rows: [{ key: "tags", label: t("Tags") }] },
+    { title: t("Tags"), rows: [{ key: "tags", label: t("Site Tags") }] },
   ];
 
   const labels = Object.fromEntries(
@@ -148,9 +164,16 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
     tooLong: t("That entry is too long"),
   };
 
-  const describeChange = (change: PlanChange): string => {
+  // A list entry that was typed but refused, or not yet added. Reviewing past it
+  // would apply the list without it: for Replace, possibly an empty one.
+  const hasPendingDraft = LIST_KEYS.some(
+    key => (choices.lists[key]?.mode ?? "keep") !== "keep" && (drafts[key] ?? "").trim() !== ""
+  );
+
+  const describeChange = (change: PlanChange): string | null => {
     if (change.changed === 0) {
-      return t("Every selected site already has this");
+      // Nothing to say when every site was held back by the limit: that note follows.
+      return change.kind === "list" && change.overLimit > 0 ? null : t("Every selected site already has this");
     }
     const count = change.changed;
     if (change.kind === "toggle") {
@@ -164,9 +187,21 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
       case "remove":
         return t("Removes entries from {count, plural, one {# site} other {# sites}}", { count });
       case "replace":
-        return t("Replaces the list on {count, plural, one {# site} other {# sites}}", { count });
+        return (choices.lists[change.key]?.values.length ?? 0) === 0
+          ? t("Clears the list on {count, plural, one {# site} other {# sites}}", { count })
+          : t("Replaces the list on {count, plural, one {# site} other {# sites}}", { count });
     }
   };
+
+  const limitNote = (change: PlanChange) =>
+    change.kind === "list" && change.overLimit > 0 ? (
+      <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+        {t(
+          "{count, plural, one {# site keeps its list} other {# sites keep their lists}}: this would pass {max} entries.",
+          { count: change.overLimit, max: String(LIST_LIMITS[change.key]) }
+        )}
+      </p>
+    ) : null;
 
   const setToggle = (key: ToggleKey, choice: ToggleChoice) =>
     setChoices(prev => ({ ...prev, toggles: { ...prev.toggles, [key]: choice } }));
@@ -185,6 +220,7 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
     setProgress({ done: 0, total: patches.length });
     const results = await applyPatches(patches, updateSiteConfig, done => setProgress({ done, total: patches.length }));
     refreshSites();
+    if (!mounted.current) return;
     const failed = results.filter(result => result.error !== undefined);
     const updated = alreadyUpdated + results.length - failed.length;
     if (failed.length > 0) {
@@ -193,26 +229,32 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
       setStep("failed");
       return;
     }
-    toast.success(t("{count, plural, one {Updated # site} other {Updated # sites}}", { count: updated }));
+    toast.success(
+      updated === 0
+        ? t("Every selected site already matches")
+        : t("{count, plural, one {Updated # site} other {Updated # sites}}", { count: updated })
+    );
     onApplied();
     onOpenChange(false);
   };
 
-  const apply = async () => {
+  // Sends the reviewed writes, or on a retry the ones that failed. The values are
+  // worked out from the sites as they are now, so adding to a list doesn't drop an
+  // entry someone else just saved, but nothing outside what was reviewed is written.
+  const apply = async (reviewed: SitePatch[], alreadyUpdated: number, returnTo: Step) => {
     setStep("applying");
-    setProgress({ done: 0, total: plan.patches.length });
-    // Work from the sites as they are now, not as they were when the page loaded:
-    // adding to a list must not drop an entry someone else just saved.
+    setProgress({ done: 0, total: reviewed.length });
     let fresh: BulkSite[];
     try {
-      const selected = new Set(sites.map(site => site.siteId));
-      fresh = (await fetchSitesFromOrg(organizationId)).sites.filter(site => selected.has(site.siteId));
+      const reviewedIds = new Set(reviewed.map(patch => patch.siteId));
+      fresh = (await fetchSitesFromOrg(organizationId)).sites.filter(site => reviewedIds.has(site.siteId));
     } catch {
+      if (!mounted.current) return;
       toast.error(t("Couldn't load the latest settings. Nothing was changed."));
-      setStep("review");
+      setStep(returnTo);
       return;
     }
-    await run(buildPlan(fresh, choices).patches, 0);
+    await run(restrictPatches(buildPlan(fresh, choices).patches, reviewed), alreadyUpdated);
   };
 
   const renderToggleRow = (row: ToggleRowDef) => {
@@ -290,14 +332,20 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
             <TokenInput
               aria-label={t("Entries for {setting}", { setting: row.label })}
               values={choice.values}
-              onChange={values => setList(row.key, { ...choice, values })}
+              onChange={values =>
+                setList(row.key, {
+                  ...choice,
+                  values: isCountries ? [...new Set(values.map(value => value.toUpperCase()))] : values,
+                })
+              }
+              draft={drafts[row.key] ?? ""}
+              onDraftChange={draft => setDrafts(prev => ({ ...prev, [row.key]: draft }))}
               placeholder={row.placeholder}
               validate={value => {
                 const problem = validateListValue(row.key, value);
                 return problem ? listErrors[problem] : null;
               }}
               renderValue={isCountries ? getCountryName : undefined}
-              hideInput={isCountries}
             />
             {isCountries && (
               <CountrySelector
@@ -306,14 +354,7 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
               />
             )}
             <p className="text-xs text-muted-foreground">{help[choice.mode]}</p>
-            {change?.kind === "list" && change.overLimit > 0 && (
-              <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                {t(
-                  "{count, plural, one {# site is} other {# sites are}} left as they are: the list would pass {max} entries.",
-                  { count: change.overLimit, max: String(LIST_LIMITS[row.key]) }
-                )}
-              </p>
-            )}
+            {change && limitNote(change)}
           </div>
         )}
       </div>
@@ -325,7 +366,15 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
 
   return (
     <Sheet open={open} onOpenChange={next => step !== "applying" && onOpenChange(next)}>
-      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
+      <SheetContent
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+        onCloseAutoFocus={event => {
+          if (opener instanceof HTMLElement && opener.isConnected) {
+            event.preventDefault();
+            opener.focus();
+          }
+        }}
+      >
         <header className="border-b border-neutral-100 px-6 pb-4 pt-5 pr-12 dark:border-neutral-850">
           <SheetTitle>{t("{count, plural, one {Edit # site} other {Edit # sites}}", { count: siteCount })}</SheetTitle>
           <SheetDescription className="mt-1">
@@ -370,14 +419,7 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
                         ).join(", ")}
                       </div>
                     )}
-                    {change.kind === "list" && change.overLimit > 0 && (
-                      <div className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
-                        {t(
-                          "{count, plural, one {# site is} other {# sites are}} left as they are: the list would pass {max} entries.",
-                          { count: change.overLimit, max: String(LIST_LIMITS[change.key]) }
-                        )}
-                      </div>
-                    )}
+                    {limitNote(change)}
                   </div>
                 ))}
               </Section>
@@ -399,9 +441,9 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
 
           {step === "failed" && (
             <Section
-              title={t("{failed} of {total} sites couldn't be updated", {
+              title={t("{failed} of {total, plural, one {# site} other {# sites}} couldn't be updated", {
                 failed: String(failures.length),
-                total: String(failures.length + updatedCount),
+                total: failures.length + updatedCount,
               })}
             >
               {failures.map(({ patch, error }) => (
@@ -426,14 +468,16 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <p className="min-w-0 flex-1 text-xs text-muted-foreground">
               {step === "edit" &&
-                (plan.changes.length === 0
-                  ? t("Nothing changed yet")
-                  : changedSites === 0
-                    ? t("Every selected site already matches")
-                    : t(
-                        "{settings, plural, one {# setting} other {# settings}} changed on {sites, plural, one {# site} other {# sites}}",
-                        { settings: plan.changes.filter(change => change.changed > 0).length, sites: changedSites }
-                      ))}
+                (hasPendingDraft
+                  ? t("Fix or clear the entry that wasn't added")
+                  : plan.changes.length === 0
+                    ? t("Nothing changed yet")
+                    : changedSites === 0
+                      ? t("Every selected site already matches")
+                      : t(
+                          "{settings, plural, one {# setting} other {# settings}} changed on {sites, plural, one {# site} other {# sites}}",
+                          { settings: plan.changes.filter(change => change.changed > 0).length, sites: changedSites }
+                        ))}
               {step === "failed" &&
                 t("{count, plural, one {# site was updated} other {# sites were updated}}", { count: updatedCount })}
             </p>
@@ -441,7 +485,11 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
               {step === "edit" && (
                 <>
                   <Button onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
-                  <Button variant="success" disabled={changedSites === 0} onClick={() => setStep("review")}>
+                  <Button
+                    variant="success"
+                    disabled={changedSites === 0 || hasPendingDraft}
+                    onClick={() => setStep("review")}
+                  >
                     {t("Review changes")}
                   </Button>
                 </>
@@ -451,7 +499,11 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
                   <Button disabled={step === "applying"} onClick={() => setStep("edit")}>
                     {t("Back")}
                   </Button>
-                  <Button variant="success" loading={step === "applying"} onClick={apply}>
+                  <Button
+                    variant="success"
+                    loading={step === "applying"}
+                    onClick={() => apply(plan.patches, 0, "review")}
+                  >
                     {t("{count, plural, one {Apply to # site} other {Apply to # sites}}", { count: changedSites })}
                   </Button>
                 </>
@@ -462,9 +514,10 @@ export function BulkEditSheet({ open, onOpenChange, organizationId, sites, onApp
                   <Button
                     variant="success"
                     onClick={() =>
-                      run(
+                      apply(
                         failures.map(failure => failure.patch),
-                        updatedCount
+                        updatedCount,
+                        "failed"
                       )
                     }
                   >

@@ -2,58 +2,66 @@
 
 import { X } from "lucide-react";
 import { useExtracted } from "next-intl";
-import { ClipboardEvent, KeyboardEvent, ReactNode, useState } from "react";
+import { ClipboardEvent, KeyboardEvent, ReactNode, useId, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
 interface TokenInputProps {
   values: string[];
   onChange: (values: string[]) => void;
+  /**
+   * What is typed but not yet an entry. Held by the parent so it can tell that an
+   * entry is still waiting, or was refused, before acting on the list.
+   */
+  draft: string;
+  onDraftChange: (draft: string) => void;
   /** An error message for an entry that can't be added, or null when it is fine. */
   validate?: (value: string) => string | null;
   placeholder?: string;
   "aria-label": string;
   /** How a committed entry is shown, when that differs from what is stored. */
   renderValue?: (value: string) => ReactNode;
-  /** Chips only, for lists whose entries are picked elsewhere. */
-  hideInput?: boolean;
 }
 
 /** A list of entries as removable chips, with a text input that adds to it on Enter. */
 export function TokenInput({
   values,
   onChange,
+  draft,
+  onDraftChange,
   validate,
   placeholder,
   "aria-label": ariaLabel,
   renderValue,
-  hideInput = false,
 }: TokenInputProps) {
   const t = useExtracted();
-  const [draft, setDraft] = useState("");
+  const errorId = useId();
   const [error, setError] = useState<string | null>(null);
 
-  // Adds every entry in the text. Stops at the first one that fails validation
-  // and leaves the rest in the input to be fixed.
+  // Adds every valid entry in the text, one per line. The first entry that fails
+  // validation stays in the input to be fixed; an input can't hold the lines apart,
+  // so any further ones are counted in the message rather than run together.
   const commit = (text: string) => {
-    const entries = text
-      .split(/\r?\n/)
-      .map(entry => entry.trim())
-      .filter(Boolean);
     const next = [...values];
-    for (let i = 0; i < entries.length; i++) {
-      const problem = validate?.(entries[i]) ?? null;
-      if (problem) {
-        onChange(next);
-        setDraft(entries.slice(i).join(" "));
-        setError(problem);
-        return;
+    const refused: string[] = [];
+    let problem: string | null = null;
+    for (const entry of text.split(/\r?\n/).map(line => line.trim())) {
+      if (!entry) continue;
+      const entryProblem = validate?.(entry) ?? null;
+      if (entryProblem) {
+        refused.push(entry);
+        problem ??= entryProblem;
+      } else if (!next.includes(entry)) {
+        next.push(entry);
       }
-      if (!next.includes(entries[i])) next.push(entries[i]);
     }
     onChange(next);
-    setDraft("");
-    setError(null);
+    onDraftChange(refused[0] ?? "");
+    const more = refused.length - 1;
+    const moreNote = t("{count, plural, one {# more entry wasn't} other {# more entries weren't}} added.", {
+      count: more,
+    });
+    setError(problem && more > 0 ? `${problem}. ${moreNote}` : problem);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -73,13 +81,9 @@ export function TokenInput({
     commit(`${draft}${text}`);
   };
 
-  if (hideInput && values.length === 0) return null;
-
   return (
     <div>
       <div
-        aria-label={hideInput ? ariaLabel : undefined}
-        role={hideInput ? "group" : undefined}
         className={cn(
           "flex flex-wrap items-center gap-1.5 rounded-lg border border-neutral-150 p-1.5 dark:border-neutral-800",
           error && "border-red-500 dark:border-red-400"
@@ -101,26 +105,29 @@ export function TokenInput({
             </button>
           </span>
         ))}
-        {!hideInput && (
-          <input
-            type="text"
-            aria-label={ariaLabel}
-            aria-invalid={error ? true : undefined}
-            value={draft}
-            placeholder={placeholder}
-            onChange={event => {
-              setDraft(event.target.value);
-              setError(null);
-            }}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            // Typing an entry and moving on without pressing Enter still counts.
-            onBlur={() => draft.trim() && commit(draft)}
-            className="h-6 min-w-[8rem] flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-neutral-500 dark:placeholder:text-neutral-400"
-          />
-        )}
+        <input
+          type="text"
+          aria-label={ariaLabel}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          value={draft}
+          placeholder={placeholder}
+          onChange={event => {
+            onDraftChange(event.target.value);
+            setError(null);
+          }}
+          onKeyDown={onKeyDown}
+          onPaste={onPaste}
+          // Typing an entry and moving on without pressing Enter still counts.
+          onBlur={() => draft.trim() && commit(draft)}
+          className="h-6 min-w-[8rem] flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-neutral-500 dark:placeholder:text-neutral-400"
+        />
       </div>
-      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {error && (
+        <p id={errorId} className="mt-1 text-xs text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

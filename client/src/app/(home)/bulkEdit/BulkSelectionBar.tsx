@@ -13,6 +13,8 @@ interface BulkSelectionBarProps {
   onToggleAllMatching: () => void;
   onClear: () => void;
   onEdit: () => void;
+  /** Leaves selection mode. Only offered where the page's own Done button is hidden. */
+  onDone: () => void;
 }
 
 /** Shown above the site list while picking sites to edit together. */
@@ -23,6 +25,7 @@ export function BulkSelectionBar({
   onToggleAllMatching,
   onClear,
   onEdit,
+  onDone,
 }: BulkSelectionBarProps) {
   const t = useExtracted();
   return (
@@ -41,6 +44,9 @@ export function BulkSelectionBar({
         </span>
       </div>
       <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" className="md:hidden" onClick={onDone}>
+          {t("Done")}
+        </Button>
         <Button variant="ghost" size="sm" disabled={selectedCount === 0} onClick={onClear}>
           {t("Clear")}
         </Button>
