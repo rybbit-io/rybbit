@@ -157,7 +157,7 @@ describe("PlanDialog — AppSumo credit", () => {
     expect(proRowText()).toContain("$39$20/mo");
     expect(
       screen.getByText(
-        "Your AppSumo Tier 2 license takes $19/mo off Pro plans with 100k events or more, for as long as you stay subscribed."
+        "Your AppSumo Tier 2 license takes $19/month off Pro plans with 100k events or more, for as long as you stay subscribed."
       )
     ).toBeTruthy();
   });
@@ -169,7 +169,7 @@ describe("PlanDialog — AppSumo credit", () => {
 
     // ($312 - $152) / 12, shown per month
     expect(proRowText()).toContain("$26$13/mo");
-    expect(screen.getByText(/takes \$152\/yr off Pro plans/)).toBeTruthy();
+    expect(screen.getByText(/takes \$152\/year off Pro plans/)).toBeTruthy();
   });
 
   it("starts tiers without a matching plan on the next plan up", () => {

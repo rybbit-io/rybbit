@@ -296,7 +296,9 @@ export function PlanDialog({
                       "Your AppSumo Tier {tier} license takes {credit} off Pro plans with {events} events or more, for as long as you stay subscribed.",
                       {
                         tier: appsumoTier,
-                        credit: isAnnual ? `$${appsumoCredit}/yr` : `$${appsumoCredit}/mo`,
+                        credit: isAnnual
+                          ? t("{price}/year", { price: `$${appsumoCredit}` })
+                          : t("{price}/month", { price: `$${appsumoCredit}` }),
                         events: formatEventTier(appsumoEvents),
                       }
                     )}
