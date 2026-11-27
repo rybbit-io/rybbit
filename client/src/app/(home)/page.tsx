@@ -29,6 +29,8 @@ import { useStripeSubscription } from "../../lib/subscription/useStripeSubscript
 import { useSyncStateWithUrl } from "../../lib/urlParams";
 import { AddSite } from "../components/AddSite";
 import { PlanRequiredNotice, useCheckoutReturn } from "../components/PlanRequired";
+import { BulkEditSheet } from "./bulkEdit/BulkEditSheet";
+import { BulkSelectionBar } from "./bulkEdit/BulkSelectionBar";
 import { SiteCards } from "./SiteCards";
 import { StartTrial } from "./StartTrial";
 
@@ -85,8 +87,7 @@ export default function Home() {
   // Check if we should show sites content
   const shouldShowSites = hasOrganizations && !isLoading;
   const hasNoSites = shouldShowSites && (!sites?.sites || sites.sites.length === 0);
-  const sitesRequirePlan =
-    shouldShowSites && !checkoutReturnPending && !!sites?.sites?.some(site => site.requiresPlan);
+  const sitesRequirePlan = shouldShowSites && !checkoutReturnPending && !!sites?.sites?.some(site => site.requiresPlan);
 
   const { data: teamsData } = useTeams(activeOrganization?.id);
 
@@ -96,6 +97,17 @@ export default function Home() {
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
+  // Picking several sites to edit their settings together. The selection survives
+  // paging and filtering, so "filter by tag, select all" can be repeated to build it up.
+  const [selecting, setSelecting] = useState(false);
+  const [selectedSiteIds, setSelectedSiteIds] = useState<ReadonlySet<number>>(new Set());
+  // Bumped on every open so the sheet starts from a clean slate.
+  const [bulkEdit, setBulkEdit] = useState({ open: false, session: 0 });
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelectedSiteIds(new Set());
+  };
+
   // Teams and tags belong to one organization: switching keeps this page mounted,
   // and a stale filter would hide every site of the new one.
   const [filtersOrganizationId, setFiltersOrganizationId] = useState(activeOrganization?.id);
@@ -103,6 +115,7 @@ export default function Home() {
     setFiltersOrganizationId(activeOrganization.id);
     setSelectedTags([]);
     setSelectedTeamFilter("all");
+    stopSelecting();
   }
 
   // Filters run over the full org list, so changing them should jump back to
@@ -148,6 +161,31 @@ export default function Home() {
   const handleOrganizationCreated = () => {
     refetchOrganizations();
     refetchSites();
+  };
+
+  // Bulk editing only reaches sites the viewer may configure.
+  const canConfigureSite = (site: { permissions?: string[] }) => site.permissions?.includes("sites:configure") ?? false;
+  const configurableSiteCount = sites?.sites?.filter(canConfigureSite).length ?? 0;
+  const matchingConfigurableSites = filteredSites?.filter(canConfigureSite) ?? [];
+  const selectedSites = sites?.sites?.filter(site => selectedSiteIds.has(site.siteId) && canConfigureSite(site)) ?? [];
+  const allMatchingSelected =
+    matchingConfigurableSites.length > 0 && matchingConfigurableSites.every(site => selectedSiteIds.has(site.siteId));
+
+  const toggleSiteSelected = (siteId: number) => {
+    setSelectedSiteIds(prev => {
+      const next = new Set(prev);
+      if (!next.delete(siteId)) next.add(siteId);
+      return next;
+    });
+  };
+  const toggleAllMatching = () => {
+    setSelectedSiteIds(prev => {
+      const next = new Set(prev);
+      matchingConfigurableSites.forEach(site =>
+        allMatchingSelected ? next.delete(site.siteId) : next.add(site.siteId)
+      );
+      return next;
+    });
   };
 
   // Handle tag click to toggle filter
@@ -219,11 +257,33 @@ export default function Home() {
           />
         </div>
       )}
+      {configurableSiteCount > 1 && (
+        <Button
+          variant="outline"
+          className="hidden md:inline-flex"
+          aria-pressed={selecting}
+          onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+        >
+          {selecting ? t("Done") : t("Select")}
+        </Button>
+      )}
       <div className="hidden md:block">
         <AddSite disabled={!canAddSites} disabledReason={cantAddSitesReason} />
       </div>
     </div>
   ) : null;
+
+  const selectionBar =
+    hasSites && selecting ? (
+      <BulkSelectionBar
+        selectedCount={selectedSites.length}
+        matchingCount={matchingConfigurableSites.length}
+        allMatchingSelected={allMatchingSelected}
+        onToggleAllMatching={toggleAllMatching}
+        onClear={() => setSelectedSiteIds(new Set())}
+        onEdit={() => setBulkEdit(prev => ({ open: true, session: prev.session + 1 }))}
+      />
+    ) : null;
 
   const siteCards = (
     <div className="flex flex-col gap-2">
@@ -239,7 +299,10 @@ export default function Home() {
         allTags={allTags}
         onTagsUpdated={refetchSites}
         selectedTags={selectedTags}
-        onTagClick={handleTagClick}
+        // While selecting, a click anywhere on a card picks it.
+        onTagClick={selecting ? undefined : handleTagClick}
+        selectedSiteIds={selecting ? selectedSiteIds : undefined}
+        onToggleSelected={selecting ? toggleSiteSelected : undefined}
       />
       {hasSites && hasNoMatches ? (
         <Card className="p-6 flex flex-col items-center text-center">
@@ -290,8 +353,19 @@ export default function Home() {
         <PlanRequiredNotice organizationId={activeOrganization.id} returnPath="/" className="mb-4" />
       ) : null}
       {filterBar}
+      {selectionBar}
       {siteCards}
       {pagination}
+      {activeOrganization && (
+        <BulkEditSheet
+          key={bulkEdit.session}
+          open={bulkEdit.open}
+          onOpenChange={open => setBulkEdit(prev => ({ ...prev, open }))}
+          organizationId={activeOrganization.id}
+          sites={selectedSites}
+          onApplied={stopSelecting}
+        />
+      )}
       <CreateOrganizationDialog
         open={createOrgDialogOpen}
         onOpenChange={setCreateOrgDialogOpen}

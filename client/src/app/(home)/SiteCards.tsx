@@ -7,12 +7,31 @@ import { BatchedSiteCard, SiteCard, SiteCardProps } from "./SiteCard";
 
 type SiteFields = "siteId" | "name" | "domain" | "tags" | "canEditTags";
 
-interface SiteCardsProps extends Omit<SiteCardProps, SiteFields> {
+interface SiteCardsProps extends Omit<SiteCardProps, SiteFields | "selection"> {
   organizationId: string;
   sites: Pick<SiteCardProps, SiteFields>[];
+  /** Passed while picking sites to edit together; sites the viewer can't configure can't be picked. */
+  selectedSiteIds?: ReadonlySet<number>;
+  onToggleSelected?: (siteId: number) => void;
 }
 
-export function SiteCards({ organizationId, sites, ...props }: SiteCardsProps) {
+export function SiteCards({
+  organizationId,
+  sites: allSites,
+  selectedSiteIds,
+  onToggleSelected,
+  ...props
+}: SiteCardsProps) {
+  const sites = allSites.map(site => ({
+    ...site,
+    selection: onToggleSelected
+      ? {
+          selected: selectedSiteIds?.has(site.siteId) ?? false,
+          disabled: !site.canEditTags,
+          onToggle: () => onToggleSelected(site.siteId),
+        }
+      : undefined,
+  }));
   const time = useStore(state => state.time);
   const previousTime = useStore(state => state.previousTime);
   const bucket = useStore(state => state.bucket);
@@ -30,7 +49,15 @@ export function SiteCards({ organizationId, sites, ...props }: SiteCardsProps) {
   return sites.map(site => <SiteCard key={site.siteId} {...site} {...props} />);
 }
 
-function BatchedSiteCards({ organizationId, sites, lite, ...props }: SiteCardsProps & { lite: boolean }) {
+function BatchedSiteCards({
+  organizationId,
+  sites,
+  lite,
+  ...props
+}: Omit<SiteCardsProps, "sites" | "selectedSiteIds" | "onToggleSelected"> & {
+  sites: Pick<SiteCardProps, SiteFields | "selection">[];
+  lite: boolean;
+}) {
   const { data, error, refetch } = useGetSiteCards(
     organizationId,
     sites.map(site => site.siteId),

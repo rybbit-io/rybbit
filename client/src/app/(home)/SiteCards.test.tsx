@@ -251,6 +251,38 @@ describe("homepage Site cards", () => {
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
+  it("picks a card instead of opening the site while selecting", async () => {
+    const onToggleSelected = vi.fn();
+    const pageSites = [
+      { siteId: 1, name: "Site 1", domain: "example.com", canEditTags: true },
+      { siteId: 2, name: "Site 2", domain: "example.com", canEditTags: false },
+    ];
+    render(
+      <QueryClientProvider client={client}>
+        <TooltipProvider>
+          <SiteCards
+            organizationId="org-1"
+            sites={pageSites}
+            selectedSiteIds={new Set([1])}
+            onToggleSelected={onToggleSelected}
+          />
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+    await waitFor(() => expect(screen.getAllByText("123")).toHaveLength(2));
+
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    const [first, second] = screen.getAllByRole("checkbox") as HTMLButtonElement[];
+    expect(first.getAttribute("aria-checked")).toBe("true");
+    // The viewer can't configure the second site.
+    expect(second.disabled).toBe(true);
+
+    fireEvent.click(screen.getByText("Site 1"));
+    fireEvent.click(first);
+    fireEvent.click(screen.getByText("Site 2"));
+    expect(onToggleSelected.mock.calls).toEqual([[1], [1]]);
+  });
+
   it("shows an error and retries the batch without displaying zero metrics", async () => {
     mocks.fetch.mockRejectedValueOnce(new Error("ClickHouse unavailable"));
     render(cards());

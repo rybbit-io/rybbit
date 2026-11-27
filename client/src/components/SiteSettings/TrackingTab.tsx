@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 
 import { updateSiteConfig, SiteResponse } from "@/api/admin/endpoints";
 import { useGetSitesFromOrg } from "@/api/admin/hooks/useSites";
-import { planIncludesReplay } from "@/lib/subscription/planUtils";
+import { planIncludesReplay, planIncludesStandardFeatures } from "@/lib/subscription/planUtils";
 import { useStripeSubscription } from "@/lib/subscription/useStripeSubscription";
 import { Badge } from "@/components/ui/badge";
 import { IS_CLOUD } from "@/lib/const";
@@ -102,12 +102,7 @@ export function TrackingTab({
 
   const sessionReplayDisabled = !planIncludesReplay(effectiveSubscription) && IS_CLOUD;
 
-  const standardFeaturesDisabled =
-    !effectiveSubscription?.planName.includes("custom") &&
-    !effectiveSubscription?.planName.includes("standard") &&
-    !effectiveSubscription?.planName.includes("pro") &&
-    !effectiveSubscription?.planName.includes("appsumo") &&
-    IS_CLOUD;
+  const standardFeaturesDisabled = !planIncludesStandardFeatures(effectiveSubscription) && IS_CLOUD;
 
   const analyticsToggles: ToggleConfig[] = [
     // Hide the replay toggle for AppSumo tiers without replays (1-3); tiers 4-7 include them
