@@ -65,6 +65,8 @@ export function TokenInput({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // Enter that confirms an IME composition belongs to the composition, not the list.
+    if (event.nativeEvent.isComposing) return;
     if (event.key === "Enter") {
       event.preventDefault();
       commit(draft);
@@ -78,7 +80,10 @@ export function TokenInput({
     const text = event.clipboardData.getData("text");
     if (!/\r?\n/.test(text)) return;
     event.preventDefault();
-    commit(`${draft}${text}`);
+    // Paste over whatever is selected, as the input itself would.
+    const { selectionStart, selectionEnd } = event.currentTarget;
+    const start = selectionStart ?? draft.length;
+    commit(`${draft.slice(0, start)}${text}${draft.slice(selectionEnd ?? start)}`);
   };
 
   return (
