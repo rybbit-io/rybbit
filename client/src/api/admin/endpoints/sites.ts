@@ -70,6 +70,28 @@ export type GetSitesFromOrgResponse = {
     public: boolean | null;
     saltUserIds: boolean | null;
     blockBots: boolean;
+    firstPartyProxy?: boolean | null;
+    // The rest of the site's settings row. Bulk editing reads these to show what
+    // the selected sites have now and to work out what would change.
+    sessionReplay?: boolean | null;
+    webVitals?: boolean | null;
+    trackErrors?: boolean | null;
+    trackOutbound?: boolean | null;
+    trackUrlParams?: boolean | null;
+    trackUrlFragments?: boolean | null;
+    trackInitialPageView?: boolean | null;
+    trackSpaNavigation?: boolean | null;
+    trackIp?: boolean | null;
+    trackButtonClicks?: boolean | null;
+    trackCopy?: boolean | null;
+    trackFormInteractions?: boolean | null;
+    excludedIPs?: string[] | null;
+    excludedCountries?: string[] | null;
+    excludedPaths?: string[] | null;
+    excludedHostnames?: string[] | null;
+    excludedUserAgents?: string[] | null;
+    excludedASNs?: string[] | null;
+    excludedQueryParams?: string[] | null;
     sessionsLast24Hours: number;
     isOwner: boolean;
     role: OrgRole;

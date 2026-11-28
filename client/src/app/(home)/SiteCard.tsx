@@ -1,7 +1,7 @@
 import { Tag, Settings } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
-import { Ref, useRef } from "react";
+import { ReactNode, Ref, useRef } from "react";
 import { SiteCardMetrics } from "@/api/analytics/endpoints/siteCards";
 import { useGetOverview } from "@/api/analytics/hooks/useGetOverview";
 import { useGetOverviewBucketed } from "@/api/analytics/hooks/useGetOverviewBucketed";
@@ -11,12 +11,13 @@ import { SiteSessionChart } from "@/components/SiteSessionChart";
 import { SiteSettings } from "@/components/SiteSettings/SiteSettings";
 import { TagEditor } from "@/components/TagEditor";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useInView } from "@/hooks/useInView";
 import { LITE_DASHBOARD } from "@/lib/const";
 import { useStore } from "@/lib/store";
-import { formatter } from "@/lib/utils";
+import { cn, formatter } from "@/lib/utils";
 
 export interface SiteCardProps {
   siteId: number;
@@ -29,7 +30,14 @@ export interface SiteCardProps {
   onTagsUpdated?: () => void;
   selectedTags?: string[];
   onTagClick?: (tag: string) => void;
+  /**
+   * Set while picking sites to edit together: the card toggles its checkbox instead of
+   * opening the site. `disabled` when the viewer can't configure this site.
+   */
+  selection?: SiteCardSelection;
 }
+
+type SiteCardSelection = { selected: boolean; disabled: boolean; onToggle: () => void };
 
 export function SiteCard(props: SiteCardProps) {
   const { siteId } = props;
@@ -117,6 +125,7 @@ function SiteCardView({
   allTags = [],
   onTagsUpdated,
   onTagClick,
+  selection,
   cardRef,
   data,
   overviewData,
@@ -133,15 +142,29 @@ function SiteCardView({
 }) {
   const t = useExtracted();
   const hasData = (overviewData?.sessions || 0) > 0;
+  const checkbox = selection ? (
+    <Checkbox
+      checked={selection.selected}
+      disabled={selection.disabled}
+      onCheckedChange={selection.onToggle}
+      // The card around it toggles on click too.
+      onClick={e => e.stopPropagation()}
+      aria-label={t("Select {name}", { name })}
+    />
+  ) : null;
   return (
-    <Link href={`/${siteId}`}>
+    <SiteCardShell siteId={siteId} selection={selection}>
       <div
         ref={cardRef}
-        className="flex flex-col md:flex-row md:justify-between gap-3 rounded-lg bg-white dark:bg-neutral-900/70 px-3 py-2 border border-neutral-100 dark:border-neutral-850 transition-all duration-300 motion-safe:hover:translate-y-[-2px] w-full"
+        className={cn(
+          "flex flex-col md:flex-row md:justify-between gap-3 rounded-lg bg-white dark:bg-neutral-900/70 px-3 py-2 border border-neutral-100 dark:border-neutral-850 transition-all duration-300 motion-safe:hover:translate-y-[-2px] w-full",
+          selection?.selected && "border-neutral-300 dark:border-neutral-600"
+        )}
       >
         {showSkeleton ? (
           <>
             <div className="flex gap-2 items-center">
+              {checkbox}
               <Favicon domain={domain} className="w-6 h-6" />
               <span className="text-lg font-medium truncate group-hover:underline transition-all">{name}</span>
             </div>
@@ -162,9 +185,10 @@ function SiteCardView({
         ) : (
           <>
             <div className="flex gap-2 items-center">
+              {checkbox}
               <Favicon domain={domain} className="w-6 h-6" />
               <span className="text-lg font-medium truncate group-hover:underline transition-all">{name}</span>
-              <div onClick={e => e.preventDefault()}>
+              <div onClick={e => e.preventDefault()} className={selection ? "hidden" : undefined}>
                 <Tooltip>
                   <SiteSettings
                     siteId={siteId}
@@ -199,7 +223,7 @@ function SiteCardView({
                     +{tags.length - 3}
                   </Badge>
                 )}
-                {canEditTags && onTagsUpdated && (
+                {canEditTags && onTagsUpdated && !selection && (
                   <Tooltip>
                     <TagEditor
                       siteId={siteId}
@@ -254,6 +278,31 @@ function SiteCardView({
           </>
         )}
       </div>
-    </Link>
+    </SiteCardShell>
+  );
+}
+
+/** A link to the site, or, while picking sites, a click target that toggles the card's checkbox. */
+function SiteCardShell({
+  siteId,
+  selection,
+  children,
+}: {
+  siteId: number;
+  selection?: SiteCardSelection;
+  children: ReactNode;
+}) {
+  const t = useExtracted();
+  if (!selection) {
+    return <Link href={`/${siteId}`}>{children}</Link>;
+  }
+  return (
+    <div
+      onClick={selection.disabled ? undefined : selection.onToggle}
+      title={selection.disabled ? t("Your role can't change this site's settings") : undefined}
+      className={selection.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+    >
+      {children}
+    </div>
   );
 }

@@ -54,6 +54,13 @@ export function planIncludesReplay(
   return subscription.planName.includes("pro") && !isLargeTrial;
 }
 
+// Whether a plan includes the Standard features (Web Vitals, error tracking, and
+// click, copy and form auto capture). Self-hosted instances have no plan and get them all.
+export function planIncludesStandardFeatures(subscription: { planName: string } | null | undefined): boolean {
+  const planName = subscription?.planName ?? "";
+  return ["custom", "standard", "pro", "appsumo"].some(plan => planName.includes(plan));
+}
+
 // Format event tier for display
 export function formatEventTier(tier: number | string): string {
   if (typeof tier === "string") {
